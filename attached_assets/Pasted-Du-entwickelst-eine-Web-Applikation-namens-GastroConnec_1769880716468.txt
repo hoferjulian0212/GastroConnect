@@ -1,0 +1,122 @@
+Du entwickelst eine Web-Applikation namens „GastroConnect“.
+
+ZIEL:
+Eine saubere, skalierbare und logisch aufgebaute Anwendung für die Gastronomie, mit klarer Trennung zwischen zwei unabhängigen Hauptrollen:
+1. Lieferant (Zulieferer)
+2. Restaurant (Kunde)
+
+Wichtig: keinen Login machen. Der Wechsel zwischen den Usern sollte per Button funktionieren. (Für Entwicklung der app erforderlich, später dann login)
+
+GRUNDLOGIK:
+- Ein Benutzer kann sich entweder als Restaurant ODER als Lieferant registrieren.
+- Die beiden Rollen sind technisch strikt getrennt (eigene Views, eigene Navigation, eigene Logik).
+- Es gibt keine gemeinsame Oberfläche, außer der Kommunikationsschnittstelle (Inbox).
+- Ein Benutzer kann nicht gleichzeitig beide Rollen haben.
+
+────────────────────────
+HAUPTSTRUKTUR
+────────────────────────
+
+Die Anwendung besteht aus zwei Hauptansichten:
+
+A) Restaurant-Ansicht (Kunde)
+B) Lieferanten-Ansicht (Zulieferer)
+
+Beide Ansichten werden unabhängig aufgebaut, nutzen aber gemeinsame Backend-Strukturen (z. B. Chat, Bestellungen, Nutzer).
+
+────────────────────────
+GEMEINSAME FUNKTION (KERN)
+────────────────────────
+
+INBOX / CHAT (WhatsApp-Logik):
+
+- Zentrale Kommunikationsschnittstelle zwischen Restaurant und Lieferant
+- Jeder Restaurant-Lieferant-Kontakt hat einen eigenen, strikt getrennten Chat
+- Keine Vermischung von Kunden oder Lieferanten
+- Funktionen im Chat:
+  - Textnachrichten
+  - Bestellungen auslösen
+  - Reklamationen schreiben
+  - Auftragsbestätigungen senden
+  - Lieferstatus senden
+  - Dokumente hochladen (Rechnungen, Belege, Lieferscheine)
+- Chat ist immer 1:1 (Restaurant ↔ Lieferant)
+- Chats sind dauerhaft gespeichert und nachvollziehbar
+
+────────────────────────
+RESTAURANT-ANSICHT (KUNDE)
+────────────────────────
+
+Menüpunkte / Pages:
+
+1. Home
+   - Überblick (z. B. offene Bestellungen, letzte Aktivitäten)
+
+2. Inbox
+   - Separate Chats zu jedem Lieferanten
+
+3. Bestellungen (global)
+   - Alle Bestellungen aller Lieferanten
+   - Filter- und Statuslogik (offen, geliefert, reklamiert etc.)
+
+4. Produktkatalog
+   - Liste aller Lieferanten
+   - Pro Lieferant: seine Produkte mit Preisen
+   - Grundlage für Bestellungen
+
+5. Warenkorb
+   - Produkte aus einem Lieferanten-Katalog
+   - Bestellungsauslösung
+
+6. Bestellhistorie
+   - Vergangene Bestellungen
+   - Wiederbestell-Funktion möglich
+
+7. Profileinstellungen
+   - Restaurantdaten
+   - Kontaktdaten
+
+────────────────────────
+LIEFERANTEN-ANSICHT (ZULIEFERER)
+────────────────────────
+
+Menüpunkte / Pages:
+
+1. Home
+   - Überblick (neue Bestellungen, offene Aufträge)
+
+2. Inbox
+   - Separate Chats zu jedem Restaurant
+
+3. Produktkatalog (Verwaltung)
+   - Produkte anlegen, bearbeiten, deaktivieren
+   - Preisverwaltung
+   - Kundenspezifische Preise
+   - Lagerbestand / Inventarfunktion
+
+4. Aufträge (Orders)
+   - Übersicht aller eingehenden Bestellungen
+   - Statusverwaltung (neu, bestätigt, in Lieferung, abgeschlossen)
+
+5. Bestellübersicht
+   - Historie aller Bestellungen
+   - Kundenbezogene Filter
+
+6. Profileinstellungen
+   - Lieferantendaten
+   - Unternehmensinfos
+   - Abrechnungseinstellungen
+
+────────────────────────
+TECHNISCHE LEITLINIEN
+────────────────────────
+
+- Klare Trennung von:
+  - Layout
+  - Pages
+  - Business-Logik
+  - Datenmodellen
+- Keine magischen Redirects
+- Navigation darf niemals Content überlagern
+- Änderungen an einer Rolle dürfen die andere Rolle nicht beeinflussen
+- Fokus auf Stabilität, Nachvollziehbarkeit und Präsentationsfähigkeit
