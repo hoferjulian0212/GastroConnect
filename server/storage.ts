@@ -1,38 +1,624 @@
-import { type User, type InsertUser } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, or, sql, ne } from "drizzle-orm";
+import {
+  users, products, orders, orderItems, cartItems, conversations, messages,
+  type User, type InsertUser, type Product, type InsertProduct,
+  type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
+  type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
+  type Message, type InsertMessage, type ProductWithSupplier, type OrderWithDetails,
+  type ConversationWithUser, type CartItemWithProduct
+} from "@shared/schema";
 import { randomUUID } from "crypto";
 
-// modify the interface with any CRUD methods
-// you might need
-
 export interface IStorage {
+  // Users
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUsersByRole(role: "restaurant" | "supplier"): Promise<User[]>;
+  getUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
+
+  // Products
+  getProducts(): Promise<ProductWithSupplier[]>;
+  getProductsBySupplier(supplierId: string): Promise<Product[]>;
+  getProduct(id: string): Promise<Product | undefined>;
+  createProduct(product: InsertProduct): Promise<Product>;
+  updateProduct(id: string, data: Partial<InsertProduct>): Promise<Product | undefined>;
+  deleteProduct(id: string): Promise<void>;
+
+  // Orders
+  getOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]>;
+  getOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]>;
+  getRecentOrdersByRestaurant(restaurantId: string): Promise<Order[]>;
+  getRecentOrdersBySupplier(supplierId: string): Promise<Order[]>;
+  getOrder(id: string): Promise<OrderWithDetails | undefined>;
+  createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
+  updateOrderStatus(id: string, status: string): Promise<Order | undefined>;
+
+  // Cart
+  getCartItems(restaurantId: string): Promise<CartItemWithProduct[]>;
+  getCartCount(restaurantId: string): Promise<number>;
+  addToCart(item: InsertCartItem): Promise<CartItem>;
+  updateCartItem(id: string, quantity: number): Promise<CartItem | undefined>;
+  removeCartItem(id: string): Promise<void>;
+  clearCart(restaurantId: string): Promise<void>;
+
+  // Conversations & Messages
+  getConversations(userId: string, role: "restaurant" | "supplier"): Promise<ConversationWithUser[]>;
+  getOrCreateConversation(restaurantId: string, supplierId: string): Promise<Conversation>;
+  getMessages(conversationId: string): Promise<Message[]>;
+  sendMessage(message: InsertMessage): Promise<Message>;
+  getUnreadCount(userId: string): Promise<number>;
+  markMessagesAsRead(conversationId: string, userId: string): Promise<void>;
+
+  // Stats
+  getRestaurantStats(restaurantId: string): Promise<{
+    pendingOrders: number;
+    unreadMessages: number;
+    totalSuppliers: number;
+  }>;
+  getSupplierStats(supplierId: string): Promise<{
+    newOrders: number;
+    unreadMessages: number;
+    totalProducts: number;
+    monthlyRevenue: number;
+  }>;
+  getPendingOrderCount(supplierId: string): Promise<number>;
+  getRestaurantsForSupplier(supplierId: string): Promise<User[]>;
+
+  // Seed
+  seedData(): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
+  // Users
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
+
+  async getUsersByRole(role: "restaurant" | "supplier"): Promise<User[]> {
+    return db.select().from(users).where(eq(users.role, role));
+  }
+
+  async getUsers(): Promise<User[]> {
+    return db.select().from(users);
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const [created] = await db.insert(users).values(user).returning();
+    return created;
+  }
+
+  async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
+    const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    return updated;
+  }
+
+  // Products
+  async getProducts(): Promise<ProductWithSupplier[]> {
+    const result = await db
+      .select()
+      .from(products)
+      .leftJoin(users, eq(products.supplierId, users.id))
+      .orderBy(desc(products.createdAt));
+    
+    return result.map(r => ({
+      ...r.products,
+      supplier: r.users!
+    }));
+  }
+
+  async getProductsBySupplier(supplierId: string): Promise<Product[]> {
+    return db.select().from(products).where(eq(products.supplierId, supplierId)).orderBy(desc(products.createdAt));
+  }
+
+  async getProduct(id: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product;
+  }
+
+  async createProduct(product: InsertProduct): Promise<Product> {
+    const [created] = await db.insert(products).values(product).returning();
+    return created;
+  }
+
+  async updateProduct(id: string, data: Partial<InsertProduct>): Promise<Product | undefined> {
+    const [updated] = await db.update(products).set(data).where(eq(products.id, id)).returning();
+    return updated;
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    await db.delete(products).where(eq(products.id, id));
+  }
+
+  // Orders
+  async getOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]> {
+    const ordersResult = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.restaurantId, restaurantId))
+      .orderBy(desc(orders.createdAt));
+
+    const ordersWithDetails: OrderWithDetails[] = [];
+    for (const order of ordersResult) {
+      const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+      const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
+      const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
+      ordersWithDetails.push({ ...order, items, restaurant, supplier });
+    }
+    return ordersWithDetails;
+  }
+
+  async getOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]> {
+    const ordersResult = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.supplierId, supplierId))
+      .orderBy(desc(orders.createdAt));
+
+    const ordersWithDetails: OrderWithDetails[] = [];
+    for (const order of ordersResult) {
+      const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+      const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
+      const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
+      ordersWithDetails.push({ ...order, items, restaurant, supplier });
+    }
+    return ordersWithDetails;
+  }
+
+  async getRecentOrdersByRestaurant(restaurantId: string): Promise<Order[]> {
+    return db
+      .select()
+      .from(orders)
+      .where(eq(orders.restaurantId, restaurantId))
+      .orderBy(desc(orders.createdAt))
+      .limit(5);
+  }
+
+  async getRecentOrdersBySupplier(supplierId: string): Promise<Order[]> {
+    return db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.supplierId, supplierId), eq(orders.status, "pending")))
+      .orderBy(desc(orders.createdAt))
+      .limit(5);
+  }
+
+  async getOrder(id: string): Promise<OrderWithDetails | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    if (!order) return undefined;
+    
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
+    const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
+    const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
+    
+    return { ...order, items, restaurant, supplier };
+  }
+
+  async createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order> {
+    const [created] = await db.insert(orders).values(order).returning();
+    
+    for (const item of items) {
+      await db.insert(orderItems).values({ ...item, orderId: created.id });
+    }
+    
+    return created;
+  }
+
+  async updateOrderStatus(id: string, status: string): Promise<Order | undefined> {
+    const [updated] = await db
+      .update(orders)
+      .set({ status: status as any, updatedAt: new Date() })
+      .where(eq(orders.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Cart
+  async getCartItems(restaurantId: string): Promise<CartItemWithProduct[]> {
+    const result = await db
+      .select()
+      .from(cartItems)
+      .leftJoin(products, eq(cartItems.productId, products.id))
+      .leftJoin(users, eq(cartItems.supplierId, users.id))
+      .where(eq(cartItems.restaurantId, restaurantId));
+
+    return result.map(r => ({
+      ...r.cart_items,
+      product: r.products!,
+      supplier: r.users!
+    }));
+  }
+
+  async getCartCount(restaurantId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(cartItems)
+      .where(eq(cartItems.restaurantId, restaurantId));
+    return result[0]?.count || 0;
+  }
+
+  async addToCart(item: InsertCartItem): Promise<CartItem> {
+    // Check if item already exists
+    const [existing] = await db
+      .select()
+      .from(cartItems)
+      .where(and(
+        eq(cartItems.restaurantId, item.restaurantId),
+        eq(cartItems.productId, item.productId)
+      ));
+
+    if (existing) {
+      const [updated] = await db
+        .update(cartItems)
+        .set({ quantity: existing.quantity + (item.quantity || 1) })
+        .where(eq(cartItems.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db.insert(cartItems).values(item).returning();
+    return created;
+  }
+
+  async updateCartItem(id: string, quantity: number): Promise<CartItem | undefined> {
+    const [updated] = await db
+      .update(cartItems)
+      .set({ quantity })
+      .where(eq(cartItems.id, id))
+      .returning();
+    return updated;
+  }
+
+  async removeCartItem(id: string): Promise<void> {
+    await db.delete(cartItems).where(eq(cartItems.id, id));
+  }
+
+  async clearCart(restaurantId: string): Promise<void> {
+    await db.delete(cartItems).where(eq(cartItems.restaurantId, restaurantId));
+  }
+
+  // Conversations & Messages
+  async getConversations(userId: string, role: "restaurant" | "supplier"): Promise<ConversationWithUser[]> {
+    const convs = await db
+      .select()
+      .from(conversations)
+      .where(
+        role === "restaurant" 
+          ? eq(conversations.restaurantId, userId)
+          : eq(conversations.supplierId, userId)
+      )
+      .orderBy(desc(conversations.lastMessageAt));
+
+    const result: ConversationWithUser[] = [];
+    for (const conv of convs) {
+      const otherUserId = role === "restaurant" ? conv.supplierId : conv.restaurantId;
+      const [otherUser] = await db.select().from(users).where(eq(users.id, otherUserId));
+      
+      const [lastMessage] = await db
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, conv.id))
+        .orderBy(desc(messages.createdAt))
+        .limit(1);
+
+      const unreadResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(messages)
+        .where(and(
+          eq(messages.conversationId, conv.id),
+          ne(messages.senderId, userId),
+          eq(messages.isRead, false)
+        ));
+
+      result.push({
+        ...conv,
+        otherUser,
+        lastMessage,
+        unreadCount: unreadResult[0]?.count || 0
+      });
+    }
+    return result;
+  }
+
+  async getOrCreateConversation(restaurantId: string, supplierId: string): Promise<Conversation> {
+    const [existing] = await db
+      .select()
+      .from(conversations)
+      .where(and(
+        eq(conversations.restaurantId, restaurantId),
+        eq(conversations.supplierId, supplierId)
+      ));
+
+    if (existing) return existing;
+
+    const [created] = await db
+      .insert(conversations)
+      .values({ restaurantId, supplierId })
+      .returning();
+    return created;
+  }
+
+  async getMessages(conversationId: string): Promise<Message[]> {
+    return db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.createdAt);
+  }
+
+  async sendMessage(message: InsertMessage): Promise<Message> {
+    const [created] = await db.insert(messages).values(message).returning();
+    
+    // Update conversation lastMessageAt
+    await db
+      .update(conversations)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(conversations.id, message.conversationId));
+
+    return created;
+  }
+
+  async getUnreadCount(userId: string): Promise<number> {
+    // Get conversations where user is participant
+    const userConvs = await db
+      .select()
+      .from(conversations)
+      .where(or(
+        eq(conversations.restaurantId, userId),
+        eq(conversations.supplierId, userId)
+      ));
+
+    let total = 0;
+    for (const conv of userConvs) {
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(messages)
+        .where(and(
+          eq(messages.conversationId, conv.id),
+          ne(messages.senderId, userId),
+          eq(messages.isRead, false)
+        ));
+      total += result[0]?.count || 0;
+    }
+    return total;
+  }
+
+  async markMessagesAsRead(conversationId: string, userId: string): Promise<void> {
+    await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(and(
+        eq(messages.conversationId, conversationId),
+        ne(messages.senderId, userId)
+      ));
+  }
+
+  // Stats
+  async getRestaurantStats(restaurantId: string): Promise<{
+    pendingOrders: number;
+    unreadMessages: number;
+    totalSuppliers: number;
+  }> {
+    const pendingResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(orders)
+      .where(and(
+        eq(orders.restaurantId, restaurantId),
+        or(eq(orders.status, "pending"), eq(orders.status, "confirmed"), eq(orders.status, "in_delivery"))
+      ));
+
+    const suppliers = await db.select().from(users).where(eq(users.role, "supplier"));
+
+    return {
+      pendingOrders: pendingResult[0]?.count || 0,
+      unreadMessages: await this.getUnreadCount(restaurantId),
+      totalSuppliers: suppliers.length
+    };
+  }
+
+  async getSupplierStats(supplierId: string): Promise<{
+    newOrders: number;
+    unreadMessages: number;
+    totalProducts: number;
+    monthlyRevenue: number;
+  }> {
+    const newOrdersResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(orders)
+      .where(and(eq(orders.supplierId, supplierId), eq(orders.status, "pending")));
+
+    const productsResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(products)
+      .where(eq(products.supplierId, supplierId));
+
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const revenueResult = await db
+      .select({ total: sql<number>`COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0)` })
+      .from(orders)
+      .where(and(
+        eq(orders.supplierId, supplierId),
+        eq(orders.status, "delivered"),
+        sql`${orders.createdAt} >= ${startOfMonth}`
+      ));
+
+    return {
+      newOrders: newOrdersResult[0]?.count || 0,
+      unreadMessages: await this.getUnreadCount(supplierId),
+      totalProducts: productsResult[0]?.count || 0,
+      monthlyRevenue: revenueResult[0]?.total || 0
+    };
+  }
+
+  async getPendingOrderCount(supplierId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(orders)
+      .where(and(eq(orders.supplierId, supplierId), eq(orders.status, "pending")));
+    return result[0]?.count || 0;
+  }
+
+  async getRestaurantsForSupplier(supplierId: string): Promise<User[]> {
+    // Get unique restaurants that have ordered from this supplier
+    const restaurantIds = await db
+      .selectDistinct({ id: orders.restaurantId })
+      .from(orders)
+      .where(eq(orders.supplierId, supplierId));
+
+    if (restaurantIds.length === 0) return [];
+
+    return db
+      .select()
+      .from(users)
+      .where(or(...restaurantIds.map(r => eq(users.id, r.id))));
+  }
+
+  // Seed Data
+  async seedData(): Promise<void> {
+    // Check if data already exists
+    const existingUsers = await db.select().from(users);
+    if (existingUsers.length > 0) return;
+
+    // Create restaurants
+    const restaurant1 = await this.createUser({
+      role: "restaurant",
+      name: "Thomas Weber",
+      email: "thomas@biergarten-muenchen.de",
+      phone: "+49 89 1234567",
+      companyName: "Biergarten München",
+      address: "Marienplatz 1",
+      city: "München",
+      postalCode: "80331",
+      description: "Traditioneller Biergarten im Herzen von München"
+    });
+
+    const restaurant2 = await this.createUser({
+      role: "restaurant",
+      name: "Maria Schmidt",
+      email: "maria@pizzeria-bella.de",
+      phone: "+49 30 9876543",
+      companyName: "Pizzeria Bella Italia",
+      address: "Friedrichstraße 45",
+      city: "Berlin",
+      postalCode: "10117",
+      description: "Authentische italienische Küche"
+    });
+
+    const restaurant3 = await this.createUser({
+      role: "restaurant",
+      name: "Klaus Fischer",
+      email: "klaus@gasthof-alpenblick.de",
+      phone: "+49 8821 12345",
+      companyName: "Gasthof Alpenblick",
+      address: "Bergstraße 12",
+      city: "Garmisch-Partenkirchen",
+      postalCode: "82467",
+      description: "Bayerische Spezialitäten mit Alpenblick"
+    });
+
+    // Create suppliers
+    const supplier1 = await this.createUser({
+      role: "supplier",
+      name: "Hans Müller",
+      email: "hans@frische-produkte.de",
+      phone: "+49 89 5555666",
+      companyName: "Frische Produkte GmbH",
+      address: "Industriestraße 23",
+      city: "München",
+      postalCode: "80939",
+      description: "Ihr Partner für frisches Obst und Gemüse"
+    });
+
+    const supplier2 = await this.createUser({
+      role: "supplier",
+      name: "Anna Bauer",
+      email: "anna@metzgerei-bauer.de",
+      phone: "+49 89 7778899",
+      companyName: "Metzgerei Bauer",
+      address: "Fleischweg 5",
+      city: "München",
+      postalCode: "80469",
+      description: "Qualitätsfleisch aus der Region"
+    });
+
+    const supplier3 = await this.createUser({
+      role: "supplier",
+      name: "Peter Klein",
+      email: "peter@getraenke-klein.de",
+      phone: "+49 89 3334455",
+      companyName: "Getränke Klein",
+      address: "Braustraße 88",
+      city: "München",
+      postalCode: "80337",
+      description: "Getränke-Großhandel für die Gastronomie"
+    });
+
+    // Create products for supplier1 (Frische Produkte)
+    await this.createProduct({ supplierId: supplier1.id, name: "Bio Tomaten", description: "Frische Bio-Tomaten aus regionalem Anbau", price: "3.99", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 100 });
+    await this.createProduct({ supplierId: supplier1.id, name: "Eisbergsalat", description: "Knackiger Eisbergsalat", price: "1.49", unit: "Stück", category: "Gemüse", inStock: true, stockQuantity: 50 });
+    await this.createProduct({ supplierId: supplier1.id, name: "Karotten", description: "Frische Karotten im Bund", price: "2.29", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 80 });
+    await this.createProduct({ supplierId: supplier1.id, name: "Bio Äpfel", description: "Knackige Bio-Äpfel, Sorte Elstar", price: "4.49", unit: "kg", category: "Obst", inStock: true, stockQuantity: 60 });
+    await this.createProduct({ supplierId: supplier1.id, name: "Zitronen", description: "Frische Zitronen aus Sizilien", price: "3.29", unit: "kg", category: "Obst", inStock: true, stockQuantity: 40 });
+
+    // Create products for supplier2 (Metzgerei)
+    await this.createProduct({ supplierId: supplier2.id, name: "Schweineschnitzel", description: "Zartes Schweineschnitzel, panierfertig", price: "12.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 30 });
+    await this.createProduct({ supplierId: supplier2.id, name: "Rinderfilet", description: "Premium Rinderfilet vom Weiderind", price: "39.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 15 });
+    await this.createProduct({ supplierId: supplier2.id, name: "Hähnchenbrust", description: "Zarte Hähnchenbrust", price: "9.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 40 });
+    await this.createProduct({ supplierId: supplier2.id, name: "Bratwurst", description: "Original Nürnberger Bratwurst", price: "8.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 50 });
+    await this.createProduct({ supplierId: supplier2.id, name: "Hackfleisch gemischt", description: "Hackfleisch gemischt Rind/Schwein", price: "7.99", unit: "kg", category: "Fleisch", inStock: false, stockQuantity: 0 });
+
+    // Create products for supplier3 (Getränke)
+    await this.createProduct({ supplierId: supplier3.id, name: "Augustiner Helles", description: "Münchner Augustiner Helles, Kiste 20x0,5l", price: "19.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 100 });
+    await this.createProduct({ supplierId: supplier3.id, name: "Mineralwasser", description: "Gerolsteiner Mineralwasser, Kiste 12x1l", price: "8.49", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 200 });
+    await this.createProduct({ supplierId: supplier3.id, name: "Apfelsaft", description: "Naturtrüber Apfelsaft, Kiste 6x1l", price: "11.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 80 });
+    await this.createProduct({ supplierId: supplier3.id, name: "Cola", description: "Coca-Cola Classic, Kiste 24x0,33l", price: "18.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 60 });
+
+    // Create conversations and messages
+    const conv1 = await this.getOrCreateConversation(restaurant1.id, supplier1.id);
+    await this.sendMessage({ conversationId: conv1.id, senderId: restaurant1.id, messageType: "text", content: "Hallo, haben Sie Bio Tomaten vorrätig?" });
+    await this.sendMessage({ conversationId: conv1.id, senderId: supplier1.id, messageType: "text", content: "Ja, wir haben frische Bio-Tomaten aus der Region. Wie viel benötigen Sie?" });
+    await this.sendMessage({ conversationId: conv1.id, senderId: restaurant1.id, messageType: "text", content: "10kg wären super, können Sie die morgen früh liefern?" });
+
+    const conv2 = await this.getOrCreateConversation(restaurant1.id, supplier2.id);
+    await this.sendMessage({ conversationId: conv2.id, senderId: restaurant1.id, messageType: "text", content: "Guten Tag, ich würde gerne Schweineschnitzel bestellen." });
+    await this.sendMessage({ conversationId: conv2.id, senderId: supplier2.id, messageType: "text", content: "Gerne! Unsere Schnitzel sind heute frisch eingetroffen." });
+
+    const conv3 = await this.getOrCreateConversation(restaurant2.id, supplier1.id);
+    await this.sendMessage({ conversationId: conv3.id, senderId: restaurant2.id, messageType: "text", content: "Können Sie uns wöchentlich mit frischem Salat beliefern?" });
+
+    // Create some sample orders
+    const productList = await this.getProductsBySupplier(supplier1.id);
+    if (productList.length > 0) {
+      const order1Items = [
+        { productId: productList[0].id, productName: productList[0].name, quantity: 5, unitPrice: productList[0].price, totalPrice: (parseFloat(productList[0].price) * 5).toFixed(2) },
+        { productId: productList[1].id, productName: productList[1].name, quantity: 10, unitPrice: productList[1].price, totalPrice: (parseFloat(productList[1].price) * 10).toFixed(2) }
+      ];
+      const total1 = order1Items.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0).toFixed(2);
+      await this.createOrder({ restaurantId: restaurant1.id, supplierId: supplier1.id, totalAmount: total1, status: "delivered" }, order1Items as any);
+
+      const order2Items = [
+        { productId: productList[0].id, productName: productList[0].name, quantity: 8, unitPrice: productList[0].price, totalPrice: (parseFloat(productList[0].price) * 8).toFixed(2) }
+      ];
+      const total2 = order2Items.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0).toFixed(2);
+      await this.createOrder({ restaurantId: restaurant1.id, supplierId: supplier1.id, totalAmount: total2, status: "pending" }, order2Items as any);
+    }
+
+    const meatProducts = await this.getProductsBySupplier(supplier2.id);
+    if (meatProducts.length > 0) {
+      const order3Items = [
+        { productId: meatProducts[0].id, productName: meatProducts[0].name, quantity: 3, unitPrice: meatProducts[0].price, totalPrice: (parseFloat(meatProducts[0].price) * 3).toFixed(2) }
+      ];
+      const total3 = order3Items.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0).toFixed(2);
+      await this.createOrder({ restaurantId: restaurant1.id, supplierId: supplier2.id, totalAmount: total3, status: "confirmed" }, order3Items as any);
+    }
+
+    console.log("Seed data created successfully!");
+  }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

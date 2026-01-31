@@ -1,0 +1,237 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useUser } from "@/context/UserContext";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Package, ShoppingCart, Plus, Minus, Store, Filter } from "lucide-react";
+import type { User, ProductWithSupplier } from "@shared/schema";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+export default function RestaurantCatalog() {
+  const { currentUser } = useUser();
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+  const { data: suppliers, isLoading: suppliersLoading } = useQuery<User[]>({
+    queryKey: ["/api/suppliers"],
+  });
+
+  const { data: products, isLoading: productsLoading } = useQuery<ProductWithSupplier[]>({
+    queryKey: ["/api/products"],
+  });
+
+  const addToCartMutation = useMutation({
+    mutationFn: async ({ productId, supplierId, quantity }: { productId: string; supplierId: string; quantity: number }) => {
+      return apiRequest("POST", "/api/cart", {
+        restaurantId: currentUser?.id,
+        productId,
+        supplierId,
+        quantity,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+      toast({
+        title: "Zum Warenkorb hinzugefügt",
+        description: "Das Produkt wurde erfolgreich hinzugefügt.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Fehler",
+        description: "Das Produkt konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const filteredProducts = products?.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSupplier = selectedSupplier === "all" || product.supplierId === selectedSupplier;
+    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
+    return matchesSearch && matchesSupplier && matchesCategory;
+  });
+
+  const categories = Array.from(new Set(products?.map(p => p.category).filter(Boolean) || []));
+
+  const updateQuantity = (productId: string, delta: number) => {
+    setQuantities(prev => ({
+      ...prev,
+      [productId]: Math.max(1, (prev[productId] || 1) + delta),
+    }));
+  };
+
+  const handleAddToCart = (product: ProductWithSupplier) => {
+    const quantity = quantities[product.id] || 1;
+    addToCartMutation.mutate({
+      productId: product.id,
+      supplierId: product.supplierId,
+      quantity,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold" data-testid="text-page-title">Produktkatalog</h1>
+        <p className="text-muted-foreground">Durchsuchen Sie Produkte von allen Lieferanten</p>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Produkte suchen..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+                data-testid="input-search-products"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
+                <SelectTrigger className="w-[180px]" data-testid="select-supplier">
+                  <Store className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Lieferant" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Lieferanten</SelectItem>
+                  {suppliers?.map((supplier) => (
+                    <SelectItem key={supplier.id} value={supplier.id}>
+                      {supplier.companyName || supplier.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-[180px]" data-testid="select-category">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Kategorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Kategorien</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category!}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {productsLoading ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-64" />
+              ))}
+            </div>
+          ) : filteredProducts && filteredProducts.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredProducts.map((product) => (
+                <Card key={product.id} className="hover-elevate" data-testid={`product-card-${product.id}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10">
+                        <Package className="h-6 w-6 text-primary" />
+                      </div>
+                      {product.inStock ? (
+                        <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                          Verfügbar
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                          Nicht verfügbar
+                        </Badge>
+                      )}
+                    </div>
+                    <h3 className="font-medium text-lg">{product.name}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                      {product.description || "Keine Beschreibung verfügbar"}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {product.supplier?.companyName || product.supplier?.name}
+                      </Badge>
+                      {product.category && (
+                        <Badge variant="outline" className="text-xs">
+                          {product.category}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <span className="text-2xl font-bold">{product.price}€</span>
+                          <span className="text-sm text-muted-foreground">/{product.unit}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center border border-border rounded-md">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => updateQuantity(product.id, -1)}
+                            disabled={!product.inStock}
+                            data-testid={`button-decrease-${product.id}`}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center text-sm" data-testid={`quantity-${product.id}`}>
+                            {quantities[product.id] || 1}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => updateQuantity(product.id, 1)}
+                            disabled={!product.inStock}
+                            data-testid={`button-increase-${product.id}`}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <Button
+                          className="flex-1 gap-2"
+                          disabled={!product.inStock || addToCartMutation.isPending}
+                          onClick={() => handleAddToCart(product)}
+                          data-testid={`button-add-to-cart-${product.id}`}
+                        >
+                          <ShoppingCart className="h-4 w-4" />
+                          Hinzufügen
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Package className="h-12 w-12 text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground">Keine Produkte gefunden</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Versuchen Sie es mit anderen Suchbegriffen
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
