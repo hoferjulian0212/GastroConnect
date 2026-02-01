@@ -100,24 +100,24 @@ export default function RestaurantInbox() {
                         }`}
                         data-testid={`conversation-${conv.id}`}
                       >
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <Avatar className="h-10 w-10 shrink-0">
                             <AvatarFallback className="bg-secondary/20 text-secondary">
                               {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center justify-between gap-2">
                               <p className="text-sm font-medium truncate">
                                 {conv.otherUser.companyName || conv.otherUser.name}
                               </p>
                               {conv.unreadCount > 0 && (
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-medium">
+                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-medium">
                                   {conv.unreadCount}
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground truncate">
+                            <p className="text-xs text-muted-foreground truncate overflow-hidden text-ellipsis whitespace-nowrap">
                               {conv.lastMessage?.content || "Keine Nachrichten"}
                             </p>
                           </div>
