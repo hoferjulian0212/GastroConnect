@@ -67,6 +67,11 @@ export async function registerRoutes(
   // ===== PRODUCTS =====
   app.get("/api/products", async (req, res) => {
     try {
+      const supplierId = req.query.supplierId as string;
+      if (supplierId) {
+        const products = await storage.getProductsBySupplier(supplierId);
+        return res.json(products);
+      }
       const products = await storage.getProducts();
       res.json(products);
     } catch (error) {
@@ -181,11 +186,21 @@ export async function registerRoutes(
   app.get("/api/orders", async (req, res) => {
     try {
       const restaurantId = req.query.restaurantId as string;
-      if (!restaurantId) {
-        return res.status(400).json({ error: "Restaurant ID required" });
+      const supplierId = req.query.supplierId as string;
+      if (restaurantId && supplierId) {
+        const orders = await storage.getOrdersByRestaurant(restaurantId);
+        const filtered = orders.filter(o => o.supplierId === supplierId);
+        return res.json(filtered);
       }
-      const orders = await storage.getOrdersByRestaurant(restaurantId);
-      res.json(orders);
+      if (restaurantId) {
+        const orders = await storage.getOrdersByRestaurant(restaurantId);
+        return res.json(orders);
+      }
+      if (supplierId) {
+        const orders = await storage.getOrdersBySupplier(supplierId);
+        return res.json(orders);
+      }
+      return res.status(400).json({ error: "restaurantId or supplierId required" });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch orders" });
     }
@@ -267,6 +282,51 @@ export async function registerRoutes(
       res.status(201).json(createdOrders);
     } catch (error) {
       console.error("Create order error:", error);
+      res.status(500).json({ error: "Failed to create order" });
+    }
+  });
+
+  app.post("/api/orders/direct", async (req, res) => {
+    try {
+      const { restaurantId, supplierId, items, notes } = req.body;
+      if (!restaurantId || !supplierId || !items?.length) {
+        return res.status(400).json({ error: "restaurantId, supplierId and items required" });
+      }
+
+      if (!Array.isArray(items) || !items.every((i: any) => i.productId && typeof i.quantity === "number" && i.quantity > 0)) {
+        return res.status(400).json({ error: "Invalid items format" });
+      }
+
+      const products = await storage.getProductsBySupplier(supplierId);
+      const productMap = new Map(products.map(p => [p.id, p]));
+
+      const orderItems = [];
+      for (const item of items as { productId: string; quantity: number }[]) {
+        const product = productMap.get(item.productId);
+        if (!product) {
+          return res.status(400).json({ error: `Product ${item.productId} not found` });
+        }
+        orderItems.push({
+          productId: item.productId,
+          productName: product.name,
+          quantity: item.quantity,
+          unitPrice: product.price,
+          totalPrice: (parseFloat(product.price) * item.quantity).toFixed(2)
+        });
+      }
+
+      const totalAmount = orderItems
+        .reduce((sum: number, item) => sum + parseFloat(item.totalPrice), 0)
+        .toFixed(2);
+
+      const order = await storage.createOrder(
+        { restaurantId, supplierId, totalAmount, status: "pending", notes: notes || "" },
+        orderItems as any
+      );
+
+      res.status(201).json(order);
+    } catch (error) {
+      console.error("Direct order error:", error);
       res.status(500).json({ error: "Failed to create order" });
     }
   });

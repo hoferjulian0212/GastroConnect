@@ -1,23 +1,31 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageSquare, Search, Check, CheckCheck } from "lucide-react";
-import type { ConversationWithUser, Message, User } from "@shared/schema";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package } from "lucide-react";
+import type { ConversationWithUser, Message, Product } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+type ActionMode = "none" | "order";
 
 export default function RestaurantInbox() {
   const { currentUser } = useUser();
+  const { toast } = useToast();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [actionMode, setActionMode] = useState<ActionMode>("none");
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [orderItems, setOrderItems] = useState<Record<string, number>>({});
 
   const { data: conversations, isLoading: conversationsLoading } = useQuery<ConversationWithUser[]>({
     queryKey: [`/api/conversations?userId=${currentUser?.id}`],
@@ -27,6 +35,18 @@ export default function RestaurantInbox() {
   const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: [`/api/conversations/${selectedConversation}/messages`],
     enabled: !!selectedConversation,
+  });
+
+  const selectedConv = conversations?.find(c => c.id === selectedConversation);
+  const supplierId = selectedConv?.otherUser.id;
+
+  const { data: supplierProducts } = useQuery<Product[]>({
+    queryKey: ["/api/products", { supplierId }],
+    queryFn: async () => {
+      const res = await fetch(`/api/products?supplierId=${supplierId}`);
+      return res.json();
+    },
+    enabled: !!supplierId && actionMode === "order",
   });
 
   const sendMessageMutation = useMutation({
@@ -44,18 +64,66 @@ export default function RestaurantInbox() {
     },
   });
 
+  const createOrderMutation = useMutation({
+    mutationFn: async (items: { productId: string; quantity: number }[]) => {
+      return apiRequest("POST", "/api/orders/direct", {
+        restaurantId: currentUser?.id,
+        supplierId,
+        items,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      toast({
+        title: "Bestellung aufgegeben",
+        description: "Ihre Bestellung wurde erfolgreich übermittelt.",
+      });
+      setOrderItems({});
+      setActionMode("none");
+    },
+    onError: () => {
+      toast({
+        title: "Fehler",
+        description: "Bestellung konnte nicht aufgegeben werden.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredConversations = conversations?.filter(conv => 
     conv.otherUser.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.otherUser.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const selectedConv = conversations?.find(c => c.id === selectedConversation);
 
   const handleSendMessage = () => {
     if (messageText.trim() && selectedConversation) {
       sendMessageMutation.mutate(messageText.trim());
     }
   };
+
+  const updateOrderQuantity = (productId: string, delta: number) => {
+    setOrderItems(prev => {
+      const current = prev[productId] || 0;
+      const newQty = Math.max(0, current + delta);
+      if (newQty === 0) {
+        const { [productId]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [productId]: newQty };
+    });
+  };
+
+  const handleSubmitOrder = () => {
+    const items = Object.entries(orderItems).map(([productId, quantity]) => ({
+      productId,
+      quantity,
+    }));
+    if (items.length > 0) {
+      createOrderMutation.mutate(items);
+    }
+  };
+
+  const totalOrderItems = Object.values(orderItems).reduce((sum, qty) => sum + qty, 0);
 
   return (
     <div className="h-[calc(100vh-8rem)]">
@@ -92,7 +160,11 @@ export default function RestaurantInbox() {
                     {filteredConversations.map((conv) => (
                       <button
                         key={conv.id}
-                        onClick={() => setSelectedConversation(conv.id)}
+                        onClick={() => {
+                          setSelectedConversation(conv.id);
+                          setActionMode("none");
+                          setOrderItems({});
+                        }}
                         className={`w-full p-3 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
                           selectedConversation === conv.id
                             ? "bg-primary/10"
@@ -156,57 +228,153 @@ export default function RestaurantInbox() {
                   </div>
                 </div>
 
-                <ScrollArea className="flex-1 p-4">
-                  {messagesLoading ? (
-                    <div className="space-y-4">
-                      {[1, 2, 3].map((i) => (
-                        <Skeleton key={i} className="h-16 w-3/4" />
-                      ))}
-                    </div>
-                  ) : messages && messages.length > 0 ? (
-                    <div className="space-y-4">
-                      {messages.map((message) => {
-                        const isOwn = message.senderId === currentUser?.id;
-                        return (
-                          <div
-                            key={message.id}
-                            className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
-                            data-testid={`message-${message.id}`}
-                          >
+                {actionMode === "none" ? (
+                  <ScrollArea className="flex-1 p-4">
+                    {messagesLoading ? (
+                      <div className="space-y-4">
+                        {[1, 2, 3].map((i) => (
+                          <Skeleton key={i} className="h-16 w-3/4" />
+                        ))}
+                      </div>
+                    ) : messages && messages.length > 0 ? (
+                      <div className="space-y-4">
+                        {messages.map((message) => {
+                          const isOwn = message.senderId === currentUser?.id;
+                          return (
                             <div
-                              className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                                isOwn
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-muted"
-                              }`}
+                              key={message.id}
+                              className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                              data-testid={`message-${message.id}`}
                             >
-                              <p className="text-sm">{message.content}</p>
-                              <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
-                                <span className={`text-[10px] ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                                  {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: de })}
-                                </span>
-                                {isOwn && (
-                                  message.isRead 
-                                    ? <CheckCheck className="h-3 w-3 text-primary-foreground/70" />
-                                    : <Check className="h-3 w-3 text-primary-foreground/70" />
-                                )}
+                              <div
+                                className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                                  isOwn
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted"
+                                }`}
+                              >
+                                <p className="text-sm">{message.content}</p>
+                                <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
+                                  <span className={`text-[10px] ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                                    {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: de })}
+                                  </span>
+                                  {isOwn && (
+                                    message.isRead 
+                                      ? <CheckCheck className="h-3 w-3 text-primary-foreground/70" />
+                                      : <Check className="h-3 w-3 text-primary-foreground/70" />
+                                  )}
+                                </div>
                               </div>
                             </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-center">
+                        <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                        <p className="text-sm text-muted-foreground">Keine Nachrichten</p>
+                        <p className="text-xs text-muted-foreground mt-1">Schreiben Sie eine Nachricht um die Konversation zu starten</p>
+                      </div>
+                    )}
+                  </ScrollArea>
+                ) : (
+                  <div className="flex-1 p-4 overflow-auto">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <ShoppingCart className="h-5 w-5" />
+                        Neue Bestellung
+                      </h3>
+                      <Button variant="ghost" size="icon" onClick={() => setActionMode("none")} data-testid="button-close-order">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Produkte von {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
+                    </p>
+                    <ScrollArea className="h-[calc(100%-120px)]">
+                      <div className="space-y-2">
+                        {supplierProducts?.filter(p => p.inStock).map((product) => (
+                          <div key={product.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                            {product.imageUrl ? (
+                              <div className="w-12 h-12 rounded-md overflow-hidden bg-muted shrink-0">
+                                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                <Package className="h-5 w-5 text-muted-foreground/50" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{product.name}</p>
+                              <p className="text-xs text-muted-foreground">{product.price}€/{product.unit}</p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => updateOrderQuantity(product.id, -1)}
+                                disabled={!orderItems[product.id]}
+                                data-testid={`button-decrease-${product.id}`}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-8 text-center text-sm">{orderItems[product.id] || 0}</span>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => updateOrderQuantity(product.id, 1)}
+                                data-testid={`button-increase-${product.id}`}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
-                        );
-                      })}
+                        ))}
+                        {(!supplierProducts || supplierProducts.filter(p => p.inStock).length === 0) && (
+                          <p className="text-sm text-muted-foreground text-center py-8">
+                            Keine Produkte verfügbar
+                          </p>
+                        )}
+                      </div>
+                    </ScrollArea>
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <Button
+                        className="w-full gap-2"
+                        disabled={totalOrderItems === 0 || createOrderMutation.isPending}
+                        onClick={handleSubmitOrder}
+                        data-testid="button-submit-order"
+                      >
+                        <ShoppingCart className="h-4 w-4" />
+                        Bestellung aufgeben ({totalOrderItems} Artikel)
+                      </Button>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                      <p className="text-sm text-muted-foreground">Keine Nachrichten</p>
-                      <p className="text-xs text-muted-foreground mt-1">Schreiben Sie eine Nachricht um die Konversation zu starten</p>
-                    </div>
-                  )}
-                </ScrollArea>
+                  </div>
+                )}
 
                 <div className="border-t border-border p-4">
                   <div className="flex gap-2">
+                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="icon" data-testid="button-quick-actions">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-2" align="start">
+                        <button
+                          className="w-full flex items-center gap-2 p-2 rounded-md text-sm hover-elevate text-left"
+                          onClick={() => {
+                            setActionMode("order");
+                            setPopoverOpen(false);
+                          }}
+                          data-testid="button-new-order"
+                        >
+                          <ShoppingCart className="h-4 w-4" />
+                          Neue Bestellung
+                        </button>
+                      </PopoverContent>
+                    </Popover>
                     <Input
                       placeholder="Nachricht schreiben..."
                       value={messageText}
