@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Home, MessageSquare, Package, ClipboardList, History, Settings, AlertCircle, LogOut } from "lucide-react";
-import logoImage from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj_1769969304398.png";
+import logoImage from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-removebg-preview_1769969406728.png";
 import {
   Sidebar,
   SidebarContent,
@@ -87,7 +87,7 @@ export function SupplierSidebar() {
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
-            className="h-11 w-11 object-contain mix-blend-multiply dark:invert dark:mix-blend-normal"
+            className="h-11 w-11 object-contain dark:invert"
           />
           <span className="font-semibold text-lg text-foreground">GastroConnect</span>
         </div>
