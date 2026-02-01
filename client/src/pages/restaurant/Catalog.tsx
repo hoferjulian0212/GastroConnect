@@ -144,61 +144,59 @@ export default function RestaurantCatalog() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredProducts.map((product) => (
                 <Card key={product.id} className="hover-elevate" data-testid={`product-card-${product.id}`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10">
-                        <Package className="h-6 w-6 text-primary" />
+                  <CardContent className="p-3 flex gap-3">
+                    {product.imageUrl ? (
+                      <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-muted">
+                        <img 
+                          src={product.imageUrl} 
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      {product.inStock ? (
-                        <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                          Verfügbar
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                          Nicht verfügbar
-                        </Badge>
-                      )}
-                    </div>
-                    <h3 className="font-medium text-lg">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                      {product.description || "Keine Beschreibung verfügbar"}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="secondary" className="text-xs">
+                    ) : (
+                      <div className="w-20 h-20 shrink-0 rounded-lg bg-muted flex items-center justify-center">
+                        <Package className="h-8 w-8 text-muted-foreground/30" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-medium line-clamp-1">{product.name}</h3>
+                        {product.inStock ? (
+                          <Badge variant="outline" className="shrink-0 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs px-1.5 py-0">
+                            Verfügbar
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="shrink-0 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-xs px-1.5 py-0">
+                            Nicht vorrätig
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
                         {product.supplier?.companyName || product.supplier?.name}
-                      </Badge>
-                      {product.category && (
-                        <Badge variant="outline" className="text-xs">
-                          {product.category}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-border">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <span className="text-2xl font-bold">{product.price}€</span>
-                          <span className="text-sm text-muted-foreground">/{product.unit}</span>
-                        </div>
+                      </p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="font-bold">{product.price}€</span>
+                        <span className="text-xs text-muted-foreground">/{product.unit}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mt-2">
                         <div className="flex items-center border border-border rounded-md">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-7 w-7"
                             onClick={() => updateQuantity(product.id, -1)}
                             disabled={!product.inStock}
                             data-testid={`button-decrease-${product.id}`}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
-                          <span className="w-8 text-center text-sm" data-testid={`quantity-${product.id}`}>
+                          <span className="w-6 text-center text-sm" data-testid={`quantity-${product.id}`}>
                             {quantities[product.id] || 1}
                           </span>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-7 w-7"
                             onClick={() => updateQuantity(product.id, 1)}
                             disabled={!product.inStock}
                             data-testid={`button-increase-${product.id}`}
@@ -207,12 +205,13 @@ export default function RestaurantCatalog() {
                           </Button>
                         </div>
                         <Button
-                          className="flex-1 gap-2"
+                          size="sm"
+                          className="flex-1 gap-1"
                           disabled={!product.inStock || addToCartMutation.isPending}
                           onClick={() => handleAddToCart(product)}
                           data-testid={`button-add-to-cart-${product.id}`}
                         >
-                          <ShoppingCart className="h-4 w-4" />
+                          <ShoppingCart className="h-3.5 w-3.5" />
                           Hinzufügen
                         </Button>
                       </div>
