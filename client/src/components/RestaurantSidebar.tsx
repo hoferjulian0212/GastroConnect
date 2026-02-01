@@ -83,7 +83,7 @@ export function RestaurantSidebar() {
   return (
     <Sidebar className="border-r-0">
       <SidebarHeader className="p-6 pb-8">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
