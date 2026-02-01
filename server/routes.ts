@@ -274,6 +274,17 @@ export async function registerRoutes(
           orderItems as any
         );
         createdOrders.push(order);
+
+        // Create order message in chat
+        const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
+        const orderSummary = orderItems.map(item => `${item.quantity}x ${item.productName}`).join(", ");
+        await storage.sendMessage({
+          conversationId: conversation.id,
+          senderId: restaurantId,
+          messageType: "order",
+          content: `Neue Bestellung: ${orderSummary} - Gesamt: ${totalAmount}€`,
+          orderId: order.id,
+        });
       }
 
       // Clear cart
@@ -323,6 +334,17 @@ export async function registerRoutes(
         { restaurantId, supplierId, totalAmount, status: "pending", notes: notes || "" },
         orderItems as any
       );
+
+      // Create order message in chat
+      const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
+      const orderSummary = orderItems.map(item => `${item.quantity}x ${item.productName}`).join(", ");
+      await storage.sendMessage({
+        conversationId: conversation.id,
+        senderId: restaurantId,
+        messageType: "order",
+        content: `Neue Bestellung: ${orderSummary} - Gesamt: ${totalAmount}€`,
+        orderId: order.id,
+      });
 
       res.status(201).json(order);
     } catch (error) {

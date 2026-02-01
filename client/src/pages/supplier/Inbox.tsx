@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageSquare, Search, Check, CheckCheck } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList } from "lucide-react";
 import type { ConversationWithUser, Message } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
@@ -224,25 +224,42 @@ export default function SupplierInbox() {
                               className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
                               data-testid={`message-${message.id}`}
                             >
-                              <div
-                                className={`max-w-[70%] rounded-lg px-3 py-2 ${
-                                  isOwn
-                                    ? "bg-secondary text-secondary-foreground"
-                                    : "bg-muted"
-                                }`}
-                              >
-                                <p className="text-sm">{message.content}</p>
-                                <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
-                                  <span className={`text-[10px] ${isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
-                                    {format(messageDate, "HH:mm")}
-                                  </span>
-                                  {isOwn && (
-                                    message.isRead 
-                                      ? <CheckCheck className="h-3 w-3 text-secondary-foreground/70" />
-                                      : <Check className="h-3 w-3 text-secondary-foreground/70" />
-                                  )}
+                              {message.messageType === "order" ? (
+                                <div className="max-w-[80%] rounded-lg border bg-card shadow-sm overflow-hidden">
+                                  <div className="flex items-center gap-2 px-3 py-2 bg-secondary/10 border-b">
+                                    <ClipboardList className="h-4 w-4 text-secondary" />
+                                    <span className="text-sm font-medium text-secondary">Neue Bestellung</span>
+                                  </div>
+                                  <div className="px-3 py-2">
+                                    <p className="text-sm">{message.content}</p>
+                                    <div className="flex items-center gap-1 mt-2 justify-end">
+                                      <span className="text-[10px] text-muted-foreground">
+                                        {format(messageDate, "HH:mm")}
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
+                              ) : (
+                                <div
+                                  className={`max-w-[70%] rounded-lg px-3 py-2 ${
+                                    isOwn
+                                      ? "bg-secondary text-secondary-foreground"
+                                      : "bg-muted"
+                                  }`}
+                                >
+                                  <p className="text-sm">{message.content}</p>
+                                  <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
+                                    <span className={`text-[10px] ${isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
+                                      {format(messageDate, "HH:mm")}
+                                    </span>
+                                    {isOwn && (
+                                      message.isRead 
+                                        ? <CheckCheck className="h-3 w-3 text-secondary-foreground/70" />
+                                        : <Check className="h-3 w-3 text-secondary-foreground/70" />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );

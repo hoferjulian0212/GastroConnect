@@ -62,6 +62,7 @@ export default function RestaurantCart() {
       queryClient.invalidateQueries({ queryKey: ['/api/orders/recent', currentUser?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       toast({
         title: "Bestellung aufgegeben",
         description: "Ihre Bestellung wurde erfolgreich aufgegeben.",
