@@ -37,6 +37,8 @@ export function RestaurantSidebar() {
   const { data: unreadCount } = useQuery<{ count: number }>({
     queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: cartCount } = useQuery<{ count: number }>({
