@@ -10,12 +10,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone } from "lucide-react";
 import type { ConversationWithUser, Message, Product } from "@shared/schema";
-import { formatDistanceToNow } from "date-fns";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type ActionMode = "none" | "order";
+
+const formatDateDivider = (date: Date) => {
+  if (isToday(date)) return "Heute";
+  if (isYesterday(date)) return "Gestern";
+  return format(date, "dd. MMMM yyyy", { locale: de });
+};
 
 export default function RestaurantInbox() {
   const { currentUser } = useUser();
@@ -284,32 +290,44 @@ export default function RestaurantInbox() {
                         ))}
                       </div>
                     ) : messages && messages.length > 0 ? (
-                      <div className="space-y-4">
-                        {messages.map((message) => {
+                      <div className="space-y-3">
+                        {messages.map((message, index) => {
                           const isOwn = message.senderId === currentUser?.id;
+                          const messageDate = new Date(message.createdAt);
+                          const prevMessage = index > 0 ? messages[index - 1] : null;
+                          const showDateDivider = !prevMessage || !isSameDay(messageDate, new Date(prevMessage.createdAt));
+                          
                           return (
-                            <div
-                              key={message.id}
-                              className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
-                              data-testid={`message-${message.id}`}
-                            >
-                              <div
-                                className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                                  isOwn
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted"
-                                }`}
-                              >
-                                <p className="text-sm">{message.content}</p>
-                                <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
-                                  <span className={`text-[10px] ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                                    {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: de })}
+                            <div key={message.id}>
+                              {showDateDivider && (
+                                <div className="flex justify-center my-4">
+                                  <span className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
+                                    {formatDateDivider(messageDate)}
                                   </span>
-                                  {isOwn && (
-                                    message.isRead 
-                                      ? <CheckCheck className="h-3 w-3 text-primary-foreground/70" />
-                                      : <Check className="h-3 w-3 text-primary-foreground/70" />
-                                  )}
+                                </div>
+                              )}
+                              <div
+                                className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                                data-testid={`message-${message.id}`}
+                              >
+                                <div
+                                  className={`max-w-[70%] rounded-lg px-3 py-2 ${
+                                    isOwn
+                                      ? "bg-primary text-primary-foreground"
+                                      : "bg-muted"
+                                  }`}
+                                >
+                                  <p className="text-sm">{message.content}</p>
+                                  <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
+                                    <span className={`text-[10px] ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                                      {format(messageDate, "HH:mm")}
+                                    </span>
+                                    {isOwn && (
+                                      message.isRead 
+                                        ? <CheckCheck className="h-3 w-3 text-primary-foreground/70" />
+                                        : <Check className="h-3 w-3 text-primary-foreground/70" />
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
