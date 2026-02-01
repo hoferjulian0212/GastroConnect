@@ -483,69 +483,67 @@ export default function SupplierProducts() {
               ))}
             </div>
           ) : filteredProducts && filteredProducts.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {filteredProducts.map((product) => (
-                <Card key={product.id} className="hover-elevate overflow-hidden" data-testid={`product-card-${product.id}`}>
-                  {product.imageUrl ? (
-                    <div className="w-full h-32 bg-muted">
-                      <img 
-                        src={product.imageUrl} 
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-32 bg-muted flex items-center justify-center">
-                      <Package className="h-10 w-10 text-muted-foreground/30" />
-                    </div>
-                  )}
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-medium line-clamp-1">{product.name}</h3>
-                      <div className="flex gap-1 shrink-0">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => openEditDialog(product)}
-                          data-testid={`button-edit-${product.id}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => deleteProductMutation.mutate(product.id)}
-                          disabled={deleteProductMutation.isPending}
-                          data-testid={`button-delete-${product.id}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                <Card key={product.id} className="hover-elevate" data-testid={`product-card-${product.id}`}>
+                  <CardContent className="p-3 flex gap-3">
+                    {product.imageUrl ? (
+                      <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-muted">
+                        <img 
+                          src={product.imageUrl} 
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {product.description || "Keine Beschreibung"}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      {product.category && (
-                        <Badge variant="secondary" className="text-xs">
-                          {product.category}
-                        </Badge>
-                      )}
-                      {product.inStock ? (
-                        <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs">
-                          Verfügbar
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-xs">
-                          Nicht verfügbar
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        <Euro className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-bold">{product.price}</span>
-                        <span className="text-sm text-muted-foreground">/{product.unit}</span>
+                    ) : (
+                      <div className="w-16 h-16 shrink-0 rounded-lg bg-muted flex items-center justify-center">
+                        <Package className="h-6 w-6 text-muted-foreground/30" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-medium line-clamp-1">{product.name}</h3>
+                        <div className="flex shrink-0">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => openEditDialog(product)}
+                            data-testid={`button-edit-${product.id}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => deleteProductMutation.mutate(product.id)}
+                            disabled={deleteProductMutation.isPending}
+                            data-testid={`button-delete-${product.id}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="font-bold text-sm">{product.price}€</span>
+                        <span className="text-xs text-muted-foreground">/{product.unit}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        {product.category && (
+                          <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                            {product.category}
+                          </Badge>
+                        )}
+                        {product.inStock ? (
+                          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs px-1.5 py-0">
+                            Verfügbar
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-xs px-1.5 py-0">
+                            Nicht verfügbar
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </CardContent>
