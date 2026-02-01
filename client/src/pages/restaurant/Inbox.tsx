@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -61,11 +61,12 @@ export default function RestaurantInbox() {
     },
   });
 
-  useEffect(() => {
-    if (selectedConversation && currentUser?.id) {
-      markAsReadMutation.mutate(selectedConversation);
+  const handleSelectConversation = (conversationId: string) => {
+    setSelectedConversation(conversationId);
+    if (currentUser?.id) {
+      markAsReadMutation.mutate(conversationId);
     }
-  }, [selectedConversation, currentUser?.id]);
+  };
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -179,7 +180,7 @@ export default function RestaurantInbox() {
                       <button
                         key={conv.id}
                         onClick={() => {
-                          setSelectedConversation(conv.id);
+                          handleSelectConversation(conv.id);
                           setActionMode("none");
                           setOrderItems({});
                         }}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -41,11 +41,12 @@ export default function SupplierInbox() {
     },
   });
 
-  useEffect(() => {
-    if (selectedConversation && currentUser?.id) {
-      markAsReadMutation.mutate(selectedConversation);
+  const handleSelectConversation = (conversationId: string) => {
+    setSelectedConversation(conversationId);
+    if (currentUser?.id) {
+      markAsReadMutation.mutate(conversationId);
     }
-  }, [selectedConversation, currentUser?.id]);
+  };
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -110,7 +111,7 @@ export default function SupplierInbox() {
                     {filteredConversations.map((conv) => (
                       <button
                         key={conv.id}
-                        onClick={() => setSelectedConversation(conv.id)}
+                        onClick={() => handleSelectConversation(conv.id)}
                         className={`w-full p-3 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
                           selectedConversation === conv.id
                             ? "bg-secondary/10"
