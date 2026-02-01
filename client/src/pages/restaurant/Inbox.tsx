@@ -8,8 +8,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList } from "lucide-react";
-import type { ConversationWithUser, Message, Product } from "@shared/schema";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye } from "lucide-react";
+import type { ConversationWithUser, Message, Product, Order } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -17,11 +20,52 @@ import { useToast } from "@/hooks/use-toast";
 
 type ActionMode = "none" | "order";
 
+interface OrderContent {
+  items: { name: string; quantity: number; price: string }[];
+  total: string;
+}
+
+const parseOrderContent = (content: string): OrderContent | null => {
+  try {
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+    case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+    case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
+    case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+    case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+    default: return "bg-muted text-muted-foreground";
+  }
+};
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case "pending": return "Ausstehend";
+    case "confirmed": return "Bestätigt";
+    case "in_delivery": return "In Lieferung";
+    case "delivered": return "Geliefert";
+    case "cancelled": return "Storniert";
+    default: return status;
+  }
+};
+
 const formatDateDivider = (date: Date) => {
   if (isToday(date)) return "Heute";
   if (isYesterday(date)) return "Gestern";
   return format(date, "dd. MMMM yyyy", { locale: de });
 };
+
+interface OrderWithDetails extends Order {
+  items: { id: string; productName: string; quantity: number; unitPrice: string; totalPrice: string }[];
+  restaurant?: { companyName: string };
+  supplier?: { companyName: string };
+}
 
 export default function RestaurantInbox() {
   const { currentUser } = useUser();
@@ -32,7 +76,17 @@ export default function RestaurantInbox() {
   const [actionMode, setActionMode] = useState<ActionMode>("none");
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [orderItems, setOrderItems] = useState<Record<string, number>>({});
+  const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { data: orderDetail } = useQuery<OrderWithDetails>({
+    queryKey: ["/api/orders", orderDetailId],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders/${orderDetailId}`);
+      return res.json();
+    },
+    enabled: !!orderDetailId,
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -314,29 +368,59 @@ export default function RestaurantInbox() {
                                 </div>
                               )}
                               <div
-                                className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                                className={`flex ${message.messageType === "order" ? "justify-center" : isOwn ? "justify-end" : "justify-start"}`}
                                 data-testid={`message-${message.id}`}
                               >
                                 {message.messageType === "order" ? (
-                                  <div className="max-w-[80%] rounded-lg border bg-card shadow-sm overflow-hidden">
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border-b">
-                                      <ClipboardList className="h-4 w-4 text-primary" />
-                                      <span className="text-sm font-medium text-primary">Bestellung</span>
-                                    </div>
-                                    <div className="px-3 py-2">
-                                      <p className="text-sm">{message.content}</p>
-                                      <div className="flex items-center gap-1 mt-2 justify-end">
-                                        <span className="text-[10px] text-muted-foreground">
-                                          {format(messageDate, "HH:mm")}
-                                        </span>
-                                        {isOwn && (
-                                          message.isRead 
-                                            ? <CheckCheck className="h-3 w-3 text-muted-foreground" />
-                                            : <Check className="h-3 w-3 text-muted-foreground" />
+                                  (() => {
+                                    const orderData = parseOrderContent(message.content);
+                                    return (
+                                      <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden">
+                                        <div className="flex items-center justify-between px-4 py-2 bg-primary/10 border-b">
+                                          <div className="flex items-center gap-2">
+                                            <ClipboardList className="h-4 w-4 text-primary" />
+                                            <span className="text-sm font-medium text-primary">Bestellung</span>
+                                          </div>
+                                          <span className="text-xs text-muted-foreground">
+                                            {format(messageDate, "HH:mm")}
+                                          </span>
+                                        </div>
+                                        <div className="px-4 py-3">
+                                          {orderData ? (
+                                            <div className="space-y-2">
+                                              {orderData.items.map((item, idx) => (
+                                                <div key={idx} className="flex justify-between items-center text-sm">
+                                                  <span>{item.quantity}x {item.name}</span>
+                                                  <span className="text-muted-foreground">{item.price}€</span>
+                                                </div>
+                                              ))}
+                                              <Separator className="my-2" />
+                                              <div className="flex justify-between items-center font-semibold">
+                                                <span>Gesamt</span>
+                                                <span>{orderData.total}€</span>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <p className="text-sm">{message.content}</p>
+                                          )}
+                                        </div>
+                                        {message.orderId && (
+                                          <div className="px-4 py-2 border-t bg-muted/30">
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="w-full"
+                                              onClick={() => setOrderDetailId(message.orderId)}
+                                              data-testid={`button-order-details-${message.id}`}
+                                            >
+                                              <Eye className="h-4 w-4 mr-2" />
+                                              Details anzeigen
+                                            </Button>
+                                          </div>
                                         )}
                                       </div>
-                                    </div>
-                                  </div>
+                                    );
+                                  })()
                                 ) : (
                                   <div
                                     className={`max-w-[70%] rounded-lg px-3 py-2 ${
@@ -508,6 +592,71 @@ export default function RestaurantInbox() {
           </div>
         </div>
       </Card>
+
+      <Dialog open={!!orderDetailId} onOpenChange={(open) => !open && setOrderDetailId(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Bestelldetails
+            </DialogTitle>
+          </DialogHeader>
+          {orderDetail && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Bestellnummer</span>
+                <span className="font-mono text-sm">#{orderDetail.id.slice(0, 8)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <Badge className={getStatusColor(orderDetail.status)} variant="outline">
+                  {getStatusLabel(orderDetail.status)}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Datum</span>
+                <span className="text-sm">{format(new Date(orderDetail.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}</span>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <h4 className="font-medium mb-3">Produkte</h4>
+                <div className="space-y-2">
+                  {orderDetail.items.map((item) => (
+                    <div key={item.id} className="flex justify-between items-center py-2 border-b last:border-0">
+                      <div>
+                        <p className="font-medium">{item.productName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.quantity} x {item.unitPrice}€
+                        </p>
+                      </div>
+                      <span className="font-medium">{item.totalPrice}€</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="flex justify-between items-center text-lg font-bold">
+                <span>Gesamtbetrag</span>
+                <span>{orderDetail.totalAmount}€</span>
+              </div>
+
+              {orderDetail.notes && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-medium mb-2">Notizen</h4>
+                    <p className="text-sm text-muted-foreground">{orderDetail.notes}</p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -232,6 +232,18 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/orders/:id", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch order" });
+    }
+  });
+
   app.post("/api/orders", async (req, res) => {
     try {
       const { restaurantId, notes } = req.body;
@@ -277,12 +289,19 @@ export async function registerRoutes(
 
         // Create order message in chat
         const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
-        const orderSummary = orderItems.map(item => `${item.quantity}x ${item.productName}`).join(", ");
+        const orderContent = JSON.stringify({
+          items: orderItems.map(item => ({
+            name: item.productName,
+            quantity: item.quantity,
+            price: item.totalPrice
+          })),
+          total: totalAmount
+        });
         await storage.sendMessage({
           conversationId: conversation.id,
           senderId: restaurantId,
           messageType: "order",
-          content: `Neue Bestellung: ${orderSummary} - Gesamt: ${totalAmount}€`,
+          content: orderContent,
           orderId: order.id,
         });
       }
@@ -337,12 +356,19 @@ export async function registerRoutes(
 
       // Create order message in chat
       const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
-      const orderSummary = orderItems.map(item => `${item.quantity}x ${item.productName}`).join(", ");
+      const orderContent = JSON.stringify({
+        items: orderItems.map(item => ({
+          name: item.productName,
+          quantity: item.quantity,
+          price: item.totalPrice
+        })),
+        total: totalAmount
+      });
       await storage.sendMessage({
         conversationId: conversation.id,
         senderId: restaurantId,
         messageType: "order",
-        content: `Neue Bestellung: ${orderSummary} - Gesamt: ${totalAmount}€`,
+        content: orderContent,
         orderId: order.id,
       });
 
