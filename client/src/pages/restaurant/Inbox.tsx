@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone } from "lucide-react";
 import type { ConversationWithUser, Message, Product } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
@@ -244,20 +244,34 @@ export default function RestaurantInbox() {
             {selectedConversation && selectedConv ? (
               <>
                 <div className="border-b border-border p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-secondary/20 text-secondary">
-                        {selectedConv.otherUser.companyName?.charAt(0) || selectedConv.otherUser.name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium" data-testid="text-conversation-partner">
-                        {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {selectedConv.otherUser.email}
-                      </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-secondary/20 text-secondary">
+                          {selectedConv.otherUser.companyName?.charAt(0) || selectedConv.otherUser.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium" data-testid="text-conversation-partner">
+                          {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedConv.otherUser.email}
+                        </p>
+                      </div>
                     </div>
+                    {selectedConv.otherUser.phone && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        asChild
+                        data-testid="button-call-supplier"
+                      >
+                        <a href={`tel:${selectedConv.otherUser.phone}`}>
+                          <Phone className="h-5 w-5" />
+                        </a>
+                      </Button>
+                    )}
                   </div>
                 </div>
 
