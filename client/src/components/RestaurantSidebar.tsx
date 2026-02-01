@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, ShoppingBag, Package, ShoppingCart, History, Settings, AlertCircle, LogOut } from "lucide-react";
+import { Home, MessageSquare, ShoppingBag, Package, History, Settings, AlertCircle, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -26,7 +26,6 @@ const mainMenuItems = [
 ];
 
 const bottomMenuItems = [
-  { title: "Warenkorb", url: "/restaurant/cart", icon: ShoppingCart, hasBadge: true },
   { title: "Einstellungen", url: "/restaurant/settings", icon: Settings },
 ];
 
@@ -103,7 +102,7 @@ export function RestaurantSidebar() {
 
       <SidebarFooter className="p-4 mt-auto">
         <SidebarMenu className="space-y-1 mb-4">
-          {bottomMenuItems.map((item) => renderMenuItem(item, item.hasBadge))}
+          {bottomMenuItems.map((item) => renderMenuItem(item))}
         </SidebarMenu>
         
         <SidebarSeparator className="my-4" />

@@ -7,6 +7,10 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
+import { Button } from "@/components/ui/button";
+import { ShoppingCart } from "lucide-react";
+import { Link } from "wouter";
+import { Badge } from "@/components/ui/badge";
 import { RestaurantSidebar } from "@/components/RestaurantSidebar";
 import { SupplierSidebar } from "@/components/SupplierSidebar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -86,6 +90,35 @@ function UserLoader() {
   return null;
 }
 
+function CartButton() {
+  const { currentUser } = useUser();
+  const [, setLocation] = useLocation();
+  
+  const { data: cartCount } = useQuery<{ count: number }>({
+    queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const count = cartCount?.count || 0;
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => setLocation("/restaurant/cart")}
+      className="relative"
+      data-testid="button-cart-header"
+    >
+      <ShoppingCart className="h-5 w-5" />
+      {count > 0 && (
+        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-medium">
+          {count}
+        </span>
+      )}
+    </Button>
+  );
+}
+
 function AppLayout() {
   const { currentRole, isLoading } = useUser();
   const [location] = useLocation();
@@ -120,7 +153,12 @@ function AppLayout() {
                   <SidebarTrigger data-testid="button-sidebar-toggle" />
                   <RoleSwitcher />
                 </div>
-                <ThemeToggle />
+                <div className="flex items-center gap-2">
+                  {currentRole === "restaurant" && (
+                    <CartButton />
+                  )}
+                  <ThemeToggle />
+                </div>
               </header>
               <main className="flex-1 overflow-auto p-6">
                 {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
