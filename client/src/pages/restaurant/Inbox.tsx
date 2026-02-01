@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -48,6 +48,24 @@ export default function RestaurantInbox() {
     },
     enabled: !!supplierId && actionMode === "order",
   });
+
+  const markAsReadMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      return apiRequest("POST", `/api/conversations/${conversationId}/read`, {
+        userId: currentUser?.id,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations/unread/${currentUser?.id}`] });
+    },
+  });
+
+  useEffect(() => {
+    if (selectedConversation && currentUser?.id) {
+      markAsReadMutation.mutate(selectedConversation);
+    }
+  }, [selectedConversation, currentUser?.id]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {

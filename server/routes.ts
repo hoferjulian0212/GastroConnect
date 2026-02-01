@@ -480,6 +480,19 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/conversations/:id/read", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ error: "userId required" });
+      }
+      await storage.markMessagesAsRead(req.params.id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
   // ===== STATS =====
   app.get("/api/restaurant/stats", async (req, res) => {
     try {
