@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Home, MessageSquare, Package, ClipboardList, History, Settings, AlertCircle, LogOut } from "lucide-react";
-import logoImage from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-removebg-preview_1769969406728.png";
+import logoImage from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-Photoroom_1769969436354.png";
 import {
   Sidebar,
   SidebarContent,
