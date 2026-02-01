@@ -93,22 +93,22 @@ export default function SupplierInbox() {
                       <button
                         key={conv.id}
                         onClick={() => setSelectedConversation(conv.id)}
-                        className={`w-full p-3 rounded-md text-left transition-colors hover-elevate ${
+                        className={`w-full p-3 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
                           selectedConversation === conv.id
                             ? "bg-secondary/10"
                             : ""
                         }`}
                         data-testid={`conversation-${conv.id}`}
                       >
-                        <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 shrink-0">
                             <AvatarFallback className="bg-primary/20 text-primary">
                               {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-medium truncate">
+                              <p className="text-sm font-medium truncate max-w-[140px]">
                                 {conv.otherUser.companyName || conv.otherUser.name}
                               </p>
                               {conv.unreadCount > 0 && (
@@ -117,7 +117,7 @@ export default function SupplierInbox() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground truncate overflow-hidden text-ellipsis whitespace-nowrap">
+                            <p className="text-xs text-muted-foreground truncate max-w-[180px]">
                               {conv.lastMessage?.content || "Keine Nachrichten"}
                             </p>
                           </div>
