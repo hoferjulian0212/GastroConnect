@@ -87,7 +87,7 @@ export function RestaurantSidebar() {
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
-            className="h-11 w-11 object-contain dark:invert"
+            className="h-14 w-14 object-contain dark:invert"
           />
           <span className="font-semibold text-lg text-foreground">GastroConnect</span>
         </div>
