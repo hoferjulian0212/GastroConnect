@@ -57,7 +57,7 @@ export default function RestaurantInbox() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/conversations/unread/${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`] });
     },
   });
 

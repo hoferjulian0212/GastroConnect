@@ -34,7 +34,7 @@ export function SupplierSidebar() {
   const { currentUser } = useUser();
 
   const { data: unreadCount } = useQuery<{ count: number }>({
-    queryKey: [`/api/conversations/unread/${currentUser?.id}`],
+    queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
 
