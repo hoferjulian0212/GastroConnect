@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -18,6 +18,11 @@ export default function SupplierInbox() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const { data: conversations, isLoading: conversationsLoading } = useQuery<ConversationWithUser[]>({
     queryKey: [`/api/conversations?userId=${currentUser?.id}`],
@@ -62,8 +67,15 @@ export default function SupplierInbox() {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       setMessageText("");
+      setTimeout(scrollToBottom, 100);
     },
   });
+
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      setTimeout(scrollToBottom, 100);
+    }
+  }, [messages, selectedConversation]);
 
   const filteredConversations = conversations?.filter(conv => 
     conv.otherUser.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -216,6 +228,7 @@ export default function SupplierInbox() {
                           </div>
                         );
                       })}
+                      <div ref={messagesEndRef} />
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center">

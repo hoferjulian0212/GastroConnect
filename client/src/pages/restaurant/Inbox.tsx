@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -26,6 +26,11 @@ export default function RestaurantInbox() {
   const [actionMode, setActionMode] = useState<ActionMode>("none");
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [orderItems, setOrderItems] = useState<Record<string, number>>({});
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const { data: conversations, isLoading: conversationsLoading } = useQuery<ConversationWithUser[]>({
     queryKey: [`/api/conversations?userId=${currentUser?.id}`],
@@ -82,8 +87,15 @@ export default function RestaurantInbox() {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       setMessageText("");
+      setTimeout(scrollToBottom, 100);
     },
   });
+
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      setTimeout(scrollToBottom, 100);
+    }
+  }, [messages, selectedConversation]);
 
   const createOrderMutation = useMutation({
     mutationFn: async (items: { productId: string; quantity: number }[]) => {
@@ -289,6 +301,7 @@ export default function RestaurantInbox() {
                             </div>
                           );
                         })}
+                        <div ref={messagesEndRef} />
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full text-center">
