@@ -6,14 +6,12 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { useUser } from "@/context/UserContext";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -24,6 +22,7 @@ const mainMenuItems = [
   { title: "Produkte", url: "/supplier/products", icon: Package },
   { title: "Bestellungen", url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
   { title: "Historie", url: "/supplier/history", icon: History },
+  { title: "Reklamationen", url: "/supplier/complaints", icon: AlertCircle },
 ];
 
 const bottomMenuItems = [
@@ -57,21 +56,23 @@ export function SupplierSidebar() {
     
     return (
       <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton 
-          asChild 
-          isActive={isActive}
-          className="h-11 rounded-xl px-4 gap-3 transition-all duration-200"
+        <Link 
+          href={item.url} 
+          data-testid={`link-${item.url.split('/').pop()}`}
+          className={`flex items-center h-11 rounded-xl px-4 gap-3 transition-all duration-200 hover-elevate ${
+            isActive 
+              ? "text-primary font-semibold" 
+              : "text-foreground/80 hover:text-foreground"
+          }`}
         >
-          <Link href={item.url} data-testid={`link-${item.url.split('/').pop()}`}>
-            <item.icon className="h-5 w-5" />
-            <span className="flex-1 font-medium">{item.title}</span>
-            {badgeCount > 0 && (
-              <Badge variant="secondary" className="ml-auto text-xs px-2 py-0.5 rounded-full">
-                {badgeCount}
-              </Badge>
-            )}
-          </Link>
-        </SidebarMenuButton>
+          <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
+          <span className="flex-1">{item.title}</span>
+          {badgeCount > 0 && (
+            <Badge variant="secondary" className="ml-auto text-xs px-2 py-0.5 rounded-full">
+              {badgeCount}
+            </Badge>
+          )}
+        </Link>
       </SidebarMenuItem>
     );
   };
@@ -80,7 +81,7 @@ export function SupplierSidebar() {
     <Sidebar className="border-r-0">
       <SidebarHeader className="p-6 pb-8">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary text-secondary-foreground font-bold text-lg shadow-sm">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg shadow-sm">
             G
           </div>
           <span className="font-semibold text-lg text-foreground">GastroConnect</span>
@@ -95,19 +96,6 @@ export function SupplierSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <div className="px-2 py-4">
-          <Button 
-            variant="default" 
-            className="w-full h-11 rounded-xl font-medium shadow-sm"
-            asChild
-          >
-            <Link href="/supplier/complaints" data-testid="link-complaints">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              Reklamationen
-            </Link>
-          </Button>
-        </div>
       </SidebarContent>
 
       <SidebarFooter className="p-4 mt-auto">
@@ -120,7 +108,7 @@ export function SupplierSidebar() {
         {currentUser && (
           <div className="flex items-center gap-3 p-2 rounded-xl hover-elevate cursor-pointer">
             <Avatar className="h-10 w-10 rounded-xl">
-              <AvatarFallback className="bg-secondary/10 text-secondary font-semibold rounded-xl">
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold rounded-xl">
                 {currentUser.companyName?.substring(0, 2).toUpperCase() || currentUser.name.substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>

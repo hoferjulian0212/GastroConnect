@@ -6,14 +6,12 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { useUser } from "@/context/UserContext";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -24,6 +22,7 @@ const mainMenuItems = [
   { title: "Produkte", url: "/restaurant/catalog", icon: Package },
   { title: "Bestellungen", url: "/restaurant/orders", icon: ShoppingBag },
   { title: "Historie", url: "/restaurant/history", icon: History },
+  { title: "Reklamationen", url: "/restaurant/complaints", icon: AlertCircle },
 ];
 
 const bottomMenuItems = [
@@ -58,21 +57,23 @@ export function RestaurantSidebar() {
     
     return (
       <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton 
-          asChild 
-          isActive={isActive}
-          className="h-11 rounded-xl px-4 gap-3 transition-all duration-200"
+        <Link 
+          href={item.url} 
+          data-testid={`link-${item.url.split('/').pop()}`}
+          className={`flex items-center h-11 rounded-xl px-4 gap-3 transition-all duration-200 hover-elevate ${
+            isActive 
+              ? "text-primary font-semibold" 
+              : "text-foreground/80 hover:text-foreground"
+          }`}
         >
-          <Link href={item.url} data-testid={`link-${item.url.split('/').pop()}`}>
-            <item.icon className="h-5 w-5" />
-            <span className="flex-1 font-medium">{item.title}</span>
-            {badgeCount > 0 && (
-              <Badge variant="default" className="ml-auto text-xs px-2 py-0.5 rounded-full">
-                {badgeCount}
-              </Badge>
-            )}
-          </Link>
-        </SidebarMenuButton>
+          <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
+          <span className="flex-1">{item.title}</span>
+          {badgeCount > 0 && (
+            <Badge variant="default" className="ml-auto text-xs px-2 py-0.5 rounded-full">
+              {badgeCount}
+            </Badge>
+          )}
+        </Link>
       </SidebarMenuItem>
     );
   };
@@ -96,19 +97,6 @@ export function RestaurantSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <div className="px-2 py-4">
-          <Button 
-            variant="default" 
-            className="w-full h-11 rounded-xl font-medium shadow-sm"
-            asChild
-          >
-            <Link href="/restaurant/complaints" data-testid="link-complaints">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              Reklamationen
-            </Link>
-          </Button>
-        </div>
       </SidebarContent>
 
       <SidebarFooter className="p-4 mt-auto">
