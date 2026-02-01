@@ -206,7 +206,7 @@ export default function RestaurantCatalog() {
                         </div>
                         <Button
                           size="sm"
-                          className="flex-1 gap-1"
+                          className="gap-1"
                           disabled={!product.inStock || addToCartMutation.isPending}
                           onClick={() => handleAddToCart(product)}
                           data-testid={`button-add-to-cart-${product.id}`}
