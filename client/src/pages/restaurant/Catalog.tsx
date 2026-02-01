@@ -146,7 +146,7 @@ export default function RestaurantCatalog() {
                 <Card key={product.id} className="hover-elevate" data-testid={`product-card-${product.id}`}>
                   <CardContent className="p-3 flex gap-3">
                     {product.imageUrl ? (
-                      <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-muted">
+                      <div className="w-28 h-28 shrink-0 rounded-lg overflow-hidden bg-muted">
                         <img 
                           src={product.imageUrl} 
                           alt={product.name}
@@ -154,8 +154,8 @@ export default function RestaurantCatalog() {
                         />
                       </div>
                     ) : (
-                      <div className="w-20 h-20 shrink-0 rounded-lg bg-muted flex items-center justify-center">
-                        <Package className="h-8 w-8 text-muted-foreground/30" />
+                      <div className="w-28 h-28 shrink-0 rounded-lg bg-muted flex items-center justify-center">
+                        <Package className="h-10 w-10 text-muted-foreground/30" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
