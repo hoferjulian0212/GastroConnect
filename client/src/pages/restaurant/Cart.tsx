@@ -58,6 +58,10 @@ export default function RestaurantCart() {
       queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/recent', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
       toast({
         title: "Bestellung aufgegeben",
         description: "Ihre Bestellung wurde erfolgreich aufgegeben.",

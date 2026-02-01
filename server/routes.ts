@@ -496,7 +496,7 @@ export async function registerRoutes(
   // ===== STATS =====
   app.get("/api/restaurant/stats", async (req, res) => {
     try {
-      const restaurantId = req.query.restaurantId as string;
+      const restaurantId = (req.query.restaurantId || req.query.userId) as string;
       if (!restaurantId) {
         return res.json({ pendingOrders: 0, unreadMessages: 0, totalSuppliers: 0 });
       }
@@ -509,7 +509,7 @@ export async function registerRoutes(
 
   app.get("/api/supplier/stats", async (req, res) => {
     try {
-      const supplierId = req.query.supplierId as string;
+      const supplierId = (req.query.supplierId || req.query.userId) as string;
       if (!supplierId) {
         return res.json({ newOrders: 0, unreadMessages: 0, totalProducts: 0, monthlyRevenue: 0 });
       }

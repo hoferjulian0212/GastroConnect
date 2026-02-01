@@ -14,8 +14,15 @@ export default function SupplierHome() {
   const { currentUser } = useUser();
 
   const { data: recentOrders, isLoading: ordersLoading } = useQuery<Order[]>({
-    queryKey: [`/api/supplier/orders/recent?supplierId=${currentUser?.id}`],
+    queryKey: ['/api/supplier/orders/recent', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/supplier/orders/recent?supplierId=${currentUser?.id}`);
+      if (!res.ok) throw new Error('Failed to fetch orders');
+      return res.json();
+    },
     enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery<{
@@ -24,8 +31,15 @@ export default function SupplierHome() {
     totalProducts: number;
     monthlyRevenue: number;
   }>({
-    queryKey: [`/api/supplier/stats?userId=${currentUser?.id}`],
+    queryKey: ['/api/supplier/stats', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/supplier/stats?userId=${currentUser?.id}`);
+      if (!res.ok) throw new Error('Failed to fetch stats');
+      return res.json();
+    },
     enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const getStatusColor = (status: string) => {

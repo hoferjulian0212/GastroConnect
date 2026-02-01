@@ -71,6 +71,7 @@ export default function RestaurantInbox() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });
     },
   });
 
@@ -113,6 +114,10 @@ export default function RestaurantInbox() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/recent', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
       toast({
         title: "Bestellung aufgegeben",
         description: "Ihre Bestellung wurde erfolgreich übermittelt.",

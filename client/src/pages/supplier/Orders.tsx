@@ -28,7 +28,10 @@ export default function SupplierOrders() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/supplier/stats?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/recent'] });
       toast({
         title: "Status aktualisiert",
         description: "Der Bestellstatus wurde erfolgreich aktualisiert.",

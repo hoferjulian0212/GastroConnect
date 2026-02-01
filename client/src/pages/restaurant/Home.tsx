@@ -14,8 +14,15 @@ export default function RestaurantHome() {
   const { currentUser } = useUser();
 
   const { data: recentOrders, isLoading: ordersLoading } = useQuery<Order[]>({
-    queryKey: [`/api/orders/recent?restaurantId=${currentUser?.id}`],
+    queryKey: ['/api/orders/recent', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders/recent?restaurantId=${currentUser?.id}`);
+      if (!res.ok) throw new Error('Failed to fetch orders');
+      return res.json();
+    },
     enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery<{
@@ -23,8 +30,15 @@ export default function RestaurantHome() {
     unreadMessages: number;
     totalSuppliers: number;
   }>({
-    queryKey: [`/api/restaurant/stats?userId=${currentUser?.id}`],
+    queryKey: ['/api/restaurant/stats', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/restaurant/stats?userId=${currentUser?.id}`);
+      if (!res.ok) throw new Error('Failed to fetch stats');
+      return res.json();
+    },
     enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const getStatusColor = (status: string) => {

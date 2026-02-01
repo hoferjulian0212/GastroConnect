@@ -71,6 +71,7 @@ export default function SupplierProducts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/products?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
       toast({
         title: "Produkt erstellt",
         description: "Das Produkt wurde erfolgreich erstellt.",
@@ -95,6 +96,7 @@ export default function SupplierProducts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/products?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
       toast({
         title: "Produkt aktualisiert",
         description: "Das Produkt wurde erfolgreich aktualisiert.",
@@ -120,6 +122,7 @@ export default function SupplierProducts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/products?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
       toast({
         title: "Produkt gelöscht",
         description: "Das Produkt wurde erfolgreich gelöscht.",

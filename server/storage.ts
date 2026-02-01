@@ -410,10 +410,11 @@ export class DatabaseStorage implements IStorage {
       ));
 
     const suppliers = await db.select().from(users).where(eq(users.role, "supplier"));
+    const unreadMessages = await this.getUnreadCount(restaurantId);
 
     return {
-      pendingOrders: pendingResult[0]?.count || 0,
-      unreadMessages: await this.getUnreadCount(restaurantId),
+      pendingOrders: Number(pendingResult[0]?.count) || 0,
+      unreadMessages: Number(unreadMessages) || 0,
       totalSuppliers: suppliers.length
     };
   }
@@ -447,11 +448,13 @@ export class DatabaseStorage implements IStorage {
         sql`${orders.createdAt} >= ${startOfMonth}`
       ));
 
+    const unreadMessages = await this.getUnreadCount(supplierId);
+
     return {
-      newOrders: newOrdersResult[0]?.count || 0,
-      unreadMessages: await this.getUnreadCount(supplierId),
-      totalProducts: productsResult[0]?.count || 0,
-      monthlyRevenue: revenueResult[0]?.total || 0
+      newOrders: Number(newOrdersResult[0]?.count) || 0,
+      unreadMessages: Number(unreadMessages) || 0,
+      totalProducts: Number(productsResult[0]?.count) || 0,
+      monthlyRevenue: Number(revenueResult[0]?.total) || 0
     };
   }
 

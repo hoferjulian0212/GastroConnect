@@ -51,6 +51,7 @@ export default function SupplierInbox() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
     },
   });
 
