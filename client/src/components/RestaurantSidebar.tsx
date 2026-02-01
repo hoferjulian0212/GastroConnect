@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Home, MessageSquare, ShoppingBag, Package, History, Settings, AlertCircle, LogOut } from "lucide-react";
+import logoImage from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj_1769969151120.png";
 import {
   Sidebar,
   SidebarContent,
@@ -83,9 +84,11 @@ export function RestaurantSidebar() {
     <Sidebar className="border-r-0">
       <SidebarHeader className="p-6 pb-8">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg shadow-sm">
-            G
-          </div>
+          <img 
+            src={logoImage} 
+            alt="GastroConnect Logo" 
+            className="h-11 w-11 object-contain dark:invert"
+          />
           <span className="font-semibold text-lg text-foreground">GastroConnect</span>
         </div>
       </SidebarHeader>
