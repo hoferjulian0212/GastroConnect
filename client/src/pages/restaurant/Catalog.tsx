@@ -178,7 +178,7 @@ export default function RestaurantCatalog() {
                         <span className="font-bold">{product.price}€</span>
                         <span className="text-xs text-muted-foreground">/{product.unit}</span>
                       </div>
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center gap-2 mt-2 justify-end">
                         <div className="flex items-center border border-border rounded-md">
                           <Button
                             variant="ghost"
