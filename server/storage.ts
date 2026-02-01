@@ -316,7 +316,7 @@ export class DatabaseStorage implements IStorage {
         ...conv,
         otherUser,
         lastMessage,
-        unreadCount: unreadResult[0]?.count || 0
+        unreadCount: Number(unreadResult[0]?.count) || 0
       });
     }
     return result;
@@ -380,7 +380,7 @@ export class DatabaseStorage implements IStorage {
           ne(messages.senderId, userId),
           eq(messages.isRead, false)
         ));
-      total += result[0]?.count || 0;
+      total += Number(result[0]?.count) || 0;
     }
     return total;
   }
