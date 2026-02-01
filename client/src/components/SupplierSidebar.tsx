@@ -101,11 +101,11 @@ export function SupplierSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 mt-auto">
-        <SidebarMenu className="space-y-1 mb-4">
+        <SidebarSeparator className="mb-4" />
+        
+        <SidebarMenu className="space-y-1 mb-3">
           {bottomMenuItems.map((item) => renderMenuItem(item, false))}
         </SidebarMenu>
-        
-        <SidebarSeparator className="my-4" />
         
         {currentUser && (
           <div className="flex items-center gap-3 p-2 rounded-xl hover-elevate cursor-pointer">
