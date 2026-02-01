@@ -278,21 +278,23 @@ export default function RestaurantInbox() {
                     )}
                   </ScrollArea>
                 ) : (
-                  <div className="flex-1 p-4 overflow-auto">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-semibold flex items-center gap-2">
-                        <ShoppingCart className="h-5 w-5" />
-                        Neue Bestellung
-                      </h3>
-                      <Button variant="ghost" size="icon" onClick={() => setActionMode("none")} data-testid="button-close-order">
-                        <X className="h-4 w-4" />
-                      </Button>
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="p-4 pb-0">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <ShoppingCart className="h-5 w-5" />
+                          Neue Bestellung
+                        </h3>
+                        <Button variant="ghost" size="icon" onClick={() => setActionMode("none")} data-testid="button-close-order">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Produkte von {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Produkte von {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
-                    </p>
-                    <ScrollArea className="h-[calc(100%-120px)]">
-                      <div className="space-y-2">
+                    <ScrollArea className="flex-1 px-4">
+                      <div className="space-y-2 pb-4">
                         {supplierProducts?.filter(p => p.inStock).map((product) => (
                           <div key={product.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                             {product.imageUrl ? (
@@ -339,7 +341,7 @@ export default function RestaurantInbox() {
                         )}
                       </div>
                     </ScrollArea>
-                    <div className="mt-4 pt-4 border-t border-border">
+                    <div className="p-4 border-t border-border bg-background shrink-0">
                       <Button
                         className="w-full gap-2"
                         disabled={totalOrderItems === 0 || createOrderMutation.isPending}
