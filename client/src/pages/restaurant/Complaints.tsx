@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Star, Send, Package } from "lucide-react";
+import { AlertCircle, Send, Package } from "lucide-react";
 import type { User, Order, ComplaintWithDetails } from "@shared/schema";
 
 export default function Complaints() {
@@ -29,7 +29,6 @@ export default function Complaints() {
   const [selectedOrderId, setSelectedOrderId] = useState<string>("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [rating, setRating] = useState(0);
 
   const { data: suppliers, isLoading: loadingSuppliers } = useQuery<User[]>({
     queryKey: [`/api/suppliers-with-orders?restaurantId=${currentUser?.id}`],
@@ -47,7 +46,7 @@ export default function Complaints() {
   });
 
   const createComplaintMutation = useMutation({
-    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; rating: number }) => {
+    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string }) => {
       return apiRequest("POST", "/api/complaints", data);
     },
     onSuccess: () => {
@@ -66,11 +65,10 @@ export default function Complaints() {
     setSelectedOrderId("");
     setTitle("");
     setDescription("");
-    setRating(0);
   };
 
   const handleSubmit = () => {
-    if (!selectedOrderId || !selectedSupplierId || !title.trim() || !description.trim() || rating === 0) {
+    if (!selectedOrderId || !selectedSupplierId || !title.trim() || !description.trim()) {
       toast({ title: "Fehler", description: "Bitte füllen Sie alle Felder aus.", variant: "destructive" });
       return;
     }
@@ -81,7 +79,6 @@ export default function Complaints() {
       supplierId: selectedSupplierId,
       title: title.trim(),
       description: description.trim(),
-      rating,
     });
   };
 
@@ -104,7 +101,7 @@ export default function Complaints() {
     return statusMap[status] || status;
   };
 
-  const canSubmit = selectedOrderId && selectedSupplierId && title.trim() && description.trim() && rating > 0;
+  const canSubmit = selectedOrderId && selectedSupplierId && title.trim() && description.trim();
 
   return (
     <div className="space-y-6">
@@ -201,28 +198,6 @@ export default function Complaints() {
             </div>
 
             <div className="space-y-2">
-              <Label>Bewertung</Label>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setRating(star)}
-                    className="p-1 hover-elevate rounded"
-                    disabled={!selectedOrderId}
-                    data-testid={`button-star-${star}`}
-                  >
-                    <Star
-                      className={`h-6 w-6 ${
-                        star <= rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"
-                      } ${!selectedOrderId ? "opacity-50" : ""}`}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="title">Betreff</Label>
               <Input
                 id="title"
@@ -278,19 +253,7 @@ export default function Complaints() {
                     className="rounded-lg border p-4 space-y-2"
                     data-testid={`complaint-${complaint.id}`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="font-medium">{complaint.title}</div>
-                      <div className="flex shrink-0">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`h-4 w-4 ${
-                              star <= complaint.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
+                    <div className="font-medium">{complaint.title}</div>
                     <p className="text-sm text-muted-foreground line-clamp-2">{complaint.description}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{complaint.supplier?.companyName || "Unbekannter Lieferant"}</span>

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Star, Calendar } from "lucide-react";
+import { AlertCircle, Calendar } from "lucide-react";
 import type { ComplaintWithDetails } from "@shared/schema";
 
 export default function SupplierComplaints() {
@@ -25,12 +25,7 @@ export default function SupplierComplaints() {
     });
   };
 
-  const getAverageRating = () => {
-    if (!complaints || complaints.length === 0) return 0;
-    const total = complaints.reduce((sum, c) => sum + c.rating, 0);
-    return (total / complaints.length).toFixed(1);
-  };
-
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -41,23 +36,12 @@ export default function SupplierComplaints() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="text-3xl font-bold text-primary">{complaints?.length || 0}</div>
               <p className="text-sm text-muted-foreground">Reklamationen gesamt</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1">
-                <span className="text-3xl font-bold">{getAverageRating()}</span>
-                <Star className="h-6 w-6 fill-yellow-400 text-yellow-400" />
-              </div>
-              <p className="text-sm text-muted-foreground">Durchschnittliche Bewertung</p>
             </div>
           </CardContent>
         </Card>
@@ -111,21 +95,9 @@ export default function SupplierComplaints() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`h-4 w-4 ${
-                              star <= complaint.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <Badge variant="outline">
+                    <Badge variant="outline">
                         Bestellung #{complaint.orderId.substring(0, 8)}
                       </Badge>
-                    </div>
                   </div>
                   
                   <div>

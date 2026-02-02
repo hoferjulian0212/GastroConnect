@@ -610,7 +610,6 @@ export async function registerRoutes(
       const complaintContent = JSON.stringify({
         title: validated.title,
         description: validated.description,
-        rating: validated.rating,
         orderId: validated.orderId
       });
       await storage.sendMessage({

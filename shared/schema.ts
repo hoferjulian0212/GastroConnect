@@ -92,7 +92,6 @@ export const complaints = pgTable("complaints", {
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  rating: integer("rating").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
