@@ -100,12 +100,12 @@ export default function SupplierHistory() {
                 placeholder="Suchen..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 md:h-10 text-sm"
+                className="pl-9 text-sm"
                 data-testid="input-search-history"
               />
             </div>
             <Select value={selectedRestaurant} onValueChange={setSelectedRestaurant}>
-              <SelectTrigger className="w-full md:w-[200px] h-9 md:h-10 text-sm" data-testid="select-restaurant">
+              <SelectTrigger className="w-full md:w-[200px] text-sm" data-testid="select-restaurant">
                 <Filter className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2" />
                 <SelectValue placeholder="Restaurant" />
               </SelectTrigger>

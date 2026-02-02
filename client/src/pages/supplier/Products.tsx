@@ -474,7 +474,7 @@ export default function SupplierProducts() {
               placeholder="Suchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9 md:h-10 text-sm"
+              className="pl-9 text-sm"
               data-testid="input-search-products"
             />
           </div>
@@ -511,7 +511,6 @@ export default function SupplierProducts() {
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            className="h-6 w-6 md:h-7 md:w-7"
                             onClick={() => openEditDialog(product)}
                             data-testid={`button-edit-${product.id}`}
                           >
@@ -520,7 +519,6 @@ export default function SupplierProducts() {
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            className="h-6 w-6 md:h-7 md:w-7"
                             onClick={() => deleteProductMutation.mutate(product.id)}
                             disabled={deleteProductMutation.isPending}
                             data-testid={`button-delete-${product.id}`}

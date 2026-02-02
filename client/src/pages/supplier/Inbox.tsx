@@ -201,7 +201,7 @@ export default function SupplierInbox() {
                   placeholder="Suche..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9 md:h-10 text-sm"
+                  className="pl-9 text-sm"
                   data-testid="input-search-conversations"
                 />
               </div>
@@ -270,7 +270,7 @@ export default function SupplierInbox() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="md:hidden h-8 w-8"
+                      className="md:hidden"
                       onClick={() => setSelectedConversation(null)}
                       data-testid="button-back-to-list"
                     >
@@ -450,13 +450,12 @@ export default function SupplierInbox() {
                           handleSendMessage();
                         }
                       }}
-                      className="h-9 md:h-10 text-sm"
+                      className="text-sm"
                       data-testid="input-message"
                     />
                     <Button 
                       variant="secondary"
                       size="icon"
-                      className="h-9 w-9 md:h-10 md:w-10"
                       onClick={handleSendMessage}
                       disabled={!messageText.trim() || sendMessageMutation.isPending}
                       data-testid="button-send-message"

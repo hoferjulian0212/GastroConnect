@@ -46,6 +46,19 @@ The application enforces strict role separation where each user type has complet
 - Separate route handlers and page components
 - Role switching via button toggle (development mode - no authentication currently implemented)
 
+### Mobile Responsiveness (Supplier Side)
+The supplier interface is fully mobile-responsive with the following implementation:
+- **Bottom Navigation**: `SupplierMobileNav` component provides a fixed bottom navigation bar on mobile (hidden on desktop via `md:hidden`)
+- **Navigation Items**: Übersicht, Nachrichten, Produkte, Bestellungen, and "Mehr" dropdown
+- **"Mehr" Dropdown**: Contains Reklamationen, Bestellübersicht, and Einstellungen options
+- **Badge Indicators**: Unread message count and pending orders shown on navigation items
+- **Responsive Breakpoint**: `md:` (768px) is the primary breakpoint for mobile/desktop separation
+- **Layout Patterns**:
+  - Desktop: Sidebar visible, bottom nav hidden
+  - Mobile: Sidebar hidden, bottom nav visible, content has `pb-20` for nav spacing
+- **Inbox Behavior**: On mobile, conversation list and message view toggle with back button
+- **All supplier pages adapted**: Home, Inbox, Orders, Products, Complaints, History, Settings
+
 ## External Dependencies
 
 ### Database

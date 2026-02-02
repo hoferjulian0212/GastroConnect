@@ -117,7 +117,7 @@ export default function SupplierOrders() {
                 value={order.status}
                 onValueChange={(value) => updateStatusMutation.mutate({ orderId: order.id, status: value })}
               >
-                <SelectTrigger className="w-[120px] md:w-[140px] h-8 md:h-9 text-xs md:text-sm" data-testid={`select-status-${order.id}`}>
+                <SelectTrigger className="w-[120px] md:w-[140px] text-xs md:text-sm" data-testid={`select-status-${order.id}`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
