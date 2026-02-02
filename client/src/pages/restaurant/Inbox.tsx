@@ -452,19 +452,7 @@ export default function RestaurantInbox() {
                                         <div className="px-4 py-3">
                                           {complaintData ? (
                                             <div className="space-y-2">
-                                              <div className="flex items-center justify-between">
-                                                <span className="font-medium">{complaintData.title}</span>
-                                                <div className="flex">
-                                                  {[1, 2, 3, 4, 5].map((star) => (
-                                                    <Star
-                                                      key={star}
-                                                      className={`h-4 w-4 ${
-                                                        star <= complaintData.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"
-                                                      }`}
-                                                    />
-                                                  ))}
-                                                </div>
-                                              </div>
+                                              <span className="font-medium">{complaintData.title}</span>
                                               <p className="text-sm text-muted-foreground">{complaintData.description}</p>
                                             </div>
                                           ) : (
