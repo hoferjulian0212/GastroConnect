@@ -69,25 +69,25 @@ export default function SupplierSettings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Einstellungen</h1>
-        <p className="text-muted-foreground">Verwalten Sie Ihre Lieferantendaten</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Einstellungen</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Verwalten Sie Ihre Daten</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 order-2 lg:order-1">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <SettingsIcon className="h-5 w-5" />
+            <CardHeader className="p-3 md:p-6">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <SettingsIcon className="h-4 w-4 md:h-5 md:w-5" />
                 Unternehmensdaten
               </CardTitle>
-              <CardDescription>
-                Aktualisieren Sie Ihre Kontakt- und Unternehmensinformationen
+              <CardDescription className="text-xs md:text-sm">
+                Kontakt- und Unternehmensinformationen
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -267,31 +267,31 @@ export default function SupplierSettings() {
           </Card>
         </div>
 
-        <div>
+        <div className="order-1 lg:order-2">
           <Card>
-            <CardHeader>
-              <CardTitle>Profil</CardTitle>
+            <CardHeader className="p-3 md:p-6">
+              <CardTitle className="text-base md:text-lg">Profil</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col items-center text-center">
-              <Avatar className="h-24 w-24 mb-4">
-                <AvatarFallback className="bg-secondary/10 text-secondary text-2xl">
+            <CardContent className="flex flex-col items-center text-center p-3 pt-0 md:p-6 md:pt-0">
+              <Avatar className="h-16 w-16 md:h-24 md:w-24 mb-3 md:mb-4">
+                <AvatarFallback className="bg-secondary/10 text-secondary text-xl md:text-2xl">
                   {currentUser?.companyName?.charAt(0) || currentUser?.name.charAt(0) || "L"}
                 </AvatarFallback>
               </Avatar>
-              <h3 className="font-medium text-lg">
+              <h3 className="font-medium text-base md:text-lg">
                 {currentUser?.companyName || currentUser?.name || "Mein Lieferant"}
               </h3>
-              <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
-              <div className="mt-4 w-full space-y-2">
-                <div className="flex justify-between text-sm py-2 border-b border-border">
+              <p className="text-xs md:text-sm text-muted-foreground">{currentUser?.email}</p>
+              <div className="mt-3 md:mt-4 w-full space-y-2">
+                <div className="flex justify-between text-xs md:text-sm py-1.5 md:py-2 border-b border-border">
                   <span className="text-muted-foreground">Rolle</span>
                   <span>Lieferant</span>
                 </div>
-                <div className="flex justify-between text-sm py-2 border-b border-border">
+                <div className="flex justify-between text-xs md:text-sm py-1.5 md:py-2 border-b border-border">
                   <span className="text-muted-foreground">Telefon</span>
                   <span>{currentUser?.phone || "-"}</span>
                 </div>
-                <div className="flex justify-between text-sm py-2">
+                <div className="flex justify-between text-xs md:text-sm py-1.5 md:py-2">
                   <span className="text-muted-foreground">Stadt</span>
                   <span>{currentUser?.city || "-"}</span>
                 </div>

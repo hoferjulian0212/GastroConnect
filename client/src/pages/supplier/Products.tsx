@@ -251,17 +251,18 @@ export default function SupplierProducts() {
   const categories = ["Gemüse", "Obst", "Fleisch", "Fisch", "Milchprodukte", "Getränke", "Trockenwaren", "Gewürze", "Sonstiges"];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex items-center justify-between gap-3 md:gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Produktkatalog</h1>
-          <p className="text-muted-foreground">Verwalten Sie Ihre Produkte</p>
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Produktkatalog</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Verwalten Sie Ihre Produkte</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2" onClick={openCreateDialog} data-testid="button-add-product">
+            <Button className="gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
               <Plus className="h-4 w-4" />
-              Produkt hinzufügen
+              <span className="hidden sm:inline">Produkt hinzufügen</span>
+              <span className="sm:hidden">Hinzufügen</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -466,32 +467,32 @@ export default function SupplierProducts() {
       </div>
 
       <Card>
-        <div className="p-4 pb-3">
+        <div className="p-3 md:p-4 pb-2 md:pb-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Produkte suchen..."
+              placeholder="Suchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="pl-9 h-9 md:h-10 text-sm"
               data-testid="input-search-products"
             />
           </div>
         </div>
-        <CardContent>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
           {isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Skeleton key={i} className="h-48" />
+                <Skeleton key={i} className="h-24 md:h-32" />
               ))}
             </div>
           ) : filteredProducts && filteredProducts.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-2 md:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {filteredProducts.map((product) => (
                 <Card key={product.id} className="hover-elevate" data-testid={`product-card-${product.id}`}>
-                  <CardContent className="p-3 flex gap-3">
+                  <CardContent className="p-2 md:p-3 flex gap-2 md:gap-3">
                     {product.imageUrl ? (
-                      <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-muted">
+                      <div className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-lg overflow-hidden bg-muted">
                         <img 
                           src={product.imageUrl} 
                           alt={product.name}
@@ -499,52 +500,52 @@ export default function SupplierProducts() {
                         />
                       </div>
                     ) : (
-                      <div className="w-16 h-16 shrink-0 rounded-lg bg-muted flex items-center justify-center">
-                        <Package className="h-6 w-6 text-muted-foreground/30" />
+                      <div className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-lg bg-muted flex items-center justify-center">
+                        <Package className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground/30" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-medium line-clamp-1">{product.name}</h3>
+                      <div className="flex items-start justify-between gap-1 md:gap-2">
+                        <h3 className="font-medium text-sm md:text-base line-clamp-1">{product.name}</h3>
                         <div className="flex shrink-0">
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-6 w-6 md:h-7 md:w-7"
                             onClick={() => openEditDialog(product)}
                             data-testid={`button-edit-${product.id}`}
                           >
-                            <Pencil className="h-3.5 w-3.5" />
+                            <Pencil className="h-3 w-3 md:h-3.5 md:w-3.5" />
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-6 w-6 md:h-7 md:w-7"
                             onClick={() => deleteProductMutation.mutate(product.id)}
                             disabled={deleteProductMutation.isPending}
                             data-testid={`button-delete-${product.id}`}
                           >
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5 text-destructive" />
                           </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className="font-bold text-sm">{product.price}€</span>
-                        <span className="text-xs text-muted-foreground">/{product.unit}</span>
+                      <div className="flex items-center gap-1 mt-0.5 md:mt-1">
+                        <span className="font-bold text-xs md:text-sm">{product.price}€</span>
+                        <span className="text-[10px] md:text-xs text-muted-foreground">/{product.unit}</span>
                       </div>
-                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      <div className="flex items-center gap-1 md:gap-1.5 mt-1 md:mt-1.5 flex-wrap">
                         {product.category && (
-                          <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                          <Badge variant="secondary" className="text-[10px] md:text-xs px-1 md:px-1.5 py-0">
                             {product.category}
                           </Badge>
                         )}
                         {product.inStock ? (
-                          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs px-1.5 py-0">
+                          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
                             Verfügbar
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-xs px-1.5 py-0">
-                            Nicht verfügbar
+                          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
+                            Nicht verf.
                           </Badge>
                         )}
                       </div>
@@ -554,12 +555,12 @@ export default function SupplierProducts() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Package className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">Keine Produkte gefunden</p>
-              <Button className="mt-4 gap-2" onClick={openCreateDialog} data-testid="button-add-first-product">
+            <div className="flex flex-col items-center justify-center py-8 md:py-12">
+              <Package className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground/50 mb-2 md:mb-3" />
+              <p className="text-sm md:text-base text-muted-foreground">Keine Produkte</p>
+              <Button className="mt-3 md:mt-4 gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-first-product">
                 <Plus className="h-4 w-4" />
-                Erstes Produkt hinzufügen
+                Produkt hinzufügen
               </Button>
             </div>
           )}

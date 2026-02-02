@@ -62,51 +62,51 @@ export default function SupplierHistory() {
   const totalOrders = filteredOrders?.length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Bestellübersicht</h1>
-        <p className="text-muted-foreground">Historie und Statistiken Ihrer Bestellungen</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Bestellübersicht</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Historie und Statistiken</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 grid-cols-2 md:gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">Gesamtumsatz</CardTitle>
-            <Euro className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
+            <CardTitle className="text-xs md:text-sm font-medium">Umsatz</CardTitle>
+            <Euro className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-total-revenue">{totalRevenue}€</div>
-            <p className="text-xs text-muted-foreground">basierend auf {totalOrders} Bestellungen</p>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-xl md:text-2xl font-bold" data-testid="text-total-revenue">{totalRevenue}€</div>
+            <p className="text-[10px] md:text-xs text-muted-foreground">{totalOrders} Bestellungen</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">Bestellungen</CardTitle>
-            <HistoryIcon className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
+            <CardTitle className="text-xs md:text-sm font-medium">Bestellungen</CardTitle>
+            <HistoryIcon className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-total-orders">{totalOrders}</div>
-            <p className="text-xs text-muted-foreground">im ausgewählten Zeitraum</p>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-xl md:text-2xl font-bold" data-testid="text-total-orders">{totalOrders}</div>
+            <p className="text-[10px] md:text-xs text-muted-foreground">ausgewählter Zeitraum</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <CardHeader className="pb-2 md:pb-3 p-3 md:p-6">
+          <div className="flex flex-col gap-2 md:gap-4 md:flex-row">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Nach Bestellnummer oder Restaurant suchen..."
+                placeholder="Suchen..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 h-9 md:h-10 text-sm"
                 data-testid="input-search-history"
               />
             </div>
             <Select value={selectedRestaurant} onValueChange={setSelectedRestaurant}>
-              <SelectTrigger className="w-[200px]" data-testid="select-restaurant">
-                <Filter className="h-4 w-4 mr-2" />
+              <SelectTrigger className="w-full md:w-[200px] h-9 md:h-10 text-sm" data-testid="select-restaurant">
+                <Filter className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2" />
                 <SelectValue placeholder="Restaurant" />
               </SelectTrigger>
               <SelectContent>
@@ -120,54 +120,54 @@ export default function SupplierHistory() {
             </Select>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
           {isLoading ? (
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-32" />
+                <Skeleton key={i} className="h-24 md:h-32" />
               ))}
             </div>
           ) : filteredOrders && filteredOrders.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               {filteredOrders.map((order) => (
                 <Card key={order.id} className="hover-elevate" data-testid={`history-order-${order.id}`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className={`flex h-10 w-10 items-center justify-center rounded-md ${getStatusColor(order.status)}`}>
-                          <HistoryIcon className="h-5 w-5" />
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 md:gap-4">
+                      <div className="flex items-start gap-2 md:gap-4">
+                        <div className={`flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-md shrink-0 ${getStatusColor(order.status)}`}>
+                          <HistoryIcon className="h-4 w-4 md:h-5 md:w-5" />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium">Bestellung #{order.id.slice(0, 8)}</p>
-                            <Badge className={getStatusColor(order.status)} variant="outline">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
+                            <p className="font-medium text-sm md:text-base">#{order.id.slice(0, 8)}</p>
+                            <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs`} variant="outline">
                               {getStatusLabel(order.status)}
                             </Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                            <Building2 className="h-3 w-3" />
-                            {order.restaurant?.companyName || order.restaurant?.name}
+                          <p className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1 flex items-center gap-1 truncate">
+                            <Building2 className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
+                            <span className="truncate">{order.restaurant?.companyName || order.restaurant?.name}</span>
                           </p>
-                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}
+                          <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                            <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                            {format(new Date(order.createdAt), "dd.MM.yy HH:mm", { locale: de })}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold">{order.totalAmount}€</p>
-                        <p className="text-xs text-muted-foreground">
+                      <div className="text-right flex items-center justify-between md:block border-t md:border-t-0 pt-2 md:pt-0 mt-1 md:mt-0">
+                        <p className="text-base md:text-lg font-bold">{order.totalAmount}€</p>
+                        <p className="text-[10px] md:text-xs text-muted-foreground">
                           {order.items?.length || 0} Artikel
                         </p>
                       </div>
                     </div>
                     {order.items && order.items.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-border">
-                        <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-border">
+                        <div className="grid gap-1.5 md:gap-2 sm:grid-cols-2">
                           {order.items.map((item) => (
-                            <div key={item.id} className="flex justify-between text-sm">
-                              <span className="text-muted-foreground flex items-center gap-2">
-                                <Package className="h-3 w-3" />
+                            <div key={item.id} className="flex justify-between text-xs md:text-sm">
+                              <span className="text-muted-foreground flex items-center gap-1.5 md:gap-2">
+                                <Package className="h-2.5 w-2.5 md:h-3 md:w-3" />
                                 {item.quantity}x {item.productName}
                               </span>
                               <span>{item.totalPrice}€</span>
@@ -181,11 +181,11 @@ export default function SupplierHistory() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <HistoryIcon className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">Keine Bestellungen gefunden</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Versuchen Sie es mit anderen Filteroptionen
+            <div className="flex flex-col items-center justify-center py-8 md:py-12">
+              <HistoryIcon className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground/50 mb-2 md:mb-3" />
+              <p className="text-sm md:text-base text-muted-foreground">Keine Bestellungen</p>
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                Andere Filter versuchen
               </p>
             </div>
           )}
