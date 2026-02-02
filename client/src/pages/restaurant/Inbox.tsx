@@ -452,7 +452,12 @@ export default function RestaurantInbox() {
                                         <div className="px-4 py-3">
                                           {complaintData ? (
                                             <div className="space-y-2">
-                                              <span className="font-medium">{complaintData.title}</span>
+                                              <div className="flex items-center justify-between">
+                                                <span className="font-medium">{complaintData.title}</span>
+                                                <Badge variant="outline" className="text-xs">
+                                                  Bestellung #{complaintData.orderId?.substring(0, 8)}
+                                                </Badge>
+                                              </div>
                                               <p className="text-sm text-muted-foreground">{complaintData.description}</p>
                                             </div>
                                           ) : (
