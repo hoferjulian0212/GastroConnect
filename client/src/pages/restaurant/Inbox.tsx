@@ -12,13 +12,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ConversationWithUser, Message, Product, Order } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-type ActionMode = "none" | "order";
+type ActionMode = "none" | "order" | "complaint";
 
 interface OrderContent {
   items: { name: string; quantity: number; price: string }[];
@@ -91,6 +94,9 @@ export default function RestaurantInbox() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [orderItems, setOrderItems] = useState<Record<string, number>>({});
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
+  const [complaintOrderId, setComplaintOrderId] = useState<string>("");
+  const [complaintTitle, setComplaintTitle] = useState("");
+  const [complaintDescription, setComplaintDescription] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: orderDetail } = useQuery<OrderWithDetails>({
@@ -128,6 +134,15 @@ export default function RestaurantInbox() {
       return res.json();
     },
     enabled: !!supplierId && actionMode === "order",
+  });
+
+  const { data: supplierOrders } = useQuery<Order[]>({
+    queryKey: ["/api/orders-by-supplier", { supplierId, restaurantId: currentUser?.id }],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders-by-supplier?supplierId=${supplierId}&restaurantId=${currentUser?.id}`);
+      return res.json();
+    },
+    enabled: !!supplierId && !!currentUser?.id && actionMode === "complaint",
   });
 
   const markAsReadMutation = useMutation({
@@ -203,6 +218,51 @@ export default function RestaurantInbox() {
       });
     },
   });
+
+  const createComplaintMutation = useMutation({
+    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string }) => {
+      return apiRequest("POST", "/api/complaints", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/complaints"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
+      toast({
+        title: "Reklamation gesendet",
+        description: "Ihre Reklamation wurde erfolgreich übermittelt.",
+      });
+      setComplaintOrderId("");
+      setComplaintTitle("");
+      setComplaintDescription("");
+      setActionMode("none");
+    },
+    onError: () => {
+      toast({
+        title: "Fehler",
+        description: "Reklamation konnte nicht gesendet werden.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmitComplaint = () => {
+    if (!complaintOrderId || !complaintTitle.trim() || !complaintDescription.trim() || !supplierId) return;
+    createComplaintMutation.mutate({
+      orderId: complaintOrderId,
+      restaurantId: currentUser!.id,
+      supplierId,
+      title: complaintTitle.trim(),
+      description: complaintDescription.trim(),
+    });
+  };
+
+  const formatOrderDate = (date: Date | string) => {
+    return new Date(date).toLocaleDateString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
   const filteredConversations = conversations?.filter(conv => 
     conv.otherUser.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -502,7 +562,7 @@ export default function RestaurantInbox() {
                       </div>
                     )}
                   </ScrollArea>
-                ) : (
+                ) : actionMode === "order" ? (
                   <div className="flex-1 flex flex-col overflow-hidden">
                     <div className="p-4 pb-0">
                       <div className="flex items-center justify-between mb-4">
@@ -578,7 +638,93 @@ export default function RestaurantInbox() {
                       </Button>
                     </div>
                   </div>
-                )}
+                ) : actionMode === "complaint" ? (
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="p-4 pb-0">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <AlertCircle className="h-5 w-5 text-red-500" />
+                          Reklamation erstellen
+                        </h3>
+                        <Button variant="ghost" size="icon" onClick={() => setActionMode("none")} data-testid="button-close-complaint">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Reklamation an {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
+                      </p>
+                    </div>
+                    <ScrollArea className="flex-1 px-4">
+                      <div className="space-y-4 pb-4">
+                        <div className="space-y-2">
+                          <Label>Bestellung auswählen</Label>
+                          <Select
+                            value={complaintOrderId}
+                            onValueChange={setComplaintOrderId}
+                            data-testid="select-complaint-order"
+                          >
+                            <SelectTrigger data-testid="trigger-complaint-order">
+                              <SelectValue placeholder="Bestellung wählen..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {supplierOrders && supplierOrders.length > 0 ? (
+                                supplierOrders.map((order) => (
+                                  <SelectItem key={order.id} value={order.id} data-testid={`option-complaint-order-${order.id}`}>
+                                    <div className="flex items-center gap-2">
+                                      <Package className="h-4 w-4 text-muted-foreground" />
+                                      <span>{formatOrderDate(order.createdAt)}</span>
+                                      <span className="text-muted-foreground">-</span>
+                                      <span>{parseFloat(order.totalAmount).toFixed(2)} €</span>
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <div className="p-2 text-sm text-muted-foreground">Keine Bestellungen gefunden</div>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="complaint-title">Betreff</Label>
+                          <Input
+                            id="complaint-title"
+                            placeholder="Kurze Beschreibung des Problems..."
+                            value={complaintTitle}
+                            onChange={(e) => setComplaintTitle(e.target.value)}
+                            disabled={!complaintOrderId}
+                            data-testid="input-complaint-title"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="complaint-description">Beschreibung</Label>
+                          <Textarea
+                            id="complaint-description"
+                            placeholder="Detaillierte Beschreibung Ihrer Reklamation..."
+                            value={complaintDescription}
+                            onChange={(e) => setComplaintDescription(e.target.value)}
+                            rows={4}
+                            disabled={!complaintOrderId}
+                            data-testid="textarea-complaint-description"
+                          />
+                        </div>
+                      </div>
+                    </ScrollArea>
+                    <div className="p-4 border-t border-border bg-background shrink-0">
+                      <Button
+                        className="w-full gap-2"
+                        variant="destructive"
+                        disabled={!complaintOrderId || !complaintTitle.trim() || !complaintDescription.trim() || createComplaintMutation.isPending}
+                        onClick={handleSubmitComplaint}
+                        data-testid="button-submit-complaint"
+                      >
+                        <AlertCircle className="h-4 w-4" />
+                        {createComplaintMutation.isPending ? "Wird gesendet..." : "Reklamation senden"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="border-t border-border p-4">
                   <div className="flex gap-2">
@@ -599,6 +745,20 @@ export default function RestaurantInbox() {
                         >
                           <ShoppingCart className="h-4 w-4" />
                           Neue Bestellung
+                        </button>
+                        <button
+                          className="w-full flex items-center gap-2 p-2 rounded-md text-sm hover-elevate text-left"
+                          onClick={() => {
+                            setActionMode("complaint");
+                            setComplaintOrderId("");
+                            setComplaintTitle("");
+                            setComplaintDescription("");
+                            setPopoverOpen(false);
+                          }}
+                          data-testid="button-new-complaint"
+                        >
+                          <AlertCircle className="h-4 w-4" />
+                          Reklamation erstellen
                         </button>
                       </PopoverContent>
                     </Popover>
