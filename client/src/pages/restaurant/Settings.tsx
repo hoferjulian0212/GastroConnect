@@ -71,11 +71,11 @@ export default function RestaurantSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Einstellungen</h1>
-        <p className="text-muted-foreground">Verwalten Sie Ihre Restaurantdaten</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Einstellungen</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Verwalten Sie Ihre Restaurantdaten</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>

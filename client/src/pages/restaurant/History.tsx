@@ -71,8 +71,8 @@ export default function RestaurantHistory() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Bestellhistorie</h1>
-        <p className="text-muted-foreground">Vergangene Bestellungen und Nachbestellungen</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Bestellhistorie</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Vergangene Bestellungen und Nachbestellungen</p>
       </div>
 
       <Card>

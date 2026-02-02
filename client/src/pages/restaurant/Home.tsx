@@ -66,15 +66,15 @@ export default function RestaurantHome() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">
+        <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">
           Willkommen zurück{currentUser?.companyName ? `, ${currentUser.companyName}` : ""}!
         </h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-sm md:text-base text-muted-foreground mt-1">
           Hier ist Ihre Übersicht für heute
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:gap-4 grid-cols-2 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
             <CardTitle className="text-sm font-medium">Offene Bestellungen</CardTitle>
@@ -124,7 +124,7 @@ export default function RestaurantHome() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <div>

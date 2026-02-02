@@ -108,12 +108,12 @@ export default function Complaints() {
       <div className="flex items-center gap-3">
         <AlertCircle className="h-8 w-8 text-primary" />
         <div>
-          <h1 className="text-2xl font-semibold">Reklamationen</h1>
-          <p className="text-muted-foreground">Schreiben Sie eine Reklamation zu einer Bestellung</p>
+          <h1 className="text-xl md:text-2xl font-semibold">Reklamationen</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Schreiben Sie eine Reklamation zu einer Bestellung</p>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Neue Reklamation</CardTitle>

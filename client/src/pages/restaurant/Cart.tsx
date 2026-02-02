@@ -102,8 +102,8 @@ export default function RestaurantCart() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Warenkorb</h1>
-        <p className="text-muted-foreground">Überprüfen Sie Ihre ausgewählten Produkte</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Warenkorb</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Überprüfen Sie Ihre ausgewählten Produkte</p>
       </div>
 
       {isLoading ? (
@@ -133,21 +133,21 @@ export default function RestaurantCart() {
                     {items.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between gap-4 p-3 rounded-md bg-muted/50"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-md bg-muted/50"
                         data-testid={`cart-item-${item.id}`}
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-background">
-                            <Package className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-md bg-background">
+                            <Package className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{item.product.name}</p>
-                            <p className="text-sm text-muted-foreground">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm md:text-base truncate">{item.product.name}</p>
+                            <p className="text-xs md:text-sm text-muted-foreground">
                               {item.product.price}€/{item.product.unit}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-between sm:justify-end gap-2 md:gap-3">
                           <div className="flex items-center border border-border rounded-md">
                             <Button
                               variant="ghost"
@@ -185,7 +185,7 @@ export default function RestaurantCart() {
                               <Plus className="h-3 w-3" />
                             </Button>
                           </div>
-                          <span className="font-medium w-20 text-right">
+                          <span className="font-medium text-sm md:text-base w-16 md:w-20 text-right">
                             {(parseFloat(item.product.price) * item.quantity).toFixed(2)}€
                           </span>
                           <Button
