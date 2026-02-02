@@ -734,7 +734,7 @@ export default function RestaurantInbox() {
                           <Plus className="h-4 w-4" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-48 p-2" align="start">
+                      <PopoverContent className="w-56 p-2" align="start">
                         <button
                           className="w-full flex items-center gap-2 p-2 rounded-md text-sm hover-elevate text-left"
                           onClick={() => {
