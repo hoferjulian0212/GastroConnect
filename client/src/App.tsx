@@ -13,6 +13,7 @@ import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { RestaurantSidebar } from "@/components/RestaurantSidebar";
 import { SupplierSidebar } from "@/components/SupplierSidebar";
+import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect } from "react";
 import type { User } from "@shared/schema";
@@ -150,11 +151,19 @@ function AppLayout() {
       ) : (
         <SidebarProvider style={sidebarStyle}>
           <div className="flex h-screen w-full">
-            {currentRole === "restaurant" ? <RestaurantSidebar /> : <SupplierSidebar />}
+            {currentRole === "restaurant" ? (
+              <RestaurantSidebar />
+            ) : (
+              <div className="hidden md:block">
+                <SupplierSidebar />
+              </div>
+            )}
             <div className="flex flex-col flex-1 min-w-0">
-              <header className="flex items-center justify-between gap-4 p-3 border-b border-border bg-background sticky top-0 z-10">
+              <header className={`flex items-center justify-between gap-4 p-3 border-b border-border bg-background sticky top-0 z-10 ${currentRole === "supplier" ? "md:flex" : ""}`}>
                 <div className="flex items-center gap-2">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
+                  <div className={currentRole === "supplier" ? "hidden md:block" : ""}>
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                  </div>
                   <RoleSwitcher />
                 </div>
                 <div className="flex items-center gap-2">
@@ -164,10 +173,11 @@ function AppLayout() {
                   <ThemeToggle />
                 </div>
               </header>
-              <main className="flex-1 overflow-auto p-6">
+              <main className={`flex-1 overflow-auto p-4 md:p-6 ${currentRole === "supplier" ? "pb-20 md:pb-6" : ""}`}>
                 {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
               </main>
             </div>
+            {currentRole === "supplier" && <SupplierMobileNav />}
           </div>
         </SidebarProvider>
       )}
