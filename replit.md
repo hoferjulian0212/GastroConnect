@@ -59,6 +59,19 @@ The supplier interface is fully mobile-responsive with the following implementat
 - **Inbox Behavior**: On mobile, conversation list and message view toggle with back button
 - **All supplier pages adapted**: Home, Inbox, Orders, Products, Complaints, History, Settings
 
+### Mobile Responsiveness (Restaurant Side)
+The restaurant interface is fully mobile-responsive with matching UX patterns:
+- **Bottom Navigation**: `RestaurantMobileNav` component provides a fixed bottom navigation bar on mobile (hidden on desktop via `md:hidden`)
+- **Navigation Items**: Übersicht, Nachrichten (with unread badge), Produkte, Warenkorb (with cart count badge), and "Mehr" dropdown
+- **"Mehr" Dropdown**: Contains Bestellungen, Historie, Reklamationen, and Einstellungen options
+- **Badge Indicators**: Unread message count on Nachrichten, cart item count on Warenkorb
+- **Responsive Breakpoint**: `md:` (768px) is the primary breakpoint for mobile/desktop separation
+- **Layout Patterns**:
+  - Desktop: Sidebar visible, bottom nav hidden, cart button in header
+  - Mobile: Sidebar hidden, bottom nav visible, cart button in header hidden (accessible via bottom nav), content has `pb-20` for nav spacing
+- **Inbox Behavior**: On mobile, conversation list and message view toggle with back button (same pattern as supplier)
+- **All restaurant pages adapted**: Home, Inbox, Catalog, Cart, Orders, History, Complaints, Settings
+
 ## External Dependencies
 
 ### Database
