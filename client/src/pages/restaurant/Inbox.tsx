@@ -654,8 +654,8 @@ export default function RestaurantInbox() {
                         Reklamation an {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
                       </p>
                     </div>
-                    <ScrollArea className="flex-1 px-5">
-                      <div className="space-y-4 pb-4 pr-1">
+                    <ScrollArea className="flex-1 px-6">
+                      <div className="space-y-4 pb-4 px-1">
                         <div className="space-y-2">
                           <Label>Bestellung auswählen</Label>
                           <Select
