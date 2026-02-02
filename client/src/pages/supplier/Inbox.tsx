@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft } from "lucide-react";
 import type { ConversationWithUser, Message, Order } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
@@ -185,23 +185,23 @@ export default function SupplierInbox() {
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)]">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Inbox</h1>
-        <p className="text-muted-foreground">Kommunizieren Sie mit Ihren Kunden</p>
+    <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-8rem)]">
+      <div className="mb-3 md:mb-4">
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Inbox</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Kommunizieren Sie mit Ihren Kunden</p>
       </div>
 
-      <Card className="h-[calc(100%-4rem)]">
+      <Card className="h-[calc(100%-3rem)] md:h-[calc(100%-4rem)]">
         <div className="flex h-full">
-          <div className="w-80 border-r border-border flex flex-col">
-            <CardHeader className="pb-3">
+          <div className={`w-full md:w-80 border-r border-border flex flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+            <CardHeader className="pb-2 md:pb-3 p-3 md:p-6">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Suche..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 h-9 md:h-10 text-sm"
                   data-testid="input-search-conversations"
                 />
               </div>
@@ -262,21 +262,30 @@ export default function SupplierInbox() {
             </ScrollArea>
           </div>
 
-          <div className="flex-1 flex flex-col">
+          <div className={`flex-1 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && selectedConv ? (
               <>
-                <div className="border-b border-border p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary/20 text-primary">
+                <div className="border-b border-border p-3 md:p-4">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="md:hidden h-8 w-8"
+                      onClick={() => setSelectedConversation(null)}
+                      data-testid="button-back-to-list"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <Avatar className="h-8 w-8 md:h-10 md:w-10">
+                      <AvatarFallback className="bg-primary/20 text-primary text-sm md:text-base">
                         {selectedConv.otherUser.companyName?.charAt(0) || selectedConv.otherUser.name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="font-medium" data-testid="text-conversation-partner">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm md:text-base truncate" data-testid="text-conversation-partner">
                         {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">
                         {selectedConv.otherUser.email}
                       </p>
                     </div>
@@ -429,7 +438,7 @@ export default function SupplierInbox() {
                   )}
                 </ScrollArea>
 
-                <div className="border-t border-border p-4">
+                <div className="border-t border-border p-2 md:p-4">
                   <div className="flex gap-2">
                     <Input
                       placeholder="Nachricht schreiben..."
@@ -441,10 +450,13 @@ export default function SupplierInbox() {
                           handleSendMessage();
                         }
                       }}
+                      className="h-9 md:h-10 text-sm"
                       data-testid="input-message"
                     />
                     <Button 
                       variant="secondary"
+                      size="icon"
+                      className="h-9 w-9 md:h-10 md:w-10"
                       onClick={handleSendMessage}
                       disabled={!messageText.trim() || sendMessageMutation.isPending}
                       data-testid="button-send-message"
