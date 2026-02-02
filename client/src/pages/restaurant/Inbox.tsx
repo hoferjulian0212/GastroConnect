@@ -570,7 +570,7 @@ export default function RestaurantInbox() {
                           <ShoppingCart className="h-5 w-5" />
                           Neue Bestellung
                         </h3>
-                        <Button variant="ghost" size="icon" onClick={() => setActionMode("none")} data-testid="button-close-order">
+                        <Button variant="ghost" size="icon" onClick={() => { setActionMode("none"); setTimeout(scrollToBottom, 100); }} data-testid="button-close-order">
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -646,7 +646,7 @@ export default function RestaurantInbox() {
                           <AlertCircle className="h-5 w-5 text-red-500" />
                           Reklamation erstellen
                         </h3>
-                        <Button variant="ghost" size="icon" onClick={() => setActionMode("none")} data-testid="button-close-complaint">
+                        <Button variant="ghost" size="icon" onClick={() => { setActionMode("none"); setTimeout(scrollToBottom, 100); }} data-testid="button-close-complaint">
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
