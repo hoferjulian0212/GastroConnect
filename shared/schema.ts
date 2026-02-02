@@ -85,6 +85,17 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const complaints = pgTable("complaints", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id", { length: 36 }).notNull().references(() => orders.id),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  rating: integer("rating").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
@@ -93,6 +104,7 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: t
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true, createdAt: true });
 export const insertConversationSchema = createInsertSchema(conversations).omit({ id: true, createdAt: true, lastMessageAt: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, isRead: true });
+export const insertComplaintSchema = createInsertSchema(complaints).omit({ id: true, createdAt: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -109,6 +121,8 @@ export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Conversation = typeof conversations.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+export type InsertComplaint = z.infer<typeof insertComplaintSchema>;
+export type Complaint = typeof complaints.$inferSelect;
 
 // Extended types for frontend
 export type ProductWithSupplier = Product & { supplier: User };
@@ -123,3 +137,4 @@ export type ConversationWithUser = Conversation & {
   unreadCount: number;
 };
 export type CartItemWithProduct = CartItem & { product: Product; supplier: User };
+export type ComplaintWithDetails = Complaint & { order: Order; restaurant: User; supplier: User };

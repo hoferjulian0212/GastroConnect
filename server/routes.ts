@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProductSchema, insertCartItemSchema, insertMessageSchema } from "@shared/schema";
+import { insertProductSchema, insertCartItemSchema, insertMessageSchema, insertComplaintSchema } from "@shared/schema";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 
 export async function registerRoutes(
@@ -578,6 +578,62 @@ export async function registerRoutes(
       res.json(restaurants);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch restaurants" });
+    }
+  });
+
+  // ===== COMPLAINTS =====
+  app.get("/api/complaints", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      const supplierId = req.query.supplierId as string;
+      if (restaurantId) {
+        const complaints = await storage.getComplaintsByRestaurant(restaurantId);
+        return res.json(complaints);
+      }
+      if (supplierId) {
+        const complaints = await storage.getComplaintsBySupplier(supplierId);
+        return res.json(complaints);
+      }
+      return res.status(400).json({ error: "restaurantId or supplierId required" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch complaints" });
+    }
+  });
+
+  app.post("/api/complaints", async (req, res) => {
+    try {
+      const validated = insertComplaintSchema.parse(req.body);
+      const complaint = await storage.createComplaint(validated);
+      res.status(201).json(complaint);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid complaint data" });
+    }
+  });
+
+  app.get("/api/suppliers-with-orders", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      if (!restaurantId) {
+        return res.json([]);
+      }
+      const suppliers = await storage.getSuppliersWithOrders(restaurantId);
+      res.json(suppliers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch suppliers" });
+    }
+  });
+
+  app.get("/api/orders-by-supplier", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      const supplierId = req.query.supplierId as string;
+      if (!restaurantId || !supplierId) {
+        return res.json([]);
+      }
+      const orders = await storage.getOrdersByRestaurantAndSupplier(restaurantId, supplierId);
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch orders" });
     }
   });
 

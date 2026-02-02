@@ -25,6 +25,7 @@ import RestaurantCatalog from "@/pages/restaurant/Catalog";
 import RestaurantCart from "@/pages/restaurant/Cart";
 import RestaurantHistory from "@/pages/restaurant/History";
 import RestaurantSettings from "@/pages/restaurant/Settings";
+import RestaurantComplaints from "@/pages/restaurant/Complaints";
 import SupplierHome from "@/pages/supplier/Home";
 import SupplierInbox from "@/pages/supplier/Inbox";
 import SupplierProducts from "@/pages/supplier/Products";
@@ -41,6 +42,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/catalog" component={RestaurantCatalog} />
       <Route path="/restaurant/cart" component={RestaurantCart} />
       <Route path="/restaurant/history" component={RestaurantHistory} />
+      <Route path="/restaurant/complaints" component={RestaurantComplaints} />
       <Route path="/restaurant/settings" component={RestaurantSettings} />
       <Route component={NotFound} />
     </Switch>
