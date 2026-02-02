@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, Star } from "lucide-react";
 import type { ConversationWithUser, Message, Order } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
@@ -23,6 +23,13 @@ interface OrderContent {
   total: string;
 }
 
+interface ComplaintContent {
+  title: string;
+  description: string;
+  rating: number;
+  orderId: string;
+}
+
 interface OrderWithDetails extends Order {
   items: { id: string; productName: string; quantity: number; unitPrice: string; totalPrice: string }[];
   restaurant?: { companyName: string };
@@ -30,6 +37,14 @@ interface OrderWithDetails extends Order {
 }
 
 const parseOrderContent = (content: string): OrderContent | null => {
+  try {
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+};
+
+const parseComplaintContent = (content: string): ComplaintContent | null => {
   try {
     return JSON.parse(content);
   } catch {
@@ -294,7 +309,7 @@ export default function SupplierInbox() {
                               </div>
                             )}
                             <div
-                              className={`flex ${message.messageType === "order" ? "justify-center" : isOwn ? "justify-end" : "justify-start"}`}
+                              className={`flex ${message.messageType === "order" || message.messageType === "complaint" ? "justify-center" : isOwn ? "justify-end" : "justify-start"}`}
                               data-testid={`message-${message.id}`}
                             >
                               {message.messageType === "order" ? (
@@ -302,10 +317,10 @@ export default function SupplierInbox() {
                                   const orderData = parseOrderContent(message.content);
                                   return (
                                     <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden">
-                                      <div className="flex items-center justify-between px-4 py-2 bg-secondary/10 border-b">
+                                      <div className="flex items-center justify-between px-4 py-2 bg-green-500/10 border-b border-green-500/20">
                                         <div className="flex items-center gap-2">
-                                          <ClipboardList className="h-4 w-4 text-secondary" />
-                                          <span className="text-sm font-medium text-secondary">Neue Bestellung</span>
+                                          <ClipboardList className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                          <span className="text-sm font-medium text-green-600 dark:text-green-400">Neue Bestellung</span>
                                         </div>
                                         <span className="text-xs text-muted-foreground">
                                           {format(messageDate, "HH:mm")}
@@ -344,6 +359,45 @@ export default function SupplierInbox() {
                                           </Button>
                                         </div>
                                       )}
+                                    </div>
+                                  );
+                                })()
+                              ) : message.messageType === "complaint" ? (
+                                (() => {
+                                  const complaintData = parseComplaintContent(message.content);
+                                  return (
+                                    <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden">
+                                      <div className="flex items-center justify-between px-4 py-2 bg-red-500/10 border-b border-red-500/20">
+                                        <div className="flex items-center gap-2">
+                                          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                          <span className="text-sm font-medium text-red-600 dark:text-red-400">Reklamation</span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">
+                                          {format(messageDate, "HH:mm")}
+                                        </span>
+                                      </div>
+                                      <div className="px-4 py-3">
+                                        {complaintData ? (
+                                          <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                              <span className="font-medium">{complaintData.title}</span>
+                                              <div className="flex">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                  <Star
+                                                    key={star}
+                                                    className={`h-4 w-4 ${
+                                                      star <= complaintData.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"
+                                                    }`}
+                                                  />
+                                                ))}
+                                              </div>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">{complaintData.description}</p>
+                                          </div>
+                                        ) : (
+                                          <p className="text-sm">{message.content}</p>
+                                        )}
+                                      </div>
                                     </div>
                                   );
                                 })()

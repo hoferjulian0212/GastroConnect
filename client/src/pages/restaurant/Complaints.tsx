@@ -53,6 +53,7 @@ export default function Complaints() {
     onSuccess: () => {
       toast({ title: "Reklamation gesendet", description: "Ihre Reklamation wurde erfolgreich übermittelt." });
       queryClient.invalidateQueries({ queryKey: ["/api/complaints"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       resetForm();
     },
     onError: () => {

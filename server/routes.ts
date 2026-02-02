@@ -604,8 +604,26 @@ export async function registerRoutes(
     try {
       const validated = insertComplaintSchema.parse(req.body);
       const complaint = await storage.createComplaint(validated);
+      
+      // Create complaint message in chat
+      const conversation = await storage.getOrCreateConversation(validated.restaurantId, validated.supplierId);
+      const complaintContent = JSON.stringify({
+        title: validated.title,
+        description: validated.description,
+        rating: validated.rating,
+        orderId: validated.orderId
+      });
+      await storage.sendMessage({
+        conversationId: conversation.id,
+        senderId: validated.restaurantId,
+        messageType: "complaint",
+        content: complaintContent,
+        orderId: validated.orderId,
+      });
+      
       res.status(201).json(complaint);
     } catch (error) {
+      console.error("Create complaint error:", error);
       res.status(400).json({ error: "Invalid complaint data" });
     }
   });
