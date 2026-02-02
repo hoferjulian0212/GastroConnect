@@ -32,6 +32,7 @@ import SupplierProducts from "@/pages/supplier/Products";
 import SupplierOrders from "@/pages/supplier/Orders";
 import SupplierHistory from "@/pages/supplier/History";
 import SupplierSettings from "@/pages/supplier/Settings";
+import SupplierComplaints from "@/pages/supplier/Complaints";
 
 function RestaurantRouter() {
   return (
@@ -57,6 +58,7 @@ function SupplierRouter() {
       <Route path="/supplier/products" component={SupplierProducts} />
       <Route path="/supplier/orders" component={SupplierOrders} />
       <Route path="/supplier/history" component={SupplierHistory} />
+      <Route path="/supplier/complaints" component={SupplierComplaints} />
       <Route path="/supplier/settings" component={SupplierSettings} />
       <Route component={NotFound} />
     </Switch>
