@@ -1,33 +1,153 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageSquare, Search, Check, CheckCheck } from "lucide-react";
-import type { ConversationWithUser, Message } from "@shared/schema";
-import { formatDistanceToNow } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft } from "lucide-react";
+import type { ConversationWithUser, Message, Order } from "@shared/schema";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+interface OrderContent {
+  items: { name: string; quantity: number; price: string }[];
+  total: string;
+}
+
+interface ComplaintContent {
+  title: string;
+  description: string;
+  orderId: string;
+}
+
+interface OrderWithDetails extends Order {
+  items: { id: string; productName: string; quantity: number; unitPrice: string; totalPrice: string }[];
+  restaurant?: { companyName: string };
+  supplier?: { companyName: string };
+}
+
+const parseOrderContent = (content: string): OrderContent | null => {
+  try {
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+};
+
+const parseComplaintContent = (content: string): ComplaintContent | null => {
+  try {
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+    case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+    case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
+    case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+    case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+    default: return "bg-muted text-muted-foreground";
+  }
+};
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case "pending": return "Neu";
+    case "confirmed": return "Bestätigt";
+    case "in_delivery": return "In Lieferung";
+    case "delivered": return "Geliefert";
+    case "cancelled": return "Storniert";
+    default: return status;
+  }
+};
+
+const formatDateDivider = (date: Date) => {
+  if (isToday(date)) return "Heute";
+  if (isYesterday(date)) return "Gestern";
+  return format(date, "dd. MMMM yyyy", { locale: de });
+};
 
 export default function SupplierInbox() {
   const { currentUser } = useUser();
+  const { toast } = useToast();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
+  const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
+
+  const { data: orderDetail, refetch: refetchOrderDetail } = useQuery<OrderWithDetails>({
+    queryKey: ["/api/orders", orderDetailId],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders/${orderDetailId}`);
+      return res.json();
+    },
+    enabled: !!orderDetailId,
+  });
+
+  const updateOrderStatusMutation = useMutation({
+    mutationFn: async ({ orderId, status }: { orderId: string; status: string }) => {
+      return await apiRequest("PATCH", `/api/orders/${orderId}/status`, { status });
+    },
+    onSuccess: () => {
+      toast({ title: "Status aktualisiert", description: "Der Bestellstatus wurde erfolgreich geändert." });
+      refetchOrderDetail();
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden.", variant: "destructive" });
+    },
+  });
   const [searchQuery, setSearchQuery] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const { data: conversations, isLoading: conversationsLoading } = useQuery<ConversationWithUser[]>({
     queryKey: [`/api/conversations?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: [`/api/conversations/${selectedConversation}/messages`],
     enabled: !!selectedConversation,
   });
+
+  const markAsReadMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      return apiRequest("POST", `/api/conversations/${conversationId}/read`, {
+        userId: currentUser?.id,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
+    },
+  });
+
+  const handleSelectConversation = (conversationId: string) => {
+    setSelectedConversation(conversationId);
+    if (currentUser?.id) {
+      markAsReadMutation.mutate(conversationId);
+    }
+  };
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -41,8 +161,15 @@ export default function SupplierInbox() {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       setMessageText("");
+      setTimeout(scrollToBottom, 100);
     },
   });
+
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      setTimeout(scrollToBottom, 100);
+    }
+  }, [messages, selectedConversation]);
 
   const filteredConversations = conversations?.filter(conv => 
     conv.otherUser.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -58,23 +185,23 @@ export default function SupplierInbox() {
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)]">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Inbox</h1>
-        <p className="text-muted-foreground">Kommunizieren Sie mit Ihren Kunden</p>
+    <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-8rem)]">
+      <div className="mb-3 md:mb-4">
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Inbox</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Kommunizieren Sie mit Ihren Kunden</p>
       </div>
 
-      <Card className="h-[calc(100%-4rem)]">
+      <Card className="h-[calc(100%-3rem)] md:h-[calc(100%-4rem)]">
         <div className="flex h-full">
-          <div className="w-80 border-r border-border flex flex-col">
-            <CardHeader className="pb-3">
+          <div className={`w-full md:w-80 border-r border-border flex flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+            <CardHeader className="pb-2 md:pb-3 p-3 md:p-6">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Suche..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 text-sm"
                   data-testid="input-search-conversations"
                 />
               </div>
@@ -92,8 +219,8 @@ export default function SupplierInbox() {
                     {filteredConversations.map((conv) => (
                       <button
                         key={conv.id}
-                        onClick={() => setSelectedConversation(conv.id)}
-                        className={`w-full p-3 rounded-md text-left transition-colors hover-elevate ${
+                        onClick={() => handleSelectConversation(conv.id)}
+                        className={`w-full p-3 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
                           selectedConversation === conv.id
                             ? "bg-secondary/10"
                             : ""
@@ -101,23 +228,24 @@ export default function SupplierInbox() {
                         data-testid={`conversation-${conv.id}`}
                       >
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
+                          <Avatar className="h-10 w-10 shrink-0">
+                            <AvatarImage src={conv.otherUser.profileImageUrl || undefined} alt={conv.otherUser.name} />
                             <AvatarFallback className="bg-primary/20 text-primary">
                               {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-medium truncate">
+                              <p className="text-sm font-medium truncate max-w-[140px]">
                                 {conv.otherUser.companyName || conv.otherUser.name}
                               </p>
                               {conv.unreadCount > 0 && (
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] text-secondary-foreground font-medium">
+                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] text-secondary-foreground font-medium">
                                   {conv.unreadCount}
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground truncate">
+                            <p className="text-xs text-muted-foreground truncate max-w-[180px]">
                               {conv.lastMessage?.content || "Keine Nachrichten"}
                             </p>
                           </div>
@@ -135,21 +263,31 @@ export default function SupplierInbox() {
             </ScrollArea>
           </div>
 
-          <div className="flex-1 flex flex-col">
+          <div className={`flex-1 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && selectedConv ? (
               <>
-                <div className="border-b border-border p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary/20 text-primary">
+                <div className="border-b border-border p-3 md:p-4">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="md:hidden"
+                      onClick={() => setSelectedConversation(null)}
+                      data-testid="button-back-to-list"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <Avatar className="h-8 w-8 md:h-10 md:w-10">
+                      <AvatarImage src={selectedConv.otherUser.profileImageUrl || undefined} alt={selectedConv.otherUser.name} />
+                      <AvatarFallback className="bg-primary/20 text-primary text-sm md:text-base">
                         {selectedConv.otherUser.companyName?.charAt(0) || selectedConv.otherUser.name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="font-medium" data-testid="text-conversation-partner">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm md:text-base truncate" data-testid="text-conversation-partner">
                         {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">
                         {selectedConv.otherUser.email}
                       </p>
                     </div>
@@ -164,37 +302,134 @@ export default function SupplierInbox() {
                       ))}
                     </div>
                   ) : messages && messages.length > 0 ? (
-                    <div className="space-y-4">
-                      {messages.map((message) => {
+                    <div className="space-y-3">
+                      {messages.map((message, index) => {
                         const isOwn = message.senderId === currentUser?.id;
+                        const messageDate = new Date(message.createdAt);
+                        const prevMessage = index > 0 ? messages[index - 1] : null;
+                        const showDateDivider = !prevMessage || !isSameDay(messageDate, new Date(prevMessage.createdAt));
+                        
                         return (
-                          <div
-                            key={message.id}
-                            className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
-                            data-testid={`message-${message.id}`}
-                          >
-                            <div
-                              className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                                isOwn
-                                  ? "bg-secondary text-secondary-foreground"
-                                  : "bg-muted"
-                              }`}
-                            >
-                              <p className="text-sm">{message.content}</p>
-                              <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
-                                <span className={`text-[10px] ${isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
-                                  {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: de })}
+                          <div key={message.id}>
+                            {showDateDivider && (
+                              <div className="flex justify-center my-4">
+                                <span className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
+                                  {formatDateDivider(messageDate)}
                                 </span>
-                                {isOwn && (
-                                  message.isRead 
-                                    ? <CheckCheck className="h-3 w-3 text-secondary-foreground/70" />
-                                    : <Check className="h-3 w-3 text-secondary-foreground/70" />
-                                )}
                               </div>
+                            )}
+                            <div
+                              className={`flex ${message.messageType === "order" || message.messageType === "complaint" ? "justify-center" : isOwn ? "justify-end" : "justify-start"}`}
+                              data-testid={`message-${message.id}`}
+                            >
+                              {message.messageType === "order" ? (
+                                (() => {
+                                  const orderData = parseOrderContent(message.content);
+                                  return (
+                                    <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden">
+                                      <div className="flex items-center justify-between px-4 py-2 bg-green-500/10 border-b border-green-500/20">
+                                        <div className="flex items-center gap-2">
+                                          <ClipboardList className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                          <span className="text-sm font-medium text-green-600 dark:text-green-400">Neue Bestellung</span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">
+                                          {format(messageDate, "HH:mm")}
+                                        </span>
+                                      </div>
+                                      <div className="px-4 py-3">
+                                        {orderData ? (
+                                          <div className="space-y-2">
+                                            {orderData.items.map((item, idx) => (
+                                              <div key={idx} className="flex justify-between items-center text-sm">
+                                                <span>{item.quantity}x {item.name}</span>
+                                                <span className="text-muted-foreground">{item.price}€</span>
+                                              </div>
+                                            ))}
+                                            <Separator className="my-2" />
+                                            <div className="flex justify-between items-center font-semibold">
+                                              <span>Gesamt</span>
+                                              <span>{orderData.total}€</span>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <p className="text-sm">{message.content}</p>
+                                        )}
+                                      </div>
+                                      {message.orderId && (
+                                        <div className="px-4 py-2 border-t bg-muted/30">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full"
+                                            onClick={() => setOrderDetailId(message.orderId)}
+                                            data-testid={`button-order-details-${message.id}`}
+                                          >
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            Details anzeigen
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()
+                              ) : message.messageType === "complaint" ? (
+                                (() => {
+                                  const complaintData = parseComplaintContent(message.content);
+                                  return (
+                                    <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden">
+                                      <div className="flex items-center justify-between px-4 py-2 bg-red-500/10 border-b border-red-500/20">
+                                        <div className="flex items-center gap-2">
+                                          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                          <span className="text-sm font-medium text-red-600 dark:text-red-400">Reklamation</span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">
+                                          {format(messageDate, "HH:mm")}
+                                        </span>
+                                      </div>
+                                      <div className="px-4 py-3">
+                                        {complaintData ? (
+                                          <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                              <span className="font-medium">{complaintData.title}</span>
+                                              <Badge variant="outline" className="text-xs">
+                                                Bestellung #{complaintData.orderId?.substring(0, 8)}
+                                              </Badge>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">{complaintData.description}</p>
+                                          </div>
+                                        ) : (
+                                          <p className="text-sm">{message.content}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })()
+                              ) : (
+                                <div
+                                  className={`max-w-[70%] rounded-lg px-3 py-2 ${
+                                    isOwn
+                                      ? "bg-secondary text-secondary-foreground"
+                                      : "bg-muted"
+                                  }`}
+                                >
+                                  <p className="text-sm">{message.content}</p>
+                                  <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
+                                    <span className={`text-[10px] ${isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
+                                      {format(messageDate, "HH:mm")}
+                                    </span>
+                                    {isOwn && (
+                                      message.isRead 
+                                        ? <CheckCheck className="h-3 w-3 text-secondary-foreground/70" />
+                                        : <Check className="h-3 w-3 text-secondary-foreground/70" />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
                       })}
+                      <div ref={messagesEndRef} />
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center">
@@ -205,7 +440,7 @@ export default function SupplierInbox() {
                   )}
                 </ScrollArea>
 
-                <div className="border-t border-border p-4">
+                <div className="border-t border-border p-2 md:p-4">
                   <div className="flex gap-2">
                     <Input
                       placeholder="Nachricht schreiben..."
@@ -217,10 +452,12 @@ export default function SupplierInbox() {
                           handleSendMessage();
                         }
                       }}
+                      className="text-sm"
                       data-testid="input-message"
                     />
                     <Button 
                       variant="secondary"
+                      size="icon"
                       onClick={handleSendMessage}
                       disabled={!messageText.trim() || sendMessageMutation.isPending}
                       data-testid="button-send-message"
@@ -244,6 +481,90 @@ export default function SupplierInbox() {
           </div>
         </div>
       </Card>
+
+      <Dialog open={!!orderDetailId} onOpenChange={(open) => !open && setOrderDetailId(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Bestelldetails
+            </DialogTitle>
+          </DialogHeader>
+          {orderDetail && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Bestellnummer</span>
+                <span className="font-mono text-sm">#{orderDetail.id.slice(0, 8)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Restaurant</span>
+                <span className="text-sm">{orderDetail.restaurant?.companyName || "Unbekannt"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <Select
+                  value={orderDetail.status}
+                  onValueChange={(value) => {
+                    updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: value });
+                  }}
+                  disabled={updateOrderStatusMutation.isPending}
+                >
+                  <SelectTrigger className="w-[160px]" data-testid="select-order-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Neu</SelectItem>
+                    <SelectItem value="confirmed">Bestätigt</SelectItem>
+                    <SelectItem value="in_delivery">In Lieferung</SelectItem>
+                    <SelectItem value="delivered">Geliefert</SelectItem>
+                    <SelectItem value="cancelled">Storniert</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Datum</span>
+                <span className="text-sm">{format(new Date(orderDetail.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}</span>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <h4 className="font-medium mb-3">Produkte</h4>
+                <div className="space-y-2">
+                  {orderDetail.items.map((item) => (
+                    <div key={item.id} className="flex justify-between items-center py-2 border-b last:border-0">
+                      <div>
+                        <p className="font-medium">{item.productName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.quantity} x {item.unitPrice}€
+                        </p>
+                      </div>
+                      <span className="font-medium">{item.totalPrice}€</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="flex justify-between items-center text-lg font-bold">
+                <span>Gesamtbetrag</span>
+                <span>{orderDetail.totalAmount}€</span>
+              </div>
+
+              {orderDetail.notes && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-medium mb-2">Notizen</h4>
+                    <p className="text-sm text-muted-foreground">{orderDetail.notes}</p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

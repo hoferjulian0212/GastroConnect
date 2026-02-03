@@ -14,8 +14,15 @@ export default function RestaurantHome() {
   const { currentUser } = useUser();
 
   const { data: recentOrders, isLoading: ordersLoading } = useQuery<Order[]>({
-    queryKey: [`/api/orders/recent?restaurantId=${currentUser?.id}`],
+    queryKey: ['/api/orders/recent', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders/recent?restaurantId=${currentUser?.id}`);
+      if (!res.ok) throw new Error('Failed to fetch orders');
+      return res.json();
+    },
     enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery<{
@@ -23,8 +30,15 @@ export default function RestaurantHome() {
     unreadMessages: number;
     totalSuppliers: number;
   }>({
-    queryKey: [`/api/restaurant/stats?userId=${currentUser?.id}`],
+    queryKey: ['/api/restaurant/stats', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/restaurant/stats?userId=${currentUser?.id}`);
+      if (!res.ok) throw new Error('Failed to fetch stats');
+      return res.json();
+    },
     enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const getStatusColor = (status: string) => {
@@ -52,15 +66,15 @@ export default function RestaurantHome() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">
+        <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">
           Willkommen zurück{currentUser?.companyName ? `, ${currentUser.companyName}` : ""}!
         </h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-sm md:text-base text-muted-foreground mt-1">
           Hier ist Ihre Übersicht für heute
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:gap-4 grid-cols-2 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
             <CardTitle className="text-sm font-medium">Offene Bestellungen</CardTitle>
@@ -110,7 +124,7 @@ export default function RestaurantHome() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <div>

@@ -1,12 +1,13 @@
 import { db } from "./db";
 import { eq, and, desc, or, sql, ne } from "drizzle-orm";
 import {
-  users, products, orders, orderItems, cartItems, conversations, messages,
+  users, products, orders, orderItems, cartItems, conversations, messages, complaints,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
   type Message, type InsertMessage, type ProductWithSupplier, type OrderWithDetails,
-  type ConversationWithUser, type CartItemWithProduct
+  type ConversationWithUser, type CartItemWithProduct, type Complaint, type InsertComplaint,
+  type ComplaintWithDetails
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -65,6 +66,13 @@ export interface IStorage {
   }>;
   getPendingOrderCount(supplierId: string): Promise<number>;
   getRestaurantsForSupplier(supplierId: string): Promise<User[]>;
+
+  // Complaints
+  getComplaintsByRestaurant(restaurantId: string): Promise<ComplaintWithDetails[]>;
+  getComplaintsBySupplier(supplierId: string): Promise<ComplaintWithDetails[]>;
+  createComplaint(complaint: InsertComplaint): Promise<Complaint>;
+  getSuppliersWithOrders(restaurantId: string): Promise<User[]>;
+  getOrdersByRestaurantAndSupplier(restaurantId: string, supplierId: string): Promise<Order[]>;
 
   // Seed
   seedData(): Promise<void>;
@@ -316,7 +324,7 @@ export class DatabaseStorage implements IStorage {
         ...conv,
         otherUser,
         lastMessage,
-        unreadCount: unreadResult[0]?.count || 0
+        unreadCount: Number(unreadResult[0]?.count) || 0
       });
     }
     return result;
@@ -380,7 +388,7 @@ export class DatabaseStorage implements IStorage {
           ne(messages.senderId, userId),
           eq(messages.isRead, false)
         ));
-      total += result[0]?.count || 0;
+      total += Number(result[0]?.count) || 0;
     }
     return total;
   }
@@ -410,10 +418,11 @@ export class DatabaseStorage implements IStorage {
       ));
 
     const suppliers = await db.select().from(users).where(eq(users.role, "supplier"));
+    const unreadMessages = await this.getUnreadCount(restaurantId);
 
     return {
-      pendingOrders: pendingResult[0]?.count || 0,
-      unreadMessages: await this.getUnreadCount(restaurantId),
+      pendingOrders: Number(pendingResult[0]?.count) || 0,
+      unreadMessages: Number(unreadMessages) || 0,
       totalSuppliers: suppliers.length
     };
   }
@@ -447,11 +456,13 @@ export class DatabaseStorage implements IStorage {
         sql`${orders.createdAt} >= ${startOfMonth}`
       ));
 
+    const unreadMessages = await this.getUnreadCount(supplierId);
+
     return {
-      newOrders: newOrdersResult[0]?.count || 0,
-      unreadMessages: await this.getUnreadCount(supplierId),
-      totalProducts: productsResult[0]?.count || 0,
-      monthlyRevenue: revenueResult[0]?.total || 0
+      newOrders: Number(newOrdersResult[0]?.count) || 0,
+      unreadMessages: Number(unreadMessages) || 0,
+      totalProducts: Number(productsResult[0]?.count) || 0,
+      monthlyRevenue: Number(revenueResult[0]?.total) || 0
     };
   }
 
@@ -476,6 +487,68 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(users)
       .where(or(...restaurantIds.map(r => eq(users.id, r.id))));
+  }
+
+  // Complaints
+  async getComplaintsByRestaurant(restaurantId: string): Promise<ComplaintWithDetails[]> {
+    const result = await db
+      .select()
+      .from(complaints)
+      .where(eq(complaints.restaurantId, restaurantId))
+      .orderBy(desc(complaints.createdAt));
+
+    const complaintsWithDetails: ComplaintWithDetails[] = [];
+    for (const complaint of result) {
+      const [order] = await db.select().from(orders).where(eq(orders.id, complaint.orderId));
+      const [restaurant] = await db.select().from(users).where(eq(users.id, complaint.restaurantId));
+      const [supplier] = await db.select().from(users).where(eq(users.id, complaint.supplierId));
+      complaintsWithDetails.push({ ...complaint, order, restaurant, supplier });
+    }
+    return complaintsWithDetails;
+  }
+
+  async getComplaintsBySupplier(supplierId: string): Promise<ComplaintWithDetails[]> {
+    const result = await db
+      .select()
+      .from(complaints)
+      .where(eq(complaints.supplierId, supplierId))
+      .orderBy(desc(complaints.createdAt));
+
+    const complaintsWithDetails: ComplaintWithDetails[] = [];
+    for (const complaint of result) {
+      const [order] = await db.select().from(orders).where(eq(orders.id, complaint.orderId));
+      const [restaurant] = await db.select().from(users).where(eq(users.id, complaint.restaurantId));
+      const [supplier] = await db.select().from(users).where(eq(users.id, complaint.supplierId));
+      complaintsWithDetails.push({ ...complaint, order, restaurant, supplier });
+    }
+    return complaintsWithDetails;
+  }
+
+  async createComplaint(complaint: InsertComplaint): Promise<Complaint> {
+    const [created] = await db.insert(complaints).values(complaint).returning();
+    return created;
+  }
+
+  async getSuppliersWithOrders(restaurantId: string): Promise<User[]> {
+    const supplierIds = await db
+      .selectDistinct({ id: orders.supplierId })
+      .from(orders)
+      .where(eq(orders.restaurantId, restaurantId));
+
+    if (supplierIds.length === 0) return [];
+
+    return db
+      .select()
+      .from(users)
+      .where(or(...supplierIds.map(s => eq(users.id, s.id))));
+  }
+
+  async getOrdersByRestaurantAndSupplier(restaurantId: string, supplierId: string): Promise<Order[]> {
+    return db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.restaurantId, restaurantId), eq(orders.supplierId, supplierId)))
+      .orderBy(desc(orders.createdAt));
   }
 
   // Seed Data

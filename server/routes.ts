@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProductSchema, insertCartItemSchema, insertMessageSchema } from "@shared/schema";
+import { insertProductSchema, insertCartItemSchema, insertMessageSchema, insertComplaintSchema } from "@shared/schema";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 
 export async function registerRoutes(
@@ -67,6 +67,11 @@ export async function registerRoutes(
   // ===== PRODUCTS =====
   app.get("/api/products", async (req, res) => {
     try {
+      const supplierId = req.query.supplierId as string;
+      if (supplierId) {
+        const products = await storage.getProductsBySupplier(supplierId);
+        return res.json(products);
+      }
       const products = await storage.getProducts();
       res.json(products);
     } catch (error) {
@@ -181,11 +186,21 @@ export async function registerRoutes(
   app.get("/api/orders", async (req, res) => {
     try {
       const restaurantId = req.query.restaurantId as string;
-      if (!restaurantId) {
-        return res.status(400).json({ error: "Restaurant ID required" });
+      const supplierId = req.query.supplierId as string;
+      if (restaurantId && supplierId) {
+        const orders = await storage.getOrdersByRestaurant(restaurantId);
+        const filtered = orders.filter(o => o.supplierId === supplierId);
+        return res.json(filtered);
       }
-      const orders = await storage.getOrdersByRestaurant(restaurantId);
-      res.json(orders);
+      if (restaurantId) {
+        const orders = await storage.getOrdersByRestaurant(restaurantId);
+        return res.json(orders);
+      }
+      if (supplierId) {
+        const orders = await storage.getOrdersBySupplier(supplierId);
+        return res.json(orders);
+      }
+      return res.status(400).json({ error: "restaurantId or supplierId required" });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch orders" });
     }
@@ -214,6 +229,18 @@ export async function registerRoutes(
       res.json(orders.filter(o => o.status === "delivered"));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch order history" });
+    }
+  });
+
+  app.get("/api/orders/:id", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch order" });
     }
   });
 
@@ -259,6 +286,24 @@ export async function registerRoutes(
           orderItems as any
         );
         createdOrders.push(order);
+
+        // Create order message in chat
+        const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
+        const orderContent = JSON.stringify({
+          items: orderItems.map(item => ({
+            name: item.productName,
+            quantity: item.quantity,
+            price: item.totalPrice
+          })),
+          total: totalAmount
+        });
+        await storage.sendMessage({
+          conversationId: conversation.id,
+          senderId: restaurantId,
+          messageType: "order",
+          content: orderContent,
+          orderId: order.id,
+        });
       }
 
       // Clear cart
@@ -267,6 +312,69 @@ export async function registerRoutes(
       res.status(201).json(createdOrders);
     } catch (error) {
       console.error("Create order error:", error);
+      res.status(500).json({ error: "Failed to create order" });
+    }
+  });
+
+  app.post("/api/orders/direct", async (req, res) => {
+    try {
+      const { restaurantId, supplierId, items, notes } = req.body;
+      if (!restaurantId || !supplierId || !items?.length) {
+        return res.status(400).json({ error: "restaurantId, supplierId and items required" });
+      }
+
+      if (!Array.isArray(items) || !items.every((i: any) => i.productId && typeof i.quantity === "number" && i.quantity > 0)) {
+        return res.status(400).json({ error: "Invalid items format" });
+      }
+
+      const products = await storage.getProductsBySupplier(supplierId);
+      const productMap = new Map(products.map(p => [p.id, p]));
+
+      const orderItems = [];
+      for (const item of items as { productId: string; quantity: number }[]) {
+        const product = productMap.get(item.productId);
+        if (!product) {
+          return res.status(400).json({ error: `Product ${item.productId} not found` });
+        }
+        orderItems.push({
+          productId: item.productId,
+          productName: product.name,
+          quantity: item.quantity,
+          unitPrice: product.price,
+          totalPrice: (parseFloat(product.price) * item.quantity).toFixed(2)
+        });
+      }
+
+      const totalAmount = orderItems
+        .reduce((sum: number, item) => sum + parseFloat(item.totalPrice), 0)
+        .toFixed(2);
+
+      const order = await storage.createOrder(
+        { restaurantId, supplierId, totalAmount, status: "pending", notes: notes || "" },
+        orderItems as any
+      );
+
+      // Create order message in chat
+      const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
+      const orderContent = JSON.stringify({
+        items: orderItems.map(item => ({
+          name: item.productName,
+          quantity: item.quantity,
+          price: item.totalPrice
+        })),
+        total: totalAmount
+      });
+      await storage.sendMessage({
+        conversationId: conversation.id,
+        senderId: restaurantId,
+        messageType: "order",
+        content: orderContent,
+        orderId: order.id,
+      });
+
+      res.status(201).json(order);
+    } catch (error) {
+      console.error("Direct order error:", error);
       res.status(500).json({ error: "Failed to create order" });
     }
   });
@@ -420,10 +528,23 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/conversations/:id/read", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ error: "userId required" });
+      }
+      await storage.markMessagesAsRead(req.params.id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
   // ===== STATS =====
   app.get("/api/restaurant/stats", async (req, res) => {
     try {
-      const restaurantId = req.query.restaurantId as string;
+      const restaurantId = (req.query.restaurantId || req.query.userId) as string;
       if (!restaurantId) {
         return res.json({ pendingOrders: 0, unreadMessages: 0, totalSuppliers: 0 });
       }
@@ -436,7 +557,7 @@ export async function registerRoutes(
 
   app.get("/api/supplier/stats", async (req, res) => {
     try {
-      const supplierId = req.query.supplierId as string;
+      const supplierId = (req.query.supplierId || req.query.userId) as string;
       if (!supplierId) {
         return res.json({ newOrders: 0, unreadMessages: 0, totalProducts: 0, monthlyRevenue: 0 });
       }
@@ -457,6 +578,79 @@ export async function registerRoutes(
       res.json(restaurants);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch restaurants" });
+    }
+  });
+
+  // ===== COMPLAINTS =====
+  app.get("/api/complaints", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      const supplierId = req.query.supplierId as string;
+      if (restaurantId) {
+        const complaints = await storage.getComplaintsByRestaurant(restaurantId);
+        return res.json(complaints);
+      }
+      if (supplierId) {
+        const complaints = await storage.getComplaintsBySupplier(supplierId);
+        return res.json(complaints);
+      }
+      return res.status(400).json({ error: "restaurantId or supplierId required" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch complaints" });
+    }
+  });
+
+  app.post("/api/complaints", async (req, res) => {
+    try {
+      const validated = insertComplaintSchema.parse(req.body);
+      const complaint = await storage.createComplaint(validated);
+      
+      // Create complaint message in chat
+      const conversation = await storage.getOrCreateConversation(validated.restaurantId, validated.supplierId);
+      const complaintContent = JSON.stringify({
+        title: validated.title,
+        description: validated.description,
+        orderId: validated.orderId
+      });
+      await storage.sendMessage({
+        conversationId: conversation.id,
+        senderId: validated.restaurantId,
+        messageType: "complaint",
+        content: complaintContent,
+        orderId: validated.orderId,
+      });
+      
+      res.status(201).json(complaint);
+    } catch (error) {
+      console.error("Create complaint error:", error);
+      res.status(400).json({ error: "Invalid complaint data" });
+    }
+  });
+
+  app.get("/api/suppliers-with-orders", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      if (!restaurantId) {
+        return res.json([]);
+      }
+      const suppliers = await storage.getSuppliersWithOrders(restaurantId);
+      res.json(suppliers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch suppliers" });
+    }
+  });
+
+  app.get("/api/orders-by-supplier", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      const supplierId = req.query.supplierId as string;
+      if (!restaurantId || !supplierId) {
+        return res.json([]);
+      }
+      const orders = await storage.getOrdersByRestaurantAndSupplier(restaurantId, supplierId);
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch orders" });
     }
   });
 

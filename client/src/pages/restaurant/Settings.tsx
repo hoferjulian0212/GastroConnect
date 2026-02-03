@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin, Camera, Loader2 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { useRef, useState } from "react";
 
 const settingsSchema = z.object({
   name: z.string().min(1, "Name ist erforderlich"),
@@ -29,6 +30,69 @@ type SettingsFormData = z.infer<typeof settingsSchema>;
 export default function RestaurantSettings() {
   const { currentUser, setCurrentUser } = useUser();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentUser) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Ungültiges Format",
+        description: "Bitte wählen Sie eine Bilddatei aus.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Datei zu groß",
+        description: "Das Bild darf maximal 5 MB groß sein.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const response = await apiRequest("POST", "/api/uploads/request-url", {
+        name: file.name,
+        size: file.size,
+        contentType: file.type,
+      });
+
+      await fetch(response.uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": file.type,
+        },
+      });
+
+      const profileImageUrl = response.objectPath;
+      await apiRequest("PATCH", `/api/users/${currentUser.id}`, { profileImageUrl });
+      
+      setCurrentUser({ ...currentUser, profileImageUrl });
+      toast({
+        title: "Profilbild aktualisiert",
+        description: "Ihr Profilbild wurde erfolgreich hochgeladen.",
+      });
+    } catch (error) {
+      console.error("Upload failed:", error);
+      toast({
+        title: "Fehler",
+        description: "Das Bild konnte nicht hochgeladen werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
@@ -71,11 +135,11 @@ export default function RestaurantSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Einstellungen</h1>
-        <p className="text-muted-foreground">Verwalten Sie Ihre Restaurantdaten</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Einstellungen</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Verwalten Sie Ihre Restaurantdaten</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
@@ -272,11 +336,35 @@ export default function RestaurantSettings() {
               <CardTitle>Profil</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center text-center">
-              <Avatar className="h-24 w-24 mb-4">
-                <AvatarFallback className="bg-primary/10 text-primary text-2xl">
-                  {currentUser?.companyName?.charAt(0) || currentUser?.name.charAt(0) || "R"}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative group mb-4">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                    {currentUser?.companyName?.charAt(0) || currentUser?.name.charAt(0) || "R"}
+                  </AvatarFallback>
+                </Avatar>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  data-testid="input-profile-image"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingImage}
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  data-testid="button-upload-image"
+                >
+                  {isUploadingImage ? (
+                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                  ) : (
+                    <Camera className="h-6 w-6 text-white" />
+                  )}
+                </button>
+              </div>
               <h3 className="font-medium text-lg">
                 {currentUser?.companyName || currentUser?.name || "Mein Restaurant"}
               </h3>
