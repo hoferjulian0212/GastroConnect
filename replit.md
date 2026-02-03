@@ -76,8 +76,21 @@ The restaurant interface is fully mobile-responsive with matching UX patterns:
 - **Layout Patterns**:
   - Desktop: Sidebar visible, bottom nav hidden, cart button in header
   - Mobile: Sidebar hidden, bottom nav visible, cart button in header hidden (accessible via bottom nav), content has `pb-20` for nav spacing
-- **Inbox Behavior**: On mobile, conversation list and message view toggle with back button (same pattern as supplier)
 - **All restaurant pages adapted**: Home, Inbox, Catalog, Cart, Orders, History, Complaints, Settings
+
+### WhatsApp-Style Immersive Chat (Inbox)
+Both restaurant and supplier inbox pages implement a full-screen immersive chat experience on mobile:
+- **ChatContext**: `ChatProvider` and `useChat` hook manage `isInChat` state globally
+- **Full-Screen Mode**: When a conversation is selected on mobile (viewport < 768px):
+  - Chat takes full screen height (`h-screen` on mobile)
+  - Page title "Inbox" is hidden (`hidden md:block` when in chat)
+  - Main app header is hidden on mobile (`hidden md:flex` when `isInChat` is true)
+  - Bottom navigation bar is hidden (mobile nav returns `null` when `isInChat` is true)
+  - Card border is removed on mobile (`border-0 md:border rounded-none md:rounded-lg`)
+- **Chat Header**: Shows back button (ArrowLeft icon), contact avatar, name and email
+- **Back Navigation**: Clicking back button sets `selectedConversation` to null, which resets `isInChat` to false
+- **Compact Chat List**: Smaller conversation entries with `h-9 w-9` avatars, `p-2.5` padding, `space-y-0.5` gaps
+- **Desktop Behavior**: Normal layout with sidebar visible, chat list and message view side by side
 
 ## External Dependencies
 

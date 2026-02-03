@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Home, MessageSquare, Package, ShoppingCart, MoreHorizontal, ShoppingBag, History, AlertCircle, Settings, X } from "lucide-react";
 import { useUser } from "@/context/UserContext";
+import { useChat } from "@/context/ChatContext";
 import { useQuery } from "@tanstack/react-query";
 
 const mainNavItems = [
@@ -21,6 +22,7 @@ const moreMenuItems = [
 export function RestaurantMobileNav() {
   const [location, setLocation] = useLocation();
   const { currentUser } = useUser();
+  const { isInChat } = useChat();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const { data: unreadCount } = useQuery<{ count: number }>({
@@ -34,6 +36,8 @@ export function RestaurantMobileNav() {
     queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
+
+  if (isInChat) return null;
 
   const getBadgeCount = (url: string) => {
     if (url === "/restaurant/inbox") return unreadCount?.count || 0;

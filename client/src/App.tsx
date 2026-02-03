@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { UserProvider, useUser } from "@/context/UserContext";
+import { ChatProvider, useChat } from "@/context/ChatContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { Button } from "@/components/ui/button";
@@ -127,6 +128,7 @@ function CartButton() {
 
 function AppLayout() {
   const { currentRole, isLoading } = useUser();
+  const { isInChat } = useChat();
   const [location] = useLocation();
 
   const sidebarStyle = {
@@ -160,7 +162,7 @@ function AppLayout() {
               )}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <header className="flex items-center justify-between gap-4 p-3 border-b border-border bg-background sticky top-0 z-10">
+              <header className={`flex items-center justify-between gap-4 p-3 border-b border-border bg-background sticky top-0 z-10 ${isInChat ? 'hidden md:flex' : ''}`}>
                 <div className="flex items-center gap-2">
                   <div className="hidden md:block">
                     <SidebarTrigger data-testid="button-sidebar-toggle" />
@@ -176,7 +178,7 @@ function AppLayout() {
                   <ThemeToggle />
                 </div>
               </header>
-              <main className="flex-1 overflow-auto p-4 md:p-6 pb-20 md:pb-6">
+              <main className={`flex-1 overflow-auto ${isInChat ? 'p-0 pb-0' : 'p-4 md:p-6 pb-20'} md:p-6 md:pb-6`}>
                 {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
               </main>
             </div>
@@ -193,8 +195,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <UserProvider>
-          <AppLayout />
-          <Toaster />
+          <ChatProvider>
+            <AppLayout />
+            <Toaster />
+          </ChatProvider>
         </UserProvider>
       </TooltipProvider>
     </QueryClientProvider>

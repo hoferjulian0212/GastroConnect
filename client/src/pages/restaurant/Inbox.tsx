@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
+import { useChat } from "@/context/ChatContext";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,7 @@ interface OrderWithDetails extends Order {
 
 export default function RestaurantInbox() {
   const { currentUser } = useUser();
+  const { setIsInChat } = useChat();
   const { toast } = useToast();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
@@ -98,6 +100,12 @@ export default function RestaurantInbox() {
   const [complaintTitle, setComplaintTitle] = useState("");
   const [complaintDescription, setComplaintDescription] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const isMobile = window.innerWidth < 768;
+    setIsInChat(isMobile && selectedConversation !== null);
+    return () => setIsInChat(false);
+  }, [selectedConversation, setIsInChat]);
 
   const { data: orderDetail } = useQuery<OrderWithDetails>({
     queryKey: ["/api/orders", orderDetailId],
@@ -299,24 +307,28 @@ export default function RestaurantInbox() {
 
   const totalOrderItems = Object.values(orderItems).reduce((sum, qty) => sum + qty, 0);
 
+  const handleBackToList = () => {
+    setSelectedConversation(null);
+  };
+
   return (
-    <div className="h-[calc(100vh-8rem)]">
-      <div className="mb-3 md:mb-4">
+    <div className={`${selectedConversation ? 'h-screen md:h-[calc(100vh-8rem)]' : 'h-[calc(100vh-8rem)]'}`}>
+      <div className={`mb-3 md:mb-4 ${selectedConversation ? 'hidden md:block' : ''}`}>
         <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Inbox</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Kommunizieren Sie mit Ihren Lieferanten</p>
+        <p className="text-xs md:text-sm text-muted-foreground">Kommunizieren Sie mit Ihren Lieferanten</p>
       </div>
 
-      <Card className="h-[calc(100%-3.5rem)] md:h-[calc(100%-4rem)]">
+      <Card className={`${selectedConversation ? 'h-full md:h-[calc(100%-4rem)] border-0 md:border rounded-none md:rounded-lg' : 'h-[calc(100%-3.5rem)] md:h-[calc(100%-4rem)]'}`}>
         <div className="flex h-full">
-          <div className={`w-full md:w-80 border-r border-border flex flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-            <CardHeader className="pb-3">
+          <div className={`w-full md:w-72 lg:w-80 border-r border-border flex flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+            <CardHeader className="pb-2 p-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Suche..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 text-sm"
+                  className="pl-9 text-sm h-9"
                   data-testid="input-search-conversations"
                 />
               </div>
@@ -326,11 +338,11 @@ export default function RestaurantInbox() {
                 {conversationsLoading ? (
                   <div className="space-y-2">
                     {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-16 w-full" />
+                      <Skeleton key={i} className="h-14 w-full" />
                     ))}
                   </div>
                 ) : filteredConversations && filteredConversations.length > 0 ? (
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {filteredConversations.map((conv) => (
                       <button
                         key={conv.id}
@@ -339,32 +351,32 @@ export default function RestaurantInbox() {
                           setActionMode("none");
                           setOrderItems({});
                         }}
-                        className={`w-full p-3 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
+                        className={`w-full p-2.5 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
                           selectedConversation === conv.id
                             ? "bg-primary/10"
                             : ""
                         }`}
                         data-testid={`conversation-${conv.id}`}
                       >
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10 shrink-0">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="h-9 w-9 shrink-0">
                             <AvatarImage src={conv.otherUser.profileImageUrl || undefined} alt={conv.otherUser.name} />
-                            <AvatarFallback className="bg-secondary/20 text-secondary">
+                            <AvatarFallback className="bg-secondary/20 text-secondary text-sm">
                               {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-medium truncate max-w-[140px]">
+                              <p className="text-sm font-medium truncate">
                                 {conv.otherUser.companyName || conv.otherUser.name}
                               </p>
                               {conv.unreadCount > 0 && (
-                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-medium">
+                                <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-medium">
                                   {conv.unreadCount}
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                            <p className="text-xs text-muted-foreground truncate">
                               {conv.lastMessage?.content || "Keine Nachrichten"}
                             </p>
                           </div>
@@ -374,7 +386,7 @@ export default function RestaurantInbox() {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center px-4">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                    <MessageSquare className="h-10 w-10 text-muted-foreground/50 mb-2" />
                     <p className="text-sm text-muted-foreground">Keine Konversationen</p>
                   </div>
                 )}
@@ -385,14 +397,14 @@ export default function RestaurantInbox() {
           <div className={`flex-1 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && selectedConv ? (
               <>
-                <div className="border-b border-border p-3 md:p-4">
+                <div className="border-b border-border p-2.5 md:p-4 bg-background">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 md:gap-3">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="md:hidden"
-                        onClick={() => setSelectedConversation(null)}
+                        className="md:hidden h-8 w-8"
+                        onClick={handleBackToList}
                         data-testid="button-back-to-list"
                       >
                         <ArrowLeft className="h-4 w-4" />
