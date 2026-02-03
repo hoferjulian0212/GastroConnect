@@ -113,53 +113,59 @@ export default function SupplierHome() {
       </Card>
 
       <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-            <CardTitle className="text-xs md:text-sm font-medium">Neue Bestellungen</CardTitle>
-            <ClipboardList className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-            {statsLoading ? (
-              <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
-            ) : (
-              <div className="text-xl md:text-2xl font-bold" data-testid="text-new-orders">
-                {stats?.newOrders || 0}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <Link href="/supplier/orders" data-testid="link-stat-orders">
+          <Card className="cursor-pointer hover-elevate h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Neue Bestellungen</CardTitle>
+              <ClipboardList className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              {statsLoading ? (
+                <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
+              ) : (
+                <div className="text-xl md:text-2xl font-bold" data-testid="text-new-orders">
+                  {stats?.newOrders || 0}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-            <CardTitle className="text-xs md:text-sm font-medium">Nachrichten</CardTitle>
-            <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-            {statsLoading ? (
-              <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
-            ) : (
-              <div className="text-xl md:text-2xl font-bold" data-testid="text-unread-messages">
-                {stats?.unreadMessages || 0}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <Link href="/supplier/inbox" data-testid="link-stat-messages">
+          <Card className="cursor-pointer hover-elevate h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Nachrichten</CardTitle>
+              <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              {statsLoading ? (
+                <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
+              ) : (
+                <div className="text-xl md:text-2xl font-bold" data-testid="text-unread-messages">
+                  {stats?.unreadMessages || 0}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-            <CardTitle className="text-xs md:text-sm font-medium">Produkte</CardTitle>
-            <Package className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-            {statsLoading ? (
-              <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
-            ) : (
-              <div className="text-xl md:text-2xl font-bold" data-testid="text-total-products">
-                {stats?.totalProducts || 0}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <Link href="/supplier/products" data-testid="link-stat-products">
+          <Card className="cursor-pointer hover-elevate h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Produkte</CardTitle>
+              <Package className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              {statsLoading ? (
+                <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
+              ) : (
+                <div className="text-xl md:text-2xl font-bold" data-testid="text-total-products">
+                  {stats?.totalProducts || 0}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
