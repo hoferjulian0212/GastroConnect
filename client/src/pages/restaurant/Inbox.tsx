@@ -343,46 +343,61 @@ export default function RestaurantInbox() {
                   </div>
                 ) : filteredConversations && filteredConversations.length > 0 ? (
                   <div className="space-y-0.5">
-                    {filteredConversations.map((conv) => (
-                      <button
-                        key={conv.id}
-                        onClick={() => {
-                          handleSelectConversation(conv.id);
-                          setActionMode("none");
-                          setOrderItems({});
-                        }}
-                        className={`w-full p-2.5 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
-                          selectedConversation === conv.id
-                            ? "bg-primary/10"
-                            : ""
-                        }`}
-                        data-testid={`conversation-${conv.id}`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Avatar className="h-9 w-9 shrink-0">
-                            <AvatarImage src={conv.otherUser.profileImageUrl || undefined} alt={conv.otherUser.name} />
-                            <AvatarFallback className="bg-secondary/20 text-secondary text-sm">
-                              {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-medium truncate">
-                                {conv.otherUser.companyName || conv.otherUser.name}
+                    {filteredConversations.map((conv) => {
+                      const lastMessageTime = conv.lastMessage?.createdAt 
+                        ? format(new Date(conv.lastMessage.createdAt), isToday(new Date(conv.lastMessage.createdAt)) ? "HH:mm" : "dd.MM.")
+                        : "";
+                      const messagePreview = conv.lastMessage?.messageType === "order" 
+                        ? "📦 Bestellung" 
+                        : conv.lastMessage?.messageType === "complaint"
+                        ? "⚠️ Reklamation"
+                        : conv.lastMessage?.content || "Keine Nachrichten";
+                      return (
+                        <button
+                          key={conv.id}
+                          onClick={() => {
+                            handleSelectConversation(conv.id);
+                            setActionMode("none");
+                            setOrderItems({});
+                          }}
+                          className={`w-full p-2.5 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
+                            selectedConversation === conv.id
+                              ? "bg-primary/10"
+                              : ""
+                          }`}
+                          data-testid={`conversation-${conv.id}`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Avatar className="h-9 w-9 shrink-0">
+                              <AvatarImage src={conv.otherUser.profileImageUrl || undefined} alt={conv.otherUser.name} />
+                              <AvatarFallback className="bg-secondary/20 text-secondary text-sm">
+                                {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-sm font-medium truncate flex-1 min-w-0">
+                                  {conv.otherUser.companyName || conv.otherUser.name}
+                                </p>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {lastMessageTime && (
+                                    <span className="text-[10px] text-muted-foreground">{lastMessageTime}</span>
+                                  )}
+                                  {conv.unreadCount > 0 && (
+                                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-medium">
+                                      {conv.unreadCount}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate max-w-full">
+                                {messagePreview}
                               </p>
-                              {conv.unreadCount > 0 && (
-                                <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-medium">
-                                  {conv.unreadCount}
-                                </span>
-                              )}
                             </div>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {conv.lastMessage?.content || "Keine Nachrichten"}
-                            </p>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center px-4">
