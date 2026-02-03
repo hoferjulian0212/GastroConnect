@@ -7,8 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 
 const mainNavItems = [
   { title: "Home", url: "/restaurant", icon: Home },
-  { title: "Nachrichten", url: "/restaurant/inbox", icon: MessageSquare, hasBadge: true },
   { title: "Produkte", url: "/restaurant/catalog", icon: Package },
+  { title: "Nachrichten", url: "/restaurant/inbox", icon: MessageSquare, hasBadge: true },
   { title: "Warenkorb", url: "/restaurant/cart", icon: ShoppingCart, hasBadge: true },
 ];
 
