@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   postalCode: text("postal_code"),
   companyName: text("company_name"),
   description: text("description"),
+  profileImageUrl: text("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
