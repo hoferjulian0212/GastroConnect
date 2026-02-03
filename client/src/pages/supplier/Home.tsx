@@ -75,6 +75,43 @@ export default function SupplierHome() {
         </p>
       </div>
 
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+          <div>
+            <CardTitle className="text-base md:text-lg">Schnellaktionen</CardTitle>
+            <CardDescription className="text-xs md:text-sm">Häufig verwendete Funktionen</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
+              <Link href="/supplier/products" data-testid="link-quick-products">
+                <Package className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-xs md:text-sm">Produkte</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
+              <Link href="/supplier/orders" data-testid="link-quick-orders">
+                <ClipboardList className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-xs md:text-sm">Aufträge</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
+              <Link href="/supplier/inbox" data-testid="link-quick-inbox">
+                <MessageSquare className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-xs md:text-sm">Nachrichten</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
+              <Link href="/supplier/history" data-testid="link-quick-history">
+                <Clock className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-xs md:text-sm">Historie</span>
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
@@ -141,102 +178,63 @@ export default function SupplierHome() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
-            <div>
-              <CardTitle className="text-base md:text-lg">Neue Bestellungen</CardTitle>
-              <CardDescription className="text-xs md:text-sm">Warten auf Bearbeitung</CardDescription>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+          <div>
+            <CardTitle className="text-base md:text-lg">Neue Bestellungen</CardTitle>
+            <CardDescription className="text-xs md:text-sm">Warten auf Bearbeitung</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" className="text-xs md:text-sm" asChild>
+            <Link href="/supplier/orders" data-testid="link-view-all-orders">Alle</Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+          {ordersLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
             </div>
-            <Button variant="outline" size="sm" className="text-xs md:text-sm" asChild>
-              <Link href="/supplier/orders" data-testid="link-view-all-orders">Alle</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-            {ordersLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : recentOrders && recentOrders.length > 0 ? (
-              <div className="space-y-2 md:space-y-3">
-                {recentOrders.slice(0, 5).map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex items-center justify-between p-2 md:p-3 rounded-md bg-muted/50"
-                    data-testid={`order-item-${order.id}`}
-                  >
-                    <div className="flex items-center gap-2 md:gap-3">
-                      <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-md bg-secondary/10">
-                        <ClipboardList className="h-4 w-4 text-secondary" />
-                      </div>
-                      <div>
-                        <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                        <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                          {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: de })}
-                        </p>
-                      </div>
+          ) : recentOrders && recentOrders.length > 0 ? (
+            <div className="space-y-2 md:space-y-3">
+              {recentOrders.slice(0, 5).map((order) => (
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between p-2 md:p-3 rounded-md bg-muted/50"
+                  data-testid={`order-item-${order.id}`}
+                >
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-md bg-secondary/10">
+                      <ClipboardList className="h-4 w-4 text-secondary" />
                     </div>
-                    <div className="flex items-center gap-1.5 md:gap-2">
-                      <span className="text-xs md:text-sm font-medium">{order.totalAmount}€</span>
-                      <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5 md:px-2`} variant="outline">
-                        {getStatusLabel(order.status)}
-                      </Badge>
+                    <div>
+                      <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                        {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: de })}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <CheckCircle className="h-12 w-12 text-green-500/50 mb-3" />
-                <p className="text-sm text-muted-foreground">Keine neuen Bestellungen</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Alle Bestellungen wurden bearbeitet
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
-            <div>
-              <CardTitle className="text-base md:text-lg">Schnellaktionen</CardTitle>
-              <CardDescription className="text-xs md:text-sm">Häufig verwendete Funktionen</CardDescription>
+                  <div className="flex items-center gap-1.5 md:gap-2">
+                    <span className="text-xs md:text-sm font-medium">{order.totalAmount}€</span>
+                    <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5 md:px-2`} variant="outline">
+                      {getStatusLabel(order.status)}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
-          </CardHeader>
-          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-            <div className="grid grid-cols-2 gap-2 md:gap-3">
-              <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
-                <Link href="/supplier/products" data-testid="link-quick-products">
-                  <Package className="h-4 w-4 md:h-5 md:w-5" />
-                  <span className="text-xs md:text-sm">Produkte</span>
-                </Link>
-              </Button>
-              <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
-                <Link href="/supplier/orders" data-testid="link-quick-orders">
-                  <ClipboardList className="h-4 w-4 md:h-5 md:w-5" />
-                  <span className="text-xs md:text-sm">Aufträge</span>
-                </Link>
-              </Button>
-              <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
-                <Link href="/supplier/inbox" data-testid="link-quick-inbox">
-                  <MessageSquare className="h-4 w-4 md:h-5 md:w-5" />
-                  <span className="text-xs md:text-sm">Nachrichten</span>
-                </Link>
-              </Button>
-              <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
-                <Link href="/supplier/history" data-testid="link-quick-history">
-                  <Clock className="h-4 w-4 md:h-5 md:w-5" />
-                  <span className="text-xs md:text-sm">Historie</span>
-                </Link>
-              </Button>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <CheckCircle className="h-12 w-12 text-green-500/50 mb-3" />
+              <p className="text-sm text-muted-foreground">Keine neuen Bestellungen</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Alle Bestellungen wurden bearbeitet
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

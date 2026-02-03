@@ -64,7 +64,7 @@ export default function RestaurantHome() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">
           Willkommen zurück{currentUser?.companyName ? `, ${currentUser.companyName}` : ""}!
@@ -74,17 +74,54 @@ export default function RestaurantHome() {
         </p>
       </div>
 
-      <div className="grid gap-3 md:gap-4 grid-cols-2 md:grid-cols-3">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+          <div>
+            <CardTitle className="text-base md:text-lg">Schnellaktionen</CardTitle>
+            <CardDescription className="text-xs md:text-sm">Häufig verwendete Funktionen</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
+              <Link href="/restaurant/catalog" data-testid="link-quick-catalog">
+                <Package className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-xs md:text-sm">Katalog</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
+              <Link href="/restaurant/cart" data-testid="link-quick-cart">
+                <ShoppingBag className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-xs md:text-sm">Warenkorb</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
+              <Link href="/restaurant/inbox" data-testid="link-quick-inbox">
+                <MessageSquare className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-xs md:text-sm">Nachrichten</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2" asChild>
+              <Link href="/restaurant/history" data-testid="link-quick-history">
+                <Clock className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-xs md:text-sm">Historie</span>
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">Offene Bestellungen</CardTitle>
-            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
+            <CardTitle className="text-xs md:text-sm font-medium">Offene Bestellungen</CardTitle>
+            <ShoppingBag className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
             {statsLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
             ) : (
-              <div className="text-2xl font-bold" data-testid="text-pending-orders">
+              <div className="text-xl md:text-2xl font-bold" data-testid="text-pending-orders">
                 {stats?.pendingOrders || 0}
               </div>
             )}
@@ -92,15 +129,15 @@ export default function RestaurantHome() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">Ungelesene Nachrichten</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
+            <CardTitle className="text-xs md:text-sm font-medium">Nachrichten</CardTitle>
+            <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
             {statsLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
             ) : (
-              <div className="text-2xl font-bold" data-testid="text-unread-messages">
+              <div className="text-xl md:text-2xl font-bold" data-testid="text-unread-messages">
                 {stats?.unreadMessages || 0}
               </div>
             )}
@@ -108,15 +145,15 @@ export default function RestaurantHome() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">Aktive Lieferanten</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
+            <CardTitle className="text-xs md:text-sm font-medium">Aktive Lieferanten</CardTitle>
+            <Package className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
             {statsLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
             ) : (
-              <div className="text-2xl font-bold" data-testid="text-total-suppliers">
+              <div className="text-xl md:text-2xl font-bold" data-testid="text-total-suppliers">
                 {stats?.totalSuppliers || 0}
               </div>
             )}
@@ -124,102 +161,63 @@ export default function RestaurantHome() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle>Aktuelle Bestellungen</CardTitle>
-              <CardDescription>Ihre neuesten Bestellungen</CardDescription>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+          <div>
+            <CardTitle className="text-base md:text-lg">Aktuelle Bestellungen</CardTitle>
+            <CardDescription className="text-xs md:text-sm">Ihre neuesten Bestellungen</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" className="text-xs md:text-sm" asChild>
+            <Link href="/restaurant/orders" data-testid="link-view-all-orders">Alle</Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+          {ordersLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
             </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/restaurant/orders" data-testid="link-view-all-orders">Alle anzeigen</Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {ordersLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : recentOrders && recentOrders.length > 0 ? (
-              <div className="space-y-3">
-                {recentOrders.slice(0, 5).map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex items-center justify-between p-3 rounded-md bg-muted/50"
-                    data-testid={`order-item-${order.id}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
-                        <ShoppingBag className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Bestellung #{order.id.slice(0, 8)}</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: de })}
-                        </p>
-                      </div>
+          ) : recentOrders && recentOrders.length > 0 ? (
+            <div className="space-y-2 md:space-y-3">
+              {recentOrders.slice(0, 5).map((order) => (
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between p-2 md:p-3 rounded-md bg-muted/50"
+                  data-testid={`order-item-${order.id}`}
+                >
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
+                      <ShoppingBag className="h-4 w-4 text-primary" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{order.totalAmount}€</span>
-                      <Badge className={getStatusColor(order.status)} variant="outline">
-                        {getStatusLabel(order.status)}
-                      </Badge>
+                    <div>
+                      <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                        {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: de })}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <ShoppingBag className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                <p className="text-sm text-muted-foreground">Noch keine Bestellungen</p>
-                <Button variant="outline" size="sm" className="mt-3" asChild>
-                  <Link href="/restaurant/catalog" data-testid="link-browse-catalog">Produktkatalog durchsuchen</Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle>Schnellaktionen</CardTitle>
-              <CardDescription>Häufig verwendete Funktionen</CardDescription>
+                  <div className="flex items-center gap-1.5 md:gap-2">
+                    <span className="text-xs md:text-sm font-medium">{order.totalAmount}€</span>
+                    <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5 md:px-2`} variant="outline">
+                      {getStatusLabel(order.status)}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="h-auto flex-col py-4 gap-2" asChild>
-                <Link href="/restaurant/catalog" data-testid="link-quick-catalog">
-                  <Package className="h-5 w-5" />
-                  <span className="text-sm">Katalog</span>
-                </Link>
-              </Button>
-              <Button variant="outline" className="h-auto flex-col py-4 gap-2" asChild>
-                <Link href="/restaurant/cart" data-testid="link-quick-cart">
-                  <ShoppingBag className="h-5 w-5" />
-                  <span className="text-sm">Warenkorb</span>
-                </Link>
-              </Button>
-              <Button variant="outline" className="h-auto flex-col py-4 gap-2" asChild>
-                <Link href="/restaurant/inbox" data-testid="link-quick-inbox">
-                  <MessageSquare className="h-5 w-5" />
-                  <span className="text-sm">Nachrichten</span>
-                </Link>
-              </Button>
-              <Button variant="outline" className="h-auto flex-col py-4 gap-2" asChild>
-                <Link href="/restaurant/history" data-testid="link-quick-history">
-                  <Clock className="h-5 w-5" />
-                  <span className="text-sm">Historie</span>
-                </Link>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <ShoppingBag className="h-12 w-12 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground">Noch keine Bestellungen</p>
+              <Button variant="outline" size="sm" className="mt-3" asChild>
+                <Link href="/restaurant/catalog" data-testid="link-browse-catalog">Produktkatalog durchsuchen</Link>
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
