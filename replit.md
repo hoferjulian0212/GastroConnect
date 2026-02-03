@@ -56,7 +56,7 @@ Users can upload profile pictures in Settings that are visible to other users:
 ### Mobile Responsiveness (Supplier Side)
 The supplier interface is fully mobile-responsive with the following implementation:
 - **Bottom Navigation**: `SupplierMobileNav` component provides a fixed bottom navigation bar on mobile (hidden on desktop via `md:hidden`)
-- **Navigation Items**: Übersicht, Nachrichten, Produkte, Bestellungen, and "Mehr" dropdown
+- **Navigation Items**: Home, Nachrichten, Produkte, Bestellungen, and "Mehr" dropdown
 - **"Mehr" Dropdown**: Contains Reklamationen, Bestellübersicht, and Einstellungen options
 - **Badge Indicators**: Unread message count and pending orders shown on navigation items
 - **Responsive Breakpoint**: `md:` (768px) is the primary breakpoint for mobile/desktop separation
@@ -69,7 +69,7 @@ The supplier interface is fully mobile-responsive with the following implementat
 ### Mobile Responsiveness (Restaurant Side)
 The restaurant interface is fully mobile-responsive with matching UX patterns:
 - **Bottom Navigation**: `RestaurantMobileNav` component provides a fixed bottom navigation bar on mobile (hidden on desktop via `md:hidden`)
-- **Navigation Items**: Übersicht, Nachrichten (with unread badge), Produkte, Warenkorb (with cart count badge), and "Mehr" dropdown
+- **Navigation Items**: Home, Nachrichten (with unread badge), Produkte, Warenkorb (with cart count badge), and "Mehr" dropdown
 - **"Mehr" Dropdown**: Contains Bestellungen, Historie, Reklamationen, and Einstellungen options
 - **Badge Indicators**: Unread message count on Nachrichten, cart item count on Warenkorb
 - **Responsive Breakpoint**: `md:` (768px) is the primary breakpoint for mobile/desktop separation

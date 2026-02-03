@@ -6,7 +6,7 @@ import { useChat } from "@/context/ChatContext";
 import { useQuery } from "@tanstack/react-query";
 
 const mainNavItems = [
-  { title: "Übersicht", url: "/restaurant", icon: Home },
+  { title: "Home", url: "/restaurant", icon: Home },
   { title: "Nachrichten", url: "/restaurant/inbox", icon: MessageSquare, hasBadge: true },
   { title: "Produkte", url: "/restaurant/catalog", icon: Package },
   { title: "Warenkorb", url: "/restaurant/cart", icon: ShoppingCart, hasBadge: true },

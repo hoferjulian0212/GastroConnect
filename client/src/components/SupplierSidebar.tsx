@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 
 const mainMenuItems = [
-  { title: "Übersicht", url: "/supplier", icon: Home },
+  { title: "Home", url: "/supplier", icon: Home },
   { title: "Nachrichten", url: "/supplier/inbox", icon: MessageSquare, hasBadge: true },
   { title: "Produkte", url: "/supplier/products", icon: Package },
   { title: "Bestellungen", url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
