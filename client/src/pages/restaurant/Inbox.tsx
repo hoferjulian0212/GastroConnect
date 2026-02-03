@@ -4,7 +4,7 @@ import { useUser } from "@/context/UserContext";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -348,6 +348,7 @@ export default function RestaurantInbox() {
                       >
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 shrink-0">
+                            <AvatarImage src={conv.otherUser.profileImageUrl || undefined} alt={conv.otherUser.name} />
                             <AvatarFallback className="bg-secondary/20 text-secondary">
                               {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
                             </AvatarFallback>
@@ -397,6 +398,7 @@ export default function RestaurantInbox() {
                         <ArrowLeft className="h-4 w-4" />
                       </Button>
                       <Avatar className="h-9 w-9 md:h-10 md:w-10">
+                        <AvatarImage src={selectedConv.otherUser.profileImageUrl || undefined} alt={selectedConv.otherUser.name} />
                         <AvatarFallback className="bg-secondary/20 text-secondary">
                           {selectedConv.otherUser.companyName?.charAt(0) || selectedConv.otherUser.name.charAt(0)}
                         </AvatarFallback>

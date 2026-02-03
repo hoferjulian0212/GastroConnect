@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Calendar } from "lucide-react";
@@ -83,6 +83,7 @@ export default function SupplierComplaints() {
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 md:gap-4">
                     <div className="flex items-center gap-2 md:gap-3">
                       <Avatar className="h-8 w-8 md:h-10 md:w-10">
+                        <AvatarImage src={complaint.restaurant?.profileImageUrl || undefined} alt={complaint.restaurant?.name} />
                         <AvatarFallback className="bg-primary/10 text-primary text-xs md:text-sm">
                           {complaint.restaurant?.companyName?.substring(0, 2).toUpperCase() || "??"}
                         </AvatarFallback>

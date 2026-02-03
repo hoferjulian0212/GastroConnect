@@ -12,7 +12,7 @@ import {
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/context/UserContext";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -113,6 +113,7 @@ export function SupplierSidebar() {
         {currentUser && (
           <div className="flex items-center gap-3 p-2 rounded-xl hover-elevate cursor-pointer">
             <Avatar className="h-10 w-10 rounded-xl">
+              <AvatarImage src={currentUser.profileImageUrl || undefined} alt={currentUser.name} className="rounded-xl" />
               <AvatarFallback className="bg-primary/10 text-primary font-semibold rounded-xl">
                 {currentUser.companyName?.substring(0, 2).toUpperCase() || currentUser.name.substring(0, 2).toUpperCase()}
               </AvatarFallback>
