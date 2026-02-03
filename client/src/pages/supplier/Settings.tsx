@@ -61,7 +61,7 @@ export default function SupplierSettings() {
         name: file.name,
         size: file.size,
         contentType: file.type,
-      });
+      }) as unknown as { uploadURL: string; objectPath: string };
 
       await fetch(response.uploadURL, {
         method: "PUT",

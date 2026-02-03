@@ -72,23 +72,23 @@ export default function RestaurantHistory() {
     <div className="space-y-4 md:space-y-6 overflow-x-hidden">
       <div>
         <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Bestellhistorie</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Vergangene Bestellungen und Nachbestellungen</p>
+        <p className="text-xs md:text-sm text-muted-foreground">Vergangene Bestellungen und Nachbestellungen</p>
       </div>
 
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2 md:pb-3 p-3 md:p-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             <Input
               placeholder="Nach Bestellnummer oder Lieferant suchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="pl-8 md:pl-9 h-9 md:h-10 text-sm"
               data-testid="input-search-history"
             />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (

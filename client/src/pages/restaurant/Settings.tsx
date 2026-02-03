@@ -61,7 +61,7 @@ export default function RestaurantSettings() {
         name: file.name,
         size: file.size,
         contentType: file.type,
-      });
+      }) as unknown as { uploadURL: string; objectPath: string };
 
       await fetch(response.uploadURL, {
         method: "PUT",
@@ -133,25 +133,25 @@ export default function RestaurantSettings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Einstellungen</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Verwalten Sie Ihre Restaurantdaten</p>
+        <p className="text-xs md:text-sm text-muted-foreground">Verwalten Sie Ihre Restaurantdaten</p>
       </div>
 
-      <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
+      <div className="grid gap-3 md:gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <SettingsIcon className="h-5 w-5" />
+            <CardHeader className="p-3 md:p-6">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <SettingsIcon className="h-4 w-4 md:h-5 md:w-5" />
                 Profildaten
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs md:text-sm">
                 Aktualisieren Sie Ihre Kontakt- und Unternehmensinformationen
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <div className="grid gap-4 sm:grid-cols-2">

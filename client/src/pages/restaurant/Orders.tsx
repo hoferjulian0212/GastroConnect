@@ -113,31 +113,31 @@ export default function RestaurantOrders() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Bestellungen</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Alle Ihre Bestellungen im Überblick</p>
+        <p className="text-xs md:text-sm text-muted-foreground">Alle Ihre Bestellungen im Überblick</p>
       </div>
 
       <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:w-auto lg:inline-flex">
-          <TabsTrigger value="all" data-testid="tab-all">Alle</TabsTrigger>
-          <TabsTrigger value="pending" data-testid="tab-pending">Ausstehend</TabsTrigger>
-          <TabsTrigger value="confirmed" data-testid="tab-confirmed">Bestätigt</TabsTrigger>
-          <TabsTrigger value="in_delivery" data-testid="tab-delivery">In Lieferung</TabsTrigger>
-          <TabsTrigger value="delivered" data-testid="tab-delivered">Geliefert</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:w-auto lg:inline-flex h-auto">
+          <TabsTrigger value="all" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-all">Alle</TabsTrigger>
+          <TabsTrigger value="pending" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-pending">Ausstehend</TabsTrigger>
+          <TabsTrigger value="confirmed" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-confirmed">Bestätigt</TabsTrigger>
+          <TabsTrigger value="in_delivery" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-delivery">In Lieferung</TabsTrigger>
+          <TabsTrigger value="delivered" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-delivered">Geliefert</TabsTrigger>
         </TabsList>
 
         {["all", "pending", "confirmed", "in_delivery", "delivered"].map((tab) => (
-          <TabsContent key={tab} value={tab} className="mt-6">
+          <TabsContent key={tab} value={tab} className="mt-4 md:mt-6">
             {isLoading ? (
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-40 w-full" />
                 ))}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {filterOrdersByStatus(tab === "all" ? null : tab).length > 0 ? (
                   filterOrdersByStatus(tab === "all" ? null : tab).map((order) => (
                     <OrderCard key={order.id} order={order} />

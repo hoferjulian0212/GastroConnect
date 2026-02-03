@@ -104,21 +104,21 @@ export default function Complaints() {
   const canSubmit = selectedOrderId && selectedSupplierId && title.trim() && description.trim();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <AlertCircle className="h-8 w-8 text-primary" />
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex items-center gap-2 md:gap-3">
+        <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-primary" />
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">Reklamationen</h1>
-          <p className="text-sm md:text-base text-muted-foreground">Schreiben Sie eine Reklamation zu einer Bestellung</p>
+          <p className="text-xs md:text-sm text-muted-foreground">Schreiben Sie eine Reklamation zu einer Bestellung</p>
         </div>
       </div>
 
-      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+      <div className="grid gap-3 md:gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Neue Reklamation</CardTitle>
+          <CardHeader className="p-3 md:p-6">
+            <CardTitle className="text-base md:text-lg">Neue Reklamation</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 md:space-y-4 p-3 pt-0 md:p-6 md:pt-0">
             <div className="space-y-2">
               <Label>Lieferant auswählen</Label>
               {loadingSuppliers ? (
@@ -236,27 +236,27 @@ export default function Complaints() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Bisherige Reklamationen</CardTitle>
+          <CardHeader className="p-3 md:p-6">
+            <CardTitle className="text-base md:text-lg">Bisherige Reklamationen</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
             {loadingComplaints ? (
-              <div className="space-y-3">
+              <div className="space-y-2 md:space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-20 w-full" />
+                  <Skeleton key={i} className="h-16 md:h-20 w-full" />
                 ))}
               </div>
             ) : existingComplaints && existingComplaints.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 md:space-y-3">
                 {existingComplaints.map((complaint) => (
                   <div
                     key={complaint.id}
-                    className="rounded-lg border p-4 space-y-2"
+                    className="rounded-lg border p-3 md:p-4 space-y-1.5 md:space-y-2"
                     data-testid={`complaint-${complaint.id}`}
                   >
-                    <div className="font-medium">{complaint.title}</div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{complaint.description}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="font-medium text-sm md:text-base">{complaint.title}</div>
+                    <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">{complaint.description}</p>
+                    <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
                       <span>{complaint.supplier?.companyName || "Unbekannter Lieferant"}</span>
                       <span>•</span>
                       <span>{formatDate(complaint.createdAt)}</span>
@@ -265,9 +265,9 @@ export default function Complaints() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <AlertCircle className="mx-auto h-12 w-12 mb-3 opacity-50" />
-                <p>Noch keine Reklamationen vorhanden</p>
+              <div className="text-center py-6 md:py-8 text-muted-foreground">
+                <AlertCircle className="mx-auto h-10 w-10 md:h-12 md:w-12 mb-2 md:mb-3 opacity-50" />
+                <p className="text-sm md:text-base">Noch keine Reklamationen vorhanden</p>
               </div>
             )}
           </CardContent>

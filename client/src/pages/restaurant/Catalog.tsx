@@ -82,29 +82,29 @@ export default function RestaurantCatalog() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Produktkatalog</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Durchsuchen Sie Produkte von allen Lieferanten</p>
+        <p className="text-xs md:text-sm text-muted-foreground">Durchsuchen Sie Produkte von allen Lieferanten</p>
       </div>
 
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <CardHeader className="pb-2 md:pb-3 p-3 md:p-6">
+          <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
               <Input
                 placeholder="Produkte suchen..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-8 md:pl-9 h-9 md:h-10 text-sm"
                 data-testid="input-search-products"
               />
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-row gap-2">
               <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
-                <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-supplier">
-                  <Store className="h-4 w-4 mr-2 shrink-0" />
+                <SelectTrigger className="w-full sm:w-[150px] md:w-[180px] h-9 md:h-10 text-xs md:text-sm" data-testid="select-supplier">
+                  <Store className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 shrink-0" />
                   <SelectValue placeholder="Lieferant" />
                 </SelectTrigger>
                 <SelectContent>
@@ -117,8 +117,8 @@ export default function RestaurantCatalog() {
                 </SelectContent>
               </Select>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-category">
-                  <Filter className="h-4 w-4 mr-2 shrink-0" />
+                <SelectTrigger className="w-full sm:w-[150px] md:w-[180px] h-9 md:h-10 text-xs md:text-sm" data-testid="select-category">
+                  <Filter className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 shrink-0" />
                   <SelectValue placeholder="Kategorie" />
                 </SelectTrigger>
                 <SelectContent>
@@ -133,7 +133,7 @@ export default function RestaurantCatalog() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
           {productsLoading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (

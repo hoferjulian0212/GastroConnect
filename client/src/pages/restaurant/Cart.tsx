@@ -100,10 +100,10 @@ export default function RestaurantCart() {
   ).toFixed(2) || "0.00";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Warenkorb</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Überprüfen Sie Ihre ausgewählten Produkte</p>
+        <p className="text-xs md:text-sm text-muted-foreground">Überprüfen Sie Ihre ausgewählten Produkte</p>
       </div>
 
       {isLoading ? (
@@ -113,23 +113,23 @@ export default function RestaurantCart() {
           ))}
         </div>
       ) : cartItems && cartItems.length > 0 ? (
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-4">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-3 md:space-y-4">
             {Object.entries(groupedBySupplier || {}).map(([supplierId, { supplier, items }]) => (
               <Card key={supplierId} data-testid={`cart-supplier-${supplierId}`}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary/20">
-                      <Package className="h-5 w-5 text-secondary" />
+                <CardHeader className="pb-2 md:pb-3 p-3 md:p-6">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-md bg-secondary/20">
+                      <Package className="h-4 w-4 md:h-5 md:w-5 text-secondary" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">{supplier.companyName || supplier.name}</CardTitle>
-                      <CardDescription>{items.length} Artikel</CardDescription>
+                      <CardTitle className="text-base md:text-lg">{supplier.companyName || supplier.name}</CardTitle>
+                      <CardDescription className="text-xs md:text-sm">{items.length} Artikel</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+                  <div className="space-y-2 md:space-y-4">
                     {items.map((item) => (
                       <div
                         key={item.id}
@@ -202,8 +202,8 @@ export default function RestaurantCart() {
                     ))}
                   </div>
                 </CardContent>
-                <CardFooter className="border-t border-border pt-4">
-                  <div className="flex justify-between w-full">
+                <CardFooter className="border-t border-border pt-3 md:pt-4 p-3 md:p-6">
+                  <div className="flex justify-between w-full text-sm md:text-base">
                     <span className="text-muted-foreground">Zwischensumme</span>
                     <span className="font-medium">{calculateTotal(items)}€</span>
                   </div>
@@ -214,10 +214,10 @@ export default function RestaurantCart() {
 
           <div className="lg:col-span-1">
             <Card className="sticky top-4">
-              <CardHeader>
-                <CardTitle>Bestellübersicht</CardTitle>
+              <CardHeader className="p-3 md:p-6">
+                <CardTitle className="text-base md:text-lg">Bestellübersicht</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 md:space-y-4 p-3 pt-0 md:p-6 md:pt-0">
                 <div className="space-y-2">
                   {Object.entries(groupedBySupplier || {}).map(([supplierId, { supplier, items }]) => (
                     <div key={supplierId} className="flex justify-between text-sm">
@@ -227,12 +227,12 @@ export default function RestaurantCart() {
                   ))}
                 </div>
                 <Separator />
-                <div className="flex justify-between font-bold text-lg">
+                <div className="flex justify-between font-bold text-base md:text-lg">
                   <span>Gesamt</span>
                   <span data-testid="text-total-amount">{grandTotal}€</span>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Anmerkungen zur Bestellung</label>
+                <div className="space-y-1.5 md:space-y-2">
+                  <label className="text-xs md:text-sm font-medium">Anmerkungen zur Bestellung</label>
                   <Textarea
                     placeholder="Besondere Wünsche oder Hinweise..."
                     value={orderNotes}
@@ -242,10 +242,10 @@ export default function RestaurantCart() {
                   />
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="p-3 md:p-6">
                 <Button
-                  className="w-full gap-2"
-                  size="lg"
+                  className="w-full gap-2 text-sm md:text-base"
+                  size="default"
                   onClick={() => createOrderMutation.mutate()}
                   disabled={createOrderMutation.isPending}
                   data-testid="button-checkout"
