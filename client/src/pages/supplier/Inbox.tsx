@@ -218,7 +218,7 @@ export default function SupplierInbox() {
                 />
               </div>
             </CardHeader>
-            <ScrollArea className="flex-1">
+            <div className="flex-1 overflow-y-auto">
               <div className="px-2 pb-2">
                 {conversationsLoading ? (
                   <div className="space-y-2">
@@ -287,7 +287,7 @@ export default function SupplierInbox() {
                   </div>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </div>
 
           <div className={`flex-1 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
