@@ -34,7 +34,7 @@ Preferred communication style: Simple, everyday language.
 - **Database Migrations**: Drizzle Kit for schema push operations
 
 ### Core Data Models
-- **Users**: Role-based (restaurant/supplier) with company information and profile picture support (profileImageUrl)
+- **Users**: Role-based (restaurant/supplier) with company information
 - **Products**: Supplier-owned product catalog with pricing and inventory
 - **Orders**: Transaction records linking restaurants to suppliers with status tracking
 - **Cart Items**: Temporary shopping cart storage per restaurant
@@ -45,39 +45,6 @@ The application enforces strict role separation where each user type has complet
 - Separate sidebar components (`RestaurantSidebar`, `SupplierSidebar`)
 - Separate route handlers and page components
 - Role switching via button toggle (development mode - no authentication currently implemented)
-
-### Profile Picture Feature
-Users can upload profile pictures in Settings that are visible to other users:
-- **Upload Flow**: Uses Object Storage presigned URL flow via `/api/uploads/request-url`, files uploaded directly to GCS
-- **Storage**: Profile image path stored in `profileImageUrl` field in users table, normalized to `/objects/...` format
-- **Display Locations**: Sidebars (user footer), Inbox (conversation list and message headers), Complaints pages, Settings pages
-- **UI**: Camera icon overlay on avatar with hover effect, 5MB file size limit, client-side validation
-
-### Mobile Responsiveness (Supplier Side)
-The supplier interface is fully mobile-responsive with the following implementation:
-- **Bottom Navigation**: `SupplierMobileNav` component provides a fixed bottom navigation bar on mobile (hidden on desktop via `md:hidden`)
-- **Navigation Items**: Übersicht, Nachrichten, Produkte, Bestellungen, and "Mehr" dropdown
-- **"Mehr" Dropdown**: Contains Reklamationen, Bestellübersicht, and Einstellungen options
-- **Badge Indicators**: Unread message count and pending orders shown on navigation items
-- **Responsive Breakpoint**: `md:` (768px) is the primary breakpoint for mobile/desktop separation
-- **Layout Patterns**:
-  - Desktop: Sidebar visible, bottom nav hidden
-  - Mobile: Sidebar hidden, bottom nav visible, content has `pb-20` for nav spacing
-- **Inbox Behavior**: On mobile, conversation list and message view toggle with back button
-- **All supplier pages adapted**: Home, Inbox, Orders, Products, Complaints, History, Settings
-
-### Mobile Responsiveness (Restaurant Side)
-The restaurant interface is fully mobile-responsive with matching UX patterns:
-- **Bottom Navigation**: `RestaurantMobileNav` component provides a fixed bottom navigation bar on mobile (hidden on desktop via `md:hidden`)
-- **Navigation Items**: Übersicht, Nachrichten (with unread badge), Produkte, Warenkorb (with cart count badge), and "Mehr" dropdown
-- **"Mehr" Dropdown**: Contains Bestellungen, Historie, Reklamationen, and Einstellungen options
-- **Badge Indicators**: Unread message count on Nachrichten, cart item count on Warenkorb
-- **Responsive Breakpoint**: `md:` (768px) is the primary breakpoint for mobile/desktop separation
-- **Layout Patterns**:
-  - Desktop: Sidebar visible, bottom nav hidden, cart button in header
-  - Mobile: Sidebar hidden, bottom nav visible, cart button in header hidden (accessible via bottom nav), content has `pb-20` for nav spacing
-- **Inbox Behavior**: On mobile, conversation list and message view toggle with back button (same pattern as supplier)
-- **All restaurant pages adapted**: Home, Inbox, Catalog, Cart, Orders, History, Complaints, Settings
 
 ## External Dependencies
 

@@ -28,10 +28,7 @@ export default function SupplierOrders() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent', currentUser?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/orders/recent'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier/stats?userId=${currentUser?.id}`] });
       toast({
         title: "Status aktualisiert",
         description: "Der Bestellstatus wurde erfolgreich aktualisiert.",
@@ -87,37 +84,37 @@ export default function SupplierOrders() {
 
   const OrderCard = ({ order }: { order: OrderWithDetails }) => (
     <Card className="hover-elevate" data-testid={`order-card-${order.id}`}>
-      <CardContent className="p-3 md:p-4">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 md:gap-4">
-          <div className="flex items-start gap-3 md:gap-4">
-            <div className={`flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-md shrink-0 ${getStatusColor(order.status)}`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className={`flex h-12 w-12 items-center justify-center rounded-md ${getStatusColor(order.status)}`}>
               {getStatusIcon(order.status)}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-                <p className="font-medium text-sm md:text-base">#{order.id.slice(0, 8)}</p>
-                <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs`} variant="outline">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-medium">Bestellung #{order.id.slice(0, 8)}</p>
+                <Badge className={getStatusColor(order.status)} variant="outline">
                   {getStatusLabel(order.status)}
                 </Badge>
               </div>
-              <p className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1 flex items-center gap-1 truncate">
-                <Building2 className="h-3 w-3 shrink-0" />
-                <span className="truncate">{order.restaurant?.companyName || order.restaurant?.name || "Unbekannt"}</span>
+              <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                <Building2 className="h-3 w-3" />
+                {order.restaurant?.companyName || order.restaurant?.name || "Unbekanntes Restaurant"}
               </p>
-              <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                {format(new Date(order.createdAt), "dd.MM.yy HH:mm", { locale: de })}
+              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}
               </p>
             </div>
           </div>
-          <div className="flex items-center justify-between md:flex-col md:text-right gap-2 md:space-y-2 border-t md:border-t-0 pt-2 md:pt-0">
-            <p className="text-base md:text-lg font-bold">{order.totalAmount}€</p>
+          <div className="text-right space-y-2">
+            <p className="text-lg font-bold">{order.totalAmount}€</p>
             {order.status !== "delivered" && order.status !== "cancelled" && (
               <Select
                 value={order.status}
                 onValueChange={(value) => updateStatusMutation.mutate({ orderId: order.id, status: value })}
               >
-                <SelectTrigger className="w-[120px] md:w-[140px] text-xs md:text-sm" data-testid={`select-status-${order.id}`}>
+                <SelectTrigger className="w-[140px]" data-testid={`select-status-${order.id}`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -132,12 +129,12 @@ export default function SupplierOrders() {
           </div>
         </div>
         {order.items && order.items.length > 0 && (
-          <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-border">
-            <div className="space-y-1.5 md:space-y-2">
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="space-y-2">
               {order.items.map((item) => (
-                <div key={item.id} className="flex justify-between text-xs md:text-sm">
-                  <span className="text-muted-foreground flex items-center gap-1.5 md:gap-2">
-                    <Package className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Package className="h-3 w-3" />
                     {item.quantity}x {item.productName}
                   </span>
                   <span>{item.totalPrice}€</span>
@@ -147,9 +144,9 @@ export default function SupplierOrders() {
           </div>
         )}
         {order.notes && (
-          <div className="mt-3 md:mt-4 p-2 md:p-3 rounded-md bg-muted/50">
-            <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5 md:mb-1">Anmerkungen:</p>
-            <p className="text-xs md:text-sm">{order.notes}</p>
+          <div className="mt-4 p-3 rounded-md bg-muted/50">
+            <p className="text-xs font-medium text-muted-foreground mb-1">Anmerkungen:</p>
+            <p className="text-sm">{order.notes}</p>
           </div>
         )}
       </CardContent>
@@ -157,30 +154,30 @@ export default function SupplierOrders() {
   );
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Aufträge</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Verwalten Sie eingehende Bestellungen</p>
+        <h1 className="text-2xl font-bold" data-testid="text-page-title">Aufträge</h1>
+        <p className="text-muted-foreground">Verwalten Sie eingehende Bestellungen</p>
       </div>
 
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="w-full overflow-x-auto flex md:grid md:grid-cols-5 lg:w-auto lg:inline-flex">
-          <TabsTrigger value="pending" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-pending">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
+          <TabsTrigger value="pending" data-testid="tab-pending">
             Neu
             {filterOrdersByStatus("pending").length > 0 && (
-              <Badge variant="secondary" className="ml-1 md:ml-2 text-[10px] md:text-xs px-1.5">
+              <Badge variant="secondary" className="ml-2">
                 {filterOrdersByStatus("pending").length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="confirmed" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-confirmed">Bestätigt</TabsTrigger>
-          <TabsTrigger value="in_delivery" className="text-xs md:text-sm px-2 md:px-3 whitespace-nowrap" data-testid="tab-delivery">Lieferung</TabsTrigger>
-          <TabsTrigger value="delivered" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-delivered">Geliefert</TabsTrigger>
-          <TabsTrigger value="all" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-all">Alle</TabsTrigger>
+          <TabsTrigger value="confirmed" data-testid="tab-confirmed">Bestätigt</TabsTrigger>
+          <TabsTrigger value="in_delivery" data-testid="tab-delivery">In Lieferung</TabsTrigger>
+          <TabsTrigger value="delivered" data-testid="tab-delivered">Geliefert</TabsTrigger>
+          <TabsTrigger value="all" data-testid="tab-all">Alle</TabsTrigger>
         </TabsList>
 
         {["pending", "confirmed", "in_delivery", "delivered", "all"].map((tab) => (
-          <TabsContent key={tab} value={tab} className="mt-4 md:mt-6">
+          <TabsContent key={tab} value={tab} className="mt-6">
             {isLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (

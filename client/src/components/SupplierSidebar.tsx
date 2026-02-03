@@ -1,6 +1,5 @@
 import { Link, useLocation } from "wouter";
 import { Home, MessageSquare, Package, ClipboardList, History, Settings, AlertCircle, LogOut } from "lucide-react";
-import logoImage from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-Photoroom_1769969436354.png";
 import {
   Sidebar,
   SidebarContent,
@@ -12,7 +11,7 @@ import {
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useUser } from "@/context/UserContext";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -35,10 +34,8 @@ export function SupplierSidebar() {
   const { currentUser } = useUser();
 
   const { data: unreadCount } = useQuery<{ count: number }>({
-    queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`],
+    queryKey: [`/api/conversations/unread/${currentUser?.id}`],
     enabled: !!currentUser?.id,
-    staleTime: 0,
-    refetchOnMount: "always",
   });
 
   const { data: pendingOrders } = useQuery<{ count: number }>({
@@ -83,12 +80,10 @@ export function SupplierSidebar() {
   return (
     <Sidebar className="border-r-0">
       <SidebarHeader className="p-6 pb-8">
-        <div className="flex items-center gap-0">
-          <img 
-            src={logoImage} 
-            alt="GastroConnect Logo" 
-            className="h-14 w-14 object-contain dark:invert"
-          />
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg shadow-sm">
+            G
+          </div>
           <span className="font-semibold text-lg text-foreground">GastroConnect</span>
         </div>
       </SidebarHeader>
@@ -104,16 +99,15 @@ export function SupplierSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 mt-auto">
-        <SidebarMenu className="space-y-1 mb-3">
+        <SidebarMenu className="space-y-1 mb-4">
           {bottomMenuItems.map((item) => renderMenuItem(item, false))}
         </SidebarMenu>
         
-        <SidebarSeparator className="mb-3" />
+        <SidebarSeparator className="my-4" />
         
         {currentUser && (
           <div className="flex items-center gap-3 p-2 rounded-xl hover-elevate cursor-pointer">
             <Avatar className="h-10 w-10 rounded-xl">
-              <AvatarImage src={currentUser.profileImageUrl || undefined} alt={currentUser.name} className="rounded-xl" />
               <AvatarFallback className="bg-primary/10 text-primary font-semibold rounded-xl">
                 {currentUser.companyName?.substring(0, 2).toUpperCase() || currentUser.name.substring(0, 2).toUpperCase()}
               </AvatarFallback>

@@ -60,20 +60,20 @@ export default function RestaurantOrders() {
 
   const OrderCard = ({ order }: { order: OrderWithDetails }) => (
     <Card className="hover-elevate" data-testid={`order-card-${order.id}`}>
-      <CardContent className="p-3 md:p-4">
-        <div className="flex items-start justify-between gap-2 md:gap-4">
-          <div className="flex items-start gap-2 md:gap-4">
-            <div className={`flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-md ${getStatusColor(order.status)}`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className={`flex h-12 w-12 items-center justify-center rounded-md ${getStatusColor(order.status)}`}>
               {getStatusIcon(order.status)}
             </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1 md:gap-2">
-                <p className="font-medium text-sm md:text-base">Bestellung #{order.id.slice(0, 8)}</p>
-                <Badge className={`${getStatusColor(order.status)} text-xs`} variant="outline">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">Bestellung #{order.id.slice(0, 8)}</p>
+                <Badge className={getStatusColor(order.status)} variant="outline">
                   {getStatusLabel(order.status)}
                 </Badge>
               </div>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1 truncate">
+              <p className="text-sm text-muted-foreground mt-1">
                 {order.supplier?.companyName || order.supplier?.name || "Unbekannter Lieferant"}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
@@ -82,8 +82,8 @@ export default function RestaurantOrders() {
               </p>
             </div>
           </div>
-          <div className="text-right shrink-0">
-            <p className="text-base md:text-lg font-bold">{order.totalAmount}€</p>
+          <div className="text-right">
+            <p className="text-lg font-bold">{order.totalAmount}€</p>
             <p className="text-xs text-muted-foreground">
               {order.items?.length || 0} Artikel
             </p>
@@ -115,12 +115,12 @@ export default function RestaurantOrders() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Bestellungen</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Alle Ihre Bestellungen im Überblick</p>
+        <h1 className="text-2xl font-bold" data-testid="text-page-title">Bestellungen</h1>
+        <p className="text-muted-foreground">Alle Ihre Bestellungen im Überblick</p>
       </div>
 
       <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:w-auto lg:inline-flex">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
           <TabsTrigger value="all" data-testid="tab-all">Alle</TabsTrigger>
           <TabsTrigger value="pending" data-testid="tab-pending">Ausstehend</TabsTrigger>
           <TabsTrigger value="confirmed" data-testid="tab-confirmed">Bestätigt</TabsTrigger>

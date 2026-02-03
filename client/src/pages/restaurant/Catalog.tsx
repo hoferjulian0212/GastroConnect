@@ -84,8 +84,8 @@ export default function RestaurantCatalog() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Produktkatalog</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Durchsuchen Sie Produkte von allen Lieferanten</p>
+        <h1 className="text-2xl font-bold" data-testid="text-page-title">Produktkatalog</h1>
+        <p className="text-muted-foreground">Durchsuchen Sie Produkte von allen Lieferanten</p>
       </div>
 
       <Card>
@@ -101,10 +101,10 @@ export default function RestaurantCatalog() {
                 data-testid="input-search-products"
               />
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex gap-2">
               <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
-                <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-supplier">
-                  <Store className="h-4 w-4 mr-2 shrink-0" />
+                <SelectTrigger className="w-[180px]" data-testid="select-supplier">
+                  <Store className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Lieferant" />
                 </SelectTrigger>
                 <SelectContent>
@@ -117,8 +117,8 @@ export default function RestaurantCatalog() {
                 </SelectContent>
               </Select>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-category">
-                  <Filter className="h-4 w-4 mr-2 shrink-0" />
+                <SelectTrigger className="w-[180px]" data-testid="select-category">
+                  <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Kategorie" />
                 </SelectTrigger>
                 <SelectContent>
@@ -141,12 +141,12 @@ export default function RestaurantCatalog() {
               ))}
             </div>
           ) : filteredProducts && filteredProducts.length > 0 ? (
-            <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredProducts.map((product) => (
                 <Card key={product.id} className="hover-elevate" data-testid={`product-card-${product.id}`}>
                   <CardContent className="p-3 flex gap-3">
                     {product.imageUrl ? (
-                      <div className="w-20 h-20 md:w-28 md:h-28 shrink-0 rounded-lg overflow-hidden bg-muted">
+                      <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-muted">
                         <img 
                           src={product.imageUrl} 
                           alt={product.name}
@@ -154,19 +154,19 @@ export default function RestaurantCatalog() {
                         />
                       </div>
                     ) : (
-                      <div className="w-20 h-20 md:w-28 md:h-28 shrink-0 rounded-lg bg-muted flex items-center justify-center">
-                        <Package className="h-8 w-8 md:h-10 md:w-10 text-muted-foreground/30" />
+                      <div className="w-20 h-20 shrink-0 rounded-lg bg-muted flex items-center justify-center">
+                        <Package className="h-8 w-8 text-muted-foreground/30" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-1">
-                        <h3 className="font-medium text-sm md:text-base line-clamp-1">{product.name}</h3>
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-medium line-clamp-1">{product.name}</h3>
                         {product.inStock ? (
-                          <Badge variant="outline" className="shrink-0 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
+                          <Badge variant="outline" className="shrink-0 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs px-1.5 py-0">
                             Verfügbar
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="shrink-0 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
+                          <Badge variant="outline" className="shrink-0 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-xs px-1.5 py-0">
                             Nicht vorrätig
                           </Badge>
                         )}
@@ -175,10 +175,10 @@ export default function RestaurantCatalog() {
                         {product.supplier?.companyName || product.supplier?.name}
                       </p>
                       <div className="flex items-center gap-1 mt-1">
-                        <span className="font-bold text-sm md:text-base">{product.price}€</span>
+                        <span className="font-bold">{product.price}€</span>
                         <span className="text-xs text-muted-foreground">/{product.unit}</span>
                       </div>
-                      <div className="flex items-center gap-1 md:gap-2 mt-2 justify-end flex-wrap">
+                      <div className="flex items-center gap-2 mt-2">
                         <div className="flex items-center border border-border rounded-md">
                           <Button
                             variant="ghost"
@@ -206,14 +206,13 @@ export default function RestaurantCatalog() {
                         </div>
                         <Button
                           size="sm"
-                          className="gap-1 text-xs md:text-sm"
+                          className="flex-1 gap-1"
                           disabled={!product.inStock || addToCartMutation.isPending}
                           onClick={() => handleAddToCart(product)}
                           data-testid={`button-add-to-cart-${product.id}`}
                         >
                           <ShoppingCart className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Hinzufügen</span>
-                          <span className="sm:hidden">+</span>
+                          Hinzufügen
                         </Button>
                       </div>
                     </div>

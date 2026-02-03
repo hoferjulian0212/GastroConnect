@@ -7,14 +7,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
-import { Button } from "@/components/ui/button";
-import { ShoppingCart } from "lucide-react";
-import { Link } from "wouter";
-import { Badge } from "@/components/ui/badge";
 import { RestaurantSidebar } from "@/components/RestaurantSidebar";
 import { SupplierSidebar } from "@/components/SupplierSidebar";
-import { SupplierMobileNav } from "@/components/SupplierMobileNav";
-import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect } from "react";
 import type { User } from "@shared/schema";
@@ -27,14 +21,12 @@ import RestaurantCatalog from "@/pages/restaurant/Catalog";
 import RestaurantCart from "@/pages/restaurant/Cart";
 import RestaurantHistory from "@/pages/restaurant/History";
 import RestaurantSettings from "@/pages/restaurant/Settings";
-import RestaurantComplaints from "@/pages/restaurant/Complaints";
 import SupplierHome from "@/pages/supplier/Home";
 import SupplierInbox from "@/pages/supplier/Inbox";
 import SupplierProducts from "@/pages/supplier/Products";
 import SupplierOrders from "@/pages/supplier/Orders";
 import SupplierHistory from "@/pages/supplier/History";
 import SupplierSettings from "@/pages/supplier/Settings";
-import SupplierComplaints from "@/pages/supplier/Complaints";
 
 function RestaurantRouter() {
   return (
@@ -45,7 +37,6 @@ function RestaurantRouter() {
       <Route path="/restaurant/catalog" component={RestaurantCatalog} />
       <Route path="/restaurant/cart" component={RestaurantCart} />
       <Route path="/restaurant/history" component={RestaurantHistory} />
-      <Route path="/restaurant/complaints" component={RestaurantComplaints} />
       <Route path="/restaurant/settings" component={RestaurantSettings} />
       <Route component={NotFound} />
     </Switch>
@@ -60,7 +51,6 @@ function SupplierRouter() {
       <Route path="/supplier/products" component={SupplierProducts} />
       <Route path="/supplier/orders" component={SupplierOrders} />
       <Route path="/supplier/history" component={SupplierHistory} />
-      <Route path="/supplier/complaints" component={SupplierComplaints} />
       <Route path="/supplier/settings" component={SupplierSettings} />
       <Route component={NotFound} />
     </Switch>
@@ -96,35 +86,6 @@ function UserLoader() {
   return null;
 }
 
-function CartButton() {
-  const { currentUser } = useUser();
-  const [, setLocation] = useLocation();
-  
-  const { data: cartCount } = useQuery<{ count: number }>({
-    queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`],
-    enabled: !!currentUser?.id,
-  });
-
-  const count = cartCount?.count || 0;
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => setLocation("/restaurant/cart")}
-      className="relative"
-      data-testid="button-cart-header"
-    >
-      <ShoppingCart className="h-5 w-5" />
-      {count > 0 && (
-        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-medium">
-          {count}
-        </span>
-      )}
-    </Button>
-  );
-}
-
 function AppLayout() {
   const { currentRole, isLoading } = useUser();
   const [location] = useLocation();
@@ -152,35 +113,19 @@ function AppLayout() {
       ) : (
         <SidebarProvider style={sidebarStyle}>
           <div className="flex h-screen w-full">
-            <div className="hidden md:block">
-              {currentRole === "restaurant" ? (
-                <RestaurantSidebar />
-              ) : (
-                <SupplierSidebar />
-              )}
-            </div>
+            {currentRole === "restaurant" ? <RestaurantSidebar /> : <SupplierSidebar />}
             <div className="flex flex-col flex-1 min-w-0">
               <header className="flex items-center justify-between gap-4 p-3 border-b border-border bg-background sticky top-0 z-10">
                 <div className="flex items-center gap-2">
-                  <div className="hidden md:block">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  </div>
+                  <SidebarTrigger data-testid="button-sidebar-toggle" />
                   <RoleSwitcher />
                 </div>
-                <div className="flex items-center gap-2">
-                  {currentRole === "restaurant" && (
-                    <div className="hidden md:block">
-                      <CartButton />
-                    </div>
-                  )}
-                  <ThemeToggle />
-                </div>
+                <ThemeToggle />
               </header>
-              <main className="flex-1 overflow-auto p-4 md:p-6 pb-20 md:pb-6">
+              <main className="flex-1 overflow-auto p-6">
                 {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
               </main>
             </div>
-            {currentRole === "supplier" ? <SupplierMobileNav /> : <RestaurantMobileNav />}
           </div>
         </SidebarProvider>
       )}
