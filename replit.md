@@ -34,7 +34,7 @@ Preferred communication style: Simple, everyday language.
 - **Database Migrations**: Drizzle Kit for schema push operations
 
 ### Core Data Models
-- **Users**: Role-based (restaurant/supplier) with company information
+- **Users**: Role-based (restaurant/supplier) with company information and profile picture support (profileImageUrl)
 - **Products**: Supplier-owned product catalog with pricing and inventory
 - **Orders**: Transaction records linking restaurants to suppliers with status tracking
 - **Cart Items**: Temporary shopping cart storage per restaurant
@@ -45,6 +45,13 @@ The application enforces strict role separation where each user type has complet
 - Separate sidebar components (`RestaurantSidebar`, `SupplierSidebar`)
 - Separate route handlers and page components
 - Role switching via button toggle (development mode - no authentication currently implemented)
+
+### Profile Picture Feature
+Users can upload profile pictures in Settings that are visible to other users:
+- **Upload Flow**: Uses Object Storage presigned URL flow via `/api/uploads/request-url`, files uploaded directly to GCS
+- **Storage**: Profile image path stored in `profileImageUrl` field in users table, normalized to `/objects/...` format
+- **Display Locations**: Sidebars (user footer), Inbox (conversation list and message headers), Complaints pages, Settings pages
+- **UI**: Camera icon overlay on avatar with hover effect, 5MB file size limit, client-side validation
 
 ### Mobile Responsiveness (Supplier Side)
 The supplier interface is fully mobile-responsive with the following implementation:
