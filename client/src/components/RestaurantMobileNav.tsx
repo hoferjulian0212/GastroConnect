@@ -89,7 +89,7 @@ export function RestaurantMobileNav() {
                 data-testid={`restaurant-mobile-nav-more-${item.url.split('/').pop()}`}
               >
                 <item.icon className="h-4 w-4" />
-                <span className="text-sm font-medium">{item.title}</span>
+                <span className="text-sm font-semibold">{item.title}</span>
               </button>
             );
           })}
@@ -110,7 +110,7 @@ export function RestaurantMobileNav() {
                 className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg min-w-[60px] relative transition-colors ${
                   isActive 
                     ? "text-primary" 
-                    : "text-muted-foreground"
+                    : "text-foreground/70"
                 }`}
                 data-testid={`restaurant-mobile-nav-${item.url.split('/').pop()}`}
               >
@@ -122,7 +122,7 @@ export function RestaurantMobileNav() {
                     </span>
                   )}
                 </div>
-                <span className={`text-[10px] font-medium ${isActive ? "text-primary" : ""}`}>
+                <span className={`text-[10px] font-semibold ${isActive ? "text-primary" : ""}`}>
                   {item.title}
                 </span>
               </Link>
@@ -134,12 +134,12 @@ export function RestaurantMobileNav() {
             className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg min-w-[60px] relative transition-colors ${
               isMoreActive || isMoreOpen
                 ? "text-primary" 
-                : "text-muted-foreground"
+                : "text-foreground/70"
             }`}
             data-testid="restaurant-mobile-nav-more"
           >
             <MoreHorizontal className={`h-5 w-5 ${isMoreActive || isMoreOpen ? "text-primary" : ""}`} />
-            <span className={`text-[10px] font-medium ${isMoreActive || isMoreOpen ? "text-primary" : ""}`}>
+            <span className={`text-[10px] font-semibold ${isMoreActive || isMoreOpen ? "text-primary" : ""}`}>
               Mehr
             </span>
           </button>
