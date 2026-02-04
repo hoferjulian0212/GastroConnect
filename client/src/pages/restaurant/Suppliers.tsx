@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Mail, Phone, Package, MessageSquare } from "lucide-react";
+import { Search, Package, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import type { User } from "@shared/schema";
@@ -114,8 +114,8 @@ export default function RestaurantSuppliers() {
                     Katalog
                   </Button>
                   <Button 
-                    variant="ghost" 
-                    className="gap-2"
+                    variant="outline" 
+                    className="flex-1 gap-2"
                     onClick={() => handleMessage(supplier.id)}
                     data-testid={`button-message-${supplier.id}`}
                   >
@@ -126,18 +126,6 @@ export default function RestaurantSuppliers() {
               </CardContent>
             </Card>
           ))}
-
-          <Card 
-            className="cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01] border-2 border-dashed border-primary/30 bg-primary/5"
-            data-testid="card-add-supplier"
-          >
-            <CardContent className="p-4 md:p-6 h-full flex flex-col items-center justify-center min-h-[240px]">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                <Plus className="h-6 w-6 text-primary" />
-              </div>
-              <span className="text-sm font-medium text-primary">Neuen Lieferanten hinzufügen</span>
-            </CardContent>
-          </Card>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-12 text-center">

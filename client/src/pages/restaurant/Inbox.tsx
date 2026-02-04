@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { useChat } from "@/context/ChatContext";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -89,6 +90,7 @@ export default function RestaurantInbox() {
   const { currentUser } = useUser();
   const { setIsInChat } = useChat();
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -98,6 +100,7 @@ export default function RestaurantInbox() {
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
   const [complaintOrderId, setComplaintOrderId] = useState<string>("");
   const [complaintTitle, setComplaintTitle] = useState("");
+  const [pendingSupplierRedirect, setPendingSupplierRedirect] = useState<string | null>(null);
   const [complaintDescription, setComplaintDescription] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -106,6 +109,14 @@ export default function RestaurantInbox() {
     setIsInChat(isMobile && selectedConversation !== null);
     return () => setIsInChat(false);
   }, [selectedConversation, setIsInChat]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const toSupplierId = params.get("to");
+    if (toSupplierId && currentUser?.id) {
+      setPendingSupplierRedirect(toSupplierId);
+    }
+  }, [location, currentUser?.id]);
 
   const { data: orderDetail } = useQuery<OrderWithDetails>({
     queryKey: ["/api/orders", orderDetailId],
@@ -131,6 +142,35 @@ export default function RestaurantInbox() {
     queryKey: [`/api/conversations/${selectedConversation}/messages`],
     enabled: !!selectedConversation,
   });
+
+  useEffect(() => {
+    const createAndSelectConversation = async () => {
+      if (pendingSupplierRedirect && currentUser?.id && conversations) {
+        const existingConv = conversations.find(c => c.otherUser.id === pendingSupplierRedirect);
+        if (existingConv) {
+          setSelectedConversation(existingConv.id);
+          setPendingSupplierRedirect(null);
+          setLocation("/restaurant/inbox");
+        } else {
+          try {
+            const response = await apiRequest("POST", "/api/conversations", {
+              restaurantId: currentUser.id,
+              supplierId: pendingSupplierRedirect,
+            });
+            const newConversation = await response.json();
+            queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser.id}`] });
+            setSelectedConversation(newConversation.id);
+            setPendingSupplierRedirect(null);
+            setLocation("/restaurant/inbox");
+          } catch (error) {
+            console.error("Failed to create conversation:", error);
+            setPendingSupplierRedirect(null);
+          }
+        }
+      }
+    };
+    createAndSelectConversation();
+  }, [pendingSupplierRedirect, currentUser?.id, conversations, setLocation]);
 
   const selectedConv = conversations?.find(c => c.id === selectedConversation);
   const supplierId = selectedConv?.otherUser.id;

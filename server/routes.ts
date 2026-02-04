@@ -541,6 +541,19 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/conversations", async (req, res) => {
+    try {
+      const { restaurantId, supplierId } = req.body;
+      if (!restaurantId || !supplierId) {
+        return res.status(400).json({ error: "restaurantId and supplierId required" });
+      }
+      const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
+      res.json(conversation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create conversation" });
+    }
+  });
+
   // ===== STATS =====
   app.get("/api/restaurant/stats", async (req, res) => {
     try {

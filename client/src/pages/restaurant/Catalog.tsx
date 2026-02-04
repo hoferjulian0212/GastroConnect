@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,10 +17,19 @@ import { useToast } from "@/hooks/use-toast";
 export default function RestaurantCatalog() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const [location] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const supplierParam = params.get("supplier");
+    if (supplierParam) {
+      setSelectedSupplier(supplierParam);
+    }
+  }, [location]);
 
   const { data: suppliers, isLoading: suppliersLoading } = useQuery<User[]>({
     queryKey: ["/api/suppliers"],
