@@ -10,6 +10,23 @@ The application enables restaurants to browse supplier catalogs, manage shopping
 
 Preferred communication style: Simple, everyday language.
 
+## UI Design System
+
+### Global Styles
+- **Font Family**: Inter (system-ui fallback)
+- **Background**: Gray-50 (`220 14% 96%`) for page backgrounds
+- **Surfaces**: White (`0 0% 100%`) for cards and sidebars
+- **Primary Color**: Indigo-600 (`239 84% 67%`) for primary actions and accents
+
+### Component Styles
+- **Cards**: `bg-white`, `rounded-xl`, `border border-gray-200`, `shadow-sm`
+- **Tables**: `divide-y divide-border` with uppercase, `tracking-wider` headers
+- **Buttons**: `rounded-lg` with `transition-all duration-200` effects
+
+### Layout
+- **Sidebar**: Fixed-width (`w-64`) on the left with white background
+- **Main Content**: Flexible, scrollable area on the right with gray-50 background
+
 ## System Architecture
 
 ### Frontend Architecture
