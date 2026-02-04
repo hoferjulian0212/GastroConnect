@@ -863,7 +863,7 @@ export default function RestaurantInbox() {
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center h-full min-h-[calc(100vh-200px)]">
                 <div className="text-center">
                   <MessageSquare className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
                   <p className="text-lg font-medium">Wählen Sie eine Konversation</p>
