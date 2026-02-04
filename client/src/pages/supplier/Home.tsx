@@ -114,7 +114,7 @@ export default function SupplierHome() {
 
       <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Link href="/supplier/orders" data-testid="link-stat-orders">
-          <Card className="cursor-pointer hover-elevate h-full">
+          <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-2xl hover:-translate-y-2 hover:scale-105">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
               <CardTitle className="text-xs md:text-sm font-medium">Neue Bestellungen</CardTitle>
               <ClipboardList className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
@@ -132,7 +132,7 @@ export default function SupplierHome() {
         </Link>
 
         <Link href="/supplier/inbox" data-testid="link-stat-messages">
-          <Card className="cursor-pointer hover-elevate h-full">
+          <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-2xl hover:-translate-y-2 hover:scale-105">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
               <CardTitle className="text-xs md:text-sm font-medium">Nachrichten</CardTitle>
               <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
@@ -150,7 +150,7 @@ export default function SupplierHome() {
         </Link>
 
         <Link href="/supplier/products" data-testid="link-stat-products">
-          <Card className="cursor-pointer hover-elevate h-full">
+          <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-2xl hover:-translate-y-2 hover:scale-105">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
               <CardTitle className="text-xs md:text-sm font-medium">Produkte</CardTitle>
               <Package className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
