@@ -65,7 +65,7 @@ export function RestaurantSidebar() {
           data-testid={`link-${item.url.split('/').pop()}`}
           className={`flex items-center h-11 rounded-xl px-4 gap-3 transition-all duration-200 hover-elevate ${
             isActive 
-              ? "text-primary font-semibold [text-shadow:_0_0_8px_hsl(var(--primary)_/_0.4)]" 
+              ? "text-primary font-semibold" 
               : "text-foreground font-medium hover:text-foreground"
           }`}
         >
