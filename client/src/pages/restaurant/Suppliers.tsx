@@ -67,22 +67,17 @@ export default function RestaurantSuppliers() {
           {filteredSuppliers.map((supplier) => (
             <Card 
               key={supplier.id} 
-              className="cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]" 
+              className="cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01] overflow-hidden" 
               data-testid={`supplier-card-${supplier.id}`}
             >
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-start gap-4 mb-4">
-                  <Avatar className="h-12 w-12 rounded-xl bg-primary/10">
+                  <Avatar className="h-12 w-12 rounded-xl">
                     <AvatarImage src={supplier.profileImageUrl || undefined} alt={supplier.companyName || supplier.name} className="rounded-xl" />
-                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg rounded-xl">
+                    <AvatarFallback className="bg-muted text-muted-foreground font-bold text-lg rounded-xl">
                       {(supplier.companyName || supplier.name).charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-6 bg-primary rounded-full" />
-                    </div>
-                  </div>
                 </div>
 
                 <h3 className="font-semibold text-base md:text-lg mb-1">
