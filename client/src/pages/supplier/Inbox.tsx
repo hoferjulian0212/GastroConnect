@@ -353,7 +353,7 @@ export default function SupplierInbox() {
                                 (() => {
                                   const orderData = parseOrderContent(message.content);
                                   return (
-                                    <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden">
+                                    <div className="w-[85%] rounded-lg border bg-card shadow-lg overflow-hidden">
                                       <div className="flex items-center justify-between px-4 py-2 bg-green-500/10 border-b border-green-500/20">
                                         <div className="flex items-center gap-2">
                                           <ClipboardList className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -403,7 +403,7 @@ export default function SupplierInbox() {
                                 (() => {
                                   const complaintData = parseComplaintContent(message.content);
                                   return (
-                                    <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden">
+                                    <div className="w-[85%] rounded-lg border bg-card shadow-lg overflow-hidden">
                                       <div className="flex items-center justify-between px-4 py-2 bg-red-500/10 border-b border-red-500/20">
                                         <div className="flex items-center gap-2">
                                           <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
@@ -433,7 +433,7 @@ export default function SupplierInbox() {
                                 })()
                               ) : (
                                 <div
-                                  className={`max-w-[70%] rounded-lg px-3 py-2 ${
+                                  className={`max-w-[70%] rounded-lg px-3 py-2 shadow-lg ${
                                     isOwn
                                       ? "bg-secondary text-secondary-foreground"
                                       : "bg-muted"
