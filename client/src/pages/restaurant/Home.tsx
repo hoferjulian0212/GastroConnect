@@ -83,25 +83,25 @@ export default function RestaurantHome() {
         </CardHeader>
         <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
           <div className="grid grid-cols-2 gap-2 md:gap-3">
-            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-xl hover:-translate-y-1 hover:scale-105" asChild>
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
               <Link href="/restaurant/catalog" data-testid="link-quick-catalog">
                 <Package className="h-4 w-4 md:h-5 md:w-5" />
                 <span className="text-xs md:text-sm">Katalog</span>
               </Link>
             </Button>
-            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-xl hover:-translate-y-1 hover:scale-105" asChild>
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
               <Link href="/restaurant/cart" data-testid="link-quick-cart">
                 <ShoppingBag className="h-4 w-4 md:h-5 md:w-5" />
                 <span className="text-xs md:text-sm">Warenkorb</span>
               </Link>
             </Button>
-            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-xl hover:-translate-y-1 hover:scale-105" asChild>
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
               <Link href="/restaurant/inbox" data-testid="link-quick-inbox">
                 <MessageSquare className="h-4 w-4 md:h-5 md:w-5" />
                 <span className="text-xs md:text-sm">Nachrichten</span>
               </Link>
             </Button>
-            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-xl hover:-translate-y-1 hover:scale-105" asChild>
+            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
               <Link href="/restaurant/history" data-testid="link-quick-history">
                 <Clock className="h-4 w-4 md:h-5 md:w-5" />
                 <span className="text-xs md:text-sm">Historie</span>
@@ -113,7 +113,7 @@ export default function RestaurantHome() {
 
       <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Link href="/restaurant/orders" data-testid="link-stat-orders">
-          <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-2xl hover:-translate-y-2 hover:scale-105">
+          <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
               <CardTitle className="text-xs md:text-sm font-medium">Offene Bestellungen</CardTitle>
               <ShoppingBag className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
@@ -131,7 +131,7 @@ export default function RestaurantHome() {
         </Link>
 
         <Link href="/restaurant/inbox" data-testid="link-stat-messages">
-          <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-2xl hover:-translate-y-2 hover:scale-105">
+          <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
               <CardTitle className="text-xs md:text-sm font-medium">Nachrichten</CardTitle>
               <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
@@ -199,7 +199,7 @@ export default function RestaurantHome() {
               {recentOrders.slice(0, 5).map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center justify-between p-2 md:p-3 rounded-md bg-muted/50 cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 hover:scale-[1.02] hover:bg-muted"
+                  className="flex items-center justify-between p-2 md:p-3 rounded-md bg-muted/50 cursor-pointer transition-all duration-200 hover:shadow-md hover:bg-muted"
                   data-testid={`order-item-${order.id}`}
                 >
                   <div className="flex items-center gap-2 md:gap-3">

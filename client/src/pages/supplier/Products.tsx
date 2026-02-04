@@ -489,7 +489,7 @@ export default function SupplierProducts() {
           ) : filteredProducts && filteredProducts.length > 0 ? (
             <div className="grid gap-2 md:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {filteredProducts.map((product) => (
-                <Card key={product.id} className="cursor-pointer transition-all duration-200 hover:shadow-2xl hover:-translate-y-2 hover:scale-105" data-testid={`product-card-${product.id}`}>
+                <Card key={product.id} className="cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]" data-testid={`product-card-${product.id}`}>
                   <CardContent className="p-2 md:p-3 flex gap-2 md:gap-3">
                     {product.imageUrl ? (
                       <div className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-lg overflow-hidden bg-muted">

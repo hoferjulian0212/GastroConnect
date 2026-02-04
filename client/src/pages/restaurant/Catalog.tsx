@@ -143,7 +143,7 @@ export default function RestaurantCatalog() {
           ) : filteredProducts && filteredProducts.length > 0 ? (
             <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {filteredProducts.map((product) => (
-                <Card key={product.id} className="cursor-pointer transition-all duration-200 hover:shadow-2xl hover:-translate-y-2 hover:scale-105" data-testid={`product-card-${product.id}`}>
+                <Card key={product.id} className="cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]" data-testid={`product-card-${product.id}`}>
                   <CardContent className="p-3 flex gap-3">
                     {product.imageUrl ? (
                       <div className="w-20 h-20 md:w-28 md:h-28 shrink-0 rounded-lg overflow-hidden bg-muted">
