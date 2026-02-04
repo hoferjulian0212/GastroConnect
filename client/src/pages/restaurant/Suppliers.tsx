@@ -72,15 +72,12 @@ export default function RestaurantSuppliers() {
             >
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="relative">
-                    <div className="absolute -inset-1 rounded-full bg-primary/30 blur-md" />
-                    <Avatar className="relative h-12 w-12">
-                      <AvatarImage src={supplier.profileImageUrl || undefined} alt={supplier.companyName || supplier.name} />
-                      <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
-                        {(supplier.companyName || supplier.name).charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={supplier.profileImageUrl || undefined} alt={supplier.companyName || supplier.name} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
+                      {(supplier.companyName || supplier.name).charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
 
                 <h3 className="font-semibold text-base md:text-lg mb-1">
