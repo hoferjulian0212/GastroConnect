@@ -148,21 +148,23 @@ export default function RestaurantHome() {
           </Card>
         </Link>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-            <CardTitle className="text-xs md:text-sm font-medium">Aktive Lieferanten</CardTitle>
-            <Package className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-            {statsLoading ? (
-              <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
-            ) : (
-              <div className="text-xl md:text-2xl font-bold" data-testid="text-total-suppliers">
-                {stats?.totalSuppliers || 0}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <Link href="/restaurant/suppliers">
+          <Card className="transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01] cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Aktive Lieferanten</CardTitle>
+              <Package className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              {statsLoading ? (
+                <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
+              ) : (
+                <div className="text-xl md:text-2xl font-bold" data-testid="text-total-suppliers">
+                  {stats?.totalSuppliers || 0}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
