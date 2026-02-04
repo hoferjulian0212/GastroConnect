@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, ShoppingBag, Package, History, Settings, AlertCircle, LogOut } from "lucide-react";
+import { Home, MessageSquare, ShoppingBag, Package, History, Settings, AlertCircle, LogOut, Truck } from "lucide-react";
 import logoImage from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-Photoroom_1769969436354.png";
 import {
   Sidebar,
@@ -20,6 +20,7 @@ import { useQuery } from "@tanstack/react-query";
 const mainMenuItems = [
   { title: "Home", url: "/restaurant", icon: Home },
   { title: "Nachrichten", url: "/restaurant/inbox", icon: MessageSquare, hasBadge: true },
+  { title: "Lieferanten", url: "/restaurant/suppliers", icon: Truck },
   { title: "Produkte", url: "/restaurant/catalog", icon: Package },
   { title: "Bestellungen", url: "/restaurant/orders", icon: ShoppingBag },
   { title: "Historie", url: "/restaurant/history", icon: History },
