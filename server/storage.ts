@@ -73,6 +73,7 @@ export interface IStorage {
   getComplaintsByRestaurant(restaurantId: string): Promise<ComplaintWithDetails[]>;
   getComplaintsBySupplier(supplierId: string): Promise<ComplaintWithDetails[]>;
   getComplaint(id: string): Promise<ComplaintWithDetails | undefined>;
+  getComplaintByOrderId(orderId: string): Promise<ComplaintWithDetails | undefined>;
   createComplaint(complaint: InsertComplaint): Promise<Complaint>;
   updateComplaint(id: string, data: UpdateComplaint): Promise<Complaint | undefined>;
   getSuppliersWithOrders(restaurantId: string): Promise<User[]>;
@@ -560,6 +561,18 @@ export class DatabaseStorage implements IStorage {
     const [restaurant] = await db.select().from(users).where(eq(users.id, complaint.restaurantId));
     const [supplier] = await db.select().from(users).where(eq(users.id, complaint.supplierId));
     const comments = await this.getComplaintComments(id);
+    
+    return { ...complaint, order, restaurant, supplier, comments };
+  }
+
+  async getComplaintByOrderId(orderId: string): Promise<ComplaintWithDetails | undefined> {
+    const [complaint] = await db.select().from(complaints).where(eq(complaints.orderId, orderId));
+    if (!complaint) return undefined;
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, complaint.orderId));
+    const [restaurant] = await db.select().from(users).where(eq(users.id, complaint.restaurantId));
+    const [supplier] = await db.select().from(users).where(eq(users.id, complaint.supplierId));
+    const comments = await this.getComplaintComments(complaint.id);
     
     return { ...complaint, order, restaurant, supplier, comments };
   }

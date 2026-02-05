@@ -653,7 +653,8 @@ export async function registerRoutes(
       const complaintContent = JSON.stringify({
         title: validated.title,
         description: validated.description,
-        orderId: validated.orderId
+        orderId: validated.orderId,
+        complaintId: complaint.id
       });
       await storage.sendMessage({
         conversationId: conversation.id,
@@ -677,6 +678,18 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Create complaint error:", error);
       res.status(400).json({ error: "Invalid complaint data" });
+    }
+  });
+
+  app.get("/api/complaints/by-order/:orderId", async (req, res) => {
+    try {
+      const complaint = await storage.getComplaintByOrderId(req.params.orderId);
+      if (!complaint) {
+        return res.status(404).json({ error: "Complaint not found" });
+      }
+      res.json(complaint);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch complaint" });
     }
   });
 

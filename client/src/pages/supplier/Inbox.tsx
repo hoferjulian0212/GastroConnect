@@ -12,8 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft } from "lucide-react";
-import type { ConversationWithUser, Message, Order } from "@shared/schema";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import type { ConversationWithUser, Message, Order, ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -28,6 +31,7 @@ interface ComplaintContent {
   title: string;
   description: string;
   orderId: string;
+  complaintId?: string;
 }
 
 interface OrderWithDetails extends Order {
@@ -87,6 +91,14 @@ export default function SupplierInbox() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
+  
+  // Complaint management state
+  const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
+  const [showComplaintDetail, setShowComplaintDetail] = useState(false);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [showCommentDialog, setShowCommentDialog] = useState(false);
+  const [newStatus, setNewStatus] = useState<string>("");
+  const [newComment, setNewComment] = useState("");
 
   useEffect(() => {
     const isMobile = window.innerWidth < 768;
@@ -118,6 +130,62 @@ export default function SupplierInbox() {
       toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden.", variant: "destructive" });
     },
   });
+
+  // Complaint queries and mutations
+  const { data: complaintDetail, isLoading: isLoadingComplaintDetail, isError: isComplaintDetailError } = useQuery<ComplaintWithDetails>({
+    queryKey: ["/api/complaints", selectedComplaintId],
+    queryFn: async () => {
+      const res = await fetch(`/api/complaints/${selectedComplaintId}`);
+      if (!res.ok) throw new Error("Failed to load complaint");
+      return res.json();
+    },
+    enabled: !!selectedComplaintId,
+  });
+
+  const { data: complaintComments, isLoading: loadingComments } = useQuery<ComplaintCommentWithUser[]>({
+    queryKey: ["/api/complaints", selectedComplaintId, "comments"],
+    queryFn: async () => {
+      if (!selectedComplaintId) return [];
+      const res = await fetch(`/api/complaints/${selectedComplaintId}/comments`);
+      return res.json();
+    },
+    enabled: !!selectedComplaintId && showCommentDialog,
+  });
+
+  const updateComplaintStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      return apiRequest("PATCH", `/api/complaints/${id}`, { status });
+    },
+    onSuccess: () => {
+      toast({ title: "Status aktualisiert", description: "Der Reklamationsstatus wurde erfolgreich geändert." });
+      queryClient.invalidateQueries({ queryKey: [`/api/complaints?supplierId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId] });
+      setShowStatusDialog(false);
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden.", variant: "destructive" });
+    },
+  });
+
+  const addComplaintCommentMutation = useMutation({
+    mutationFn: async ({ complaintId, content }: { complaintId: string; content: string }) => {
+      return apiRequest("POST", `/api/complaints/${complaintId}/comments`, {
+        userId: currentUser?.id,
+        content,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde gespeichert." });
+      queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId, "comments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId] });
+      setNewComment("");
+      setShowCommentDialog(false);
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Kommentar konnte nicht gespeichert werden.", variant: "destructive" });
+    },
+  });
+
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -183,6 +251,85 @@ export default function SupplierInbox() {
     conv.otherUser.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.otherUser.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Complaint helper functions
+  const formatComplaintStatus = (status: string) => {
+    const statusMap: Record<string, { label: string; icon: typeof Clock; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      open: { label: "Offen", icon: Clock, variant: "secondary" },
+      in_progress: { label: "In Bearbeitung", icon: Loader2, variant: "default" },
+      resolved: { label: "Gelöst", icon: CheckCircle, variant: "outline" },
+      closed: { label: "Geschlossen", icon: XCircle, variant: "outline" },
+    };
+    return statusMap[status] || { label: status, icon: Clock, variant: "secondary" as const };
+  };
+
+  const isVideoFile = (url: string) => {
+    return /\.(mp4|webm|mov|avi|mkv)$/i.test(url);
+  };
+
+  const [loadingComplaintDetail, setLoadingComplaintDetail] = useState(false);
+
+  const openComplaintDetailById = (complaintId: string) => {
+    setSelectedComplaintId(complaintId);
+    setShowComplaintDetail(true);
+  };
+
+  const openComplaintDetailByOrderId = async (orderId: string) => {
+    setLoadingComplaintDetail(true);
+    setShowComplaintDetail(true);
+    try {
+      const res = await fetch(`/api/complaints/by-order/${orderId}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          toast({ title: "Fehler", description: "Reklamation nicht gefunden.", variant: "destructive" });
+        } else {
+          throw new Error("Failed to fetch complaint");
+        }
+        setShowComplaintDetail(false);
+        return;
+      }
+      const complaint: ComplaintWithDetails = await res.json();
+      setSelectedComplaintId(complaint.id);
+    } catch (error) {
+      toast({ title: "Fehler", description: "Reklamation konnte nicht geladen werden.", variant: "destructive" });
+      setShowComplaintDetail(false);
+    } finally {
+      setLoadingComplaintDetail(false);
+    }
+  };
+
+  const openComplaintStatusDialog = () => {
+    if (complaintDetail) {
+      setNewStatus(complaintDetail.status);
+      setShowStatusDialog(true);
+    }
+  };
+
+  const openComplaintCommentDialog = () => {
+    setShowCommentDialog(true);
+    setNewComment("");
+  };
+
+  const closeStatusDialog = () => {
+    setShowStatusDialog(false);
+  };
+
+  const closeCommentDialog = () => {
+    setShowCommentDialog(false);
+  };
+
+  const handleComplaintStatusSubmit = () => {
+    if (!selectedComplaintId || !newStatus) return;
+    updateComplaintStatusMutation.mutate({ id: selectedComplaintId, status: newStatus });
+  };
+
+  const handleComplaintCommentSubmit = () => {
+    if (!selectedComplaintId || !newComment.trim()) {
+      toast({ title: "Fehler", description: "Bitte geben Sie einen Kommentar ein.", variant: "destructive" });
+      return;
+    }
+    addComplaintCommentMutation.mutate({ complaintId: selectedComplaintId, content: newComment.trim() });
+  };
 
   const selectedConv = conversations?.find(c => c.id === selectedConversation);
 
@@ -422,12 +569,32 @@ export default function SupplierInbox() {
                                                 Bestellung #{complaintData.orderId?.substring(0, 8)}
                                               </Badge>
                                             </div>
-                                            <p className="text-sm text-muted-foreground">{complaintData.description}</p>
+                                            <p className="text-sm text-muted-foreground line-clamp-2">{complaintData.description}</p>
                                           </div>
                                         ) : (
                                           <p className="text-sm">{message.content}</p>
                                         )}
                                       </div>
+                                      {(complaintData?.complaintId || complaintData?.orderId) && (
+                                        <div className="px-4 py-2 border-t bg-muted/30">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full"
+                                            onClick={() => {
+                                              if (complaintData.complaintId) {
+                                                openComplaintDetailById(complaintData.complaintId);
+                                              } else if (complaintData.orderId) {
+                                                openComplaintDetailByOrderId(complaintData.orderId);
+                                              }
+                                            }}
+                                            data-testid={`button-complaint-details-${message.id}`}
+                                          >
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            Details & Aktionen
+                                          </Button>
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })()
@@ -588,6 +755,304 @@ export default function SupplierInbox() {
                   </div>
                 </>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Complaint Detail Dialog */}
+      <Dialog open={showComplaintDetail} onOpenChange={(open) => {
+        setShowComplaintDetail(open);
+        if (!open) {
+          setSelectedComplaintId(null);
+          setLoadingComplaintDetail(false);
+        }
+      }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              Reklamationsdetails
+            </DialogTitle>
+          </DialogHeader>
+          
+          {(loadingComplaintDetail || isLoadingComplaintDetail) ? (
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : isComplaintDetailError ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <AlertCircle className="mx-auto h-10 w-10 mb-2 text-destructive" />
+              <p className="text-sm font-medium text-destructive">Fehler beim Laden</p>
+              <p className="text-xs text-muted-foreground mt-1">Die Reklamation konnte nicht geladen werden.</p>
+            </div>
+          ) : complaintDetail ? (
+            <div className="space-y-4">
+              {/* Status Badge */}
+              {(() => {
+                const statusInfo = formatComplaintStatus(complaintDetail.status);
+                const StatusIcon = statusInfo.icon;
+                return (
+                  <div className="flex items-center justify-between">
+                    <Badge variant={statusInfo.variant} className="text-sm">
+                      <StatusIcon className="h-3.5 w-3.5 mr-1.5" />
+                      {statusInfo.label}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(complaintDetail.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}
+                    </span>
+                  </div>
+                );
+              })()}
+
+              <Separator />
+
+              {/* Restaurant info */}
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={complaintDetail.restaurant?.profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {complaintDetail.restaurant?.companyName?.substring(0, 2).toUpperCase() || "??"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-medium">{complaintDetail.restaurant?.companyName || "Unbekannt"}</div>
+                  <div className="text-sm text-muted-foreground">{complaintDetail.restaurant?.email}</div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Title and description */}
+              <div>
+                <h4 className="font-semibold text-lg mb-2">{complaintDetail.title}</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{complaintDetail.description}</p>
+              </div>
+
+              {/* Media attachments */}
+              {complaintDetail.mediaUrls && complaintDetail.mediaUrls.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Anhänge ({complaintDetail.mediaUrls.length})</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {complaintDetail.mediaUrls.map((url, idx) => (
+                      <a 
+                        key={idx} 
+                        href={`/objects${url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="h-20 w-20 rounded-lg overflow-hidden border hover:opacity-80 transition-opacity"
+                      >
+                        {isVideoFile(url) ? (
+                          <div className="h-full w-full flex items-center justify-center bg-muted">
+                            <FileVideo className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        ) : (
+                          <img 
+                            src={`/objects${url}`} 
+                            alt={`Anhang ${idx + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Order info */}
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Betroffene Bestellung</span>
+                  <Badge variant="outline">#{complaintDetail.orderId.substring(0, 8)}</Badge>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Gesamtbetrag: {complaintDetail.order?.totalAmount}€
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={openComplaintStatusDialog}
+                  data-testid="button-change-complaint-status"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Status ändern
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={openComplaintCommentDialog}
+                  data-testid="button-add-complaint-comment"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Kommentar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <AlertCircle className="mx-auto h-10 w-10 mb-2 opacity-50" />
+              <p className="text-sm">Reklamation nicht gefunden</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Complaint Status Change Dialog */}
+      <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Status ändern</DialogTitle>
+            <DialogDescription>
+              Wählen Sie den neuen Status für diese Reklamation
+            </DialogDescription>
+          </DialogHeader>
+          
+          {complaintDetail && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="font-medium text-sm">{complaintDetail.title}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {complaintDetail.restaurant?.companyName}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Neuer Status</Label>
+                <Select value={newStatus} onValueChange={setNewStatus}>
+                  <SelectTrigger data-testid="select-inbox-complaint-status">
+                    <SelectValue placeholder="Status wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Offen
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="in_progress">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4" />
+                        In Bearbeitung
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="resolved">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        Gelöst
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="closed">
+                      <div className="flex items-center gap-2">
+                        <XCircle className="h-4 w-4" />
+                        Geschlossen
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowStatusDialog(false)}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              onClick={handleComplaintStatusSubmit}
+              disabled={!newStatus || updateComplaintStatusMutation.isPending}
+            >
+              {updateComplaintStatusMutation.isPending ? "Wird gespeichert..." : "Speichern"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Complaint Comment Dialog */}
+      <Dialog open={showCommentDialog} onOpenChange={setShowCommentDialog}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Kommentare</DialogTitle>
+            <DialogDescription>
+              Kommentare zur Reklamation anzeigen und hinzufügen
+            </DialogDescription>
+          </DialogHeader>
+          
+          {complaintDetail && (
+            <div className="flex flex-col flex-1 min-h-0 space-y-4">
+              <div className="p-3 rounded-lg bg-muted/50 shrink-0">
+                <div className="font-medium text-sm">{complaintDetail.title}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {complaintDetail.restaurant?.companyName}
+                </div>
+              </div>
+
+              {/* Existing comments */}
+              <div className="flex-1 overflow-auto space-y-3 min-h-0 max-h-60">
+                {loadingComments ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                  </div>
+                ) : complaintComments && complaintComments.length > 0 ? (
+                  complaintComments.map((comment) => (
+                    <div key={comment.id} className="p-3 rounded-lg border space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={comment.user?.profileImageUrl || undefined} />
+                          <AvatarFallback className="text-xs">
+                            {comment.user?.name?.substring(0, 2).toUpperCase() || "??"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium">{comment.user?.name || "Unbekannt"}</span>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          {format(new Date(comment.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground pl-8">{comment.content}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                    <p className="text-sm">Noch keine Kommentare</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Add comment */}
+              <div className="space-y-2 shrink-0 border-t pt-4">
+                <Label>Neuer Kommentar</Label>
+                <div className="flex gap-2">
+                  <Textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Schreiben Sie einen Kommentar..."
+                    rows={2}
+                    className="flex-1"
+                    data-testid="input-inbox-new-comment"
+                  />
+                  <Button
+                    size="icon"
+                    onClick={handleComplaintCommentSubmit}
+                    disabled={!newComment.trim() || addComplaintCommentMutation.isPending}
+                    data-testid="button-inbox-send-comment"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>
