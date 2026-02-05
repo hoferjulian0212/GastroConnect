@@ -699,6 +699,14 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Complaint not found" });
       }
       
+      // Check if trying to edit content (title, description, mediaUrls) on a non-open complaint
+      const isContentEdit = req.body.title !== undefined || req.body.description !== undefined || req.body.mediaUrls !== undefined;
+      const isStatusOnly = req.body.status !== undefined && !isContentEdit;
+      
+      if (isContentEdit && complaint.status !== "open") {
+        return res.status(400).json({ error: "Reklamationen können nur bearbeitet werden, wenn der Status 'Offen' ist." });
+      }
+      
       const validated = updateComplaintSchema.parse(req.body);
       const updated = await storage.updateComplaint(req.params.id, validated);
       res.json(updated);

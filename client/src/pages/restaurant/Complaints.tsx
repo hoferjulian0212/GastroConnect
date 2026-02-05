@@ -18,7 +18,14 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Send, Package, ImagePlus, X, FileVideo, FileImage } from "lucide-react";
+import { AlertCircle, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import type { User, Order, ComplaintWithDetails } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
@@ -31,6 +38,12 @@ export default function Complaints() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  
+  // Edit state
+  const [editingComplaint, setEditingComplaint] = useState<ComplaintWithDetails | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editMediaUrls, setEditMediaUrls] = useState<string[]>([]);
 
   const { data: suppliers, isLoading: loadingSuppliers } = useQuery<User[]>({
     queryKey: [`/api/suppliers-with-orders?restaurantId=${currentUser?.id}`],
@@ -53,12 +66,30 @@ export default function Complaints() {
     },
     onSuccess: () => {
       toast({ title: "Reklamation gesendet", description: "Ihre Reklamation wurde erfolgreich übermittelt." });
-      queryClient.invalidateQueries({ queryKey: ["/api/complaints"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       resetForm();
     },
     onError: () => {
       toast({ title: "Fehler", description: "Reklamation konnte nicht gesendet werden.", variant: "destructive" });
+    },
+  });
+
+  const updateComplaintMutation = useMutation({
+    mutationFn: async (data: { id: string; title: string; description: string; mediaUrls: string[] }) => {
+      return apiRequest("PATCH", `/api/complaints/${data.id}`, { 
+        title: data.title, 
+        description: data.description, 
+        mediaUrls: data.mediaUrls 
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Reklamation aktualisiert", description: "Ihre Änderungen wurden gespeichert." });
+      queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
+      setEditingComplaint(null);
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Änderungen konnten nicht gespeichert werden.", variant: "destructive" });
     },
   });
 
@@ -124,6 +155,54 @@ export default function Complaints() {
       cancelled: "Storniert",
     };
     return statusMap[status] || status;
+  };
+
+  const formatComplaintStatus = (status: string) => {
+    const statusMap: Record<string, { label: string; icon: typeof Clock; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      open: { label: "Offen", icon: Clock, variant: "secondary" },
+      in_progress: { label: "In Bearbeitung", icon: Loader2, variant: "default" },
+      resolved: { label: "Gelöst", icon: CheckCircle, variant: "outline" },
+      closed: { label: "Geschlossen", icon: XCircle, variant: "outline" },
+    };
+    return statusMap[status] || { label: status, icon: Clock, variant: "secondary" as const };
+  };
+
+  const openEditDialog = (complaint: ComplaintWithDetails) => {
+    setEditingComplaint(complaint);
+    setEditTitle(complaint.title);
+    setEditDescription(complaint.description);
+    setEditMediaUrls(complaint.mediaUrls || []);
+  };
+
+  const handleEditSubmit = () => {
+    if (!editingComplaint || !editTitle.trim() || !editDescription.trim()) {
+      toast({ title: "Fehler", description: "Bitte füllen Sie alle Felder aus.", variant: "destructive" });
+      return;
+    }
+
+    updateComplaintMutation.mutate({
+      id: editingComplaint.id,
+      title: editTitle.trim(),
+      description: editDescription.trim(),
+      mediaUrls: editMediaUrls,
+    });
+  };
+
+  const removeEditMedia = (index: number) => {
+    setEditMediaUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleEditUploadComplete = async (result: any) => {
+    const uploadedFiles = result.successful || [];
+    for (const file of uploadedFiles) {
+      const response = file.response;
+      if (response?.uploadURL) {
+        const url = new URL(response.uploadURL);
+        const objectPath = url.pathname;
+        setEditMediaUrls(prev => [...prev, objectPath]);
+      }
+    }
+    toast({ title: "Upload erfolgreich", description: `${uploadedFiles.length} Datei(en) hochgeladen` });
   };
 
   const canSubmit = selectedOrderId && selectedSupplierId && title.trim() && description.trim();
@@ -337,56 +416,81 @@ export default function Complaints() {
               </div>
             ) : existingComplaints && existingComplaints.length > 0 ? (
               <div className="space-y-2 md:space-y-3">
-                {existingComplaints.map((complaint) => (
-                  <div
-                    key={complaint.id}
-                    className="rounded-lg border p-3 md:p-4 space-y-1.5 md:space-y-2"
-                    data-testid={`complaint-${complaint.id}`}
-                  >
-                    <div className="font-medium text-sm md:text-base">{complaint.title}</div>
-                    <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">{complaint.description}</p>
-                    
-                    {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
-                      <div className="flex gap-1.5 mt-2">
-                        {complaint.mediaUrls.slice(0, 4).map((url, idx) => (
-                          <div key={idx} className="h-12 w-12 rounded overflow-hidden border">
-                            {isVideoFile(url) ? (
-                              <div className="h-full w-full flex items-center justify-center bg-muted">
-                                <FileVideo className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                            ) : (
-                              <img 
-                                src={`/objects${url}`} 
-                                alt={`Anhang ${idx + 1}`}
-                                className="h-full w-full object-cover"
-                              />
-                            )}
-                          </div>
-                        ))}
-                        {complaint.mediaUrls.length > 4 && (
-                          <div className="h-12 w-12 rounded border flex items-center justify-center bg-muted text-xs text-muted-foreground">
-                            +{complaint.mediaUrls.length - 4}
-                          </div>
+                {existingComplaints.map((complaint) => {
+                  const statusInfo = formatComplaintStatus(complaint.status);
+                  const StatusIcon = statusInfo.icon;
+                  const canEdit = complaint.status === "open";
+                  
+                  return (
+                    <div
+                      key={complaint.id}
+                      className="rounded-lg border p-3 md:p-4 space-y-1.5 md:space-y-2"
+                      data-testid={`complaint-${complaint.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-medium text-sm md:text-base">{complaint.title}</div>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant={statusInfo.variant} className="text-[10px] md:text-xs shrink-0">
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {statusInfo.label}
+                          </Badge>
+                          {canEdit && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => openEditDialog(complaint)}
+                              data-testid={`button-edit-complaint-${complaint.id}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">{complaint.description}</p>
+                      
+                      {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
+                        <div className="flex gap-1.5 mt-2">
+                          {complaint.mediaUrls.slice(0, 4).map((url, idx) => (
+                            <div key={idx} className="h-12 w-12 rounded overflow-hidden border">
+                              {isVideoFile(url) ? (
+                                <div className="h-full w-full flex items-center justify-center bg-muted">
+                                  <FileVideo className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              ) : (
+                                <img 
+                                  src={`/objects${url}`} 
+                                  alt={`Anhang ${idx + 1}`}
+                                  className="h-full w-full object-cover"
+                                />
+                              )}
+                            </div>
+                          ))}
+                          {complaint.mediaUrls.length > 4 && (
+                            <div className="h-12 w-12 rounded border flex items-center justify-center bg-muted text-xs text-muted-foreground">
+                              +{complaint.mediaUrls.length - 4}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
+                        <span>{complaint.supplier?.companyName || "Unbekannter Lieferant"}</span>
+                        <span>•</span>
+                        <span>{formatDate(complaint.createdAt)}</span>
+                        {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center gap-0.5">
+                              <FileImage className="h-3 w-3" />
+                              {complaint.mediaUrls.length}
+                            </span>
+                          </>
                         )}
                       </div>
-                    )}
-                    
-                    <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
-                      <span>{complaint.supplier?.companyName || "Unbekannter Lieferant"}</span>
-                      <span>•</span>
-                      <span>{formatDate(complaint.createdAt)}</span>
-                      {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
-                        <>
-                          <span>•</span>
-                          <span className="flex items-center gap-0.5">
-                            <FileImage className="h-3 w-3" />
-                            {complaint.mediaUrls.length}
-                          </span>
-                        </>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-6 md:py-8 text-muted-foreground">
@@ -397,6 +501,116 @@ export default function Complaints() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Complaint Dialog */}
+      <Dialog open={!!editingComplaint} onOpenChange={(open) => !open && setEditingComplaint(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Reklamation bearbeiten</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Titel</Label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Kurze Beschreibung des Problems"
+                data-testid="input-edit-complaint-title"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Beschreibung</Label>
+              <Textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Beschreiben Sie das Problem ausführlich..."
+                rows={4}
+                data-testid="input-edit-complaint-description"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fotos / Videos</Label>
+              <div className="flex flex-wrap gap-2">
+                {editMediaUrls.map((url, index) => (
+                  <div 
+                    key={index} 
+                    className="relative group h-16 w-16 rounded-lg border bg-muted overflow-hidden"
+                  >
+                    {isVideoFile(url) ? (
+                      <div className="h-full w-full flex items-center justify-center bg-muted">
+                        <FileVideo className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <img 
+                        src={`/objects${url}`} 
+                        alt={`Anhang ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeEditMedia(index)}
+                      className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      data-testid={`button-remove-edit-media-${index}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                
+                {editMediaUrls.length < 5 && (
+                  <ObjectUploader
+                    maxNumberOfFiles={5 - editMediaUrls.length}
+                    maxFileSize={50 * 1024 * 1024}
+                    onGetUploadParameters={async (file) => {
+                      const res = await fetch("/api/uploads/request-url", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          name: file.name,
+                          size: file.size,
+                          contentType: file.type,
+                        }),
+                      });
+                      const { uploadURL } = await res.json();
+                      return {
+                        method: "PUT" as const,
+                        url: uploadURL,
+                        headers: { "Content-Type": file.type },
+                      };
+                    }}
+                    onComplete={handleEditUploadComplete}
+                    buttonClassName="h-16 w-16 border-2 border-dashed border-muted-foreground/30 bg-muted/30 rounded-lg hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    <span className="text-[9px]">Hinzufügen</span>
+                  </ObjectUploader>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditingComplaint(null)}
+              data-testid="button-cancel-edit-complaint"
+            >
+              Abbrechen
+            </Button>
+            <Button
+              onClick={handleEditSubmit}
+              disabled={!editTitle.trim() || !editDescription.trim() || updateComplaintMutation.isPending}
+              data-testid="button-save-edit-complaint"
+            >
+              {updateComplaintMutation.isPending ? "Wird gespeichert..." : "Speichern"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
