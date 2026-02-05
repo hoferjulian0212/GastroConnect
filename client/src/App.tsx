@@ -37,6 +37,7 @@ import SupplierOrders from "@/pages/supplier/Orders";
 import SupplierHistory from "@/pages/supplier/History";
 import SupplierSettings from "@/pages/supplier/Settings";
 import SupplierComplaints from "@/pages/supplier/Complaints";
+import About from "@/pages/About";
 
 function RestaurantRouter() {
   return (
@@ -137,6 +138,10 @@ function AppLayout() {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   } as React.CSSProperties;
+
+  if (location === "/about") {
+    return <About />;
+  }
 
   return (
     <>
