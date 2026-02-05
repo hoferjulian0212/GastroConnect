@@ -1,13 +1,14 @@
 import { db } from "./db";
 import { eq, and, desc, or, sql, ne } from "drizzle-orm";
 import {
-  users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications,
+  users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
   type Message, type InsertMessage, type ProductWithSupplier, type OrderWithDetails,
   type ConversationWithUser, type CartItemWithProduct, type Complaint, type InsertComplaint,
-  type ComplaintWithDetails, type Notification, type InsertNotification
+  type ComplaintWithDetails, type Notification, type InsertNotification, type UpdateComplaint,
+  type ComplaintComment, type InsertComplaintComment, type ComplaintCommentWithUser
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -71,9 +72,15 @@ export interface IStorage {
   // Complaints
   getComplaintsByRestaurant(restaurantId: string): Promise<ComplaintWithDetails[]>;
   getComplaintsBySupplier(supplierId: string): Promise<ComplaintWithDetails[]>;
+  getComplaint(id: string): Promise<ComplaintWithDetails | undefined>;
   createComplaint(complaint: InsertComplaint): Promise<Complaint>;
+  updateComplaint(id: string, data: UpdateComplaint): Promise<Complaint | undefined>;
   getSuppliersWithOrders(restaurantId: string): Promise<User[]>;
   getOrdersByRestaurantAndSupplier(restaurantId: string, supplierId: string): Promise<Order[]>;
+  
+  // Complaint Comments
+  getComplaintComments(complaintId: string): Promise<ComplaintCommentWithUser[]>;
+  addComplaintComment(comment: InsertComplaintComment): Promise<ComplaintComment>;
 
   // Notifications
   getNotifications(userId: string): Promise<Notification[]>;
@@ -542,6 +549,47 @@ export class DatabaseStorage implements IStorage {
 
   async createComplaint(complaint: InsertComplaint): Promise<Complaint> {
     const [created] = await db.insert(complaints).values(complaint).returning();
+    return created;
+  }
+
+  async getComplaint(id: string): Promise<ComplaintWithDetails | undefined> {
+    const [complaint] = await db.select().from(complaints).where(eq(complaints.id, id));
+    if (!complaint) return undefined;
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, complaint.orderId));
+    const [restaurant] = await db.select().from(users).where(eq(users.id, complaint.restaurantId));
+    const [supplier] = await db.select().from(users).where(eq(users.id, complaint.supplierId));
+    const comments = await this.getComplaintComments(id);
+    
+    return { ...complaint, order, restaurant, supplier, comments };
+  }
+
+  async updateComplaint(id: string, data: UpdateComplaint): Promise<Complaint | undefined> {
+    const [updated] = await db
+      .update(complaints)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(complaints.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getComplaintComments(complaintId: string): Promise<ComplaintCommentWithUser[]> {
+    const result = await db
+      .select()
+      .from(complaintComments)
+      .where(eq(complaintComments.complaintId, complaintId))
+      .orderBy(desc(complaintComments.createdAt));
+
+    const commentsWithUser: ComplaintCommentWithUser[] = [];
+    for (const comment of result) {
+      const [user] = await db.select().from(users).where(eq(users.id, comment.userId));
+      commentsWithUser.push({ ...comment, user });
+    }
+    return commentsWithUser;
+  }
+
+  async addComplaintComment(comment: InsertComplaintComment): Promise<ComplaintComment> {
+    const [created] = await db.insert(complaintComments).values(comment).returning();
     return created;
   }
 

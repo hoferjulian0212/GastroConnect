@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProductSchema, insertCartItemSchema, insertMessageSchema, insertComplaintSchema, insertNotificationSchema } from "@shared/schema";
+import { insertProductSchema, insertCartItemSchema, insertMessageSchema, insertComplaintSchema, updateComplaintSchema, insertComplaintCommentSchema, insertNotificationSchema } from "@shared/schema";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 
 export async function registerRoutes(
@@ -677,6 +677,77 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Create complaint error:", error);
       res.status(400).json({ error: "Invalid complaint data" });
+    }
+  });
+
+  app.get("/api/complaints/:id", async (req, res) => {
+    try {
+      const complaint = await storage.getComplaint(req.params.id);
+      if (!complaint) {
+        return res.status(404).json({ error: "Complaint not found" });
+      }
+      res.json(complaint);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch complaint" });
+    }
+  });
+
+  app.patch("/api/complaints/:id", async (req, res) => {
+    try {
+      const complaint = await storage.getComplaint(req.params.id);
+      if (!complaint) {
+        return res.status(404).json({ error: "Complaint not found" });
+      }
+      
+      const validated = updateComplaintSchema.parse(req.body);
+      const updated = await storage.updateComplaint(req.params.id, validated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update complaint error:", error);
+      res.status(400).json({ error: "Invalid complaint data" });
+    }
+  });
+
+  app.get("/api/complaints/:id/comments", async (req, res) => {
+    try {
+      const comments = await storage.getComplaintComments(req.params.id);
+      res.json(comments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch comments" });
+    }
+  });
+
+  app.post("/api/complaints/:id/comments", async (req, res) => {
+    try {
+      const complaint = await storage.getComplaint(req.params.id);
+      if (!complaint) {
+        return res.status(404).json({ error: "Complaint not found" });
+      }
+      
+      const validated = insertComplaintCommentSchema.parse({
+        ...req.body,
+        complaintId: req.params.id
+      });
+      const comment = await storage.addComplaintComment(validated);
+      
+      // Notify the other party
+      const notifyUserId = req.body.userId === complaint.restaurantId 
+        ? complaint.supplierId 
+        : complaint.restaurantId;
+      const commenter = await storage.getUser(req.body.userId);
+      
+      await storage.createNotification({
+        userId: notifyUserId,
+        type: "new_complaint",
+        title: "Neuer Kommentar zur Reklamation",
+        message: `${commenter?.companyName || commenter?.name || "Jemand"} hat einen Kommentar hinzugefügt: "${validated.content.substring(0, 50)}${validated.content.length > 50 ? '...' : ''}"`,
+        referenceId: complaint.id
+      });
+      
+      res.status(201).json(comment);
+    } catch (error) {
+      console.error("Create comment error:", error);
+      res.status(400).json({ error: "Invalid comment data" });
     }
   });
 
