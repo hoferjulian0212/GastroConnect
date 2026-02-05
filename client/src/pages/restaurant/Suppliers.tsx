@@ -87,7 +87,7 @@ export default function RestaurantSuppliers() {
                       <Button 
                         size="icon" 
                         variant="ghost" 
-                        className="h-9 w-9 rounded-full bg-green-500/10 hover:bg-green-500/20 text-green-600"
+                        className="h-9 w-9 rounded-full bg-primary/10 hover:bg-primary/20 text-primary"
                       >
                         <Phone className="h-4 w-4" />
                       </Button>
