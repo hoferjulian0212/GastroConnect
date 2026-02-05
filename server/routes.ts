@@ -663,6 +663,16 @@ export async function registerRoutes(
         orderId: validated.orderId,
       });
       
+      // Create notification for supplier about new complaint
+      const restaurant = await storage.getUser(validated.restaurantId);
+      await storage.createNotification({
+        userId: validated.supplierId,
+        type: "new_complaint",
+        title: "Neue Reklamation",
+        message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat eine Reklamation eingereicht: ${validated.title}`,
+        referenceId: complaint.id
+      });
+      
       res.status(201).json(complaint);
     } catch (error) {
       console.error("Create complaint error:", error);
