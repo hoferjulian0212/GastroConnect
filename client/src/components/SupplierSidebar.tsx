@@ -62,13 +62,13 @@ export function SupplierSidebar() {
         <Link 
           href={item.url} 
           data-testid={`link-${item.url.split('/').pop()}`}
-          className={`flex items-center h-11 rounded-xl px-4 gap-3 transition-all duration-200 hover-elevate ${
+          className={`flex items-center h-11 rounded-xl px-4 gap-3 transition-all duration-200 hover-elevate text-[14px] font-semibold ${
             isActive 
-              ? "text-primary font-semibold" 
-              : "text-black dark:text-white font-medium"
+              ? "text-primary bg-primary/10" 
+              : "text-black dark:text-white"
           }`}
         >
-          <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
+          <item.icon className="h-5 w-5" />
           <span className="flex-1">{item.title}</span>
           {badgeCount > 0 && (
             <Badge variant="secondary" className="ml-auto text-xs px-2 py-0.5 rounded-full">
