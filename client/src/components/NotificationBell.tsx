@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Bell, MessageSquare, ShoppingBag, AlertCircle, Check } from "lucide-react";
+import { Bell, MessageSquare, ShoppingBag, AlertCircle, CheckCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -49,18 +49,33 @@ export function NotificationBell() {
     },
   });
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationStyle = (type: string) => {
     switch (type) {
       case "new_message":
-        return <MessageSquare className="h-4 w-4 text-primary" />;
+        return { 
+          icon: <MessageSquare className="h-3.5 w-3.5" />,
+          bg: "bg-primary/10 text-primary"
+        };
       case "new_order":
-        return <ShoppingBag className="h-4 w-4 text-green-600" />;
+        return { 
+          icon: <ShoppingBag className="h-3.5 w-3.5" />,
+          bg: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
+        };
       case "order_status":
-        return <ShoppingBag className="h-4 w-4 text-blue-600" />;
+        return { 
+          icon: <ShoppingBag className="h-3.5 w-3.5" />,
+          bg: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+        };
       case "new_complaint":
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
+        return { 
+          icon: <AlertCircle className="h-3.5 w-3.5" />,
+          bg: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+        };
       default:
-        return <Bell className="h-4 w-4 text-muted-foreground" />;
+        return { 
+          icon: <Bell className="h-3.5 w-3.5" />,
+          bg: "bg-muted text-muted-foreground"
+        };
     }
   };
 
@@ -72,14 +87,15 @@ export function NotificationBell() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return "Gerade eben";
-    if (diffMins < 60) return `vor ${diffMins} Min.`;
-    if (diffHours < 24) return `vor ${diffHours} Std.`;
-    if (diffDays < 7) return `vor ${diffDays} Tagen`;
-    return date.toLocaleDateString("de-DE");
+    if (diffMins < 1) return "jetzt";
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+    return date.toLocaleDateString("de-DE", { day: "numeric", month: "short" });
   };
 
   const unreadCount = countData?.count || 0;
+  const hasNotifications = notifications && notifications.length > 0;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -92,80 +108,79 @@ export function NotificationBell() {
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge 
-              variant="default" 
-              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
-            >
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </Badge>
+            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-primary text-primary-foreground rounded-full">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between p-3 border-b">
-          <h3 className="font-semibold text-sm">Benachrichtigungen</h3>
+      <PopoverContent className="w-72 p-0" align="end" sideOffset={8}>
+        <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+          <span className="font-medium text-sm">Benachrichtigungen</span>
           {unreadCount > 0 && (
             <Button 
               variant="ghost" 
               size="sm" 
-              className="text-xs h-7"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => markAllAsReadMutation.mutate()}
               data-testid="button-mark-all-read"
             >
-              <Check className="h-3 w-3 mr-1" />
-              Alle gelesen
+              <CheckCheck className="h-3 w-3 mr-1" />
+              Alle lesen
             </Button>
           )}
         </div>
-        <ScrollArea className="h-[300px]">
-          {notifications && notifications.length > 0 ? (
-            <div className="divide-y">
-              {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`p-3 hover-elevate cursor-pointer transition-colors ${
-                    !notification.isRead ? "bg-primary/5" : ""
-                  }`}
-                  onClick={() => {
-                    if (!notification.isRead) {
-                      markAsReadMutation.mutate(notification.id);
-                    }
-                  }}
-                  data-testid={`notification-${notification.id}`}
-                >
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      {getNotificationIcon(notification.type)}
+        
+        {hasNotifications ? (
+          <ScrollArea className="max-h-[280px]">
+            <div className="py-1">
+              {notifications.map((notification) => {
+                const style = getNotificationStyle(notification.type);
+                return (
+                  <div
+                    key={notification.id}
+                    className={`group relative flex items-start gap-2.5 px-3 py-2 hover:bg-muted/50 cursor-pointer transition-colors ${
+                      !notification.isRead ? "bg-primary/5" : ""
+                    }`}
+                    onClick={() => {
+                      if (!notification.isRead) {
+                        markAsReadMutation.mutate(notification.id);
+                      }
+                    }}
+                    data-testid={`notification-${notification.id}`}
+                  >
+                    <div className={`flex-shrink-0 h-7 w-7 rounded-full flex items-center justify-center ${style.bg}`}>
+                      {style.icon}
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden">
-                      <p className={`text-sm truncate ${!notification.isRead ? "font-semibold" : ""}`}>
-                        {notification.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm leading-tight ${!notification.isRead ? "font-medium" : ""}`}>
+                          {notification.title}
+                        </span>
+                        <span className="flex-shrink-0 text-[10px] text-muted-foreground">
+                          {formatTime(notification.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                         {notification.message}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatTime(notification.createdAt)}
                       </p>
                     </div>
                     {!notification.isRead && (
-                      <div className="flex-shrink-0">
-                        <div className="h-2 w-2 rounded-full bg-primary" />
-                      </div>
+                      <div className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-primary mt-2" />
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full py-8 text-center">
-              <Bell className="h-8 w-8 text-muted-foreground/50 mb-2" />
-              <p className="text-sm text-muted-foreground">
-                Keine Benachrichtigungen
-              </p>
+          </ScrollArea>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 px-4">
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-2">
+              <Bell className="h-5 w-5 text-muted-foreground" />
             </div>
-          )}
-        </ScrollArea>
+            <p className="text-sm text-muted-foreground">Keine Benachrichtigungen</p>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
