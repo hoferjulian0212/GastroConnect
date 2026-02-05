@@ -63,11 +63,7 @@ export function RestaurantSidebar() {
         <Link 
           href={item.url} 
           data-testid={`link-${item.url.split('/').pop()}`}
-          className={`flex items-center h-11 rounded-xl px-4 gap-3 transition-all duration-200 hover-elevate ${
-            isActive 
-              ? "text-primary font-semibold" 
-              : "text-black dark:text-white font-medium"
-          }`}
+          className="flex items-center h-11 rounded-xl px-4 gap-3 transition-all duration-200 hover-elevate text-black dark:text-white font-medium text-[13px]"
         >
           <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
           <span className="flex-1">{item.title}</span>

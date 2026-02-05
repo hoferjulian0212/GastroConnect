@@ -23,80 +23,80 @@ export default function About() {
             alt="GastroConnect Logo" 
             className="h-28 md:h-36 object-contain mx-auto mb-4 dark:invert"
           />
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">Über GastroConnect</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <h1 className="text-2xl md:text-3xl font-bold mb-3">Über GastroConnect</h1>
+          <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             Die moderne B2B-Plattform, die Restaurants und Lieferanten in der Gastronomiebranche verbindet.
           </p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
           <Card>
-            <CardContent className="p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Utensils className="h-6 w-6 text-primary" />
+            <CardContent className="p-4 text-center">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <Utensils className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-semibold mb-2">Für Restaurants</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-sm mb-1">Für Restaurants</h3>
+              <p className="text-xs text-muted-foreground">
                 Entdecken Sie Lieferanten, durchsuchen Sie Produktkataloge und bestellen Sie direkt über die Plattform.
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Truck className="h-6 w-6 text-primary" />
+            <CardContent className="p-4 text-center">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <Truck className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-semibold mb-2">Für Lieferanten</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-sm mb-1">Für Lieferanten</h3>
+              <p className="text-xs text-muted-foreground">
                 Verwalten Sie Ihre Produkte, bearbeiten Sie Bestellungen und pflegen Sie Kundenbeziehungen.
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="h-6 w-6 text-primary" />
+            <CardContent className="p-4 text-center">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <MessageSquare className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-semibold mb-2">Direkte Kommunikation</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-sm mb-1">Direkte Kommunikation</h3>
+              <p className="text-xs text-muted-foreground">
                 WhatsApp-ähnlicher Chat für schnelle und einfache Kommunikation zwischen Partnern.
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <ShoppingCart className="h-6 w-6 text-primary" />
+            <CardContent className="p-4 text-center">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <ShoppingCart className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-semibold mb-2">Einfache Bestellungen</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-sm mb-1">Einfache Bestellungen</h3>
+              <p className="text-xs text-muted-foreground">
                 Streamlined Bestellprozess mit Warenkorb, Bestellhistorie und Statusverfolgung.
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Shield className="h-6 w-6 text-primary" />
+            <CardContent className="p-4 text-center">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <Shield className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-semibold mb-2">Reklamationsmanagement</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-sm mb-1">Reklamationsmanagement</h3>
+              <p className="text-xs text-muted-foreground">
                 Professionelles Handling von Beschwerden und Qualitätsproblemen.
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Zap className="h-6 w-6 text-primary" />
+            <CardContent className="p-4 text-center">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <Zap className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-semibold mb-2">Schnell & Modern</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-sm mb-1">Schnell & Modern</h3>
+              <p className="text-xs text-muted-foreground">
                 Responsive Design für Desktop und Mobile mit modernem Benutzerinterface.
               </p>
             </CardContent>
