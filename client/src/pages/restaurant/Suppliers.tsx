@@ -67,7 +67,7 @@ export default function RestaurantSuppliers() {
           {filteredSuppliers.map((supplier) => (
             <Card 
               key={supplier.id} 
-              className="cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01] overflow-hidden" 
+              className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.01] overflow-hidden" 
               data-testid={`supplier-card-${supplier.id}`}
             >
               <CardContent className="p-4 md:p-6">
