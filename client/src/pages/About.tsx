@@ -29,7 +29,7 @@ export default function About() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
           <Card>
             <CardContent className="p-6 text-center">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -107,14 +107,14 @@ export default function About() {
           <p className="text-sm text-muted-foreground mb-4">
             © 2026 GastroConnect. Alle Rechte vorbehalten.
           </p>
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-3">
             <Link href="/restaurant">
-              <Button variant="outline" data-testid="button-goto-restaurant">
+              <Button variant="outline" size="sm" data-testid="button-goto-restaurant">
                 Als Restaurant starten
               </Button>
             </Link>
             <Link href="/supplier">
-              <Button data-testid="button-goto-supplier">
+              <Button size="sm" data-testid="button-goto-supplier">
                 Als Lieferant starten
               </Button>
             </Link>
