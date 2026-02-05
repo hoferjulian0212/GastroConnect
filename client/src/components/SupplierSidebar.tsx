@@ -87,7 +87,7 @@ export function SupplierSidebar() {
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
-            className="h-28 object-contain dark:invert"
+            className="h-28 object-contain dark:invert transition-transform duration-300 hover:scale-110 cursor-pointer"
           />
         </div>
       </SidebarHeader>
