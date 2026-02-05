@@ -63,12 +63,19 @@ export function RestaurantSidebar() {
         <Link 
           href={item.url} 
           data-testid={`link-${item.url.split('/').pop()}`}
-          className="flex items-center h-11 rounded-xl px-4 gap-3 transition-all duration-200 hover-elevate text-left text-[14px] text-black dark:text-white font-medium"
+          className={`flex items-center h-11 rounded-xl px-4 gap-3 transition-all duration-200 hover-elevate text-left text-[14px] font-medium ${
+            isActive 
+              ? "bg-primary text-primary-foreground" 
+              : "text-foreground"
+          }`}
         >
           <item.icon className="h-5 w-5" />
           <span className="flex-1">{item.title}</span>
           {badgeCount > 0 && (
-            <Badge variant="default" className="ml-auto text-xs px-2 py-0.5 rounded-full">
+            <Badge 
+              variant={isActive ? "secondary" : "default"} 
+              className="ml-auto text-xs px-2 py-0.5 rounded-full"
+            >
               {badgeCount}
             </Badge>
           )}
