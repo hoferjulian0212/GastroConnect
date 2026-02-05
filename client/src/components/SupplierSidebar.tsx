@@ -82,7 +82,7 @@ export function SupplierSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      <SidebarHeader className="pt-8 pb-8 px-4">
+      <SidebarHeader className="pt-8 pb-4 px-4">
         <div className="flex items-center justify-center">
           <img 
             src={logoImage} 
