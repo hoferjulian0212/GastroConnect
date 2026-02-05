@@ -82,12 +82,12 @@ export function SupplierSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      <SidebarHeader className="p-4 pb-6">
+      <SidebarHeader className="pt-8 pb-8 px-4">
         <div className="flex items-center justify-center">
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
-            className="h-20 object-contain dark:invert"
+            className="h-28 object-contain dark:invert"
           />
         </div>
       </SidebarHeader>
