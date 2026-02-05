@@ -7,19 +7,21 @@ import logoImage from "@assets/ChatGPT_Image_5._Feb._2026,_17_10_09_177030783474
 export default function About() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 py-6 md:py-10">
-        <Link href="/">
-          <Button variant="ghost" className="mb-4 gap-2" data-testid="button-back-home">
-            <ArrowLeft className="h-4 w-4" />
-            Zurück
-          </Button>
-        </Link>
+      <div className="max-w-4xl mx-auto px-4 pt-4 pb-6">
+        <div className="flex items-start justify-between mb-4">
+          <Link href="/">
+            <Button variant="ghost" className="gap-2" data-testid="button-back-home">
+              <ArrowLeft className="h-4 w-4" />
+              Zurück
+            </Button>
+          </Link>
+        </div>
 
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
-            className="h-32 md:h-40 object-contain mx-auto mb-6 dark:invert"
+            className="h-28 md:h-36 object-contain mx-auto mb-4 dark:invert"
           />
           <h1 className="text-3xl md:text-4xl font-bold mb-4">Über GastroConnect</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
