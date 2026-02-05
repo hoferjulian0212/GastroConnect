@@ -66,7 +66,7 @@ export function RestaurantSidebar() {
           className={`flex items-center h-11 rounded-xl px-4 gap-3 transition-all duration-200 hover-elevate ${
             isActive 
               ? "text-primary font-semibold" 
-              : "text-foreground font-medium hover:text-foreground"
+              : "text-black dark:text-white font-medium"
           }`}
         >
           <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
