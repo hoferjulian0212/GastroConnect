@@ -300,7 +300,7 @@ export default function Complaints() {
                       };
                     }}
                     onComplete={handleUploadComplete}
-                    buttonClassName="h-20 w-20 border-2 border-dashed rounded-lg hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
+                    buttonClassName="h-20 w-20 border-2 border-dashed border-muted-foreground/30 bg-muted/30 rounded-lg hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
                   >
                     <ImagePlus className="h-5 w-5" />
                     <span className="text-[10px]">Hinzufügen</span>
