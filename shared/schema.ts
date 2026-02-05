@@ -7,6 +7,7 @@ export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "in_delivery", "delivered", "cancelled"]);
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document"]);
 export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint"]);
+export const complaintStatusEnum = pgEnum("complaint_status", ["open", "in_progress", "resolved", "closed"]);
 
 export const users = pgTable("users", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -95,6 +96,16 @@ export const complaints = pgTable("complaints", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   mediaUrls: text("media_urls").array().default([]),
+  status: complaintStatusEnum("status").default("open").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const complaintComments = pgTable("complaint_comments", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  complaintId: varchar("complaint_id", { length: 36 }).notNull().references(() => complaints.id),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
+  content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -117,7 +128,9 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: t
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true, createdAt: true });
 export const insertConversationSchema = createInsertSchema(conversations).omit({ id: true, createdAt: true, lastMessageAt: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, isRead: true });
-export const insertComplaintSchema = createInsertSchema(complaints).omit({ id: true, createdAt: true });
+export const insertComplaintSchema = createInsertSchema(complaints).omit({ id: true, createdAt: true, updatedAt: true, status: true });
+export const updateComplaintSchema = createInsertSchema(complaints).omit({ id: true, createdAt: true, updatedAt: true, orderId: true, restaurantId: true, supplierId: true }).partial();
+export const insertComplaintCommentSchema = createInsertSchema(complaintComments).omit({ id: true, createdAt: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, isRead: true });
 
 // Types
@@ -136,7 +149,10 @@ export type Conversation = typeof conversations.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertComplaint = z.infer<typeof insertComplaintSchema>;
+export type UpdateComplaint = z.infer<typeof updateComplaintSchema>;
 export type Complaint = typeof complaints.$inferSelect;
+export type InsertComplaintComment = z.infer<typeof insertComplaintCommentSchema>;
+export type ComplaintComment = typeof complaintComments.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
@@ -153,4 +169,5 @@ export type ConversationWithUser = Conversation & {
   unreadCount: number;
 };
 export type CartItemWithProduct = CartItem & { product: Product; supplier: User };
-export type ComplaintWithDetails = Complaint & { order: Order; restaurant: User; supplier: User };
+export type ComplaintWithDetails = Complaint & { order: Order; restaurant: User; supplier: User; comments?: ComplaintCommentWithUser[] };
+export type ComplaintCommentWithUser = ComplaintComment & { user: User };
