@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Home, MessageSquare, ShoppingBag, Package, History, Settings, AlertCircle, LogOut, Truck } from "lucide-react";
-import logoImage from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-Photoroom_1769969436354.png";
+import logoImage from "@assets/ChatGPT_Image_5._Feb._2026,_16_51_02_1770306687793.png";
 import {
   Sidebar,
   SidebarContent,
@@ -83,14 +83,13 @@ export function RestaurantSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      <SidebarHeader className="p-6 pb-8">
-        <div className="flex items-center gap-0">
+      <SidebarHeader className="p-4 pb-6">
+        <div className="flex items-center justify-center">
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
-            className="h-14 w-14 object-contain dark:invert"
+            className="h-20 object-contain dark:invert"
           />
-          <span className="font-semibold text-lg text-foreground">GastroConnect</span>
         </div>
       </SidebarHeader>
       
