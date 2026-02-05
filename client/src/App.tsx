@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { ChatProvider, useChat } from "@/context/ChatContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
@@ -177,6 +178,7 @@ function AppLayout() {
                   <RoleSwitcher />
                 </div>
                 <div className="flex items-center gap-2">
+                  <NotificationBell />
                   {currentRole === "restaurant" && (
                     <div className="hidden md:block">
                       <CartButton />

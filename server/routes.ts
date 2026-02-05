@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProductSchema, insertCartItemSchema, insertMessageSchema, insertComplaintSchema } from "@shared/schema";
+import { insertProductSchema, insertCartItemSchema, insertMessageSchema, insertComplaintSchema, insertNotificationSchema } from "@shared/schema";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 
 export async function registerRoutes(
@@ -304,6 +304,16 @@ export async function registerRoutes(
           content: orderContent,
           orderId: order.id,
         });
+        
+        // Create notification for supplier
+        const restaurant = await storage.getUser(restaurantId);
+        await storage.createNotification({
+          userId: supplierId,
+          type: "new_order",
+          title: "Neue Bestellung",
+          message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat eine neue Bestellung aufgegeben (€${totalAmount})`,
+          referenceId: order.id
+        });
       }
 
       // Clear cart
@@ -522,6 +532,21 @@ export async function registerRoutes(
         messageType: req.body.messageType || "text",
         content: req.body.content
       });
+      
+      // Create notification for recipient
+      const conversations = await storage.getConversations(req.body.senderId, "restaurant");
+      const conversation = conversations.find(c => c.id === req.params.id);
+      if (conversation && conversation.otherUser) {
+        const sender = await storage.getUser(req.body.senderId);
+        await storage.createNotification({
+          userId: conversation.otherUser.id,
+          type: "new_message",
+          title: "Neue Nachricht",
+          message: `${sender?.companyName || sender?.name || "Jemand"} hat Ihnen eine Nachricht gesendet`,
+          referenceId: req.params.id
+        });
+      }
+      
       res.status(201).json(message);
     } catch (error) {
       res.status(500).json({ error: "Failed to send message" });
@@ -664,6 +689,68 @@ export async function registerRoutes(
       res.json(orders);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch orders" });
+    }
+  });
+
+  // ===== NOTIFICATIONS =====
+  app.get("/api/notifications", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID required" });
+      }
+      const notificationsList = await storage.getNotifications(userId);
+      res.json(notificationsList);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get("/api/notifications/count", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID required" });
+      }
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch notification count" });
+    }
+  });
+
+  app.post("/api/notifications", async (req, res) => {
+    try {
+      const validated = insertNotificationSchema.parse(req.body);
+      const notification = await storage.createNotification(validated);
+      res.status(201).json(notification);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create notification" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", async (req, res) => {
+    try {
+      const updated = await storage.markNotificationAsRead(req.params.id);
+      if (!updated) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  app.patch("/api/notifications/read-all", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID required" });
+      }
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark all notifications as read" });
     }
   });
 
