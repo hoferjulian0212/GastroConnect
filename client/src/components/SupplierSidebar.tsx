@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Home, MessageSquare, Package, ClipboardList, History, Settings, AlertCircle, LogOut } from "lucide-react";
-import logoImage from "@assets/ChatGPT_Image_5._Feb._2026,_16_51_02_1770306687793.png";
+import logoImage from "@assets/ChatGPT_Image_5._Feb._2026,_17_10_09_1770307834743.png";
 import {
   Sidebar,
   SidebarContent,
@@ -87,7 +87,7 @@ export function SupplierSidebar() {
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
-            className="h-28 object-contain dark:invert transition-transform duration-300 hover:scale-110 cursor-pointer"
+            className="h-28 object-contain dark:invert transition-transform duration-300 hover:scale-105 cursor-pointer"
           />
         </Link>
       </SidebarHeader>

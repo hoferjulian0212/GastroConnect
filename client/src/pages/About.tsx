@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Utensils, Truck, MessageSquare, ShoppingCart, Shield, Zap } from "lucide-react";
-import logoImage from "@assets/ChatGPT_Image_5._Feb._2026,_16_51_02_1770306687793.png";
+import logoImage from "@assets/ChatGPT_Image_5._Feb._2026,_17_10_09_1770307834743.png";
 
 export default function About() {
   return (
