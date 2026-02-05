@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Calendar } from "lucide-react";
+import { AlertCircle, Calendar, FileVideo, FileImage } from "lucide-react";
 import type { ComplaintWithDetails } from "@shared/schema";
 
 export default function SupplierComplaints() {
@@ -23,6 +23,10 @@ export default function SupplierComplaints() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const isVideoFile = (url: string) => {
+    return /\.(mp4|webm|mov|avi|mkv)$/i.test(url);
   };
 
   
@@ -105,6 +109,32 @@ export default function SupplierComplaints() {
                     <h4 className="font-medium text-sm md:text-base mb-0.5 md:mb-1">{complaint.title}</h4>
                     <p className="text-xs md:text-sm text-muted-foreground">{complaint.description}</p>
                   </div>
+                  
+                  {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {complaint.mediaUrls.map((url, idx) => (
+                        <a 
+                          key={idx} 
+                          href={`/objects${url}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="h-16 w-16 md:h-20 md:w-20 rounded-lg overflow-hidden border hover:opacity-80 transition-opacity"
+                        >
+                          {isVideoFile(url) ? (
+                            <div className="h-full w-full flex items-center justify-center bg-muted">
+                              <FileVideo className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <img 
+                              src={`/objects${url}`} 
+                              alt={`Anhang ${idx + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                          )}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

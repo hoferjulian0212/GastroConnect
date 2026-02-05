@@ -18,8 +18,9 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Send, Package } from "lucide-react";
+import { AlertCircle, Send, Package, ImagePlus, X, FileVideo, FileImage } from "lucide-react";
 import type { User, Order, ComplaintWithDetails } from "@shared/schema";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 export default function Complaints() {
   const { currentUser } = useUser();
@@ -29,6 +30,7 @@ export default function Complaints() {
   const [selectedOrderId, setSelectedOrderId] = useState<string>("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
 
   const { data: suppliers, isLoading: loadingSuppliers } = useQuery<User[]>({
     queryKey: [`/api/suppliers-with-orders?restaurantId=${currentUser?.id}`],
@@ -46,7 +48,7 @@ export default function Complaints() {
   });
 
   const createComplaintMutation = useMutation({
-    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string }) => {
+    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; mediaUrls: string[] }) => {
       return apiRequest("POST", "/api/complaints", data);
     },
     onSuccess: () => {
@@ -65,6 +67,7 @@ export default function Complaints() {
     setSelectedOrderId("");
     setTitle("");
     setDescription("");
+    setMediaUrls([]);
   };
 
   const handleSubmit = () => {
@@ -79,7 +82,29 @@ export default function Complaints() {
       supplierId: selectedSupplierId,
       title: title.trim(),
       description: description.trim(),
+      mediaUrls,
     });
+  };
+
+  const handleUploadComplete = async (result: any) => {
+    const uploadedFiles = result.successful || [];
+    for (const file of uploadedFiles) {
+      const response = file.response;
+      if (response?.uploadURL) {
+        const url = new URL(response.uploadURL);
+        const objectPath = url.pathname;
+        setMediaUrls(prev => [...prev, objectPath]);
+      }
+    }
+    toast({ title: "Upload erfolgreich", description: `${uploadedFiles.length} Datei(en) hochgeladen` });
+  };
+
+  const removeMedia = (index: number) => {
+    setMediaUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const isVideoFile = (url: string) => {
+    return /\.(mp4|webm|mov|avi|mkv)$/i.test(url);
   };
 
   const formatDate = (date: Date | string) => {
@@ -223,6 +248,70 @@ export default function Complaints() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label>Fotos / Videos anhängen (optional)</Label>
+              <div className="flex flex-wrap gap-2">
+                {mediaUrls.map((url, index) => (
+                  <div 
+                    key={index} 
+                    className="relative group h-20 w-20 rounded-lg border bg-muted overflow-hidden"
+                  >
+                    {isVideoFile(url) ? (
+                      <div className="h-full w-full flex items-center justify-center bg-muted">
+                        <FileVideo className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <img 
+                        src={`/objects${url}`} 
+                        alt={`Anhang ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeMedia(index)}
+                      className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      data-testid={`button-remove-media-${index}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                
+                {mediaUrls.length < 5 && (
+                  <ObjectUploader
+                    maxNumberOfFiles={5 - mediaUrls.length}
+                    maxFileSize={50 * 1024 * 1024}
+                    onGetUploadParameters={async (file) => {
+                      const res = await fetch("/api/uploads/request-url", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          name: file.name,
+                          size: file.size,
+                          contentType: file.type,
+                        }),
+                      });
+                      const { uploadURL } = await res.json();
+                      return {
+                        method: "PUT" as const,
+                        url: uploadURL,
+                        headers: { "Content-Type": file.type },
+                      };
+                    }}
+                    onComplete={handleUploadComplete}
+                    buttonClassName="h-20 w-20 border-2 border-dashed rounded-lg hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <ImagePlus className="h-5 w-5" />
+                    <span className="text-[10px]">Hinzufügen</span>
+                  </ObjectUploader>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Max. 5 Dateien, je max. 50 MB (Bilder oder Videos)
+              </p>
+            </div>
+
             <Button
               onClick={handleSubmit}
               disabled={!canSubmit || createComplaintMutation.isPending}
@@ -256,10 +345,45 @@ export default function Complaints() {
                   >
                     <div className="font-medium text-sm md:text-base">{complaint.title}</div>
                     <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">{complaint.description}</p>
+                    
+                    {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
+                      <div className="flex gap-1.5 mt-2">
+                        {complaint.mediaUrls.slice(0, 4).map((url, idx) => (
+                          <div key={idx} className="h-12 w-12 rounded overflow-hidden border">
+                            {isVideoFile(url) ? (
+                              <div className="h-full w-full flex items-center justify-center bg-muted">
+                                <FileVideo className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            ) : (
+                              <img 
+                                src={`/objects${url}`} 
+                                alt={`Anhang ${idx + 1}`}
+                                className="h-full w-full object-cover"
+                              />
+                            )}
+                          </div>
+                        ))}
+                        {complaint.mediaUrls.length > 4 && (
+                          <div className="h-12 w-12 rounded border flex items-center justify-center bg-muted text-xs text-muted-foreground">
+                            +{complaint.mediaUrls.length - 4}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
                     <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
                       <span>{complaint.supplier?.companyName || "Unbekannter Lieferant"}</span>
                       <span>•</span>
                       <span>{formatDate(complaint.createdAt)}</span>
+                      {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className="flex items-center gap-0.5">
+                            <FileImage className="h-3 w-3" />
+                            {complaint.mediaUrls.length}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
