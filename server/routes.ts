@@ -534,12 +534,17 @@ export async function registerRoutes(
       });
       
       // Create notification for recipient
-      const conversations = await storage.getConversations(req.body.senderId, "restaurant");
-      const conversation = conversations.find(c => c.id === req.params.id);
-      if (conversation && conversation.otherUser) {
-        const sender = await storage.getUser(req.body.senderId);
+      const conversation = await storage.getConversation(req.params.id);
+      if (conversation) {
+        const senderId = req.body.senderId;
+        // Determine recipient: if sender is restaurant, recipient is supplier, and vice versa
+        const recipientId = conversation.restaurantId === senderId 
+          ? conversation.supplierId 
+          : conversation.restaurantId;
+        
+        const sender = await storage.getUser(senderId);
         await storage.createNotification({
-          userId: conversation.otherUser.id,
+          userId: recipientId,
           type: "new_message",
           title: "Neue Nachricht",
           message: `${sender?.companyName || sender?.name || "Jemand"} hat Ihnen eine Nachricht gesendet`,

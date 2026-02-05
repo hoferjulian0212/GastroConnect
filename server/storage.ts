@@ -46,6 +46,7 @@ export interface IStorage {
 
   // Conversations & Messages
   getConversations(userId: string, role: "restaurant" | "supplier"): Promise<ConversationWithUser[]>;
+  getConversation(conversationId: string): Promise<Conversation | undefined>;
   getOrCreateConversation(restaurantId: string, supplierId: string): Promise<Conversation>;
   getMessages(conversationId: string): Promise<Message[]>;
   sendMessage(message: InsertMessage): Promise<Message>;
@@ -335,6 +336,14 @@ export class DatabaseStorage implements IStorage {
       });
     }
     return result;
+  }
+
+  async getConversation(conversationId: string): Promise<Conversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, conversationId));
+    return conversation;
   }
 
   async getOrCreateConversation(restaurantId: string, supplierId: string): Promise<Conversation> {
