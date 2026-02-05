@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Search, Package, MessageSquare } from "lucide-react";
+import { Search, Package, MessageSquare, Phone } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import type { User } from "@shared/schema";
@@ -71,13 +71,28 @@ export default function RestaurantSuppliers() {
               data-testid={`supplier-card-${supplier.id}`}
             >
               <CardContent className="p-4 md:p-6">
-                <div className="flex items-start gap-4 mb-4">
+                <div className="flex items-start justify-between mb-4">
                   <Avatar className="h-12 w-12">
                     <AvatarImage src={supplier.profileImageUrl || undefined} alt={supplier.companyName || supplier.name} />
                     <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
                       {(supplier.companyName || supplier.name).charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
+                  {supplier.phone && (
+                    <a 
+                      href={`tel:${supplier.phone}`}
+                      onClick={(e) => e.stopPropagation()}
+                      data-testid={`button-call-${supplier.id}`}
+                    >
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-9 w-9 rounded-full bg-green-500/10 hover:bg-green-500/20 text-green-600"
+                      >
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  )}
                 </div>
 
                 <h3 className="font-semibold text-base md:text-lg mb-1">
