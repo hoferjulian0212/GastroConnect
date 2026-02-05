@@ -137,11 +137,11 @@ export function NotificationBell() {
                     <div className="flex-shrink-0 mt-0.5">
                       {getNotificationIcon(notification.type)}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${!notification.isRead ? "font-semibold" : ""}`}>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <p className={`text-sm truncate ${!notification.isRead ? "font-semibold" : ""}`}>
                         {notification.title}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground line-clamp-2 break-words">
                         {notification.message}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
