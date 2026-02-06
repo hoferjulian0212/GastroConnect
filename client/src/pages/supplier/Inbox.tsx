@@ -175,7 +175,7 @@ export default function SupplierInbox() {
       const res = await fetch(`/api/complaints/${selectedComplaintId}/comments`);
       return res.json();
     },
-    enabled: !!selectedComplaintId && showCommentDialog,
+    enabled: !!selectedComplaintId && (showCommentDialog || showComplaintDetail),
   });
 
   const updateComplaintStatusMutation = useMutation({
@@ -956,8 +956,76 @@ export default function SupplierInbox() {
                 </div>
               </div>
 
+              <Separator />
+
+              <div>
+                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Kommentare ({complaintComments?.length || 0})
+                </h4>
+                {loadingComments ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                  </div>
+                ) : complaintComments && complaintComments.length > 0 ? (
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {complaintComments.map((comment) => (
+                      <div key={comment.id} className="p-3 rounded-lg bg-muted/30 border" data-testid={`comment-${comment.id}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={comment.user?.profileImageUrl || undefined} />
+                              <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                {comment.user?.companyName?.substring(0, 2).toUpperCase() || comment.user?.name?.substring(0, 2).toUpperCase() || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium">{comment.user?.companyName || comment.user?.name || "Unbekannt"}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {comment.user?.role === "supplier" ? "Lieferant" : "Restaurant"}
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(comment.createdAt), "dd.MM. HH:mm", { locale: de })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground ml-8">{comment.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">Noch keine Kommentare vorhanden</p>
+                )}
+              </div>
+
+              {complaintDetail.status !== "closed" && complaintDetail.status !== "resolved" && (
+                <div className="space-y-2 border-t pt-4">
+                  <Label className="text-sm">Kommentar hinzufügen</Label>
+                  <div className="flex gap-2">
+                    <Textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Schreiben Sie einen Kommentar..."
+                      rows={2}
+                      className="flex-1"
+                      data-testid="input-supplier-complaint-comment"
+                    />
+                    <Button
+                      size="icon"
+                      onClick={() => selectedComplaintId && addComplaintCommentMutation.mutate({ complaintId: selectedComplaintId, content: newComment.trim() })}
+                      disabled={!newComment.trim() || addComplaintCommentMutation.isPending}
+                      data-testid="button-supplier-send-complaint-comment"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
               {/* Action buttons */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   className="flex-1"
@@ -966,15 +1034,6 @@ export default function SupplierInbox() {
                 >
                   <Settings className="h-4 w-4 mr-2" />
                   Status ändern
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={openComplaintCommentDialog}
-                  data-testid="button-add-complaint-comment"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Kommentar
                 </Button>
               </div>
             </div>

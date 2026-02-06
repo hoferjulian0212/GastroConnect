@@ -414,6 +414,66 @@ export default function RestaurantInbox() {
     });
   };
 
+  const [showCancelOrderConfirm, setShowCancelOrderConfirm] = useState(false);
+  const [showWithdrawComplaintConfirm, setShowWithdrawComplaintConfirm] = useState(false);
+  const [newComplaintComment, setNewComplaintComment] = useState("");
+
+  const cancelOrderMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status: "cancelled" });
+    },
+    onSuccess: () => {
+      toast({ title: "Bestellung storniert", description: "Die Bestellung wurde erfolgreich storniert." });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders", orderDetailId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/recent', currentUser?.id] });
+      if (selectedConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+      }
+      setShowCancelOrderConfirm(false);
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Bestellung konnte nicht storniert werden.", variant: "destructive" });
+    },
+  });
+
+  const withdrawComplaintMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("PATCH", `/api/complaints/${id}`, { status: "closed" });
+    },
+    onSuccess: () => {
+      toast({ title: "Reklamation zurückgezogen", description: "Die Reklamation wurde geschlossen." });
+      queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
+      if (selectedConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+      }
+      setShowWithdrawComplaintConfirm(false);
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Reklamation konnte nicht zurückgezogen werden.", variant: "destructive" });
+    },
+  });
+
+  const addComplaintCommentMutation = useMutation({
+    mutationFn: async ({ complaintId, content }: { complaintId: string; content: string }) => {
+      return apiRequest("POST", `/api/complaints/${complaintId}/comments`, {
+        userId: currentUser?.id,
+        content,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde gespeichert." });
+      queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId, "comments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId] });
+      setNewComplaintComment("");
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Kommentar konnte nicht gespeichert werden.", variant: "destructive" });
+    },
+  });
+
   const formatOrderDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString("de-DE", {
       day: "2-digit",
@@ -1103,6 +1163,49 @@ export default function RestaurantInbox() {
                   </div>
                 </>
               )}
+
+              {(orderDetail.status === "pending" || orderDetail.status === "confirmed") && (
+                <>
+                  <Separator />
+                  {!showCancelOrderConfirm ? (
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={() => setShowCancelOrderConfirm(true)}
+                      data-testid="button-cancel-order-inbox"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Bestellung stornieren
+                    </Button>
+                  ) : (
+                    <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/5 space-y-3">
+                      <p className="text-sm font-medium text-destructive">Bestellung wirklich stornieren?</p>
+                      <p className="text-xs text-muted-foreground">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setShowCancelOrderConfirm(false)}
+                          data-testid="button-cancel-order-abort"
+                        >
+                          Abbrechen
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => cancelOrderMutation.mutate(orderDetail.id)}
+                          disabled={cancelOrderMutation.isPending}
+                          data-testid="button-cancel-order-confirm"
+                        >
+                          {cancelOrderMutation.isPending ? "Wird storniert..." : "Ja, stornieren"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </DialogContent>
@@ -1252,6 +1355,73 @@ export default function RestaurantInbox() {
                   <p className="text-sm text-muted-foreground text-center py-4">Noch keine Kommentare vorhanden</p>
                 )}
               </div>
+
+              {complaintDetail.status !== "closed" && complaintDetail.status !== "resolved" && (
+                <div className="space-y-2 border-t pt-4">
+                  <Label className="text-sm">Kommentar hinzufügen</Label>
+                  <div className="flex gap-2">
+                    <Textarea
+                      value={newComplaintComment}
+                      onChange={(e) => setNewComplaintComment(e.target.value)}
+                      placeholder="Schreiben Sie einen Kommentar..."
+                      rows={2}
+                      className="flex-1"
+                      data-testid="input-inbox-complaint-comment"
+                    />
+                    <Button
+                      size="icon"
+                      onClick={() => selectedComplaintId && addComplaintCommentMutation.mutate({ complaintId: selectedComplaintId, content: newComplaintComment.trim() })}
+                      disabled={!newComplaintComment.trim() || addComplaintCommentMutation.isPending}
+                      data-testid="button-inbox-send-complaint-comment"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {complaintDetail.status === "open" && (
+                <>
+                  <Separator />
+                  {!showWithdrawComplaintConfirm ? (
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={() => setShowWithdrawComplaintConfirm(true)}
+                      data-testid="button-withdraw-complaint-inbox"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Reklamation zurückziehen
+                    </Button>
+                  ) : (
+                    <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/5 space-y-3">
+                      <p className="text-sm font-medium text-destructive">Reklamation wirklich zurückziehen?</p>
+                      <p className="text-xs text-muted-foreground">Die Reklamation wird geschlossen und kann nicht erneut geöffnet werden.</p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setShowWithdrawComplaintConfirm(false)}
+                          data-testid="button-withdraw-complaint-abort"
+                        >
+                          Abbrechen
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => selectedComplaintId && withdrawComplaintMutation.mutate(selectedComplaintId)}
+                          disabled={withdrawComplaintMutation.isPending}
+                          data-testid="button-withdraw-complaint-confirm"
+                        >
+                          {withdrawComplaintMutation.isPending ? "Wird geschlossen..." : "Ja, zurückziehen"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
