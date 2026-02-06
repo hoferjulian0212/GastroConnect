@@ -87,7 +87,7 @@ export function RestaurantSidebar() {
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
-            className="h-16 object-contain dark:invert transition-transform duration-300 hover:scale-105 cursor-pointer"
+            className="h-20 object-contain dark:invert transition-transform duration-300 hover:scale-105 cursor-pointer"
           />
         </Link>
       </SidebarHeader>
