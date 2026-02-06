@@ -108,6 +108,13 @@ export default function SupplierComplaints() {
     return /\.(mp4|webm|mov|avi|mkv)$/i.test(url);
   };
 
+  const getMediaSrc = (url: string) => {
+    if (url.startsWith("/objects/")) return url;
+    const match = url.match(/\.private\/(.+)$/);
+    if (match) return `/objects/${match[1]}`;
+    return `/objects${url}`;
+  };
+
   const formatComplaintStatus = (status: string) => {
     const statusMap: Record<string, { label: string; icon: typeof Clock; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       open: { label: "Offen", icon: Clock, variant: "secondary" },
@@ -243,7 +250,7 @@ export default function SupplierComplaints() {
                         {complaint.mediaUrls.map((url, idx) => (
                           <a 
                             key={idx} 
-                            href={`/objects${url}`}
+                            href={getMediaSrc(url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="h-14 w-14 md:h-16 md:w-16 rounded-lg overflow-hidden border hover:opacity-80 transition-opacity"
@@ -254,7 +261,7 @@ export default function SupplierComplaints() {
                               </div>
                             ) : (
                               <img 
-                                src={`/objects${url}`} 
+                                src={getMediaSrc(url)} 
                                 alt={`Anhang ${idx + 1}`}
                                 className="h-full w-full object-cover"
                               />

@@ -267,6 +267,13 @@ export default function SupplierInbox() {
     return /\.(mp4|webm|mov|avi|mkv)$/i.test(url);
   };
 
+  const getMediaSrc = (url: string) => {
+    if (url.startsWith("/objects/")) return url;
+    const match = url.match(/\.private\/(.+)$/);
+    if (match) return `/objects/${match[1]}`;
+    return `/objects${url}`;
+  };
+
   const [loadingComplaintDetail, setLoadingComplaintDetail] = useState(false);
 
   const openComplaintDetailById = (complaintId: string) => {
@@ -854,7 +861,7 @@ export default function SupplierInbox() {
                     {complaintDetail.mediaUrls.map((url, idx) => (
                       <a 
                         key={idx} 
-                        href={`/objects${url}`}
+                        href={getMediaSrc(url)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="h-20 w-20 rounded-lg overflow-hidden border hover:opacity-80 transition-opacity"
@@ -865,7 +872,7 @@ export default function SupplierInbox() {
                           </div>
                         ) : (
                           <img 
-                            src={`/objects${url}`} 
+                            src={getMediaSrc(url)} 
                             alt={`Anhang ${idx + 1}`}
                             className="h-full w-full object-cover"
                           />

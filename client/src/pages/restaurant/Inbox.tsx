@@ -165,6 +165,13 @@ export default function RestaurantInbox() {
     return /\.(mp4|webm|mov|avi|mkv)$/i.test(url);
   };
 
+  const getMediaSrc = (url: string) => {
+    if (url.startsWith("/objects/")) return url;
+    const match = url.match(/\.private\/(.+)$/);
+    if (match) return `/objects/${match[1]}`;
+    return `/objects${url}`;
+  };
+
   const openComplaintDetailById = (complaintId: string) => {
     setSelectedComplaintId(complaintId);
     setShowComplaintDetail(true);
@@ -1118,14 +1125,14 @@ export default function RestaurantInbox() {
                   <h4 className="font-medium text-sm mb-2">Anhänge</h4>
                   <div className="grid grid-cols-3 gap-2">
                     {complaintDetail.mediaUrls.map((url: string, idx: number) => (
-                      <a key={idx} href={`/objects${url}`} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-lg overflow-hidden border hover-elevate">
+                      <a key={idx} href={getMediaSrc(url)} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-lg overflow-hidden border hover-elevate">
                         {isVideoFile(url) ? (
                           <div className="h-full w-full flex items-center justify-center bg-muted">
                             <Package className="h-6 w-6 text-muted-foreground" />
                           </div>
                         ) : (
                           <img 
-                            src={`/objects${url}`} 
+                            src={getMediaSrc(url)} 
                             alt={`Anhang ${idx + 1}`}
                             className="h-full w-full object-cover"
                           />

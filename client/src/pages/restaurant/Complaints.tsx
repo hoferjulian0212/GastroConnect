@@ -121,7 +121,9 @@ export default function Complaints() {
     const uploadedFiles = result.successful || [];
     for (const file of uploadedFiles) {
       const response = file.response;
-      if (response?.uploadURL) {
+      if (response?.objectPath) {
+        setMediaUrls(prev => [...prev, response.objectPath]);
+      } else if (response?.uploadURL) {
         const url = new URL(response.uploadURL);
         const objectPath = url.pathname;
         setMediaUrls(prev => [...prev, objectPath]);
@@ -136,6 +138,13 @@ export default function Complaints() {
 
   const isVideoFile = (url: string) => {
     return /\.(mp4|webm|mov|avi|mkv)$/i.test(url);
+  };
+
+  const getMediaSrc = (url: string) => {
+    if (url.startsWith("/objects/")) return url;
+    const match = url.match(/\.private\/(.+)$/);
+    if (match) return `/objects/${match[1]}`;
+    return `/objects${url}`;
   };
 
   const formatDate = (date: Date | string) => {
@@ -196,7 +205,9 @@ export default function Complaints() {
     const uploadedFiles = result.successful || [];
     for (const file of uploadedFiles) {
       const response = file.response;
-      if (response?.uploadURL) {
+      if (response?.objectPath) {
+        setEditMediaUrls(prev => [...prev, response.objectPath]);
+      } else if (response?.uploadURL) {
         const url = new URL(response.uploadURL);
         const objectPath = url.pathname;
         setEditMediaUrls(prev => [...prev, objectPath]);
@@ -341,7 +352,7 @@ export default function Complaints() {
                       </div>
                     ) : (
                       <img 
-                        src={`/objects${url}`} 
+                        src={getMediaSrc(url)} 
                         alt={`Anhang ${index + 1}`}
                         className="h-full w-full object-cover"
                       />
@@ -459,7 +470,7 @@ export default function Complaints() {
                                 </div>
                               ) : (
                                 <img 
-                                  src={`/objects${url}`} 
+                                  src={getMediaSrc(url)} 
                                   alt={`Anhang ${idx + 1}`}
                                   className="h-full w-full object-cover"
                                 />
@@ -545,7 +556,7 @@ export default function Complaints() {
                       </div>
                     ) : (
                       <img 
-                        src={`/objects${url}`} 
+                        src={getMediaSrc(url)} 
                         alt={`Anhang ${index + 1}`}
                         className="h-full w-full object-cover"
                       />
