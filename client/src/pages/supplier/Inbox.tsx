@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -36,8 +36,8 @@ interface ComplaintContent {
 
 interface OrderWithDetails extends Order {
   items: { id: string; productName: string; quantity: number; unitPrice: string; totalPrice: string }[];
-  restaurant?: { companyName: string };
-  supplier?: { companyName: string };
+  restaurant?: { companyName: string; profileImageUrl?: string | null };
+  supplier?: { companyName: string; profileImageUrl?: string | null };
 }
 
 const parseOrderContent = (content: string): OrderContent | null => {
@@ -500,11 +500,11 @@ export default function SupplierInbox() {
                                 (() => {
                                   const orderData = parseOrderContent(message.content);
                                   return (
-                                    <div className="w-[85%] rounded-lg border bg-card shadow-lg overflow-hidden">
-                                      <div className="flex items-center justify-between px-4 py-2 bg-green-500/10 border-b border-green-500/20">
+                                    <div className="w-[85%] rounded-lg border-2 border-green-500/30 bg-card shadow-lg overflow-hidden">
+                                      <div className="flex items-center justify-between px-4 py-2.5 bg-green-500/10 border-b border-green-500/20">
                                         <div className="flex items-center gap-2">
                                           <ClipboardList className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                          <span className="text-sm font-medium text-green-600 dark:text-green-400">Neue Bestellung</span>
+                                          <span className="text-sm font-semibold text-green-600 dark:text-green-400">Neue Bestellung</span>
                                         </div>
                                         <span className="text-xs text-muted-foreground">
                                           {format(messageDate, "HH:mm")}
@@ -530,16 +530,16 @@ export default function SupplierInbox() {
                                         )}
                                       </div>
                                       {message.orderId && (
-                                        <div className="px-4 py-2 border-t bg-muted/30">
+                                        <div className="px-4 py-2.5 border-t border-green-500/20 bg-green-500/5">
                                           <Button
-                                            variant="outline"
+                                            variant="default"
                                             size="sm"
                                             className="w-full"
                                             onClick={() => setOrderDetailId(message.orderId)}
                                             data-testid={`button-order-details-${message.id}`}
                                           >
                                             <Eye className="h-4 w-4 mr-2" />
-                                            Details anzeigen
+                                            Bestelldetails anzeigen
                                           </Button>
                                         </div>
                                       )}
@@ -550,11 +550,11 @@ export default function SupplierInbox() {
                                 (() => {
                                   const complaintData = parseComplaintContent(message.content);
                                   return (
-                                    <div className="w-[85%] rounded-lg border bg-card shadow-lg overflow-hidden">
-                                      <div className="flex items-center justify-between px-4 py-2 bg-red-500/10 border-b border-red-500/20">
+                                    <div className="w-[85%] rounded-lg border-2 border-red-500/30 bg-card shadow-lg overflow-hidden">
+                                      <div className="flex items-center justify-between px-4 py-2.5 bg-red-500/10 border-b border-red-500/20">
                                         <div className="flex items-center gap-2">
                                           <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                                          <span className="text-sm font-medium text-red-600 dark:text-red-400">Reklamation</span>
+                                          <span className="text-sm font-semibold text-red-600 dark:text-red-400">Reklamation</span>
                                         </div>
                                         <span className="text-xs text-muted-foreground">
                                           {format(messageDate, "HH:mm")}
@@ -563,7 +563,7 @@ export default function SupplierInbox() {
                                       <div className="px-4 py-3">
                                         {complaintData ? (
                                           <div className="space-y-2">
-                                            <div className="flex items-center justify-between">
+                                            <div className="flex items-center justify-between flex-wrap gap-1">
                                               <span className="font-medium">{complaintData.title}</span>
                                               <Badge variant="outline" className="text-xs">
                                                 Bestellung #{complaintData.orderId?.substring(0, 8)}
@@ -576,9 +576,9 @@ export default function SupplierInbox() {
                                         )}
                                       </div>
                                       {(complaintData?.complaintId || complaintData?.orderId) && (
-                                        <div className="px-4 py-2 border-t bg-muted/30">
+                                        <div className="px-4 py-2.5 border-t border-red-500/20 bg-red-500/5">
                                           <Button
-                                            variant="outline"
+                                            variant="destructive"
                                             size="sm"
                                             className="w-full"
                                             onClick={() => {
@@ -677,25 +677,20 @@ export default function SupplierInbox() {
       </Card>
 
       <Dialog open={!!orderDetailId} onOpenChange={(open) => !open && setOrderDetailId(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" />
+              <ClipboardList className="h-5 w-5 text-green-600" />
               Bestelldetails
             </DialogTitle>
           </DialogHeader>
           {orderDetail && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Bestellnummer</span>
-                <span className="font-mono text-sm">#{orderDetail.id.slice(0, 8)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Restaurant</span>
-                <span className="text-sm">{orderDetail.restaurant?.companyName || "Unbekannt"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Status</span>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Bestellnummer</div>
+                  <span className="font-mono text-sm font-semibold">#{orderDetail.id.slice(0, 8)}</span>
+                </div>
                 <Select
                   value={orderDetail.status}
                   onValueChange={(value) => {
@@ -715,6 +710,22 @@ export default function SupplierInbox() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {orderDetail.restaurant && (
+                <div className="flex items-center gap-3 p-3 rounded-lg border">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={orderDetail.restaurant.profileImageUrl || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                      {orderDetail.restaurant.companyName?.substring(0, 2).toUpperCase() || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-medium text-sm">{orderDetail.restaurant.companyName || "Restaurant"}</div>
+                    <div className="text-xs text-muted-foreground">Restaurant</div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Datum</span>
                 <span className="text-sm">{format(new Date(orderDetail.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}</span>
@@ -723,7 +734,10 @@ export default function SupplierInbox() {
               <Separator />
               
               <div>
-                <h4 className="font-medium mb-3">Produkte</h4>
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Produkte ({orderDetail.items.length})
+                </h4>
                 <div className="space-y-2">
                   {orderDetail.items.map((item) => (
                     <div key={item.id} className="flex justify-between items-center py-2 border-b last:border-0">
@@ -741,9 +755,9 @@ export default function SupplierInbox() {
               
               <Separator />
               
-              <div className="flex justify-between items-center text-lg font-bold">
+              <div className="flex justify-between items-center p-3 rounded-lg bg-green-500/10 text-lg font-bold">
                 <span>Gesamtbetrag</span>
-                <span>{orderDetail.totalAmount}€</span>
+                <span className="text-green-700 dark:text-green-400">{orderDetail.totalAmount}€</span>
               </div>
 
               {orderDetail.notes && (

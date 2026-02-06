@@ -10,14 +10,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { ConversationWithUser, Message, Product, Order } from "@shared/schema";
+import type { ConversationWithUser, Message, Product, Order, ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -34,6 +34,7 @@ interface ComplaintContent {
   title: string;
   description: string;
   orderId: string;
+  complaintId?: string;
 }
 
 const parseOrderContent = (content: string): OrderContent | null => {
@@ -82,8 +83,8 @@ const formatDateDivider = (date: Date) => {
 
 interface OrderWithDetails extends Order {
   items: { id: string; productName: string; quantity: number; unitPrice: string; totalPrice: string }[];
-  restaurant?: { companyName: string };
-  supplier?: { companyName: string };
+  restaurant?: { companyName: string; profileImageUrl?: string | null };
+  supplier?: { companyName: string; profileImageUrl?: string | null };
 }
 
 export default function RestaurantInbox() {
@@ -102,6 +103,9 @@ export default function RestaurantInbox() {
   const [complaintTitle, setComplaintTitle] = useState("");
   const [pendingSupplierRedirect, setPendingSupplierRedirect] = useState<string | null>(null);
   const [complaintDescription, setComplaintDescription] = useState("");
+  const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
+  const [showComplaintDetail, setShowComplaintDetail] = useState(false);
+  const [loadingComplaintDetail, setLoadingComplaintDetail] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -126,6 +130,69 @@ export default function RestaurantInbox() {
     },
     enabled: !!orderDetailId,
   });
+
+  const { data: complaintDetail, isLoading: isLoadingComplaintDetail, isError: isComplaintDetailError } = useQuery<ComplaintWithDetails>({
+    queryKey: ["/api/complaints", selectedComplaintId],
+    queryFn: async () => {
+      const res = await fetch(`/api/complaints/${selectedComplaintId}`);
+      if (!res.ok) throw new Error("Failed to load complaint");
+      return res.json();
+    },
+    enabled: !!selectedComplaintId,
+  });
+
+  const { data: complaintComments, isLoading: loadingComments } = useQuery<ComplaintCommentWithUser[]>({
+    queryKey: ["/api/complaints", selectedComplaintId, "comments"],
+    queryFn: async () => {
+      if (!selectedComplaintId) return [];
+      const res = await fetch(`/api/complaints/${selectedComplaintId}/comments`);
+      return res.json();
+    },
+    enabled: !!selectedComplaintId && showComplaintDetail,
+  });
+
+  const formatComplaintStatus = (status: string) => {
+    const statusMap: Record<string, { label: string; icon: any; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      open: { label: "Offen", icon: Clock, variant: "destructive" },
+      in_progress: { label: "In Bearbeitung", icon: Loader2, variant: "default" },
+      resolved: { label: "Gelöst", icon: CheckCircle, variant: "secondary" },
+      closed: { label: "Geschlossen", icon: XCircle, variant: "outline" },
+    };
+    return statusMap[status] || { label: status, icon: Clock, variant: "secondary" as const };
+  };
+
+  const isVideoFile = (url: string) => {
+    return /\.(mp4|webm|mov|avi|mkv)$/i.test(url);
+  };
+
+  const openComplaintDetailById = (complaintId: string) => {
+    setSelectedComplaintId(complaintId);
+    setShowComplaintDetail(true);
+  };
+
+  const openComplaintDetailByOrderId = async (orderId: string) => {
+    setLoadingComplaintDetail(true);
+    setShowComplaintDetail(true);
+    try {
+      const res = await fetch(`/api/complaints/by-order/${orderId}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          toast({ title: "Fehler", description: "Reklamation nicht gefunden.", variant: "destructive" });
+        } else {
+          throw new Error("Failed to fetch complaint");
+        }
+        setShowComplaintDetail(false);
+        return;
+      }
+      const complaint: ComplaintWithDetails = await res.json();
+      setSelectedComplaintId(complaint.id);
+    } catch (error) {
+      toast({ title: "Fehler", description: "Reklamation konnte nicht geladen werden.", variant: "destructive" });
+      setShowComplaintDetail(false);
+    } finally {
+      setLoadingComplaintDetail(false);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -527,11 +594,11 @@ export default function RestaurantInbox() {
                                   (() => {
                                     const orderData = parseOrderContent(message.content);
                                     return (
-                                      <div className="w-[85%] rounded-lg border bg-card shadow-lg overflow-hidden">
-                                        <div className="flex items-center justify-between px-4 py-2 bg-green-500/10 border-b border-green-500/20">
+                                      <div className="w-[85%] rounded-lg border-2 border-green-500/30 bg-card shadow-lg overflow-hidden">
+                                        <div className="flex items-center justify-between px-4 py-2.5 bg-green-500/10 border-b border-green-500/20">
                                           <div className="flex items-center gap-2">
                                             <ClipboardList className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                            <span className="text-sm font-medium text-green-600 dark:text-green-400">Bestellung</span>
+                                            <span className="text-sm font-semibold text-green-600 dark:text-green-400">Bestellung</span>
                                           </div>
                                           <span className="text-xs text-muted-foreground">
                                             {format(messageDate, "HH:mm")}
@@ -557,16 +624,16 @@ export default function RestaurantInbox() {
                                           )}
                                         </div>
                                         {message.orderId && (
-                                          <div className="px-4 py-2 border-t bg-muted/30">
+                                          <div className="px-4 py-2.5 border-t border-green-500/20 bg-green-500/5">
                                             <Button
-                                              variant="outline"
+                                              variant="default"
                                               size="sm"
                                               className="w-full"
                                               onClick={() => setOrderDetailId(message.orderId)}
                                               data-testid={`button-order-details-${message.id}`}
                                             >
                                               <Eye className="h-4 w-4 mr-2" />
-                                              Details anzeigen
+                                              Bestelldetails anzeigen
                                             </Button>
                                           </div>
                                         )}
@@ -577,11 +644,11 @@ export default function RestaurantInbox() {
                                   (() => {
                                     const complaintData = parseComplaintContent(message.content);
                                     return (
-                                      <div className="w-[85%] rounded-lg border bg-card shadow-lg overflow-hidden">
-                                        <div className="flex items-center justify-between px-4 py-2 bg-red-500/10 border-b border-red-500/20">
+                                      <div className="w-[85%] rounded-lg border-2 border-red-500/30 bg-card shadow-lg overflow-hidden">
+                                        <div className="flex items-center justify-between px-4 py-2.5 bg-red-500/10 border-b border-red-500/20">
                                           <div className="flex items-center gap-2">
                                             <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                                            <span className="text-sm font-medium text-red-600 dark:text-red-400">Reklamation</span>
+                                            <span className="text-sm font-semibold text-red-600 dark:text-red-400">Reklamation</span>
                                           </div>
                                           <span className="text-xs text-muted-foreground">
                                             {format(messageDate, "HH:mm")}
@@ -590,7 +657,7 @@ export default function RestaurantInbox() {
                                         <div className="px-4 py-3">
                                           {complaintData ? (
                                             <div className="space-y-2">
-                                              <div className="flex items-center justify-between">
+                                              <div className="flex items-center justify-between flex-wrap gap-1">
                                                 <span className="font-medium">{complaintData.title}</span>
                                                 <Badge variant="outline" className="text-xs">
                                                   Bestellung #{complaintData.orderId?.substring(0, 8)}
@@ -602,6 +669,26 @@ export default function RestaurantInbox() {
                                             <p className="text-sm">{message.content}</p>
                                           )}
                                         </div>
+                                        {(complaintData?.complaintId || complaintData?.orderId) && (
+                                          <div className="px-4 py-2.5 border-t border-red-500/20 bg-red-500/5">
+                                            <Button
+                                              variant="destructive"
+                                              size="sm"
+                                              className="w-full"
+                                              onClick={() => {
+                                                if (complaintData.complaintId) {
+                                                  openComplaintDetailById(complaintData.complaintId);
+                                                } else if (complaintData.orderId) {
+                                                  openComplaintDetailByOrderId(complaintData.orderId);
+                                                }
+                                              }}
+                                              data-testid={`button-complaint-details-${message.id}`}
+                                            >
+                                              <Eye className="h-4 w-4 mr-2" />
+                                              Reklamation anzeigen
+                                            </Button>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })()
@@ -878,25 +965,40 @@ export default function RestaurantInbox() {
       </Card>
 
       <Dialog open={!!orderDetailId} onOpenChange={(open) => !open && setOrderDetailId(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" />
+              <ClipboardList className="h-5 w-5 text-green-600" />
               Bestelldetails
             </DialogTitle>
           </DialogHeader>
           {orderDetail && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Bestellnummer</span>
-                <span className="font-mono text-sm">#{orderDetail.id.slice(0, 8)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Status</span>
-                <Badge className={getStatusColor(orderDetail.status)} variant="outline">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Bestellnummer</div>
+                  <span className="font-mono text-sm font-semibold">#{orderDetail.id.slice(0, 8)}</span>
+                </div>
+                <Badge className={getStatusColor(orderDetail.status)} data-testid="badge-order-status">
                   {getStatusLabel(orderDetail.status)}
                 </Badge>
               </div>
+
+              {orderDetail.supplier && (
+                <div className="flex items-center gap-3 p-3 rounded-lg border">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={orderDetail.supplier.profileImageUrl || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                      {orderDetail.supplier.companyName?.substring(0, 2).toUpperCase() || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-medium text-sm">{orderDetail.supplier.companyName || "Lieferant"}</div>
+                    <div className="text-xs text-muted-foreground">Lieferant</div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Datum</span>
                 <span className="text-sm">{format(new Date(orderDetail.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}</span>
@@ -905,7 +1007,10 @@ export default function RestaurantInbox() {
               <Separator />
               
               <div>
-                <h4 className="font-medium mb-3">Produkte</h4>
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Produkte ({orderDetail.items.length})
+                </h4>
                 <div className="space-y-2">
                   {orderDetail.items.map((item) => (
                     <div key={item.id} className="flex justify-between items-center py-2 border-b last:border-0">
@@ -923,9 +1028,9 @@ export default function RestaurantInbox() {
               
               <Separator />
               
-              <div className="flex justify-between items-center text-lg font-bold">
+              <div className="flex justify-between items-center p-3 rounded-lg bg-green-500/10 text-lg font-bold">
                 <span>Gesamtbetrag</span>
-                <span>{orderDetail.totalAmount}€</span>
+                <span className="text-green-700 dark:text-green-400">{orderDetail.totalAmount}€</span>
               </div>
 
               {orderDetail.notes && (
@@ -937,6 +1042,160 @@ export default function RestaurantInbox() {
                   </div>
                 </>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showComplaintDetail} onOpenChange={(open) => {
+        setShowComplaintDetail(open);
+        if (!open) {
+          setSelectedComplaintId(null);
+          setLoadingComplaintDetail(false);
+        }
+      }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              Reklamationsdetails
+            </DialogTitle>
+          </DialogHeader>
+          
+          {(loadingComplaintDetail || isLoadingComplaintDetail) ? (
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : isComplaintDetailError ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <AlertCircle className="mx-auto h-10 w-10 mb-2 text-destructive" />
+              <p className="text-sm font-medium text-destructive">Fehler beim Laden</p>
+              <p className="text-xs text-muted-foreground mt-1">Die Reklamation konnte nicht geladen werden.</p>
+            </div>
+          ) : complaintDetail ? (
+            <div className="space-y-4">
+              {(() => {
+                const statusInfo = formatComplaintStatus(complaintDetail.status);
+                const StatusIcon = statusInfo.icon;
+                return (
+                  <div className="flex items-center gap-2">
+                    <Badge variant={statusInfo.variant} className="flex items-center gap-1" data-testid="badge-complaint-status">
+                      <StatusIcon className="h-3 w-3" />
+                      {statusInfo.label}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      Erstellt am {format(new Date(complaintDetail.createdAt), "dd.MM.yyyy", { locale: de })}
+                    </span>
+                  </div>
+                );
+              })()}
+
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={complaintDetail.supplier?.profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                    {complaintDetail.supplier?.companyName?.substring(0, 2).toUpperCase() || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-medium text-sm">{complaintDetail.supplier?.companyName || "Lieferant"}</div>
+                  <div className="text-xs text-muted-foreground">{complaintDetail.supplier?.email}</div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <h4 className="font-semibold text-base mb-2" data-testid="text-complaint-title">{complaintDetail.title}</h4>
+                <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-complaint-description">{complaintDetail.description}</p>
+              </div>
+
+              {complaintDetail.mediaUrls && complaintDetail.mediaUrls.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Anhänge</h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {complaintDetail.mediaUrls.map((url: string, idx: number) => (
+                      <a key={idx} href={`/objects${url}`} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-lg overflow-hidden border hover-elevate">
+                        {isVideoFile(url) ? (
+                          <div className="h-full w-full flex items-center justify-center bg-muted">
+                            <Package className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        ) : (
+                          <img 
+                            src={`/objects${url}`} 
+                            alt={`Anhang ${idx + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Betroffene Bestellung</span>
+                  <Badge variant="outline">#{complaintDetail.orderId.substring(0, 8)}</Badge>
+                </div>
+                {complaintDetail.order && (
+                  <div className="text-sm text-muted-foreground">
+                    Gesamtbetrag: {complaintDetail.order.totalAmount}€
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              <div>
+                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Kommentare ({complaintComments?.length || 0})
+                </h4>
+                {loadingComments ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                  </div>
+                ) : complaintComments && complaintComments.length > 0 ? (
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {complaintComments.map((comment) => (
+                      <div key={comment.id} className="p-3 rounded-lg bg-muted/30 border" data-testid={`comment-${comment.id}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={comment.user?.profileImageUrl || undefined} />
+                              <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                {comment.user?.companyName?.substring(0, 2).toUpperCase() || comment.user?.name?.substring(0, 2).toUpperCase() || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium">{comment.user?.companyName || comment.user?.name || "Unbekannt"}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {comment.user?.role === "supplier" ? "Lieferant" : "Restaurant"}
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(comment.createdAt), "dd.MM. HH:mm", { locale: de })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground ml-8">{comment.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">Noch keine Kommentare vorhanden</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <AlertCircle className="mx-auto h-10 w-10 mb-2 opacity-50" />
+              <p className="text-sm">Reklamation nicht gefunden</p>
             </div>
           )}
         </DialogContent>
