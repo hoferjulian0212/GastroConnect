@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, desc, or, sql, ne } from "drizzle-orm";
+import { eq, and, desc, or, sql, ne, inArray } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments,
   type User, type InsertUser, type Product, type InsertProduct,
@@ -50,6 +50,7 @@ export interface IStorage {
   getConversation(conversationId: string): Promise<Conversation | undefined>;
   getOrCreateConversation(restaurantId: string, supplierId: string): Promise<Conversation>;
   getMessages(conversationId: string): Promise<Message[]>;
+  getConversationStatuses(conversationId: string): Promise<{ orderStatuses: Record<string, string>; complaintStatuses: Record<string, { status: string; complaintId: string }> }>;
   sendMessage(message: InsertMessage): Promise<Message>;
   getUnreadCount(userId: string): Promise<number>;
   markMessagesAsRead(conversationId: string, userId: string): Promise<void>;
@@ -378,6 +379,66 @@ export class DatabaseStorage implements IStorage {
       .from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt);
+  }
+
+  async getConversationStatuses(conversationId: string): Promise<{ orderStatuses: Record<string, string>; complaintStatuses: Record<string, { status: string; complaintId: string }> }> {
+    const convMessages = await db
+      .select({ orderId: messages.orderId, messageType: messages.messageType, content: messages.content })
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId));
+
+    const orderIds = new Set<string>();
+    const complaintIds = new Set<string>();
+
+    for (const msg of convMessages) {
+      if (msg.orderId) orderIds.add(msg.orderId);
+      if (msg.messageType === "complaint") {
+        try {
+          const data = JSON.parse(msg.content);
+          if (data.complaintId) complaintIds.add(data.complaintId);
+          if (data.orderId) orderIds.add(data.orderId);
+        } catch {}
+      }
+    }
+
+    const orderStatuses: Record<string, string> = {};
+    const complaintStatuses: Record<string, { status: string; complaintId: string }> = {};
+
+    if (orderIds.size > 0) {
+      const orderRows = await db
+        .select({ id: orders.id, status: orders.status })
+        .from(orders)
+        .where(inArray(orders.id, Array.from(orderIds)));
+      for (const row of orderRows) {
+        orderStatuses[row.id] = row.status;
+      }
+    }
+
+    if (complaintIds.size > 0) {
+      const complaintRows = await db
+        .select({ id: complaints.id, status: complaints.status, orderId: complaints.orderId })
+        .from(complaints)
+        .where(inArray(complaints.id, Array.from(complaintIds)));
+      for (const row of complaintRows) {
+        complaintStatuses[row.orderId] = { status: row.status, complaintId: row.id };
+      }
+    }
+
+    // Also look up complaints by orderId for messages that don't have complaintId embedded
+    const orderIdsWithoutComplaint = Array.from(orderIds).filter(id => !Object.values(complaintStatuses).some(c => c.complaintId && complaintStatuses[id]));
+    if (orderIdsWithoutComplaint.length > 0) {
+      const extraComplaints = await db
+        .select({ id: complaints.id, status: complaints.status, orderId: complaints.orderId })
+        .from(complaints)
+        .where(inArray(complaints.orderId, orderIdsWithoutComplaint));
+      for (const row of extraComplaints) {
+        if (!complaintStatuses[row.orderId]) {
+          complaintStatuses[row.orderId] = { status: row.status, complaintId: row.id };
+        }
+      }
+    }
+
+    return { orderStatuses, complaintStatuses };
   }
 
   async sendMessage(message: InsertMessage): Promise<Message> {

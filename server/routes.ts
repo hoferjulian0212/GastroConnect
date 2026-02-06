@@ -524,6 +524,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/conversations/:id/statuses", async (req, res) => {
+    try {
+      const statuses = await storage.getConversationStatuses(req.params.id);
+      res.json(statuses);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch statuses" });
+    }
+  });
+
   app.post("/api/conversations/:id/messages", async (req, res) => {
     try {
       const message = await storage.sendMessage({

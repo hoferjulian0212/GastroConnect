@@ -78,6 +78,29 @@ const getStatusLabel = (status: string) => {
   }
 };
 
+const isOrderInactive = (status: string) => status === "delivered" || status === "cancelled";
+const isComplaintInactive = (status: string) => status === "resolved" || status === "closed";
+
+const getComplaintStatusLabel = (status: string) => {
+  switch (status) {
+    case "open": return "Offen";
+    case "in_progress": return "In Bearbeitung";
+    case "resolved": return "Gelöst";
+    case "closed": return "Geschlossen";
+    default: return status;
+  }
+};
+
+const getComplaintStatusColor = (status: string) => {
+  switch (status) {
+    case "open": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+    case "in_progress": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+    case "resolved": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+    case "closed": return "bg-muted text-muted-foreground";
+    default: return "bg-muted text-muted-foreground";
+  }
+};
+
 const formatDateDivider = (date: Date) => {
   if (isToday(date)) return "Heute";
   if (isYesterday(date)) return "Gestern";
@@ -125,6 +148,9 @@ export default function SupplierInbox() {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      if (selectedConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+      }
     },
     onError: () => {
       toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden.", variant: "destructive" });
@@ -160,6 +186,9 @@ export default function SupplierInbox() {
       toast({ title: "Status aktualisiert", description: "Der Reklamationsstatus wurde erfolgreich geändert." });
       queryClient.invalidateQueries({ queryKey: [`/api/complaints?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId] });
+      if (selectedConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+      }
       setShowStatusDialog(false);
     },
     onError: () => {
@@ -203,6 +232,19 @@ export default function SupplierInbox() {
   const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: [`/api/conversations/${selectedConversation}/messages`],
     enabled: !!selectedConversation,
+  });
+
+  const { data: conversationStatuses } = useQuery<{
+    orderStatuses: Record<string, string>;
+    complaintStatuses: Record<string, { status: string; complaintId: string }>;
+  }>({
+    queryKey: ['/api/conversations', selectedConversation, 'statuses'],
+    enabled: !!selectedConversation,
+    queryFn: async () => {
+      const res = await fetch(`/api/conversations/${selectedConversation}/statuses`);
+      if (!res.ok) return { orderStatuses: {}, complaintStatuses: {} };
+      return res.json();
+    },
   });
 
   const markAsReadMutation = useMutation({
@@ -506,16 +548,25 @@ export default function SupplierInbox() {
                               {message.messageType === "order" ? (
                                 (() => {
                                   const orderData = parseOrderContent(message.content);
+                                  const orderStatus = message.orderId ? conversationStatuses?.orderStatuses?.[message.orderId] : undefined;
+                                  const inactive = orderStatus ? isOrderInactive(orderStatus) : false;
                                   return (
-                                    <div className="w-[85%] rounded-lg border-2 border-green-500/30 bg-card shadow-lg overflow-hidden">
-                                      <div className="flex items-center justify-between px-4 py-2.5 bg-green-500/10 border-b border-green-500/20">
+                                    <div className={`w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden ${inactive ? "border-muted opacity-60" : "border-2 border-green-500/30 shadow-lg"}`}>
+                                      <div className={`flex items-center justify-between px-4 py-2.5 border-b ${inactive ? "bg-muted/30 border-muted" : "bg-green-500/10 border-green-500/20"}`}>
                                         <div className="flex items-center gap-2">
-                                          <ClipboardList className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                          <span className="text-sm font-semibold text-green-600 dark:text-green-400">Neue Bestellung</span>
+                                          <ClipboardList className={`h-4 w-4 ${inactive ? "text-muted-foreground" : "text-green-600 dark:text-green-400"}`} />
+                                          <span className={`text-sm font-semibold ${inactive ? "text-muted-foreground" : "text-green-600 dark:text-green-400"}`}>Bestellung</span>
                                         </div>
-                                        <span className="text-xs text-muted-foreground">
-                                          {format(messageDate, "HH:mm")}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                          {orderStatus && (
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getStatusColor(orderStatus)}`} data-testid={`order-status-${message.id}`}>
+                                              {getStatusLabel(orderStatus)}
+                                            </span>
+                                          )}
+                                          <span className="text-xs text-muted-foreground">
+                                            {format(messageDate, "HH:mm")}
+                                          </span>
+                                        </div>
                                       </div>
                                       <div className="px-4 py-3">
                                         {orderData ? (
@@ -537,9 +588,9 @@ export default function SupplierInbox() {
                                         )}
                                       </div>
                                       {message.orderId && (
-                                        <div className="px-4 py-2.5 border-t border-green-500/20 bg-green-500/5">
+                                        <div className={`px-4 py-2.5 border-t ${inactive ? "border-muted bg-muted/20" : "border-green-500/20 bg-green-500/5"}`}>
                                           <Button
-                                            variant="default"
+                                            variant={inactive ? "outline" : "default"}
                                             size="sm"
                                             className="w-full"
                                             onClick={() => setOrderDetailId(message.orderId)}
@@ -556,16 +607,25 @@ export default function SupplierInbox() {
                               ) : message.messageType === "complaint" ? (
                                 (() => {
                                   const complaintData = parseComplaintContent(message.content);
+                                  const complaintStatus = complaintData?.orderId ? conversationStatuses?.complaintStatuses?.[complaintData.orderId]?.status : undefined;
+                                  const inactive = complaintStatus ? isComplaintInactive(complaintStatus) : false;
                                   return (
-                                    <div className="w-[85%] rounded-lg border-2 border-red-500/30 bg-card shadow-lg overflow-hidden">
-                                      <div className="flex items-center justify-between px-4 py-2.5 bg-red-500/10 border-b border-red-500/20">
+                                    <div className={`w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden ${inactive ? "border-muted opacity-60" : "border-2 border-red-500/30 shadow-lg"}`}>
+                                      <div className={`flex items-center justify-between px-4 py-2.5 border-b ${inactive ? "bg-muted/30 border-muted" : "bg-red-500/10 border-red-500/20"}`}>
                                         <div className="flex items-center gap-2">
-                                          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                                          <span className="text-sm font-semibold text-red-600 dark:text-red-400">Reklamation</span>
+                                          <AlertCircle className={`h-4 w-4 ${inactive ? "text-muted-foreground" : "text-red-600 dark:text-red-400"}`} />
+                                          <span className={`text-sm font-semibold ${inactive ? "text-muted-foreground" : "text-red-600 dark:text-red-400"}`}>Reklamation</span>
                                         </div>
-                                        <span className="text-xs text-muted-foreground">
-                                          {format(messageDate, "HH:mm")}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                          {complaintStatus && (
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getComplaintStatusColor(complaintStatus)}`} data-testid={`complaint-status-${message.id}`}>
+                                              {getComplaintStatusLabel(complaintStatus)}
+                                            </span>
+                                          )}
+                                          <span className="text-xs text-muted-foreground">
+                                            {format(messageDate, "HH:mm")}
+                                          </span>
+                                        </div>
                                       </div>
                                       <div className="px-4 py-3">
                                         {complaintData ? (
@@ -583,9 +643,9 @@ export default function SupplierInbox() {
                                         )}
                                       </div>
                                       {(complaintData?.complaintId || complaintData?.orderId) && (
-                                        <div className="px-4 py-2.5 border-t border-red-500/20 bg-red-500/5">
+                                        <div className={`px-4 py-2.5 border-t ${inactive ? "border-muted bg-muted/20" : "border-red-500/20 bg-red-500/5"}`}>
                                           <Button
-                                            variant="destructive"
+                                            variant={inactive ? "outline" : "destructive"}
                                             size="sm"
                                             className="w-full"
                                             onClick={() => {
