@@ -93,6 +93,22 @@ export default function Complaints() {
     },
   });
 
+  const [withdrawComplaintId, setWithdrawComplaintId] = useState<string | null>(null);
+
+  const withdrawComplaintMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("PATCH", `/api/complaints/${id}`, { status: "closed" });
+    },
+    onSuccess: () => {
+      toast({ title: "Reklamation zurückgezogen", description: "Die Reklamation wurde geschlossen." });
+      queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
+      setWithdrawComplaintId(null);
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Reklamation konnte nicht zurückgezogen werden.", variant: "destructive" });
+    },
+  });
+
   const resetForm = () => {
     setSelectedSupplierId("");
     setSelectedOrderId("");
@@ -446,15 +462,24 @@ export default function Complaints() {
                             {statusInfo.label}
                           </Badge>
                           {canEdit && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7"
-                              onClick={() => openEditDialog(complaint)}
-                              data-testid={`button-edit-complaint-${complaint.id}`}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
+                            <>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => openEditDialog(complaint)}
+                                data-testid={`button-edit-complaint-${complaint.id}`}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => setWithdrawComplaintId(complaint.id)}
+                                data-testid={`button-withdraw-complaint-${complaint.id}`}
+                              >
+                                <XCircle className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -618,6 +643,34 @@ export default function Complaints() {
               data-testid="button-save-edit-complaint"
             >
               {updateComplaintMutation.isPending ? "Wird gespeichert..." : "Speichern"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!withdrawComplaintId} onOpenChange={(open) => !open && setWithdrawComplaintId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reklamation zurückziehen</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Möchten Sie diese Reklamation wirklich zurückziehen? Die Reklamation wird geschlossen und kann nicht erneut geöffnet werden.
+          </p>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setWithdrawComplaintId(null)}
+              data-testid="button-cancel-withdraw"
+            >
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => withdrawComplaintId && withdrawComplaintMutation.mutate(withdrawComplaintId)}
+              disabled={withdrawComplaintMutation.isPending}
+              data-testid="button-confirm-withdraw"
+            >
+              {withdrawComplaintMutation.isPending ? "Wird geschlossen..." : "Zurückziehen"}
             </Button>
           </DialogFooter>
         </DialogContent>
