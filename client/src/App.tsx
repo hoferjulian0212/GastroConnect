@@ -175,9 +175,7 @@ function AppLayout() {
                   <div className="hidden md:block">
                     <SidebarTrigger data-testid="button-sidebar-toggle" />
                   </div>
-                  <div className="md:hidden">
-                    <RoleSwitcher />
-                  </div>
+                  <RoleSwitcher />
                 </div>
                 <div className="flex items-center gap-2">
                   <NotificationBell />
