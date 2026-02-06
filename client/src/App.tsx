@@ -136,7 +136,7 @@ function AppLayout() {
   const [location] = useLocation();
 
   const sidebarStyle = {
-    "--sidebar-width": "16rem",
+    "--sidebar-width": "13rem",
     "--sidebar-width-icon": "3rem",
   } as React.CSSProperties;
 
