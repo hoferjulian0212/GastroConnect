@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/context/UserContext";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
+import { RoleSwitcher } from "@/components/RoleSwitcher";
 
 const mainMenuItems = [
   { title: "Home", url: "/supplier", icon: Home },
@@ -85,14 +86,15 @@ export function SupplierSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      <SidebarHeader className="pt-8 pb-4 px-4">
+      <SidebarHeader className="pt-4 pb-2 px-4 space-y-3">
         <Link href="/about" className="flex items-center justify-center">
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
-            className="h-28 object-contain dark:invert transition-transform duration-300 hover:scale-105 cursor-pointer"
+            className="h-20 object-contain dark:invert transition-transform duration-300 hover:scale-105 cursor-pointer"
           />
         </Link>
+        <RoleSwitcher />
       </SidebarHeader>
       
       <SidebarContent className="px-4">
