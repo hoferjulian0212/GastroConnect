@@ -57,13 +57,14 @@ export default function RestaurantSettings() {
 
     setIsUploadingImage(true);
     try {
-      const response = await apiRequest("POST", "/api/uploads/request-url", {
+      const uploadRes = await apiRequest("POST", "/api/uploads/request-url", {
         name: file.name,
         size: file.size,
         contentType: file.type,
-      }) as unknown as { uploadURL: string; objectPath: string };
+      });
+      const { uploadURL, objectPath } = await uploadRes.json();
 
-      await fetch(response.uploadURL, {
+      await fetch(uploadURL, {
         method: "PUT",
         body: file,
         headers: {
@@ -71,7 +72,7 @@ export default function RestaurantSettings() {
         },
       });
 
-      const profileImageUrl = response.objectPath;
+      const profileImageUrl = objectPath;
       await apiRequest("PATCH", `/api/users/${currentUser.id}`, { profileImageUrl });
       
       setCurrentUser({ ...currentUser, profileImageUrl });
@@ -110,10 +111,12 @@ export default function RestaurantSettings() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: SettingsFormData) => {
-      return apiRequest("PATCH", `/api/users/${currentUser?.id}`, data);
+      const res = await apiRequest("PATCH", `/api/users/${currentUser?.id}`, data);
+      return await res.json();
     },
     onSuccess: (updatedUser) => {
-      setCurrentUser(updatedUser as any);
+      setCurrentUser(updatedUser);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
         title: "Profil aktualisiert",
         description: "Ihre Änderungen wurden gespeichert.",
