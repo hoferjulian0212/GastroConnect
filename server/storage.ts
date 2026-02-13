@@ -90,6 +90,7 @@ export interface IStorage {
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationAsRead(id: string): Promise<Notification | undefined>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
+  markNotificationsByReferenceAsRead(userId: string, referenceId: string, type?: string): Promise<void>;
 
   // Seed
   seedData(): Promise<void>;
@@ -863,6 +864,20 @@ export class DatabaseStorage implements IStorage {
     await db.update(notifications)
       .set({ isRead: true })
       .where(eq(notifications.userId, userId));
+  }
+
+  async markNotificationsByReferenceAsRead(userId: string, referenceId: string, type?: string): Promise<void> {
+    const conditions = [
+      eq(notifications.userId, userId),
+      eq(notifications.referenceId, referenceId),
+      eq(notifications.isRead, false),
+    ];
+    if (type) {
+      conditions.push(eq(notifications.type, type as any));
+    }
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(...conditions));
   }
 }
 

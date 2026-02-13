@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { useChat } from "@/context/ChatContext";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -132,6 +132,7 @@ export default function RestaurantInbox() {
   const [showComplaintDetail, setShowComplaintDetail] = useState(false);
   const [loadingComplaintDetail, setLoadingComplaintDetail] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const searchString = useSearch();
 
   useEffect(() => {
     const isMobile = window.innerWidth < 768;
@@ -140,12 +141,21 @@ export default function RestaurantInbox() {
   }, [selectedConversation, setIsInChat]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(searchString);
     const toSupplierId = params.get("to");
     if (toSupplierId && currentUser?.id) {
       setPendingSupplierRedirect(toSupplierId);
     }
-  }, [location, currentUser?.id]);
+    const conversationIdParam = params.get("conversationId");
+    if (conversationIdParam) {
+      setSelectedConversation(conversationIdParam);
+    }
+    const complaintIdParam = params.get("complaintId");
+    if (complaintIdParam) {
+      setSelectedComplaintId(complaintIdParam);
+      setShowComplaintDetail(true);
+    }
+  }, [searchString, currentUser?.id]);
 
   const { data: orderDetail } = useQuery<OrderWithDetails>({
     queryKey: ["/api/orders", orderDetailId],
@@ -322,6 +332,10 @@ export default function RestaurantInbox() {
     setSelectedConversation(conversationId);
     if (currentUser?.id) {
       markAsReadMutation.mutate(conversationId);
+      apiRequest("PATCH", `/api/notifications/read-by-reference?userId=${currentUser.id}&referenceId=${conversationId}&type=new_message`).then(() => {
+        queryClient.invalidateQueries({ queryKey: [`/api/notifications?userId=${currentUser.id}`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/notifications/count?userId=${currentUser.id}`] });
+      }).catch(() => {});
     }
   };
 

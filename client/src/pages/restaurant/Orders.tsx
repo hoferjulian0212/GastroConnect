@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,10 +10,14 @@ import { ShoppingBag, Clock, ChevronRight, Package, Truck, CheckCircle, XCircle 
 import type { OrderWithDetails } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 
 export default function RestaurantOrders() {
   const { currentUser } = useUser();
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const highlightOrderId = searchParams.get("orderId");
+  const highlightRef = useRef<HTMLDivElement>(null);
 
   const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/orders?restaurantId=${currentUser?.id}`],
@@ -52,14 +57,25 @@ export default function RestaurantOrders() {
     }
   };
 
+  useEffect(() => {
+    if (highlightOrderId && highlightRef.current && !isLoading) {
+      setTimeout(() => {
+        highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+    }
+  }, [highlightOrderId, isLoading]);
+
   const filterOrdersByStatus = (status: string | null) => {
     if (!orders) return [];
     if (!status) return orders;
     return orders.filter(order => order.status === status);
   };
 
-  const OrderCard = ({ order }: { order: OrderWithDetails }) => (
-    <Card className="hover-elevate" data-testid={`order-card-${order.id}`}>
+  const OrderCard = ({ order }: { order: OrderWithDetails }) => {
+    const isHighlighted = order.id === highlightOrderId;
+    return (
+    <div ref={isHighlighted ? highlightRef : undefined}>
+    <Card className={`hover-elevate ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} data-testid={`order-card-${order.id}`}>
       <CardContent className="p-3 md:p-4">
         <div className="flex items-start justify-between gap-2 md:gap-4">
           <div className="flex items-start gap-2 md:gap-4">
@@ -110,7 +126,9 @@ export default function RestaurantOrders() {
         )}
       </CardContent>
     </Card>
-  );
+    </div>
+    );
+  };
 
   return (
     <div className="space-y-4 md:space-y-6">

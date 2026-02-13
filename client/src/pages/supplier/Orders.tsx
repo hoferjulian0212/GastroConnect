@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,10 +13,15 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useSearch } from "wouter";
 
 export default function SupplierOrders() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const highlightOrderId = searchParams.get("orderId");
+  const highlightRef = useRef<HTMLDivElement>(null);
 
   const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`],
@@ -79,14 +85,25 @@ export default function SupplierOrders() {
     }
   };
 
+  useEffect(() => {
+    if (highlightOrderId && highlightRef.current && !isLoading) {
+      setTimeout(() => {
+        highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+    }
+  }, [highlightOrderId, isLoading]);
+
   const filterOrdersByStatus = (status: string | null) => {
     if (!orders) return [];
     if (!status) return orders;
     return orders.filter(order => order.status === status);
   };
 
-  const OrderCard = ({ order }: { order: OrderWithDetails }) => (
-    <Card className="hover-elevate" data-testid={`order-card-${order.id}`}>
+  const OrderCard = ({ order }: { order: OrderWithDetails }) => {
+    const isHighlighted = order.id === highlightOrderId;
+    return (
+    <div ref={isHighlighted ? highlightRef : undefined}>
+    <Card className={`hover-elevate ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} data-testid={`order-card-${order.id}`}>
       <CardContent className="p-3 md:p-4">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 md:gap-4">
           <div className="flex items-start gap-3 md:gap-4">
@@ -154,7 +171,9 @@ export default function SupplierOrders() {
         )}
       </CardContent>
     </Card>
-  );
+    </div>
+    );
+  };
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -163,7 +182,7 @@ export default function SupplierOrders() {
         <p className="text-sm md:text-base text-muted-foreground">Verwalten Sie eingehende Bestellungen</p>
       </div>
 
-      <Tabs defaultValue="pending" className="w-full">
+      <Tabs defaultValue={highlightOrderId ? "all" : "pending"} className="w-full">
         <TabsList className="w-full overflow-x-auto flex md:grid md:grid-cols-5 lg:w-auto lg:inline-flex">
           <TabsTrigger value="pending" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-pending">
             Neu

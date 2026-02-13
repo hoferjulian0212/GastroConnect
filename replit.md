@@ -136,3 +136,12 @@ Both restaurant and supplier inbox pages implement a full-screen immersive chat 
 - **Drizzle Kit**: Database migration tooling
 - **esbuild**: Production server bundling
 - **tsx**: TypeScript execution for development
+
+### Notification System with Deep-Link Shortcuts
+- **Notification Types**: `new_message`, `new_order`, `order_status`, `new_complaint`, `complaint_comment`
+- **Shortcuts**: Clicking a notification navigates directly to the relevant resource:
+  - `new_order` / `order_status` → `/{role}/orders?orderId={referenceId}` (highlights the order with ring-2 ring-primary)
+  - `new_message` → `/{role}/inbox?conversationId={referenceId}` (selects the conversation)
+  - `new_complaint` / `complaint_comment` → `/{role}/inbox?complaintId={referenceId}` (opens complaint detail dialog)
+- **Auto-dismiss**: Message notifications are automatically marked as read when the user opens the relevant conversation (via `PATCH /api/notifications/read-by-reference`)
+- **URL Query Params**: Orders pages read `?orderId=` to highlight/scroll; Inbox pages read `?conversationId=` and `?complaintId=` to auto-select/open

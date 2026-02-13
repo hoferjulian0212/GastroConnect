@@ -778,7 +778,7 @@ export async function registerRoutes(
       
       await storage.createNotification({
         userId: notifyUserId,
-        type: "new_complaint",
+        type: "complaint_comment",
         title: "Neuer Kommentar zur Reklamation",
         message: `${commenter?.companyName || commenter?.name || "Jemand"} hat einen Kommentar hinzugefügt: "${validated.content.substring(0, 50)}${validated.content.length > 50 ? '...' : ''}"`,
         referenceId: complaint.id
@@ -864,6 +864,21 @@ export async function registerRoutes(
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  app.patch("/api/notifications/read-by-reference", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      const referenceId = req.query.referenceId as string;
+      const type = req.query.type as string | undefined;
+      if (!userId || !referenceId) {
+        return res.status(400).json({ error: "userId and referenceId required" });
+      }
+      await storage.markNotificationsByReferenceAsRead(userId, referenceId, type);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark notifications as read" });
     }
   });
 

@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { useChat } from "@/context/ChatContext";
@@ -122,12 +123,26 @@ export default function SupplierInbox() {
   const [showCommentDialog, setShowCommentDialog] = useState(false);
   const [newStatus, setNewStatus] = useState<string>("");
   const [newComment, setNewComment] = useState("");
+  const searchString = useSearch();
 
   useEffect(() => {
     const isMobile = window.innerWidth < 768;
     setIsInChat(isMobile && selectedConversation !== null);
     return () => setIsInChat(false);
   }, [selectedConversation, setIsInChat]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const conversationIdParam = params.get("conversationId");
+    if (conversationIdParam) {
+      setSelectedConversation(conversationIdParam);
+    }
+    const complaintIdParam = params.get("complaintId");
+    if (complaintIdParam) {
+      setSelectedComplaintId(complaintIdParam);
+      setShowComplaintDetail(true);
+    }
+  }, [searchString]);
 
   const { data: orderDetail, refetch: refetchOrderDetail } = useQuery<OrderWithDetails>({
     queryKey: ["/api/orders", orderDetailId],
@@ -264,6 +279,10 @@ export default function SupplierInbox() {
     setSelectedConversation(conversationId);
     if (currentUser?.id) {
       markAsReadMutation.mutate(conversationId);
+      apiRequest("PATCH", `/api/notifications/read-by-reference?userId=${currentUser.id}&referenceId=${conversationId}&type=new_message`).then(() => {
+        queryClient.invalidateQueries({ queryKey: [`/api/notifications?userId=${currentUser.id}`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/notifications/count?userId=${currentUser.id}`] });
+      }).catch(() => {});
     }
   };
 

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Bell, MessageSquare, ShoppingBag, AlertCircle, CheckCheck, X } from "lucide-react";
+import { Bell, MessageSquare, ShoppingBag, AlertCircle, CheckCheck, ExternalLink, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -10,12 +9,14 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUser } from "@/context/UserContext";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Notification } from "@shared/schema";
 
 export function NotificationBell() {
-  const { currentUser } = useUser();
+  const { currentUser, currentRole } = useUser();
   const [open, setOpen] = useState(false);
+  const [, setLocation] = useLocation();
 
   const { data: notifications } = useQuery<Notification[]>({
     queryKey: [`/api/notifications?userId=${currentUser?.id}`],
@@ -49,6 +50,37 @@ export function NotificationBell() {
     },
   });
 
+  const getNotificationRoute = (notification: Notification): string | null => {
+    if (!notification.referenceId) return null;
+    const role = currentRole;
+
+    switch (notification.type) {
+      case "new_order":
+        return `/${role}/orders?orderId=${notification.referenceId}`;
+      case "order_status":
+        return `/${role}/orders?orderId=${notification.referenceId}`;
+      case "new_message":
+        return `/${role}/inbox?conversationId=${notification.referenceId}`;
+      case "new_complaint":
+        return `/${role}/inbox?complaintId=${notification.referenceId}`;
+      case "complaint_comment":
+        return `/${role}/inbox?complaintId=${notification.referenceId}`;
+      default:
+        return null;
+    }
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    if (!notification.isRead) {
+      markAsReadMutation.mutate(notification.id);
+    }
+    const route = getNotificationRoute(notification);
+    if (route) {
+      setOpen(false);
+      setLocation(route);
+    }
+  };
+
   const getNotificationStyle = (type: string) => {
     switch (type) {
       case "new_message":
@@ -70,6 +102,11 @@ export function NotificationBell() {
         return { 
           icon: <AlertCircle className="h-3.5 w-3.5" />,
           bg: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+        };
+      case "complaint_comment":
+        return { 
+          icon: <MessageCircle className="h-3.5 w-3.5" />,
+          bg: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
         };
       default:
         return { 
@@ -114,14 +151,14 @@ export function NotificationBell() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-0" align="end" sideOffset={8}>
-        <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+      <PopoverContent className="w-80 p-0" align="end" sideOffset={8}>
+        <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-muted/30">
           <span className="font-medium text-sm">Benachrichtigungen</span>
           {unreadCount > 0 && (
             <Button 
               variant="ghost" 
               size="sm" 
-              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+              className="h-6 px-2 text-xs text-muted-foreground"
               onClick={() => markAllAsReadMutation.mutate()}
               data-testid="button-mark-all-read"
             >
@@ -132,21 +169,18 @@ export function NotificationBell() {
         </div>
         
         {hasNotifications ? (
-          <ScrollArea className="max-h-[280px]">
+          <ScrollArea className="max-h-[320px]">
             <div className="py-1">
               {notifications.map((notification) => {
                 const style = getNotificationStyle(notification.type);
+                const hasRoute = !!getNotificationRoute(notification);
                 return (
                   <div
                     key={notification.id}
-                    className={`group relative flex items-start gap-2.5 px-3 py-2 hover:bg-muted/50 cursor-pointer transition-colors ${
+                    className={`group relative flex items-start gap-2.5 px-3 py-2.5 cursor-pointer transition-colors hover-elevate ${
                       !notification.isRead ? "bg-primary/5" : ""
                     }`}
-                    onClick={() => {
-                      if (!notification.isRead) {
-                        markAsReadMutation.mutate(notification.id);
-                      }
-                    }}
+                    onClick={() => handleNotificationClick(notification)}
                     data-testid={`notification-${notification.id}`}
                   >
                     <div className={`flex-shrink-0 h-7 w-7 rounded-full flex items-center justify-center ${style.bg}`}>
@@ -161,9 +195,15 @@ export function NotificationBell() {
                           {formatTime(notification.createdAt)}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                         {notification.message}
                       </p>
+                      {hasRoute && (
+                        <div className="flex items-center gap-1 mt-1 text-[11px] text-primary">
+                          <ExternalLink className="h-3 w-3" />
+                          <span>Anzeigen</span>
+                        </div>
+                      )}
                     </div>
                     {!notification.isRead && (
                       <div className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-primary mt-2" />
