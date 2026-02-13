@@ -1010,6 +1010,123 @@ export async function registerRoutes(
     }
   });
 
+  // ===== CHAT ATTACHMENTS =====
+  const ALLOWED_ATTACHMENT_TYPES = [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ];
+  const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
+
+  app.post("/api/attachments/request-url", async (req, res) => {
+    try {
+      const { name, size, contentType, conversationId, senderId } = req.body;
+      if (!name || !contentType || !conversationId || !senderId) {
+        return res.status(400).json({ error: "name, contentType, conversationId, and senderId are required" });
+      }
+      if (!ALLOWED_ATTACHMENT_TYPES.includes(contentType)) {
+        return res.status(400).json({ error: "Dateityp nicht erlaubt. Erlaubt: PDF, JPG, PNG, WEBP, DOCX" });
+      }
+      if (size && size > MAX_ATTACHMENT_SIZE) {
+        return res.status(400).json({ error: "Datei ist zu groß. Maximal 10 MB erlaubt." });
+      }
+      const conversation = await storage.getConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      if (senderId !== conversation.restaurantId && senderId !== conversation.supplierId) {
+        return res.status(403).json({ error: "Not authorized for this conversation" });
+      }
+
+      const objectService = new ObjectStorageService();
+      const privateDir = objectService.getPrivateObjectDir();
+      const fileId = randomUUID();
+      const ext = name.split(".").pop() || "bin";
+      const fullPath = `${privateDir}/attachments/${fileId}.${ext}`;
+      const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+      const bucketName = pathParts[0];
+      const objectName = pathParts.slice(1).join("/");
+
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      const [uploadURL] = await file.getSignedUrl({
+        version: "v4",
+        action: "write",
+        expires: Date.now() + 15 * 60 * 1000,
+        contentType,
+      });
+
+      const entityDir = privateDir.endsWith("/") ? privateDir : `${privateDir}/`;
+      const relativePath = `attachments/${fileId}.${ext}`;
+      const objectPath = `/objects/${relativePath}`;
+
+      res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+    } catch (error) {
+      console.error("Error generating attachment upload URL:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  app.get("/api/conversations/:id/documents", async (req, res) => {
+    try {
+      const conversationId = req.params.id;
+      const userId = req.query.userId as string;
+      if (!userId) {
+        return res.status(400).json({ error: "userId required" });
+      }
+      const conversation = await storage.getConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      if (userId !== conversation.restaurantId && userId !== conversation.supplierId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const role = userId === conversation.restaurantId ? "restaurant" : "supplier";
+      const docs = await storage.getDocumentsByUser(userId, role);
+      const filteredDocs = docs.filter(
+        d => d.restaurantId === conversation.restaurantId && d.supplierId === conversation.supplierId
+      );
+      res.json(filteredDocs);
+    } catch (error) {
+      console.error("Error fetching conversation documents:", error);
+      res.status(500).json({ error: "Failed to fetch conversation documents" });
+    }
+  });
+
+  app.get("/api/attachments/download", async (req, res) => {
+    try {
+      const fileUrl = req.query.fileUrl as string;
+      const userId = req.query.userId as string;
+      const conversationId = req.query.conversationId as string;
+
+      if (!fileUrl || !userId) {
+        return res.status(400).json({ error: "fileUrl and userId are required" });
+      }
+
+      if (conversationId) {
+        const conversation = await storage.getConversation(conversationId);
+        if (!conversation) {
+          return res.status(404).json({ error: "Conversation not found" });
+        }
+        if (userId !== conversation.restaurantId && userId !== conversation.supplierId) {
+          return res.status(403).json({ error: "Not authorized" });
+        }
+      }
+
+      const objectService = new ObjectStorageService();
+      const objectFile = await objectService.getObjectEntityFile(fileUrl);
+
+      const fileName = fileUrl.split("/").pop() || "attachment";
+      res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+      await objectService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error downloading attachment:", error);
+      res.status(500).json({ error: "Failed to download attachment" });
+    }
+  });
+
   return httpServer;
 }
 

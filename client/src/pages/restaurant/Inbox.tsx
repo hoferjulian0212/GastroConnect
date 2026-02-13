@@ -13,7 +13,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip } from "lucide-react";
+import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -340,10 +341,10 @@ export default function RestaurantInbox() {
   };
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, messageType = "text" }: { content: string; messageType?: string }) => {
       return apiRequest("POST", `/api/conversations/${selectedConversation}/messages`, {
         content,
-        messageType: "text",
+        messageType,
         senderId: currentUser?.id,
       });
     },
@@ -505,7 +506,13 @@ export default function RestaurantInbox() {
 
   const handleSendMessage = () => {
     if (messageText.trim() && selectedConversation) {
-      sendMessageMutation.mutate(messageText.trim());
+      sendMessageMutation.mutate({ content: messageText.trim(), messageType: "text" });
+    }
+  };
+
+  const handleSendAttachment = (content: string) => {
+    if (selectedConversation) {
+      sendMessageMutation.mutate({ content, messageType: "attachment" });
     }
   };
 
@@ -579,6 +586,8 @@ export default function RestaurantInbox() {
                         ? "Reklamation"
                         : conv.lastMessage?.messageType === "document"
                         ? "Lieferschein"
+                        : conv.lastMessage?.messageType === "attachment"
+                        ? "Anhang"
                         : conv.lastMessage?.content || "Keine Nachrichten";
                       return (
                         <button
@@ -708,7 +717,7 @@ export default function RestaurantInbox() {
                                 </div>
                               )}
                               <div
-                                className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" ? "justify-center" : isOwn ? "justify-end" : "justify-start"}`}
+                                className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
                                 data-testid={`message-${message.id}`}
                               >
                                 {message.messageType === "order" ? (
@@ -873,6 +882,14 @@ export default function RestaurantInbox() {
                                       </div>
                                     );
                                   })()
+                                ) : message.messageType === "attachment" ? (
+                                  <AttachmentMessageCard
+                                    content={message.content}
+                                    timestamp={format(messageDate, "HH:mm")}
+                                    isOwn={isOwn}
+                                    conversationId={selectedConversation || undefined}
+                                    userId={currentUser?.id}
+                                  />
                                 ) : (
                                   <div
                                     className={`max-w-[70%] rounded-lg px-3 py-2 shadow-lg ${
@@ -1108,6 +1125,14 @@ export default function RestaurantInbox() {
                         </button>
                       </PopoverContent>
                     </Popover>
+                    {selectedConversation && currentUser && (
+                      <AttachmentPopover
+                        conversationId={selectedConversation}
+                        senderId={currentUser.id}
+                        onSendAttachment={handleSendAttachment}
+                        disabled={sendMessageMutation.isPending}
+                      />
+                    )}
                     <Input
                       placeholder="Nachricht schreiben..."
                       value={messageText}

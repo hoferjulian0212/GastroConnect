@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip } from "lucide-react";
+import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -287,10 +288,10 @@ export default function SupplierInbox() {
   };
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, messageType = "text" }: { content: string; messageType?: string }) => {
       return apiRequest("POST", `/api/conversations/${selectedConversation}/messages`, {
         content,
-        messageType: "text",
+        messageType,
         senderId: currentUser?.id,
       });
     },
@@ -403,7 +404,13 @@ export default function SupplierInbox() {
 
   const handleSendMessage = () => {
     if (messageText.trim() && selectedConversation) {
-      sendMessageMutation.mutate(messageText.trim());
+      sendMessageMutation.mutate({ content: messageText.trim(), messageType: "text" });
+    }
+  };
+
+  const handleSendAttachment = (content: string) => {
+    if (selectedConversation) {
+      sendMessageMutation.mutate({ content, messageType: "attachment" });
     }
   };
 
@@ -453,6 +460,8 @@ export default function SupplierInbox() {
                         ? "Reklamation"
                         : conv.lastMessage?.messageType === "document"
                         ? "Lieferschein"
+                        : conv.lastMessage?.messageType === "attachment"
+                        ? "Anhang"
                         : conv.lastMessage?.content || "Keine Nachrichten";
                       return (
                         <button
@@ -563,7 +572,7 @@ export default function SupplierInbox() {
                               </div>
                             )}
                             <div
-                              className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" ? "justify-center" : isOwn ? "justify-end" : "justify-start"}`}
+                              className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
                               data-testid={`message-${message.id}`}
                             >
                               {message.messageType === "order" ? (
@@ -728,6 +737,14 @@ export default function SupplierInbox() {
                                     </div>
                                   );
                                 })()
+                              ) : message.messageType === "attachment" ? (
+                                <AttachmentMessageCard
+                                  content={message.content}
+                                  timestamp={format(messageDate, "HH:mm")}
+                                  isOwn={isOwn}
+                                  conversationId={selectedConversation || undefined}
+                                  userId={currentUser?.id}
+                                />
                               ) : (
                                 <div
                                   className={`max-w-[70%] rounded-lg px-3 py-2 shadow-lg ${
@@ -765,7 +782,15 @@ export default function SupplierInbox() {
                 </ScrollArea>
 
                 <div className="border-t border-border p-2 md:p-4">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
+                    {selectedConversation && currentUser && (
+                      <AttachmentPopover
+                        conversationId={selectedConversation}
+                        senderId={currentUser.id}
+                        onSendAttachment={handleSendAttachment}
+                        disabled={sendMessageMutation.isPending}
+                      />
+                    )}
                     <Input
                       placeholder="Nachricht schreiben..."
                       value={messageText}
