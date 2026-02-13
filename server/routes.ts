@@ -1,5 +1,7 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
+import path from "path";
 import { storage } from "./storage";
 import { insertProductSchema, insertCartItemSchema, insertMessageSchema, insertComplaintSchema, updateComplaintSchema, insertComplaintCommentSchema, insertNotificationSchema } from "@shared/schema";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
@@ -10,6 +12,14 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Register object storage routes for file uploads
   registerObjectStorageRoutes(app);
+
+  // Serve static images from client/public - ensures images work in both dev and production
+  const clientPublicPath = path.resolve(process.cwd(), "client", "public");
+  app.use("/images", express.static(path.join(clientPublicPath, "images"), {
+    maxAge: "1d",
+    immutable: true,
+  }));
+  app.use("/favicon.png", express.static(path.join(clientPublicPath, "favicon.png")));
 
   // Seed data on startup
   await storage.seedData();
