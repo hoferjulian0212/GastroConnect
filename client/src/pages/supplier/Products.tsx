@@ -337,7 +337,7 @@ export default function SupplierProducts() {
                     <FormItem>
                       <FormLabel>Produktname</FormLabel>
                       <FormControl>
-                        <Input placeholder="z.B. Bio Tomaten" {...field} data-testid="input-product-name" />
+                        <Input placeholder="z.B. Bio Tomaten" autoComplete="off" {...field} data-testid="input-product-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -353,7 +353,8 @@ export default function SupplierProducts() {
                       <FormControl>
                         <Textarea 
                           placeholder="Produktbeschreibung..." 
-                          className="resize-none" 
+                          className="resize-none"
+                          autoComplete="off"
                           {...field} 
                           data-testid="textarea-product-description" 
                         />
@@ -371,7 +372,7 @@ export default function SupplierProducts() {
                       <FormItem>
                         <FormLabel>Preis (€)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" placeholder="0.00" {...field} data-testid="input-product-price" />
+                          <Input type="number" step="0.01" placeholder="0.00" autoComplete="off" {...field} data-testid="input-product-price" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -384,7 +385,7 @@ export default function SupplierProducts() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Einheit</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-product-unit">
                               <SelectValue placeholder="Einheit wählen" />
@@ -411,7 +412,7 @@ export default function SupplierProducts() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Kategorie</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl>
                           <SelectTrigger data-testid="select-product-category">
                             <SelectValue placeholder="Kategorie wählen" />
