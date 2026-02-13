@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, Package, ClipboardList, MoreHorizontal, AlertCircle, History, Settings, X } from "lucide-react";
+import { Home, MessageSquare, Package, ClipboardList, MoreHorizontal, AlertCircle, History, Settings, X, FileText } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useChat } from "@/context/ChatContext";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +15,7 @@ const mainNavItems = [
 const moreMenuItems = [
   { title: "Reklamationen", url: "/supplier/complaints", icon: AlertCircle },
   { title: "Bestellübersicht", url: "/supplier/history", icon: History },
+  { title: "Dokumente", url: "/supplier/documents", icon: FileText },
   { title: "Einstellungen", url: "/supplier/settings", icon: Settings },
 ];
 

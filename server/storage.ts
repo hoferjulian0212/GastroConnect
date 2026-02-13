@@ -1,14 +1,15 @@
 import { db } from "./db";
 import { eq, and, desc, or, sql, ne, inArray } from "drizzle-orm";
 import {
-  users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments,
+  users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
   type Message, type InsertMessage, type ProductWithSupplier, type OrderWithDetails,
   type ConversationWithUser, type CartItemWithProduct, type Complaint, type InsertComplaint,
   type ComplaintWithDetails, type Notification, type InsertNotification, type UpdateComplaint,
-  type ComplaintComment, type InsertComplaintComment, type ComplaintCommentWithUser
+  type ComplaintComment, type InsertComplaintComment, type ComplaintCommentWithUser,
+  type Document, type InsertDocument, type DocumentWithDetails
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -91,6 +92,11 @@ export interface IStorage {
   markNotificationAsRead(id: string): Promise<Notification | undefined>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
   markNotificationsByReferenceAsRead(userId: string, referenceId: string, type?: string): Promise<void>;
+
+  // Documents
+  getDocumentsByOrder(orderId: string): Promise<Document[]>;
+  getDocumentsByUser(userId: string, role: "restaurant" | "supplier"): Promise<DocumentWithDetails[]>;
+  createDocument(doc: InsertDocument): Promise<Document>;
 
   // Seed
   seedData(): Promise<void>;
@@ -878,6 +884,31 @@ export class DatabaseStorage implements IStorage {
     await db.update(notifications)
       .set({ isRead: true })
       .where(and(...conditions));
+  }
+
+  // Documents
+  async getDocumentsByOrder(orderId: string): Promise<Document[]> {
+    return db.select().from(documents).where(eq(documents.orderId, orderId)).orderBy(desc(documents.createdAt));
+  }
+
+  async getDocumentsByUser(userId: string, role: "restaurant" | "supplier"): Promise<DocumentWithDetails[]> {
+    const field = role === "restaurant" ? documents.restaurantId : documents.supplierId;
+    const docs = await db.select().from(documents).where(eq(field, userId)).orderBy(desc(documents.createdAt));
+    const result: DocumentWithDetails[] = [];
+    for (const doc of docs) {
+      const [order] = await db.select().from(orders).where(eq(orders.id, doc.orderId));
+      const [restaurant] = await db.select().from(users).where(eq(users.id, doc.restaurantId));
+      const [supplier] = await db.select().from(users).where(eq(users.id, doc.supplierId));
+      if (order && restaurant && supplier) {
+        result.push({ ...doc, order, restaurant, supplier });
+      }
+    }
+    return result;
+  }
+
+  async createDocument(doc: InsertDocument): Promise<Document> {
+    const [created] = await db.insert(documents).values(doc).returning();
+    return created;
   }
 }
 

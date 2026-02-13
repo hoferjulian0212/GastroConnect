@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2 } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2 } from "lucide-react";
 import type { OrderWithDetails } from "@shared/schema";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -26,6 +26,31 @@ export default function SupplierOrders() {
   const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
+  });
+
+  const deliveryNoteMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const res = await apiRequest("POST", `/api/orders/${orderId}/delivery-note`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents", currentUser?.id, "supplier"] });
+      toast({
+        title: "Lieferschein erstellt",
+        description: "Der Lieferschein wurde erfolgreich generiert und im Chat gesendet.",
+      });
+    },
+    onError: (error: any) => {
+      const msg = error?.message?.includes("already exists") 
+        ? "Ein Lieferschein existiert bereits für diese Bestellung."
+        : "Der Lieferschein konnte nicht erstellt werden.";
+      toast({
+        title: "Fehler",
+        description: msg,
+        variant: "destructive",
+      });
+    },
   });
 
   const updateStatusMutation = useMutation({
@@ -167,6 +192,24 @@ export default function SupplierOrders() {
           <div className="mt-3 md:mt-4 p-2 md:p-3 rounded-md bg-muted/50">
             <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5 md:mb-1">Anmerkungen:</p>
             <p className="text-xs md:text-sm">{order.notes}</p>
+          </div>
+        )}
+        {order.status === "in_delivery" && (
+          <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => deliveryNoteMutation.mutate(order.id)}
+              disabled={deliveryNoteMutation.isPending}
+              data-testid={`button-delivery-note-${order.id}`}
+            >
+              {deliveryNoteMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4 mr-2" />
+              )}
+              {deliveryNoteMutation.isPending ? "Wird erstellt..." : "Lieferschein erstellen"}
+            </Button>
           </div>
         )}
       </CardContent>

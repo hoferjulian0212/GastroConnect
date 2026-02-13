@@ -5,6 +5,9 @@ import path from "path";
 import { storage } from "./storage";
 import { insertProductSchema, insertCartItemSchema, insertMessageSchema, insertComplaintSchema, updateComplaintSchema, insertComplaintCommentSchema, insertNotificationSchema } from "@shared/schema";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { objectStorageClient, ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
+import PDFDocument from "pdfkit";
+import { randomUUID } from "crypto";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -895,5 +898,247 @@ export async function registerRoutes(
     }
   });
 
+  // ===== DOCUMENTS =====
+  app.get("/api/documents", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      const role = req.query.role as "restaurant" | "supplier";
+      if (!userId || !role) {
+        return res.status(400).json({ error: "userId and role required" });
+      }
+      const docs = await storage.getDocumentsByUser(userId, role);
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch documents" });
+    }
+  });
+
+  app.get("/api/orders/:id/delivery-note/download", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      const docs = await storage.getDocumentsByOrder(order.id);
+      const deliveryNote = docs.find(d => d.type === "delivery_note");
+      if (deliveryNote) {
+        const objectService = new ObjectStorageService();
+        const objectFile = await objectService.getObjectEntityFile(deliveryNote.fileUrl);
+        res.setHeader("Content-Disposition", `attachment; filename="Lieferschein_${order.id.slice(0, 8)}.pdf"`);
+        await objectService.downloadObject(objectFile, res);
+      } else {
+        const pdfBuffer = await generateDeliveryNotePDF(order);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename="Lieferschein_${order.id.slice(0, 8)}.pdf"`);
+        res.send(pdfBuffer);
+      }
+    } catch (error) {
+      console.error("Failed to download delivery note:", error);
+      res.status(500).json({ error: "Failed to download delivery note" });
+    }
+  });
+
+  app.post("/api/orders/:id/delivery-note", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      if (order.status !== "in_delivery") {
+        return res.status(400).json({ error: "Order must be in delivery status" });
+      }
+
+      const existingDocs = await storage.getDocumentsByOrder(order.id);
+      const hasDeliveryNote = existingDocs.some(d => d.type === "delivery_note");
+      if (hasDeliveryNote) {
+        return res.status(400).json({ error: "Delivery note already exists", document: existingDocs.find(d => d.type === "delivery_note") });
+      }
+
+      const pdfBuffer = await generateDeliveryNotePDF(order);
+
+      const objectService = new ObjectStorageService();
+      const privateDir = objectService.getPrivateObjectDir();
+      const fileId = randomUUID();
+      const fullPath = `${privateDir}/documents/${fileId}.pdf`;
+      const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+      const bucketName = pathParts[0];
+      const objectName = pathParts.slice(1).join("/");
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+
+      await file.save(pdfBuffer, {
+        contentType: "application/pdf",
+        metadata: {
+          contentType: "application/pdf",
+        },
+      });
+
+      const entityDir = privateDir.endsWith("/") ? privateDir : `${privateDir}/`;
+      const relativePath = `documents/${fileId}.pdf`;
+      const objectPath = `/objects/${relativePath}`;
+
+      const document = await storage.createDocument({
+        orderId: order.id,
+        type: "delivery_note",
+        title: `Lieferschein #${order.id.slice(0, 8)}`,
+        fileUrl: objectPath,
+        restaurantId: order.restaurantId,
+        supplierId: order.supplierId,
+      });
+
+      const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+
+      await storage.sendMessage({
+        conversationId: conversation.id,
+        senderId: order.supplierId,
+        messageType: "document",
+        content: JSON.stringify({
+          documentId: document.id,
+          title: document.title,
+          type: "delivery_note",
+          orderId: order.id,
+          fileUrl: objectPath,
+        }),
+        orderId: order.id,
+        documentUrl: objectPath,
+      });
+
+      res.json(document);
+    } catch (error) {
+      console.error("Failed to generate delivery note:", error);
+      res.status(500).json({ error: "Failed to generate delivery note" });
+    }
+  });
+
   return httpServer;
+}
+
+async function generateDeliveryNotePDF(order: {
+  id: string;
+  restaurant: { name: string; companyName: string | null; address: string | null; city: string | null; postalCode: string | null };
+  supplier: { name: string; companyName: string | null; address: string | null; city: string | null; postalCode: string | null; phone: string | null; email: string };
+  items: Array<{ productName: string; quantity: number; unitPrice: string; totalPrice: string }>;
+  totalAmount: string;
+  createdAt: Date;
+  notes: string | null;
+}): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    const chunks: Buffer[] = [];
+
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const supplierName = order.supplier.companyName || order.supplier.name;
+    const restaurantName = order.restaurant.companyName || order.restaurant.name;
+    const deliveryDate = new Date().toLocaleDateString("de-DE", {
+      day: "2-digit", month: "2-digit", year: "numeric"
+    });
+    const orderDate = new Date(order.createdAt).toLocaleDateString("de-DE", {
+      day: "2-digit", month: "2-digit", year: "numeric"
+    });
+
+    doc.fontSize(22).font("Helvetica-Bold").text("LIEFERSCHEIN", { align: "center" });
+    doc.moveDown(0.5);
+    doc.fontSize(10).font("Helvetica").fillColor("#666666")
+      .text(`Lieferschein-Nr: LS-${order.id.slice(0, 8).toUpperCase()}`, { align: "center" });
+    doc.text(`Datum: ${deliveryDate}`, { align: "center" });
+
+    doc.moveDown(1.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#cccccc").stroke();
+    doc.moveDown(1);
+
+    const topY = doc.y;
+    doc.fontSize(10).font("Helvetica-Bold").fillColor("#333333").text("Lieferant:", 50, topY);
+    doc.font("Helvetica").fontSize(10).fillColor("#333333");
+    doc.text(supplierName, 50, topY + 16);
+    if (order.supplier.address) doc.text(order.supplier.address);
+    if (order.supplier.postalCode || order.supplier.city) {
+      doc.text(`${order.supplier.postalCode || ""} ${order.supplier.city || ""}`.trim());
+    }
+    if (order.supplier.phone) doc.text(`Tel: ${order.supplier.phone}`);
+    doc.text(order.supplier.email);
+
+    doc.fontSize(10).font("Helvetica-Bold").text("Empfänger:", 300, topY);
+    doc.font("Helvetica").fontSize(10);
+    doc.text(restaurantName, 300, topY + 16);
+    if (order.restaurant.address) doc.text(order.restaurant.address, 300);
+    if (order.restaurant.postalCode || order.restaurant.city) {
+      doc.text(`${order.restaurant.postalCode || ""} ${order.restaurant.city || ""}`.trim(), 300);
+    }
+
+    const afterAddresses = Math.max(doc.y, topY + 80);
+    doc.y = afterAddresses;
+    doc.moveDown(1);
+
+    doc.fontSize(10).font("Helvetica").fillColor("#666666");
+    doc.text(`Bestellnummer: #${order.id.slice(0, 8).toUpperCase()}`, 50);
+    doc.text(`Bestelldatum: ${orderDate}`, 50);
+    doc.text(`Lieferdatum: ${deliveryDate}`, 50);
+
+    doc.moveDown(1);
+
+    const tableTop = doc.y;
+    doc.fillColor("#f5f5f5").rect(50, tableTop, 495, 22).fill();
+    doc.fillColor("#333333").font("Helvetica-Bold").fontSize(10);
+    doc.text("Pos.", 55, tableTop + 6, { width: 35 });
+    doc.text("Produkt", 95, tableTop + 6, { width: 250 });
+    doc.text("Menge", 350, tableTop + 6, { width: 60, align: "right" });
+    doc.text("Einzelpreis", 415, tableTop + 6, { width: 60, align: "right" });
+    doc.text("Gesamt", 480, tableTop + 6, { width: 60, align: "right" });
+
+    let rowY = tableTop + 28;
+    doc.font("Helvetica").fontSize(10).fillColor("#333333");
+
+    order.items.forEach((item, index) => {
+      if (rowY > 700) {
+        doc.addPage();
+        rowY = 50;
+      }
+      if (index % 2 === 1) {
+        doc.fillColor("#fafafa").rect(50, rowY - 4, 495, 20).fill();
+        doc.fillColor("#333333");
+      }
+      doc.text(`${index + 1}`, 55, rowY, { width: 35 });
+      doc.text(item.productName, 95, rowY, { width: 250 });
+      doc.text(`${item.quantity}`, 350, rowY, { width: 60, align: "right" });
+      doc.text(`${item.unitPrice} €`, 415, rowY, { width: 60, align: "right" });
+      doc.text(`${item.totalPrice} €`, 480, rowY, { width: 60, align: "right" });
+      rowY += 22;
+    });
+
+    doc.moveDown(0.5);
+    doc.y = rowY + 5;
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#cccccc").stroke();
+    doc.moveDown(0.5);
+
+    doc.font("Helvetica-Bold").fontSize(12).fillColor("#333333");
+    doc.text(`Gesamtbetrag: ${order.totalAmount} €`, 350, doc.y, { width: 195, align: "right" });
+
+    if (order.notes) {
+      doc.moveDown(1.5);
+      doc.font("Helvetica-Bold").fontSize(10).fillColor("#333333").text("Anmerkungen:", 50);
+      doc.font("Helvetica").fontSize(10).text(order.notes, 50);
+    }
+
+    const signatureY = Math.max(doc.y + 60, 650);
+    if (signatureY < 750) {
+      doc.y = signatureY;
+      doc.moveTo(50, doc.y).lineTo(230, doc.y).strokeColor("#999999").lineWidth(0.5).stroke();
+      doc.moveTo(320, doc.y).lineTo(500, doc.y).stroke();
+      doc.moveDown(0.3);
+      doc.fontSize(9).fillColor("#666666").font("Helvetica");
+      doc.text("Unterschrift Lieferant", 50, doc.y, { width: 180, align: "center" });
+      doc.text("Unterschrift Empfänger", 320, doc.y - doc.currentLineHeight(), { width: 180, align: "center" });
+    }
+
+    doc.fontSize(8).fillColor("#999999").font("Helvetica");
+    doc.text(
+      `Erstellt am ${deliveryDate} | ${supplierName} | GastroConnect`,
+      50, 780, { width: 495, align: "center" }
+    );
+
+    doc.end();
+  });
 }

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, Package, ClipboardList, History, Settings, AlertCircle, LogOut } from "lucide-react";
+import { Home, MessageSquare, Package, ClipboardList, History, Settings, AlertCircle, LogOut, FileText } from "lucide-react";
 import logoImage from "@assets/ChatGPT_Image_5._Feb._2026,_17_10_09_1770307834743.png";
 import {
   Sidebar,
@@ -24,6 +24,7 @@ const mainMenuItems = [
   { title: "Bestellungen", url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
   { title: "Historie", url: "/supplier/history", icon: History },
   { title: "Reklamationen", url: "/supplier/complaints", icon: AlertCircle },
+  { title: "Dokumente", url: "/supplier/documents", icon: FileText },
 ];
 
 const bottomMenuItems = [

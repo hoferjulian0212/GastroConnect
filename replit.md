@@ -145,3 +145,16 @@ Both restaurant and supplier inbox pages implement a full-screen immersive chat 
   - `new_complaint` / `complaint_comment` → `/{role}/inbox?complaintId={referenceId}` (opens complaint detail dialog)
 - **Auto-dismiss**: Message notifications are automatically marked as read when the user opens the relevant conversation (via `PATCH /api/notifications/read-by-reference`)
 - **URL Query Params**: Orders pages read `?orderId=` to highlight/scroll; Inbox pages read `?conversationId=` and `?complaintId=` to auto-select/open
+
+### Delivery Note (Lieferschein) System
+- **PDF Generation**: Uses PDFKit to generate A4 delivery note PDFs with German locale formatting
+- **Storage**: PDFs uploaded to Object Storage at `privateObjectDir/documents/{uuid}.pdf`
+- **Database**: `documents` table tracks generated documents with `documentTypeEnum` (delivery_note, invoice, other)
+- **Trigger**: Supplier clicks "Lieferschein erstellen" button on orders with "in_delivery" status
+- **Chat Integration**: Creating a delivery note sends a system message (messageType "document") in the conversation with download button
+- **Document Center**: Both roles have a "Dokumente" page (`/{role}/documents`) listing all their documents with download buttons
+- **Endpoints**:
+  - `POST /api/orders/:id/delivery-note` - Generate PDF, upload to storage, create document record, send chat message
+  - `GET /api/orders/:id/delivery-note/download` - Download or generate on-demand
+  - `GET /api/documents?userId=&role=` - List documents by user and role
+- **Navigation**: "Dokumente" item added to both sidebars and mobile nav "Mehr" menus

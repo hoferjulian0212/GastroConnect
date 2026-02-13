@@ -39,6 +39,7 @@ import SupplierHistory from "@/pages/supplier/History";
 import SupplierSettings from "@/pages/supplier/Settings";
 import SupplierComplaints from "@/pages/supplier/Complaints";
 import About from "@/pages/About";
+import Documents from "@/pages/Documents";
 
 function RestaurantRouter() {
   return (
@@ -52,6 +53,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/complaints" component={RestaurantComplaints} />
       <Route path="/restaurant/suppliers" component={RestaurantSuppliers} />
       <Route path="/restaurant/settings" component={RestaurantSettings} />
+      <Route path="/restaurant/documents" component={Documents} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -67,6 +69,7 @@ function SupplierRouter() {
       <Route path="/supplier/history" component={SupplierHistory} />
       <Route path="/supplier/complaints" component={SupplierComplaints} />
       <Route path="/supplier/settings" component={SupplierSettings} />
+      <Route path="/supplier/documents" component={Documents} />
       <Route component={NotFound} />
     </Switch>
   );

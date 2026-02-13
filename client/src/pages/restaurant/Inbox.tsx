@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -574,9 +574,11 @@ export default function RestaurantInbox() {
                         ? format(new Date(conv.lastMessage.createdAt), isToday(new Date(conv.lastMessage.createdAt)) ? "HH:mm" : "dd.MM.")
                         : "";
                       const messagePreview = conv.lastMessage?.messageType === "order" 
-                        ? "📦 Bestellung" 
+                        ? "Bestellung" 
                         : conv.lastMessage?.messageType === "complaint"
-                        ? "⚠️ Reklamation"
+                        ? "Reklamation"
+                        : conv.lastMessage?.messageType === "document"
+                        ? "Lieferschein"
                         : conv.lastMessage?.content || "Keine Nachrichten";
                       return (
                         <button
@@ -706,7 +708,7 @@ export default function RestaurantInbox() {
                                 </div>
                               )}
                               <div
-                                className={`flex ${message.messageType === "order" || message.messageType === "complaint" ? "justify-center" : isOwn ? "justify-end" : "justify-start"}`}
+                                className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" ? "justify-center" : isOwn ? "justify-end" : "justify-start"}`}
                                 data-testid={`message-${message.id}`}
                               >
                                 {message.messageType === "order" ? (
@@ -823,6 +825,48 @@ export default function RestaurantInbox() {
                                             >
                                               <Eye className="h-4 w-4 mr-2" />
                                               Reklamation anzeigen
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()
+                                ) : message.messageType === "document" ? (
+                                  (() => {
+                                    let docData: { title?: string; orderId?: string; fileUrl?: string } = {};
+                                    try { docData = JSON.parse(message.content); } catch {}
+                                    return (
+                                      <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-blue-500/30 shadow-lg">
+                                        <div className="flex items-center justify-between px-4 py-2.5 border-b bg-blue-500/10 border-blue-500/20">
+                                          <div className="flex items-center gap-2">
+                                            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                            <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">Lieferschein</span>
+                                          </div>
+                                          <span className="text-xs text-muted-foreground">
+                                            {format(messageDate, "HH:mm")}
+                                          </span>
+                                        </div>
+                                        <div className="px-4 py-3">
+                                          <p className="text-sm font-medium">{docData.title || "Dokument"}</p>
+                                          {docData.orderId && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                              Bestellung #{docData.orderId.slice(0, 8)}
+                                            </p>
+                                          )}
+                                        </div>
+                                        {docData.orderId && (
+                                          <div className="px-4 py-2.5 border-t border-blue-500/20 bg-blue-500/5">
+                                            <Button
+                                              variant="default"
+                                              size="sm"
+                                              className="w-full"
+                                              onClick={() => {
+                                                window.open(`/api/orders/${docData.orderId}/delivery-note/download`, "_blank");
+                                              }}
+                                              data-testid={`button-download-doc-${message.id}`}
+                                            >
+                                              <Download className="h-4 w-4 mr-2" />
+                                              Lieferschein herunterladen
                                             </Button>
                                           </div>
                                         )}
@@ -1177,6 +1221,23 @@ export default function RestaurantInbox() {
                     <h4 className="font-medium mb-2">Notizen</h4>
                     <p className="text-sm text-muted-foreground">{orderDetail.notes}</p>
                   </div>
+                </>
+              )}
+
+              {orderDetail.status === "in_delivery" && (
+                <>
+                  <Separator />
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      window.open(`/api/orders/${orderDetail.id}/delivery-note/download`, "_blank");
+                    }}
+                    data-testid="button-download-delivery-note"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Lieferschein herunterladen
+                  </Button>
                 </>
               )}
 
