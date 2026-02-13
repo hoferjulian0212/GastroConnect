@@ -9,10 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Package, ShoppingCart, Plus, Minus, Store, Filter } from "lucide-react";
+import { Search, Package, ShoppingCart, Plus, Minus, Store, Filter, Eye } from "lucide-react";
 import type { User, ProductWithSupplier } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import ProductDetailDialog from "@/components/ProductDetailDialog";
 
 export default function RestaurantCatalog() {
   const { currentUser } = useUser();
@@ -22,6 +23,7 @@ export default function RestaurantCatalog() {
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [detailProduct, setDetailProduct] = useState<ProductWithSupplier | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -153,7 +155,7 @@ export default function RestaurantCatalog() {
           ) : filteredProducts && filteredProducts.length > 0 ? (
             <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {filteredProducts.map((product) => (
-                <Card key={product.id} className="cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]" data-testid={`product-card-${product.id}`}>
+                <Card key={product.id} className="cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]" data-testid={`product-card-${product.id}`} onClick={() => setDetailProduct(product)}>
                   <CardContent className="p-3 flex gap-3">
                     {product.imageUrl ? (
                       <div className="w-20 h-20 md:w-28 md:h-28 shrink-0 rounded-lg overflow-hidden bg-muted">
@@ -189,7 +191,7 @@ export default function RestaurantCatalog() {
                         <span className="text-xs text-muted-foreground">/{product.unit}</span>
                       </div>
                       <div className="flex items-center gap-1 md:gap-2 mt-2 justify-end flex-wrap">
-                        <div className="flex items-center border border-border rounded-md">
+                        <div className="flex items-center border border-border rounded-md" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -218,7 +220,7 @@ export default function RestaurantCatalog() {
                           size="sm"
                           className="gap-1 text-xs md:text-sm"
                           disabled={!product.inStock || addToCartMutation.isPending}
-                          onClick={() => handleAddToCart(product)}
+                          onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
                           data-testid={`button-add-to-cart-${product.id}`}
                         >
                           <ShoppingCart className="h-3.5 w-3.5" />
@@ -242,6 +244,13 @@ export default function RestaurantCatalog() {
           )}
         </CardContent>
       </Card>
+
+      <ProductDetailDialog
+        product={detailProduct}
+        open={!!detailProduct}
+        onOpenChange={(open) => !open && setDetailProduct(null)}
+        supplierName={detailProduct?.supplier?.companyName || detailProduct?.supplier?.name}
+      />
     </div>
   );
 }

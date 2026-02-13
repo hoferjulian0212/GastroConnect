@@ -22,6 +22,7 @@ import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import ProductDetailDialog from "@/components/ProductDetailDialog";
 
 type ActionMode = "none" | "order" | "complaint";
 
@@ -119,6 +120,7 @@ export default function RestaurantInbox() {
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [actionMode, setActionMode] = useState<ActionMode>("none");
+  const [inboxDetailProduct, setInboxDetailProduct] = useState<Product | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [orderItems, setOrderItems] = useState<Record<string, number>>({});
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
@@ -869,15 +871,15 @@ export default function RestaurantInbox() {
                         {supplierProducts?.filter(p => p.inStock).map((product) => (
                           <div key={product.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                             {product.imageUrl ? (
-                              <div className="w-12 h-12 rounded-md overflow-hidden bg-muted shrink-0">
+                              <div className="w-12 h-12 rounded-md overflow-hidden bg-muted shrink-0 cursor-pointer" onClick={() => setInboxDetailProduct(product)} data-testid={`button-product-detail-${product.id}`}>
                                 <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
                               </div>
                             ) : (
-                              <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center shrink-0">
+                              <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center shrink-0 cursor-pointer" onClick={() => setInboxDetailProduct(product)} data-testid={`button-product-detail-${product.id}`}>
                                 <Package className="h-5 w-5 text-muted-foreground/50" />
                               </div>
                             )}
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setInboxDetailProduct(product)} data-testid={`text-product-info-${product.id}`}>
                               <p className="text-sm font-medium truncate">{product.name}</p>
                               <p className="text-xs text-muted-foreground">{product.price}€/{product.unit}</p>
                             </div>
@@ -1431,6 +1433,13 @@ export default function RestaurantInbox() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ProductDetailDialog
+        product={inboxDetailProduct}
+        open={!!inboxDetailProduct}
+        onOpenChange={(open) => !open && setInboxDetailProduct(null)}
+        supplierName={selectedConv?.otherUser?.companyName || selectedConv?.otherUser?.name}
+      />
     </div>
   );
 }

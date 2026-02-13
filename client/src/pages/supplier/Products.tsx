@@ -13,10 +13,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Package, Plus, Pencil, Trash2, Euro, Upload, X, ImageIcon } from "lucide-react";
+import { Search, Package, Plus, Pencil, Trash2, Euro, Upload, X, ImageIcon, Eye } from "lucide-react";
 import type { Product } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { z } from "zod";
 
 const productSchema = z.object({
@@ -40,6 +41,7 @@ export default function SupplierProducts() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProductFormData>({
@@ -490,7 +492,7 @@ export default function SupplierProducts() {
           ) : filteredProducts && filteredProducts.length > 0 ? (
             <div className="grid gap-2 md:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {filteredProducts.map((product) => (
-                <Card key={product.id} className="cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]" data-testid={`product-card-${product.id}`}>
+                <Card key={product.id} className="cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]" data-testid={`product-card-${product.id}`} onClick={() => setDetailProduct(product)}>
                   <CardContent className="p-2 md:p-3 flex gap-2 md:gap-3">
                     {product.imageUrl ? (
                       <div className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-lg overflow-hidden bg-muted">
@@ -512,7 +514,7 @@ export default function SupplierProducts() {
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            onClick={() => openEditDialog(product)}
+                            onClick={(e) => { e.stopPropagation(); openEditDialog(product); }}
                             data-testid={`button-edit-${product.id}`}
                           >
                             <Pencil className="h-3 w-3 md:h-3.5 md:w-3.5" />
@@ -520,7 +522,7 @@ export default function SupplierProducts() {
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            onClick={() => deleteProductMutation.mutate(product.id)}
+                            onClick={(e) => { e.stopPropagation(); deleteProductMutation.mutate(product.id); }}
                             disabled={deleteProductMutation.isPending}
                             data-testid={`button-delete-${product.id}`}
                           >
@@ -565,6 +567,12 @@ export default function SupplierProducts() {
           )}
         </CardContent>
       </Card>
+
+      <ProductDetailDialog
+        product={detailProduct}
+        open={!!detailProduct}
+        onOpenChange={(open) => !open && setDetailProduct(null)}
+      />
     </div>
   );
 }
