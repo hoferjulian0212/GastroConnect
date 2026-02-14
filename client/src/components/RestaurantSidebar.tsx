@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Home, MessageSquare, ShoppingBag, Package, History, Settings, AlertCircle, LogOut, Truck, FileText } from "lucide-react";
-import logoImage from "@assets/ChatGPT_Image_5._Feb._2026,_17_10_09_1770307834743.png";
+import logoImage from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-Photoroom_1771091510099.png";
 import {
   Sidebar,
   SidebarContent,
