@@ -2,6 +2,7 @@ import { db } from "./db";
 import { eq, and, desc, or, sql, ne, inArray } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
+  orderStatusHistory, complaintStatusHistory,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -9,7 +10,9 @@ import {
   type ConversationWithUser, type CartItemWithProduct, type Complaint, type InsertComplaint,
   type ComplaintWithDetails, type Notification, type InsertNotification, type UpdateComplaint,
   type ComplaintComment, type InsertComplaintComment, type ComplaintCommentWithUser,
-  type Document, type InsertDocument, type DocumentWithDetails
+  type Document, type InsertDocument, type DocumentWithDetails,
+  type OrderStatusHistory, type OrderStatusHistoryWithUser,
+  type ComplaintStatusHistory, type ComplaintStatusHistoryWithUser
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -97,6 +100,12 @@ export interface IStorage {
   getDocumentsByOrder(orderId: string): Promise<Document[]>;
   getDocumentsByUser(userId: string, role: "restaurant" | "supplier"): Promise<DocumentWithDetails[]>;
   createDocument(doc: InsertDocument): Promise<Document>;
+
+  // Status History
+  getOrderStatusHistory(orderId: string): Promise<OrderStatusHistoryWithUser[]>;
+  addOrderStatusHistory(orderId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<OrderStatusHistory>;
+  getComplaintStatusHistory(complaintId: string): Promise<ComplaintStatusHistoryWithUser[]>;
+  addComplaintStatusHistory(complaintId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<ComplaintStatusHistory>;
 
   // Seed
   seedData(): Promise<void>;
@@ -697,6 +706,48 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Seed Data
+  async getOrderStatusHistory(orderId: string): Promise<OrderStatusHistoryWithUser[]> {
+    const result = await db
+      .select()
+      .from(orderStatusHistory)
+      .leftJoin(users, eq(orderStatusHistory.changedBy, users.id))
+      .where(eq(orderStatusHistory.orderId, orderId))
+      .orderBy(orderStatusHistory.createdAt);
+    return result.map(r => ({
+      ...r.order_status_history,
+      changedByUser: r.users || undefined,
+    }));
+  }
+
+  async addOrderStatusHistory(orderId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<OrderStatusHistory> {
+    const [entry] = await db
+      .insert(orderStatusHistory)
+      .values({ orderId, fromStatus, toStatus, changedBy: changedBy || null })
+      .returning();
+    return entry;
+  }
+
+  async getComplaintStatusHistory(complaintId: string): Promise<ComplaintStatusHistoryWithUser[]> {
+    const result = await db
+      .select()
+      .from(complaintStatusHistory)
+      .leftJoin(users, eq(complaintStatusHistory.changedBy, users.id))
+      .where(eq(complaintStatusHistory.complaintId, complaintId))
+      .orderBy(complaintStatusHistory.createdAt);
+    return result.map(r => ({
+      ...r.complaint_status_history,
+      changedByUser: r.users || undefined,
+    }));
+  }
+
+  async addComplaintStatusHistory(complaintId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<ComplaintStatusHistory> {
+    const [entry] = await db
+      .insert(complaintStatusHistory)
+      .values({ complaintId, fromStatus, toStatus, changedBy: changedBy || null })
+      .returning();
+    return entry;
+  }
+
   async seedData(): Promise<void> {
     // Check if data already exists
     const existingUsers = await db.select().from(users);

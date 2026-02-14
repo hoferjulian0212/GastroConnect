@@ -15,10 +15,11 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
+import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { ConversationWithUser, Message, Product, Order, ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
+import type { ConversationWithUser, Message, Product, Order, ComplaintWithDetails, ComplaintCommentWithUser, OrderStatusHistoryWithUser, ComplaintStatusHistoryWithUser } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -167,6 +168,15 @@ export default function RestaurantInbox() {
     enabled: !!orderDetailId,
   });
 
+  const { data: orderStatusHistory } = useQuery<OrderStatusHistoryWithUser[]>({
+    queryKey: ["/api/orders", orderDetailId, "status-history"],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders/${orderDetailId}/status-history`);
+      return res.json();
+    },
+    enabled: !!orderDetailId,
+  });
+
   const { data: complaintDetail, isLoading: isLoadingComplaintDetail, isError: isComplaintDetailError } = useQuery<ComplaintWithDetails>({
     queryKey: ["/api/complaints", selectedComplaintId],
     queryFn: async () => {
@@ -182,6 +192,15 @@ export default function RestaurantInbox() {
     queryFn: async () => {
       if (!selectedComplaintId) return [];
       const res = await fetch(`/api/complaints/${selectedComplaintId}/comments`);
+      return res.json();
+    },
+    enabled: !!selectedComplaintId && showComplaintDetail,
+  });
+
+  const { data: complaintStatusHistoryData } = useQuery<ComplaintStatusHistoryWithUser[]>({
+    queryKey: ["/api/complaints", selectedComplaintId, "status-history"],
+    queryFn: async () => {
+      const res = await fetch(`/api/complaints/${selectedComplaintId}/status-history`);
       return res.json();
     },
     enabled: !!selectedComplaintId && showComplaintDetail,
@@ -437,12 +456,13 @@ export default function RestaurantInbox() {
 
   const cancelOrderMutation = useMutation({
     mutationFn: async (orderId: string) => {
-      return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status: "cancelled" });
+      return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status: "cancelled", changedBy: currentUser?.id });
     },
     onSuccess: () => {
       toast({ title: "Bestellung storniert", description: "Die Bestellung wurde erfolgreich storniert." });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders", orderDetailId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders", orderDetailId, "status-history"] });
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders/recent', currentUser?.id] });
       if (selectedConversation) {
@@ -457,11 +477,12 @@ export default function RestaurantInbox() {
 
   const withdrawComplaintMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest("PATCH", `/api/complaints/${id}`, { status: "closed" });
+      return apiRequest("PATCH", `/api/complaints/${id}`, { status: "closed", changedBy: currentUser?.id });
     },
     onSuccess: () => {
       toast({ title: "Reklamation zurückgezogen", description: "Die Reklamation wurde geschlossen." });
       queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId, "status-history"] });
       queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
       if (selectedConversation) {
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
@@ -1180,10 +1201,10 @@ export default function RestaurantInbox() {
           </DialogHeader>
           {orderDetail && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-muted/50">
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Bestellnummer</div>
-                  <span className="font-mono text-sm font-semibold">#{orderDetail.id.slice(0, 8)}</span>
+                  <span className="font-mono text-sm font-semibold" data-testid="text-order-id">#{orderDetail.id.slice(0, 8)}</span>
                 </div>
                 <Badge className={getStatusColor(orderDetail.status)} data-testid="badge-order-status">
                   {getStatusLabel(orderDetail.status)}
@@ -1205,46 +1226,68 @@ export default function RestaurantInbox() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Datum</span>
-                <span className="text-sm">{format(new Date(orderDetail.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}</span>
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Erstellt am</div>
+                  <div className="text-sm font-medium">{format(new Date(orderDetail.createdAt), "dd.MM.yyyy", { locale: de })}</div>
+                  <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.createdAt), "HH:mm", { locale: de })} Uhr</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Letzte Änderung</div>
+                  <div className="text-sm font-medium">{format(new Date(orderDetail.updatedAt), "dd.MM.yyyy", { locale: de })}</div>
+                  <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.updatedAt), "HH:mm", { locale: de })} Uhr</div>
+                </div>
               </div>
               
               <Separator />
-              
+
               <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  Produkte ({orderDetail.items.length})
+                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4" />
+                  Statusverlauf
                 </h4>
-                <div className="space-y-2">
-                  {orderDetail.items.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center py-2 border-b last:border-0">
-                      <div>
-                        <p className="font-medium">{item.productName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {item.quantity} x {item.unitPrice}€
-                        </p>
-                      </div>
-                      <span className="font-medium">{item.totalPrice}€</span>
-                    </div>
-                  ))}
+                <div className="p-3 rounded-lg bg-muted/30 border">
+                  <StatusTimeline
+                    history={orderStatusHistory || []}
+                    type="order"
+                    createdAt={orderDetail.createdAt}
+                    currentStatus={orderDetail.status}
+                  />
                 </div>
               </div>
               
               <Separator />
               
-              <div className="flex justify-between items-center p-3 rounded-lg bg-green-500/10 text-lg font-bold">
-                <span>Gesamtbetrag</span>
-                <span className="text-green-700 dark:text-green-400">{orderDetail.totalAmount}€</span>
+              <div>
+                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
+                  <Package className="h-4 w-4" />
+                  Produkte ({orderDetail.items.length})
+                </h4>
+                <div className="rounded-lg border overflow-hidden">
+                  {orderDetail.items.map((item, idx) => (
+                    <div key={item.id} className={`flex justify-between items-center gap-2 px-3 py-2.5 ${idx < orderDetail.items.length - 1 ? "border-b" : ""}`} data-testid={`order-item-${item.id}`}>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{item.productName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.quantity} x {parseFloat(item.unitPrice).toFixed(2)}€
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold whitespace-nowrap">{parseFloat(item.totalPrice).toFixed(2)}€</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between items-center gap-2 px-3 py-3 bg-green-500/10 border-t">
+                    <span className="text-sm font-bold">Gesamtbetrag</span>
+                    <span className="text-base font-bold text-green-700 dark:text-green-400">{parseFloat(orderDetail.totalAmount).toFixed(2)}€</span>
+                  </div>
+                </div>
               </div>
 
               {orderDetail.notes && (
                 <>
                   <Separator />
                   <div>
-                    <h4 className="font-medium mb-2">Notizen</h4>
-                    <p className="text-sm text-muted-foreground">{orderDetail.notes}</p>
+                    <h4 className="font-medium mb-2 text-sm">Notizen</h4>
+                    <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/30 border">{orderDetail.notes}</p>
                   </div>
                 </>
               )}
@@ -1343,23 +1386,26 @@ export default function RestaurantInbox() {
             </div>
           ) : complaintDetail ? (
             <div className="space-y-4">
-              {(() => {
-                const statusInfo = formatComplaintStatus(complaintDetail.status);
-                const StatusIcon = statusInfo.icon;
-                return (
-                  <div className="flex items-center gap-2">
-                    <Badge variant={statusInfo.variant} className="flex items-center gap-1" data-testid="badge-complaint-status">
-                      <StatusIcon className="h-3 w-3" />
-                      {statusInfo.label}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      Erstellt am {format(new Date(complaintDetail.createdAt), "dd.MM.yyyy", { locale: de })}
-                    </span>
-                  </div>
-                );
-              })()}
+              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-muted/50">
+                {(() => {
+                  const statusInfo = formatComplaintStatus(complaintDetail.status);
+                  const StatusIcon = statusInfo.icon;
+                  return (
+                    <>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Reklamation</div>
+                        <span className="font-mono text-sm font-semibold" data-testid="text-complaint-id">#{complaintDetail.id.slice(0, 8)}</span>
+                      </div>
+                      <Badge variant={statusInfo.variant} className="flex items-center gap-1" data-testid="badge-complaint-status">
+                        <StatusIcon className="h-3 w-3" />
+                        {statusInfo.label}
+                      </Badge>
+                    </>
+                  );
+                })()}
+              </div>
 
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-3 p-3 rounded-lg border">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={complaintDetail.supplier?.profileImageUrl || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
@@ -1372,11 +1418,24 @@ export default function RestaurantInbox() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Erstellt am</div>
+                  <div className="text-sm font-medium">{format(new Date(complaintDetail.createdAt), "dd.MM.yyyy", { locale: de })}</div>
+                  <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.createdAt), "HH:mm", { locale: de })} Uhr</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Letzte Änderung</div>
+                  <div className="text-sm font-medium">{format(new Date(complaintDetail.updatedAt), "dd.MM.yyyy", { locale: de })}</div>
+                  <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.updatedAt), "HH:mm", { locale: de })} Uhr</div>
+                </div>
+              </div>
+
               <Separator />
 
               <div>
                 <h4 className="font-semibold text-base mb-2" data-testid="text-complaint-title">{complaintDetail.title}</h4>
-                <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-complaint-description">{complaintDetail.description}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed p-3 rounded-lg bg-muted/30 border" data-testid="text-complaint-description">{complaintDetail.description}</p>
               </div>
 
               {complaintDetail.mediaUrls && complaintDetail.mediaUrls.length > 0 && (
@@ -1404,16 +1463,33 @@ export default function RestaurantInbox() {
 
               <Separator />
 
-              <div className="p-3 rounded-lg bg-muted/50">
-                <div className="flex items-center justify-between mb-2">
+              <div className="p-3 rounded-lg border">
+                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
                   <span className="text-sm font-medium">Betroffene Bestellung</span>
                   <Badge variant="outline">#{complaintDetail.orderId.substring(0, 8)}</Badge>
                 </div>
                 {complaintDetail.order && (
                   <div className="text-sm text-muted-foreground">
-                    Gesamtbetrag: {complaintDetail.order.totalAmount}€
+                    Gesamtbetrag: {parseFloat(complaintDetail.order.totalAmount).toFixed(2)}€
                   </div>
                 )}
+              </div>
+
+              <Separator />
+
+              <div>
+                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4" />
+                  Statusverlauf
+                </h4>
+                <div className="p-3 rounded-lg bg-muted/30 border">
+                  <StatusTimeline
+                    history={complaintStatusHistoryData || []}
+                    type="complaint"
+                    createdAt={complaintDetail.createdAt}
+                    currentStatus={complaintDetail.status}
+                  />
+                </div>
               </div>
 
               <Separator />
@@ -1432,7 +1508,7 @@ export default function RestaurantInbox() {
                   <div className="space-y-3 max-h-60 overflow-y-auto">
                     {complaintComments.map((comment) => (
                       <div key={comment.id} className="p-3 rounded-lg bg-muted/30 border" data-testid={`comment-${comment.id}`}>
-                        <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6">
                               <AvatarImage src={comment.user?.profileImageUrl || undefined} />

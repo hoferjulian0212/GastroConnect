@@ -89,6 +89,15 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const orderStatusHistory = pgTable("order_status_history", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id", { length: 36 }).notNull().references(() => orders.id),
+  fromStatus: text("from_status"),
+  toStatus: text("to_status").notNull(),
+  changedBy: varchar("changed_by", { length: 36 }).references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const complaints = pgTable("complaints", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id", { length: 36 }).notNull().references(() => orders.id),
@@ -107,6 +116,15 @@ export const complaintComments = pgTable("complaint_comments", {
   complaintId: varchar("complaint_id", { length: 36 }).notNull().references(() => complaints.id),
   userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
   content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const complaintStatusHistory = pgTable("complaint_status_history", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  complaintId: varchar("complaint_id", { length: 36 }).notNull().references(() => complaints.id),
+  fromStatus: text("from_status"),
+  toStatus: text("to_status").notNull(),
+  changedBy: varchar("changed_by", { length: 36 }).references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -145,6 +163,8 @@ export const updateComplaintSchema = createInsertSchema(complaints).omit({ id: t
 export const insertComplaintCommentSchema = createInsertSchema(complaintComments).omit({ id: true, createdAt: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, isRead: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
+export const insertOrderStatusHistorySchema = createInsertSchema(orderStatusHistory).omit({ id: true, createdAt: true });
+export const insertComplaintStatusHistorySchema = createInsertSchema(complaintStatusHistory).omit({ id: true, createdAt: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -170,6 +190,10 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
+export type InsertOrderStatusHistory = z.infer<typeof insertOrderStatusHistorySchema>;
+export type OrderStatusHistory = typeof orderStatusHistory.$inferSelect;
+export type InsertComplaintStatusHistory = z.infer<typeof insertComplaintStatusHistorySchema>;
+export type ComplaintStatusHistory = typeof complaintStatusHistory.$inferSelect;
 
 // Extended types for frontend
 export type ProductWithSupplier = Product & { supplier: User };
@@ -187,3 +211,5 @@ export type CartItemWithProduct = CartItem & { product: Product; supplier: User 
 export type ComplaintWithDetails = Complaint & { order: Order; restaurant: User; supplier: User; comments?: ComplaintCommentWithUser[] };
 export type ComplaintCommentWithUser = ComplaintComment & { user: User };
 export type DocumentWithDetails = Document & { order: Order; restaurant: User; supplier: User };
+export type OrderStatusHistoryWithUser = OrderStatusHistory & { changedByUser?: User };
+export type ComplaintStatusHistoryWithUser = ComplaintStatusHistory & { changedByUser?: User };

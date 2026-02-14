@@ -299,6 +299,8 @@ export async function registerRoutes(
           orderItems as any
         );
         createdOrders.push(order);
+        
+        await storage.addOrderStatusHistory(order.id, null, "pending", restaurantId);
 
         // Create order message in chat
         const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
@@ -376,6 +378,8 @@ export async function registerRoutes(
         { restaurantId, supplierId, totalAmount, status: "pending", notes: notes || "" },
         orderItems as any
       );
+      
+      await storage.addOrderStatusHistory(order.id, null, "pending", restaurantId);
 
       // Create order message in chat
       const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
@@ -428,11 +432,17 @@ export async function registerRoutes(
 
   app.patch("/api/orders/:id/status", async (req, res) => {
     try {
-      const { status } = req.body;
+      const { status, changedBy } = req.body;
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      const previousStatus = order.status;
       const updated = await storage.updateOrderStatus(req.params.id, status);
       if (!updated) {
         return res.status(404).json({ error: "Order not found" });
       }
+      await storage.addOrderStatusHistory(req.params.id, previousStatus, status, changedBy || undefined);
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update order status" });
@@ -670,6 +680,8 @@ export async function registerRoutes(
       const validated = insertComplaintSchema.parse(req.body);
       const complaint = await storage.createComplaint(validated);
       
+      await storage.addComplaintStatusHistory(complaint.id, null, "open", validated.restaurantId);
+      
       // Create complaint message in chat
       const conversation = await storage.getOrCreateConversation(validated.restaurantId, validated.supplierId);
       const complaintContent = JSON.stringify({
@@ -700,6 +712,24 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Create complaint error:", error);
       res.status(400).json({ error: "Invalid complaint data" });
+    }
+  });
+
+  app.get("/api/orders/:id/status-history", async (req, res) => {
+    try {
+      const history = await storage.getOrderStatusHistory(req.params.id);
+      res.json(history);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch status history" });
+    }
+  });
+
+  app.get("/api/complaints/:id/status-history", async (req, res) => {
+    try {
+      const history = await storage.getComplaintStatusHistory(req.params.id);
+      res.json(history);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch status history" });
     }
   });
 
@@ -734,16 +764,20 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Complaint not found" });
       }
       
-      // Check if trying to edit content (title, description, mediaUrls) on a non-open complaint
       const isContentEdit = req.body.title !== undefined || req.body.description !== undefined || req.body.mediaUrls !== undefined;
-      const isStatusOnly = req.body.status !== undefined && !isContentEdit;
       
       if (isContentEdit && complaint.status !== "open") {
         return res.status(400).json({ error: "Reklamationen können nur bearbeitet werden, wenn der Status 'Offen' ist." });
       }
       
+      const previousStatus = complaint.status;
       const validated = updateComplaintSchema.parse(req.body);
       const updated = await storage.updateComplaint(req.params.id, validated);
+      
+      if (req.body.status && req.body.status !== previousStatus) {
+        await storage.addComplaintStatusHistory(req.params.id, previousStatus, req.body.status, req.body.changedBy || undefined);
+      }
+      
       res.json(updated);
     } catch (error) {
       console.error("Update complaint error:", error);
