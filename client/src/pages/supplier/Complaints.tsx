@@ -156,6 +156,16 @@ export default function SupplierComplaints() {
     }
   };
 
+  const getComplaintCardBg = (status: string) => {
+    switch (status) {
+      case "open": return "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40";
+      case "in_progress": return "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40";
+      case "resolved": return "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40";
+      case "closed": return "bg-muted/30 border-border";
+      default: return "";
+    }
+  };
+
   const openStatusWizard = (complaint: ComplaintWithDetails) => {
     setSelectedComplaint(complaint);
     setNewStatus(complaint.status);
@@ -326,14 +336,13 @@ export default function SupplierComplaints() {
                 const StatusIcon = statusInfo.icon;
 
                 return (
-                  <div
+                  <Card
                     key={complaint.id}
-                    className="flex overflow-hidden rounded-md cursor-pointer"
+                    className={`overflow-hidden rounded-md cursor-pointer hover-elevate ${getComplaintCardBg(complaint.status)}`}
                     onClick={() => openDetailDialog(complaint)}
                     data-testid={`complaint-${complaint.id}`}
                   >
-                    <div className={`w-1 shrink-0 ${getComplaintAccent(complaint.status)}`} />
-                    <div className="flex-1 rounded-none border border-l-0 bg-card p-3 md:p-4 space-y-2 md:space-y-3 hover-elevate">
+                    <CardContent className="p-3 md:p-4 space-y-2 md:space-y-3">
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 md:gap-4">
                       <div className="flex items-center gap-2 md:gap-3">
                         <Avatar className="h-8 w-8 md:h-10 md:w-10">
@@ -392,7 +401,6 @@ export default function SupplierComplaints() {
                       </div>
                     )}
 
-                    {/* Action buttons */}
                     <div className="flex gap-2 pt-1">
                       <Button
                         size="sm"
@@ -413,8 +421,8 @@ export default function SupplierComplaints() {
                         Kommentar
                       </Button>
                     </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 );
               })}
             </div>

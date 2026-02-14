@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
@@ -764,42 +764,62 @@ export default function RestaurantInbox() {
                             <ClipboardList className="h-5 w-5" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-80 p-0" align="end">
+                        <PopoverContent className="w-96 p-0" align="end">
                           <div className="p-3 border-b border-border">
                             <p className="font-medium text-sm">Offene Aktionen</p>
                             <p className="text-xs text-muted-foreground">{selectedConv.otherUser.companyName || selectedConv.otherUser.name}</p>
                           </div>
-                          <div className="max-h-80 overflow-y-auto p-2 space-y-3">
+                          <div className="max-h-[420px] overflow-y-auto p-2 space-y-3">
                             {openActionsOrders && openActionsOrders.length > 0 && (
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-orders-header">Offene Bestellungen</p>
-                                <div className="space-y-1.5">
+                                <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-orders-header">Offene Bestellungen ({openActionsOrders.length})</p>
+                                <div className="space-y-2">
                                   {openActionsOrders.map((order: any) => {
-                                    const stripColor = order.status === "pending" ? "bg-yellow-400" : order.status === "confirmed" ? "bg-blue-400" : "bg-purple-400";
+                                    const cardBg = order.status === "pending"
+                                      ? "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40"
+                                      : order.status === "confirmed"
+                                      ? "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40"
+                                      : "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40";
                                     const StatusIcon = order.status === "pending" ? Clock : order.status === "confirmed" ? CheckCircle : Package;
                                     return (
                                       <div
                                         key={order.id}
-                                        className="flex overflow-hidden rounded-md cursor-pointer"
+                                        className={`rounded-md border p-2.5 space-y-2 cursor-pointer ${cardBg}`}
                                         onClick={() => { setOrderDetailId(order.id); setOpenActionsPopover(false); }}
                                         data-testid={`open-action-order-${order.id}`}
                                       >
-                                        <div className={`w-1 shrink-0 ${stripColor}`} />
-                                        <div className="flex-1 bg-muted/40 p-2">
-                                          <div className="flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                              <StatusIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                              <span className="text-xs font-mono truncate">#{order.id.slice(0, 8)}</span>
-                                            </div>
-                                            <Badge variant="secondary" className={`text-[10px] shrink-0 ${getStatusColor(order.status)}`}>
-                                              {getStatusLabel(order.status)}
-                                            </Badge>
+                                        <div className="flex items-center justify-between gap-2">
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <StatusIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                            <span className="text-xs font-mono truncate">#{order.id.slice(0, 8)}</span>
                                           </div>
-                                          <div className="flex items-center justify-between mt-1 text-[10px] text-muted-foreground">
-                                            <span>{format(new Date(order.createdAt), "dd.MM.yy", { locale: de })}</span>
-                                            <span className="font-medium text-foreground">{order.totalAmount ? `€${Number(order.totalAmount).toFixed(2)}` : ""}</span>
-                                          </div>
+                                          <Badge variant="secondary" className={`text-[10px] shrink-0 ${getStatusColor(order.status)}`}>
+                                            {getStatusLabel(order.status)}
+                                          </Badge>
                                         </div>
+                                        {order.items && order.items.length > 0 && (
+                                          <div className="space-y-0.5">
+                                            {order.items.slice(0, 3).map((item: any, idx: number) => (
+                                              <div key={idx} className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                                <span className="truncate mr-2">{item.quantity}x {item.productName}</span>
+                                                <span className="shrink-0 font-medium text-foreground">€{Number(item.totalPrice).toFixed(2)}</span>
+                                              </div>
+                                            ))}
+                                            {order.items.length > 3 && (
+                                              <p className="text-[10px] text-muted-foreground">+{order.items.length - 3} weitere</p>
+                                            )}
+                                          </div>
+                                        )}
+                                        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                          <span>{format(new Date(order.createdAt), "dd.MM.yy", { locale: de })}</span>
+                                          <span className="font-semibold text-xs text-foreground">{order.totalAmount ? `€${Number(order.totalAmount).toFixed(2)}` : ""}</span>
+                                        </div>
+                                        {order.requestedDeliveryDate && (
+                                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                            <Truck className="h-3 w-3" />
+                                            <span>Lieferung: {format(new Date(order.requestedDeliveryDate), "dd.MM.yyyy", { locale: de })}</span>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}
@@ -808,29 +828,36 @@ export default function RestaurantInbox() {
                             )}
                             {openActionsComplaints && openActionsComplaints.length > 0 && (
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-complaints-header">Offene Reklamationen</p>
-                                <div className="space-y-1.5">
+                                <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-complaints-header">Offene Reklamationen ({openActionsComplaints.length})</p>
+                                <div className="space-y-2">
                                   {openActionsComplaints.map((complaint: any) => {
-                                    const stripColor = complaint.status === "open" ? "bg-yellow-400" : "bg-blue-400";
+                                    const cardBg = complaint.status === "open"
+                                      ? "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40"
+                                      : "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40";
                                     const StatusIcon = complaint.status === "open" ? AlertCircle : Clock;
                                     return (
                                       <div
                                         key={complaint.id}
-                                        className="flex overflow-hidden rounded-md cursor-pointer"
+                                        className={`rounded-md border p-2.5 space-y-2 cursor-pointer ${cardBg}`}
                                         onClick={() => { openComplaintDetailById(complaint.id); setOpenActionsPopover(false); }}
                                         data-testid={`open-action-complaint-${complaint.id}`}
                                       >
-                                        <div className={`w-1 shrink-0 ${stripColor}`} />
-                                        <div className="flex-1 bg-muted/40 p-2">
-                                          <div className="flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                              <StatusIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                              <span className="text-xs truncate">{complaint.title}</span>
-                                            </div>
-                                            <Badge variant="secondary" className={`text-[10px] shrink-0 ${getComplaintStatusColor(complaint.status)}`}>
-                                              {getComplaintStatusLabel(complaint.status)}
-                                            </Badge>
+                                        <div className="flex items-center justify-between gap-2">
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <StatusIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                            <span className="text-xs font-medium truncate">{complaint.title}</span>
                                           </div>
+                                          <Badge variant="secondary" className={`text-[10px] shrink-0 ${getComplaintStatusColor(complaint.status)}`}>
+                                            {getComplaintStatusLabel(complaint.status)}
+                                          </Badge>
+                                        </div>
+                                        {complaint.description && (
+                                          <p className="text-[10px] text-muted-foreground line-clamp-2">{complaint.description}</p>
+                                        )}
+                                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                          <span>Bestellung #{complaint.orderId?.slice(0, 8)}</span>
+                                          <span>•</span>
+                                          <span>{format(new Date(complaint.createdAt), "dd.MM.yy", { locale: de })}</span>
                                         </div>
                                       </div>
                                     );

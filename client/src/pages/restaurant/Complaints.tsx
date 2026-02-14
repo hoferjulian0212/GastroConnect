@@ -327,6 +327,16 @@ export default function Complaints() {
     }
   };
 
+  const getComplaintCardBg = (status: string) => {
+    switch (status) {
+      case "open": return "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40";
+      case "in_progress": return "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40";
+      case "resolved": return "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40";
+      case "closed": return "bg-muted/30 border-border";
+      default: return "";
+    }
+  };
+
   const openEditDialog = (complaint: ComplaintWithDetails) => {
     setEditingComplaint(complaint);
     setEditTitle(complaint.title);
@@ -614,14 +624,13 @@ export default function Complaints() {
                   const canEdit = complaint.status === "open";
                   
                   return (
-                    <div
+                    <Card
                       key={complaint.id}
-                      className="flex overflow-hidden rounded-md cursor-pointer"
+                      className={`overflow-hidden rounded-md cursor-pointer hover-elevate ${getComplaintCardBg(complaint.status)}`}
                       onClick={() => setDetailComplaint(complaint)}
                       data-testid={`complaint-${complaint.id}`}
                     >
-                      <div className={`w-1 shrink-0 ${getComplaintAccent(complaint.status)}`} />
-                      <div className="flex-1 rounded-none border border-l-0 bg-card p-3 md:p-4 space-y-1.5 md:space-y-2 hover-elevate">
+                      <CardContent className="p-3 md:p-4 space-y-1.5 md:space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-medium text-sm md:text-base">{complaint.title}</div>
                         <div className="flex items-center gap-1.5">
@@ -692,8 +701,8 @@ export default function Complaints() {
                           </>
                         )}
                       </div>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
                   );
                 })}
               </div>

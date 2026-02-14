@@ -130,6 +130,17 @@ export default function RestaurantOrders() {
     }
   };
 
+  const getStatusCardBg = (status: string) => {
+    switch (status) {
+      case "pending": return "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40";
+      case "confirmed": return "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40";
+      case "in_delivery": return "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40";
+      case "delivered": return "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40";
+      case "cancelled": return "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40";
+      default: return "";
+    }
+  };
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending": return "Ausstehend";
@@ -221,9 +232,8 @@ export default function RestaurantOrders() {
     const isHighlighted = order.id === highlightOrderId;
     return (
     <div ref={isHighlighted ? highlightRef : undefined}>
-    <div className={`flex overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
-      <div className={`w-1 shrink-0 ${getStatusAccent(order.status)}`} />
-      <Card className="hover-elevate flex-1 rounded-none border-l-0">
+    <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
+      <Card className={`hover-elevate ${getStatusCardBg(order.status)}`}>
       <CardContent className="p-3 md:p-4">
         <div className="flex items-start justify-between gap-2 md:gap-4">
           <div className="flex items-start gap-2 md:gap-4">
@@ -303,6 +313,16 @@ export default function RestaurantOrders() {
     </div>
     </div>
     );
+  };
+
+  const getComplaintCardBg = (status: string) => {
+    switch (status) {
+      case "open": return "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40";
+      case "in_progress": return "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40";
+      case "resolved": return "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40";
+      case "closed": return "bg-muted/30 border-border";
+      default: return "";
+    }
   };
 
   return (
