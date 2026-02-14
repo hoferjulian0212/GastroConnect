@@ -173,3 +173,14 @@ Both restaurant and supplier inbox pages implement a full-screen immersive chat 
   - `DELETE /api/promotions/:id` - Delete promotion
   - `GET /api/products` - Returns products with `activePromotion` field attached
 - **Navigation**: "Aktionen" (Tag icon) added to supplier sidebar and mobile nav "Mehr" menu
+
+### Delivery Days Scheduling System
+- **Database**: `delivery_schedules` table with `supplierId`, `restaurantId`, `dayOfWeek` (0=Sunday...6=Saturday); `requestedDeliveryDate` field on `orders` table
+- **Supplier Configuration**: In Settings page under "Liefertage" section, suppliers select a restaurant customer and toggle weekday checkboxes to set allowed delivery days
+- **Restaurant Checkout**: Cart page shows delivery date picker with "Sobald wie möglich" (ASAP, default, requestedDeliveryDate=null) or "Liefertag auswählen" showing next 30 days filtered to allowed weekdays
+- **Multi-Supplier Logic**: When cart contains products from multiple suppliers, only dates whose weekday is allowed by ALL suppliers are shown (intersection)
+- **Order Display**: Supplier Orders page shows requested delivery date or "Sobald wie möglich" fallback in order details
+- **Endpoints**:
+  - `PUT /api/delivery-schedules` - Set delivery days (body: supplierId, restaurantId, days[])
+  - `GET /api/delivery-schedules?supplierId=` - All schedules for a supplier
+  - `GET /api/delivery-schedules/restaurant?supplierId=&restaurantId=` - Schedules for specific pair

@@ -2,7 +2,7 @@ import { db } from "./db";
 import { eq, and, desc, or, sql, ne, inArray } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
-  orderStatusHistory, complaintStatusHistory, promotions,
+  orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -13,7 +13,8 @@ import {
   type Document, type InsertDocument, type DocumentWithDetails,
   type OrderStatusHistory, type OrderStatusHistoryWithUser,
   type ComplaintStatusHistory, type ComplaintStatusHistoryWithUser,
-  type Promotion, type InsertPromotion, type PromotionWithProduct
+  type Promotion, type InsertPromotion, type PromotionWithProduct,
+  type DeliverySchedule, type InsertDeliverySchedule
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -107,6 +108,11 @@ export interface IStorage {
   addOrderStatusHistory(orderId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<OrderStatusHistory>;
   getComplaintStatusHistory(complaintId: string): Promise<ComplaintStatusHistoryWithUser[]>;
   addComplaintStatusHistory(complaintId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<ComplaintStatusHistory>;
+
+  // Delivery Schedules
+  getDeliverySchedules(supplierId: string): Promise<(DeliverySchedule & { restaurant: User })[]>;
+  getDeliverySchedulesForRestaurant(supplierId: string, restaurantId: string): Promise<DeliverySchedule[]>;
+  setDeliverySchedules(supplierId: string, restaurantId: string, days: number[]): Promise<void>;
 
   // Promotions
   getPromotionsBySupplier(supplierId: string): Promise<PromotionWithProduct[]>;
@@ -1022,6 +1028,32 @@ export class DatabaseStorage implements IStorage {
 
   async deletePromotion(id: string): Promise<void> {
     await db.delete(promotions).where(eq(promotions.id, id));
+  }
+
+  async getDeliverySchedules(supplierId: string): Promise<(DeliverySchedule & { restaurant: User })[]> {
+    const schedules = await db.select().from(deliverySchedules).where(eq(deliverySchedules.supplierId, supplierId));
+    const restaurantIds = [...new Set(schedules.map(s => s.restaurantId))];
+    if (restaurantIds.length === 0) return [];
+    const restaurants = await db.select().from(users).where(inArray(users.id, restaurantIds));
+    const restaurantMap = Object.fromEntries(restaurants.map(r => [r.id, r]));
+    return schedules.map(s => ({ ...s, restaurant: restaurantMap[s.restaurantId] }));
+  }
+
+  async getDeliverySchedulesForRestaurant(supplierId: string, restaurantId: string): Promise<DeliverySchedule[]> {
+    return db.select().from(deliverySchedules).where(
+      and(eq(deliverySchedules.supplierId, supplierId), eq(deliverySchedules.restaurantId, restaurantId))
+    );
+  }
+
+  async setDeliverySchedules(supplierId: string, restaurantId: string, days: number[]): Promise<void> {
+    await db.delete(deliverySchedules).where(
+      and(eq(deliverySchedules.supplierId, supplierId), eq(deliverySchedules.restaurantId, restaurantId))
+    );
+    if (days.length > 0) {
+      await db.insert(deliverySchedules).values(
+        days.map(day => ({ supplierId, restaurantId, dayOfWeek: day }))
+      );
+    }
   }
 }
 

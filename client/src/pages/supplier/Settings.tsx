@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin, Truck, Camera, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin, Truck, Camera, Loader2, CalendarDays, Check } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useRef, useState } from "react";
+import type { User, DeliverySchedule } from "@shared/schema";
 
 const settingsSchema = z.object({
   name: z.string().min(1, "Name ist erforderlich"),
@@ -27,11 +31,23 @@ const settingsSchema = z.object({
 
 type SettingsFormData = z.infer<typeof settingsSchema>;
 
+const WEEKDAYS = [
+  { value: 1, label: "Montag" },
+  { value: 2, label: "Dienstag" },
+  { value: 3, label: "Mittwoch" },
+  { value: 4, label: "Donnerstag" },
+  { value: 5, label: "Freitag" },
+  { value: 6, label: "Samstag" },
+  { value: 0, label: "Sonntag" },
+];
+
 export default function SupplierSettings() {
   const { currentUser, setCurrentUser } = useUser();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<string>("");
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -134,6 +150,48 @@ export default function SupplierSettings() {
   const onSubmit = (data: SettingsFormData) => {
     updateProfileMutation.mutate(data);
   };
+
+  const { data: restaurants } = useQuery<User[]>({
+    queryKey: ["/api/users?role=restaurant"],
+  });
+
+  const { data: deliverySchedules } = useQuery<(DeliverySchedule & { restaurant: User })[]>({
+    queryKey: [`/api/delivery-schedules?supplierId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const handleRestaurantSelect = (restaurantId: string) => {
+    setSelectedRestaurant(restaurantId);
+    const existing = deliverySchedules?.filter(s => s.restaurantId === restaurantId).map(s => s.dayOfWeek) || [];
+    setSelectedDays(existing);
+  };
+
+  const toggleDay = (day: number) => {
+    setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+  };
+
+  const saveScheduleMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PUT", "/api/delivery-schedules", {
+        supplierId: currentUser?.id,
+        restaurantId: selectedRestaurant,
+        days: selectedDays,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/delivery-schedules?supplierId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/delivery-schedules/restaurant?supplierId=${currentUser?.id}&restaurantId=${selectedRestaurant}`] });
+      toast({ title: "Liefertage gespeichert", description: "Die Liefertage wurden aktualisiert." });
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Die Liefertage konnten nicht gespeichert werden.", variant: "destructive" });
+    },
+  });
+
+  const restaurantsWithSchedules = restaurants?.map(r => {
+    const days = deliverySchedules?.filter(s => s.restaurantId === r.id).map(s => s.dayOfWeek) || [];
+    return { ...r, deliveryDays: days };
+  }) || [];
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -391,6 +449,107 @@ export default function SupplierSettings() {
           </Card>
         </div>
       </div>
+
+      <Card>
+        <CardHeader className="p-3 md:p-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <CalendarDays className="h-4 w-4 md:h-5 md:w-5" />
+            Liefertage
+          </CardTitle>
+          <CardDescription className="text-xs md:text-sm">
+            Legen Sie fest, an welchen Wochentagen Sie an einzelne Kunden liefern
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-1.5 block">Kunde auswählen</label>
+            <Select value={selectedRestaurant} onValueChange={handleRestaurantSelect}>
+              <SelectTrigger data-testid="select-delivery-restaurant">
+                <SelectValue placeholder="Restaurant auswählen..." />
+              </SelectTrigger>
+              <SelectContent>
+                {restaurants?.filter(r => r.role === "restaurant").map(r => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.companyName || r.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedRestaurant && (
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Liefertage für diesen Kunden</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {WEEKDAYS.map(day => (
+                  <label
+                    key={day.value}
+                    className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                      selectedDays.includes(day.value)
+                        ? "border-primary bg-primary/5"
+                        : "border-border"
+                    }`}
+                    data-testid={`checkbox-day-${day.value}`}
+                  >
+                    <Checkbox
+                      checked={selectedDays.includes(day.value)}
+                      onCheckedChange={() => toggleDay(day.value)}
+                    />
+                    <span className="text-sm">{day.label}</span>
+                  </label>
+                ))}
+              </div>
+              <Button
+                onClick={() => saveScheduleMutation.mutate()}
+                disabled={saveScheduleMutation.isPending}
+                variant="secondary"
+                className="gap-2"
+                data-testid="button-save-delivery-days"
+              >
+                {saveScheduleMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Liefertage speichern
+              </Button>
+            </div>
+          )}
+
+          {restaurantsWithSchedules.filter(r => r.role === "restaurant").length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-border">
+              <label className="text-sm font-medium text-muted-foreground">Übersicht aller Kunden</label>
+              <div className="space-y-2">
+                {restaurantsWithSchedules.filter(r => r.role === "restaurant").map(r => (
+                  <div
+                    key={r.id}
+                    className={`flex items-center justify-between gap-3 p-2.5 rounded-md bg-muted/50 cursor-pointer transition-colors ${
+                      selectedRestaurant === r.id ? "ring-1 ring-primary" : ""
+                    }`}
+                    onClick={() => handleRestaurantSelect(r.id)}
+                    data-testid={`delivery-restaurant-${r.id}`}
+                  >
+                    <span className="text-sm font-medium truncate">{r.companyName || r.name}</span>
+                    <div className="flex items-center gap-1 flex-wrap justify-end shrink-0">
+                      {r.deliveryDays.length > 0 ? (
+                        r.deliveryDays
+                          .sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b))
+                          .map(d => (
+                            <Badge key={d} variant="secondary" className="text-[10px] px-1.5">
+                              {WEEKDAYS.find(w => w.value === d)?.label.slice(0, 2)}
+                            </Badge>
+                          ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Keine Liefertage</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

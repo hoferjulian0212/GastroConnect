@@ -5,18 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { ShoppingCart, Trash2, Plus, Minus, Package, ArrowRight } from "lucide-react";
-import type { CartItemWithProduct } from "@shared/schema";
+import { Label } from "@/components/ui/label";
+import { ShoppingCart, Trash2, Plus, Minus, Package, ArrowRight, CalendarDays, Zap } from "lucide-react";
+import type { CartItemWithProduct, DeliverySchedule } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
+import { format, addDays, isBefore, startOfDay } from "date-fns";
+import { de } from "date-fns/locale";
 
 export default function RestaurantCart() {
   const { currentUser } = useUser();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [orderNotes, setOrderNotes] = useState("");
+  const [deliveryOption, setDeliveryOption] = useState<"asap" | "date">("asap");
+  const [selectedDeliveryDate, setSelectedDeliveryDate] = useState<string>("");
 
   const { data: cartItems, isLoading } = useQuery<CartItemWithProduct[]>({
     queryKey: [`/api/cart?restaurantId=${currentUser?.id}`],
@@ -52,6 +57,7 @@ export default function RestaurantCart() {
       return apiRequest("POST", "/api/orders", {
         restaurantId: currentUser?.id,
         notes: orderNotes,
+        requestedDeliveryDate: deliveryOption === "date" && selectedDeliveryDate ? selectedDeliveryDate : null,
       });
     },
     onSuccess: () => {
@@ -77,6 +83,53 @@ export default function RestaurantCart() {
       });
     },
   });
+
+  const supplierIds = useMemo(() => {
+    if (!cartItems) return [];
+    return Array.from(new Set(cartItems.map(item => item.supplierId)));
+  }, [cartItems]);
+
+  const supplierScheduleKey = supplierIds.sort().join(",");
+  const { data: allDeliverySchedules } = useQuery<Record<string, DeliverySchedule[]>>({
+    queryKey: ["/api/delivery-schedules/cart", currentUser?.id, supplierScheduleKey],
+    queryFn: async () => {
+      if (supplierIds.length === 0) return {};
+      const results: Record<string, DeliverySchedule[]> = {};
+      await Promise.all(
+        supplierIds.map(async (supplierId) => {
+          const res = await fetch(`/api/delivery-schedules/restaurant?supplierId=${supplierId}&restaurantId=${currentUser?.id}`);
+          if (res.ok) {
+            results[supplierId] = await res.json();
+          }
+        })
+      );
+      return results;
+    },
+    enabled: !!currentUser?.id && supplierIds.length > 0,
+  });
+
+  const allowedWeekdays = useMemo(() => {
+    if (!allDeliverySchedules || supplierIds.length === 0) return [];
+    const perSupplierDays = supplierIds.map(id => (allDeliverySchedules[id] || []).map(s => s.dayOfWeek));
+    if (perSupplierDays.some(d => d.length === 0)) return [];
+    return perSupplierDays.reduce((acc, days) => acc.filter(d => days.includes(d)));
+  }, [allDeliverySchedules, supplierIds]);
+
+  const availableDeliveryDates = useMemo(() => {
+    if (allowedWeekdays.length === 0) return [];
+    const dates: { value: string; label: string }[] = [];
+    const today = startOfDay(new Date());
+    for (let i = 1; i <= 28; i++) {
+      const date = addDays(today, i);
+      if (allowedWeekdays.includes(date.getDay())) {
+        dates.push({
+          value: format(date, "yyyy-MM-dd"),
+          label: format(date, "EEEE, dd. MMMM yyyy", { locale: de }),
+        });
+      }
+    }
+    return dates;
+  }, [allowedWeekdays]);
 
   const groupedBySupplier = cartItems?.reduce((acc, item) => {
     const supplierId = item.supplierId;
@@ -231,8 +284,80 @@ export default function RestaurantCart() {
                   <span>Gesamt</span>
                   <span data-testid="text-total-amount">{grandTotal}€</span>
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-xs md:text-sm font-medium flex items-center gap-1.5">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    Gewünschter Liefertermin
+                  </Label>
+                  <div className="space-y-2">
+                    <label
+                      className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                        deliveryOption === "asap" ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                      data-testid="radio-delivery-asap"
+                    >
+                      <input
+                        type="radio"
+                        name="deliveryOption"
+                        checked={deliveryOption === "asap"}
+                        onChange={() => { setDeliveryOption("asap"); setSelectedDeliveryDate(""); }}
+                        className="accent-primary"
+                      />
+                      <Zap className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-sm">Sobald wie möglich</span>
+                    </label>
+                    <label
+                      className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                        deliveryOption === "date" ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                      data-testid="radio-delivery-date"
+                    >
+                      <input
+                        type="radio"
+                        name="deliveryOption"
+                        checked={deliveryOption === "date"}
+                        onChange={() => setDeliveryOption("date")}
+                        className="accent-primary"
+                      />
+                      <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm">Liefertag auswählen</span>
+                    </label>
+                  </div>
+                  {deliveryOption === "date" && (
+                    <div className="pt-1">
+                      {availableDeliveryDates.length > 0 ? (
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {availableDeliveryDates.map(date => (
+                            <label
+                              key={date.value}
+                              className={`flex items-center gap-2.5 p-2 rounded-md border cursor-pointer transition-colors text-sm ${
+                                selectedDeliveryDate === date.value
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border"
+                              }`}
+                              data-testid={`delivery-date-${date.value}`}
+                            >
+                              <input
+                                type="radio"
+                                name="deliveryDate"
+                                checked={selectedDeliveryDate === date.value}
+                                onChange={() => setSelectedDeliveryDate(date.value)}
+                                className="accent-primary"
+                              />
+                              <span>{date.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground py-2">
+                          Keine Liefertage hinterlegt. Bitte wählen Sie "Sobald wie möglich".
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div className="space-y-1.5 md:space-y-2">
-                  <label className="text-xs md:text-sm font-medium">Anmerkungen zur Bestellung</label>
+                  <Label className="text-xs md:text-sm font-medium">Anmerkungen zur Bestellung</Label>
                   <Textarea
                     placeholder="Besondere Wünsche oder Hinweise..."
                     value={orderNotes}
@@ -247,7 +372,7 @@ export default function RestaurantCart() {
                   className="w-full gap-2 text-sm md:text-base"
                   size="default"
                   onClick={() => createOrderMutation.mutate()}
-                  disabled={createOrderMutation.isPending}
+                  disabled={createOrderMutation.isPending || (deliveryOption === "date" && !selectedDeliveryDate && availableDeliveryDates.length > 0)}
                   data-testid="button-checkout"
                 >
                   Bestellung aufgeben

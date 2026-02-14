@@ -200,6 +200,47 @@ export async function registerRoutes(
     }
   });
 
+  // ===== DELIVERY SCHEDULES =====
+  app.get("/api/delivery-schedules", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) {
+        return res.status(400).json({ error: "Supplier ID required" });
+      }
+      const schedules = await storage.getDeliverySchedules(supplierId);
+      res.json(schedules);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch delivery schedules" });
+    }
+  });
+
+  app.get("/api/delivery-schedules/restaurant", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      const restaurantId = req.query.restaurantId as string;
+      if (!supplierId || !restaurantId) {
+        return res.status(400).json({ error: "Supplier ID and Restaurant ID required" });
+      }
+      const schedules = await storage.getDeliverySchedulesForRestaurant(supplierId, restaurantId);
+      res.json(schedules);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch delivery schedules" });
+    }
+  });
+
+  app.put("/api/delivery-schedules", async (req, res) => {
+    try {
+      const { supplierId, restaurantId, days } = req.body;
+      if (!supplierId || !restaurantId || !Array.isArray(days)) {
+        return res.status(400).json({ error: "Supplier ID, Restaurant ID, and days array required" });
+      }
+      await storage.setDeliverySchedules(supplierId, restaurantId, days);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update delivery schedules" });
+    }
+  });
+
   // ===== CART =====
   app.get("/api/cart", async (req, res) => {
     try {
@@ -323,7 +364,7 @@ export async function registerRoutes(
 
   app.post("/api/orders", async (req, res) => {
     try {
-      const { restaurantId, notes } = req.body;
+      const { restaurantId, notes, requestedDeliveryDate } = req.body;
       if (!restaurantId) {
         return res.status(400).json({ error: "Restaurant ID required" });
       }
@@ -359,7 +400,7 @@ export async function registerRoutes(
           .toFixed(2);
 
         const order = await storage.createOrder(
-          { restaurantId, supplierId, totalAmount, status: "pending", notes },
+          { restaurantId, supplierId, totalAmount, status: "pending", notes, requestedDeliveryDate: requestedDeliveryDate || null },
           orderItems as any
         );
         createdOrders.push(order);

@@ -46,6 +46,7 @@ export const orders = pgTable("orders", {
   status: orderStatusEnum("status").default("pending").notNull(),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   notes: text("notes"),
+  requestedDeliveryDate: text("requested_delivery_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -150,6 +151,14 @@ export const documents = pgTable("documents", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const deliverySchedules = pgTable("delivery_schedules", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  dayOfWeek: integer("day_of_week").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const promotions = pgTable("promotions", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
@@ -176,6 +185,7 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
 export const insertOrderStatusHistorySchema = createInsertSchema(orderStatusHistory).omit({ id: true, createdAt: true });
 export const insertComplaintStatusHistorySchema = createInsertSchema(complaintStatusHistory).omit({ id: true, createdAt: true });
+export const insertDeliveryScheduleSchema = createInsertSchema(deliverySchedules).omit({ id: true, createdAt: true });
 export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: true, createdAt: true });
 
 // Types
@@ -206,6 +216,8 @@ export type InsertOrderStatusHistory = z.infer<typeof insertOrderStatusHistorySc
 export type OrderStatusHistory = typeof orderStatusHistory.$inferSelect;
 export type InsertComplaintStatusHistory = z.infer<typeof insertComplaintStatusHistorySchema>;
 export type ComplaintStatusHistory = typeof complaintStatusHistory.$inferSelect;
+export type InsertDeliverySchedule = z.infer<typeof insertDeliveryScheduleSchema>;
+export type DeliverySchedule = typeof deliverySchedules.$inferSelect;
 export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
 export type Promotion = typeof promotions.$inferSelect;
 

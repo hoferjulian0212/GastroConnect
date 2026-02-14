@@ -225,10 +225,28 @@ export default function SupplierOrders() {
             </div>
           </div>
         )}
-        {order.notes && (
-          <div className="mt-3 md:mt-4 p-2 md:p-3 rounded-md bg-muted/50">
-            <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5 md:mb-1">Anmerkungen:</p>
-            <p className="text-xs md:text-sm">{order.notes}</p>
+        {(order.notes || order.requestedDeliveryDate) && (
+          <div className="mt-3 md:mt-4 p-2 md:p-3 rounded-md bg-muted/50 space-y-1">
+            {order.requestedDeliveryDate && (
+              <div>
+                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5">Gewünschter Liefertermin:</p>
+                <p className="text-xs md:text-sm font-medium" data-testid={`text-delivery-date-${order.id}`}>
+                  {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                </p>
+              </div>
+            )}
+            {!order.requestedDeliveryDate && (
+              <div>
+                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5">Gewünschter Liefertermin:</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Sobald wie möglich</p>
+              </div>
+            )}
+            {order.notes && (
+              <div>
+                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5 md:mb-1">Anmerkungen:</p>
+                <p className="text-xs md:text-sm">{order.notes}</p>
+              </div>
+            )}
           </div>
         )}
         {order.status === "in_delivery" && (
