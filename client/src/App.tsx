@@ -38,6 +38,7 @@ import SupplierOrders from "@/pages/supplier/Orders";
 import SupplierHistory from "@/pages/supplier/History";
 import SupplierSettings from "@/pages/supplier/Settings";
 import SupplierComplaints from "@/pages/supplier/Complaints";
+import SupplierPromotions from "@/pages/supplier/Promotions";
 import About from "@/pages/About";
 import Documents from "@/pages/Documents";
 
@@ -68,6 +69,7 @@ function SupplierRouter() {
       <Route path="/supplier/orders" component={SupplierOrders} />
       <Route path="/supplier/history" component={SupplierHistory} />
       <Route path="/supplier/complaints" component={SupplierComplaints} />
+      <Route path="/supplier/promotions" component={SupplierPromotions} />
       <Route path="/supplier/settings" component={SupplierSettings} />
       <Route path="/supplier/documents" component={Documents} />
       <Route component={NotFound} />

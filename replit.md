@@ -158,3 +158,18 @@ Both restaurant and supplier inbox pages implement a full-screen immersive chat 
   - `GET /api/orders/:id/delivery-note/download` - Download or generate on-demand
   - `GET /api/documents?userId=&role=` - List documents by user and role
 - **Navigation**: "Dokumente" item added to both sidebars and mobile nav "Mehr" menus
+
+### Promotions (Aktionen) System
+- **Database**: `promotions` table with `discountPercent`, `startDate`, `endDate`, `isActive`, linked to `products` and `users` (suppliers)
+- **Schema Types**: `PromotionWithProduct` (promotion + joined product), `ProductWithSupplierAndPromotion` (product + supplier + active promotion)
+- **Supplier Management**: Full CRUD at `/supplier/promotions` with stats cards (total/active/expired), create/edit/delete promotions
+- **Restaurant Catalog**: Products with active promotions display green ring border, discount % badge on image corner, "Aktion" badge, crossed-out original price with green discounted price
+- **Aktionen Filter**: Toggle button in catalog filters to show only products with active promotions
+- **Date Logic**: Promotions are active when `startDate <= now <= endDate` and `isActive = true`; expired promotions automatically stop showing discount
+- **Endpoints**:
+  - `GET /api/promotions?supplierId=` - List promotions (with product join)
+  - `POST /api/promotions` - Create promotion
+  - `PATCH /api/promotions/:id` - Update promotion
+  - `DELETE /api/promotions/:id` - Delete promotion
+  - `GET /api/products` - Returns products with `activePromotion` field attached
+- **Navigation**: "Aktionen" (Tag icon) added to supplier sidebar and mobile nav "Mehr" menu

@@ -3,7 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
-import { insertProductSchema, insertCartItemSchema, insertMessageSchema, insertComplaintSchema, updateComplaintSchema, insertComplaintCommentSchema, insertNotificationSchema } from "@shared/schema";
+import { insertProductSchema, insertCartItemSchema, insertMessageSchema, insertComplaintSchema, updateComplaintSchema, insertComplaintCommentSchema, insertNotificationSchema, insertPromotionSchema } from "@shared/schema";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { objectStorageClient, ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
 import PDFDocument from "pdfkit";
@@ -86,7 +86,19 @@ export async function registerRoutes(
         return res.json(products);
       }
       const products = await storage.getProducts();
-      res.json(products);
+      const activePromotions = await storage.getActivePromotions();
+      const promoMap = new Map<string, typeof activePromotions[0]>();
+      for (const promo of activePromotions) {
+        const existing = promoMap.get(promo.productId);
+        if (!existing || promo.discountPercent > existing.discountPercent) {
+          promoMap.set(promo.productId, promo);
+        }
+      }
+      const productsWithPromotions = products.map(p => ({
+        ...p,
+        activePromotion: promoMap.get(p.id) || null,
+      }));
+      res.json(productsWithPromotions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch products" });
     }
@@ -133,6 +145,58 @@ export async function registerRoutes(
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete product" });
+    }
+  });
+
+  // ===== PROMOTIONS =====
+  app.get("/api/promotions", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) {
+        return res.status(400).json({ error: "Supplier ID required" });
+      }
+      const promos = await storage.getPromotionsBySupplier(supplierId);
+      res.json(promos);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch promotions" });
+    }
+  });
+
+  app.post("/api/promotions", async (req, res) => {
+    try {
+      const validated = insertPromotionSchema.parse({
+        ...req.body,
+        startDate: new Date(req.body.startDate),
+        endDate: new Date(req.body.endDate),
+      });
+      const promo = await storage.createPromotion(validated);
+      res.status(201).json(promo);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid promotion data" });
+    }
+  });
+
+  app.patch("/api/promotions/:id", async (req, res) => {
+    try {
+      const data: any = { ...req.body };
+      if (data.startDate) data.startDate = new Date(data.startDate);
+      if (data.endDate) data.endDate = new Date(data.endDate);
+      const updated = await storage.updatePromotion(req.params.id, data);
+      if (!updated) {
+        return res.status(404).json({ error: "Promotion not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update promotion" });
+    }
+  });
+
+  app.delete("/api/promotions/:id", async (req, res) => {
+    try {
+      await storage.deletePromotion(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete promotion" });
     }
   });
 

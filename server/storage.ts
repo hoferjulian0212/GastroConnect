@@ -2,7 +2,7 @@ import { db } from "./db";
 import { eq, and, desc, or, sql, ne, inArray } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
-  orderStatusHistory, complaintStatusHistory,
+  orderStatusHistory, complaintStatusHistory, promotions,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -12,7 +12,8 @@ import {
   type ComplaintComment, type InsertComplaintComment, type ComplaintCommentWithUser,
   type Document, type InsertDocument, type DocumentWithDetails,
   type OrderStatusHistory, type OrderStatusHistoryWithUser,
-  type ComplaintStatusHistory, type ComplaintStatusHistoryWithUser
+  type ComplaintStatusHistory, type ComplaintStatusHistoryWithUser,
+  type Promotion, type InsertPromotion, type PromotionWithProduct
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -106,6 +107,14 @@ export interface IStorage {
   addOrderStatusHistory(orderId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<OrderStatusHistory>;
   getComplaintStatusHistory(complaintId: string): Promise<ComplaintStatusHistoryWithUser[]>;
   addComplaintStatusHistory(complaintId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<ComplaintStatusHistory>;
+
+  // Promotions
+  getPromotionsBySupplier(supplierId: string): Promise<PromotionWithProduct[]>;
+  getActivePromotionForProduct(productId: string): Promise<Promotion | undefined>;
+  getActivePromotions(): Promise<Promotion[]>;
+  createPromotion(promotion: InsertPromotion): Promise<Promotion>;
+  updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined>;
+  deletePromotion(id: string): Promise<void>;
 
   // Seed
   seedData(): Promise<void>;
@@ -960,6 +969,59 @@ export class DatabaseStorage implements IStorage {
   async createDocument(doc: InsertDocument): Promise<Document> {
     const [created] = await db.insert(documents).values(doc).returning();
     return created;
+  }
+
+  // Promotions
+  async getPromotionsBySupplier(supplierId: string): Promise<PromotionWithProduct[]> {
+    const promos = await db.select().from(promotions)
+      .where(eq(promotions.supplierId, supplierId))
+      .orderBy(desc(promotions.createdAt));
+    const result: PromotionWithProduct[] = [];
+    for (const promo of promos) {
+      const [product] = await db.select().from(products).where(eq(products.id, promo.productId));
+      if (product) {
+        result.push({ ...promo, product });
+      }
+    }
+    return result;
+  }
+
+  async getActivePromotionForProduct(productId: string): Promise<Promotion | undefined> {
+    const now = new Date();
+    const [promo] = await db.select().from(promotions)
+      .where(and(
+        eq(promotions.productId, productId),
+        eq(promotions.isActive, true),
+        sql`${promotions.startDate} <= ${now}`,
+        sql`${promotions.endDate} >= ${now}`
+      ))
+      .orderBy(desc(promotions.discountPercent))
+      .limit(1);
+    return promo;
+  }
+
+  async getActivePromotions(): Promise<Promotion[]> {
+    const now = new Date();
+    return db.select().from(promotions)
+      .where(and(
+        eq(promotions.isActive, true),
+        sql`${promotions.startDate} <= ${now}`,
+        sql`${promotions.endDate} >= ${now}`
+      ));
+  }
+
+  async createPromotion(promotion: InsertPromotion): Promise<Promotion> {
+    const [created] = await db.insert(promotions).values(promotion).returning();
+    return created;
+  }
+
+  async updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined> {
+    const [updated] = await db.update(promotions).set(data).where(eq(promotions.id, id)).returning();
+    return updated;
+  }
+
+  async deletePromotion(id: string): Promise<void> {
+    await db.delete(promotions).where(eq(promotions.id, id));
   }
 }
 

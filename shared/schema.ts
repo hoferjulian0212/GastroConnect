@@ -150,6 +150,17 @@ export const documents = pgTable("documents", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const promotions = pgTable("promotions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  discountPercent: integer("discount_percent").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
@@ -165,6 +176,7 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
 export const insertOrderStatusHistorySchema = createInsertSchema(orderStatusHistory).omit({ id: true, createdAt: true });
 export const insertComplaintStatusHistorySchema = createInsertSchema(complaintStatusHistory).omit({ id: true, createdAt: true });
+export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: true, createdAt: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -194,6 +206,8 @@ export type InsertOrderStatusHistory = z.infer<typeof insertOrderStatusHistorySc
 export type OrderStatusHistory = typeof orderStatusHistory.$inferSelect;
 export type InsertComplaintStatusHistory = z.infer<typeof insertComplaintStatusHistorySchema>;
 export type ComplaintStatusHistory = typeof complaintStatusHistory.$inferSelect;
+export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
+export type Promotion = typeof promotions.$inferSelect;
 
 // Extended types for frontend
 export type ProductWithSupplier = Product & { supplier: User };
@@ -213,3 +227,5 @@ export type ComplaintCommentWithUser = ComplaintComment & { user: User };
 export type DocumentWithDetails = Document & { order: Order; restaurant: User; supplier: User };
 export type OrderStatusHistoryWithUser = OrderStatusHistory & { changedByUser?: User };
 export type ComplaintStatusHistoryWithUser = ComplaintStatusHistory & { changedByUser?: User };
+export type PromotionWithProduct = Promotion & { product: Product };
+export type ProductWithSupplierAndPromotion = ProductWithSupplier & { activePromotion?: Promotion | null };
