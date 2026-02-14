@@ -249,7 +249,19 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Restaurant ID required" });
       }
       const items = await storage.getCartItems(restaurantId);
-      res.json(items);
+      const activePromotions = await storage.getActivePromotions();
+      const promoMap = new Map<string, typeof activePromotions[0]>();
+      for (const promo of activePromotions) {
+        const existing = promoMap.get(promo.productId);
+        if (!existing || promo.discountPercent > existing.discountPercent) {
+          promoMap.set(promo.productId, promo);
+        }
+      }
+      const itemsWithPromo = items.map(item => ({
+        ...item,
+        activePromotion: promoMap.get(item.productId) || null,
+      }));
+      res.json(itemsWithPromo);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch cart" });
     }
@@ -384,16 +396,34 @@ export async function registerRoutes(
         return acc;
       }, {} as Record<string, typeof cartItems>);
 
+      // Fetch active promotions for discounted pricing
+      const activePromotions = await storage.getActivePromotions();
+      const promoMap = new Map<string, typeof activePromotions[0]>();
+      for (const promo of activePromotions) {
+        const existing = promoMap.get(promo.productId);
+        if (!existing || promo.discountPercent > existing.discountPercent) {
+          promoMap.set(promo.productId, promo);
+        }
+      }
+
       // Create orders for each supplier
       const createdOrders = [];
       for (const [supplierId, items] of Object.entries(bySupplier)) {
-        const orderItems = items.map(item => ({
-          productId: item.productId,
-          productName: item.product.name,
-          quantity: item.quantity,
-          unitPrice: item.product.price,
-          totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2)
-        }));
+        const orderItems = items.map(item => {
+          const promo = promoMap.get(item.productId);
+          const originalPrice = parseFloat(item.product.price);
+          const effectivePrice = promo
+            ? originalPrice * (1 - promo.discountPercent / 100)
+            : originalPrice;
+          const unitPriceStr = effectivePrice.toFixed(2);
+          return {
+            productId: item.productId,
+            productName: item.product.name,
+            quantity: item.quantity,
+            unitPrice: unitPriceStr,
+            totalPrice: (effectivePrice * item.quantity).toFixed(2)
+          };
+        });
 
         const totalAmount = orderItems
           .reduce((sum, item) => sum + parseFloat(item.totalPrice), 0)
@@ -460,18 +490,32 @@ export async function registerRoutes(
       const products = await storage.getProductsBySupplier(supplierId);
       const productMap = new Map(products.map(p => [p.id, p]));
 
+      const activePromotions = await storage.getActivePromotions();
+      const promoMap = new Map<string, typeof activePromotions[0]>();
+      for (const promo of activePromotions) {
+        const existing = promoMap.get(promo.productId);
+        if (!existing || promo.discountPercent > existing.discountPercent) {
+          promoMap.set(promo.productId, promo);
+        }
+      }
+
       const orderItems = [];
       for (const item of items as { productId: string; quantity: number }[]) {
         const product = productMap.get(item.productId);
         if (!product) {
           return res.status(400).json({ error: `Product ${item.productId} not found` });
         }
+        const promo = promoMap.get(item.productId);
+        const originalPrice = parseFloat(product.price);
+        const effectivePrice = promo
+          ? originalPrice * (1 - promo.discountPercent / 100)
+          : originalPrice;
         orderItems.push({
           productId: item.productId,
           productName: product.name,
           quantity: item.quantity,
-          unitPrice: product.price,
-          totalPrice: (parseFloat(product.price) * item.quantity).toFixed(2)
+          unitPrice: effectivePrice.toFixed(2),
+          totalPrice: (effectivePrice * item.quantity).toFixed(2)
         });
       }
 

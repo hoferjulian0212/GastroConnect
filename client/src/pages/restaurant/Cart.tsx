@@ -6,8 +6,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Plus, Minus, Package, ArrowRight, CalendarDays, Zap } from "lucide-react";
-import type { CartItemWithProduct, DeliverySchedule } from "@shared/schema";
+import { ShoppingCart, Trash2, Plus, Minus, Package, ArrowRight, CalendarDays, Zap, Tag } from "lucide-react";
+import type { CartItemWithProduct, DeliverySchedule, Promotion } from "@shared/schema";
+
+type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion | null };
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
@@ -23,7 +25,7 @@ export default function RestaurantCart() {
   const [deliveryOption, setDeliveryOption] = useState<"asap" | "date">("asap");
   const [selectedDeliveryDate, setSelectedDeliveryDate] = useState<string>("");
 
-  const { data: cartItems, isLoading } = useQuery<CartItemWithProduct[]>({
+  const { data: cartItems, isLoading } = useQuery<CartItemWithPromotion[]>({
     queryKey: [`/api/cart?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
@@ -131,6 +133,14 @@ export default function RestaurantCart() {
     return dates;
   }, [allowedWeekdays]);
 
+  const getEffectivePrice = (item: CartItemWithPromotion) => {
+    const originalPrice = parseFloat(item.product.price);
+    if (item.activePromotion) {
+      return originalPrice * (1 - item.activePromotion.discountPercent / 100);
+    }
+    return originalPrice;
+  };
+
   const groupedBySupplier = cartItems?.reduce((acc, item) => {
     const supplierId = item.supplierId;
     if (!acc[supplierId]) {
@@ -141,14 +151,14 @@ export default function RestaurantCart() {
     }
     acc[supplierId].items.push(item);
     return acc;
-  }, {} as Record<string, { supplier: typeof cartItems[0]["supplier"]; items: CartItemWithProduct[] }>);
+  }, {} as Record<string, { supplier: typeof cartItems[0]["supplier"]; items: CartItemWithPromotion[] }>);
 
-  const calculateTotal = (items: CartItemWithProduct[]) => {
-    return items.reduce((total, item) => total + parseFloat(item.product.price) * item.quantity, 0).toFixed(2);
+  const calculateTotal = (items: CartItemWithPromotion[]) => {
+    return items.reduce((total, item) => total + getEffectivePrice(item) * item.quantity, 0).toFixed(2);
   };
 
   const grandTotal = cartItems?.reduce(
-    (total, item) => total + parseFloat(item.product.price) * item.quantity,
+    (total, item) => total + getEffectivePrice(item) * item.quantity,
     0
   ).toFixed(2) || "0.00";
 
@@ -195,9 +205,24 @@ export default function RestaurantCart() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-sm md:text-base truncate">{item.product.name}</p>
-                            <p className="text-xs md:text-sm text-muted-foreground">
-                              {item.product.price}€/{item.product.unit}
-                            </p>
+                            {item.activePromotion ? (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs md:text-sm text-muted-foreground line-through">
+                                  {item.product.price}€
+                                </span>
+                                <span className="text-xs md:text-sm font-medium text-green-600 dark:text-green-400">
+                                  {getEffectivePrice(item).toFixed(2)}€/{item.product.unit}
+                                </span>
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 px-1 rounded">
+                                  <Tag className="h-2.5 w-2.5" />
+                                  -{item.activePromotion.discountPercent}%
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="text-xs md:text-sm text-muted-foreground">
+                                {item.product.price}€/{item.product.unit}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center justify-between sm:justify-end gap-2 md:gap-3">
@@ -239,7 +264,7 @@ export default function RestaurantCart() {
                             </Button>
                           </div>
                           <span className="font-medium text-sm md:text-base w-16 md:w-20 text-right">
-                            {(parseFloat(item.product.price) * item.quantity).toFixed(2)}€
+                            {(getEffectivePrice(item) * item.quantity).toFixed(2)}€
                           </span>
                           <Button
                             variant="ghost"
