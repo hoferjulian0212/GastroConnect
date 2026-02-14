@@ -1,21 +1,35 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShoppingBag, Clock, ChevronRight, Package, Truck, CheckCircle, XCircle, Store, CalendarDays, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2 } from "lucide-react";
 import type { OrderWithDetails } from "@shared/schema";
-import { formatDistanceToNow, format } from "date-fns";
+import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Link, useSearch } from "wouter";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+interface EditableItem {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+  totalPrice: string;
+}
 
 export default function RestaurantOrders() {
   const { currentUser } = useUser();
+  const { toast } = useToast();
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const highlightOrderId = searchParams.get("orderId");
@@ -24,10 +38,54 @@ export default function RestaurantOrders() {
   const [filterSupplier, setFilterSupplier] = useState<string>("all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
+  const [editingOrder, setEditingOrder] = useState<OrderWithDetails | null>(null);
+  const [editItems, setEditItems] = useState<EditableItem[]>([]);
+  const [changeRequestOrder, setChangeRequestOrder] = useState<OrderWithDetails | null>(null);
+  const [changeRequestReason, setChangeRequestReason] = useState("");
 
   const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/orders?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
+  });
+
+  const updateOrderItemsMutation = useMutation({
+    mutationFn: async ({ orderId, items }: { orderId: string; items: EditableItem[] }) => {
+      return await apiRequest("PATCH", `/api/orders/${orderId}/items`, {
+        restaurantId: currentUser?.id,
+        items: items.map(i => ({
+          productId: i.productId,
+          productName: i.productName,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+        })),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
+      setEditingOrder(null);
+      toast({ title: "Bestellung aktualisiert", description: "Die Bestellung wurde erfolgreich angepasst." });
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Die Bestellung konnte nicht aktualisiert werden.", variant: "destructive" });
+    },
+  });
+
+  const changeRequestMutation = useMutation({
+    mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
+      return await apiRequest("POST", `/api/orders/${orderId}/change-request`, {
+        restaurantId: currentUser?.id,
+        reason,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
+      setChangeRequestOrder(null);
+      setChangeRequestReason("");
+      toast({ title: "Anfrage gesendet", description: "Die Änderungsanfrage wurde an den Lieferanten gesendet." });
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Die Anfrage konnte nicht gesendet werden.", variant: "destructive" });
+    },
   });
 
   const uniqueSuppliers = useMemo(() => {
@@ -109,6 +167,37 @@ export default function RestaurantOrders() {
     });
   };
 
+  const openEditDialog = (order: OrderWithDetails) => {
+    setEditItems(order.items.map(i => ({
+      id: i.id,
+      productId: i.productId,
+      productName: i.productName,
+      quantity: i.quantity,
+      unitPrice: i.unitPrice,
+      totalPrice: i.totalPrice,
+    })));
+    setEditingOrder(order);
+  };
+
+  const updateEditItemQuantity = (index: number, delta: number) => {
+    setEditItems(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+      const newQty = Math.max(1, item.quantity + delta);
+      return { ...item, quantity: newQty, totalPrice: (parseFloat(item.unitPrice) * newQty).toFixed(2) };
+    }));
+  };
+
+  const removeEditItem = (index: number) => {
+    setEditItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const editTotal = useMemo(() => {
+    return editItems.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0).toFixed(2);
+  }, [editItems]);
+
+  const canEditOrder = (order: OrderWithDetails) => order.status === "pending";
+  const canRequestChange = (order: OrderWithDetails) => order.status === "confirmed" || order.status === "in_delivery";
+
   const OrderCard = ({ order }: { order: OrderWithDetails }) => {
     const isHighlighted = order.id === highlightOrderId;
     return (
@@ -160,6 +249,32 @@ export default function RestaurantOrders() {
                 </p>
               )}
             </div>
+          </div>
+        )}
+        {(canEditOrder(order) || canRequestChange(order)) && (
+          <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-2">
+            {canEditOrder(order) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openEditDialog(order)}
+                data-testid={`button-edit-order-${order.id}`}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Bestellung anpassen
+              </Button>
+            )}
+            {canRequestChange(order) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setChangeRequestOrder(order)}
+                data-testid={`button-change-request-${order.id}`}
+              >
+                <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
+                Änderung anfragen
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
@@ -264,6 +379,117 @@ export default function RestaurantOrders() {
           </TabsContent>
         ))}
       </Tabs>
+
+      <Dialog open={!!editingOrder} onOpenChange={(open) => !open && setEditingOrder(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-primary" />
+              Bestellung anpassen
+            </DialogTitle>
+            <DialogDescription>
+              Bestellung #{editingOrder?.id.slice(0, 8)} - Mengen ändern oder Artikel entfernen
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {editItems.map((item, index) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50" data-testid={`edit-item-${item.productId}`}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{item.productName}</p>
+                  <p className="text-xs text-muted-foreground">{item.unitPrice}€ pro Stück</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => updateEditItemQuantity(index, -1)}
+                    disabled={item.quantity <= 1}
+                    data-testid={`button-decrease-${item.productId}`}
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="w-8 text-center text-sm font-medium" data-testid={`text-quantity-${item.productId}`}>{item.quantity}</span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => updateEditItemQuantity(index, 1)}
+                    data-testid={`button-increase-${item.productId}`}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeEditItem(index)}
+                    disabled={editItems.length <= 1}
+                    data-testid={`button-remove-${item.productId}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </div>
+                <span className="text-sm font-medium w-16 text-right">{item.totalPrice}€</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            <span className="text-sm font-medium">Gesamtbetrag</span>
+            <span className="text-lg font-bold" data-testid="text-edit-total">{editTotal}€</span>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditingOrder(null)} data-testid="button-cancel-edit">
+              Abbrechen
+            </Button>
+            <Button
+              onClick={() => editingOrder && updateOrderItemsMutation.mutate({ orderId: editingOrder.id, items: editItems })}
+              disabled={editItems.length === 0 || updateOrderItemsMutation.isPending}
+              data-testid="button-save-edit"
+            >
+              {updateOrderItemsMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Änderungen speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!changeRequestOrder} onOpenChange={(open) => { if (!open) { setChangeRequestOrder(null); setChangeRequestReason(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquareText className="h-5 w-5 text-primary" />
+              Änderung anfragen
+            </DialogTitle>
+            <DialogDescription>
+              Bestellung #{changeRequestOrder?.id.slice(0, 8)} ist bereits bestätigt. Senden Sie eine Anfrage an den Lieferanten, um die Bestellung erneut zur Bearbeitung zu öffnen.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Grund der Änderung</label>
+              <Textarea
+                placeholder="Beschreiben Sie, was Sie ändern möchten..."
+                value={changeRequestReason}
+                onChange={(e) => setChangeRequestReason(e.target.value)}
+                className="resize-none"
+                rows={3}
+                data-testid="input-change-reason"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setChangeRequestOrder(null); setChangeRequestReason(""); }} data-testid="button-cancel-request">
+              Abbrechen
+            </Button>
+            <Button
+              onClick={() => changeRequestOrder && changeRequestMutation.mutate({ orderId: changeRequestOrder.id, reason: changeRequestReason })}
+              disabled={!changeRequestReason.trim() || changeRequestMutation.isPending}
+              data-testid="button-send-request"
+            >
+              {changeRequestMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Anfrage senden
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

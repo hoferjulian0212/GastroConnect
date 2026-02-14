@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Label } from "@/components/ui/label";
@@ -190,6 +190,24 @@ export default function SupplierInbox() {
     },
     onError: () => {
       toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden.", variant: "destructive" });
+    },
+  });
+
+  const changeRequestRespondMutation = useMutation({
+    mutationFn: async ({ orderId, approved }: { orderId: string; approved: boolean }) => {
+      return await apiRequest("POST", `/api/orders/${orderId}/change-request/respond`, { supplierId: currentUser?.id, approved });
+    },
+    onSuccess: (_, variables) => {
+      toast({ title: variables.approved ? "Änderung genehmigt" : "Änderung abgelehnt", description: variables.approved ? "Die Bestellung ist wieder offen zur Bearbeitung." : "Die Änderungsanfrage wurde abgelehnt." });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
+      if (selectedConversation) {
+        queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversation, "messages"] });
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+      }
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Die Antwort konnte nicht gesendet werden.", variant: "destructive" });
     },
   });
 
@@ -483,6 +501,8 @@ export default function SupplierInbox() {
                         ? "Lieferschein"
                         : conv.lastMessage?.messageType === "attachment"
                         ? "Anhang"
+                        : conv.lastMessage?.messageType === "order_change_request"
+                        ? "Änderungsanfrage"
                         : conv.lastMessage?.content || "Keine Nachrichten";
                       return (
                         <button
@@ -593,7 +613,7 @@ export default function SupplierInbox() {
                               </div>
                             )}
                             <div
-                              className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
+                              className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" || message.messageType === "order_change_request" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
                               data-testid={`message-${message.id}`}
                             >
                               {message.messageType === "order" ? (
@@ -752,6 +772,79 @@ export default function SupplierInbox() {
                                           >
                                             <Download className="h-4 w-4 mr-2" />
                                             Lieferschein herunterladen
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()
+                              ) : message.messageType === "order_change_request" ? (
+                                (() => {
+                                  let changeData: { type?: string; orderId?: string; message?: string; reason?: string; approved?: boolean; items?: { name: string; quantity: number; price: string }[]; total?: string; status?: string } = {};
+                                  try { changeData = JSON.parse(message.content); } catch {}
+                                  const isRequest = changeData.type === "change_request";
+                                  const isResponse = changeData.type === "change_request_response";
+                                  const isEdited = changeData.type === "order_edited";
+                                  const isPendingRequest = isRequest && changeData.status === "pending";
+                                  return (
+                                    <div className={`w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden ${isResponse ? (changeData.approved ? "border-2 border-green-500/30" : "border-2 border-red-500/30") : "border-2 border-amber-500/30"}`}>
+                                      <div className={`flex items-center justify-between px-4 py-2.5 border-b ${isResponse ? (changeData.approved ? "bg-green-500/10 border-green-500/20" : "bg-red-500/10 border-red-500/20") : "bg-amber-500/10 border-amber-500/20"}`}>
+                                        <div className="flex items-center gap-2">
+                                          <Pencil className={`h-4 w-4 ${isResponse ? (changeData.approved ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400") : "text-amber-600 dark:text-amber-400"}`} />
+                                          <span className={`text-sm font-semibold ${isResponse ? (changeData.approved ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400") : "text-amber-600 dark:text-amber-400"}`}>
+                                            {isEdited ? "Bestellung angepasst" : isResponse ? (changeData.approved ? "Änderung genehmigt" : "Änderung abgelehnt") : "Änderungsanfrage"}
+                                          </span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                      </div>
+                                      <div className="px-4 py-3">
+                                        {changeData.orderId && (
+                                          <p className="text-xs text-muted-foreground mb-2">Bestellung #{changeData.orderId.slice(0, 8)}</p>
+                                        )}
+                                        <p className="text-sm">{changeData.message}</p>
+                                        {isRequest && changeData.reason && (
+                                          <p className="text-sm text-muted-foreground mt-1">Grund: {changeData.reason}</p>
+                                        )}
+                                        {isEdited && changeData.items && (
+                                          <div className="mt-2 space-y-1">
+                                            {changeData.items.map((item, idx) => (
+                                              <div key={idx} className="flex justify-between text-sm">
+                                                <span>{item.quantity}x {item.name}</span>
+                                                <span className="text-muted-foreground">{item.price}€</span>
+                                              </div>
+                                            ))}
+                                            {changeData.total && (
+                                              <div className="flex justify-between text-sm font-semibold pt-1 border-t border-border">
+                                                <span>Gesamt</span>
+                                                <span>{changeData.total}€</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                      {isPendingRequest && !isOwn && changeData.orderId && (
+                                        <div className="px-4 py-2.5 border-t border-amber-500/20 bg-amber-500/5 flex gap-2">
+                                          <Button
+                                            variant="default"
+                                            size="sm"
+                                            className="flex-1"
+                                            onClick={() => changeRequestRespondMutation.mutate({ orderId: changeData.orderId!, approved: true })}
+                                            disabled={changeRequestRespondMutation.isPending}
+                                            data-testid={`button-approve-change-${message.id}`}
+                                          >
+                                            <CheckCircle className="h-4 w-4 mr-1.5" />
+                                            Genehmigen
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1"
+                                            onClick={() => changeRequestRespondMutation.mutate({ orderId: changeData.orderId!, approved: false })}
+                                            disabled={changeRequestRespondMutation.isPending}
+                                            data-testid={`button-deny-change-${message.id}`}
+                                          >
+                                            <XCircle className="h-4 w-4 mr-1.5" />
+                                            Ablehnen
                                           </Button>
                                         </div>
                                       )}

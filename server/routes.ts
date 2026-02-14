@@ -554,6 +554,188 @@ export async function registerRoutes(
     }
   });
 
+  // ===== ORDER EDITING (pending only) =====
+  app.patch("/api/orders/:id/items", async (req, res) => {
+    try {
+      const { items, restaurantId } = req.body;
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      if (order.status !== "pending") {
+        return res.status(400).json({ error: "Only pending orders can be edited" });
+      }
+      if (order.restaurantId !== restaurantId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Items required" });
+      }
+
+      const orderItems = items.map((item: any) => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: (parseFloat(item.unitPrice) * item.quantity).toFixed(2)
+      }));
+
+      const totalAmount = orderItems
+        .reduce((sum: number, item: any) => sum + parseFloat(item.totalPrice), 0)
+        .toFixed(2);
+
+      const updated = await storage.updateOrderItems(req.params.id, orderItems as any, totalAmount);
+
+      const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+      const restaurant = await storage.getUser(order.restaurantId);
+      await storage.sendMessage({
+        conversationId: conversation.id,
+        senderId: order.restaurantId,
+        messageType: "order_change_request",
+        content: JSON.stringify({
+          type: "order_edited",
+          orderId: order.id,
+          message: `Bestellung #${order.id.slice(0, 8)} wurde angepasst`,
+          items: orderItems.map((i: any) => ({ name: i.productName, quantity: i.quantity, price: i.totalPrice })),
+          total: totalAmount
+        }),
+        orderId: order.id,
+      });
+
+      await storage.createNotification({
+        userId: order.supplierId,
+        type: "order_status",
+        title: "Bestellung angepasst",
+        message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat Bestellung #${order.id.slice(0, 8)} angepasst`,
+        referenceId: order.id
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update order items error:", error);
+      res.status(500).json({ error: "Failed to update order items" });
+    }
+  });
+
+  // ===== ORDER CHANGE REQUEST (for confirmed+ orders) =====
+  app.post("/api/orders/:id/change-request", async (req, res) => {
+    try {
+      const { restaurantId, reason } = req.body;
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      if (order.status === "pending" || order.status === "delivered" || order.status === "cancelled") {
+        return res.status(400).json({ error: "Change request not applicable for this status" });
+      }
+      if (order.restaurantId !== restaurantId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+      const restaurant = await storage.getUser(order.restaurantId);
+
+      await storage.sendMessage({
+        conversationId: conversation.id,
+        senderId: order.restaurantId,
+        messageType: "order_change_request",
+        content: JSON.stringify({
+          type: "change_request",
+          orderId: order.id,
+          status: "pending",
+          reason: reason || "",
+          message: `Änderungsanfrage für Bestellung #${order.id.slice(0, 8)}`
+        }),
+        orderId: order.id,
+      });
+
+      await storage.createNotification({
+        userId: order.supplierId,
+        type: "order_status",
+        title: "Änderungsanfrage",
+        message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} möchte Bestellung #${order.id.slice(0, 8)} ändern`,
+        referenceId: order.id
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Change request error:", error);
+      res.status(500).json({ error: "Failed to send change request" });
+    }
+  });
+
+  app.post("/api/orders/:id/change-request/respond", async (req, res) => {
+    try {
+      const { supplierId, approved } = req.body;
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      if (order.supplierId !== supplierId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      if (order.status === "delivered" || order.status === "cancelled" || order.status === "pending") {
+        return res.status(400).json({ error: "Cannot respond to change request for this order status" });
+      }
+
+      const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+      const supplier = await storage.getUser(order.supplierId);
+
+      if (approved) {
+        const previousStatus = order.status;
+        await storage.updateOrderStatus(req.params.id, "pending");
+        await storage.addOrderStatusHistory(req.params.id, previousStatus, "pending", supplierId);
+
+        await storage.sendMessage({
+          conversationId: conversation.id,
+          senderId: order.supplierId,
+          messageType: "order_change_request",
+          content: JSON.stringify({
+            type: "change_request_response",
+            orderId: order.id,
+            approved: true,
+            message: `Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} genehmigt – Bestellung ist wieder offen zur Bearbeitung`
+          }),
+          orderId: order.id,
+        });
+
+        await storage.createNotification({
+          userId: order.restaurantId,
+          type: "order_status",
+          title: "Änderung genehmigt",
+          message: `${supplier?.companyName || supplier?.name || "Lieferant"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} genehmigt`,
+          referenceId: order.id
+        });
+      } else {
+        await storage.sendMessage({
+          conversationId: conversation.id,
+          senderId: order.supplierId,
+          messageType: "order_change_request",
+          content: JSON.stringify({
+            type: "change_request_response",
+            orderId: order.id,
+            approved: false,
+            message: `Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} abgelehnt`
+          }),
+          orderId: order.id,
+        });
+
+        await storage.createNotification({
+          userId: order.restaurantId,
+          type: "order_status",
+          title: "Änderung abgelehnt",
+          message: `${supplier?.companyName || supplier?.name || "Lieferant"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} abgelehnt`,
+          referenceId: order.id
+        });
+      }
+
+      res.json({ success: true, approved });
+    } catch (error) {
+      console.error("Change request respond error:", error);
+      res.status(500).json({ error: "Failed to respond to change request" });
+    }
+  });
+
   // ===== SUPPLIER ORDERS =====
   app.get("/api/supplier/orders", async (req, res) => {
     try {

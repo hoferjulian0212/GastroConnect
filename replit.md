@@ -184,3 +184,17 @@ Both restaurant and supplier inbox pages implement a full-screen immersive chat 
   - `PUT /api/delivery-schedules` - Set delivery days (body: supplierId, restaurantId, days[])
   - `GET /api/delivery-schedules?supplierId=` - All schedules for a supplier
   - `GET /api/delivery-schedules/restaurant?supplierId=&restaurantId=` - Schedules for specific pair
+
+### Order Modification System
+- **Pending Orders**: Restaurants can directly edit pending orders (change quantities, remove items) via edit dialog on Orders page
+- **Confirmed Orders**: Restaurants can send a "Änderungsanfrage" (change request) via Orders page for confirmed/in_delivery orders
+- **Supplier Response**: Supplier sees change request in Inbox with approve/deny buttons; approving sets order back to "pending" for editing
+- **Chat Integration**: All order edits and change requests/responses appear as `order_change_request` message type in the conversation
+- **Message Subtypes** (in JSON content):
+  - `order_edited`: Restaurant edited a pending order (includes updated items/total)
+  - `change_request`: Restaurant requests permission to modify confirmed order (includes reason)
+  - `change_request_response`: Supplier approves or denies (approved: true/false)
+- **Endpoints**:
+  - `PATCH /api/orders/:id/items` - Edit pending order items (restaurant only)
+  - `POST /api/orders/:id/change-request` - Send change request for confirmed+ orders
+  - `POST /api/orders/:id/change-request/respond` - Supplier approve/deny (sets order to pending if approved)
