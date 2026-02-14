@@ -1,6 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, Package, ClipboardList, History, Settings, AlertCircle, LogOut, FileText, Tag } from "lucide-react";
-import logoImage from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-Photoroom_1771091510099.png";
+import { Home, MessageSquare, Package, ClipboardList, History, Settings, AlertCircle, FileText, Tag } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -10,7 +9,6 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
-  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/context/UserContext";
@@ -83,15 +81,18 @@ export function SupplierSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      <SidebarHeader className="pt-4 pb-2 px-4">
-        <Link href="/about" className="flex items-center gap-0.5 px-2">
-          <img 
-            src={logoImage} 
-            alt="GastroConnect Logo" 
-            className="h-9 w-9 object-contain dark:invert"
-          />
-          <span className="text-base font-bold tracking-tight">GastroConnect</span>
-        </Link>
+      <SidebarHeader className="pt-5 pb-3 px-4">
+        {currentUser && (
+          <div className="flex items-center gap-3 px-2">
+            <Avatar className="h-9 w-9 rounded-full">
+              <AvatarImage src={currentUser.profileImageUrl || undefined} alt={currentUser.name} />
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                {currentUser.companyName?.substring(0, 2).toUpperCase() || currentUser.name.substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm font-semibold truncate">{currentUser.companyName || currentUser.name}</span>
+          </div>
+        )}
       </SidebarHeader>
       
       <SidebarContent className="px-4">
@@ -105,27 +106,9 @@ export function SupplierSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 mt-auto">
-        <SidebarMenu className="space-y-1 mb-3">
+        <SidebarMenu className="space-y-1">
           {bottomMenuItems.map((item) => renderMenuItem(item, false))}
         </SidebarMenu>
-        
-        <SidebarSeparator className="mb-3" />
-        
-        {currentUser && (
-          <div className="flex items-center gap-3 p-2 rounded-xl hover-elevate cursor-pointer">
-            <Avatar className="h-10 w-10 rounded-xl">
-              <AvatarImage src={currentUser.profileImageUrl || undefined} alt={currentUser.name} className="rounded-xl" />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold rounded-xl">
-                {currentUser.companyName?.substring(0, 2).toUpperCase() || currentUser.name.substring(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-sm font-medium truncate">{currentUser.companyName || currentUser.name}</span>
-              <span className="text-xs text-muted-foreground">Lieferant</span>
-            </div>
-            <LogOut className="h-4 w-4 text-muted-foreground" />
-          </div>
-        )}
       </SidebarFooter>
     </Sidebar>
   );
