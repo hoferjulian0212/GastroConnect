@@ -83,7 +83,7 @@ export function RestaurantSidebar() {
     <Sidebar className="border-r-0">
       <SidebarHeader className="pt-5 pb-3 px-4">
         {currentUser && (
-          <div className="flex items-center gap-3 px-2">
+          <Link href="/restaurant/profile" className="flex items-center gap-3 px-2 rounded-xl hover-elevate cursor-pointer" data-testid="link-profile">
             <Avatar className="h-9 w-9 rounded-full">
               <AvatarImage src={currentUser.profileImageUrl || undefined} alt={currentUser.name} />
               <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
@@ -91,7 +91,7 @@ export function RestaurantSidebar() {
               </AvatarFallback>
             </Avatar>
             <span className="text-sm font-semibold truncate">{currentUser.companyName || currentUser.name}</span>
-          </div>
+          </Link>
         )}
       </SidebarHeader>
       

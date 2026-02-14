@@ -29,6 +29,7 @@ import RestaurantCatalog from "@/pages/restaurant/Catalog";
 import RestaurantCart from "@/pages/restaurant/Cart";
 import RestaurantHistory from "@/pages/restaurant/History";
 import RestaurantSettings from "@/pages/restaurant/Settings";
+import RestaurantProfile from "@/pages/restaurant/Profile";
 import RestaurantComplaints from "@/pages/restaurant/Complaints";
 import RestaurantSuppliers from "@/pages/restaurant/Suppliers";
 import SupplierHome from "@/pages/supplier/Home";
@@ -37,6 +38,7 @@ import SupplierProducts from "@/pages/supplier/Products";
 import SupplierOrders from "@/pages/supplier/Orders";
 import SupplierHistory from "@/pages/supplier/History";
 import SupplierSettings from "@/pages/supplier/Settings";
+import SupplierProfile from "@/pages/supplier/Profile";
 import SupplierComplaints from "@/pages/supplier/Complaints";
 import SupplierPromotions from "@/pages/supplier/Promotions";
 import About from "@/pages/About";
@@ -54,6 +56,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/complaints" component={RestaurantComplaints} />
       <Route path="/restaurant/suppliers" component={RestaurantSuppliers} />
       <Route path="/restaurant/settings" component={RestaurantSettings} />
+      <Route path="/restaurant/profile" component={RestaurantProfile} />
       <Route path="/restaurant/documents" component={Documents} />
       <Route component={NotFound} />
     </Switch>
@@ -71,6 +74,7 @@ function SupplierRouter() {
       <Route path="/supplier/complaints" component={SupplierComplaints} />
       <Route path="/supplier/promotions" component={SupplierPromotions} />
       <Route path="/supplier/settings" component={SupplierSettings} />
+      <Route path="/supplier/profile" component={SupplierProfile} />
       <Route path="/supplier/documents" component={Documents} />
       <Route component={NotFound} />
     </Switch>
