@@ -98,6 +98,11 @@ export async function registerRoutes(
         ...p,
         activePromotion: promoMap.get(p.id) || null,
       }));
+      productsWithPromotions.sort((a, b) => {
+        if (a.activePromotion && !b.activePromotion) return -1;
+        if (!a.activePromotion && b.activePromotion) return 1;
+        return 0;
+      });
       res.json(productsWithPromotions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch products" });

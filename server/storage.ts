@@ -1007,13 +1007,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActivePromotionForProduct(productId: string): Promise<Promotion | undefined> {
-    const now = new Date();
     const [promo] = await db.select().from(promotions)
       .where(and(
         eq(promotions.productId, productId),
         eq(promotions.isActive, true),
-        sql`${promotions.startDate} <= ${now}`,
-        sql`${promotions.endDate} >= ${now}`
+        sql`${promotions.startDate} <= NOW()`,
+        sql`${promotions.endDate} >= NOW()`
       ))
       .orderBy(desc(promotions.discountPercent))
       .limit(1);
@@ -1021,12 +1020,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActivePromotions(): Promise<Promotion[]> {
-    const now = new Date();
     return db.select().from(promotions)
       .where(and(
         eq(promotions.isActive, true),
-        sql`${promotions.startDate} <= ${now}`,
-        sql`${promotions.endDate} >= ${now}`
+        sql`${promotions.startDate} <= NOW()`,
+        sql`${promotions.endDate} >= NOW()`
       ));
   }
 
