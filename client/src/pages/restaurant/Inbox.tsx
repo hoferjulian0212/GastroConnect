@@ -124,6 +124,7 @@ export default function RestaurantInbox() {
   const [actionMode, setActionMode] = useState<ActionMode>("none");
   const [inboxDetailProduct, setInboxDetailProduct] = useState<Product | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [openActionsPopover, setOpenActionsPopover] = useState(false);
   const [orderItems, setOrderItems] = useState<Record<string, number>>({});
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
   const [complaintOrderId, setComplaintOrderId] = useState<string>("");
@@ -348,6 +349,23 @@ export default function RestaurantInbox() {
 
   const selectedConv = conversations?.find(c => c.id === selectedConversation);
   const supplierId = selectedConv?.otherUser.id;
+
+  const { data: allOrdersForActions } = useQuery<OrderWithDetails[]>({
+    queryKey: [`/api/orders?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id && openActionsPopover,
+  });
+
+  const { data: allComplaintsForActions } = useQuery<ComplaintWithDetails[]>({
+    queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id && openActionsPopover,
+  });
+
+  const openActionsOrders = allOrdersForActions?.filter(
+    (o: any) => o.supplierId === supplierId && ["pending", "confirmed", "in_delivery"].includes(o.status)
+  );
+  const openActionsComplaints = allComplaintsForActions?.filter(
+    (c: any) => c.supplierId === supplierId && ["open", "in_progress"].includes(c.status)
+  );
 
   const { data: supplierProducts } = useQuery<Product[]>({
     queryKey: ["/api/products", { supplierId }],
@@ -739,18 +757,109 @@ export default function RestaurantInbox() {
                         </p>
                       </div>
                     </div>
-                    {selectedConv.otherUser.phone && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        asChild
-                        data-testid="button-call-supplier"
-                      >
-                        <a href={`tel:${selectedConv.otherUser.phone}`}>
-                          <Phone className="h-5 w-5" />
-                        </a>
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      <Popover open={openActionsPopover} onOpenChange={setOpenActionsPopover}>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" data-testid="button-open-actions">
+                            <ClipboardList className="h-5 w-5" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-0" align="end">
+                          <div className="p-3 border-b border-border">
+                            <p className="font-medium text-sm">Offene Aktionen</p>
+                            <p className="text-xs text-muted-foreground">{selectedConv.otherUser.companyName || selectedConv.otherUser.name}</p>
+                          </div>
+                          <div className="max-h-80 overflow-y-auto p-2 space-y-3">
+                            {openActionsOrders && openActionsOrders.length > 0 && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-orders-header">Offene Bestellungen</p>
+                                <div className="space-y-1.5">
+                                  {openActionsOrders.map((order: any) => {
+                                    const stripColor = order.status === "pending" ? "bg-yellow-400" : order.status === "confirmed" ? "bg-blue-400" : "bg-purple-400";
+                                    const StatusIcon = order.status === "pending" ? Clock : order.status === "confirmed" ? CheckCircle : Package;
+                                    return (
+                                      <div
+                                        key={order.id}
+                                        className="flex overflow-hidden rounded-md cursor-pointer"
+                                        onClick={() => { setOrderDetailId(order.id); setOpenActionsPopover(false); }}
+                                        data-testid={`open-action-order-${order.id}`}
+                                      >
+                                        <div className={`w-1 shrink-0 ${stripColor}`} />
+                                        <div className="flex-1 bg-muted/40 p-2">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                              <StatusIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                              <span className="text-xs font-mono truncate">#{order.id.slice(0, 8)}</span>
+                                            </div>
+                                            <Badge variant="secondary" className={`text-[10px] shrink-0 ${getStatusColor(order.status)}`}>
+                                              {getStatusLabel(order.status)}
+                                            </Badge>
+                                          </div>
+                                          <div className="flex items-center justify-between mt-1 text-[10px] text-muted-foreground">
+                                            <span>{format(new Date(order.createdAt), "dd.MM.yy", { locale: de })}</span>
+                                            <span className="font-medium text-foreground">{order.totalAmount ? `€${Number(order.totalAmount).toFixed(2)}` : ""}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            {openActionsComplaints && openActionsComplaints.length > 0 && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-complaints-header">Offene Reklamationen</p>
+                                <div className="space-y-1.5">
+                                  {openActionsComplaints.map((complaint: any) => {
+                                    const stripColor = complaint.status === "open" ? "bg-yellow-400" : "bg-blue-400";
+                                    const StatusIcon = complaint.status === "open" ? AlertCircle : Clock;
+                                    return (
+                                      <div
+                                        key={complaint.id}
+                                        className="flex overflow-hidden rounded-md cursor-pointer"
+                                        onClick={() => { openComplaintDetailById(complaint.id); setOpenActionsPopover(false); }}
+                                        data-testid={`open-action-complaint-${complaint.id}`}
+                                      >
+                                        <div className={`w-1 shrink-0 ${stripColor}`} />
+                                        <div className="flex-1 bg-muted/40 p-2">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                              <StatusIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                              <span className="text-xs truncate">{complaint.title}</span>
+                                            </div>
+                                            <Badge variant="secondary" className={`text-[10px] shrink-0 ${getComplaintStatusColor(complaint.status)}`}>
+                                              {getComplaintStatusLabel(complaint.status)}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            {(!openActionsOrders || openActionsOrders.length === 0) && (!openActionsComplaints || openActionsComplaints.length === 0) && (
+                              <div className="flex flex-col items-center justify-center py-6 text-center">
+                                <CheckCircle className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                                <p className="text-sm text-muted-foreground" data-testid="text-no-open-actions">Keine offenen Aktionen</p>
+                              </div>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      {selectedConv.otherUser.phone && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          asChild
+                          data-testid="button-call-supplier"
+                        >
+                          <a href={`tel:${selectedConv.otherUser.phone}`}>
+                            <Phone className="h-5 w-5" />
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
 

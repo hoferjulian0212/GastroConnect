@@ -130,6 +130,16 @@ export default function SupplierComplaints() {
     return statusMap[status] || { label: status, icon: Clock, variant: "secondary" as const };
   };
 
+  const getComplaintAccent = (status: string) => {
+    switch (status) {
+      case "open": return "bg-yellow-400 dark:bg-yellow-500";
+      case "in_progress": return "bg-blue-400 dark:bg-blue-500";
+      case "resolved": return "bg-green-400 dark:bg-green-500";
+      case "closed": return "bg-muted-foreground/50";
+      default: return "bg-muted-foreground";
+    }
+  };
+
   const openStatusWizard = (complaint: ComplaintWithDetails) => {
     setSelectedComplaint(complaint);
     setNewStatus(complaint.status);
@@ -302,9 +312,11 @@ export default function SupplierComplaints() {
                 return (
                   <div
                     key={complaint.id}
-                    className="rounded-lg border p-3 md:p-4 space-y-2 md:space-y-3"
+                    className="flex overflow-hidden rounded-md"
                     data-testid={`complaint-${complaint.id}`}
                   >
+                    <div className={`w-1 shrink-0 ${getComplaintAccent(complaint.status)}`} />
+                    <div className="flex-1 rounded-none border border-l-0 bg-card p-3 md:p-4 space-y-2 md:space-y-3">
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 md:gap-4">
                       <div className="flex items-center gap-2 md:gap-3">
                         <Avatar className="h-8 w-8 md:h-10 md:w-10">
@@ -383,6 +395,7 @@ export default function SupplierComplaints() {
                         <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
                         Kommentar
                       </Button>
+                    </div>
                     </div>
                   </div>
                 );

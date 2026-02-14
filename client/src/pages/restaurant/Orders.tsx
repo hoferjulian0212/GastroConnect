@@ -118,6 +118,17 @@ export default function RestaurantOrders() {
     }
   };
 
+  const getStatusAccent = (status: string) => {
+    switch (status) {
+      case "pending": return "bg-yellow-400 dark:bg-yellow-500";
+      case "confirmed": return "bg-blue-400 dark:bg-blue-500";
+      case "in_delivery": return "bg-purple-400 dark:bg-purple-500";
+      case "delivered": return "bg-green-400 dark:bg-green-500";
+      case "cancelled": return "bg-red-400 dark:bg-red-500";
+      default: return "bg-muted-foreground";
+    }
+  };
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending": return "Ausstehend";
@@ -202,7 +213,9 @@ export default function RestaurantOrders() {
     const isHighlighted = order.id === highlightOrderId;
     return (
     <div ref={isHighlighted ? highlightRef : undefined}>
-    <Card className={`hover-elevate ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} data-testid={`order-card-${order.id}`}>
+    <div className={`flex overflow-hidden rounded-md ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} data-testid={`order-card-${order.id}`}>
+      <div className={`w-1 shrink-0 ${getStatusAccent(order.status)}`} />
+      <Card className="hover-elevate flex-1 rounded-none border-l-0">
       <CardContent className="p-3 md:p-4">
         <div className="flex items-start justify-between gap-2 md:gap-4">
           <div className="flex items-start gap-2 md:gap-4">
@@ -279,6 +292,7 @@ export default function RestaurantOrders() {
         )}
       </CardContent>
     </Card>
+    </div>
     </div>
     );
   };

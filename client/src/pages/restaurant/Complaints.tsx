@@ -281,6 +281,16 @@ export default function Complaints() {
     return statusMap[status] || { label: status, icon: Clock, variant: "secondary" as const };
   };
 
+  const getComplaintAccent = (status: string) => {
+    switch (status) {
+      case "open": return "bg-yellow-400 dark:bg-yellow-500";
+      case "in_progress": return "bg-blue-400 dark:bg-blue-500";
+      case "resolved": return "bg-green-400 dark:bg-green-500";
+      case "closed": return "bg-muted-foreground/50";
+      default: return "bg-muted-foreground";
+    }
+  };
+
   const openEditDialog = (complaint: ComplaintWithDetails) => {
     setEditingComplaint(complaint);
     setEditTitle(complaint.title);
@@ -570,9 +580,11 @@ export default function Complaints() {
                   return (
                     <div
                       key={complaint.id}
-                      className="rounded-lg border p-3 md:p-4 space-y-1.5 md:space-y-2"
+                      className="flex overflow-hidden rounded-md"
                       data-testid={`complaint-${complaint.id}`}
                     >
+                      <div className={`w-1 shrink-0 ${getComplaintAccent(complaint.status)}`} />
+                      <div className="flex-1 rounded-none border border-l-0 bg-card p-3 md:p-4 space-y-1.5 md:space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-medium text-sm md:text-base">{complaint.title}</div>
                         <div className="flex items-center gap-1.5">
@@ -642,6 +654,7 @@ export default function Complaints() {
                             </span>
                           </>
                         )}
+                      </div>
                       </div>
                     </div>
                   );
