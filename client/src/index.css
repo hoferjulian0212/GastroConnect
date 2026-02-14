@@ -277,6 +277,50 @@
     background-color: var(--elevate-2);
   }
 
+  @keyframes slide-in-message {
+    0% {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-in-message {
+    animation: slide-in-message 0.4s ease-out;
+    position: relative;
+  }
+
+  .animate-slide-in-message > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .animate-slide-in-message::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 0.5rem;
+    background: hsl(var(--primary) / 0.08);
+    animation: message-highlight-fade 2s ease-out forwards;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes message-highlight-fade {
+    0% {
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
   /* If there's a 1px border, adjust the inset so that it covers that parent's border */
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
   .border.active-elevate:not(.no-active-interaction-elevate)::after,

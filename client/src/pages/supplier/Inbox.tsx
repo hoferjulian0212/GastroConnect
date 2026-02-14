@@ -282,12 +282,44 @@ export default function SupplierInbox() {
     enabled: !!currentUser?.id,
     staleTime: 0,
     refetchOnMount: "always",
+    refetchInterval: 3000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: [`/api/conversations/${selectedConversation}/messages`],
     enabled: !!selectedConversation,
+    refetchInterval: 3000,
+    refetchIntervalInBackground: false,
   });
+
+  const prevMessageCountRef = useRef<number>(0);
+  const [newMessageIds, setNewMessageIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      const currentCount = messages.length;
+      if (prevMessageCountRef.current > 0 && currentCount > prevMessageCountRef.current) {
+        const newIds = new Set<string>();
+        const newMessages = messages.slice(prevMessageCountRef.current);
+        newMessages.forEach(m => {
+          if (m.senderId !== currentUser?.id) {
+            newIds.add(m.id);
+          }
+        });
+        if (newIds.size > 0) {
+          setNewMessageIds(newIds);
+          setTimeout(() => setNewMessageIds(new Set()), 2000);
+        }
+      }
+      prevMessageCountRef.current = currentCount;
+    }
+  }, [messages, currentUser?.id]);
+
+  useEffect(() => {
+    prevMessageCountRef.current = 0;
+    setNewMessageIds(new Set());
+  }, [selectedConversation]);
 
   const { data: conversationStatuses } = useQuery<{
     orderStatuses: Record<string, string>;
@@ -504,6 +536,7 @@ export default function SupplierInbox() {
                         : conv.lastMessage?.messageType === "order_change_request"
                         ? "Änderungsanfrage"
                         : conv.lastMessage?.content || "Keine Nachrichten";
+                      const hasUnread = conv.unreadCount > 0;
                       return (
                         <button
                           key={conv.id}
@@ -511,34 +544,41 @@ export default function SupplierInbox() {
                           className={`w-full p-2.5 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
                             selectedConversation === conv.id
                               ? "bg-secondary/10"
+                              : hasUnread
+                              ? "bg-primary/5"
                               : ""
                           }`}
                           data-testid={`conversation-${conv.id}`}
                         >
                           <div className="flex items-center gap-2.5">
-                            <Avatar className="h-9 w-9 shrink-0">
-                              <AvatarImage src={conv.otherUser.profileImageUrl || undefined} alt={conv.otherUser.name} />
-                              <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                                {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
+                            <div className="relative shrink-0">
+                              <Avatar className="h-9 w-9">
+                                <AvatarImage src={conv.otherUser.profileImageUrl || undefined} alt={conv.otherUser.name} />
+                                <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                                  {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              {hasUnread && (
+                                <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary border-2 border-background animate-pulse" />
+                              )}
+                            </div>
                             <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-sm font-medium truncate flex-1 min-w-0">
+                                <p className={`text-sm truncate flex-1 min-w-0 ${hasUnread ? "font-bold text-foreground" : "font-medium"}`}>
                                   {conv.otherUser.companyName || conv.otherUser.name}
                                 </p>
                                 <div className="flex items-center gap-1.5 shrink-0">
                                   {lastMessageTime && (
-                                    <span className="text-[10px] text-muted-foreground">{lastMessageTime}</span>
+                                    <span className={`text-[10px] ${hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
                                   )}
-                                  {conv.unreadCount > 0 && (
-                                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[9px] text-secondary-foreground font-medium">
+                                  {hasUnread && (
+                                    <span className="flex h-5 min-w-5 px-1 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
                                       {conv.unreadCount}
                                     </span>
                                   )}
                                 </div>
                               </div>
-                              <p className="text-xs text-muted-foreground truncate max-w-full">
+                              <p className={`text-xs truncate max-w-full ${hasUnread ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
                                 {messagePreview}
                               </p>
                             </div>
@@ -603,8 +643,9 @@ export default function SupplierInbox() {
                         const prevMessage = index > 0 ? messages[index - 1] : null;
                         const showDateDivider = !prevMessage || !isSameDay(messageDate, new Date(prevMessage.createdAt));
                         
+                        const isNewMessage = newMessageIds.has(message.id);
                         return (
-                          <div key={message.id}>
+                          <div key={message.id} className={isNewMessage ? "animate-slide-in-message" : ""}>
                             {showDateDivider && (
                               <div className="flex justify-center my-4">
                                 <span className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
