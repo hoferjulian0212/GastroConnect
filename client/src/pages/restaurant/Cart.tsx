@@ -112,8 +112,10 @@ export default function RestaurantCart() {
 
   const allowedWeekdays = useMemo(() => {
     if (!allDeliverySchedules || supplierIds.length === 0) return [];
-    const perSupplierDays = supplierIds.map(id => (allDeliverySchedules[id] || []).map(s => s.dayOfWeek));
-    if (perSupplierDays.some(d => d.length === 0)) return [];
+    const perSupplierDays = supplierIds
+      .map(id => (allDeliverySchedules[id] || []).map(s => s.dayOfWeek))
+      .filter(d => d.length > 0);
+    if (perSupplierDays.length === 0) return [];
     return perSupplierDays.reduce((acc, days) => acc.filter(d => days.includes(d)));
   }, [allDeliverySchedules, supplierIds]);
 
