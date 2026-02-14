@@ -84,12 +84,13 @@ export function RestaurantSidebar() {
   return (
     <Sidebar className="border-r-0">
       <SidebarHeader className="pt-4 pb-2 px-4">
-        <Link href="/about" className="flex items-center justify-center">
+        <Link href="/about" className="flex items-center gap-2.5 px-2">
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
-            className="h-20 object-contain dark:invert transition-transform duration-300 hover:scale-105 cursor-pointer"
+            className="h-9 w-9 object-contain dark:invert"
           />
+          <span className="text-base font-bold tracking-tight">GastroConnect</span>
         </Link>
       </SidebarHeader>
       

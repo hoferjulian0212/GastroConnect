@@ -63,11 +63,7 @@ export function SupplierSidebar() {
         <Link 
           href={item.url} 
           data-testid={`link-${item.url.split('/').pop()}`}
-          className={`flex items-center h-11 rounded-xl px-2 gap-3 transition-all duration-200 hover-elevate text-[14px] font-medium ${
-            isActive 
-              ? "text-primary font-semibold" 
-              : "text-foreground"
-          }`}
+          className="flex items-center h-11 rounded-xl px-2 gap-3 transition-all duration-200 hover-elevate text-left font-medium text-foreground text-[12px]"
         >
           <item.icon className="h-5 w-5" />
           <span className="flex-1">{item.title}</span>
@@ -86,13 +82,14 @@ export function SupplierSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      <SidebarHeader className="pt-8 pb-4 px-4">
-        <Link href="/about" className="flex items-center justify-center">
+      <SidebarHeader className="pt-4 pb-2 px-4">
+        <Link href="/about" className="flex items-center gap-2.5 px-2">
           <img 
             src={logoImage} 
             alt="GastroConnect Logo" 
-            className="h-28 object-contain dark:invert transition-transform duration-300 hover:scale-105 cursor-pointer"
+            className="h-9 w-9 object-contain dark:invert"
           />
+          <span className="text-base font-bold tracking-tight">GastroConnect</span>
         </Link>
       </SidebarHeader>
       
