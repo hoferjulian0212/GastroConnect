@@ -62,9 +62,9 @@ export function NotificationBell() {
       case "new_message":
         return `/${role}/inbox?conversationId=${notification.referenceId}`;
       case "new_complaint":
-        return `/${role}/inbox?complaintId=${notification.referenceId}`;
+        return `/${role}/complaints?complaintId=${notification.referenceId}`;
       case "complaint_comment":
-        return `/${role}/inbox?complaintId=${notification.referenceId}`;
+        return `/${role}/complaints?complaintId=${notification.referenceId}`;
       default:
         return null;
     }

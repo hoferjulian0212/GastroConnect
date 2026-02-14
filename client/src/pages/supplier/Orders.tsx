@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X } from "lucide-react";
 import type { OrderWithDetails } from "@shared/schema";
 import { format } from "date-fns";
@@ -24,6 +25,7 @@ export default function SupplierOrders() {
   const highlightOrderId = searchParams.get("orderId");
   const highlightRef = useRef<HTMLDivElement>(null);
 
+  const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
   const [filterRestaurant, setFilterRestaurant] = useState<string>("all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
@@ -153,6 +155,13 @@ export default function SupplierOrders() {
     }
   }, [highlightOrderId, isLoading]);
 
+  useEffect(() => {
+    if (highlightOrderId && orders) {
+      const order = orders.find(o => o.id === highlightOrderId);
+      if (order) setDetailOrder(order);
+    }
+  }, [highlightOrderId, orders]);
+
   const filterOrders = (status: string | null) => {
     if (!orders) return [];
     return orders.filter(order => {
@@ -176,7 +185,7 @@ export default function SupplierOrders() {
     const isHighlighted = order.id === highlightOrderId;
     return (
     <div ref={isHighlighted ? highlightRef : undefined}>
-    <div className={`flex overflow-hidden rounded-md ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} data-testid={`order-card-${order.id}`}>
+    <div className={`flex overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
       <div className={`w-1 shrink-0 ${getStatusAccent(order.status)}`} />
       <Card className="hover-elevate flex-1 rounded-none border-l-0">
       <CardContent className="p-3 md:p-4">
@@ -202,7 +211,7 @@ export default function SupplierOrders() {
               </p>
             </div>
           </div>
-          <div className="flex items-center justify-between md:flex-col md:text-right gap-2 md:space-y-2 border-t md:border-t-0 pt-2 md:pt-0">
+          <div className="flex items-center justify-between md:flex-col md:text-right gap-2 md:space-y-2 border-t md:border-t-0 pt-2 md:pt-0" onClick={(e) => e.stopPropagation()}>
             <p className="text-base md:text-lg font-bold">{order.totalAmount}€</p>
             {order.status !== "delivered" && order.status !== "cancelled" && (
               <Select
@@ -267,7 +276,7 @@ export default function SupplierOrders() {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => deliveryNoteMutation.mutate(order.id)}
+              onClick={(e) => { e.stopPropagation(); deliveryNoteMutation.mutate(order.id); }}
               disabled={deliveryNoteMutation.isPending}
               data-testid={`button-delivery-note-${order.id}`}
             >
@@ -385,6 +394,119 @@ export default function SupplierOrders() {
           </TabsContent>
         ))}
       </Tabs>
+
+      <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {detailOrder && getStatusIcon(detailOrder.status)}
+              Auftrag #{detailOrder?.id.slice(0, 8)}
+            </DialogTitle>
+            <DialogDescription>
+              Auftragsdetails und Artikelübersicht
+            </DialogDescription>
+          </DialogHeader>
+          {detailOrder && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
+                  {getStatusIcon(detailOrder.status)}
+                  <span className="ml-1">{getStatusLabel(detailOrder.status)}</span>
+                </Badge>
+                {detailOrder.status !== "delivered" && detailOrder.status !== "cancelled" && (
+                  <Select
+                    value={detailOrder.status}
+                    onValueChange={(value) => {
+                      updateStatusMutation.mutate({ orderId: detailOrder.id, status: value });
+                      setDetailOrder({ ...detailOrder, status: value });
+                    }}
+                  >
+                    <SelectTrigger className="w-[140px] text-xs md:text-sm" data-testid="select-detail-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Neu</SelectItem>
+                      <SelectItem value="confirmed">Bestätigt</SelectItem>
+                      <SelectItem value="in_delivery">In Lieferung</SelectItem>
+                      <SelectItem value="delivered">Geliefert</SelectItem>
+                      <SelectItem value="cancelled">Storniert</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Restaurant</span>
+                  <span className="font-medium">{detailOrder.restaurant?.companyName || detailOrder.restaurant?.name || "Unbekannt"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Bestellt am</span>
+                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}</span>
+                </div>
+                {detailOrder.requestedDeliveryDate ? (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Gewünschter Liefertermin</span>
+                    <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Gewünschter Liefertermin</span>
+                    <span className="text-muted-foreground">Sobald wie möglich</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-3">
+                <p className="text-sm font-medium mb-2">Artikel ({detailOrder.items?.length || 0})</p>
+                <div className="space-y-2">
+                  {detailOrder.items?.map((item) => (
+                    <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50" data-testid={`detail-item-${item.id}`}>
+                      <div>
+                        <span className="font-medium">{item.quantity}x</span>{" "}
+                        <span>{item.productName}</span>
+                        <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
+                      </div>
+                      <span className="font-medium">{item.totalPrice}€</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {detailOrder.notes && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-sm font-medium mb-1">Anmerkungen</p>
+                  <p className="text-sm text-muted-foreground">{detailOrder.notes}</p>
+                </div>
+              )}
+
+              <div className="border-t border-border pt-3 flex items-center justify-between">
+                <span className="text-sm font-medium">Gesamtbetrag</span>
+                <span className="text-lg font-bold" data-testid="text-detail-total">{detailOrder.totalAmount}€</span>
+              </div>
+
+              {detailOrder.status === "in_delivery" && (
+                <div className="border-t border-border pt-3">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => deliveryNoteMutation.mutate(detailOrder.id)}
+                    disabled={deliveryNoteMutation.isPending}
+                    data-testid="button-detail-delivery-note"
+                  >
+                    {deliveryNoteMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4 mr-2" />
+                    )}
+                    {deliveryNoteMutation.isPending ? "Wird erstellt..." : "Lieferschein erstellen"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

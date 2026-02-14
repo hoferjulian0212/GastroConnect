@@ -38,6 +38,7 @@ export default function RestaurantOrders() {
   const [filterSupplier, setFilterSupplier] = useState<string>("all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
+  const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderWithDetails | null>(null);
   const [editItems, setEditItems] = useState<EditableItem[]>([]);
   const [changeRequestOrder, setChangeRequestOrder] = useState<OrderWithDetails | null>(null);
@@ -159,6 +160,13 @@ export default function RestaurantOrders() {
     }
   }, [highlightOrderId, isLoading]);
 
+  useEffect(() => {
+    if (highlightOrderId && orders) {
+      const order = orders.find(o => o.id === highlightOrderId);
+      if (order) setDetailOrder(order);
+    }
+  }, [highlightOrderId, orders]);
+
   const filterOrders = (status: string | null) => {
     if (!orders) return [];
     return orders.filter(order => {
@@ -213,7 +221,7 @@ export default function RestaurantOrders() {
     const isHighlighted = order.id === highlightOrderId;
     return (
     <div ref={isHighlighted ? highlightRef : undefined}>
-    <div className={`flex overflow-hidden rounded-md ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} data-testid={`order-card-${order.id}`}>
+    <div className={`flex overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
       <div className={`w-1 shrink-0 ${getStatusAccent(order.status)}`} />
       <Card className="hover-elevate flex-1 rounded-none border-l-0">
       <CardContent className="p-3 md:p-4">
@@ -270,7 +278,7 @@ export default function RestaurantOrders() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => openEditDialog(order)}
+                onClick={(e) => { e.stopPropagation(); openEditDialog(order); }}
                 data-testid={`button-edit-order-${order.id}`}
               >
                 <Pencil className="h-3.5 w-3.5 mr-1.5" />
@@ -281,7 +289,7 @@ export default function RestaurantOrders() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setChangeRequestOrder(order)}
+                onClick={(e) => { e.stopPropagation(); setChangeRequestOrder(order); }}
                 data-testid={`button-change-request-${order.id}`}
               >
                 <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
@@ -393,6 +401,102 @@ export default function RestaurantOrders() {
           </TabsContent>
         ))}
       </Tabs>
+
+      <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {detailOrder && getStatusIcon(detailOrder.status)}
+              Bestellung #{detailOrder?.id.slice(0, 8)}
+            </DialogTitle>
+            <DialogDescription>
+              Bestelldetails und Artikelübersicht
+            </DialogDescription>
+          </DialogHeader>
+          {detailOrder && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
+                  {getStatusIcon(detailOrder.status)}
+                  <span className="ml-1">{getStatusLabel(detailOrder.status)}</span>
+                </Badge>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Lieferant</span>
+                  <span className="font-medium">{detailOrder.supplier?.companyName || detailOrder.supplier?.name || "Unbekannt"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Bestellt am</span>
+                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}</span>
+                </div>
+                {detailOrder.requestedDeliveryDate && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Gewünschter Liefertermin</span>
+                    <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-3">
+                <p className="text-sm font-medium mb-2">Artikel ({detailOrder.items?.length || 0})</p>
+                <div className="space-y-2">
+                  {detailOrder.items?.map((item) => (
+                    <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50" data-testid={`detail-item-${item.id}`}>
+                      <div>
+                        <span className="font-medium">{item.quantity}x</span>{" "}
+                        <span>{item.productName}</span>
+                        <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
+                      </div>
+                      <span className="font-medium">{item.totalPrice}€</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {detailOrder.notes && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-sm font-medium mb-1">Anmerkungen</p>
+                  <p className="text-sm text-muted-foreground">{detailOrder.notes}</p>
+                </div>
+              )}
+
+              <div className="border-t border-border pt-3 flex items-center justify-between">
+                <span className="text-sm font-medium">Gesamtbetrag</span>
+                <span className="text-lg font-bold" data-testid="text-detail-total">{detailOrder.totalAmount}€</span>
+              </div>
+
+              {(canEditOrder(detailOrder) || canRequestChange(detailOrder)) && (
+                <div className="border-t border-border pt-3 flex flex-wrap gap-2">
+                  {canEditOrder(detailOrder) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { const o = detailOrder; setDetailOrder(null); openEditDialog(o); }}
+                      data-testid="button-detail-edit-order"
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Bestellung anpassen
+                    </Button>
+                  )}
+                  {canRequestChange(detailOrder) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { const o = detailOrder; setDetailOrder(null); setChangeRequestOrder(o); }}
+                      data-testid="button-detail-change-request"
+                    >
+                      <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
+                      Änderung anfragen
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editingOrder} onOpenChange={(open) => !open && setEditingOrder(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">

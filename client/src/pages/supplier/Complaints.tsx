@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
+import { useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -32,10 +33,14 @@ import type { ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/sch
 export default function SupplierComplaints() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const highlightComplaintId = searchParams.get("complaintId");
 
   const [selectedComplaint, setSelectedComplaint] = useState<ComplaintWithDetails | null>(null);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [showCommentDialog, setShowCommentDialog] = useState(false);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [newStatus, setNewStatus] = useState<string>("");
   const [newComment, setNewComment] = useState("");
 
@@ -50,13 +55,8 @@ export default function SupplierComplaints() {
   });
 
   const { data: complaintComments, isLoading: loadingComments } = useQuery<ComplaintCommentWithUser[]>({
-    queryKey: ["/api/complaints", selectedComplaint?.id, "comments"],
-    queryFn: async () => {
-      if (!selectedComplaint?.id) return [];
-      const res = await fetch(`/api/complaints/${selectedComplaint.id}/comments`);
-      return res.json();
-    },
-    enabled: !!selectedComplaint?.id && showCommentDialog,
+    queryKey: [`/api/complaints/${selectedComplaint?.id}/comments`],
+    enabled: !!selectedComplaint?.id && (showCommentDialog || showDetailDialog),
   });
 
   const updateStatusMutation = useMutation({
@@ -83,13 +83,29 @@ export default function SupplierComplaints() {
     },
     onSuccess: () => {
       toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde gespeichert." });
-      queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaint?.id, "comments"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/complaints/${selectedComplaint?.id}/comments`] });
       setNewComment("");
     },
     onError: () => {
       toast({ title: "Fehler", description: "Kommentar konnte nicht gespeichert werden.", variant: "destructive" });
     },
   });
+
+  useEffect(() => {
+    if (highlightComplaintId && complaints) {
+      const complaint = complaints.find(c => c.id === highlightComplaintId);
+      if (complaint) {
+        setSelectedComplaint(complaint);
+        setShowDetailDialog(true);
+      }
+    }
+  }, [highlightComplaintId, complaints]);
+
+  const openDetailDialog = (complaint: ComplaintWithDetails) => {
+    setSelectedComplaint(complaint);
+    setShowDetailDialog(true);
+    setNewComment("");
+  };
 
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString("de-DE", {
@@ -312,11 +328,12 @@ export default function SupplierComplaints() {
                 return (
                   <div
                     key={complaint.id}
-                    className="flex overflow-hidden rounded-md"
+                    className="flex overflow-hidden rounded-md cursor-pointer"
+                    onClick={() => openDetailDialog(complaint)}
                     data-testid={`complaint-${complaint.id}`}
                   >
                     <div className={`w-1 shrink-0 ${getComplaintAccent(complaint.status)}`} />
-                    <div className="flex-1 rounded-none border border-l-0 bg-card p-3 md:p-4 space-y-2 md:space-y-3">
+                    <div className="flex-1 rounded-none border border-l-0 bg-card p-3 md:p-4 space-y-2 md:space-y-3 hover-elevate">
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 md:gap-4">
                       <div className="flex items-center gap-2 md:gap-3">
                         <Avatar className="h-8 w-8 md:h-10 md:w-10">
@@ -380,7 +397,7 @@ export default function SupplierComplaints() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => openStatusWizard(complaint)}
+                        onClick={(e) => { e.stopPropagation(); openStatusWizard(complaint); }}
                         data-testid={`button-change-status-${complaint.id}`}
                       >
                         <Settings className="h-3.5 w-3.5 mr-1.5" />
@@ -389,7 +406,7 @@ export default function SupplierComplaints() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => openCommentWizard(complaint)}
+                        onClick={(e) => { e.stopPropagation(); openCommentWizard(complaint); }}
                         data-testid={`button-add-comment-${complaint.id}`}
                       >
                         <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
@@ -410,6 +427,150 @@ export default function SupplierComplaints() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={showDetailDialog} onOpenChange={(open) => { if (!open) { setShowDetailDialog(false); setSelectedComplaint(null); setNewComment(""); } }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-primary" />
+              Reklamation
+            </DialogTitle>
+            <DialogDescription>
+              Details und Kommentare
+            </DialogDescription>
+          </DialogHeader>
+          {selectedComplaint && (
+            <div className="flex flex-col flex-1 min-h-0 space-y-4">
+              <div className="space-y-3 shrink-0">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-medium text-sm md:text-base">{selectedComplaint.title}</h3>
+                  {(() => {
+                    const si = formatComplaintStatus(selectedComplaint.status);
+                    const SI = si.icon;
+                    return (
+                      <Badge variant={si.variant} className="text-xs shrink-0">
+                        <SI className="h-3 w-3 mr-1" />
+                        {si.label}
+                      </Badge>
+                    );
+                  })()}
+                </div>
+
+                <p className="text-sm text-muted-foreground">{selectedComplaint.description}</p>
+
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Restaurant</span>
+                    <span className="font-medium">{selectedComplaint.restaurant?.companyName || "Unbekannt"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Bestellung</span>
+                    <span>#{selectedComplaint.orderId.substring(0, 8)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Erstellt am</span>
+                    <span>{formatDate(selectedComplaint.createdAt)}</span>
+                  </div>
+                </div>
+
+                {selectedComplaint.mediaUrls && selectedComplaint.mediaUrls.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-1.5">Anhänge</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedComplaint.mediaUrls.map((url, idx) => (
+                        <a
+                          key={idx}
+                          href={getMediaSrc(url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="h-16 w-16 rounded-lg border bg-muted overflow-hidden"
+                        >
+                          {isVideoFile(url) ? (
+                            <div className="h-full w-full flex items-center justify-center">
+                              <FileVideo className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <img src={getMediaSrc(url)} alt={`Anhang ${idx + 1}`} className="h-full w-full object-cover" />
+                          )}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setShowDetailDialog(false); setTimeout(() => openStatusWizard(selectedComplaint), 100); }}
+                    data-testid="button-detail-change-status"
+                  >
+                    <Settings className="h-3.5 w-3.5 mr-1.5" />
+                    Status ändern
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-3 flex-1 overflow-auto min-h-0">
+                <p className="text-sm font-medium mb-2">Kommentare</p>
+                <div className="space-y-3">
+                  {loadingComments ? (
+                    <div className="space-y-2">
+                      {[1, 2].map((i) => (
+                        <Skeleton key={i} className="h-12 w-full" />
+                      ))}
+                    </div>
+                  ) : complaintComments && complaintComments.length > 0 ? (
+                    complaintComments.map((comment) => (
+                      <div key={comment.id} className="p-3 rounded-lg border space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={comment.user?.profileImageUrl || undefined} />
+                            <AvatarFallback className="text-xs">
+                              {comment.user?.name?.substring(0, 2).toUpperCase() || "??"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm font-medium">{comment.user?.name || "Unbekannt"}</span>
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {formatDate(comment.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground pl-8">{comment.content}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                      <p className="text-sm">Noch keine Kommentare</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-3 shrink-0">
+                <div className="flex gap-2">
+                  <Textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Schreiben Sie einen Kommentar..."
+                    rows={2}
+                    className="flex-1"
+                    data-testid="input-detail-comment"
+                  />
+                  <Button
+                    size="icon"
+                    onClick={() => selectedComplaint && addCommentMutation.mutate({ complaintId: selectedComplaint.id, content: newComment.trim() })}
+                    disabled={!newComment.trim() || addCommentMutation.isPending}
+                    data-testid="button-send-detail-comment"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Status Change Dialog */}
       <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
