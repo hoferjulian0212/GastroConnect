@@ -1,12 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingBag, Clock, ChevronRight, Package, Truck, CheckCircle, XCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ShoppingBag, Clock, ChevronRight, Package, Truck, CheckCircle, XCircle, Store, CalendarDays, X } from "lucide-react";
 import type { OrderWithDetails } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -19,10 +21,33 @@ export default function RestaurantOrders() {
   const highlightOrderId = searchParams.get("orderId");
   const highlightRef = useRef<HTMLDivElement>(null);
 
+  const [filterSupplier, setFilterSupplier] = useState<string>("all");
+  const [filterDateFrom, setFilterDateFrom] = useState<string>("");
+  const [filterDateTo, setFilterDateTo] = useState<string>("");
+
   const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/orders?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
+
+  const uniqueSuppliers = useMemo(() => {
+    if (!orders) return [];
+    const map = new Map<string, string>();
+    orders.forEach(o => {
+      if (o.supplier?.id) {
+        map.set(o.supplier.id, o.supplier.companyName || o.supplier.name || "Unbekannt");
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [orders]);
+
+  const hasActiveFilters = filterSupplier !== "all" || filterDateFrom || filterDateTo;
+
+  const clearFilters = () => {
+    setFilterSupplier("all");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -65,10 +90,23 @@ export default function RestaurantOrders() {
     }
   }, [highlightOrderId, isLoading]);
 
-  const filterOrdersByStatus = (status: string | null) => {
+  const filterOrders = (status: string | null) => {
     if (!orders) return [];
-    if (!status) return orders;
-    return orders.filter(order => order.status === status);
+    return orders.filter(order => {
+      if (status && order.status !== status) return false;
+      if (filterSupplier !== "all" && order.supplier?.id !== filterSupplier) return false;
+      if (filterDateFrom) {
+        const from = new Date(filterDateFrom);
+        from.setHours(0, 0, 0, 0);
+        if (new Date(order.createdAt) < from) return false;
+      }
+      if (filterDateTo) {
+        const to = new Date(filterDateTo);
+        to.setHours(23, 59, 59, 999);
+        if (new Date(order.createdAt) > to) return false;
+      }
+      return true;
+    });
   };
 
   const OrderCard = ({ order }: { order: OrderWithDetails }) => {
@@ -137,6 +175,54 @@ export default function RestaurantOrders() {
         <p className="text-xs md:text-sm text-muted-foreground">Alle Ihre Bestellungen im Überblick</p>
       </div>
 
+      <Card>
+        <CardContent className="p-3 md:p-4">
+          <div className="flex flex-col sm:flex-row gap-2 md:gap-3 items-end">
+            <div className="flex-1 w-full sm:w-auto">
+              <label className="text-xs text-muted-foreground mb-1 block">Lieferant</label>
+              <Select value={filterSupplier} onValueChange={setFilterSupplier}>
+                <SelectTrigger className="h-9 text-xs md:text-sm" data-testid="filter-supplier">
+                  <Store className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                  <SelectValue placeholder="Alle Lieferanten" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Lieferanten</SelectItem>
+                  {uniqueSuppliers.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-auto">
+              <label className="text-xs text-muted-foreground mb-1 block">Von</label>
+              <Input
+                type="date"
+                value={filterDateFrom}
+                onChange={e => setFilterDateFrom(e.target.value)}
+                className="h-9 text-xs md:text-sm w-full sm:w-[150px]"
+                data-testid="filter-date-from"
+              />
+            </div>
+            <div className="w-full sm:w-auto">
+              <label className="text-xs text-muted-foreground mb-1 block">Bis</label>
+              <Input
+                type="date"
+                value={filterDateTo}
+                onChange={e => setFilterDateTo(e.target.value)}
+                className="h-9 text-xs md:text-sm w-full sm:w-[150px]"
+                data-testid="filter-date-to"
+              />
+            </div>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0" data-testid="button-clear-filters">
+                <X className="h-3.5 w-3.5 mr-1" />
+                Zurücksetzen
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:w-auto lg:inline-flex h-auto">
           <TabsTrigger value="all" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-all">Alle</TabsTrigger>
@@ -156,8 +242,8 @@ export default function RestaurantOrders() {
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
-                {filterOrdersByStatus(tab === "all" ? null : tab).length > 0 ? (
-                  filterOrdersByStatus(tab === "all" ? null : tab).map((order) => (
+                {filterOrders(tab === "all" ? null : tab).length > 0 ? (
+                  filterOrders(tab === "all" ? null : tab).map((order) => (
                     <OrderCard key={order.id} order={order} />
                   ))
                 ) : (

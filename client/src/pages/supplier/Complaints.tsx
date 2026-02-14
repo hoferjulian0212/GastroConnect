@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,19 +26,23 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send } from "lucide-react";
+import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, Building2, Filter, X } from "lucide-react";
 import type { ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
 
 export default function SupplierComplaints() {
   const { currentUser } = useUser();
   const { toast } = useToast();
 
-  // Dialog states
   const [selectedComplaint, setSelectedComplaint] = useState<ComplaintWithDetails | null>(null);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [showCommentDialog, setShowCommentDialog] = useState(false);
   const [newStatus, setNewStatus] = useState<string>("");
   const [newComment, setNewComment] = useState("");
+
+  const [filterRestaurant, setFilterRestaurant] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterDateFrom, setFilterDateFrom] = useState<string>("");
+  const [filterDateTo, setFilterDateTo] = useState<string>("");
 
   const { data: complaints, isLoading } = useQuery<ComplaintWithDetails[]>({
     queryKey: [`/api/complaints?supplierId=${currentUser?.id}`],
@@ -150,6 +155,45 @@ export default function SupplierComplaints() {
     addCommentMutation.mutate({ complaintId: selectedComplaint.id, content: newComment.trim() });
   };
 
+  const uniqueRestaurants = useMemo(() => {
+    if (!complaints) return [];
+    const map = new Map<string, string>();
+    complaints.forEach(c => {
+      if (c.restaurant?.id) {
+        map.set(c.restaurant.id, c.restaurant.companyName || c.restaurant.name || "Unbekannt");
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [complaints]);
+
+  const hasActiveFilters = filterRestaurant !== "all" || filterStatus !== "all" || filterDateFrom || filterDateTo;
+
+  const clearFilters = () => {
+    setFilterRestaurant("all");
+    setFilterStatus("all");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+  };
+
+  const filteredComplaints = useMemo(() => {
+    if (!complaints) return [];
+    return complaints.filter(c => {
+      if (filterRestaurant !== "all" && c.restaurant?.id !== filterRestaurant) return false;
+      if (filterStatus !== "all" && c.status !== filterStatus) return false;
+      if (filterDateFrom) {
+        const from = new Date(filterDateFrom);
+        from.setHours(0, 0, 0, 0);
+        if (new Date(c.createdAt) < from) return false;
+      }
+      if (filterDateTo) {
+        const to = new Date(filterDateTo);
+        to.setHours(23, 59, 59, 999);
+        if (new Date(c.createdAt) > to) return false;
+      }
+      return true;
+    });
+  }, [complaints, filterRestaurant, filterStatus, filterDateFrom, filterDateTo]);
+
   const openCount = complaints?.filter(c => c.status === "open").length || 0;
   const inProgressCount = complaints?.filter(c => c.status === "in_progress").length || 0;
 
@@ -194,16 +238,64 @@ export default function SupplierComplaints() {
         <CardHeader className="p-3 md:p-6">
           <CardTitle className="text-base md:text-lg">Alle Reklamationen</CardTitle>
         </CardHeader>
-        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2 items-end flex-wrap">
+            <div className="w-full sm:w-auto">
+              <label className="text-xs text-muted-foreground mb-1 block">Restaurant</label>
+              <Select value={filterRestaurant} onValueChange={setFilterRestaurant}>
+                <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[160px]" data-testid="filter-complaint-restaurant">
+                  <Building2 className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                  <SelectValue placeholder="Alle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Restaurants</SelectItem>
+                  {uniqueRestaurants.map(r => (
+                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-auto">
+              <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[150px]" data-testid="filter-complaint-status">
+                  <Filter className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                  <SelectValue placeholder="Alle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Status</SelectItem>
+                  <SelectItem value="open">Offen</SelectItem>
+                  <SelectItem value="in_progress">In Bearbeitung</SelectItem>
+                  <SelectItem value="resolved">Gelöst</SelectItem>
+                  <SelectItem value="closed">Geschlossen</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-auto">
+              <label className="text-xs text-muted-foreground mb-1 block">Von</label>
+              <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-from" />
+            </div>
+            <div className="w-full sm:w-auto">
+              <label className="text-xs text-muted-foreground mb-1 block">Bis</label>
+              <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-to" />
+            </div>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0" data-testid="button-clear-complaint-filters">
+                <X className="h-3.5 w-3.5 mr-1" />
+                Zurücksetzen
+              </Button>
+            )}
+          </div>
+
           {isLoading ? (
             <div className="space-y-3 md:space-y-4">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-20 md:h-24 w-full" />
               ))}
             </div>
-          ) : complaints && complaints.length > 0 ? (
+          ) : filteredComplaints.length > 0 ? (
             <div className="space-y-3 md:space-y-4">
-              {complaints.map((complaint) => {
+              {filteredComplaints.map((complaint) => {
                 const statusInfo = formatComplaintStatus(complaint.status);
                 const StatusIcon = statusInfo.icon;
 

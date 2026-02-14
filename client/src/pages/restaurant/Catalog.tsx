@@ -23,6 +23,7 @@ export default function RestaurantCatalog() {
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [detailProduct, setDetailProduct] = useState<ProductWithSupplier | null>(null);
 
   useEffect(() => {
@@ -72,7 +73,8 @@ export default function RestaurantCatalog() {
       product.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSupplier = selectedSupplier === "all" || product.supplierId === selectedSupplier;
     const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
-    return matchesSearch && matchesSupplier && matchesCategory;
+    const matchesAvailability = !onlyAvailable || product.inStock;
+    return matchesSearch && matchesSupplier && matchesCategory && matchesAvailability;
   });
 
   const categories = Array.from(new Set(products?.map(p => p.category).filter(Boolean) || []));
@@ -113,7 +115,7 @@ export default function RestaurantCatalog() {
                 data-testid="input-search-products"
               />
             </div>
-            <div className="flex flex-row gap-2">
+            <div className="flex flex-row gap-2 flex-wrap">
               <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
                 <SelectTrigger className="w-full sm:w-[150px] md:w-[180px] h-9 md:h-10 text-xs md:text-sm" data-testid="select-supplier">
                   <Store className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 shrink-0" />
@@ -142,6 +144,15 @@ export default function RestaurantCatalog() {
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                variant={onlyAvailable ? "default" : "outline"}
+                onClick={() => setOnlyAvailable(!onlyAvailable)}
+                className="text-xs md:text-sm toggle-elevate"
+                data-testid="toggle-available-only"
+              >
+                <Package className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+                Nur verfügbar
+              </Button>
             </div>
           </div>
         </CardHeader>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,90 @@ import {
 import type { User, Order, ComplaintWithDetails } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
+function ComplaintFilters({
+  complaints,
+  filterSupplier,
+  setFilterSupplier,
+  filterStatus,
+  setFilterStatus,
+  filterDateFrom,
+  setFilterDateFrom,
+  filterDateTo,
+  setFilterDateTo,
+}: {
+  complaints: ComplaintWithDetails[];
+  filterSupplier: string;
+  setFilterSupplier: (v: string) => void;
+  filterStatus: string;
+  setFilterStatus: (v: string) => void;
+  filterDateFrom: string;
+  setFilterDateFrom: (v: string) => void;
+  filterDateTo: string;
+  setFilterDateTo: (v: string) => void;
+}) {
+  const uniqueSuppliers = useMemo(() => {
+    const map = new Map<string, string>();
+    complaints.forEach(c => {
+      if (c.supplier?.id) {
+        map.set(c.supplier.id, c.supplier.companyName || c.supplier.name || "Unbekannt");
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [complaints]);
+
+  const hasFilters = filterSupplier !== "all" || filterStatus !== "all" || filterDateFrom || filterDateTo;
+
+  return (
+    <div className="flex flex-col sm:flex-row gap-2 items-end flex-wrap">
+      <div className="w-full sm:w-auto">
+        <label className="text-xs text-muted-foreground mb-1 block">Lieferant</label>
+        <Select value={filterSupplier} onValueChange={setFilterSupplier}>
+          <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[160px]" data-testid="filter-complaint-supplier">
+            <Store className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+            <SelectValue placeholder="Alle" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle Lieferanten</SelectItem>
+            {uniqueSuppliers.map(s => (
+              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="w-full sm:w-auto">
+        <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[150px]" data-testid="filter-complaint-status">
+            <Filter className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+            <SelectValue placeholder="Alle" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle Status</SelectItem>
+            <SelectItem value="open">Offen</SelectItem>
+            <SelectItem value="in_progress">In Bearbeitung</SelectItem>
+            <SelectItem value="resolved">Gelöst</SelectItem>
+            <SelectItem value="closed">Geschlossen</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="w-full sm:w-auto">
+        <label className="text-xs text-muted-foreground mb-1 block">Von</label>
+        <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-from" />
+      </div>
+      <div className="w-full sm:w-auto">
+        <label className="text-xs text-muted-foreground mb-1 block">Bis</label>
+        <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-to" />
+      </div>
+      {hasFilters && (
+        <Button variant="ghost" size="sm" onClick={() => { setFilterSupplier("all"); setFilterStatus("all"); setFilterDateFrom(""); setFilterDateTo(""); }} className="shrink-0" data-testid="button-clear-complaint-filters">
+          <X className="h-3.5 w-3.5 mr-1" />
+          Zurücksetzen
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export default function Complaints() {
   const { currentUser } = useUser();
   const { toast } = useToast();
@@ -38,6 +122,11 @@ export default function Complaints() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  
+  const [filterComplaintSupplier, setFilterComplaintSupplier] = useState<string>("all");
+  const [filterComplaintStatus, setFilterComplaintStatus] = useState<string>("all");
+  const [filterComplaintDateFrom, setFilterComplaintDateFrom] = useState<string>("");
+  const [filterComplaintDateTo, setFilterComplaintDateTo] = useState<string>("");
   
   // Edit state
   const [editingComplaint, setEditingComplaint] = useState<ComplaintWithDetails | null>(null);
@@ -231,6 +320,25 @@ export default function Complaints() {
     }
     toast({ title: "Upload erfolgreich", description: `${uploadedFiles.length} Datei(en) hochgeladen` });
   };
+
+  const filteredComplaints = useMemo(() => {
+    if (!existingComplaints) return [];
+    return existingComplaints.filter(c => {
+      if (filterComplaintSupplier !== "all" && c.supplier?.id !== filterComplaintSupplier) return false;
+      if (filterComplaintStatus !== "all" && c.status !== filterComplaintStatus) return false;
+      if (filterComplaintDateFrom) {
+        const from = new Date(filterComplaintDateFrom);
+        from.setHours(0, 0, 0, 0);
+        if (new Date(c.createdAt) < from) return false;
+      }
+      if (filterComplaintDateTo) {
+        const to = new Date(filterComplaintDateTo);
+        to.setHours(23, 59, 59, 999);
+        if (new Date(c.createdAt) > to) return false;
+      }
+      return true;
+    });
+  }, [existingComplaints, filterComplaintSupplier, filterComplaintStatus, filterComplaintDateFrom, filterComplaintDateTo]);
 
   const canSubmit = selectedOrderId && selectedSupplierId && title.trim() && description.trim();
 
@@ -434,16 +542,27 @@ export default function Complaints() {
           <CardHeader className="p-3 md:p-6">
             <CardTitle className="text-base md:text-lg">Bisherige Reklamationen</CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-3">
+            <ComplaintFilters
+              complaints={existingComplaints || []}
+              filterSupplier={filterComplaintSupplier}
+              setFilterSupplier={setFilterComplaintSupplier}
+              filterStatus={filterComplaintStatus}
+              setFilterStatus={setFilterComplaintStatus}
+              filterDateFrom={filterComplaintDateFrom}
+              setFilterDateFrom={setFilterComplaintDateFrom}
+              filterDateTo={filterComplaintDateTo}
+              setFilterDateTo={setFilterComplaintDateTo}
+            />
             {loadingComplaints ? (
               <div className="space-y-2 md:space-y-3">
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-16 md:h-20 w-full" />
                 ))}
               </div>
-            ) : existingComplaints && existingComplaints.length > 0 ? (
+            ) : filteredComplaints.length > 0 ? (
               <div className="space-y-2 md:space-y-3">
-                {existingComplaints.map((complaint) => {
+                {filteredComplaints.map((complaint) => {
                   const statusInfo = formatComplaintStatus(complaint.status);
                   const StatusIcon = statusInfo.icon;
                   const canEdit = complaint.status === "open";
