@@ -1041,7 +1041,12 @@ export default function SupplierInbox() {
                                   const isRequest = changeData.type === "change_request";
                                   const isResponse = changeData.type === "change_request_response";
                                   const isEdited = changeData.type === "order_edited";
-                                  const isPendingRequest = isRequest && changeData.status === "pending";
+                                  const hasBeenResponded = isRequest && messages.some(m =>
+                                    m.messageType === "order_change_request" &&
+                                    m.id !== message.id &&
+                                    (() => { try { const d = JSON.parse(m.content); return d.type === "change_request_response" && d.orderId === changeData.orderId; } catch { return false; } })()
+                                  );
+                                  const isPendingRequest = isRequest && changeData.status === "pending" && !hasBeenResponded;
                                   return (
                                     <div className={`w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden ${isResponse ? (changeData.approved ? "border-2 border-green-500/30" : "border-2 border-red-500/30") : "border-2 border-amber-500/30"}`}>
                                       <div className={`flex items-center justify-between px-4 py-2.5 border-b ${isResponse ? (changeData.approved ? "bg-green-500/10 border-green-500/20" : "bg-red-500/10 border-red-500/20") : "bg-amber-500/10 border-amber-500/20"}`}>
