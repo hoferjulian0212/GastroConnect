@@ -441,6 +441,7 @@ export default function RestaurantInbox() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders/recent', currentUser?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats'] });
@@ -469,6 +470,7 @@ export default function RestaurantInbox() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/complaints"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       toast({
@@ -511,6 +513,7 @@ export default function RestaurantInbox() {
     onSuccess: () => {
       toast({ title: "Bestellung storniert", description: "Die Bestellung wurde erfolgreich storniert." });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders", orderDetailId] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders", orderDetailId, "status-history"] });
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });

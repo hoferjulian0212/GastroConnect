@@ -182,7 +182,10 @@ export default function SupplierInbox() {
       toast({ title: "Status aktualisiert", description: "Der Bestellstatus wurde erfolgreich geändert." });
       refetchOrderDetail();
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/recent'] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders", variables.orderId, "status-history"] });
       if (selectedConversation) {
@@ -201,6 +204,7 @@ export default function SupplierInbox() {
     onSuccess: (_, variables) => {
       toast({ title: variables.approved ? "Änderung genehmigt" : "Änderung abgelehnt", description: variables.approved ? "Die Bestellung ist wieder offen zur Bearbeitung." : "Die Änderungsanfrage wurde abgelehnt." });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
       if (selectedConversation) {
         queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversation, "messages"] });
@@ -718,6 +722,14 @@ export default function SupplierInbox() {
                                             apiRequest("PATCH", `/api/orders/${order.id}/status`, { status: nextStatus, changedBy: currentUser?.id })
                                               .then(() => {
                                                 queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
+                                                queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                                                queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
+                                                queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent', currentUser?.id] });
+                                                queryClient.invalidateQueries({ queryKey: ['/api/orders/recent'] });
+                                                queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+                                                if (selectedConversation) {
+                                                  queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+                                                }
                                                 toast({ title: "Status aktualisiert", description: `Bestellung #${order.id.slice(0, 8)} → ${nextLabel}` });
                                               })
                                               .catch(() => toast({ title: "Fehler", variant: "destructive" }));
@@ -788,6 +800,11 @@ export default function SupplierInbox() {
                                             apiRequest("PATCH", `/api/complaints/${complaint.id}`, { status: nextStatus, changedBy: currentUser?.id })
                                               .then(() => {
                                                 queryClient.invalidateQueries({ queryKey: [`/api/complaints?supplierId=${currentUser?.id}`] });
+                                                queryClient.invalidateQueries({ queryKey: ["/api/complaints"] });
+                                                queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+                                                if (selectedConversation) {
+                                                  queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+                                                }
                                                 toast({ title: "Status aktualisiert", description: `Reklamation → ${nextLabel}` });
                                               })
                                               .catch(() => toast({ title: "Fehler", variant: "destructive" }));
