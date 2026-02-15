@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Package, ShoppingCart, Plus, Minus, Store, Filter, Eye, Tag, Percent } from "lucide-react";
+import { Search, Package, ShoppingCart, Plus, Minus, Store, Filter, Eye, Tag, Percent, Clock } from "lucide-react";
+import { differenceInDays, differenceInHours, format } from "date-fns";
+import { de } from "date-fns/locale";
 import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -248,6 +250,30 @@ export default function RestaurantCatalog() {
                             </>
                           )}
                         </div>
+                        {hasPromo && promo.endDate && (() => {
+                          const now = new Date();
+                          const end = new Date(promo.endDate);
+                          const daysLeft = differenceInDays(end, now);
+                          const hoursLeft = differenceInHours(end, now);
+                          let remainingText = "";
+                          if (daysLeft <= 0 && hoursLeft > 0) {
+                            remainingText = `Endet heute`;
+                          } else if (daysLeft === 1) {
+                            remainingText = `Noch 1 Tag`;
+                          } else if (daysLeft > 1) {
+                            remainingText = `Noch ${daysLeft} Tage`;
+                          } else {
+                            remainingText = "Endet bald";
+                          }
+                          return (
+                            <div className="flex items-center gap-1 mt-1" data-testid={`text-promo-remaining-${product.id}`}>
+                              <Clock className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
+                              <span className="text-[10px] md:text-xs text-green-600 dark:text-green-400 font-medium">
+                                {remainingText} — bis {format(end, "dd.MM.yyyy", { locale: de })}
+                              </span>
+                            </div>
+                          );
+                        })()}
                         <div className="flex items-center gap-1 md:gap-2 mt-2 justify-end flex-wrap">
                           <div className="flex items-center border border-border rounded-md" onClick={(e) => e.stopPropagation()}>
                             <Button
