@@ -301,6 +301,7 @@ export default function RestaurantCatalog() {
                             </Button>
                           </div>
                           <Button
+                            variant="outline"
                             size="sm"
                             className="gap-1 text-xs md:text-sm"
                             disabled={!product.inStock || addToCartMutation.isPending}
