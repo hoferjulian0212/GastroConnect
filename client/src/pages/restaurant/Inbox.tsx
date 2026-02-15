@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { useUser } from "@/context/UserContext";
@@ -10,17 +10,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { ConversationWithUser, Message, Product, Order, ComplaintWithDetails, ComplaintCommentWithUser, OrderStatusHistoryWithUser, ComplaintStatusHistoryWithUser } from "@shared/schema";
-import { format, isToday, isYesterday, isSameDay } from "date-fns";
+import type { ConversationWithUser, Message, Product, Order, ComplaintWithDetails, ComplaintCommentWithUser, OrderStatusHistoryWithUser, ComplaintStatusHistoryWithUser, DeliverySchedule } from "@shared/schema";
+import { format, isToday, isYesterday, isSameDay, addDays, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -108,9 +108,18 @@ const formatDateDivider = (date: Date) => {
 };
 
 interface OrderWithDetails extends Order {
-  items: { id: string; productName: string; quantity: number; unitPrice: string; totalPrice: string }[];
+  items: { id: string; productName: string; quantity: number; unitPrice: string; totalPrice: string; productId?: string }[];
   restaurant?: { companyName: string; profileImageUrl?: string | null };
   supplier?: { companyName: string; profileImageUrl?: string | null };
+}
+
+interface EditableItem {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+  totalPrice: string;
 }
 
 export default function RestaurantInbox() {
@@ -122,11 +131,16 @@ export default function RestaurantInbox() {
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [actionMode, setActionMode] = useState<ActionMode>("none");
-  const [inboxDetailProduct, setInboxDetailProduct] = useState<Product | null>(null);
+  const [inboxDetailProduct, setInboxDetailProduct] = useState<any>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [openActionsPopover, setOpenActionsPopover] = useState(false);
   const [orderItems, setOrderItems] = useState<Record<string, number>>({});
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
+  const [editingOrderInbox, setEditingOrderInbox] = useState<OrderWithDetails | null>(null);
+  const [editItemsInbox, setEditItemsInbox] = useState<EditableItem[]>([]);
+  const [editProductSearchInbox, setEditProductSearchInbox] = useState("");
+  const [editDeliveryOptionInbox, setEditDeliveryOptionInbox] = useState<"asap" | "date">("asap");
+  const [editSelectedDeliveryDateInbox, setEditSelectedDeliveryDateInbox] = useState<string>("");
   const [complaintOrderId, setComplaintOrderId] = useState<string>("");
   const [complaintTitle, setComplaintTitle] = useState("");
   const [pendingSupplierRedirect, setPendingSupplierRedirect] = useState<string | null>(null);
@@ -176,6 +190,134 @@ export default function RestaurantInbox() {
       return res.json();
     },
     enabled: !!orderDetailId,
+  });
+
+  const editSupplierIdInbox = editingOrderInbox?.supplierId;
+
+  const { data: supplierProductsInbox } = useQuery<Product[]>({
+    queryKey: [`/api/products?supplierId=${editSupplierIdInbox}`],
+    enabled: !!editSupplierIdInbox,
+  });
+
+  const { data: editDeliverySchedulesInbox } = useQuery<DeliverySchedule[]>({
+    queryKey: [`/api/delivery-schedules/restaurant?supplierId=${editSupplierIdInbox}&restaurantId=${currentUser?.id}`],
+    enabled: !!editSupplierIdInbox && !!currentUser?.id,
+  });
+
+  const editAllowedWeekdaysInbox = useMemo(() => {
+    if (!editDeliverySchedulesInbox || editDeliverySchedulesInbox.length === 0) return [];
+    return editDeliverySchedulesInbox.map(s => s.dayOfWeek);
+  }, [editDeliverySchedulesInbox]);
+
+  const editAvailableDeliveryDatesInbox = useMemo(() => {
+    if (editAllowedWeekdaysInbox.length === 0) return [];
+    const dates: { value: string; label: string }[] = [];
+    const today = startOfDay(new Date());
+    for (let i = 1; i <= 28; i++) {
+      const date = addDays(today, i);
+      if (editAllowedWeekdaysInbox.includes(date.getDay())) {
+        dates.push({
+          value: format(date, "yyyy-MM-dd"),
+          label: format(date, "EEEE, dd. MMMM yyyy", { locale: de }),
+        });
+      }
+    }
+    return dates;
+  }, [editAllowedWeekdaysInbox]);
+
+  const addableProductsInbox = useMemo(() => {
+    if (!supplierProductsInbox) return [];
+    const existingProductIds = new Set(editItemsInbox.map(i => i.productId));
+    return supplierProductsInbox.filter(p => !existingProductIds.has(p.id) && p.inStock !== false);
+  }, [supplierProductsInbox, editItemsInbox]);
+
+  const filteredAddableProductsInbox = useMemo(() => {
+    if (!editProductSearchInbox.trim()) return addableProductsInbox;
+    const search = editProductSearchInbox.toLowerCase();
+    return addableProductsInbox.filter(p => p.name.toLowerCase().includes(search));
+  }, [addableProductsInbox, editProductSearchInbox]);
+
+  const addProductToEditInbox = (product: Product) => {
+    setEditItemsInbox(prev => [...prev, {
+      id: `new-${product.id}`,
+      productId: product.id,
+      productName: product.name,
+      quantity: 1,
+      unitPrice: product.price,
+      totalPrice: product.price,
+    }]);
+    setEditProductSearchInbox("");
+  };
+
+  const updateEditItemQuantityInbox = (index: number, delta: number) => {
+    setEditItemsInbox(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+      const newQty = Math.max(1, item.quantity + delta);
+      return { ...item, quantity: newQty, totalPrice: (newQty * parseFloat(item.unitPrice)).toFixed(2) };
+    }));
+  };
+
+  const removeEditItemInbox = (index: number) => {
+    setEditItemsInbox(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const editTotalInbox = useMemo(() => {
+    return editItemsInbox.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0).toFixed(2);
+  }, [editItemsInbox]);
+
+  const openEditOrderInbox = (order: OrderWithDetails) => {
+    setEditingOrderInbox(order);
+    setEditItemsInbox(order.items.map(item => ({
+      id: item.id,
+      productId: item.productId || item.id,
+      productName: item.productName,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+    })));
+    setEditProductSearchInbox("");
+    if (order.requestedDeliveryDate) {
+      setEditDeliveryOptionInbox("date");
+      setEditSelectedDeliveryDateInbox(order.requestedDeliveryDate);
+    } else {
+      setEditDeliveryOptionInbox("asap");
+      setEditSelectedDeliveryDateInbox("");
+    }
+    setOrderDetailId(null);
+  };
+
+  const updateOrderItemsInboxMutation = useMutation({
+    mutationFn: async ({ orderId, items, requestedDeliveryDate }: { orderId: string; items: EditableItem[]; requestedDeliveryDate?: string | null }) => {
+      return await apiRequest("PATCH", `/api/orders/${orderId}/items`, {
+        restaurantId: currentUser?.id,
+        items: items.map(i => ({
+          productId: i.productId,
+          productName: i.productName,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+        })),
+        requestedDeliveryDate,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders", editingOrderInbox?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/recent', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${editingOrderInbox?.supplierId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      if (selectedConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+      }
+      setEditingOrderInbox(null);
+      toast({ title: "Bestellung aktualisiert", description: "Die Bestellung wurde erfolgreich angepasst." });
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Die Bestellung konnte nicht aktualisiert werden.", variant: "destructive" });
+    },
   });
 
   const { data: complaintDetail, isLoading: isLoadingComplaintDetail, isError: isComplaintDetailError } = useQuery<ComplaintWithDetails>({
@@ -1536,6 +1678,20 @@ export default function RestaurantInbox() {
                 </>
               )}
 
+              {orderDetail.status === "pending" && (
+                <>
+                  <Separator />
+                  <Button
+                    className="w-full"
+                    onClick={() => openEditOrderInbox(orderDetail)}
+                    data-testid="button-edit-order-inbox"
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Bestellung anpassen
+                  </Button>
+                </>
+              )}
+
               {(orderDetail.status === "pending" || orderDetail.status === "confirmed") && (
                 <>
                   <Separator />
@@ -1834,6 +1990,212 @@ export default function RestaurantInbox() {
               <p className="text-sm">Reklamation nicht gefunden</p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingOrderInbox} onOpenChange={(open) => !open && setEditingOrderInbox(null)}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-primary" />
+              Bestellung anpassen
+            </DialogTitle>
+            <DialogDescription>
+              Bestellung #{editingOrderInbox?.id.slice(0, 8)} - Artikel bearbeiten, hinzufügen und Lieferdatum ändern
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Bestellpositionen</Label>
+              <div className="space-y-2">
+                {editItemsInbox.map((item, index) => (
+                  <div key={item.id} className="flex items-center justify-between gap-3 p-3 rounded-md bg-muted/50" data-testid={`inbox-edit-item-${item.productId}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.productName}</p>
+                      <p className="text-xs text-muted-foreground">{parseFloat(item.unitPrice).toFixed(2)}€ pro Stück</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateEditItemQuantityInbox(index, -1)}
+                        disabled={item.quantity <= 1}
+                        data-testid={`inbox-button-decrease-${item.productId}`}
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="w-8 text-center text-sm font-medium" data-testid={`inbox-text-quantity-${item.productId}`}>{item.quantity}</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateEditItemQuantityInbox(index, 1)}
+                        data-testid={`inbox-button-increase-${item.productId}`}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeEditItemInbox(index)}
+                        disabled={editItemsInbox.length <= 1}
+                        data-testid={`inbox-button-remove-${item.productId}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                    <span className="text-sm font-medium w-16 text-right">{item.totalPrice}€</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {addableProductsInbox.length > 0 && (
+              <div>
+                <Label className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                  <PackagePlus className="h-3.5 w-3.5" />
+                  Artikel hinzufügen
+                </Label>
+                <div className="relative mb-2">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Produkt suchen..."
+                    value={editProductSearchInbox}
+                    onChange={(e) => setEditProductSearchInbox(e.target.value)}
+                    className="pl-8"
+                    data-testid="inbox-input-search-add-product"
+                  />
+                </div>
+                {(editProductSearchInbox.trim() ? filteredAddableProductsInbox : addableProductsInbox.slice(0, 5)).length > 0 ? (
+                  <div className="space-y-1 max-h-36 overflow-y-auto">
+                    {(editProductSearchInbox.trim() ? filteredAddableProductsInbox : addableProductsInbox.slice(0, 5)).map(product => (
+                      <div
+                        key={product.id}
+                        className="flex items-center justify-between gap-2 p-2 rounded-md hover-elevate cursor-pointer bg-muted/30"
+                        onClick={() => addProductToEditInbox(product)}
+                        data-testid={`inbox-add-product-${product.id}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">{parseFloat(product.price).toFixed(2)}€ / {product.unit || "Stück"}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" data-testid={`inbox-button-add-product-${product.id}`}>
+                          <Plus className="h-4 w-4 text-primary" />
+                        </Button>
+                      </div>
+                    ))}
+                    {!editProductSearchInbox.trim() && addableProductsInbox.length > 5 && (
+                      <p className="text-xs text-muted-foreground text-center py-1">
+                        {addableProductsInbox.length - 5} weitere Produkte verfügbar - Suchfeld nutzen
+                      </p>
+                    )}
+                  </div>
+                ) : editProductSearchInbox.trim() ? (
+                  <p className="text-xs text-muted-foreground py-2">Keine passenden Produkte gefunden.</p>
+                ) : null}
+              </div>
+            )}
+
+            <Separator />
+
+            <div>
+              <Label className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5" />
+                Gewünschter Liefertermin
+              </Label>
+              <div className="space-y-2">
+                <label
+                  className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                    editDeliveryOptionInbox === "asap" ? "border-primary bg-primary/5" : "border-border"
+                  }`}
+                  data-testid="inbox-edit-radio-delivery-asap"
+                >
+                  <input
+                    type="radio"
+                    name="inboxEditDeliveryOption"
+                    checked={editDeliveryOptionInbox === "asap"}
+                    onChange={() => { setEditDeliveryOptionInbox("asap"); setEditSelectedDeliveryDateInbox(""); }}
+                    className="accent-primary"
+                  />
+                  <Zap className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-sm">Sobald wie möglich</span>
+                </label>
+                <label
+                  className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                    editDeliveryOptionInbox === "date" ? "border-primary bg-primary/5" : "border-border"
+                  }`}
+                  data-testid="inbox-edit-radio-delivery-date"
+                >
+                  <input
+                    type="radio"
+                    name="inboxEditDeliveryOption"
+                    checked={editDeliveryOptionInbox === "date"}
+                    onChange={() => setEditDeliveryOptionInbox("date")}
+                    className="accent-primary"
+                  />
+                  <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm">Liefertag auswählen</span>
+                </label>
+              </div>
+              {editDeliveryOptionInbox === "date" && (
+                <div className="pt-2">
+                  {editAvailableDeliveryDatesInbox.length > 0 ? (
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {editAvailableDeliveryDatesInbox.map(date => (
+                        <label
+                          key={date.value}
+                          className={`flex items-center gap-2.5 p-2 rounded-md border cursor-pointer transition-colors text-sm ${
+                            editSelectedDeliveryDateInbox === date.value
+                              ? "border-primary bg-primary/5"
+                              : "border-border"
+                          }`}
+                          data-testid={`inbox-edit-delivery-date-${date.value}`}
+                        >
+                          <input
+                            type="radio"
+                            name="inboxEditDeliveryDate"
+                            checked={editSelectedDeliveryDateInbox === date.value}
+                            onChange={() => setEditSelectedDeliveryDateInbox(date.value)}
+                            className="accent-primary"
+                          />
+                          <span>{date.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-2">
+                      Keine Liefertage hinterlegt. Bitte wählen Sie "Sobald wie möglich".
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Gesamtbetrag</span>
+              <span className="text-lg font-bold" data-testid="inbox-text-edit-total">{editTotalInbox}€</span>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditingOrderInbox(null)} data-testid="inbox-button-cancel-edit">
+              Abbrechen
+            </Button>
+            <Button
+              onClick={() => {
+                if (!editingOrderInbox) return;
+                const deliveryDate = editDeliveryOptionInbox === "date" && editSelectedDeliveryDateInbox ? editSelectedDeliveryDateInbox : null;
+                updateOrderItemsInboxMutation.mutate({ orderId: editingOrderInbox.id, items: editItemsInbox, requestedDeliveryDate: deliveryDate });
+              }}
+              disabled={editItemsInbox.length === 0 || updateOrderItemsInboxMutation.isPending || (editDeliveryOptionInbox === "date" && !editSelectedDeliveryDateInbox)}
+              data-testid="inbox-button-save-edit"
+            >
+              {updateOrderItemsInboxMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Änderungen speichern
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
