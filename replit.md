@@ -93,7 +93,7 @@ The restaurant interface is fully mobile-responsive with matching UX patterns:
 - **Layout Patterns**:
   - Desktop: Sidebar visible, bottom nav hidden, cart button in header
   - Mobile: Sidebar hidden, bottom nav visible, cart button in header hidden (accessible via bottom nav), content has `pb-20` for nav spacing
-- **All restaurant pages adapted**: Home, Inbox, Catalog, Cart, Orders, History, Complaints, Settings
+- **All restaurant pages adapted**: Home, Inbox, Catalog, Cart, Orders, Complaints, Settings
 
 ### WhatsApp-Style Immersive Chat (Inbox)
 Both restaurant and supplier inbox pages implement a full-screen immersive chat experience on mobile:

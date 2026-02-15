@@ -27,7 +27,7 @@ import RestaurantInbox from "@/pages/restaurant/Inbox";
 import RestaurantOrders from "@/pages/restaurant/Orders";
 import RestaurantCatalog from "@/pages/restaurant/Catalog";
 import RestaurantCart from "@/pages/restaurant/Cart";
-import RestaurantHistory from "@/pages/restaurant/History";
+
 import RestaurantSettings from "@/pages/restaurant/Settings";
 import RestaurantProfile from "@/pages/restaurant/Profile";
 import RestaurantComplaints from "@/pages/restaurant/Complaints";
@@ -51,7 +51,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/orders" component={RestaurantOrders} />
       <Route path="/restaurant/catalog" component={RestaurantCatalog} />
       <Route path="/restaurant/cart" component={RestaurantCart} />
-      <Route path="/restaurant/history" component={RestaurantHistory} />
+
       <Route path="/restaurant/complaints" component={RestaurantComplaints} />
       <Route path="/restaurant/suppliers" component={RestaurantSuppliers} />
       <Route path="/restaurant/settings" component={RestaurantSettings} />

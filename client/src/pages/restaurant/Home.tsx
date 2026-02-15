@@ -101,12 +101,6 @@ export default function RestaurantHome() {
                 <span className="text-xs md:text-sm">Nachrichten</span>
               </Link>
             </Button>
-            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
-              <Link href="/restaurant/history" data-testid="link-quick-history">
-                <Clock className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">Historie</span>
-              </Link>
-            </Button>
           </div>
         </CardContent>
       </Card>
