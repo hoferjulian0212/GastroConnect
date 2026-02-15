@@ -10,9 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2 } from "lucide-react";
-import type { OrderWithDetails } from "@shared/schema";
-import { format } from "date-fns";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus } from "lucide-react";
+import type { OrderWithDetails, Product, DeliverySchedule } from "@shared/schema";
+import { format, addDays, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Link, useSearch } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -41,6 +43,9 @@ export default function RestaurantOrders() {
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderWithDetails | null>(null);
   const [editItems, setEditItems] = useState<EditableItem[]>([]);
+  const [editProductSearch, setEditProductSearch] = useState("");
+  const [editDeliveryOption, setEditDeliveryOption] = useState<"asap" | "date">("asap");
+  const [editSelectedDeliveryDate, setEditSelectedDeliveryDate] = useState<string>("");
   const [changeRequestOrder, setChangeRequestOrder] = useState<OrderWithDetails | null>(null);
   const [changeRequestReason, setChangeRequestReason] = useState("");
 
@@ -49,8 +54,65 @@ export default function RestaurantOrders() {
     enabled: !!currentUser?.id,
   });
 
+  const editSupplierId = editingOrder?.supplierId;
+
+  const { data: supplierProducts } = useQuery<Product[]>({
+    queryKey: [`/api/products?supplierId=${editSupplierId}`],
+    enabled: !!editSupplierId,
+  });
+
+  const { data: editDeliverySchedules } = useQuery<DeliverySchedule[]>({
+    queryKey: [`/api/delivery-schedules/restaurant?supplierId=${editSupplierId}&restaurantId=${currentUser?.id}`],
+    enabled: !!editSupplierId && !!currentUser?.id,
+  });
+
+  const editAllowedWeekdays = useMemo(() => {
+    if (!editDeliverySchedules || editDeliverySchedules.length === 0) return [];
+    return editDeliverySchedules.map(s => s.dayOfWeek);
+  }, [editDeliverySchedules]);
+
+  const editAvailableDeliveryDates = useMemo(() => {
+    if (editAllowedWeekdays.length === 0) return [];
+    const dates: { value: string; label: string }[] = [];
+    const today = startOfDay(new Date());
+    for (let i = 1; i <= 28; i++) {
+      const date = addDays(today, i);
+      if (editAllowedWeekdays.includes(date.getDay())) {
+        dates.push({
+          value: format(date, "yyyy-MM-dd"),
+          label: format(date, "EEEE, dd. MMMM yyyy", { locale: de }),
+        });
+      }
+    }
+    return dates;
+  }, [editAllowedWeekdays]);
+
+  const addableProducts = useMemo(() => {
+    if (!supplierProducts) return [];
+    const existingProductIds = new Set(editItems.map(i => i.productId));
+    return supplierProducts.filter(p => !existingProductIds.has(p.id) && p.inStock !== false);
+  }, [supplierProducts, editItems]);
+
+  const filteredAddableProducts = useMemo(() => {
+    if (!editProductSearch.trim()) return addableProducts;
+    const search = editProductSearch.toLowerCase();
+    return addableProducts.filter(p => p.name.toLowerCase().includes(search));
+  }, [addableProducts, editProductSearch]);
+
+  const addProductToEdit = (product: Product) => {
+    setEditItems(prev => [...prev, {
+      id: `new-${product.id}`,
+      productId: product.id,
+      productName: product.name,
+      quantity: 1,
+      unitPrice: product.price,
+      totalPrice: product.price,
+    }]);
+    setEditProductSearch("");
+  };
+
   const updateOrderItemsMutation = useMutation({
-    mutationFn: async ({ orderId, items }: { orderId: string; items: EditableItem[] }) => {
+    mutationFn: async ({ orderId, items, requestedDeliveryDate }: { orderId: string; items: EditableItem[]; requestedDeliveryDate?: string | null }) => {
       return await apiRequest("PATCH", `/api/orders/${orderId}/items`, {
         restaurantId: currentUser?.id,
         items: items.map(i => ({
@@ -59,10 +121,19 @@ export default function RestaurantOrders() {
           quantity: i.quantity,
           unitPrice: i.unitPrice,
         })),
+        requestedDeliveryDate,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/recent', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${editingOrder?.supplierId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setEditingOrder(null);
       toast({ title: "Bestellung aktualisiert", description: "Die Bestellung wurde erfolgreich angepasst." });
     },
@@ -206,6 +277,14 @@ export default function RestaurantOrders() {
       unitPrice: i.unitPrice,
       totalPrice: i.totalPrice,
     })));
+    if (order.requestedDeliveryDate) {
+      setEditDeliveryOption("date");
+      setEditSelectedDeliveryDate(order.requestedDeliveryDate);
+    } else {
+      setEditDeliveryOption("asap");
+      setEditSelectedDeliveryDate("");
+    }
+    setEditProductSearch("");
     setEditingOrder(order);
   };
 
@@ -519,67 +598,202 @@ export default function RestaurantOrders() {
       </Dialog>
 
       <Dialog open={!!editingOrder} onOpenChange={(open) => !open && setEditingOrder(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-5 w-5 text-primary" />
               Bestellung anpassen
             </DialogTitle>
             <DialogDescription>
-              Bestellung #{editingOrder?.id.slice(0, 8)} - Mengen ändern oder Artikel entfernen
+              Bestellung #{editingOrder?.id.slice(0, 8)} - Artikel bearbeiten, hinzufügen und Lieferdatum ändern
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            {editItems.map((item, index) => (
-              <div key={item.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50" data-testid={`edit-item-${item.productId}`}>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{item.productName}</p>
-                  <p className="text-xs text-muted-foreground">{item.unitPrice}€ pro Stück</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => updateEditItemQuantity(index, -1)}
-                    disabled={item.quantity <= 1}
-                    data-testid={`button-decrease-${item.productId}`}
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </Button>
-                  <span className="w-8 text-center text-sm font-medium" data-testid={`text-quantity-${item.productId}`}>{item.quantity}</span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => updateEditItemQuantity(index, 1)}
-                    data-testid={`button-increase-${item.productId}`}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeEditItem(index)}
-                    disabled={editItems.length <= 1}
-                    data-testid={`button-remove-${item.productId}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                  </Button>
-                </div>
-                <span className="text-sm font-medium w-16 text-right">{item.totalPrice}€</span>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Bestellpositionen</Label>
+              <div className="space-y-2">
+                {editItems.map((item, index) => (
+                  <div key={item.id} className="flex items-center justify-between gap-3 p-3 rounded-md bg-muted/50" data-testid={`edit-item-${item.productId}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.productName}</p>
+                      <p className="text-xs text-muted-foreground">{parseFloat(item.unitPrice).toFixed(2)}€ pro Stück</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateEditItemQuantity(index, -1)}
+                        disabled={item.quantity <= 1}
+                        data-testid={`button-decrease-${item.productId}`}
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="w-8 text-center text-sm font-medium" data-testid={`text-quantity-${item.productId}`}>{item.quantity}</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateEditItemQuantity(index, 1)}
+                        data-testid={`button-increase-${item.productId}`}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeEditItem(index)}
+                        disabled={editItems.length <= 1}
+                        data-testid={`button-remove-${item.productId}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                    <span className="text-sm font-medium w-16 text-right">{item.totalPrice}€</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {addableProducts.length > 0 && (
+              <div>
+                <Label className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                  <PackagePlus className="h-3.5 w-3.5" />
+                  Artikel hinzufügen
+                </Label>
+                <div className="relative mb-2">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Produkt suchen..."
+                    value={editProductSearch}
+                    onChange={(e) => setEditProductSearch(e.target.value)}
+                    className="pl-8"
+                    data-testid="input-search-add-product"
+                  />
+                </div>
+                {(editProductSearch.trim() ? filteredAddableProducts : addableProducts.slice(0, 5)).length > 0 ? (
+                  <div className="space-y-1 max-h-36 overflow-y-auto">
+                    {(editProductSearch.trim() ? filteredAddableProducts : addableProducts.slice(0, 5)).map(product => (
+                      <div
+                        key={product.id}
+                        className="flex items-center justify-between gap-2 p-2 rounded-md hover-elevate cursor-pointer bg-muted/30"
+                        onClick={() => addProductToEdit(product)}
+                        data-testid={`add-product-${product.id}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">{parseFloat(product.price).toFixed(2)}€ / {product.unit || "Stück"}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" data-testid={`button-add-product-${product.id}`}>
+                          <Plus className="h-4 w-4 text-primary" />
+                        </Button>
+                      </div>
+                    ))}
+                    {!editProductSearch.trim() && addableProducts.length > 5 && (
+                      <p className="text-xs text-muted-foreground text-center py-1">
+                        {addableProducts.length - 5} weitere Produkte verfügbar - Suchfeld nutzen
+                      </p>
+                    )}
+                  </div>
+                ) : editProductSearch.trim() ? (
+                  <p className="text-xs text-muted-foreground py-2">Keine passenden Produkte gefunden.</p>
+                ) : null}
+              </div>
+            )}
+
+            <Separator />
+
+            <div>
+              <Label className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5" />
+                Gewünschter Liefertermin
+              </Label>
+              <div className="space-y-2">
+                <label
+                  className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                    editDeliveryOption === "asap" ? "border-primary bg-primary/5" : "border-border"
+                  }`}
+                  data-testid="edit-radio-delivery-asap"
+                >
+                  <input
+                    type="radio"
+                    name="editDeliveryOption"
+                    checked={editDeliveryOption === "asap"}
+                    onChange={() => { setEditDeliveryOption("asap"); setEditSelectedDeliveryDate(""); }}
+                    className="accent-primary"
+                  />
+                  <Zap className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-sm">Sobald wie möglich</span>
+                </label>
+                <label
+                  className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                    editDeliveryOption === "date" ? "border-primary bg-primary/5" : "border-border"
+                  }`}
+                  data-testid="edit-radio-delivery-date"
+                >
+                  <input
+                    type="radio"
+                    name="editDeliveryOption"
+                    checked={editDeliveryOption === "date"}
+                    onChange={() => setEditDeliveryOption("date")}
+                    className="accent-primary"
+                  />
+                  <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm">Liefertag auswählen</span>
+                </label>
+              </div>
+              {editDeliveryOption === "date" && (
+                <div className="pt-2">
+                  {editAvailableDeliveryDates.length > 0 ? (
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {editAvailableDeliveryDates.map(date => (
+                        <label
+                          key={date.value}
+                          className={`flex items-center gap-2.5 p-2 rounded-md border cursor-pointer transition-colors text-sm ${
+                            editSelectedDeliveryDate === date.value
+                              ? "border-primary bg-primary/5"
+                              : "border-border"
+                          }`}
+                          data-testid={`edit-delivery-date-${date.value}`}
+                        >
+                          <input
+                            type="radio"
+                            name="editDeliveryDate"
+                            checked={editSelectedDeliveryDate === date.value}
+                            onChange={() => setEditSelectedDeliveryDate(date.value)}
+                            className="accent-primary"
+                          />
+                          <span>{date.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-2">
+                      Keine Liefertage hinterlegt. Bitte wählen Sie "Sobald wie möglich".
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Gesamtbetrag</span>
+              <span className="text-lg font-bold" data-testid="text-edit-total">{editTotal}€</span>
+            </div>
           </div>
-          <div className="flex items-center justify-between pt-3 border-t border-border">
-            <span className="text-sm font-medium">Gesamtbetrag</span>
-            <span className="text-lg font-bold" data-testid="text-edit-total">{editTotal}€</span>
-          </div>
+
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setEditingOrder(null)} data-testid="button-cancel-edit">
               Abbrechen
             </Button>
             <Button
-              onClick={() => editingOrder && updateOrderItemsMutation.mutate({ orderId: editingOrder.id, items: editItems })}
-              disabled={editItems.length === 0 || updateOrderItemsMutation.isPending}
+              onClick={() => {
+                if (!editingOrder) return;
+                const deliveryDate = editDeliveryOption === "date" && editSelectedDeliveryDate ? editSelectedDeliveryDate : null;
+                updateOrderItemsMutation.mutate({ orderId: editingOrder.id, items: editItems, requestedDeliveryDate: deliveryDate });
+              }}
+              disabled={editItems.length === 0 || updateOrderItemsMutation.isPending || (editDeliveryOption === "date" && !editSelectedDeliveryDate)}
               data-testid="button-save-edit"
             >
               {updateOrderItemsMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

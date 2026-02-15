@@ -42,7 +42,7 @@ export interface IStorage {
   getOrder(id: string): Promise<OrderWithDetails | undefined>;
   createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
   updateOrderStatus(id: string, status: string): Promise<Order | undefined>;
-  updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string): Promise<Order | undefined>;
+  updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string, requestedDeliveryDate?: string | null): Promise<Order | undefined>;
 
   // Cart
   getCartItems(restaurantId: string): Promise<CartItemWithProduct[]>;
@@ -272,14 +272,18 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string): Promise<Order | undefined> {
+  async updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string, requestedDeliveryDate?: string | null): Promise<Order | undefined> {
     await db.delete(orderItems).where(eq(orderItems.orderId, id));
     for (const item of items) {
       await db.insert(orderItems).values({ ...item, orderId: id });
     }
+    const setData: any = { totalAmount, updatedAt: new Date() };
+    if (requestedDeliveryDate !== undefined) {
+      setData.requestedDeliveryDate = requestedDeliveryDate;
+    }
     const [updated] = await db
       .update(orders)
-      .set({ totalAmount, updatedAt: new Date() })
+      .set(setData)
       .where(eq(orders.id, id))
       .returning();
     return updated;

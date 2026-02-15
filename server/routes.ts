@@ -606,7 +606,7 @@ export async function registerRoutes(
   // ===== ORDER EDITING (pending only) =====
   app.patch("/api/orders/:id/items", async (req, res) => {
     try {
-      const { items, restaurantId } = req.body;
+      const { items, restaurantId, requestedDeliveryDate } = req.body;
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
@@ -633,7 +633,7 @@ export async function registerRoutes(
         .reduce((sum: number, item: any) => sum + parseFloat(item.totalPrice), 0)
         .toFixed(2);
 
-      const updated = await storage.updateOrderItems(req.params.id, orderItems as any, totalAmount);
+      const updated = await storage.updateOrderItems(req.params.id, orderItems as any, totalAmount, requestedDeliveryDate);
 
       const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
       const restaurant = await storage.getUser(order.restaurantId);
