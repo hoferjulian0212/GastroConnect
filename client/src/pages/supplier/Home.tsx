@@ -103,9 +103,9 @@ export default function SupplierHome() {
               </Link>
             </Button>
             <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
-              <Link href="/supplier/history" data-testid="link-quick-history">
+              <Link href="/supplier/orders" data-testid="link-quick-orders-all">
                 <Clock className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">Historie</span>
+                <span className="text-xs md:text-sm">Bestellungen</span>
               </Link>
             </Button>
           </div>
