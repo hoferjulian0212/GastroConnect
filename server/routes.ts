@@ -3,11 +3,138 @@ import express from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
-import { insertProductSchema, insertCartItemSchema, insertMessageSchema, insertComplaintSchema, updateComplaintSchema, insertComplaintCommentSchema, insertNotificationSchema, insertPromotionSchema } from "@shared/schema";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema } from "@shared/schema";
+
+const insertProductSchema = _insertProductSchema.strict();
+const insertCartItemSchema = _insertCartItemSchema.strict();
+const insertComplaintSchema = _insertComplaintSchema.strict();
+const updateComplaintSchema = _updateComplaintSchema.strict();
+const insertComplaintCommentSchema = _insertComplaintCommentSchema.strict();
+const insertNotificationSchema = _insertNotificationSchema.strict();
+const insertPromotionSchema = _insertPromotionSchema.strict();
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { objectStorageClient, ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
 import PDFDocument from "pdfkit";
 import { randomUUID } from "crypto";
+import { z } from "zod";
+
+const uuidField = z.string().min(1).max(100);
+const safeString = z.string().max(5000);
+const safeShortString = z.string().max(500);
+
+const updateUserSchema = z.object({
+  name: safeShortString.optional(),
+  email: z.string().email().max(254).optional(),
+  phone: safeShortString.optional().nullable(),
+  address: safeShortString.optional().nullable(),
+  city: safeShortString.optional().nullable(),
+  postalCode: z.string().max(20).optional().nullable(),
+  companyName: safeShortString.optional().nullable(),
+  description: safeString.optional().nullable(),
+  profileImageUrl: safeString.optional().nullable(),
+}).strict();
+
+const updateProductSchema = z.object({
+  name: safeShortString.optional(),
+  description: safeString.optional().nullable(),
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+  unit: safeShortString.optional(),
+  category: safeShortString.optional().nullable(),
+  inStock: z.boolean().optional(),
+  stockQuantity: z.number().int().min(0).max(999999).optional(),
+  imageUrl: safeString.optional().nullable(),
+}).strict();
+
+const updatePromotionSchema = z.object({
+  productId: uuidField.optional(),
+  discountPercent: z.number().int().min(1).max(100).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  isActive: z.boolean().optional(),
+}).strict();
+
+const deliveryScheduleSchema = z.object({
+  supplierId: uuidField,
+  restaurantId: uuidField,
+  days: z.array(z.number().int().min(0).max(6)).max(7),
+}).strict();
+
+const updateCartQuantitySchema = z.object({
+  quantity: z.number().int().min(1).max(9999),
+}).strict();
+
+const createOrderSchema = z.object({
+  restaurantId: uuidField,
+  notes: safeString.optional().nullable(),
+  requestedDeliveryDate: safeShortString.optional().nullable(),
+}).strict();
+
+const directOrderItemSchema = z.object({
+  productId: uuidField,
+  quantity: z.number().int().min(1).max(9999),
+});
+
+const directOrderSchema = z.object({
+  restaurantId: uuidField,
+  supplierId: uuidField,
+  items: z.array(directOrderItemSchema).min(1).max(200),
+  notes: safeString.optional().nullable(),
+}).strict();
+
+const reorderSchema = z.object({
+  restaurantId: uuidField,
+}).strict();
+
+const updateOrderStatusSchema = z.object({
+  status: z.enum(["pending", "confirmed", "in_delivery", "delivered", "cancelled"]),
+  changedBy: uuidField.optional(),
+}).strict();
+
+const editOrderItemSchema = z.object({
+  productId: uuidField,
+  productName: safeShortString,
+  quantity: z.number().int().min(1).max(9999),
+  unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/),
+});
+
+const editOrderItemsSchema = z.object({
+  items: z.array(editOrderItemSchema).min(1).max(200),
+  restaurantId: uuidField,
+  requestedDeliveryDate: safeShortString.optional().nullable(),
+}).strict();
+
+const changeRequestSchema = z.object({
+  restaurantId: uuidField,
+  reason: safeString.optional(),
+}).strict();
+
+const changeRequestRespondSchema = z.object({
+  supplierId: uuidField,
+  approved: z.boolean(),
+}).strict();
+
+const sendMessageSchema = z.object({
+  senderId: uuidField,
+  content: z.string().min(1).max(50000),
+  messageType: z.enum(["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request"]).optional(),
+}).strict();
+
+const markReadSchema = z.object({
+  userId: uuidField,
+}).strict();
+
+const createConversationSchema = z.object({
+  restaurantId: uuidField,
+  supplierId: uuidField,
+}).strict();
+
+const attachmentRequestSchema = z.object({
+  name: safeShortString.min(1),
+  size: z.number().int().min(0).max(10 * 1024 * 1024).optional(),
+  contentType: z.string().min(1).max(100),
+  conversationId: uuidField,
+  senderId: uuidField,
+}).strict();
 
 export async function registerRoutes(
   httpServer: Server,
@@ -57,12 +184,16 @@ export async function registerRoutes(
 
   app.patch("/api/users/:id", async (req, res) => {
     try {
-      const updated = await storage.updateUser(req.params.id, req.body);
+      const validated = updateUserSchema.parse(req.body);
+      const updated = await storage.updateUser(req.params.id, validated);
       if (!updated) {
         return res.status(404).json({ error: "User not found" });
       }
       res.json(updated);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to update user" });
     }
   });
@@ -134,12 +265,16 @@ export async function registerRoutes(
 
   app.patch("/api/products/:id", async (req, res) => {
     try {
-      const updated = await storage.updateProduct(req.params.id, req.body);
+      const validated = updateProductSchema.parse(req.body);
+      const updated = await storage.updateProduct(req.params.id, validated);
       if (!updated) {
         return res.status(404).json({ error: "Product not found" });
       }
       res.json(updated);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to update product" });
     }
   });
@@ -183,15 +318,19 @@ export async function registerRoutes(
 
   app.patch("/api/promotions/:id", async (req, res) => {
     try {
-      const data: any = { ...req.body };
-      if (data.startDate) data.startDate = new Date(data.startDate);
-      if (data.endDate) data.endDate = new Date(data.endDate);
-      const updated = await storage.updatePromotion(req.params.id, data);
+      const validated = updatePromotionSchema.parse(req.body);
+      const data: Record<string, unknown> = { ...validated };
+      if (validated.startDate) data.startDate = new Date(validated.startDate);
+      if (validated.endDate) data.endDate = new Date(validated.endDate);
+      const updated = await storage.updatePromotion(req.params.id, data as any);
       if (!updated) {
         return res.status(404).json({ error: "Promotion not found" });
       }
       res.json(updated);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to update promotion" });
     }
   });
@@ -235,13 +374,13 @@ export async function registerRoutes(
 
   app.put("/api/delivery-schedules", async (req, res) => {
     try {
-      const { supplierId, restaurantId, days } = req.body;
-      if (!supplierId || !restaurantId || !Array.isArray(days)) {
-        return res.status(400).json({ error: "Supplier ID, Restaurant ID, and days array required" });
-      }
-      await storage.setDeliverySchedules(supplierId, restaurantId, days);
+      const validated = deliveryScheduleSchema.parse(req.body);
+      await storage.setDeliverySchedules(validated.supplierId, validated.restaurantId, validated.days);
       res.json({ success: true });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to update delivery schedules" });
     }
   });
@@ -297,13 +436,16 @@ export async function registerRoutes(
 
   app.patch("/api/cart/:id", async (req, res) => {
     try {
-      const { quantity } = req.body;
-      const updated = await storage.updateCartItem(req.params.id, quantity);
+      const validated = updateCartQuantitySchema.parse(req.body);
+      const updated = await storage.updateCartItem(req.params.id, validated.quantity);
       if (!updated) {
         return res.status(404).json({ error: "Cart item not found" });
       }
       res.json(updated);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to update cart item" });
     }
   });
@@ -381,10 +523,8 @@ export async function registerRoutes(
 
   app.post("/api/orders", async (req, res) => {
     try {
-      const { restaurantId, notes, requestedDeliveryDate } = req.body;
-      if (!restaurantId) {
-        return res.status(400).json({ error: "Restaurant ID required" });
-      }
+      const validated = createOrderSchema.parse(req.body);
+      const { restaurantId, notes, requestedDeliveryDate } = validated;
 
       // Get cart items
       const cartItems = await storage.getCartItems(restaurantId);
@@ -483,14 +623,8 @@ export async function registerRoutes(
 
   app.post("/api/orders/direct", async (req, res) => {
     try {
-      const { restaurantId, supplierId, items, notes } = req.body;
-      if (!restaurantId || !supplierId || !items?.length) {
-        return res.status(400).json({ error: "restaurantId, supplierId and items required" });
-      }
-
-      if (!Array.isArray(items) || !items.every((i: any) => i.productId && typeof i.quantity === "number" && i.quantity > 0)) {
-        return res.status(400).json({ error: "Invalid items format" });
-      }
+      const validated = directOrderSchema.parse(req.body);
+      const { restaurantId, supplierId, items, notes } = validated;
 
       const products = await storage.getProductsBySupplier(supplierId);
       const productMap = new Map(products.map(p => [p.id, p]));
@@ -562,7 +696,7 @@ export async function registerRoutes(
 
   app.post("/api/orders/:id/reorder", async (req, res) => {
     try {
-      const { restaurantId } = req.body;
+      const { restaurantId } = reorderSchema.parse(req.body);
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
@@ -586,7 +720,7 @@ export async function registerRoutes(
 
   app.patch("/api/orders/:id/status", async (req, res) => {
     try {
-      const { status, changedBy } = req.body;
+      const { status, changedBy } = updateOrderStatusSchema.parse(req.body);
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
@@ -606,7 +740,8 @@ export async function registerRoutes(
   // ===== ORDER EDITING (pending only) =====
   app.patch("/api/orders/:id/items", async (req, res) => {
     try {
-      const { items, restaurantId, requestedDeliveryDate } = req.body;
+      const validated = editOrderItemsSchema.parse(req.body);
+      const { items, restaurantId, requestedDeliveryDate } = validated;
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
@@ -617,11 +752,8 @@ export async function registerRoutes(
       if (order.restaurantId !== restaurantId) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      if (!items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ error: "Items required" });
-      }
 
-      const orderItems = items.map((item: any) => ({
+      const orderItems = items.map((item) => ({
         productId: item.productId,
         productName: item.productName,
         quantity: item.quantity,
@@ -669,7 +801,7 @@ export async function registerRoutes(
   // ===== ORDER CHANGE REQUEST (for confirmed+ orders) =====
   app.post("/api/orders/:id/change-request", async (req, res) => {
     try {
-      const { restaurantId, reason } = req.body;
+      const { restaurantId, reason } = changeRequestSchema.parse(req.body);
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
@@ -715,7 +847,7 @@ export async function registerRoutes(
 
   app.post("/api/orders/:id/change-request/respond", async (req, res) => {
     try {
-      const { supplierId, approved } = req.body;
+      const { supplierId, approved } = changeRequestRespondSchema.parse(req.body);
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
@@ -894,17 +1026,17 @@ export async function registerRoutes(
 
   app.post("/api/conversations/:id/messages", async (req, res) => {
     try {
+      const validated = sendMessageSchema.parse(req.body);
       const message = await storage.sendMessage({
         conversationId: req.params.id,
-        senderId: req.body.senderId,
-        messageType: req.body.messageType || "text",
-        content: req.body.content
+        senderId: validated.senderId,
+        messageType: validated.messageType || "text",
+        content: validated.content
       });
       
-      // Create notification for recipient
       const conversation = await storage.getConversation(req.params.id);
       if (conversation) {
-        const senderId = req.body.senderId;
+        const senderId = validated.senderId;
         // Determine recipient: if sender is restaurant, recipient is supplier, and vice versa
         const recipientId = conversation.restaurantId === senderId 
           ? conversation.supplierId 
@@ -928,26 +1060,26 @@ export async function registerRoutes(
 
   app.post("/api/conversations/:id/read", async (req, res) => {
     try {
-      const { userId } = req.body;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
+      const { userId } = markReadSchema.parse(req.body);
       await storage.markMessagesAsRead(req.params.id, userId);
       res.json({ success: true });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to mark messages as read" });
     }
   });
 
   app.post("/api/conversations", async (req, res) => {
     try {
-      const { restaurantId, supplierId } = req.body;
-      if (!restaurantId || !supplierId) {
-        return res.status(400).json({ error: "restaurantId and supplierId required" });
-      }
-      const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
+      const validated = createConversationSchema.parse(req.body);
+      const conversation = await storage.getOrCreateConversation(validated.restaurantId, validated.supplierId);
       res.json(conversation);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to create conversation" });
     }
   });
@@ -1100,18 +1232,20 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Complaint not found" });
       }
       
-      const isContentEdit = req.body.title !== undefined || req.body.description !== undefined || req.body.mediaUrls !== undefined;
+      const { changedBy: rawChangedBy, ...complaintBody } = req.body;
+      const changedBy = typeof rawChangedBy === "string" ? rawChangedBy.slice(0, 100) : undefined;
+      const validated = updateComplaintSchema.parse(complaintBody);
+      const isContentEdit = validated.title !== undefined || validated.description !== undefined || validated.mediaUrls !== undefined;
       
       if (isContentEdit && complaint.status !== "open") {
         return res.status(400).json({ error: "Reklamationen können nur bearbeitet werden, wenn der Status 'Offen' ist." });
       }
       
       const previousStatus = complaint.status;
-      const validated = updateComplaintSchema.parse(req.body);
       const updated = await storage.updateComplaint(req.params.id, validated);
       
-      if (req.body.status && req.body.status !== previousStatus) {
-        await storage.addComplaintStatusHistory(req.params.id, previousStatus, req.body.status, req.body.changedBy || undefined);
+      if (validated.status && validated.status !== previousStatus) {
+        await storage.addComplaintStatusHistory(req.params.id, previousStatus, validated.status, changedBy);
       }
       
       res.json(updated);
@@ -1143,11 +1277,10 @@ export async function registerRoutes(
       });
       const comment = await storage.addComplaintComment(validated);
       
-      // Notify the other party
-      const notifyUserId = req.body.userId === complaint.restaurantId 
+      const notifyUserId = validated.userId === complaint.restaurantId 
         ? complaint.supplierId 
         : complaint.restaurantId;
-      const commenter = await storage.getUser(req.body.userId);
+      const commenter = await storage.getUser(validated.userId);
       
       await storage.createNotification({
         userId: notifyUserId,
@@ -1392,15 +1525,10 @@ export async function registerRoutes(
 
   app.post("/api/attachments/request-url", async (req, res) => {
     try {
-      const { name, size, contentType, conversationId, senderId } = req.body;
-      if (!name || !contentType || !conversationId || !senderId) {
-        return res.status(400).json({ error: "name, contentType, conversationId, and senderId are required" });
-      }
+      const validated = attachmentRequestSchema.parse(req.body);
+      const { name, size, contentType, conversationId, senderId } = validated;
       if (!ALLOWED_ATTACHMENT_TYPES.includes(contentType)) {
         return res.status(400).json({ error: "Dateityp nicht erlaubt. Erlaubt: PDF, JPG, PNG, WEBP, DOCX" });
-      }
-      if (size && size > MAX_ATTACHMENT_SIZE) {
-        return res.status(400).json({ error: "Datei ist zu groß. Maximal 10 MB erlaubt." });
       }
       const conversation = await storage.getConversation(conversationId);
       if (!conversation) {
