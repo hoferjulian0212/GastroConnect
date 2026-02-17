@@ -180,15 +180,18 @@ export default function Landing() {
             <span className="font-semibold text-lg tracking-tight" data-testid="text-brand-name">GastroConnect</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
+            <button
               onClick={toggleLang}
               data-testid="button-toggle-lang"
               title={lang === "de" ? "Lingua italiana" : "Deutsche Sprache"}
+              className="relative flex h-8 w-[72px] items-center rounded-full bg-muted border border-border p-0.5 transition-colors cursor-pointer"
             >
-              <span className="text-xs font-bold uppercase">{lang === "de" ? "IT" : "DE"}</span>
-            </Button>
+              <span className={`absolute left-0.5 flex h-7 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold shadow-sm transition-transform duration-300 ease-in-out ${lang === "it" ? "translate-x-[30px]" : "translate-x-0"}`}>
+                {lang === "de" ? "DE" : "IT"}
+              </span>
+              <span className={`absolute left-1.5 text-[11px] font-semibold text-muted-foreground transition-opacity duration-200 ${lang === "de" ? "opacity-0" : "opacity-100"}`}>DE</span>
+              <span className={`absolute right-1.5 text-[11px] font-semibold text-muted-foreground transition-opacity duration-200 ${lang === "it" ? "opacity-0" : "opacity-100"}`}>IT</span>
+            </button>
             <Button
               variant="ghost"
               size="sm"
