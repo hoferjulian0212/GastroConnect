@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, ShoppingBag, Package, Settings, AlertCircle, Truck, FileText } from "lucide-react";
+import { Home, MessageSquare, ShoppingBag, Package, Settings, AlertCircle, Truck, FileText, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -112,6 +112,16 @@ export function RestaurantSidebar() {
       <SidebarFooter className="p-4 mt-auto">
         <SidebarMenu className="space-y-1">
           {bottomMenuItems.map((item) => renderMenuItem(item))}
+          <SidebarMenuItem>
+            <Link
+              href="/"
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover-elevate`}
+              data-testid="button-logout"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Abmelden</span>
+            </Link>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

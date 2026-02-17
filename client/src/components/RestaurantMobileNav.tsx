@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, Package, ShoppingCart, MoreHorizontal, ShoppingBag, AlertCircle, Settings, X, Truck, FileText } from "lucide-react";
+import { Home, MessageSquare, Package, ShoppingCart, MoreHorizontal, ShoppingBag, AlertCircle, Settings, X, Truck, FileText, LogOut } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useChat } from "@/context/ChatContext";
 import { useQuery } from "@tanstack/react-query";
@@ -94,6 +94,16 @@ export function RestaurantMobileNav() {
               </button>
             );
           })}
+          <div className="border-t border-border mt-1 pt-1">
+            <button
+              onClick={() => { setIsMoreOpen(false); setLocation("/"); }}
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-left transition-colors text-muted-foreground hover-elevate"
+              data-testid="button-mobile-logout"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm font-semibold">Abmelden</span>
+            </button>
+          </div>
         </div>
       )}
 
