@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect } from "react";
 import type { User } from "@shared/schema";
 
+import Landing from "@/pages/Landing";
 import NotFound from "@/pages/not-found";
 import RestaurantHome from "@/pages/restaurant/Home";
 import RestaurantInbox from "@/pages/restaurant/Inbox";
@@ -100,7 +101,7 @@ function UserLoader() {
   }, [users, isLoading, currentRole, setCurrentUser, setIsLoading]);
 
   useEffect(() => {
-    if (location === "/" || !location.startsWith(`/${currentRole}`)) {
+    if (location !== "/" && location !== "/about" && !location.startsWith(`/${currentRole}`)) {
       setLocation(`/${currentRole}`);
     }
   }, [currentRole, location, setLocation]);
@@ -146,6 +147,10 @@ function AppLayout() {
     "--sidebar-width": "13rem",
     "--sidebar-width-icon": "3rem",
   } as React.CSSProperties;
+
+  if (location === "/") {
+    return <Landing />;
+  }
 
   if (location === "/about") {
     return <About />;

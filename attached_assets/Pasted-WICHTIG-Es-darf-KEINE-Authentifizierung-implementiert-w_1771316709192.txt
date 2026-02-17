@@ -1,0 +1,92 @@
+WICHTIG:
+Es darf KEINE Authentifizierung implementiert werden.
+KEIN Login.
+KEINE Passwortabfrage.
+KEINE Sessions.
+KEINE Middleware.
+KEINE Auth-Guards.
+KEINE Backend-Anpassung.
+
+Die bestehende Teststruktur mit den zwei bereits existierenden Profilen muss vollständig erhalten bleiben.
+
+ZIEL:
+Erstelle eine moderne, vollständige SaaS-Landingpage für unsere WebApp.
+Diese soll erscheinen, wenn man die Root-Route "/" aufruft.
+
+Die Seite soll wie eine professionelle Software-Produktseite aufgebaut sein.
+Sie soll alle relevanten Informationen zu unserem Unternehmen und unserem Produkt darstellen.
+
+STRUKTUR DER LANDINGPAGE:
+
+1. Hero Section
+- Große, klare Headline (klarer Nutzen des Produkts)
+- Subheadline mit Erklärung des Mehrwerts
+- Zwei große Call-To-Action Buttons:
+   - „Als Lieferant starten“
+   - „Als Restaurant starten“
+- Keine Formulare
+- Keine Eingabefelder
+
+2. Problem-Sektion
+- Kurze Darstellung des Problems im Markt
+- Warum unsere Lösung notwendig ist
+
+3. Lösungs-Sektion
+- Erklärung unseres Systems
+- Was GastroConnect macht
+- Wie Lieferanten und Restaurants miteinander verbunden werden
+
+4. Feature-Sektion
+- 4–6 Kernfunktionen visuell dargestellt
+- Icons + kurze Beschreibung
+- Fokus auf Effizienz, Digitalisierung, Bestellprozesse, Übersicht, Zeitersparnis
+
+5. Vorteile für Lieferanten
+- Eigene Untersektion
+- Stichpunkte mit Mehrwert
+
+6. Vorteile für Restaurants
+- Eigene Untersektion
+- Stichpunkte mit Mehrwert
+
+7. Ablauf / So funktioniert es
+- 3–4 Schritte visuell dargestellt
+- Einfacher, klarer Prozess
+
+8. Footer
+- Kurzbeschreibung
+- Optional: Kontaktinfo (nur statisch)
+- Kein echtes Kontaktformular
+
+ROLLE-AUSWAHL (WICHTIG):
+Die zwei Buttons aus der Hero Section sollen:
+- KEINE Anmeldung starten
+- KEINE Authentifizierung auslösen
+- KEINE Daten abfragen
+
+Sie sollen lediglich:
+- Direkt in das bereits existierende jeweilige Profil navigieren
+- Den bisherigen internen Test-Mechanismus verwenden (z.B. role = "lieferant" oder role = "restaurant")
+
+TECHNISCH:
+- Neue Landingpage-Komponente erstellen
+- Als Root-Route setzen
+- Bestehende Profile nicht verändern
+- Keine Business-Logik anpassen
+- Keine neuen Datenmodelle
+
+DESIGN-VORGABEN:
+- Modernes SaaS-Design
+- Viel Weißraum
+- Klare Hierarchie
+- Große Typografie
+- Dezente Schatten
+- Abgerundete Karten
+- Sanfte Hover-Animationen
+- Professionelles B2B-Erscheinungsbild
+- Responsive (Desktop + Mobile)
+
+WICHTIG:
+Es geht ausschließlich um eine visuelle Marketing-Startseite mit Rollen-Auswahl.
+Keine Authentifizierung implementieren.
+Keine bestehende Logik verändern.
