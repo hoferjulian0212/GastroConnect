@@ -3,27 +3,31 @@ import { Link, useLocation } from "wouter";
 import { Home, MessageSquare, Package, ClipboardList, MoreHorizontal, AlertCircle, Settings, X, FileText, Tag, LogOut } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useChat } from "@/context/ChatContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 import { useQuery } from "@tanstack/react-query";
-
-const mainNavItems = [
-  { title: "Home", url: "/supplier", icon: Home },
-  { title: "Produkte", url: "/supplier/products", icon: Package },
-  { title: "Nachrichten", url: "/supplier/inbox", icon: MessageSquare, hasBadge: true },
-  { title: "Bestellungen", url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
-];
-
-const moreMenuItems = [
-  { title: "Aktionen", url: "/supplier/promotions", icon: Tag },
-  { title: "Reklamationen", url: "/supplier/complaints", icon: AlertCircle },
-  { title: "Dokumente", url: "/supplier/documents", icon: FileText },
-  { title: "Einstellungen", url: "/supplier/settings", icon: Settings },
-];
 
 export function SupplierMobileNav() {
   const [location, setLocation] = useLocation();
   const { currentUser } = useUser();
   const { isInChat } = useChat();
+  const { lang } = useLanguage();
+  const t = useT(lang);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+
+  const mainNavItems = [
+    { title: t("common", "home"), url: "/supplier", icon: Home },
+    { title: t("common", "products"), url: "/supplier/products", icon: Package },
+    { title: t("common", "messages"), url: "/supplier/inbox", icon: MessageSquare, hasBadge: true },
+    { title: t("common", "orders"), url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
+  ];
+
+  const moreMenuItems = [
+    { title: t("common", "promotions"), url: "/supplier/promotions", icon: Tag },
+    { title: t("common", "complaints"), url: "/supplier/complaints", icon: AlertCircle },
+    { title: t("common", "documents"), url: "/supplier/documents", icon: FileText },
+    { title: t("common", "settings"), url: "/supplier/settings", icon: Settings },
+  ];
 
   const { data: unreadCount } = useQuery<{ count: number }>({
     queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`],
@@ -65,7 +69,7 @@ export function SupplierMobileNav() {
       {isMoreOpen && (
         <div className="fixed bottom-16 right-2 z-50 bg-background border border-border rounded-lg shadow-lg p-2 min-w-[180px] md:hidden" data-testid="mobile-nav-more-menu">
           <div className="flex items-center justify-between px-2 py-1 mb-1 border-b border-border">
-            <span className="text-xs font-medium text-muted-foreground">Weitere Optionen</span>
+            <span className="text-xs font-medium text-muted-foreground">{t("common", "moreOptions")}</span>
             <button 
               onClick={() => setIsMoreOpen(false)}
               className="p-1 rounded hover-elevate"
@@ -99,7 +103,7 @@ export function SupplierMobileNav() {
               data-testid="button-mobile-logout"
             >
               <LogOut className="h-4 w-4" />
-              <span className="text-sm font-medium">Abmelden</span>
+              <span className="text-sm font-medium">{t("common", "logout")}</span>
             </button>
           </div>
         </div>
@@ -149,7 +153,7 @@ export function SupplierMobileNav() {
           >
             <MoreHorizontal className={`h-5 w-5 ${isMoreActive || isMoreOpen ? "text-primary" : ""}`} />
             <span className={`text-[10px] font-medium ${isMoreActive || isMoreOpen ? "text-primary" : ""}`}>
-              Mehr
+              {t("common", "more")}
             </span>
           </button>
         </div>

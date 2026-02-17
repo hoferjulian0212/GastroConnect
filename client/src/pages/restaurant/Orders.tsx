@@ -15,10 +15,12 @@ import { Separator } from "@/components/ui/separator";
 import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus } from "lucide-react";
 import type { OrderWithDetails, Product, DeliverySchedule } from "@shared/schema";
 import { format, addDays, startOfDay } from "date-fns";
-import { de } from "date-fns/locale";
+import { de, it } from "date-fns/locale";
 import { Link, useSearch } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT, getOrderStatus } from "@/lib/translations";
 
 interface EditableItem {
   id: string;
@@ -32,6 +34,9 @@ interface EditableItem {
 export default function RestaurantOrders() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const { lang } = useLanguage();
+  const t = useT(lang);
+  const dateLocale = lang === "it" ? it : de;
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const highlightOrderId = searchParams.get("orderId");
@@ -80,12 +85,12 @@ export default function RestaurantOrders() {
       if (editAllowedWeekdays.includes(date.getDay())) {
         dates.push({
           value: format(date, "yyyy-MM-dd"),
-          label: format(date, "EEEE, dd. MMMM yyyy", { locale: de }),
+          label: format(date, "EEEE, dd. MMMM yyyy", { locale: dateLocale }),
         });
       }
     }
     return dates;
-  }, [editAllowedWeekdays]);
+  }, [editAllowedWeekdays, dateLocale]);
 
   const addableProducts = useMemo(() => {
     if (!supplierProducts) return [];
@@ -135,10 +140,10 @@ export default function RestaurantOrders() {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setEditingOrder(null);
-      toast({ title: "Bestellung aktualisiert", description: "Die Bestellung wurde erfolgreich angepasst." });
+      toast({ title: t("orders", "orderUpdated"), description: t("orders", "orderUpdatedDesc") });
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Die Bestellung konnte nicht aktualisiert werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("orders", "orderUpdateError"), variant: "destructive" });
     },
   });
 
@@ -153,10 +158,10 @@ export default function RestaurantOrders() {
       queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
       setChangeRequestOrder(null);
       setChangeRequestReason("");
-      toast({ title: "Anfrage gesendet", description: "Die Änderungsanfrage wurde an den Lieferanten gesendet." });
+      toast({ title: t("orders", "changeRequestSent"), description: t("orders", "changeRequestSentDesc") });
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Die Anfrage konnte nicht gesendet werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("orders", "changeRequestError"), variant: "destructive" });
     },
   });
 
@@ -165,7 +170,7 @@ export default function RestaurantOrders() {
     const map = new Map<string, string>();
     orders.forEach(o => {
       if (o.supplier?.id) {
-        map.set(o.supplier.id, o.supplier.companyName || o.supplier.name || "Unbekannt");
+        map.set(o.supplier.id, o.supplier.companyName || o.supplier.name || t("common", "unknown"));
       }
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
@@ -212,16 +217,7 @@ export default function RestaurantOrders() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "pending": return "Ausstehend";
-      case "confirmed": return "Bestätigt";
-      case "in_delivery": return "In Lieferung";
-      case "delivered": return "Geliefert";
-      case "cancelled": return "Storniert";
-      default: return status;
-    }
-  };
+  const getStatusLabel = (status: string) => getOrderStatus(status, lang);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -321,24 +317,24 @@ export default function RestaurantOrders() {
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1 md:gap-2">
-                <p className="font-medium text-sm md:text-base">Bestellung #{order.id.slice(0, 8)}</p>
+                <p className="font-medium text-sm md:text-base">{t("orders", "order")} #{order.id.slice(0, 8)}</p>
                 <Badge className={`${getStatusColor(order.status)} text-xs`} variant="outline">
                   {getStatusLabel(order.status)}
                 </Badge>
               </div>
               <p className="text-xs md:text-sm text-muted-foreground mt-1 truncate">
-                {order.supplier?.companyName || order.supplier?.name || "Unbekannter Lieferant"}
+                {order.supplier?.companyName || order.supplier?.name || t("orders", "unknownSupplier")}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}
+                {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}
               </p>
             </div>
           </div>
           <div className="text-right shrink-0">
             <p className="text-base md:text-lg font-bold">{order.totalAmount}€</p>
             <p className="text-xs text-muted-foreground">
-              {order.items?.length || 0} Artikel
+              {order.items?.length || 0} {t("common", "items")}
             </p>
           </div>
         </div>
@@ -355,7 +351,7 @@ export default function RestaurantOrders() {
               ))}
               {order.items.length > 3 && (
                 <p className="text-xs text-muted-foreground">
-                  + {order.items.length - 3} weitere Artikel
+                  + {order.items.length - 3} {t("orders", "moreItems")}
                 </p>
               )}
             </div>
@@ -371,7 +367,7 @@ export default function RestaurantOrders() {
                 data-testid={`button-edit-order-${order.id}`}
               >
                 <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                Bestellung anpassen
+                {t("orders", "editOrder")}
               </Button>
             )}
             {canRequestChange(order) && (
@@ -382,7 +378,7 @@ export default function RestaurantOrders() {
                 data-testid={`button-change-request-${order.id}`}
               >
                 <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
-                Änderung anfragen
+                {t("orders", "requestChange")}
               </Button>
             )}
           </div>
@@ -407,22 +403,22 @@ export default function RestaurantOrders() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Bestellungen</h1>
-        <p className="text-xs md:text-sm text-muted-foreground">Alle Ihre Bestellungen im Überblick</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "orders")}</h1>
+        <p className="text-xs md:text-sm text-muted-foreground">{t("orders", "allOrdersOverview")}</p>
       </div>
 
       <Card>
         <CardContent className="p-3 md:p-4">
           <div className="flex flex-col sm:flex-row gap-2 md:gap-3 items-end">
             <div className="flex-1 w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">Lieferant</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "supplier")}</label>
               <Select value={filterSupplier} onValueChange={setFilterSupplier}>
                 <SelectTrigger className="h-9 text-xs md:text-sm" data-testid="filter-supplier">
                   <Store className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                  <SelectValue placeholder="Alle Lieferanten" />
+                  <SelectValue placeholder={t("common", "allSuppliers")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Lieferanten</SelectItem>
+                  <SelectItem value="all">{t("common", "allSuppliers")}</SelectItem>
                   {uniqueSuppliers.map(s => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
@@ -430,7 +426,7 @@ export default function RestaurantOrders() {
               </Select>
             </div>
             <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">Von</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
               <Input
                 type="date"
                 value={filterDateFrom}
@@ -440,7 +436,7 @@ export default function RestaurantOrders() {
               />
             </div>
             <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">Bis</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
               <Input
                 type="date"
                 value={filterDateTo}
@@ -452,7 +448,7 @@ export default function RestaurantOrders() {
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0" data-testid="button-clear-filters">
                 <X className="h-3.5 w-3.5 mr-1" />
-                Zurücksetzen
+                {t("common", "reset")}
               </Button>
             )}
           </div>
@@ -461,11 +457,11 @@ export default function RestaurantOrders() {
 
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:w-auto lg:inline-flex h-auto">
-          <TabsTrigger value="all" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-all">Alle</TabsTrigger>
-          <TabsTrigger value="pending" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-pending">Ausstehend</TabsTrigger>
-          <TabsTrigger value="confirmed" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-confirmed">Bestätigt</TabsTrigger>
-          <TabsTrigger value="in_delivery" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-delivery">In Lieferung</TabsTrigger>
-          <TabsTrigger value="delivered" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-delivered">Geliefert</TabsTrigger>
+          <TabsTrigger value="all" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-all">{t("common", "all")}</TabsTrigger>
+          <TabsTrigger value="pending" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-pending">{getOrderStatus("pending", lang)}</TabsTrigger>
+          <TabsTrigger value="confirmed" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-confirmed">{getOrderStatus("confirmed", lang)}</TabsTrigger>
+          <TabsTrigger value="in_delivery" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-delivery">{getOrderStatus("in_delivery", lang)}</TabsTrigger>
+          <TabsTrigger value="delivered" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-delivered">{getOrderStatus("delivered", lang)}</TabsTrigger>
         </TabsList>
 
         {["all", "pending", "confirmed", "in_delivery", "delivered"].map((tab) => (
@@ -486,10 +482,10 @@ export default function RestaurantOrders() {
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
                       <ShoppingBag className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                      <p className="text-muted-foreground">Keine Bestellungen gefunden</p>
+                      <p className="text-muted-foreground">{t("orders", "noOrdersFound")}</p>
                       <Button variant="outline" className="mt-4" asChild>
                         <Link href="/restaurant/catalog" data-testid="link-browse-catalog">
-                          Produktkatalog durchsuchen
+                          {t("common", "browseCatalog")}
                         </Link>
                       </Button>
                     </CardContent>
@@ -506,10 +502,10 @@ export default function RestaurantOrders() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {detailOrder && getStatusIcon(detailOrder.status)}
-              Bestellung #{detailOrder?.id.slice(0, 8)}
+              {t("orders", "order")} #{detailOrder?.id.slice(0, 8)}
             </DialogTitle>
             <DialogDescription>
-              Bestelldetails und Artikelübersicht
+              {t("orders", "orderDetails")}
             </DialogDescription>
           </DialogHeader>
           {detailOrder && (
@@ -523,23 +519,23 @@ export default function RestaurantOrders() {
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Lieferant</span>
-                  <span className="font-medium">{detailOrder.supplier?.companyName || detailOrder.supplier?.name || "Unbekannt"}</span>
+                  <span className="text-muted-foreground">{t("common", "supplier")}</span>
+                  <span className="font-medium">{detailOrder.supplier?.companyName || detailOrder.supplier?.name || t("common", "unknown")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Bestellt am</span>
-                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}</span>
+                  <span className="text-muted-foreground">{t("orders", "createdAt")}</span>
+                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</span>
                 </div>
                 {detailOrder.requestedDeliveryDate && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Gewünschter Liefertermin</span>
-                    <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
+                    <span className="text-muted-foreground">{t("orders", "requestedDeliveryDate")}</span>
+                    <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "it" ? "it-IT" : "de-DE", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
                   </div>
                 )}
               </div>
 
               <div className="border-t border-border pt-3">
-                <p className="text-sm font-medium mb-2">Artikel ({detailOrder.items?.length || 0})</p>
+                <p className="text-sm font-medium mb-2">{t("common", "items")} ({detailOrder.items?.length || 0})</p>
                 <div className="space-y-2">
                   {detailOrder.items?.map((item) => (
                     <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50" data-testid={`detail-item-${item.id}`}>
@@ -556,13 +552,13 @@ export default function RestaurantOrders() {
 
               {detailOrder.notes && (
                 <div className="border-t border-border pt-3">
-                  <p className="text-sm font-medium mb-1">Anmerkungen</p>
+                  <p className="text-sm font-medium mb-1">{t("orders", "notes")}</p>
                   <p className="text-sm text-muted-foreground">{detailOrder.notes}</p>
                 </div>
               )}
 
               <div className="border-t border-border pt-3 flex items-center justify-between">
-                <span className="text-sm font-medium">Gesamtbetrag</span>
+                <span className="text-sm font-medium">{t("common", "total")}</span>
                 <span className="text-lg font-bold" data-testid="text-detail-total">{detailOrder.totalAmount}€</span>
               </div>
 
@@ -576,7 +572,7 @@ export default function RestaurantOrders() {
                       data-testid="button-detail-edit-order"
                     >
                       <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                      Bestellung anpassen
+                      {t("orders", "editOrder")}
                     </Button>
                   )}
                   {canRequestChange(detailOrder) && (
@@ -587,7 +583,7 @@ export default function RestaurantOrders() {
                       data-testid="button-detail-change-request"
                     >
                       <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
-                      Änderung anfragen
+                      {t("orders", "requestChange")}
                     </Button>
                   )}
                 </div>
@@ -602,22 +598,22 @@ export default function RestaurantOrders() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-5 w-5 text-primary" />
-              Bestellung anpassen
+              {t("orders", "editOrder")}
             </DialogTitle>
             <DialogDescription>
-              Bestellung #{editingOrder?.id.slice(0, 8)} - Artikel bearbeiten, hinzufügen und Lieferdatum ändern
+              {t("orders", "order")} #{editingOrder?.id.slice(0, 8)} - {t("orders", "editOrderDesc")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label className="text-sm font-medium mb-2 block">Bestellpositionen</Label>
+              <Label className="text-sm font-medium mb-2 block">{t("orders", "orderItems")}</Label>
               <div className="space-y-2">
                 {editItems.map((item, index) => (
                   <div key={item.id} className="flex items-center justify-between gap-3 p-3 rounded-md bg-muted/50" data-testid={`edit-item-${item.productId}`}>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{item.productName}</p>
-                      <p className="text-xs text-muted-foreground">{parseFloat(item.unitPrice).toFixed(2)}€ pro Stück</p>
+                      <p className="text-xs text-muted-foreground">{parseFloat(item.unitPrice).toFixed(2)}€ {t("orders", "perUnit")}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Button
@@ -658,12 +654,12 @@ export default function RestaurantOrders() {
               <div>
                 <Label className="text-sm font-medium mb-2 flex items-center gap-1.5">
                   <PackagePlus className="h-3.5 w-3.5" />
-                  Artikel hinzufügen
+                  {t("orders", "addProduct")}
                 </Label>
                 <div className="relative mb-2">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
-                    placeholder="Produkt suchen..."
+                    placeholder={t("orders", "searchProductsToAdd")}
                     value={editProductSearch}
                     onChange={(e) => setEditProductSearch(e.target.value)}
                     className="pl-8"
@@ -681,7 +677,7 @@ export default function RestaurantOrders() {
                       >
                         <div className="flex-1 min-w-0">
                           <p className="text-sm truncate">{product.name}</p>
-                          <p className="text-xs text-muted-foreground">{parseFloat(product.price).toFixed(2)}€ / {product.unit || "Stück"}</p>
+                          <p className="text-xs text-muted-foreground">{parseFloat(product.price).toFixed(2)}€ / {product.unit || t("common", "piece")}</p>
                         </div>
                         <Button variant="ghost" size="icon" data-testid={`button-add-product-${product.id}`}>
                           <Plus className="h-4 w-4 text-primary" />
@@ -690,12 +686,12 @@ export default function RestaurantOrders() {
                     ))}
                     {!editProductSearch.trim() && addableProducts.length > 5 && (
                       <p className="text-xs text-muted-foreground text-center py-1">
-                        {addableProducts.length - 5} weitere Produkte verfügbar - Suchfeld nutzen
+                        {addableProducts.length - 5} {t("orders", "moreProductsAvailable")}
                       </p>
                     )}
                   </div>
                 ) : editProductSearch.trim() ? (
-                  <p className="text-xs text-muted-foreground py-2">Keine passenden Produkte gefunden.</p>
+                  <p className="text-xs text-muted-foreground py-2">{t("orders", "noMatchingProducts")}</p>
                 ) : null}
               </div>
             )}
@@ -705,7 +701,7 @@ export default function RestaurantOrders() {
             <div>
               <Label className="text-sm font-medium mb-2 flex items-center gap-1.5">
                 <CalendarDays className="h-3.5 w-3.5" />
-                Gewünschter Liefertermin
+                {t("orders", "requestedDeliveryDate")}
               </Label>
               <div className="space-y-2">
                 <label
@@ -722,7 +718,7 @@ export default function RestaurantOrders() {
                     className="accent-primary"
                   />
                   <Zap className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-sm">Sobald wie möglich</span>
+                  <span className="text-sm">{t("cart", "asap")}</span>
                 </label>
                 <label
                   className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
@@ -738,7 +734,7 @@ export default function RestaurantOrders() {
                     className="accent-primary"
                   />
                   <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm">Liefertag auswählen</span>
+                  <span className="text-sm">{t("cart", "selectDeliveryDay")}</span>
                 </label>
               </div>
               {editDeliveryOption === "date" && (
@@ -768,7 +764,7 @@ export default function RestaurantOrders() {
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground py-2">
-                      Keine Liefertage hinterlegt. Bitte wählen Sie "Sobald wie möglich".
+                      {t("cart", "noDeliveryDays")}
                     </p>
                   )}
                 </div>
@@ -778,14 +774,14 @@ export default function RestaurantOrders() {
             <Separator />
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Gesamtbetrag</span>
+              <span className="text-sm font-medium">{t("common", "total")}</span>
               <span className="text-lg font-bold" data-testid="text-edit-total">{editTotal}€</span>
             </div>
           </div>
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setEditingOrder(null)} data-testid="button-cancel-edit">
-              Abbrechen
+              {t("common", "cancel")}
             </Button>
             <Button
               onClick={() => {
@@ -797,7 +793,7 @@ export default function RestaurantOrders() {
               data-testid="button-save-edit"
             >
               {updateOrderItemsMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Änderungen speichern
+              {t("orders", "saveChanges")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -808,17 +804,17 @@ export default function RestaurantOrders() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquareText className="h-5 w-5 text-primary" />
-              Änderung anfragen
+              {t("orders", "requestChange")}
             </DialogTitle>
             <DialogDescription>
-              Bestellung #{changeRequestOrder?.id.slice(0, 8)} ist bereits bestätigt. Senden Sie eine Anfrage an den Lieferanten, um die Bestellung erneut zur Bearbeitung zu öffnen.
+              {t("orders", "order")} #{changeRequestOrder?.id.slice(0, 8)} {t("orders", "changeRequestDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Grund der Änderung</label>
+              <label className="text-sm font-medium mb-1.5 block">{t("orders", "changeRequestReason")}</label>
               <Textarea
-                placeholder="Beschreiben Sie, was Sie ändern möchten..."
+                placeholder={t("orders", "changeRequestReasonPlaceholder")}
                 value={changeRequestReason}
                 onChange={(e) => setChangeRequestReason(e.target.value)}
                 className="resize-none"
@@ -829,7 +825,7 @@ export default function RestaurantOrders() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => { setChangeRequestOrder(null); setChangeRequestReason(""); }} data-testid="button-cancel-request">
-              Abbrechen
+              {t("common", "cancel")}
             </Button>
             <Button
               onClick={() => changeRequestOrder && changeRequestMutation.mutate({ orderId: changeRequestOrder.id, reason: changeRequestReason })}
@@ -837,7 +833,7 @@ export default function RestaurantOrders() {
               data-testid="button-send-request"
             >
               {changeRequestMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Anfrage senden
+              {t("orders", "sendRequest")}
             </Button>
           </DialogFooter>
         </DialogContent>

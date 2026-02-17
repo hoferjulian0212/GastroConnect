@@ -8,10 +8,14 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { de } from "date-fns/locale";
+import { de, it } from "date-fns/locale";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT, getOrderStatus } from "@/lib/translations";
 
 export default function RestaurantHome() {
   const { currentUser } = useUser();
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   const { data: recentOrders, isLoading: ordersLoading } = useQuery<Order[]>({
     queryKey: ['/api/orders/recent', currentUser?.id],
@@ -52,33 +56,24 @@ export default function RestaurantHome() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "pending": return "Ausstehend";
-      case "confirmed": return "Bestätigt";
-      case "in_delivery": return "In Lieferung";
-      case "delivered": return "Geliefert";
-      case "cancelled": return "Storniert";
-      default: return status;
-    }
-  };
+  const dateLocale = lang === "it" ? it : de;
 
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">
-          Willkommen zurück{currentUser?.companyName ? `, ${currentUser.companyName}` : ""}!
+          {t("common", "welcomeBack")}{currentUser?.companyName ? `, ${currentUser.companyName}` : ""}!
         </h1>
         <p className="text-sm md:text-base text-muted-foreground mt-1">
-          Hier ist Ihre Übersicht für heute
+          {t("common", "overviewToday")}
         </p>
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div>
-            <CardTitle className="text-base md:text-lg">Schnellaktionen</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Häufig verwendete Funktionen</CardDescription>
+            <CardTitle className="text-base md:text-lg">{t("common", "quickActions")}</CardTitle>
+            <CardDescription className="text-xs md:text-sm">{t("common", "frequentFunctions")}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -86,19 +81,19 @@ export default function RestaurantHome() {
             <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
               <Link href="/restaurant/catalog" data-testid="link-quick-catalog">
                 <Package className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">Katalog</span>
+                <span className="text-xs md:text-sm">{t("common", "catalog")}</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
               <Link href="/restaurant/cart" data-testid="link-quick-cart">
                 <ShoppingBag className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">Warenkorb</span>
+                <span className="text-xs md:text-sm">{t("common", "cart")}</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
               <Link href="/restaurant/inbox" data-testid="link-quick-inbox">
                 <MessageSquare className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">Nachrichten</span>
+                <span className="text-xs md:text-sm">{t("common", "messages")}</span>
               </Link>
             </Button>
           </div>
@@ -109,7 +104,7 @@ export default function RestaurantHome() {
         <Link href="/restaurant/orders" data-testid="link-stat-orders">
           <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">Offene Bestellungen</CardTitle>
+              <CardTitle className="text-xs md:text-sm font-medium">{t("restaurantHome", "openOrders")}</CardTitle>
               <ShoppingBag className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -127,7 +122,7 @@ export default function RestaurantHome() {
         <Link href="/restaurant/inbox" data-testid="link-stat-messages">
           <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">Nachrichten</CardTitle>
+              <CardTitle className="text-xs md:text-sm font-medium">{t("common", "messages")}</CardTitle>
               <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -145,7 +140,7 @@ export default function RestaurantHome() {
         <Link href="/restaurant/suppliers">
           <Card className="transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01] cursor-pointer">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">Aktive Lieferanten</CardTitle>
+              <CardTitle className="text-xs md:text-sm font-medium">{t("restaurantHome", "activeSuppliers")}</CardTitle>
               <Package className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -162,12 +157,12 @@ export default function RestaurantHome() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-            <CardTitle className="text-xs md:text-sm font-medium">Aktionen</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">{t("restaurantHome", "actions")}</CardTitle>
             <Zap className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
             <div className="text-xs md:text-sm text-muted-foreground" data-testid="text-actions-placeholder">
-              Demnächst verfügbar
+              {t("common", "comingSoon")}
             </div>
           </CardContent>
         </Card>
@@ -176,11 +171,11 @@ export default function RestaurantHome() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div>
-            <CardTitle className="text-base md:text-lg">Aktuelle Bestellungen</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Ihre neuesten Bestellungen</CardDescription>
+            <CardTitle className="text-base md:text-lg">{t("common", "recentOrders")}</CardTitle>
+            <CardDescription className="text-xs md:text-sm">{t("common", "yourLatestOrders")}</CardDescription>
           </div>
           <Button variant="outline" size="sm" className="text-xs md:text-sm" asChild>
-            <Link href="/restaurant/orders" data-testid="link-view-all-orders">Alle</Link>
+            <Link href="/restaurant/orders" data-testid="link-view-all-orders">{t("common", "all")}</Link>
           </Button>
         </CardHeader>
         <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -206,14 +201,14 @@ export default function RestaurantHome() {
                       <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
                       <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                        {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: de })}
+                        {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 md:gap-2">
                     <span className="text-xs md:text-sm font-medium">{order.totalAmount}€</span>
                     <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5 md:px-2`} variant="outline">
-                      {getStatusLabel(order.status)}
+                      {getOrderStatus(order.status, lang)}
                     </Badge>
                   </div>
                 </div>
@@ -222,9 +217,9 @@ export default function RestaurantHome() {
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <ShoppingBag className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-sm text-muted-foreground">Noch keine Bestellungen</p>
+              <p className="text-sm text-muted-foreground">{t("common", "noOrders")}</p>
               <Button variant="outline" size="sm" className="mt-3" asChild>
-                <Link href="/restaurant/catalog" data-testid="link-browse-catalog">Produktkatalog durchsuchen</Link>
+                <Link href="/restaurant/catalog" data-testid="link-browse-catalog">{t("common", "browseCatalog")}</Link>
               </Button>
             </div>
           )}

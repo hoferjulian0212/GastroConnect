@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import logoImg from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-Photoroom_1771323869859.png";
@@ -18,10 +18,7 @@ import {
   Zap,
   Shield,
   ChevronRight,
-  Languages,
 } from "lucide-react";
-
-type Lang = "de" | "it";
 
 const translations = {
   de: {
@@ -158,17 +155,13 @@ const problemIcons = [Clock, BarChart3, MessageSquare];
 export default function Landing() {
   const [, setLocation] = useLocation();
   const { switchRole } = useUser();
-  const [lang, setLang] = useState<Lang>("de");
+  const { lang, toggleLang } = useLanguage();
 
   const t = translations[lang];
 
   function handleStart(role: "restaurant" | "supplier") {
     switchRole(role);
     setLocation(`/${role}`);
-  }
-
-  function toggleLang() {
-    setLang((prev) => (prev === "de" ? "it" : "de"));
   }
 
   return (

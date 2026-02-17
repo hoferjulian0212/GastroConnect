@@ -12,26 +12,30 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/context/UserContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-
-const mainMenuItems = [
-  { title: "Home", url: "/supplier", icon: Home },
-  { title: "Nachrichten", url: "/supplier/inbox", icon: MessageSquare, hasBadge: true },
-  { title: "Produkte", url: "/supplier/products", icon: Package },
-  { title: "Aktionen", url: "/supplier/promotions", icon: Tag },
-  { title: "Bestellungen", url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
-  { title: "Reklamationen", url: "/supplier/complaints", icon: AlertCircle },
-  { title: "Dokumente", url: "/supplier/documents", icon: FileText },
-];
-
-const bottomMenuItems = [
-  { title: "Einstellungen", url: "/supplier/settings", icon: Settings },
-];
 
 export function SupplierSidebar() {
   const [location] = useLocation();
   const { currentUser } = useUser();
+  const { lang } = useLanguage();
+  const t = useT(lang);
+
+  const mainMenuItems = [
+    { title: t("common", "home"), url: "/supplier", icon: Home },
+    { title: t("common", "messages"), url: "/supplier/inbox", icon: MessageSquare, hasBadge: true },
+    { title: t("common", "products"), url: "/supplier/products", icon: Package },
+    { title: t("common", "promotions"), url: "/supplier/promotions", icon: Tag },
+    { title: t("common", "orders"), url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
+    { title: t("common", "complaints"), url: "/supplier/complaints", icon: AlertCircle },
+    { title: t("common", "documents"), url: "/supplier/documents", icon: FileText },
+  ];
+
+  const bottomMenuItems = [
+    { title: t("common", "settings"), url: "/supplier/settings", icon: Settings },
+  ];
 
   const { data: unreadCount } = useQuery<{ count: number }>({
     queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`],
@@ -57,7 +61,7 @@ export function SupplierSidebar() {
     const badgeCount = hasBadge ? getBadgeCount(item.url) : 0;
     
     return (
-      <SidebarMenuItem key={item.title}>
+      <SidebarMenuItem key={item.url}>
         <Link 
           href={item.url} 
           data-testid={`link-${item.url.split('/').pop()}`}
@@ -118,7 +122,7 @@ export function SupplierSidebar() {
               data-testid="button-logout"
             >
               <LogOut className="h-4 w-4" />
-              <span>Abmelden</span>
+              <span>{t("common", "logout")}</span>
             </Link>
           </SidebarMenuItem>
         </SidebarMenu>

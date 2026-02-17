@@ -27,11 +27,15 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Tag, Plus, Pencil, Trash2, Package, Calendar, Percent, Loader2 } from "lucide-react";
 import type { Product, PromotionWithProduct } from "@shared/schema";
 import { format } from "date-fns";
-import { de } from "date-fns/locale";
+import { de, it } from "date-fns/locale";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export default function SupplierPromotions() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<PromotionWithProduct | null>(null);
@@ -57,11 +61,11 @@ export default function SupplierPromotions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/promotions?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: "Aktion erstellt", description: "Die Rabattaktion wurde erfolgreich erstellt." });
+      toast({ title: t("promotionsPage", "promotionCreated"), description: lang === "de" ? "Die Rabattaktion wurde erfolgreich erstellt." : "La promozione è stata creata con successo." });
       resetForm();
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Die Aktion konnte nicht erstellt werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("promotionsPage", "promotionError"), variant: "destructive" });
     },
   });
 
@@ -72,11 +76,11 @@ export default function SupplierPromotions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/promotions?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: "Aktion aktualisiert", description: "Die Rabattaktion wurde aktualisiert." });
+      toast({ title: t("promotionsPage", "promotionUpdated"), description: lang === "de" ? "Die Rabattaktion wurde aktualisiert." : "La promozione è stata aggiornata." });
       resetForm();
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Die Aktion konnte nicht aktualisiert werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("promotionsPage", "promotionError"), variant: "destructive" });
     },
   });
 
@@ -87,10 +91,10 @@ export default function SupplierPromotions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/promotions?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: "Aktion gelöscht", description: "Die Rabattaktion wurde gelöscht." });
+      toast({ title: t("promotionsPage", "promotionDeleted"), description: lang === "de" ? "Die Rabattaktion wurde gelöscht." : "La promozione è stata eliminata." });
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Die Aktion konnte nicht gelöscht werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: lang === "de" ? "Die Aktion konnte nicht gelöscht werden." : "Impossibile eliminare la promozione.", variant: "destructive" });
     },
   });
 
@@ -120,11 +124,11 @@ export default function SupplierPromotions() {
   const handleSubmit = () => {
     const discount = parseInt(discountPercent);
     if (!selectedProductId || !discount || discount < 1 || discount > 99 || !startDate || !endDate) {
-      toast({ title: "Fehler", description: "Bitte füllen Sie alle Felder korrekt aus.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: lang === "de" ? "Bitte füllen Sie alle Felder korrekt aus." : "Compila tutti i campi correttamente.", variant: "destructive" });
       return;
     }
     if (new Date(endDate) <= new Date(startDate)) {
-      toast({ title: "Fehler", description: "Das Enddatum muss nach dem Startdatum liegen.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: lang === "de" ? "Das Enddatum muss nach dem Startdatum liegen." : "La data di fine deve essere successiva alla data di inizio.", variant: "destructive" });
       return;
     }
 
@@ -153,13 +157,14 @@ export default function SupplierPromotions() {
     const now = new Date();
     const start = new Date(promo.startDate);
     const end = new Date(promo.endDate);
-    if (!promo.isActive) return { label: "Deaktiviert", variant: "secondary" as const };
-    if (now < start) return { label: "Geplant", variant: "outline" as const };
-    if (now > end) return { label: "Abgelaufen", variant: "secondary" as const };
-    return { label: "Aktiv", variant: "default" as const };
+    if (!promo.isActive) return { label: lang === "de" ? "Deaktiviert" : "Disattivato", variant: "secondary" as const };
+    if (now < start) return { label: lang === "de" ? "Geplant" : "Pianificato", variant: "outline" as const };
+    if (now > end) return { label: t("promotionsPage", "expired"), variant: "secondary" as const };
+    return { label: t("promotionsPage", "active"), variant: "default" as const };
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const dateFnsLocale = lang === "de" ? de : it;
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -167,13 +172,13 @@ export default function SupplierPromotions() {
         <div className="flex items-center gap-2 md:gap-3">
           <Tag className="h-6 w-6 md:h-8 md:w-8 text-primary" />
           <div>
-            <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Aktionen</h1>
-            <p className="text-xs md:text-sm text-muted-foreground">Rabattaktionen für Ihre Produkte verwalten</p>
+            <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "promotions")}</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">{lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti"}</p>
           </div>
         </div>
         <Button onClick={openCreateDialog} data-testid="button-create-promotion">
           <Plus className="h-4 w-4 mr-1.5" />
-          Neue Aktion
+          {t("promotionsPage", "createPromotion")}
         </Button>
       </div>
 
@@ -182,7 +187,7 @@ export default function SupplierPromotions() {
           <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
             <div className="text-center">
               <div className="text-2xl md:text-3xl font-bold text-primary" data-testid="text-total-promotions">{promotions?.length || 0}</div>
-              <p className="text-xs md:text-sm text-muted-foreground">Gesamt</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t("common", "total")}</p>
             </div>
           </CardContent>
         </Card>
@@ -195,7 +200,7 @@ export default function SupplierPromotions() {
                   return p.isActive && new Date(p.startDate) <= now && new Date(p.endDate) >= now;
                 }).length || 0}
               </div>
-              <p className="text-xs md:text-sm text-muted-foreground">Aktiv</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t("promotionsPage", "active")}</p>
             </div>
           </CardContent>
         </Card>
@@ -205,7 +210,7 @@ export default function SupplierPromotions() {
               <div className="text-2xl md:text-3xl font-bold text-muted-foreground" data-testid="text-expired-promotions">
                 {promotions?.filter(p => new Date(p.endDate) < new Date()).length || 0}
               </div>
-              <p className="text-xs md:text-sm text-muted-foreground">Abgelaufen</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t("promotionsPage", "expired")}</p>
             </div>
           </CardContent>
         </Card>
@@ -213,7 +218,7 @@ export default function SupplierPromotions() {
 
       <Card>
         <CardHeader className="p-3 md:p-6">
-          <CardTitle className="text-base md:text-lg">Alle Aktionen</CardTitle>
+          <CardTitle className="text-base md:text-lg">{lang === "de" ? "Alle Aktionen" : "Tutte le promozioni"}</CardTitle>
         </CardHeader>
         <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
           {isLoading ? (
@@ -258,7 +263,7 @@ export default function SupplierPromotions() {
                             <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
                               <Calendar className="h-3 w-3" />
                               <span>
-                                {format(new Date(promo.startDate), "dd.MM.yyyy", { locale: de })} - {format(new Date(promo.endDate), "dd.MM.yyyy", { locale: de })}
+                                {format(new Date(promo.startDate), "dd.MM.yyyy", { locale: dateFnsLocale })} - {format(new Date(promo.endDate), "dd.MM.yyyy", { locale: dateFnsLocale })}
                               </span>
                             </div>
                           </div>
@@ -291,9 +296,9 @@ export default function SupplierPromotions() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
               <Tag className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">Keine Aktionen vorhanden</p>
+              <p className="text-muted-foreground">{t("promotionsPage", "noPromotions")}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Erstellen Sie Ihre erste Rabattaktion
+                {t("promotionsPage", "noPromotionsDesc")}
               </p>
             </div>
           )}
@@ -303,19 +308,19 @@ export default function SupplierPromotions() {
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingPromo ? "Aktion bearbeiten" : "Neue Aktion erstellen"}</DialogTitle>
+            <DialogTitle>{editingPromo ? t("promotionsPage", "editPromotion") : lang === "de" ? "Neue Aktion erstellen" : "Crea nuova promozione"}</DialogTitle>
             <DialogDescription>
-              {editingPromo ? "Ändern Sie die Rabattaktion." : "Erstellen Sie eine Rabattaktion für eines Ihrer Produkte."}
+              {editingPromo ? (lang === "de" ? "Ändern Sie die Rabattaktion." : "Modifica la promozione.") : (lang === "de" ? "Erstellen Sie eine Rabattaktion für eines Ihrer Produkte." : "Crea una promozione per uno dei tuoi prodotti.")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label className="text-sm">Produkt</Label>
+              <Label className="text-sm">{lang === "de" ? "Produkt" : "Prodotto"}</Label>
               <Select value={selectedProductId} onValueChange={setSelectedProductId}>
                 <SelectTrigger className="mt-1" data-testid="select-promotion-product">
                   <Package className="h-4 w-4 mr-2 shrink-0" />
-                  <SelectValue placeholder="Produkt auswählen" />
+                  <SelectValue placeholder={t("promotionsPage", "selectProductPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {products?.map(p => (
@@ -328,7 +333,7 @@ export default function SupplierPromotions() {
             </div>
 
             <div>
-              <Label className="text-sm">Rabatt (%)</Label>
+              <Label className="text-sm">{t("promotionsPage", "discount")}</Label>
               <div className="relative mt-1">
                 <Input
                   type="number"
@@ -336,7 +341,7 @@ export default function SupplierPromotions() {
                   max={99}
                   value={discountPercent}
                   onChange={e => setDiscountPercent(e.target.value)}
-                  placeholder="z.B. 15"
+                  placeholder={lang === "de" ? "z.B. 15" : "es. 15"}
                   data-testid="input-discount-percent"
                 />
                 <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -363,7 +368,7 @@ export default function SupplierPromotions() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-sm">Startdatum</Label>
+                <Label className="text-sm">{t("promotionsPage", "startDate")}</Label>
                 <Input
                   type="date"
                   value={startDate}
@@ -373,7 +378,7 @@ export default function SupplierPromotions() {
                 />
               </div>
               <div>
-                <Label className="text-sm">Enddatum</Label>
+                <Label className="text-sm">{t("promotionsPage", "endDate")}</Label>
                 <Input
                   type="date"
                   value={endDate}
@@ -387,7 +392,7 @@ export default function SupplierPromotions() {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={resetForm} data-testid="button-cancel-promotion">
-              Abbrechen
+              {t("common", "cancel")}
             </Button>
             <Button
               onClick={handleSubmit}
@@ -395,7 +400,7 @@ export default function SupplierPromotions() {
               data-testid="button-save-promotion"
             >
               {isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-              {editingPromo ? "Speichern" : "Erstellen"}
+              {editingPromo ? t("common", "save") : t("common", "create")}
             </Button>
           </DialogFooter>
         </DialogContent>

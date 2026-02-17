@@ -21,10 +21,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ConversationWithUser, Message, Product, Order, ComplaintWithDetails, ComplaintCommentWithUser, OrderStatusHistoryWithUser, ComplaintStatusHistoryWithUser, DeliverySchedule } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay, addDays, startOfDay } from "date-fns";
-import { de } from "date-fns/locale";
+import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT, getOrderStatus, getComplaintStatus } from "@/lib/translations";
 
 type ActionMode = "none" | "order" | "complaint";
 
@@ -101,10 +103,10 @@ const getComplaintStatusColor = (status: string) => {
   }
 };
 
-const formatDateDivider = (date: Date) => {
-  if (isToday(date)) return "Heute";
-  if (isYesterday(date)) return "Gestern";
-  return format(date, "dd. MMMM yyyy", { locale: de });
+const formatDateDivider = (date: Date, lang: string = "de") => {
+  if (isToday(date)) return lang === "it" ? "Oggi" : "Heute";
+  if (isYesterday(date)) return lang === "it" ? "Ieri" : "Gestern";
+  return format(date, "dd. MMMM yyyy", { locale: lang === "it" ? it : de });
 };
 
 interface OrderWithDetails extends Order {
@@ -126,6 +128,9 @@ export default function RestaurantInbox() {
   const { currentUser } = useUser();
   const { setIsInChat } = useChat();
   const { toast } = useToast();
+  const { lang } = useLanguage();
+  const t = useT(lang);
+  const dateLocale = lang === "it" ? it : de;
   const [location, setLocation] = useLocation();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
@@ -218,7 +223,7 @@ export default function RestaurantInbox() {
       if (editAllowedWeekdaysInbox.includes(date.getDay())) {
         dates.push({
           value: format(date, "yyyy-MM-dd"),
-          label: format(date, "EEEE, dd. MMMM yyyy", { locale: de }),
+          label: format(date, "EEEE, dd. MMMM yyyy", { locale: dateLocale }),
         });
       }
     }
@@ -313,10 +318,10 @@ export default function RestaurantInbox() {
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
       }
       setEditingOrderInbox(null);
-      toast({ title: "Bestellung aktualisiert", description: "Die Bestellung wurde erfolgreich angepasst." });
+      toast({ title: t("orders", "orderUpdated"), description: t("orders", "orderUpdatedDesc") });
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Die Bestellung konnte nicht aktualisiert werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("orders", "orderUpdateError"), variant: "destructive" });
     },
   });
 
@@ -351,10 +356,10 @@ export default function RestaurantInbox() {
 
   const formatComplaintStatus = (status: string) => {
     const statusMap: Record<string, { label: string; icon: any; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      open: { label: "Offen", icon: Clock, variant: "destructive" },
-      in_progress: { label: "In Bearbeitung", icon: Loader2, variant: "default" },
-      resolved: { label: "Gelöst", icon: CheckCircle, variant: "secondary" },
-      closed: { label: "Geschlossen", icon: XCircle, variant: "outline" },
+      open: { label: getComplaintStatus("open", lang), icon: Clock, variant: "destructive" },
+      in_progress: { label: getComplaintStatus("in_progress", lang), icon: Loader2, variant: "default" },
+      resolved: { label: getComplaintStatus("resolved", lang), icon: CheckCircle, variant: "secondary" },
+      closed: { label: getComplaintStatus("closed", lang), icon: XCircle, variant: "outline" },
     };
     return statusMap[status] || { label: status, icon: Clock, variant: "secondary" as const };
   };
@@ -382,7 +387,7 @@ export default function RestaurantInbox() {
       const res = await fetch(`/api/complaints/by-order/${orderId}`);
       if (!res.ok) {
         if (res.status === 404) {
-          toast({ title: "Fehler", description: "Reklamation nicht gefunden.", variant: "destructive" });
+          toast({ title: t("common", "error"), description: t("inbox", "complaintNotFound"), variant: "destructive" });
         } else {
           throw new Error("Failed to fetch complaint");
         }
@@ -392,7 +397,7 @@ export default function RestaurantInbox() {
       const complaint: ComplaintWithDetails = await res.json();
       setSelectedComplaintId(complaint.id);
     } catch (error) {
-      toast({ title: "Fehler", description: "Reklamation konnte nicht geladen werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("inbox", "complaintLoadError"), variant: "destructive" });
       setShowComplaintDetail(false);
     } finally {
       setLoadingComplaintDetail(false);
@@ -591,16 +596,16 @@ export default function RestaurantInbox() {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       toast({
-        title: "Bestellung aufgegeben",
-        description: "Ihre Bestellung wurde erfolgreich übermittelt.",
+        title: t("orders", "orderPlaced"),
+        description: t("orders", "orderPlacedDesc"),
       });
       setOrderItems({});
       setActionMode("none");
     },
     onError: () => {
       toast({
-        title: "Fehler",
-        description: "Bestellung konnte nicht aufgegeben werden.",
+        title: t("common", "error"),
+        description: t("orders", "orderPlaceError"),
         variant: "destructive",
       });
     },
@@ -616,8 +621,8 @@ export default function RestaurantInbox() {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       toast({
-        title: "Reklamation gesendet",
-        description: "Ihre Reklamation wurde erfolgreich übermittelt.",
+        title: t("complaints", "complaintSent"),
+        description: t("complaints", "complaintSentDesc"),
       });
       setComplaintOrderId("");
       setComplaintTitle("");
@@ -626,8 +631,8 @@ export default function RestaurantInbox() {
     },
     onError: () => {
       toast({
-        title: "Fehler",
-        description: "Reklamation konnte nicht gesendet werden.",
+        title: t("common", "error"),
+        description: t("complaints", "complaintSendError"),
         variant: "destructive",
       });
     },
@@ -653,7 +658,7 @@ export default function RestaurantInbox() {
       return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status: "cancelled", changedBy: currentUser?.id });
     },
     onSuccess: () => {
-      toast({ title: "Bestellung storniert", description: "Die Bestellung wurde erfolgreich storniert." });
+      toast({ title: t("orders", "orderCancelled"), description: t("orders", "orderCancelledDesc") });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders", orderDetailId] });
@@ -666,7 +671,7 @@ export default function RestaurantInbox() {
       setShowCancelOrderConfirm(false);
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Bestellung konnte nicht storniert werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("orders", "orderCancelError"), variant: "destructive" });
     },
   });
 
@@ -675,7 +680,7 @@ export default function RestaurantInbox() {
       return apiRequest("PATCH", `/api/complaints/${id}`, { status: "closed", changedBy: currentUser?.id });
     },
     onSuccess: () => {
-      toast({ title: "Reklamation zurückgezogen", description: "Die Reklamation wurde geschlossen." });
+      toast({ title: t("complaints", "complaintWithdrawn"), description: t("complaints", "complaintWithdrawnDesc") });
       queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId] });
       queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId, "status-history"] });
       queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
@@ -685,7 +690,7 @@ export default function RestaurantInbox() {
       setShowWithdrawComplaintConfirm(false);
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Reklamation konnte nicht zurückgezogen werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("complaints", "withdrawError"), variant: "destructive" });
     },
   });
 
@@ -697,18 +702,18 @@ export default function RestaurantInbox() {
       });
     },
     onSuccess: () => {
-      toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde gespeichert." });
+      toast({ title: t("complaints", "commentAdded"), description: t("complaints", "commentAddedDesc") });
       queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId, "comments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId] });
       setNewComplaintComment("");
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Kommentar konnte nicht gespeichert werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("complaints", "commentError"), variant: "destructive" });
     },
   });
 
   const formatOrderDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString("de-DE", {
+    return new Date(date).toLocaleDateString(lang === "it" ? "it-IT" : "de-DE", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -763,8 +768,8 @@ export default function RestaurantInbox() {
   return (
     <div className={`${selectedConversation ? 'h-screen md:h-[calc(100vh-8rem)]' : 'h-[calc(100vh-8rem)]'} flex flex-col`}>
       <div className={`mb-3 md:mb-4 ${selectedConversation ? 'hidden md:block' : ''}`}>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Inbox</h1>
-        <p className="text-xs md:text-sm text-muted-foreground">Kommunizieren Sie mit Ihren Lieferanten</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("inbox", "title")}</h1>
+        <p className="text-xs md:text-sm text-muted-foreground">{t("inbox", "subtitle")}</p>
       </div>
 
       <Card className={`${selectedConversation ? 'flex-1 border-0 md:border rounded-none md:rounded-lg' : 'flex-1'} flex flex-col overflow-hidden`}>
@@ -774,7 +779,7 @@ export default function RestaurantInbox() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Suche..."
+                  placeholder={t("inbox", "searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 text-sm h-9"
@@ -797,16 +802,16 @@ export default function RestaurantInbox() {
                         ? format(new Date(conv.lastMessage.createdAt), isToday(new Date(conv.lastMessage.createdAt)) ? "HH:mm" : "dd.MM.")
                         : "";
                       const messagePreview = conv.lastMessage?.messageType === "order" 
-                        ? "Bestellung" 
+                        ? t("inbox", "orderMessage") 
                         : conv.lastMessage?.messageType === "complaint"
-                        ? "Reklamation"
+                        ? t("inbox", "complaintMessage")
                         : conv.lastMessage?.messageType === "document"
-                        ? "Lieferschein"
+                        ? t("inbox", "documentMessage")
                         : conv.lastMessage?.messageType === "order_change_request"
-                        ? "Änderungsanfrage"
+                        ? t("inbox", "changeRequest")
                         : conv.lastMessage?.messageType === "attachment"
-                        ? "Anhang"
-                        : conv.lastMessage?.content || "Keine Nachrichten";
+                        ? t("inbox", "file")
+                        : conv.lastMessage?.content || t("inbox", "noConversations");
                       const hasUnread = conv.unreadCount > 0;
                       return (
                         <button
@@ -865,7 +870,7 @@ export default function RestaurantInbox() {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center px-4">
                     <MessageSquare className="h-10 w-10 text-muted-foreground/50 mb-2" />
-                    <p className="text-sm text-muted-foreground">Keine Konversationen</p>
+                    <p className="text-sm text-muted-foreground">{t("inbox", "noConversations")}</p>
                   </div>
                 )}
               </div>
@@ -911,13 +916,13 @@ export default function RestaurantInbox() {
                         </PopoverTrigger>
                         <PopoverContent className="w-96 p-0" align="end">
                           <div className="p-3 border-b border-border">
-                            <p className="font-medium text-sm">Offene Aktionen</p>
+                            <p className="font-medium text-sm">{t("inbox", "openActions")}</p>
                             <p className="text-xs text-muted-foreground">{selectedConv.otherUser.companyName || selectedConv.otherUser.name}</p>
                           </div>
                           <div className="max-h-[420px] overflow-y-auto p-2 space-y-3">
                             {openActionsOrders && openActionsOrders.length > 0 && (
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-orders-header">Offene Bestellungen ({openActionsOrders.length})</p>
+                                <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-orders-header">{t("inbox", "openOrders")} ({openActionsOrders.length})</p>
                                 <div className="space-y-2">
                                   {openActionsOrders.map((order: any) => {
                                     const cardBg = order.status === "pending"
@@ -939,7 +944,7 @@ export default function RestaurantInbox() {
                                             <span className="text-xs font-mono truncate">#{order.id.slice(0, 8)}</span>
                                           </div>
                                           <Badge variant="secondary" className={`text-[10px] shrink-0 ${getStatusColor(order.status)}`}>
-                                            {getStatusLabel(order.status)}
+                                            {getOrderStatus(order.status, lang)}
                                           </Badge>
                                         </div>
                                         {order.items && order.items.length > 0 && (
@@ -951,18 +956,18 @@ export default function RestaurantInbox() {
                                               </div>
                                             ))}
                                             {order.items.length > 3 && (
-                                              <p className="text-[10px] text-muted-foreground">+{order.items.length - 3} weitere</p>
+                                              <p className="text-[10px] text-muted-foreground">+{order.items.length - 3} {t("orders", "moreItems")}</p>
                                             )}
                                           </div>
                                         )}
                                         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                                          <span>{format(new Date(order.createdAt), "dd.MM.yy", { locale: de })}</span>
+                                          <span>{format(new Date(order.createdAt), "dd.MM.yy", { locale: dateLocale })}</span>
                                           <span className="font-semibold text-xs text-foreground">{order.totalAmount ? `€${Number(order.totalAmount).toFixed(2)}` : ""}</span>
                                         </div>
                                         {order.requestedDeliveryDate && (
                                           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                             <Truck className="h-3 w-3" />
-                                            <span>Lieferung: {format(new Date(order.requestedDeliveryDate), "dd.MM.yyyy", { locale: de })}</span>
+                                            <span>{t("cart", "deliveryDate")}: {format(new Date(order.requestedDeliveryDate), "dd.MM.yyyy", { locale: dateLocale })}</span>
                                           </div>
                                         )}
                                       </div>
@@ -973,7 +978,7 @@ export default function RestaurantInbox() {
                             )}
                             {openActionsComplaints && openActionsComplaints.length > 0 && (
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-complaints-header">Offene Reklamationen ({openActionsComplaints.length})</p>
+                                <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-complaints-header">{t("inbox", "openComplaints")} ({openActionsComplaints.length})</p>
                                 <div className="space-y-2">
                                   {openActionsComplaints.map((complaint: any) => {
                                     const cardBg = complaint.status === "open"
@@ -993,16 +998,16 @@ export default function RestaurantInbox() {
                                             <span className="text-xs font-medium truncate">{complaint.title}</span>
                                           </div>
                                           <Badge variant="secondary" className={`text-[10px] shrink-0 ${getComplaintStatusColor(complaint.status)}`}>
-                                            {getComplaintStatusLabel(complaint.status)}
+                                            {getComplaintStatus(complaint.status, lang)}
                                           </Badge>
                                         </div>
                                         {complaint.description && (
                                           <p className="text-[10px] text-muted-foreground line-clamp-2">{complaint.description}</p>
                                         )}
                                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                          <span>Bestellung #{complaint.orderId?.slice(0, 8)}</span>
+                                          <span>{t("orders", "order")} #{complaint.orderId?.slice(0, 8)}</span>
                                           <span>•</span>
-                                          <span>{format(new Date(complaint.createdAt), "dd.MM.yy", { locale: de })}</span>
+                                          <span>{format(new Date(complaint.createdAt), "dd.MM.yy", { locale: dateLocale })}</span>
                                         </div>
                                       </div>
                                     );
@@ -1013,7 +1018,7 @@ export default function RestaurantInbox() {
                             {(!openActionsOrders || openActionsOrders.length === 0) && (!openActionsComplaints || openActionsComplaints.length === 0) && (
                               <div className="flex flex-col items-center justify-center py-6 text-center">
                                 <CheckCircle className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                                <p className="text-sm text-muted-foreground" data-testid="text-no-open-actions">Keine offenen Aktionen</p>
+                                <p className="text-sm text-muted-foreground" data-testid="text-no-open-actions">{t("inbox", "noOpenActions")}</p>
                               </div>
                             )}
                           </div>
@@ -1057,7 +1062,7 @@ export default function RestaurantInbox() {
                               {showDateDivider && (
                                 <div className="flex justify-center my-4">
                                   <span className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
-                                    {formatDateDivider(messageDate)}
+                                    {formatDateDivider(messageDate, lang)}
                                   </span>
                                 </div>
                               )}
@@ -1080,7 +1085,7 @@ export default function RestaurantInbox() {
                                           <div className="flex items-center gap-2">
                                             {orderStatus && (
                                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getStatusColor(orderStatus)}`} data-testid={`order-status-${message.id}`}>
-                                                {getStatusLabel(orderStatus)}
+                                                {getOrderStatus(orderStatus, lang)}
                                               </span>
                                             )}
                                             <span className="text-xs text-muted-foreground">
@@ -1099,7 +1104,7 @@ export default function RestaurantInbox() {
                                               ))}
                                               <Separator className="my-2" />
                                               <div className="flex justify-between items-center font-semibold">
-                                                <span>Gesamt</span>
+                                                <span>{t("common", "total")}</span>
                                                 <span>{orderData.total}€</span>
                                               </div>
                                             </div>
@@ -1117,7 +1122,7 @@ export default function RestaurantInbox() {
                                               data-testid={`button-order-details-${message.id}`}
                                             >
                                               <Eye className="h-4 w-4 mr-2" />
-                                              Bestelldetails anzeigen
+                                              {t("inbox", "showOrderDetails")}
                                             </Button>
                                           </div>
                                         )}
@@ -1134,12 +1139,12 @@ export default function RestaurantInbox() {
                                         <div className={`flex items-center justify-between px-4 py-2.5 border-b ${inactive ? "bg-muted/30 border-muted" : "bg-red-500/10 border-red-500/20"}`}>
                                           <div className="flex items-center gap-2">
                                             <AlertCircle className={`h-4 w-4 ${inactive ? "text-muted-foreground" : "text-red-600 dark:text-red-400"}`} />
-                                            <span className={`text-sm font-semibold ${inactive ? "text-muted-foreground" : "text-red-600 dark:text-red-400"}`}>Reklamation</span>
+                                            <span className={`text-sm font-semibold ${inactive ? "text-muted-foreground" : "text-red-600 dark:text-red-400"}`}>{t("inbox", "complaintMessage")}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {complaintStatus && (
                                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getComplaintStatusColor(complaintStatus)}`} data-testid={`complaint-status-${message.id}`}>
-                                                {getComplaintStatusLabel(complaintStatus)}
+                                                {getComplaintStatus(complaintStatus, lang)}
                                               </span>
                                             )}
                                             <span className="text-xs text-muted-foreground">
@@ -1153,7 +1158,7 @@ export default function RestaurantInbox() {
                                               <div className="flex items-center justify-between flex-wrap gap-1">
                                                 <span className="font-medium">{complaintData.title}</span>
                                                 <Badge variant="outline" className="text-xs">
-                                                  Bestellung #{complaintData.orderId?.substring(0, 8)}
+                                                  {t("orders", "order")} #{complaintData.orderId?.substring(0, 8)}
                                                 </Badge>
                                               </div>
                                               <p className="text-sm text-muted-foreground">{complaintData.description}</p>
@@ -1178,7 +1183,7 @@ export default function RestaurantInbox() {
                                               data-testid={`button-complaint-details-${message.id}`}
                                             >
                                               <Eye className="h-4 w-4 mr-2" />
-                                              Reklamation anzeigen
+                                              {t("inbox", "showComplaint")}
                                             </Button>
                                           </div>
                                         )}
@@ -1194,17 +1199,17 @@ export default function RestaurantInbox() {
                                         <div className="flex items-center justify-between px-4 py-2.5 border-b bg-blue-500/10 border-blue-500/20">
                                           <div className="flex items-center gap-2">
                                             <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                            <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">Lieferschein</span>
+                                            <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{t("inbox", "deliveryNote")}</span>
                                           </div>
                                           <span className="text-xs text-muted-foreground">
                                             {format(messageDate, "HH:mm")}
                                           </span>
                                         </div>
                                         <div className="px-4 py-3">
-                                          <p className="text-sm font-medium">{docData.title || "Dokument"}</p>
+                                          <p className="text-sm font-medium">{docData.title || t("inbox", "documentMessage")}</p>
                                           {docData.orderId && (
                                             <p className="text-xs text-muted-foreground mt-1">
-                                              Bestellung #{docData.orderId.slice(0, 8)}
+                                              {t("orders", "order")} #{docData.orderId.slice(0, 8)}
                                             </p>
                                           )}
                                         </div>
@@ -1220,7 +1225,7 @@ export default function RestaurantInbox() {
                                               data-testid={`button-download-doc-${message.id}`}
                                             >
                                               <Download className="h-4 w-4 mr-2" />
-                                              Lieferschein herunterladen
+                                              {t("inbox", "downloadDeliveryNote")}
                                             </Button>
                                           </div>
                                         )}
@@ -1239,18 +1244,18 @@ export default function RestaurantInbox() {
                                           <div className="flex items-center gap-2">
                                             <Pencil className={`h-4 w-4 ${isResponse ? (changeData.approved ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400") : "text-amber-600 dark:text-amber-400"}`} />
                                             <span className={`text-sm font-semibold ${isResponse ? (changeData.approved ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400") : "text-amber-600 dark:text-amber-400"}`}>
-                                              {isEdited ? "Bestellung angepasst" : isResponse ? (changeData.approved ? "Änderung genehmigt" : "Änderung abgelehnt") : "Änderungsanfrage"}
+                                              {isEdited ? t("inbox", "orderEdited") : isResponse ? (changeData.approved ? t("inbox", "changeApproved") : t("inbox", "changeRejected")) : t("inbox", "changeRequest")}
                                             </span>
                                           </div>
                                           <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
                                         </div>
                                         <div className="px-4 py-3">
                                           {changeData.orderId && (
-                                            <p className="text-xs text-muted-foreground mb-2">Bestellung #{changeData.orderId.slice(0, 8)}</p>
+                                            <p className="text-xs text-muted-foreground mb-2">{t("orders", "order")} #{changeData.orderId.slice(0, 8)}</p>
                                           )}
                                           <p className="text-sm">{changeData.message}</p>
                                           {changeData.reason && (
-                                            <p className="text-sm text-muted-foreground mt-1">Grund: {changeData.reason}</p>
+                                            <p className="text-sm text-muted-foreground mt-1">{t("inbox", "reason")}: {changeData.reason}</p>
                                           )}
                                           {isEdited && changeData.items && (
                                             <div className="mt-2 space-y-1">
@@ -1262,7 +1267,7 @@ export default function RestaurantInbox() {
                                               ))}
                                               {changeData.total && (
                                                 <div className="flex justify-between text-sm font-semibold pt-1 border-t border-border">
-                                                  <span>Gesamt</span>
+                                                  <span>{t("common", "total")}</span>
                                                   <span>{changeData.total}€</span>
                                                 </div>
                                               )}
@@ -1310,8 +1315,8 @@ export default function RestaurantInbox() {
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full text-center">
                         <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                        <p className="text-sm text-muted-foreground">Keine Nachrichten</p>
-                        <p className="text-xs text-muted-foreground mt-1">Schreiben Sie eine Nachricht um die Konversation zu starten</p>
+                        <p className="text-sm text-muted-foreground">{t("inbox", "noConversations")}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{t("inbox", "startConversation")}</p>
                       </div>
                     )}
                   </ScrollArea>
@@ -1321,14 +1326,14 @@ export default function RestaurantInbox() {
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="font-semibold flex items-center gap-2">
                           <ShoppingCart className="h-5 w-5" />
-                          Neue Bestellung
+                          {t("inbox", "orderMessage")}
                         </h3>
                         <Button variant="ghost" size="icon" onClick={() => { setActionMode("none"); setTimeout(scrollToBottom, 100); }} data-testid="button-close-order">
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Produkte von {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
+                        {t("inbox", "productsFrom")} {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
                       </p>
                     </div>
                     <ScrollArea className="flex-1 px-4">
@@ -1374,7 +1379,7 @@ export default function RestaurantInbox() {
                         ))}
                         {(!supplierProducts || supplierProducts.filter(p => p.inStock).length === 0) && (
                           <p className="text-sm text-muted-foreground text-center py-8">
-                            Keine Produkte verfügbar
+                            {t("inbox", "noProductsAvailable")}
                           </p>
                         )}
                       </div>
@@ -1387,7 +1392,7 @@ export default function RestaurantInbox() {
                         data-testid="button-submit-order"
                       >
                         <ShoppingCart className="h-4 w-4" />
-                        Bestellung aufgeben ({totalOrderItems} Artikel)
+                        {t("inbox", "placeOrderItems")} ({totalOrderItems} {t("common", "items")})
                       </Button>
                     </div>
                   </div>
@@ -1397,27 +1402,27 @@ export default function RestaurantInbox() {
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="font-semibold flex items-center gap-2">
                           <AlertCircle className="h-5 w-5 text-red-500" />
-                          Reklamation erstellen
+                          {t("complaints", "newComplaint")}
                         </h3>
                         <Button variant="ghost" size="icon" onClick={() => { setActionMode("none"); setTimeout(scrollToBottom, 100); }} data-testid="button-close-complaint">
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Reklamation an {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
+                        {t("inbox", "complaintTo")} {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
                       </p>
                     </div>
                     <ScrollArea className="flex-1 px-6">
                       <div className="space-y-4 pb-4 px-1">
                         <div className="space-y-2">
-                          <Label>Bestellung auswählen</Label>
+                          <Label>{t("complaints", "selectOrder")}</Label>
                           <Select
                             value={complaintOrderId}
                             onValueChange={setComplaintOrderId}
                             data-testid="select-complaint-order"
                           >
                             <SelectTrigger data-testid="trigger-complaint-order">
-                              <SelectValue placeholder="Bestellung wählen..." />
+                              <SelectValue placeholder={t("complaints", "selectOrderPlaceholder")} />
                             </SelectTrigger>
                             <SelectContent>
                               {supplierOrders && supplierOrders.length > 0 ? (
@@ -1432,17 +1437,17 @@ export default function RestaurantInbox() {
                                   </SelectItem>
                                 ))
                               ) : (
-                                <div className="p-2 text-sm text-muted-foreground">Keine Bestellungen gefunden</div>
+                                <div className="p-2 text-sm text-muted-foreground">{t("complaints", "noOrdersForSupplier")}</div>
                               )}
                             </SelectContent>
                           </Select>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="complaint-title">Betreff</Label>
+                          <Label htmlFor="complaint-title">{t("complaints", "subject")}</Label>
                           <Input
                             id="complaint-title"
-                            placeholder="Kurze Beschreibung des Problems..."
+                            placeholder={t("complaints", "subjectPlaceholder")}
                             value={complaintTitle}
                             onChange={(e) => setComplaintTitle(e.target.value)}
                             disabled={!complaintOrderId}
@@ -1451,10 +1456,10 @@ export default function RestaurantInbox() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="complaint-description">Beschreibung</Label>
+                          <Label htmlFor="complaint-description">{t("common", "description")}</Label>
                           <Textarea
                             id="complaint-description"
-                            placeholder="Detaillierte Beschreibung Ihrer Reklamation..."
+                            placeholder={t("complaints", "descriptionPlaceholder")}
                             value={complaintDescription}
                             onChange={(e) => setComplaintDescription(e.target.value)}
                             rows={4}
@@ -1473,7 +1478,7 @@ export default function RestaurantInbox() {
                         data-testid="button-submit-complaint"
                       >
                         <AlertCircle className="h-4 w-4" />
-                        {createComplaintMutation.isPending ? "Wird gesendet..." : "Reklamation senden"}
+                        {createComplaintMutation.isPending ? t("complaints", "sending") : t("complaints", "submitComplaint")}
                       </Button>
                     </div>
                   </div>
@@ -1497,7 +1502,7 @@ export default function RestaurantInbox() {
                           data-testid="button-new-order"
                         >
                           <ShoppingCart className="h-4 w-4" />
-                          Neue Bestellung
+                          {t("inbox", "orderMessage")}
                         </button>
                         <button
                           className="w-full flex items-center gap-2 p-2 rounded-md text-sm hover-elevate text-left"
@@ -1511,7 +1516,7 @@ export default function RestaurantInbox() {
                           data-testid="button-new-complaint"
                         >
                           <AlertCircle className="h-4 w-4" />
-                          Reklamation erstellen
+                          {t("complaints", "newComplaint")}
                         </button>
                       </PopoverContent>
                     </Popover>
@@ -1524,7 +1529,7 @@ export default function RestaurantInbox() {
                       />
                     )}
                     <Input
-                      placeholder="Nachricht schreiben..."
+                      placeholder={t("inbox", "typeMessage")}
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
                       onKeyDown={(e) => {
@@ -1549,9 +1554,9 @@ export default function RestaurantInbox() {
               <div className="flex-1 flex items-center justify-center h-full min-h-[calc(100vh-200px)]">
                 <div className="text-center">
                   <MessageSquare className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                  <p className="text-lg font-medium">Wählen Sie eine Konversation</p>
+                  <p className="text-lg font-medium">{t("inbox", "selectConversation")}</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Wählen Sie einen Lieferanten aus der Liste
+                    {t("inbox", "selectConversationDesc")}
                   </p>
                 </div>
               </div>
@@ -1565,18 +1570,18 @@ export default function RestaurantInbox() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5 text-green-600" />
-              Bestelldetails
+              {t("orders", "orderDetails")}
             </DialogTitle>
           </DialogHeader>
           {orderDetail && (
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-muted/50">
                 <div>
-                  <div className="text-xs text-muted-foreground mb-1">Bestellnummer</div>
+                  <div className="text-xs text-muted-foreground mb-1">{t("orders", "orderNumber")}</div>
                   <span className="font-mono text-sm font-semibold" data-testid="text-order-id">#{orderDetail.id.slice(0, 8)}</span>
                 </div>
                 <Badge className={getStatusColor(orderDetail.status)} data-testid="badge-order-status">
-                  {getStatusLabel(orderDetail.status)}
+                  {getOrderStatus(orderDetail.status, lang)}
                 </Badge>
               </div>
 
@@ -1589,22 +1594,22 @@ export default function RestaurantInbox() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-medium text-sm">{orderDetail.supplier.companyName || "Lieferant"}</div>
-                    <div className="text-xs text-muted-foreground">Lieferant</div>
+                    <div className="font-medium text-sm">{orderDetail.supplier.companyName || t("common", "supplier")}</div>
+                    <div className="text-xs text-muted-foreground">{t("common", "supplier")}</div>
                   </div>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border">
                 <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Erstellt am</div>
-                  <div className="text-sm font-medium">{format(new Date(orderDetail.createdAt), "dd.MM.yyyy", { locale: de })}</div>
-                  <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.createdAt), "HH:mm", { locale: de })} Uhr</div>
+                  <div className="text-xs text-muted-foreground mb-0.5">{t("orders", "createdAt")}</div>
+                  <div className="text-sm font-medium">{format(new Date(orderDetail.createdAt), "dd.MM.yyyy", { locale: dateLocale })}</div>
+                  <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.createdAt), "HH:mm", { locale: dateLocale })}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Letzte Änderung</div>
-                  <div className="text-sm font-medium">{format(new Date(orderDetail.updatedAt), "dd.MM.yyyy", { locale: de })}</div>
-                  <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.updatedAt), "HH:mm", { locale: de })} Uhr</div>
+                  <div className="text-xs text-muted-foreground mb-0.5">{t("orders", "lastChange")}</div>
+                  <div className="text-sm font-medium">{format(new Date(orderDetail.updatedAt), "dd.MM.yyyy", { locale: dateLocale })}</div>
+                  <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.updatedAt), "HH:mm", { locale: dateLocale })}</div>
                 </div>
               </div>
               
@@ -1613,7 +1618,7 @@ export default function RestaurantInbox() {
               <div>
                 <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4" />
-                  Statusverlauf
+                  {t("orders", "statusHistory")}
                 </h4>
                 <div className="p-3 rounded-lg bg-muted/30 border">
                   <StatusTimeline
@@ -1630,7 +1635,7 @@ export default function RestaurantInbox() {
               <div>
                 <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
                   <Package className="h-4 w-4" />
-                  Produkte ({orderDetail.items.length})
+                  {t("common", "products")} ({orderDetail.items.length})
                 </h4>
                 <div className="rounded-lg border overflow-hidden">
                   {orderDetail.items.map((item, idx) => (
@@ -1645,7 +1650,7 @@ export default function RestaurantInbox() {
                     </div>
                   ))}
                   <div className="flex justify-between items-center gap-2 px-3 py-3 bg-green-500/10 border-t">
-                    <span className="text-sm font-bold">Gesamtbetrag</span>
+                    <span className="text-sm font-bold">{t("orders", "totalAmount")}</span>
                     <span className="text-base font-bold text-green-700 dark:text-green-400">{parseFloat(orderDetail.totalAmount).toFixed(2)}€</span>
                   </div>
                 </div>
@@ -1655,7 +1660,7 @@ export default function RestaurantInbox() {
                 <>
                   <Separator />
                   <div>
-                    <h4 className="font-medium mb-2 text-sm">Notizen</h4>
+                    <h4 className="font-medium mb-2 text-sm">{t("orders", "notes")}</h4>
                     <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/30 border">{orderDetail.notes}</p>
                   </div>
                 </>
@@ -1687,7 +1692,7 @@ export default function RestaurantInbox() {
                     data-testid="button-edit-order-inbox"
                   >
                     <Pencil className="h-4 w-4 mr-2" />
-                    Bestellung anpassen
+                    {t("orders", "editOrder")}
                   </Button>
                 </>
               )}
@@ -1703,12 +1708,12 @@ export default function RestaurantInbox() {
                       data-testid="button-cancel-order-inbox"
                     >
                       <XCircle className="h-4 w-4 mr-2" />
-                      Bestellung stornieren
+                      {t("orders", "cancelOrder")}
                     </Button>
                   ) : (
                     <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/5 space-y-3">
-                      <p className="text-sm font-medium text-destructive">Bestellung wirklich stornieren?</p>
-                      <p className="text-xs text-muted-foreground">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+                      <p className="text-sm font-medium text-destructive">{t("orders", "confirmCancel")}</p>
+                      <p className="text-xs text-muted-foreground">{t("orders", "cancelWarning")}</p>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
@@ -1717,7 +1722,7 @@ export default function RestaurantInbox() {
                           onClick={() => setShowCancelOrderConfirm(false)}
                           data-testid="button-cancel-order-abort"
                         >
-                          Abbrechen
+                          {t("common", "cancel")}
                         </Button>
                         <Button
                           variant="destructive"
@@ -1727,7 +1732,7 @@ export default function RestaurantInbox() {
                           disabled={cancelOrderMutation.isPending}
                           data-testid="button-cancel-order-confirm"
                         >
-                          {cancelOrderMutation.isPending ? "Wird storniert..." : "Ja, stornieren"}
+                          {cancelOrderMutation.isPending ? t("inbox", "cancelling") : t("inbox", "yesCancel")}
                         </Button>
                       </div>
                     </div>
@@ -1750,7 +1755,7 @@ export default function RestaurantInbox() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-red-600" />
-              Reklamationsdetails
+              {t("complaints", "complaintDetails")}
             </DialogTitle>
           </DialogHeader>
           
@@ -1764,8 +1769,8 @@ export default function RestaurantInbox() {
           ) : isComplaintDetailError ? (
             <div className="text-center py-8 text-muted-foreground">
               <AlertCircle className="mx-auto h-10 w-10 mb-2 text-destructive" />
-              <p className="text-sm font-medium text-destructive">Fehler beim Laden</p>
-              <p className="text-xs text-muted-foreground mt-1">Die Reklamation konnte nicht geladen werden.</p>
+              <p className="text-sm font-medium text-destructive">{t("inbox", "loadError")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("inbox", "complaintLoadError")}</p>
             </div>
           ) : complaintDetail ? (
             <div className="space-y-4">
@@ -1776,7 +1781,7 @@ export default function RestaurantInbox() {
                   return (
                     <>
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">Reklamation</div>
+                        <div className="text-xs text-muted-foreground mb-1">{t("inbox", "complaintMessage")}</div>
                         <span className="font-mono text-sm font-semibold" data-testid="text-complaint-id">#{complaintDetail.id.slice(0, 8)}</span>
                       </div>
                       <Badge variant={statusInfo.variant} className="flex items-center gap-1" data-testid="badge-complaint-status">
@@ -1796,21 +1801,21 @@ export default function RestaurantInbox() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="font-medium text-sm">{complaintDetail.supplier?.companyName || "Lieferant"}</div>
+                  <div className="font-medium text-sm">{complaintDetail.supplier?.companyName || t("common", "supplier")}</div>
                   <div className="text-xs text-muted-foreground">{complaintDetail.supplier?.email}</div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border">
                 <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Erstellt am</div>
-                  <div className="text-sm font-medium">{format(new Date(complaintDetail.createdAt), "dd.MM.yyyy", { locale: de })}</div>
-                  <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.createdAt), "HH:mm", { locale: de })} Uhr</div>
+                  <div className="text-xs text-muted-foreground mb-0.5">{t("orders", "createdAt")}</div>
+                  <div className="text-sm font-medium">{format(new Date(complaintDetail.createdAt), "dd.MM.yyyy", { locale: dateLocale })}</div>
+                  <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.createdAt), "HH:mm", { locale: dateLocale })}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Letzte Änderung</div>
-                  <div className="text-sm font-medium">{format(new Date(complaintDetail.updatedAt), "dd.MM.yyyy", { locale: de })}</div>
-                  <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.updatedAt), "HH:mm", { locale: de })} Uhr</div>
+                  <div className="text-xs text-muted-foreground mb-0.5">{t("orders", "lastChange")}</div>
+                  <div className="text-sm font-medium">{format(new Date(complaintDetail.updatedAt), "dd.MM.yyyy", { locale: dateLocale })}</div>
+                  <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.updatedAt), "HH:mm", { locale: dateLocale })}</div>
                 </div>
               </div>
 
@@ -1823,7 +1828,7 @@ export default function RestaurantInbox() {
 
               {complaintDetail.mediaUrls && complaintDetail.mediaUrls.length > 0 && (
                 <div>
-                  <h4 className="font-medium text-sm mb-2">Anhänge</h4>
+                  <h4 className="font-medium text-sm mb-2">{t("complaints", "attachments")}</h4>
                   <div className="grid grid-cols-3 gap-2">
                     {complaintDetail.mediaUrls.map((url: string, idx: number) => (
                       <a key={idx} href={getMediaSrc(url)} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-lg overflow-hidden border hover-elevate">
@@ -1834,7 +1839,7 @@ export default function RestaurantInbox() {
                         ) : (
                           <img 
                             src={getMediaSrc(url)} 
-                            alt={`Anhang ${idx + 1}`}
+                            alt={`${t("complaints", "attachment")} ${idx + 1}`}
                             className="h-full w-full object-cover"
                           />
                         )}
@@ -1848,12 +1853,12 @@ export default function RestaurantInbox() {
 
               <div className="p-3 rounded-lg border">
                 <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                  <span className="text-sm font-medium">Betroffene Bestellung</span>
+                  <span className="text-sm font-medium">{t("complaints", "affectedOrder")}</span>
                   <Badge variant="outline">#{complaintDetail.orderId.substring(0, 8)}</Badge>
                 </div>
                 {complaintDetail.order && (
                   <div className="text-sm text-muted-foreground">
-                    Gesamtbetrag: {parseFloat(complaintDetail.order.totalAmount).toFixed(2)}€
+                    {t("orders", "totalAmount")}: {parseFloat(complaintDetail.order.totalAmount).toFixed(2)}€
                   </div>
                 )}
               </div>
@@ -1863,7 +1868,7 @@ export default function RestaurantInbox() {
               <div>
                 <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4" />
-                  Statusverlauf
+                  {t("orders", "statusHistory")}
                 </h4>
                 <div className="p-3 rounded-lg bg-muted/30 border">
                   <StatusTimeline
@@ -1880,7 +1885,7 @@ export default function RestaurantInbox() {
               <div>
                 <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" />
-                  Kommentare ({complaintComments?.length || 0})
+                  {t("complaints", "comments")} ({complaintComments?.length || 0})
                 </h4>
                 {loadingComments ? (
                   <div className="space-y-3">
@@ -1899,13 +1904,13 @@ export default function RestaurantInbox() {
                                 {comment.user?.companyName?.substring(0, 2).toUpperCase() || comment.user?.name?.substring(0, 2).toUpperCase() || "?"}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium">{comment.user?.companyName || comment.user?.name || "Unbekannt"}</span>
+                            <span className="text-sm font-medium">{comment.user?.companyName || comment.user?.name || t("common", "unknown")}</span>
                             <Badge variant="outline" className="text-xs">
-                              {comment.user?.role === "supplier" ? "Lieferant" : "Restaurant"}
+                              {comment.user?.role === "supplier" ? t("common", "supplier") : "Restaurant"}
                             </Badge>
                           </div>
                           <span className="text-xs text-muted-foreground">
-                            {format(new Date(comment.createdAt), "dd.MM. HH:mm", { locale: de })}
+                            {format(new Date(comment.createdAt), "dd.MM. HH:mm", { locale: dateLocale })}
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground ml-8">{comment.content}</p>
@@ -1913,18 +1918,18 @@ export default function RestaurantInbox() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">Noch keine Kommentare vorhanden</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">{t("complaints", "noComments")}</p>
                 )}
               </div>
 
               {complaintDetail.status !== "closed" && complaintDetail.status !== "resolved" && (
                 <div className="space-y-2 border-t pt-4">
-                  <Label className="text-sm">Kommentar hinzufügen</Label>
+                  <Label className="text-sm">{t("complaints", "addComment")}</Label>
                   <div className="flex gap-2">
                     <Textarea
                       value={newComplaintComment}
                       onChange={(e) => setNewComplaintComment(e.target.value)}
-                      placeholder="Schreiben Sie einen Kommentar..."
+                      placeholder={t("complaints", "commentPlaceholder")}
                       rows={2}
                       className="flex-1"
                       data-testid="input-inbox-complaint-comment"
@@ -1952,12 +1957,12 @@ export default function RestaurantInbox() {
                       data-testid="button-withdraw-complaint-inbox"
                     >
                       <XCircle className="h-4 w-4 mr-2" />
-                      Reklamation zurückziehen
+                      {t("complaints", "withdrawComplaint")}
                     </Button>
                   ) : (
                     <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/5 space-y-3">
-                      <p className="text-sm font-medium text-destructive">Reklamation wirklich zurückziehen?</p>
-                      <p className="text-xs text-muted-foreground">Die Reklamation wird geschlossen und kann nicht erneut geöffnet werden.</p>
+                      <p className="text-sm font-medium text-destructive">{t("complaints", "confirmWithdraw")}</p>
+                      <p className="text-xs text-muted-foreground">{t("complaints", "withdrawWarning")}</p>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
@@ -1966,7 +1971,7 @@ export default function RestaurantInbox() {
                           onClick={() => setShowWithdrawComplaintConfirm(false)}
                           data-testid="button-withdraw-complaint-abort"
                         >
-                          Abbrechen
+                          {t("common", "cancel")}
                         </Button>
                         <Button
                           variant="destructive"
@@ -1976,7 +1981,7 @@ export default function RestaurantInbox() {
                           disabled={withdrawComplaintMutation.isPending}
                           data-testid="button-withdraw-complaint-confirm"
                         >
-                          {withdrawComplaintMutation.isPending ? "Wird geschlossen..." : "Ja, zurückziehen"}
+                          {withdrawComplaintMutation.isPending ? t("inbox", "closing") : t("inbox", "yesWithdraw")}
                         </Button>
                       </div>
                     </div>
@@ -1987,7 +1992,7 @@ export default function RestaurantInbox() {
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <AlertCircle className="mx-auto h-10 w-10 mb-2 opacity-50" />
-              <p className="text-sm">Reklamation nicht gefunden</p>
+              <p className="text-sm">{t("inbox", "complaintNotFound")}</p>
             </div>
           )}
         </DialogContent>
@@ -1998,22 +2003,22 @@ export default function RestaurantInbox() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-5 w-5 text-primary" />
-              Bestellung anpassen
+              {t("orders", "editOrder")}
             </DialogTitle>
             <DialogDescription>
-              Bestellung #{editingOrderInbox?.id.slice(0, 8)} - Artikel bearbeiten, hinzufügen und Lieferdatum ändern
+              {t("orders", "order")} #{editingOrderInbox?.id.slice(0, 8)} - {t("inbox", "editOrderDesc")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label className="text-sm font-medium mb-2 block">Bestellpositionen</Label>
+              <Label className="text-sm font-medium mb-2 block">{t("orders", "orderItems")}</Label>
               <div className="space-y-2">
                 {editItemsInbox.map((item, index) => (
                   <div key={item.id} className="flex items-center justify-between gap-3 p-3 rounded-md bg-muted/50" data-testid={`inbox-edit-item-${item.productId}`}>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{item.productName}</p>
-                      <p className="text-xs text-muted-foreground">{parseFloat(item.unitPrice).toFixed(2)}€ pro Stück</p>
+                      <p className="text-xs text-muted-foreground">{parseFloat(item.unitPrice).toFixed(2)}€ {t("orders", "perUnit")}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Button
@@ -2054,12 +2059,12 @@ export default function RestaurantInbox() {
               <div>
                 <Label className="text-sm font-medium mb-2 flex items-center gap-1.5">
                   <PackagePlus className="h-3.5 w-3.5" />
-                  Artikel hinzufügen
+                  {t("orders", "addProduct")}
                 </Label>
                 <div className="relative mb-2">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
-                    placeholder="Produkt suchen..."
+                    placeholder={t("inbox", "searchProduct")}
                     value={editProductSearchInbox}
                     onChange={(e) => setEditProductSearchInbox(e.target.value)}
                     className="pl-8"
@@ -2077,7 +2082,7 @@ export default function RestaurantInbox() {
                       >
                         <div className="flex-1 min-w-0">
                           <p className="text-sm truncate">{product.name}</p>
-                          <p className="text-xs text-muted-foreground">{parseFloat(product.price).toFixed(2)}€ / {product.unit || "Stück"}</p>
+                          <p className="text-xs text-muted-foreground">{parseFloat(product.price).toFixed(2)}€ / {product.unit || t("common", "piece")}</p>
                         </div>
                         <Button variant="ghost" size="icon" data-testid={`inbox-button-add-product-${product.id}`}>
                           <Plus className="h-4 w-4 text-primary" />
@@ -2086,12 +2091,12 @@ export default function RestaurantInbox() {
                     ))}
                     {!editProductSearchInbox.trim() && addableProductsInbox.length > 5 && (
                       <p className="text-xs text-muted-foreground text-center py-1">
-                        {addableProductsInbox.length - 5} weitere Produkte verfügbar - Suchfeld nutzen
+                        {addableProductsInbox.length - 5} {t("orders", "moreProductsAvailable")}
                       </p>
                     )}
                   </div>
                 ) : editProductSearchInbox.trim() ? (
-                  <p className="text-xs text-muted-foreground py-2">Keine passenden Produkte gefunden.</p>
+                  <p className="text-xs text-muted-foreground py-2">{t("orders", "noMatchingProducts")}</p>
                 ) : null}
               </div>
             )}
@@ -2101,7 +2106,7 @@ export default function RestaurantInbox() {
             <div>
               <Label className="text-sm font-medium mb-2 flex items-center gap-1.5">
                 <CalendarDays className="h-3.5 w-3.5" />
-                Gewünschter Liefertermin
+                {t("cart", "deliveryDate")}
               </Label>
               <div className="space-y-2">
                 <label
@@ -2118,7 +2123,7 @@ export default function RestaurantInbox() {
                     className="accent-primary"
                   />
                   <Zap className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-sm">Sobald wie möglich</span>
+                  <span className="text-sm">{t("cart", "asap")}</span>
                 </label>
                 <label
                   className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
@@ -2134,7 +2139,7 @@ export default function RestaurantInbox() {
                     className="accent-primary"
                   />
                   <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm">Liefertag auswählen</span>
+                  <span className="text-sm">{t("cart", "selectDeliveryDay")}</span>
                 </label>
               </div>
               {editDeliveryOptionInbox === "date" && (
@@ -2164,7 +2169,7 @@ export default function RestaurantInbox() {
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground py-2">
-                      Keine Liefertage hinterlegt. Bitte wählen Sie "Sobald wie möglich".
+                      {t("cart", "noDeliveryDays")}
                     </p>
                   )}
                 </div>
@@ -2174,14 +2179,14 @@ export default function RestaurantInbox() {
             <Separator />
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Gesamtbetrag</span>
+              <span className="text-sm font-medium">{t("orders", "totalAmount")}</span>
               <span className="text-lg font-bold" data-testid="inbox-text-edit-total">{editTotalInbox}€</span>
             </div>
           </div>
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setEditingOrderInbox(null)} data-testid="inbox-button-cancel-edit">
-              Abbrechen
+              {t("common", "cancel")}
             </Button>
             <Button
               onClick={() => {
@@ -2193,7 +2198,7 @@ export default function RestaurantInbox() {
               data-testid="inbox-button-save-edit"
             >
               {updateOrderItemsInboxMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Änderungen speichern
+              {t("orders", "saveChanges")}
             </Button>
           </DialogFooter>
         </DialogContent>

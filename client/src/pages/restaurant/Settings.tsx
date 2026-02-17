@@ -5,10 +5,14 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Settings as SettingsIcon, Bell, Mail, ShoppingBag, MessageSquare, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export default function RestaurantSettings() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   const [emailNewOrder, setEmailNewOrder] = useState(true);
   const [emailOrderStatus, setEmailOrderStatus] = useState(true);
@@ -23,16 +27,16 @@ export default function RestaurantSettings() {
   const handleToggle = (setter: (v: boolean) => void, value: boolean, label: string) => {
     setter(value);
     toast({
-      title: "Einstellung gespeichert",
-      description: `${label} wurde ${value ? "aktiviert" : "deaktiviert"}.`,
+      title: t("common", "settingSaved"),
+      description: `${label} ${t("common", "was")} ${value ? t("common", "activated") : t("common", "deactivated")}.`,
     });
   };
 
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Einstellungen</h1>
-        <p className="text-xs md:text-sm text-muted-foreground">Systemeinstellungen und Benachrichtigungen verwalten</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "settings")}</h1>
+        <p className="text-xs md:text-sm text-muted-foreground">{t("settings", "manageSettings")}</p>
       </div>
 
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
@@ -40,10 +44,10 @@ export default function RestaurantSettings() {
           <CardHeader className="p-3 md:p-6">
             <CardTitle className="flex items-center gap-2 text-base md:text-lg">
               <Bell className="h-4 w-4 md:h-5 md:w-5" />
-              Benachrichtigungen
+              {t("settings", "notifications")}
             </CardTitle>
             <CardDescription className="text-xs md:text-sm">
-              Legen Sie fest, welche In-App-Benachrichtigungen Sie erhalten möchten
+              {t("settings", "notificationsDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-4">
@@ -51,13 +55,13 @@ export default function RestaurantSettings() {
               <div className="flex items-center gap-3 min-w-0">
                 <ShoppingBag className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0">
-                  <Label className="text-sm font-medium">Bestellbestätigungen</Label>
-                  <p className="text-xs text-muted-foreground">Bei Statusänderungen Ihrer Bestellungen</p>
+                  <Label className="text-sm font-medium">{t("settings", "orderConfirmations")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("settings", "orderConfirmationsDesc")}</p>
                 </div>
               </div>
               <Switch
                 checked={notifOrderStatus}
-                onCheckedChange={(v) => handleToggle(setNotifOrderStatus, v, "Bestellbestätigungen")}
+                onCheckedChange={(v) => handleToggle(setNotifOrderStatus, v, t("settings", "orderConfirmations"))}
                 data-testid="switch-notif-order-status"
               />
             </div>
@@ -66,13 +70,13 @@ export default function RestaurantSettings() {
               <div className="flex items-center gap-3 min-w-0">
                 <ShoppingBag className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0">
-                  <Label className="text-sm font-medium">Neue Bestellungen</Label>
-                  <p className="text-xs text-muted-foreground">Wenn eine neue Bestellung aufgegeben wird</p>
+                  <Label className="text-sm font-medium">{t("settings", "newOrders")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("settings", "newOrdersDesc")}</p>
                 </div>
               </div>
               <Switch
                 checked={notifNewOrder}
-                onCheckedChange={(v) => handleToggle(setNotifNewOrder, v, "Neue Bestellungen")}
+                onCheckedChange={(v) => handleToggle(setNotifNewOrder, v, t("settings", "newOrders"))}
                 data-testid="switch-notif-new-order"
               />
             </div>
@@ -81,13 +85,13 @@ export default function RestaurantSettings() {
               <div className="flex items-center gap-3 min-w-0">
                 <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0">
-                  <Label className="text-sm font-medium">Neue Nachrichten</Label>
-                  <p className="text-xs text-muted-foreground">Bei eingehenden Chat-Nachrichten</p>
+                  <Label className="text-sm font-medium">{t("settings", "newMessages")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("settings", "newMessagesDesc")}</p>
                 </div>
               </div>
               <Switch
                 checked={notifNewMessage}
-                onCheckedChange={(v) => handleToggle(setNotifNewMessage, v, "Neue Nachrichten")}
+                onCheckedChange={(v) => handleToggle(setNotifNewMessage, v, t("settings", "newMessages"))}
                 data-testid="switch-notif-new-message"
               />
             </div>
@@ -96,13 +100,13 @@ export default function RestaurantSettings() {
               <div className="flex items-center gap-3 min-w-0">
                 <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0">
-                  <Label className="text-sm font-medium">Reklamationen</Label>
-                  <p className="text-xs text-muted-foreground">Bei Updates zu Ihren Reklamationen</p>
+                  <Label className="text-sm font-medium">{t("settings", "complaintsNotif")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("settings", "complaintsNotifDesc")}</p>
                 </div>
               </div>
               <Switch
                 checked={notifComplaint}
-                onCheckedChange={(v) => handleToggle(setNotifComplaint, v, "Reklamationen")}
+                onCheckedChange={(v) => handleToggle(setNotifComplaint, v, t("settings", "complaintsNotif"))}
                 data-testid="switch-notif-complaint"
               />
             </div>
@@ -113,10 +117,10 @@ export default function RestaurantSettings() {
           <CardHeader className="p-3 md:p-6">
             <CardTitle className="flex items-center gap-2 text-base md:text-lg">
               <Mail className="h-4 w-4 md:h-5 md:w-5" />
-              E-Mail-Benachrichtigungen
+              {t("settings", "emailNotifications")}
             </CardTitle>
             <CardDescription className="text-xs md:text-sm">
-              Wählen Sie, bei welchen Ereignissen Sie per E-Mail informiert werden
+              {t("settings", "emailNotificationsDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-4">
@@ -124,13 +128,13 @@ export default function RestaurantSettings() {
               <div className="flex items-center gap-3 min-w-0">
                 <ShoppingBag className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0">
-                  <Label className="text-sm font-medium">Bestellbestätigungen</Label>
-                  <p className="text-xs text-muted-foreground">E-Mail bei Statusänderungen</p>
+                  <Label className="text-sm font-medium">{t("settings", "orderConfirmations")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("settings", "emailOrderConfirmations")}</p>
                 </div>
               </div>
               <Switch
                 checked={emailOrderStatus}
-                onCheckedChange={(v) => handleToggle(setEmailOrderStatus, v, "E-Mail Bestellbestätigungen")}
+                onCheckedChange={(v) => handleToggle(setEmailOrderStatus, v, `${t("settings", "emailNotifications")} ${t("settings", "orderConfirmations")}`)}
                 data-testid="switch-email-order-status"
               />
             </div>
@@ -139,13 +143,13 @@ export default function RestaurantSettings() {
               <div className="flex items-center gap-3 min-w-0">
                 <ShoppingBag className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0">
-                  <Label className="text-sm font-medium">Neue Bestellungen</Label>
-                  <p className="text-xs text-muted-foreground">E-Mail bei neuen Bestellungen</p>
+                  <Label className="text-sm font-medium">{t("settings", "newOrders")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("settings", "emailNewOrders")}</p>
                 </div>
               </div>
               <Switch
                 checked={emailNewOrder}
-                onCheckedChange={(v) => handleToggle(setEmailNewOrder, v, "E-Mail Neue Bestellungen")}
+                onCheckedChange={(v) => handleToggle(setEmailNewOrder, v, `${t("settings", "emailNotifications")} ${t("settings", "newOrders")}`)}
                 data-testid="switch-email-new-order"
               />
             </div>
@@ -154,13 +158,13 @@ export default function RestaurantSettings() {
               <div className="flex items-center gap-3 min-w-0">
                 <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0">
-                  <Label className="text-sm font-medium">Neue Nachrichten</Label>
-                  <p className="text-xs text-muted-foreground">E-Mail bei eingehenden Nachrichten</p>
+                  <Label className="text-sm font-medium">{t("settings", "newMessages")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("settings", "emailNewMessages")}</p>
                 </div>
               </div>
               <Switch
                 checked={emailNewMessage}
-                onCheckedChange={(v) => handleToggle(setEmailNewMessage, v, "E-Mail Neue Nachrichten")}
+                onCheckedChange={(v) => handleToggle(setEmailNewMessage, v, `${t("settings", "emailNotifications")} ${t("settings", "newMessages")}`)}
                 data-testid="switch-email-new-message"
               />
             </div>
@@ -169,13 +173,13 @@ export default function RestaurantSettings() {
               <div className="flex items-center gap-3 min-w-0">
                 <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0">
-                  <Label className="text-sm font-medium">Reklamationen</Label>
-                  <p className="text-xs text-muted-foreground">E-Mail bei Reklamations-Updates</p>
+                  <Label className="text-sm font-medium">{t("settings", "complaintsNotif")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("settings", "emailComplaints")}</p>
                 </div>
               </div>
               <Switch
                 checked={emailComplaint}
-                onCheckedChange={(v) => handleToggle(setEmailComplaint, v, "E-Mail Reklamationen")}
+                onCheckedChange={(v) => handleToggle(setEmailComplaint, v, `${t("settings", "emailNotifications")} ${t("settings", "complaintsNotif")}`)}
                 data-testid="switch-email-complaint"
               />
             </div>

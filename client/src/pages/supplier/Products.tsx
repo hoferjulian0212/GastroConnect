@@ -19,6 +19,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { z } from "zod";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 
 const productSchema = z.object({
   name: z.string().min(1, "Name ist erforderlich"),
@@ -36,6 +38,8 @@ type ProductFormData = z.infer<typeof productSchema>;
 export default function SupplierProducts() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const { lang } = useLanguage();
+  const t = useT(lang);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -75,8 +79,8 @@ export default function SupplierProducts() {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
       toast({
-        title: "Produkt erstellt",
-        description: "Das Produkt wurde erfolgreich erstellt.",
+        title: t("supplierProducts", "productCreated"),
+        description: t("supplierProducts", "productCreatedDesc"),
       });
       setIsDialogOpen(false);
       form.reset();
@@ -84,8 +88,8 @@ export default function SupplierProducts() {
     },
     onError: () => {
       toast({
-        title: "Fehler",
-        description: "Das Produkt konnte nicht erstellt werden.",
+        title: t("common", "error"),
+        description: t("supplierProducts", "productError"),
         variant: "destructive",
       });
     },
@@ -100,8 +104,8 @@ export default function SupplierProducts() {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
       toast({
-        title: "Produkt aktualisiert",
-        description: "Das Produkt wurde erfolgreich aktualisiert.",
+        title: t("supplierProducts", "productUpdated"),
+        description: t("supplierProducts", "productUpdatedDesc"),
       });
       setIsDialogOpen(false);
       setEditingProduct(null);
@@ -110,8 +114,8 @@ export default function SupplierProducts() {
     },
     onError: () => {
       toast({
-        title: "Fehler",
-        description: "Das Produkt konnte nicht aktualisiert werden.",
+        title: t("common", "error"),
+        description: t("supplierProducts", "productError"),
         variant: "destructive",
       });
     },
@@ -126,14 +130,14 @@ export default function SupplierProducts() {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
       toast({
-        title: "Produkt gelöscht",
-        description: "Das Produkt wurde erfolgreich gelöscht.",
+        title: t("supplierProducts", "productDeleted"),
+        description: lang === "de" ? "Das Produkt wurde erfolgreich gelöscht." : "Il prodotto è stato eliminato con successo.",
       });
     },
     onError: () => {
       toast({
-        title: "Fehler",
-        description: "Das Produkt konnte nicht gelöscht werden.",
+        title: t("common", "error"),
+        description: lang === "de" ? "Das Produkt konnte nicht gelöscht werden." : "Impossibile eliminare il prodotto.",
         variant: "destructive",
       });
     },
@@ -174,8 +178,8 @@ export default function SupplierProducts() {
 
     if (!file.type.startsWith("image/")) {
       toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie eine Bilddatei aus.",
+        title: t("common", "error"),
+        description: lang === "de" ? "Bitte wählen Sie eine Bilddatei aus." : "Seleziona un file immagine.",
         variant: "destructive",
       });
       return;
@@ -183,8 +187,8 @@ export default function SupplierProducts() {
 
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: "Fehler",
-        description: "Das Bild darf maximal 5MB groß sein.",
+        title: t("common", "error"),
+        description: lang === "de" ? "Das Bild darf maximal 5MB groß sein." : "L'immagine non può superare i 5 MB.",
         variant: "destructive",
       });
       return;
@@ -219,14 +223,14 @@ export default function SupplierProducts() {
       setPreviewImage(objectPath);
 
       toast({
-        title: "Bild hochgeladen",
-        description: "Das Bild wurde erfolgreich hochgeladen.",
+        title: lang === "de" ? "Bild hochgeladen" : "Immagine caricata",
+        description: lang === "de" ? "Das Bild wurde erfolgreich hochgeladen." : "L'immagine è stata caricata con successo.",
       });
     } catch (error) {
       console.error("Upload error:", error);
       toast({
-        title: "Fehler",
-        description: "Das Bild konnte nicht hochgeladen werden.",
+        title: t("common", "error"),
+        description: lang === "de" ? "Das Bild konnte nicht hochgeladen werden." : "Impossibile caricare l'immagine.",
         variant: "destructive",
       });
     } finally {
@@ -256,36 +260,36 @@ export default function SupplierProducts() {
     <div className="space-y-4 md:space-y-6">
       <div className="flex items-center justify-between gap-3 md:gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Produktkatalog</h1>
-          <p className="text-sm md:text-base text-muted-foreground">Verwalten Sie Ihre Produkte</p>
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{lang === "de" ? "Produktkatalog" : "Catalogo prodotti"}</h1>
+          <p className="text-sm md:text-base text-muted-foreground">{t("supplierProducts", "manageProducts")}</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Produkt hinzufügen</span>
-              <span className="sm:hidden">Hinzufügen</span>
+              <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}</span>
+              <span className="sm:hidden">{t("common", "add")}</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingProduct ? "Produkt bearbeiten" : "Neues Produkt"}</DialogTitle>
+              <DialogTitle>{editingProduct ? t("supplierProducts", "editProduct") : t("supplierProducts", "addProduct")}</DialogTitle>
               <DialogDescription>
                 {editingProduct 
-                  ? "Bearbeiten Sie die Produktinformationen" 
-                  : "Fügen Sie ein neues Produkt zu Ihrem Katalog hinzu"}
+                  ? (lang === "de" ? "Bearbeiten Sie die Produktinformationen" : "Modifica le informazioni del prodotto")
+                  : (lang === "de" ? "Fügen Sie ein neues Produkt zu Ihrem Katalog hinzu" : "Aggiungi un nuovo prodotto al tuo catalogo")}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-2">
-                  <FormLabel>Produktbild</FormLabel>
+                  <FormLabel>{t("supplierProducts", "productImage")}</FormLabel>
                   <div className="flex flex-col gap-3">
                     {previewImage ? (
                       <div className="relative w-full h-40 rounded-lg overflow-hidden bg-muted">
                         <img 
                           src={previewImage} 
-                          alt="Produktvorschau" 
+                          alt={lang === "de" ? "Produktvorschau" : "Anteprima prodotto"}
                           className="w-full h-full object-cover"
                         />
                         <Button
@@ -305,7 +309,7 @@ export default function SupplierProducts() {
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <ImageIcon className="h-10 w-10 text-muted-foreground/50" />
-                        <p className="text-sm text-muted-foreground">Klicken um Bild hochzuladen</p>
+                        <p className="text-sm text-muted-foreground">{lang === "de" ? "Klicken um Bild hochzuladen" : "Clicca per caricare un'immagine"}</p>
                       </div>
                     )}
                     <input
@@ -326,7 +330,7 @@ export default function SupplierProducts() {
                         data-testid="button-upload-image"
                       >
                         <Upload className="h-4 w-4" />
-                        {isUploading ? "Wird hochgeladen..." : "Bild auswählen"}
+                        {isUploading ? (lang === "de" ? "Wird hochgeladen..." : "Caricamento...") : (lang === "de" ? "Bild auswählen" : "Seleziona immagine")}
                       </Button>
                     )}
                   </div>
@@ -337,9 +341,9 @@ export default function SupplierProducts() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Produktname</FormLabel>
+                      <FormLabel>{t("supplierProducts", "productName")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="z.B. Bio Tomaten" autoComplete="off" {...field} data-testid="input-product-name" />
+                        <Input placeholder={t("supplierProducts", "productNamePlaceholder")} autoComplete="off" {...field} data-testid="input-product-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -351,10 +355,10 @@ export default function SupplierProducts() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Beschreibung</FormLabel>
+                      <FormLabel>{t("common", "description")}</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder="Produktbeschreibung..." 
+                          placeholder={lang === "de" ? "Produktbeschreibung..." : "Descrizione prodotto..."}
                           className="resize-none"
                           autoComplete="off"
                           {...field} 
@@ -372,7 +376,7 @@ export default function SupplierProducts() {
                     name="price"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Preis (€)</FormLabel>
+                        <FormLabel>{t("supplierProducts", "price")}</FormLabel>
                         <FormControl>
                           <Input type="number" step="0.01" placeholder="0.00" autoComplete="off" {...field} data-testid="input-product-price" />
                         </FormControl>
@@ -386,11 +390,11 @@ export default function SupplierProducts() {
                     name="unit"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Einheit</FormLabel>
+                        <FormLabel>{t("supplierProducts", "unit")}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-product-unit">
-                              <SelectValue placeholder="Einheit wählen" />
+                              <SelectValue placeholder={lang === "de" ? "Einheit wählen" : "Scegli unità"} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -413,11 +417,11 @@ export default function SupplierProducts() {
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Kategorie</FormLabel>
+                      <FormLabel>{t("common", "category")}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl>
                           <SelectTrigger data-testid="select-product-category">
-                            <SelectValue placeholder="Kategorie wählen" />
+                            <SelectValue placeholder={lang === "de" ? "Kategorie wählen" : "Scegli categoria"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -437,8 +441,8 @@ export default function SupplierProducts() {
                   render={({ field }) => (
                     <FormItem className="flex items-center justify-between rounded-md border p-3">
                       <div>
-                        <FormLabel className="mb-0">Verfügbar</FormLabel>
-                        <p className="text-xs text-muted-foreground">Produkt ist auf Lager</p>
+                        <FormLabel className="mb-0">{t("common", "available")}</FormLabel>
+                        <p className="text-xs text-muted-foreground">{t("supplierProducts", "inStock")}</p>
                       </div>
                       <FormControl>
                         <Switch
@@ -453,14 +457,14 @@ export default function SupplierProducts() {
 
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Abbrechen
+                    {t("common", "cancel")}
                   </Button>
                   <Button 
                     type="submit" 
                     disabled={createProductMutation.isPending || updateProductMutation.isPending || isUploading}
                     data-testid="button-save-product"
                   >
-                    {editingProduct ? "Speichern" : "Erstellen"}
+                    {editingProduct ? t("common", "save") : t("common", "create")}
                   </Button>
                 </DialogFooter>
               </form>
@@ -474,7 +478,7 @@ export default function SupplierProducts() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Suchen..."
+              placeholder={t("common", "search") + "..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 text-sm"
@@ -542,11 +546,11 @@ export default function SupplierProducts() {
                         )}
                         {product.inStock ? (
                           <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
-                            Verfügbar
+                            {t("common", "available")}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
-                            Nicht verf.
+                            {t("common", "unavailable")}
                           </Badge>
                         )}
                       </div>
@@ -558,10 +562,10 @@ export default function SupplierProducts() {
           ) : (
             <div className="flex flex-col items-center justify-center py-8 md:py-12">
               <Package className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground/50 mb-2 md:mb-3" />
-              <p className="text-sm md:text-base text-muted-foreground">Keine Produkte</p>
+              <p className="text-sm md:text-base text-muted-foreground">{t("supplierProducts", "noProducts")}</p>
               <Button className="mt-3 md:mt-4 gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-first-product">
                 <Plus className="h-4 w-4" />
-                Produkt hinzufügen
+                {lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}
               </Button>
             </div>
           )}

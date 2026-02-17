@@ -12,14 +12,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X } from "lucide-react";
 import type { OrderWithDetails } from "@shared/schema";
 import { format } from "date-fns";
-import { de } from "date-fns/locale";
+import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useSearch } from "wouter";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT, getOrderStatus } from "@/lib/translations";
 
 export default function SupplierOrders() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const { lang } = useLanguage();
+  const t = useT(lang);
+  const dateFnsLocale = lang === "de" ? de : it;
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const highlightOrderId = searchParams.get("orderId");
@@ -40,11 +45,11 @@ export default function SupplierOrders() {
     const map = new Map<string, string>();
     orders.forEach(o => {
       if (o.restaurant?.id) {
-        map.set(o.restaurant.id, o.restaurant.companyName || o.restaurant.name || "Unbekannt");
+        map.set(o.restaurant.id, o.restaurant.companyName || o.restaurant.name || t("common", "unknown"));
       }
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [orders]);
+  }, [orders, t]);
 
   const hasActiveFilters = filterRestaurant !== "all" || filterDateFrom || filterDateTo;
 
@@ -63,16 +68,16 @@ export default function SupplierOrders() {
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents", currentUser?.id, "supplier"] });
       toast({
-        title: "Lieferschein erstellt",
-        description: "Der Lieferschein wurde erfolgreich generiert und im Chat gesendet.",
+        title: t("supplierOrders", "deliveryNoteCreated"),
+        description: lang === "de" ? "Der Lieferschein wurde erfolgreich generiert und im Chat gesendet." : "La bolla di consegna è stata generata con successo e inviata in chat.",
       });
     },
     onError: (error: any) => {
       const msg = error?.message?.includes("already exists") 
-        ? "Ein Lieferschein existiert bereits für diese Bestellung."
-        : "Der Lieferschein konnte nicht erstellt werden.";
+        ? (lang === "de" ? "Ein Lieferschein existiert bereits für diese Bestellung." : "Una bolla di consegna esiste già per questo ordine.")
+        : t("supplierOrders", "deliveryNoteError");
       toast({
-        title: "Fehler",
+        title: t("common", "error"),
         description: msg,
         variant: "destructive",
       });
@@ -90,14 +95,14 @@ export default function SupplierOrders() {
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders/recent'] });
       toast({
-        title: "Status aktualisiert",
-        description: "Der Bestellstatus wurde erfolgreich aktualisiert.",
+        title: t("supplierComplaints", "statusUpdated"),
+        description: lang === "de" ? "Der Bestellstatus wurde erfolgreich aktualisiert." : "Lo stato dell'ordine è stato aggiornato con successo.",
       });
     },
     onError: () => {
       toast({
-        title: "Fehler",
-        description: "Der Status konnte nicht aktualisiert werden.",
+        title: t("common", "error"),
+        description: t("supplierOrders", "statusUpdateError"),
         variant: "destructive",
       });
     },
@@ -133,17 +138,6 @@ export default function SupplierOrders() {
       case "delivered": return "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40";
       case "cancelled": return "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40";
       default: return "";
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "pending": return "Neu";
-      case "confirmed": return "Bestätigt";
-      case "in_delivery": return "In Lieferung";
-      case "delivered": return "Geliefert";
-      case "cancelled": return "Storniert";
-      default: return status;
     }
   };
 
@@ -208,16 +202,16 @@ export default function SupplierOrders() {
               <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
                 <p className="font-medium text-sm md:text-base">#{order.id.slice(0, 8)}</p>
                 <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs`} variant="outline">
-                  {getStatusLabel(order.status)}
+                  {getOrderStatus(order.status, lang, true)}
                 </Badge>
               </div>
               <p className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1 flex items-center gap-1 truncate">
                 <Building2 className="h-3 w-3 shrink-0" />
-                <span className="truncate">{order.restaurant?.companyName || order.restaurant?.name || "Unbekannt"}</span>
+                <span className="truncate">{order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}</span>
               </p>
               <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                 <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                {format(new Date(order.createdAt), "dd.MM.yy HH:mm", { locale: de })}
+                {format(new Date(order.createdAt), "dd.MM.yy HH:mm", { locale: dateFnsLocale })}
               </p>
             </div>
           </div>
@@ -232,11 +226,11 @@ export default function SupplierOrders() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Neu</SelectItem>
-                  <SelectItem value="confirmed">Bestätigt</SelectItem>
-                  <SelectItem value="in_delivery">In Lieferung</SelectItem>
-                  <SelectItem value="delivered">Geliefert</SelectItem>
-                  <SelectItem value="cancelled">Storniert</SelectItem>
+                  <SelectItem value="pending">{getOrderStatus("pending", lang, true)}</SelectItem>
+                  <SelectItem value="confirmed">{getOrderStatus("confirmed", lang, true)}</SelectItem>
+                  <SelectItem value="in_delivery">{getOrderStatus("in_delivery", lang, true)}</SelectItem>
+                  <SelectItem value="delivered">{getOrderStatus("delivered", lang, true)}</SelectItem>
+                  <SelectItem value="cancelled">{getOrderStatus("cancelled", lang, true)}</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -261,21 +255,21 @@ export default function SupplierOrders() {
           <div className="mt-3 md:mt-4 p-2 md:p-3 rounded-md bg-muted/50 space-y-1">
             {order.requestedDeliveryDate && (
               <div>
-                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5">Gewünschter Liefertermin:</p>
+                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5">{lang === "de" ? "Gewünschter Liefertermin:" : "Data di consegna richiesta:"}</p>
                 <p className="text-xs md:text-sm font-medium" data-testid={`text-delivery-date-${order.id}`}>
-                  {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                  {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
                 </p>
               </div>
             )}
             {!order.requestedDeliveryDate && (
               <div>
-                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5">Gewünschter Liefertermin:</p>
-                <p className="text-xs md:text-sm text-muted-foreground">Sobald wie möglich</p>
+                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5">{lang === "de" ? "Gewünschter Liefertermin:" : "Data di consegna richiesta:"}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">{lang === "de" ? "Sobald wie möglich" : "Il prima possibile"}</p>
               </div>
             )}
             {order.notes && (
               <div>
-                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5 md:mb-1">Anmerkungen:</p>
+                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5 md:mb-1">{lang === "de" ? "Anmerkungen:" : "Note:"}</p>
                 <p className="text-xs md:text-sm">{order.notes}</p>
               </div>
             )}
@@ -295,7 +289,7 @@ export default function SupplierOrders() {
               ) : (
                 <FileText className="h-4 w-4 mr-2" />
               )}
-              {deliveryNoteMutation.isPending ? "Wird erstellt..." : "Lieferschein erstellen"}
+              {deliveryNoteMutation.isPending ? (lang === "de" ? "Wird erstellt..." : "Creazione...") : t("supplierOrders", "createDeliveryNote")}
             </Button>
           </div>
         )}
@@ -309,22 +303,22 @@ export default function SupplierOrders() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Aufträge</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Verwalten Sie eingehende Bestellungen</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{lang === "de" ? "Aufträge" : "Ordini"}</h1>
+        <p className="text-sm md:text-base text-muted-foreground">{t("supplierOrders", "incomingOrders")}</p>
       </div>
 
       <Card>
         <CardContent className="p-3 md:p-4">
           <div className="flex flex-col sm:flex-row gap-2 md:gap-3 items-end">
             <div className="flex-1 w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">Restaurant</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "restaurant")}</label>
               <Select value={filterRestaurant} onValueChange={setFilterRestaurant}>
                 <SelectTrigger className="h-9 text-xs md:text-sm" data-testid="filter-restaurant">
                   <Building2 className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                  <SelectValue placeholder="Alle Restaurants" />
+                  <SelectValue placeholder={t("supplierOrders", "allRestaurants")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Restaurants</SelectItem>
+                  <SelectItem value="all">{t("supplierOrders", "allRestaurants")}</SelectItem>
                   {uniqueRestaurants.map(r => (
                     <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                   ))}
@@ -332,7 +326,7 @@ export default function SupplierOrders() {
               </Select>
             </div>
             <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">Von</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
               <Input
                 type="date"
                 value={filterDateFrom}
@@ -342,7 +336,7 @@ export default function SupplierOrders() {
               />
             </div>
             <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">Bis</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
               <Input
                 type="date"
                 value={filterDateTo}
@@ -354,7 +348,7 @@ export default function SupplierOrders() {
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0" data-testid="button-clear-filters">
                 <X className="h-3.5 w-3.5 mr-1" />
-                Zurücksetzen
+                {t("common", "reset")}
               </Button>
             )}
           </div>
@@ -364,17 +358,17 @@ export default function SupplierOrders() {
       <Tabs defaultValue={highlightOrderId ? "all" : "pending"} className="w-full">
         <TabsList className="w-full overflow-x-auto flex md:grid md:grid-cols-5 lg:w-auto lg:inline-flex">
           <TabsTrigger value="pending" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-pending">
-            Neu
+            {getOrderStatus("pending", lang, true)}
             {filterOrders("pending").length > 0 && (
               <Badge variant="secondary" className="ml-1 md:ml-2 text-[10px] md:text-xs px-1.5">
                 {filterOrders("pending").length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="confirmed" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-confirmed">Bestätigt</TabsTrigger>
-          <TabsTrigger value="in_delivery" className="text-xs md:text-sm px-2 md:px-3 whitespace-nowrap" data-testid="tab-delivery">Lieferung</TabsTrigger>
-          <TabsTrigger value="delivered" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-delivered">Geliefert</TabsTrigger>
-          <TabsTrigger value="all" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-all">Alle</TabsTrigger>
+          <TabsTrigger value="confirmed" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-confirmed">{getOrderStatus("confirmed", lang, true)}</TabsTrigger>
+          <TabsTrigger value="in_delivery" className="text-xs md:text-sm px-2 md:px-3 whitespace-nowrap" data-testid="tab-delivery">{lang === "de" ? "Lieferung" : "Consegna"}</TabsTrigger>
+          <TabsTrigger value="delivered" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-delivered">{getOrderStatus("delivered", lang, true)}</TabsTrigger>
+          <TabsTrigger value="all" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-all">{t("common", "all")}</TabsTrigger>
         </TabsList>
 
         {["pending", "confirmed", "in_delivery", "delivered", "all"].map((tab) => (
@@ -395,7 +389,7 @@ export default function SupplierOrders() {
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
                       <ClipboardList className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                      <p className="text-muted-foreground">Keine Bestellungen gefunden</p>
+                      <p className="text-muted-foreground">{lang === "de" ? "Keine Bestellungen gefunden" : "Nessun ordine trovato"}</p>
                     </CardContent>
                   </Card>
                 )}
@@ -410,10 +404,10 @@ export default function SupplierOrders() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {detailOrder && getStatusIcon(detailOrder.status)}
-              Auftrag #{detailOrder?.id.slice(0, 8)}
+              {lang === "de" ? "Auftrag" : "Ordine"} #{detailOrder?.id.slice(0, 8)}
             </DialogTitle>
             <DialogDescription>
-              Auftragsdetails und Artikelübersicht
+              {lang === "de" ? "Auftragsdetails und Artikelübersicht" : "Dettagli ordine e panoramica articoli"}
             </DialogDescription>
           </DialogHeader>
           {detailOrder && (
@@ -421,7 +415,7 @@ export default function SupplierOrders() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
                   {getStatusIcon(detailOrder.status)}
-                  <span className="ml-1">{getStatusLabel(detailOrder.status)}</span>
+                  <span className="ml-1">{getOrderStatus(detailOrder.status, lang, true)}</span>
                 </Badge>
                 {detailOrder.status !== "delivered" && detailOrder.status !== "cancelled" && (
                   <Select
@@ -435,11 +429,11 @@ export default function SupplierOrders() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Neu</SelectItem>
-                      <SelectItem value="confirmed">Bestätigt</SelectItem>
-                      <SelectItem value="in_delivery">In Lieferung</SelectItem>
-                      <SelectItem value="delivered">Geliefert</SelectItem>
-                      <SelectItem value="cancelled">Storniert</SelectItem>
+                      <SelectItem value="pending">{getOrderStatus("pending", lang, true)}</SelectItem>
+                      <SelectItem value="confirmed">{getOrderStatus("confirmed", lang, true)}</SelectItem>
+                      <SelectItem value="in_delivery">{getOrderStatus("in_delivery", lang, true)}</SelectItem>
+                      <SelectItem value="delivered">{getOrderStatus("delivered", lang, true)}</SelectItem>
+                      <SelectItem value="cancelled">{getOrderStatus("cancelled", lang, true)}</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -447,28 +441,28 @@ export default function SupplierOrders() {
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Restaurant</span>
-                  <span className="font-medium">{detailOrder.restaurant?.companyName || detailOrder.restaurant?.name || "Unbekannt"}</span>
+                  <span className="text-muted-foreground">{t("common", "restaurant")}</span>
+                  <span className="font-medium">{detailOrder.restaurant?.companyName || detailOrder.restaurant?.name || t("common", "unknown")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Bestellt am</span>
-                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}</span>
+                  <span className="text-muted-foreground">{lang === "de" ? "Bestellt am" : "Ordinato il"}</span>
+                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateFnsLocale })}</span>
                 </div>
                 {detailOrder.requestedDeliveryDate ? (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Gewünschter Liefertermin</span>
-                    <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
+                    <span className="text-muted-foreground">{lang === "de" ? "Gewünschter Liefertermin" : "Data consegna richiesta"}</span>
+                    <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
                   </div>
                 ) : (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Gewünschter Liefertermin</span>
-                    <span className="text-muted-foreground">Sobald wie möglich</span>
+                    <span className="text-muted-foreground">{lang === "de" ? "Gewünschter Liefertermin" : "Data consegna richiesta"}</span>
+                    <span className="text-muted-foreground">{lang === "de" ? "Sobald wie möglich" : "Il prima possibile"}</span>
                   </div>
                 )}
               </div>
 
               <div className="border-t border-border pt-3">
-                <p className="text-sm font-medium mb-2">Artikel ({detailOrder.items?.length || 0})</p>
+                <p className="text-sm font-medium mb-2">{t("common", "items")} ({detailOrder.items?.length || 0})</p>
                 <div className="space-y-2">
                   {detailOrder.items?.map((item) => (
                     <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50" data-testid={`detail-item-${item.id}`}>
@@ -485,13 +479,13 @@ export default function SupplierOrders() {
 
               {detailOrder.notes && (
                 <div className="border-t border-border pt-3">
-                  <p className="text-sm font-medium mb-1">Anmerkungen</p>
+                  <p className="text-sm font-medium mb-1">{lang === "de" ? "Anmerkungen" : "Note"}</p>
                   <p className="text-sm text-muted-foreground">{detailOrder.notes}</p>
                 </div>
               )}
 
               <div className="border-t border-border pt-3 flex items-center justify-between">
-                <span className="text-sm font-medium">Gesamtbetrag</span>
+                <span className="text-sm font-medium">{t("common", "total")}</span>
                 <span className="text-lg font-bold" data-testid="text-detail-total">{detailOrder.totalAmount}€</span>
               </div>
 
@@ -509,7 +503,7 @@ export default function SupplierOrders() {
                     ) : (
                       <FileText className="h-4 w-4 mr-2" />
                     )}
-                    {deliveryNoteMutation.isPending ? "Wird erstellt..." : "Lieferschein erstellen"}
+                    {deliveryNoteMutation.isPending ? (lang === "de" ? "Wird erstellt..." : "Creazione...") : t("supplierOrders", "createDeliveryNote")}
                   </Button>
                 </div>
               )}

@@ -12,27 +12,30 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/context/UserContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-
-const mainMenuItems = [
-  { title: "Home", url: "/restaurant", icon: Home },
-  { title: "Nachrichten", url: "/restaurant/inbox", icon: MessageSquare, hasBadge: true },
-  { title: "Lieferanten", url: "/restaurant/suppliers", icon: Truck },
-  { title: "Produkte", url: "/restaurant/catalog", icon: Package },
-  { title: "Bestellungen", url: "/restaurant/orders", icon: ShoppingBag },
-
-  { title: "Reklamationen", url: "/restaurant/complaints", icon: AlertCircle },
-  { title: "Dokumente", url: "/restaurant/documents", icon: FileText },
-];
-
-const bottomMenuItems = [
-  { title: "Einstellungen", url: "/restaurant/settings", icon: Settings },
-];
 
 export function RestaurantSidebar() {
   const [location] = useLocation();
   const { currentUser } = useUser();
+  const { lang } = useLanguage();
+  const t = useT(lang);
+
+  const mainMenuItems = [
+    { title: t("common", "home"), url: "/restaurant", icon: Home },
+    { title: t("common", "messages"), url: "/restaurant/inbox", icon: MessageSquare, hasBadge: true },
+    { title: t("common", "suppliers"), url: "/restaurant/suppliers", icon: Truck },
+    { title: t("common", "products"), url: "/restaurant/catalog", icon: Package },
+    { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag },
+    { title: t("common", "complaints"), url: "/restaurant/complaints", icon: AlertCircle },
+    { title: t("common", "documents"), url: "/restaurant/documents", icon: FileText },
+  ];
+
+  const bottomMenuItems = [
+    { title: t("common", "settings"), url: "/restaurant/settings", icon: Settings },
+  ];
 
   const { data: unreadCount } = useQuery<{ count: number }>({
     queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`],
@@ -58,7 +61,7 @@ export function RestaurantSidebar() {
     const badgeCount = hasBadge ? getBadgeCount(item.url) : 0;
     
     return (
-      <SidebarMenuItem key={item.title}>
+      <SidebarMenuItem key={item.url}>
         <Link 
           href={item.url} 
           data-testid={`link-${item.url.split('/').pop()}`}
@@ -119,7 +122,7 @@ export function RestaurantSidebar() {
               data-testid="button-logout"
             >
               <LogOut className="h-4 w-4" />
-              <span>Abmelden</span>
+              <span>{t("common", "logout")}</span>
             </Link>
           </SidebarMenuItem>
         </SidebarMenu>

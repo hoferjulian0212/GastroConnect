@@ -9,11 +9,15 @@ import { Search, Package, MessageSquare, Phone } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import type { User } from "@shared/schema";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export default function RestaurantSuppliers() {
   const { currentUser } = useUser();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   const { data: suppliers, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users?role=supplier"],
@@ -38,9 +42,9 @@ export default function RestaurantSuppliers() {
     <div className="space-y-4 md:space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold">Lieferanten</h1>
+          <h1 className="text-xl md:text-2xl font-bold">{t("suppliers", "title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Alle Lieferanten in Ihrem Liefergebiet
+            {t("suppliers", "allInDeliveryArea")}
           </p>
         </div>
       </div>
@@ -48,7 +52,7 @@ export default function RestaurantSuppliers() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Lieferant suchen..."
+          placeholder={t("suppliers", "searchSuppliers")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -99,16 +103,16 @@ export default function RestaurantSuppliers() {
                   {supplier.companyName || supplier.name}
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Lebensmittel • {supplier.name}
+                  {t("suppliers", "foodCategory")} • {supplier.name}
                 </p>
 
                 <div className="space-y-2 mb-6">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Email</span>
+                    <span className="text-muted-foreground">{t("profile", "email")}</span>
                     <span className="font-medium truncate ml-2">{supplier.email}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Phone</span>
+                    <span className="text-muted-foreground">{t("profile", "phone")}</span>
                     <span className="font-medium">{supplier.phone || "-"}</span>
                   </div>
                 </div>
@@ -121,7 +125,7 @@ export default function RestaurantSuppliers() {
                     data-testid={`button-view-catalog-${supplier.id}`}
                   >
                     <Package className="h-4 w-4" />
-                    Katalog
+                    {t("common", "catalog")}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -130,7 +134,7 @@ export default function RestaurantSuppliers() {
                     data-testid={`button-message-${supplier.id}`}
                   >
                     <MessageSquare className="h-4 w-4" />
-                    Nachricht
+                    {t("common", "messages")}
                   </Button>
                 </div>
               </CardContent>
@@ -142,9 +146,11 @@ export default function RestaurantSuppliers() {
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
             <Package className="h-8 w-8 text-muted-foreground/50" />
           </div>
-          <p className="text-lg font-medium mb-1">Keine Lieferanten gefunden</p>
+          <p className="text-lg font-medium mb-1">{t("suppliers", "noSuppliersFound")}</p>
           <p className="text-sm text-muted-foreground mb-4">
-            {searchQuery ? "Versuchen Sie einen anderen Suchbegriff" : "Es sind noch keine Lieferanten verfügbar"}
+            {searchQuery 
+              ? t("suppliers", "tryDifferentSearch") 
+              : t("suppliers", "noSuppliersAvailable")}
           </p>
         </div>
       )}

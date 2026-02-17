@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/dialog";
 import type { User, Order, ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT, getOrderStatus, getComplaintStatus } from "@/lib/translations";
 
 function ComplaintFilters({
   complaints,
@@ -52,11 +54,14 @@ function ComplaintFilters({
   filterDateTo: string;
   setFilterDateTo: (v: string) => void;
 }) {
+  const { lang } = useLanguage();
+  const t = useT(lang);
+
   const uniqueSuppliers = useMemo(() => {
     const map = new Map<string, string>();
     complaints.forEach(c => {
       if (c.supplier?.id) {
-        map.set(c.supplier.id, c.supplier.companyName || c.supplier.name || "Unbekannt");
+        map.set(c.supplier.id, c.supplier.companyName || c.supplier.name || t("common", "unknown"));
       }
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
@@ -67,14 +72,14 @@ function ComplaintFilters({
   return (
     <div className="flex flex-col sm:flex-row gap-2 items-end flex-wrap">
       <div className="w-full sm:w-auto">
-        <label className="text-xs text-muted-foreground mb-1 block">Lieferant</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t("common", "supplier")}</label>
         <Select value={filterSupplier} onValueChange={setFilterSupplier}>
           <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[160px]" data-testid="filter-complaint-supplier">
             <Store className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-            <SelectValue placeholder="Alle" />
+            <SelectValue placeholder={t("common", "all")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Alle Lieferanten</SelectItem>
+            <SelectItem value="all">{t("common", "allSuppliers")}</SelectItem>
             {uniqueSuppliers.map(s => (
               <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
             ))}
@@ -82,33 +87,33 @@ function ComplaintFilters({
         </Select>
       </div>
       <div className="w-full sm:w-auto">
-        <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t("common", "status")}</label>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[150px]" data-testid="filter-complaint-status">
             <Filter className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-            <SelectValue placeholder="Alle" />
+            <SelectValue placeholder={t("common", "all")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Alle Status</SelectItem>
-            <SelectItem value="open">Offen</SelectItem>
-            <SelectItem value="in_progress">In Bearbeitung</SelectItem>
-            <SelectItem value="resolved">Gelöst</SelectItem>
-            <SelectItem value="closed">Geschlossen</SelectItem>
+            <SelectItem value="all">{t("complaints", "allStatuses")}</SelectItem>
+            <SelectItem value="open">{getComplaintStatus("open", lang)}</SelectItem>
+            <SelectItem value="in_progress">{getComplaintStatus("in_progress", lang)}</SelectItem>
+            <SelectItem value="resolved">{getComplaintStatus("resolved", lang)}</SelectItem>
+            <SelectItem value="closed">{getComplaintStatus("closed", lang)}</SelectItem>
           </SelectContent>
         </Select>
       </div>
       <div className="w-full sm:w-auto">
-        <label className="text-xs text-muted-foreground mb-1 block">Von</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
         <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-from" />
       </div>
       <div className="w-full sm:w-auto">
-        <label className="text-xs text-muted-foreground mb-1 block">Bis</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
         <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-to" />
       </div>
       {hasFilters && (
         <Button variant="ghost" size="sm" onClick={() => { setFilterSupplier("all"); setFilterStatus("all"); setFilterDateFrom(""); setFilterDateTo(""); }} className="shrink-0" data-testid="button-clear-complaint-filters">
           <X className="h-3.5 w-3.5 mr-1" />
-          Zurücksetzen
+          {t("common", "reset")}
         </Button>
       )}
     </div>
@@ -118,6 +123,8 @@ function ComplaintFilters({
 export default function Complaints() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const { lang } = useLanguage();
+  const t = useT(lang);
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const highlightComplaintId = searchParams.get("complaintId");
@@ -169,12 +176,12 @@ export default function Complaints() {
       });
     },
     onSuccess: () => {
-      toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde gespeichert." });
+      toast({ title: t("complaints", "commentAdded"), description: t("complaints", "commentAddedDesc") });
       queryClient.invalidateQueries({ queryKey: [`/api/complaints/${detailComplaint?.id}/comments`] });
       setNewComment("");
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Kommentar konnte nicht gespeichert werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("complaints", "commentError"), variant: "destructive" });
     },
   });
 
@@ -190,13 +197,13 @@ export default function Complaints() {
       return apiRequest("POST", "/api/complaints", data);
     },
     onSuccess: () => {
-      toast({ title: "Reklamation gesendet", description: "Ihre Reklamation wurde erfolgreich übermittelt." });
+      toast({ title: t("complaints", "complaintSent"), description: t("complaints", "complaintSentDesc") });
       queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       resetForm();
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Reklamation konnte nicht gesendet werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("complaints", "complaintSendError"), variant: "destructive" });
     },
   });
 
@@ -209,12 +216,12 @@ export default function Complaints() {
       });
     },
     onSuccess: () => {
-      toast({ title: "Reklamation aktualisiert", description: "Ihre Änderungen wurden gespeichert." });
+      toast({ title: t("complaints", "complaintUpdated"), description: t("complaints", "complaintUpdatedDesc") });
       queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
       setEditingComplaint(null);
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Änderungen konnten nicht gespeichert werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("complaints", "complaintUpdateError"), variant: "destructive" });
     },
   });
 
@@ -225,12 +232,12 @@ export default function Complaints() {
       return apiRequest("PATCH", `/api/complaints/${id}`, { status: "closed" });
     },
     onSuccess: () => {
-      toast({ title: "Reklamation zurückgezogen", description: "Die Reklamation wurde geschlossen." });
+      toast({ title: t("complaints", "complaintWithdrawn"), description: t("complaints", "complaintWithdrawnDesc") });
       queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
       setWithdrawComplaintId(null);
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Reklamation konnte nicht zurückgezogen werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("complaints", "withdrawError"), variant: "destructive" });
     },
   });
 
@@ -244,7 +251,7 @@ export default function Complaints() {
 
   const handleSubmit = () => {
     if (!selectedOrderId || !selectedSupplierId || !title.trim() || !description.trim()) {
-      toast({ title: "Fehler", description: "Bitte füllen Sie alle Felder aus.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("complaints", "fillAllFields"), variant: "destructive" });
       return;
     }
 
@@ -270,7 +277,7 @@ export default function Complaints() {
         setMediaUrls(prev => [...prev, objectPath]);
       }
     }
-    toast({ title: "Upload erfolgreich", description: `${uploadedFiles.length} Datei(en) hochgeladen` });
+    toast({ title: t("complaints", "uploadSuccess"), description: `${uploadedFiles.length} ${t("complaints", "filesUploaded")}` });
   };
 
   const removeMedia = (index: number) => {
@@ -289,30 +296,21 @@ export default function Complaints() {
   };
 
   const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString("de-DE", {
+    return new Date(date).toLocaleDateString(lang === "it" ? "it-IT" : "de-DE", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
   };
 
-  const formatOrderStatus = (status: string) => {
-    const statusMap: Record<string, string> = {
-      pending: "Ausstehend",
-      confirmed: "Bestätigt",
-      in_delivery: "In Lieferung",
-      delivered: "Geliefert",
-      cancelled: "Storniert",
-    };
-    return statusMap[status] || status;
-  };
+  const formatOrderStatus = (status: string) => getOrderStatus(status, lang);
 
   const formatComplaintStatus = (status: string) => {
     const statusMap: Record<string, { label: string; icon: typeof Clock; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      open: { label: "Offen", icon: Clock, variant: "secondary" },
-      in_progress: { label: "In Bearbeitung", icon: Loader2, variant: "default" },
-      resolved: { label: "Gelöst", icon: CheckCircle, variant: "outline" },
-      closed: { label: "Geschlossen", icon: XCircle, variant: "outline" },
+      open: { label: getComplaintStatus("open", lang), icon: Clock, variant: "secondary" },
+      in_progress: { label: getComplaintStatus("in_progress", lang), icon: Loader2, variant: "default" },
+      resolved: { label: getComplaintStatus("resolved", lang), icon: CheckCircle, variant: "outline" },
+      closed: { label: getComplaintStatus("closed", lang), icon: XCircle, variant: "outline" },
     };
     return statusMap[status] || { label: status, icon: Clock, variant: "secondary" as const };
   };
@@ -346,7 +344,7 @@ export default function Complaints() {
 
   const handleEditSubmit = () => {
     if (!editingComplaint || !editTitle.trim() || !editDescription.trim()) {
-      toast({ title: "Fehler", description: "Bitte füllen Sie alle Felder aus.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("complaints", "fillAllFields"), variant: "destructive" });
       return;
     }
 
@@ -374,7 +372,7 @@ export default function Complaints() {
         setEditMediaUrls(prev => [...prev, objectPath]);
       }
     }
-    toast({ title: "Upload erfolgreich", description: `${uploadedFiles.length} Datei(en) hochgeladen` });
+    toast({ title: t("complaints", "uploadSuccess"), description: `${uploadedFiles.length} ${t("complaints", "filesUploaded")}` });
   };
 
   const filteredComplaints = useMemo(() => {
@@ -403,19 +401,19 @@ export default function Complaints() {
       <div className="flex items-center gap-2 md:gap-3">
         <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-primary" />
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold">Reklamationen</h1>
-          <p className="text-xs md:text-sm text-muted-foreground">Schreiben Sie eine Reklamation zu einer Bestellung</p>
+          <h1 className="text-xl md:text-2xl font-semibold">{t("common", "complaints")}</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">{t("complaints", "writeComplaint")}</p>
         </div>
       </div>
 
       <div className="grid gap-3 md:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader className="p-3 md:p-6">
-            <CardTitle className="text-base md:text-lg">Neue Reklamation</CardTitle>
+            <CardTitle className="text-base md:text-lg">{t("complaints", "newComplaint")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 md:space-y-4 p-3 pt-0 md:p-6 md:pt-0">
             <div className="space-y-2">
-              <Label>Lieferant auswählen</Label>
+              <Label>{t("complaints", "selectSupplier")}</Label>
               {loadingSuppliers ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
@@ -428,7 +426,7 @@ export default function Complaints() {
                   data-testid="select-supplier"
                 >
                   <SelectTrigger data-testid="trigger-supplier">
-                    <SelectValue placeholder="Lieferant wählen..." />
+                    <SelectValue placeholder={t("complaints", "selectSupplierPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {suppliers && suppliers.length > 0 ? (
@@ -446,7 +444,7 @@ export default function Complaints() {
                         </SelectItem>
                       ))
                     ) : (
-                      <div className="p-2 text-sm text-muted-foreground">Keine Lieferanten mit Bestellungen gefunden</div>
+                      <div className="p-2 text-sm text-muted-foreground">{t("complaints", "noSuppliersWithOrders")}</div>
                     )}
                   </SelectContent>
                 </Select>
@@ -454,10 +452,10 @@ export default function Complaints() {
             </div>
 
             <div className="space-y-2">
-              <Label>Bestellung auswählen</Label>
+              <Label>{t("complaints", "selectOrder")}</Label>
               {!selectedSupplierId ? (
                 <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                  Bitte wählen Sie zuerst einen Lieferanten aus
+                  {t("complaints", "selectSupplierFirst")}
                 </div>
               ) : loadingOrders ? (
                 <Skeleton className="h-10 w-full" />
@@ -468,7 +466,7 @@ export default function Complaints() {
                   data-testid="select-order"
                 >
                   <SelectTrigger data-testid="trigger-order">
-                    <SelectValue placeholder="Bestellung wählen..." />
+                    <SelectValue placeholder={t("complaints", "selectOrderPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {orders && orders.length > 0 ? (
@@ -486,7 +484,7 @@ export default function Complaints() {
                         </SelectItem>
                       ))
                     ) : (
-                      <div className="p-2 text-sm text-muted-foreground">Keine Bestellungen gefunden</div>
+                      <div className="p-2 text-sm text-muted-foreground">{t("complaints", "noOrdersForSupplier")}</div>
                     )}
                   </SelectContent>
                 </Select>
@@ -494,10 +492,10 @@ export default function Complaints() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="title">Betreff</Label>
+              <Label htmlFor="title">{t("complaints", "subject")}</Label>
               <Input
                 id="title"
-                placeholder="Kurze Beschreibung des Problems..."
+                placeholder={t("complaints", "subjectPlaceholder")}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={!selectedOrderId}
@@ -506,10 +504,10 @@ export default function Complaints() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Beschreibung</Label>
+              <Label htmlFor="description">{t("common", "description")}</Label>
               <Textarea
                 id="description"
-                placeholder="Detaillierte Beschreibung Ihrer Reklamation..."
+                placeholder={t("complaints", "descriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
@@ -519,7 +517,7 @@ export default function Complaints() {
             </div>
 
             <div className="space-y-2">
-              <Label>Fotos / Videos anhängen (optional)</Label>
+              <Label>{t("complaints", "attachMedia")}</Label>
               <div className="flex flex-wrap gap-2">
                 {mediaUrls.map((url, index) => (
                   <div 
@@ -533,7 +531,7 @@ export default function Complaints() {
                     ) : (
                       <img 
                         src={getMediaSrc(url)} 
-                        alt={`Anhang ${index + 1}`}
+                        alt={`${t("complaints", "attachment")} ${index + 1}`}
                         className="h-full w-full object-cover"
                       />
                     )}
@@ -573,12 +571,12 @@ export default function Complaints() {
                     buttonClassName="h-20 w-20 border-2 border-dashed border-muted-foreground/30 bg-muted/30 rounded-lg hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
                   >
                     <ImagePlus className="h-5 w-5" />
-                    <span className="text-[10px]">Hinzufügen</span>
+                    <span className="text-[10px]">{t("common", "add")}</span>
                   </ObjectUploader>
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Max. 5 Dateien, je max. 50 MB (Bilder oder Videos)
+                {t("complaints", "maxFilesInfo")}
               </p>
             </div>
 
@@ -589,14 +587,14 @@ export default function Complaints() {
               data-testid="button-submit-complaint"
             >
               <Send className="mr-2 h-4 w-4" />
-              {createComplaintMutation.isPending ? "Wird gesendet..." : "Reklamation absenden"}
+              {createComplaintMutation.isPending ? t("complaints", "sending") : t("complaints", "submitComplaint")}
             </Button>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="p-3 md:p-6">
-            <CardTitle className="text-base md:text-lg">Bisherige Reklamationen</CardTitle>
+            <CardTitle className="text-base md:text-lg">{t("complaints", "yourComplaints")}</CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-3">
             <ComplaintFilters
@@ -673,7 +671,7 @@ export default function Complaints() {
                               ) : (
                                 <img 
                                   src={getMediaSrc(url)} 
-                                  alt={`Anhang ${idx + 1}`}
+                                  alt={`${t("complaints", "attachment")} ${idx + 1}`}
                                   className="h-full w-full object-cover"
                                 />
                               )}
@@ -688,7 +686,7 @@ export default function Complaints() {
                       )}
                       
                       <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
-                        <span>{complaint.supplier?.companyName || "Unbekannter Lieferant"}</span>
+                        <span>{complaint.supplier?.companyName || t("orders", "unknownSupplier")}</span>
                         <span>•</span>
                         <span>{formatDate(complaint.createdAt)}</span>
                         {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
@@ -709,7 +707,7 @@ export default function Complaints() {
             ) : (
               <div className="text-center py-6 md:py-8 text-muted-foreground">
                 <AlertCircle className="mx-auto h-10 w-10 md:h-12 md:w-12 mb-2 md:mb-3 opacity-50" />
-                <p className="text-sm md:text-base">Noch keine Reklamationen vorhanden</p>
+                <p className="text-sm md:text-base">{t("complaints", "noComplaints")}</p>
               </div>
             )}
           </CardContent>
@@ -721,10 +719,10 @@ export default function Complaints() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-primary" />
-              Reklamation
+              {t("common", "complaints")}
             </DialogTitle>
             <DialogDescription>
-              Details und Kommentare
+              {t("complaints", "complaintDetail")}
             </DialogDescription>
           </DialogHeader>
           {detailComplaint && (
@@ -748,22 +746,22 @@ export default function Complaints() {
 
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Lieferant</span>
-                    <span className="font-medium">{detailComplaint.supplier?.companyName || "Unbekannt"}</span>
+                    <span className="text-muted-foreground">{t("common", "supplier")}</span>
+                    <span className="font-medium">{detailComplaint.supplier?.companyName || t("common", "unknown")}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Bestellung</span>
+                    <span className="text-muted-foreground">{t("orders", "order")}</span>
                     <span>#{detailComplaint.orderId.substring(0, 8)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Erstellt am</span>
+                    <span className="text-muted-foreground">{t("orders", "createdAt")}</span>
                     <span>{formatDate(detailComplaint.createdAt)}</span>
                   </div>
                 </div>
 
                 {detailComplaint.mediaUrls && detailComplaint.mediaUrls.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium mb-1.5">Anhänge</p>
+                    <p className="text-sm font-medium mb-1.5">{t("complaints", "attachments")}</p>
                     <div className="flex flex-wrap gap-2">
                       {detailComplaint.mediaUrls.map((url, idx) => (
                         <a
@@ -778,7 +776,7 @@ export default function Complaints() {
                               <FileVideo className="h-6 w-6 text-muted-foreground" />
                             </div>
                           ) : (
-                            <img src={getMediaSrc(url)} alt={`Anhang ${idx + 1}`} className="h-full w-full object-cover" />
+                            <img src={getMediaSrc(url)} alt={`${t("complaints", "attachment")} ${idx + 1}`} className="h-full w-full object-cover" />
                           )}
                         </a>
                       ))}
@@ -788,7 +786,7 @@ export default function Complaints() {
               </div>
 
               <div className="border-t border-border pt-3 flex-1 overflow-auto min-h-0">
-                <p className="text-sm font-medium mb-2">Kommentare</p>
+                <p className="text-sm font-medium mb-2">{t("complaints", "comments")}</p>
                 <div className="space-y-3">
                   {loadingComments ? (
                     <div className="space-y-2">
@@ -806,7 +804,7 @@ export default function Complaints() {
                               {comment.user?.name?.substring(0, 2).toUpperCase() || "??"}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-sm font-medium">{comment.user?.name || "Unbekannt"}</span>
+                          <span className="text-sm font-medium">{comment.user?.name || t("common", "unknown")}</span>
                           <span className="text-xs text-muted-foreground ml-auto">
                             {formatDate(comment.createdAt)}
                           </span>
@@ -817,7 +815,7 @@ export default function Complaints() {
                   ) : (
                     <div className="text-center py-4 text-muted-foreground">
                       <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                      <p className="text-sm">Noch keine Kommentare</p>
+                      <p className="text-sm">{t("complaints", "noComments")}</p>
                     </div>
                   )}
                 </div>
@@ -828,7 +826,7 @@ export default function Complaints() {
                   <Textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Schreiben Sie einen Kommentar..."
+                    placeholder={t("complaints", "commentPlaceholder")}
                     rows={2}
                     className="flex-1"
                     data-testid="input-detail-comment"
@@ -852,33 +850,33 @@ export default function Complaints() {
       <Dialog open={!!editingComplaint} onOpenChange={(open) => !open && setEditingComplaint(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Reklamation bearbeiten</DialogTitle>
+            <DialogTitle>{t("complaints", "editComplaint")}</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Titel</Label>
+              <Label>{t("complaints", "subject")}</Label>
               <Input
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
-                placeholder="Kurze Beschreibung des Problems"
+                placeholder={t("complaints", "subjectPlaceholder")}
                 data-testid="input-edit-complaint-title"
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Beschreibung</Label>
+              <Label>{t("common", "description")}</Label>
               <Textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="Beschreiben Sie das Problem ausführlich..."
+                placeholder={t("complaints", "descriptionPlaceholder")}
                 rows={4}
                 data-testid="input-edit-complaint-description"
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Fotos / Videos</Label>
+              <Label>{t("complaints", "photosVideos")}</Label>
               <div className="flex flex-wrap gap-2">
                 {editMediaUrls.map((url, index) => (
                   <div 
@@ -892,7 +890,7 @@ export default function Complaints() {
                     ) : (
                       <img 
                         src={getMediaSrc(url)} 
-                        alt={`Anhang ${index + 1}`}
+                        alt={`${t("complaints", "attachment")} ${index + 1}`}
                         className="h-full w-full object-cover"
                       />
                     )}
@@ -932,7 +930,7 @@ export default function Complaints() {
                     buttonClassName="h-16 w-16 border-2 border-dashed border-muted-foreground/30 bg-muted/30 rounded-lg hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
                   >
                     <ImagePlus className="h-4 w-4" />
-                    <span className="text-[9px]">Hinzufügen</span>
+                    <span className="text-[9px]">{t("common", "add")}</span>
                   </ObjectUploader>
                 )}
               </div>
@@ -945,14 +943,14 @@ export default function Complaints() {
               onClick={() => setEditingComplaint(null)}
               data-testid="button-cancel-edit-complaint"
             >
-              Abbrechen
+              {t("common", "cancel")}
             </Button>
             <Button
               onClick={handleEditSubmit}
               disabled={!editTitle.trim() || !editDescription.trim() || updateComplaintMutation.isPending}
               data-testid="button-save-edit-complaint"
             >
-              {updateComplaintMutation.isPending ? "Wird gespeichert..." : "Speichern"}
+              {updateComplaintMutation.isPending ? t("complaints", "saving") : t("common", "save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -961,10 +959,10 @@ export default function Complaints() {
       <Dialog open={!!withdrawComplaintId} onOpenChange={(open) => !open && setWithdrawComplaintId(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Reklamation zurückziehen</DialogTitle>
+            <DialogTitle>{t("complaints", "withdrawComplaint")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Möchten Sie diese Reklamation wirklich zurückziehen? Die Reklamation wird geschlossen und kann nicht erneut geöffnet werden.
+            {t("complaints", "withdrawConfirm")}
           </p>
           <DialogFooter className="gap-2">
             <Button
@@ -972,7 +970,7 @@ export default function Complaints() {
               onClick={() => setWithdrawComplaintId(null)}
               data-testid="button-cancel-withdraw"
             >
-              Abbrechen
+              {t("common", "cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -980,7 +978,7 @@ export default function Complaints() {
               disabled={withdrawComplaintMutation.isPending}
               data-testid="button-confirm-withdraw"
             >
-              {withdrawComplaintMutation.isPending ? "Wird geschlossen..." : "Zurückziehen"}
+              {withdrawComplaintMutation.isPending ? t("complaints", "closing") : t("complaints", "withdraw")}
             </Button>
           </DialogFooter>
         </DialogContent>

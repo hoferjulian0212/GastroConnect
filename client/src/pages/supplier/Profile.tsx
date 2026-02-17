@@ -13,6 +13,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useRef, useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 
 const profileSchema = z.object({
   name: z.string().min(1, "Name ist erforderlich"),
@@ -32,6 +34,8 @@ export default function SupplierProfile() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -39,8 +43,8 @@ export default function SupplierProfile() {
 
     if (!file.type.startsWith("image/")) {
       toast({
-        title: "Ungültiges Format",
-        description: "Bitte wählen Sie eine Bilddatei aus.",
+        title: lang === "de" ? "Ungültiges Format" : "Formato non valido",
+        description: lang === "de" ? "Bitte wählen Sie eine Bilddatei aus." : "Seleziona un file immagine.",
         variant: "destructive",
       });
       return;
@@ -48,8 +52,8 @@ export default function SupplierProfile() {
 
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: "Datei zu groß",
-        description: "Das Bild darf maximal 5 MB groß sein.",
+        title: lang === "de" ? "Datei zu groß" : "File troppo grande",
+        description: lang === "de" ? "Das Bild darf maximal 5 MB groß sein." : "L'immagine non può superare i 5 MB.",
         variant: "destructive",
       });
       return;
@@ -75,14 +79,14 @@ export default function SupplierProfile() {
 
       setCurrentUser({ ...currentUser, profileImageUrl });
       toast({
-        title: "Profilbild aktualisiert",
-        description: "Ihr Profilbild wurde erfolgreich hochgeladen.",
+        title: t("profile", "profilePhotoUpdated"),
+        description: lang === "de" ? "Ihr Profilbild wurde erfolgreich hochgeladen." : "La tua foto profilo è stata caricata con successo.",
       });
     } catch (error) {
       console.error("Upload failed:", error);
       toast({
-        title: "Fehler",
-        description: "Das Bild konnte nicht hochgeladen werden.",
+        title: t("common", "error"),
+        description: t("profile", "profilePhotoError"),
         variant: "destructive",
       });
     } finally {
@@ -116,14 +120,14 @@ export default function SupplierProfile() {
       setCurrentUser(updatedUser);
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
-        title: "Profil aktualisiert",
-        description: "Ihre Änderungen wurden gespeichert.",
+        title: t("profile", "profileUpdated"),
+        description: t("profile", "profileUpdatedDesc"),
       });
     },
     onError: () => {
       toast({
-        title: "Fehler",
-        description: "Ihre Änderungen konnten nicht gespeichert werden.",
+        title: t("common", "error"),
+        description: t("profile", "profileUpdateError"),
         variant: "destructive",
       });
     },
@@ -136,8 +140,8 @@ export default function SupplierProfile() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Profil</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Verwalten Sie Ihre Unternehmensdaten</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "profile")}</h1>
+        <p className="text-sm md:text-base text-muted-foreground">{lang === "de" ? "Verwalten Sie Ihre Unternehmensdaten" : "Gestisci i dati della tua azienda"}</p>
       </div>
 
       <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
@@ -146,10 +150,10 @@ export default function SupplierProfile() {
             <CardHeader className="p-3 md:p-6">
               <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <User className="h-4 w-4 md:h-5 md:w-5" />
-                Unternehmensdaten
+                {lang === "de" ? "Unternehmensdaten" : "Dati aziendali"}
               </CardTitle>
               <CardDescription className="text-xs md:text-sm">
-                Kontakt- und Unternehmensinformationen
+                {lang === "de" ? "Kontakt- und Unternehmensinformationen" : "Informazioni di contatto e aziendali"}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -163,10 +167,10 @@ export default function SupplierProfile() {
                         <FormItem className="sm:col-span-2">
                           <FormLabel className="flex items-center gap-2">
                             <Truck className="h-4 w-4" />
-                            Firmenname
+                            {t("profile", "companyName")}
                           </FormLabel>
                           <FormControl>
-                            <Input placeholder="Mein Lieferunternehmen" {...field} data-testid="input-company-name" />
+                            <Input placeholder={lang === "de" ? "Mein Lieferunternehmen" : "La mia azienda di fornitura"} {...field} data-testid="input-company-name" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -178,9 +182,9 @@ export default function SupplierProfile() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Ansprechpartner</FormLabel>
+                          <FormLabel>{lang === "de" ? "Ansprechpartner" : "Referente"}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Max Mustermann" {...field} data-testid="input-name" />
+                            <Input placeholder={lang === "de" ? "Max Mustermann" : "Mario Rossi"} {...field} data-testid="input-name" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -194,10 +198,10 @@ export default function SupplierProfile() {
                         <FormItem>
                           <FormLabel className="flex items-center gap-2">
                             <Mail className="h-4 w-4" />
-                            E-Mail
+                            {t("profile", "email")}
                           </FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="email@lieferant.de" {...field} data-testid="input-email" />
+                            <Input type="email" placeholder={lang === "de" ? "email@lieferant.de" : "email@fornitore.it"} {...field} data-testid="input-email" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -211,7 +215,7 @@ export default function SupplierProfile() {
                         <FormItem>
                           <FormLabel className="flex items-center gap-2">
                             <Phone className="h-4 w-4" />
-                            Telefon
+                            {t("profile", "phone")}
                           </FormLabel>
                           <FormControl>
                             <Input type="tel" placeholder="+49 123 456789" {...field} data-testid="input-phone" />
@@ -228,10 +232,10 @@ export default function SupplierProfile() {
                         <FormItem className="sm:col-span-2">
                           <FormLabel className="flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
-                            Adresse
+                            {t("profile", "companyAddress")}
                           </FormLabel>
                           <FormControl>
-                            <Input placeholder="Musterstraße 123" {...field} data-testid="input-address" />
+                            <Input placeholder={lang === "de" ? "Musterstraße 123" : "Via Esempio 123"} {...field} data-testid="input-address" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -243,9 +247,9 @@ export default function SupplierProfile() {
                       name="postalCode"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>PLZ</FormLabel>
+                          <FormLabel>{lang === "de" ? "PLZ" : "CAP"}</FormLabel>
                           <FormControl>
-                            <Input placeholder="12345" {...field} data-testid="input-postal-code" />
+                            <Input placeholder={lang === "de" ? "12345" : "39100"} {...field} data-testid="input-postal-code" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -257,9 +261,9 @@ export default function SupplierProfile() {
                       name="city"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Stadt</FormLabel>
+                          <FormLabel>{lang === "de" ? "Stadt" : "Città"}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Berlin" {...field} data-testid="input-city" />
+                            <Input placeholder={lang === "de" ? "Berlin" : "Bolzano"} {...field} data-testid="input-city" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -271,10 +275,10 @@ export default function SupplierProfile() {
                       name="description"
                       render={({ field }) => (
                         <FormItem className="sm:col-span-2">
-                          <FormLabel>Unternehmensbeschreibung</FormLabel>
+                          <FormLabel>{lang === "de" ? "Unternehmensbeschreibung" : "Descrizione aziendale"}</FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Beschreiben Sie Ihr Unternehmen und Ihre Produkte..."
+                              placeholder={lang === "de" ? "Beschreiben Sie Ihr Unternehmen und Ihre Produkte..." : "Descrivi la tua azienda e i tuoi prodotti..."}
                               className="resize-none min-h-[100px]"
                               {...field}
                               data-testid="textarea-description"
@@ -293,7 +297,7 @@ export default function SupplierProfile() {
                     data-testid="button-save-profile"
                   >
                     <Save className="h-4 w-4" />
-                    Speichern
+                    {t("common", "save")}
                   </Button>
                 </form>
               </Form>
@@ -304,7 +308,7 @@ export default function SupplierProfile() {
         <div className="order-1 lg:order-2">
           <Card>
             <CardHeader className="p-3 md:p-6">
-              <CardTitle className="text-base md:text-lg">Profil</CardTitle>
+              <CardTitle className="text-base md:text-lg">{t("common", "profile")}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center text-center p-3 pt-0 md:p-6 md:pt-0">
               <div className="relative group mb-3 md:mb-4">
@@ -337,20 +341,20 @@ export default function SupplierProfile() {
                 </button>
               </div>
               <h3 className="font-medium text-base md:text-lg">
-                {currentUser?.companyName || currentUser?.name || "Mein Lieferant"}
+                {currentUser?.companyName || currentUser?.name || (lang === "de" ? "Mein Lieferant" : "Il mio fornitore")}
               </h3>
               <p className="text-xs md:text-sm text-muted-foreground">{currentUser?.email}</p>
               <div className="mt-3 md:mt-4 w-full space-y-2">
                 <div className="flex justify-between text-xs md:text-sm py-1.5 md:py-2 border-b border-border">
-                  <span className="text-muted-foreground">Rolle</span>
-                  <span>Lieferant</span>
+                  <span className="text-muted-foreground">{lang === "de" ? "Rolle" : "Ruolo"}</span>
+                  <span>{t("common", "supplier")}</span>
                 </div>
                 <div className="flex justify-between text-xs md:text-sm py-1.5 md:py-2 border-b border-border">
-                  <span className="text-muted-foreground">Telefon</span>
+                  <span className="text-muted-foreground">{t("profile", "phone")}</span>
                   <span>{currentUser?.phone || "-"}</span>
                 </div>
                 <div className="flex justify-between text-xs md:text-sm py-1.5 md:py-2">
-                  <span className="text-muted-foreground">Stadt</span>
+                  <span className="text-muted-foreground">{lang === "de" ? "Stadt" : "Città"}</span>
                   <span>{currentUser?.city || "-"}</span>
                 </div>
               </div>

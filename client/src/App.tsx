@@ -6,7 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { ChatProvider, useChat } from "@/context/ChatContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { Button } from "@/components/ui/button";
@@ -196,6 +198,7 @@ function AppLayout() {
                       <CartButton />
                     </div>
                   )}
+                  <LanguageToggle />
                   <ThemeToggle />
                 </div>
               </header>
@@ -215,12 +218,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <UserProvider>
-          <ChatProvider>
-            <AppLayout />
-            <Toaster />
-          </ChatProvider>
-        </UserProvider>
+        <LanguageProvider>
+          <UserProvider>
+            <ChatProvider>
+              <AppLayout />
+              <Toaster />
+            </ChatProvider>
+          </UserProvider>
+        </LanguageProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

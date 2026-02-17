@@ -11,11 +11,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Package, ShoppingCart, Plus, Minus, Store, Filter, Eye, Tag, Percent, Clock } from "lucide-react";
 import { differenceInDays, differenceInHours, format } from "date-fns";
-import { de } from "date-fns/locale";
+import { de, it } from "date-fns/locale";
 import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export default function RestaurantCatalog() {
   const { currentUser } = useUser();
@@ -27,6 +29,8 @@ export default function RestaurantCatalog() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [detailProduct, setDetailProduct] = useState<ProductWithSupplierAndPromotion | null>(null);
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -59,14 +63,14 @@ export default function RestaurantCatalog() {
       queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
       toast({
-        title: "Zum Warenkorb hinzugefügt",
-        description: "Das Produkt wurde erfolgreich hinzugefügt.",
+        title: t("common", "addedToCart"),
+        description: t("common", "productAddedSuccess"),
       });
     },
     onError: () => {
       toast({
-        title: "Fehler",
-        description: "Das Produkt konnte nicht hinzugefügt werden.",
+        title: t("common", "error"),
+        description: t("common", "productAddError"),
         variant: "destructive",
       });
     },
@@ -100,11 +104,13 @@ export default function RestaurantCatalog() {
     });
   };
 
+  const dateLocale = lang === "it" ? it : de;
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Produktkatalog</h1>
-        <p className="text-xs md:text-sm text-muted-foreground">Durchsuchen Sie Produkte von allen Lieferanten</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "productCatalog")}</h1>
+        <p className="text-xs md:text-sm text-muted-foreground">{t("common", "browseAllSuppliers")}</p>
       </div>
 
       <Card>
@@ -113,7 +119,7 @@ export default function RestaurantCatalog() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
               <Input
-                placeholder="Produkte suchen..."
+                placeholder={t("common", "searchProducts")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 md:pl-9 h-9 md:h-10 text-sm"
@@ -124,10 +130,10 @@ export default function RestaurantCatalog() {
               <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
                 <SelectTrigger className="w-full sm:w-[150px] md:w-[180px] h-9 md:h-10 text-xs md:text-sm" data-testid="select-supplier">
                   <Store className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 shrink-0" />
-                  <SelectValue placeholder="Lieferant" />
+                  <SelectValue placeholder={t("common", "supplier")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Lieferanten</SelectItem>
+                  <SelectItem value="all">{t("common", "allSuppliers")}</SelectItem>
                   {suppliers?.map((supplier) => (
                     <SelectItem key={supplier.id} value={supplier.id}>
                       {supplier.companyName || supplier.name}
@@ -138,10 +144,10 @@ export default function RestaurantCatalog() {
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className="w-full sm:w-[150px] md:w-[180px] h-9 md:h-10 text-xs md:text-sm" data-testid="select-category">
                   <Filter className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 shrink-0" />
-                  <SelectValue placeholder="Kategorie" />
+                  <SelectValue placeholder={t("common", "category")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Kategorien</SelectItem>
+                  <SelectItem value="all">{t("common", "allCategories")}</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category} value={category!}>
                       {category}
@@ -156,7 +162,7 @@ export default function RestaurantCatalog() {
                 data-testid="toggle-available-only"
               >
                 <Package className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
-                Nur verfügbar
+                {t("common", "onlyAvailable")}
               </Button>
               <Button
                 variant={onlyPromotions ? "default" : "outline"}
@@ -165,7 +171,7 @@ export default function RestaurantCatalog() {
                 data-testid="toggle-promotions-only"
               >
                 <Tag className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
-                Aktionen
+                {t("common", "promotions")}
               </Button>
             </div>
           </div>
@@ -219,16 +225,16 @@ export default function RestaurantCatalog() {
                           <div className="flex items-center gap-1 shrink-0">
                             {hasPromo && (
                               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-[10px] md:text-xs px-1 md:px-1.5 py-0" data-testid={`badge-promo-${product.id}`}>
-                                Aktion
+                                {t("common", "action")}
                               </Badge>
                             )}
                             {product.inStock ? (
                               <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
-                                Verfügbar
+                                {t("common", "available")}
                               </Badge>
                             ) : (
                               <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
-                                Nicht vorrätig
+                                {t("common", "unavailable")}
                               </Badge>
                             )}
                           </div>
@@ -257,19 +263,19 @@ export default function RestaurantCatalog() {
                           const hoursLeft = differenceInHours(end, now);
                           let remainingText = "";
                           if (daysLeft <= 0 && hoursLeft > 0) {
-                            remainingText = `Endet heute`;
+                            remainingText = t("common", "endsToday");
                           } else if (daysLeft === 1) {
-                            remainingText = `Noch 1 Tag`;
+                            remainingText = t("common", "oneDay");
                           } else if (daysLeft > 1) {
-                            remainingText = `Noch ${daysLeft} Tage`;
+                            remainingText = `${t("common", "still")} ${daysLeft} ${t("common", "daysLeft")}`;
                           } else {
-                            remainingText = "Endet bald";
+                            remainingText = t("common", "endsSoon");
                           }
                           return (
                             <div className="flex items-center gap-1 mt-1" data-testid={`text-promo-remaining-${product.id}`}>
                               <Clock className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
                               <span className="text-[10px] md:text-xs text-green-600 dark:text-green-400 font-medium">
-                                {remainingText} — bis {format(end, "dd.MM.yyyy", { locale: de })}
+                                {remainingText} — {t("common", "until")} {format(end, "dd.MM.yyyy", { locale: dateLocale })}
                               </span>
                             </div>
                           );
@@ -309,7 +315,7 @@ export default function RestaurantCatalog() {
                             data-testid={`button-add-to-cart-${product.id}`}
                           >
                             <ShoppingCart className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Hinzufügen</span>
+                            <span className="hidden sm:inline">{t("common", "add")}</span>
                             <span className="sm:hidden">+</span>
                           </Button>
                         </div>
@@ -322,9 +328,9 @@ export default function RestaurantCatalog() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
               <Package className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">Keine Produkte gefunden</p>
+              <p className="text-muted-foreground">{t("common", "noProductsFound")}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Versuchen Sie es mit anderen Suchbegriffen
+                {t("common", "tryDifferentSearch")}
               </p>
             </div>
           )}

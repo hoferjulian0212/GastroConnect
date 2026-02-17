@@ -29,10 +29,14 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, Building2, Filter, X } from "lucide-react";
 import type { ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT, getComplaintStatus } from "@/lib/translations";
 
 export default function SupplierComplaints() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const { lang } = useLanguage();
+  const t = useT(lang);
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const highlightComplaintId = searchParams.get("complaintId");
@@ -64,13 +68,13 @@ export default function SupplierComplaints() {
       return apiRequest("PATCH", `/api/complaints/${id}`, { status });
     },
     onSuccess: () => {
-      toast({ title: "Status aktualisiert", description: "Der Status wurde erfolgreich geändert." });
+      toast({ title: t("supplierComplaints", "statusUpdated"), description: lang === "de" ? "Der Status wurde erfolgreich geändert." : "Lo stato è stato aggiornato con successo." });
       queryClient.invalidateQueries({ queryKey: [`/api/complaints?supplierId=${currentUser?.id}`] });
       setShowStatusDialog(false);
       setSelectedComplaint(null);
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: t("supplierComplaints", "statusUpdateError"), variant: "destructive" });
     },
   });
 
@@ -82,12 +86,12 @@ export default function SupplierComplaints() {
       });
     },
     onSuccess: () => {
-      toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde gespeichert." });
+      toast({ title: lang === "de" ? "Kommentar hinzugefügt" : "Commento aggiunto", description: lang === "de" ? "Ihr Kommentar wurde gespeichert." : "Il tuo commento è stato salvato." });
       queryClient.invalidateQueries({ queryKey: [`/api/complaints/${selectedComplaint?.id}/comments`] });
       setNewComment("");
     },
     onError: () => {
-      toast({ title: "Fehler", description: "Kommentar konnte nicht gespeichert werden.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: lang === "de" ? "Kommentar konnte nicht gespeichert werden." : "Impossibile salvare il commento.", variant: "destructive" });
     },
   });
 
@@ -108,7 +112,7 @@ export default function SupplierComplaints() {
   };
 
   const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString("de-DE", {
+    return new Date(date).toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -118,7 +122,7 @@ export default function SupplierComplaints() {
   };
 
   const formatShortDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString("de-DE", {
+    return new Date(date).toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", {
       day: "2-digit",
       month: "2-digit",
       year: "2-digit",
@@ -136,12 +140,12 @@ export default function SupplierComplaints() {
     return `/objects${url}`;
   };
 
-  const formatComplaintStatus = (status: string) => {
+  const formatComplaintStatusInfo = (status: string) => {
     const statusMap: Record<string, { label: string; icon: typeof Clock; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      open: { label: "Offen", icon: Clock, variant: "secondary" },
-      in_progress: { label: "In Bearbeitung", icon: Loader2, variant: "default" },
-      resolved: { label: "Gelöst", icon: CheckCircle, variant: "outline" },
-      closed: { label: "Geschlossen", icon: XCircle, variant: "outline" },
+      open: { label: getComplaintStatus("open", lang), icon: Clock, variant: "secondary" },
+      in_progress: { label: getComplaintStatus("in_progress", lang), icon: Loader2, variant: "default" },
+      resolved: { label: getComplaintStatus("resolved", lang), icon: CheckCircle, variant: "outline" },
+      closed: { label: getComplaintStatus("closed", lang), icon: XCircle, variant: "outline" },
     };
     return statusMap[status] || { label: status, icon: Clock, variant: "secondary" as const };
   };
@@ -185,7 +189,7 @@ export default function SupplierComplaints() {
 
   const handleCommentSubmit = () => {
     if (!selectedComplaint || !newComment.trim()) {
-      toast({ title: "Fehler", description: "Bitte geben Sie einen Kommentar ein.", variant: "destructive" });
+      toast({ title: t("common", "error"), description: lang === "de" ? "Bitte geben Sie einen Kommentar ein." : "Inserisci un commento.", variant: "destructive" });
       return;
     }
     addCommentMutation.mutate({ complaintId: selectedComplaint.id, content: newComment.trim() });
@@ -196,11 +200,11 @@ export default function SupplierComplaints() {
     const map = new Map<string, string>();
     complaints.forEach(c => {
       if (c.restaurant?.id) {
-        map.set(c.restaurant.id, c.restaurant.companyName || c.restaurant.name || "Unbekannt");
+        map.set(c.restaurant.id, c.restaurant.companyName || c.restaurant.name || t("common", "unknown"));
       }
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [complaints]);
+  }, [complaints, t]);
 
   const hasActiveFilters = filterRestaurant !== "all" || filterStatus !== "all" || filterDateFrom || filterDateTo;
 
@@ -238,8 +242,8 @@ export default function SupplierComplaints() {
       <div className="flex items-center gap-2 md:gap-3">
         <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-primary" />
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold">Reklamationen</h1>
-          <p className="text-sm md:text-base text-muted-foreground">Eingegangene Reklamationen verwalten</p>
+          <h1 className="text-xl md:text-2xl font-semibold">{t("common", "complaints")}</h1>
+          <p className="text-sm md:text-base text-muted-foreground">{t("supplierComplaints", "manageComplaints")}</p>
         </div>
       </div>
 
@@ -248,7 +252,7 @@ export default function SupplierComplaints() {
           <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
             <div className="text-center">
               <div className="text-2xl md:text-3xl font-bold text-primary">{complaints?.length || 0}</div>
-              <p className="text-xs md:text-sm text-muted-foreground">Gesamt</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t("common", "total")}</p>
             </div>
           </CardContent>
         </Card>
@@ -256,7 +260,7 @@ export default function SupplierComplaints() {
           <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
             <div className="text-center">
               <div className="text-2xl md:text-3xl font-bold text-yellow-600">{openCount}</div>
-              <p className="text-xs md:text-sm text-muted-foreground">Offen</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{getComplaintStatus("open", lang)}</p>
             </div>
           </CardContent>
         </Card>
@@ -264,7 +268,7 @@ export default function SupplierComplaints() {
           <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
             <div className="text-center">
               <div className="text-2xl md:text-3xl font-bold text-blue-600">{inProgressCount}</div>
-              <p className="text-xs md:text-sm text-muted-foreground">In Bearbeitung</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{getComplaintStatus("in_progress", lang)}</p>
             </div>
           </CardContent>
         </Card>
@@ -272,19 +276,19 @@ export default function SupplierComplaints() {
 
       <Card>
         <CardHeader className="p-3 md:p-6">
-          <CardTitle className="text-base md:text-lg">Alle Reklamationen</CardTitle>
+          <CardTitle className="text-base md:text-lg">{lang === "de" ? "Alle Reklamationen" : "Tutti i reclami"}</CardTitle>
         </CardHeader>
         <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-3">
           <div className="flex flex-col sm:flex-row gap-2 items-end flex-wrap">
             <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">Restaurant</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "restaurant")}</label>
               <Select value={filterRestaurant} onValueChange={setFilterRestaurant}>
                 <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[160px]" data-testid="filter-complaint-restaurant">
                   <Building2 className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                  <SelectValue placeholder="Alle" />
+                  <SelectValue placeholder={t("common", "all")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Restaurants</SelectItem>
+                  <SelectItem value="all">{t("supplierComplaints", "allRestaurants")}</SelectItem>
                   {uniqueRestaurants.map(r => (
                     <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                   ))}
@@ -292,33 +296,33 @@ export default function SupplierComplaints() {
               </Select>
             </div>
             <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "status")}</label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[150px]" data-testid="filter-complaint-status">
                   <Filter className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                  <SelectValue placeholder="Alle" />
+                  <SelectValue placeholder={t("common", "all")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Status</SelectItem>
-                  <SelectItem value="open">Offen</SelectItem>
-                  <SelectItem value="in_progress">In Bearbeitung</SelectItem>
-                  <SelectItem value="resolved">Gelöst</SelectItem>
-                  <SelectItem value="closed">Geschlossen</SelectItem>
+                  <SelectItem value="all">{lang === "de" ? "Alle Status" : "Tutti gli stati"}</SelectItem>
+                  <SelectItem value="open">{getComplaintStatus("open", lang)}</SelectItem>
+                  <SelectItem value="in_progress">{getComplaintStatus("in_progress", lang)}</SelectItem>
+                  <SelectItem value="resolved">{getComplaintStatus("resolved", lang)}</SelectItem>
+                  <SelectItem value="closed">{getComplaintStatus("closed", lang)}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">Von</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
               <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-from" />
             </div>
             <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">Bis</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
               <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-to" />
             </div>
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0" data-testid="button-clear-complaint-filters">
                 <X className="h-3.5 w-3.5 mr-1" />
-                Zurücksetzen
+                {t("common", "reset")}
               </Button>
             )}
           </div>
@@ -332,7 +336,7 @@ export default function SupplierComplaints() {
           ) : filteredComplaints.length > 0 ? (
             <div className="space-y-3 md:space-y-4">
               {filteredComplaints.map((complaint) => {
-                const statusInfo = formatComplaintStatus(complaint.status);
+                const statusInfo = formatComplaintStatusInfo(complaint.status);
                 const StatusIcon = statusInfo.icon;
 
                 return (
@@ -352,7 +356,7 @@ export default function SupplierComplaints() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-sm md:text-base truncate">{complaint.restaurant?.companyName || "Unbekannt"}</div>
+                          <div className="font-medium text-sm md:text-base truncate">{complaint.restaurant?.companyName || t("common", "unknown")}</div>
                           <div className="text-xs md:text-sm text-muted-foreground flex items-center gap-1">
                             <Calendar className="h-2.5 w-2.5 md:h-3 md:w-3" />
                             {formatDate(complaint.createdAt)}
@@ -392,7 +396,7 @@ export default function SupplierComplaints() {
                             ) : (
                               <img 
                                 src={getMediaSrc(url)} 
-                                alt={`Anhang ${idx + 1}`}
+                                alt={`${lang === "de" ? "Anhang" : "Allegato"} ${idx + 1}`}
                                 className="h-full w-full object-cover"
                               />
                             )}
@@ -409,7 +413,7 @@ export default function SupplierComplaints() {
                         data-testid={`button-change-status-${complaint.id}`}
                       >
                         <Settings className="h-3.5 w-3.5 mr-1.5" />
-                        Status ändern
+                        {t("supplierComplaints", "updateStatus")}
                       </Button>
                       <Button
                         size="sm"
@@ -418,7 +422,7 @@ export default function SupplierComplaints() {
                         data-testid={`button-add-comment-${complaint.id}`}
                       >
                         <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                        Kommentar
+                        {lang === "de" ? "Kommentar" : "Commento"}
                       </Button>
                     </div>
                     </CardContent>
@@ -429,8 +433,8 @@ export default function SupplierComplaints() {
           ) : (
             <div className="text-center py-8 md:py-12 text-muted-foreground">
               <AlertCircle className="mx-auto h-10 w-10 md:h-12 md:w-12 mb-2 md:mb-3 opacity-50" />
-              <p className="text-base md:text-lg font-medium">Keine Reklamationen</p>
-              <p className="text-xs md:text-sm">Keine Reklamationen erhalten.</p>
+              <p className="text-base md:text-lg font-medium">{lang === "de" ? "Keine Reklamationen" : "Nessun reclamo"}</p>
+              <p className="text-xs md:text-sm">{lang === "de" ? "Keine Reklamationen erhalten." : "Nessun reclamo ricevuto."}</p>
             </div>
           )}
         </CardContent>
@@ -441,10 +445,10 @@ export default function SupplierComplaints() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-primary" />
-              Reklamation
+              {lang === "de" ? "Reklamation" : "Reclamo"}
             </DialogTitle>
             <DialogDescription>
-              Details und Kommentare
+              {lang === "de" ? "Details und Kommentare" : "Dettagli e commenti"}
             </DialogDescription>
           </DialogHeader>
           {selectedComplaint && (
@@ -453,7 +457,7 @@ export default function SupplierComplaints() {
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="font-medium text-sm md:text-base">{selectedComplaint.title}</h3>
                   {(() => {
-                    const si = formatComplaintStatus(selectedComplaint.status);
+                    const si = formatComplaintStatusInfo(selectedComplaint.status);
                     const SI = si.icon;
                     return (
                       <Badge variant={si.variant} className="text-xs shrink-0">
@@ -468,22 +472,22 @@ export default function SupplierComplaints() {
 
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Restaurant</span>
-                    <span className="font-medium">{selectedComplaint.restaurant?.companyName || "Unbekannt"}</span>
+                    <span className="text-muted-foreground">{t("common", "restaurant")}</span>
+                    <span className="font-medium">{selectedComplaint.restaurant?.companyName || t("common", "unknown")}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Bestellung</span>
+                    <span className="text-muted-foreground">{lang === "de" ? "Bestellung" : "Ordine"}</span>
                     <span>#{selectedComplaint.orderId.substring(0, 8)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Erstellt am</span>
+                    <span className="text-muted-foreground">{lang === "de" ? "Erstellt am" : "Creato il"}</span>
                     <span>{formatDate(selectedComplaint.createdAt)}</span>
                   </div>
                 </div>
 
                 {selectedComplaint.mediaUrls && selectedComplaint.mediaUrls.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium mb-1.5">Anhänge</p>
+                    <p className="text-sm font-medium mb-1.5">{lang === "de" ? "Anhänge" : "Allegati"}</p>
                     <div className="flex flex-wrap gap-2">
                       {selectedComplaint.mediaUrls.map((url, idx) => (
                         <a
@@ -498,7 +502,7 @@ export default function SupplierComplaints() {
                               <FileVideo className="h-6 w-6 text-muted-foreground" />
                             </div>
                           ) : (
-                            <img src={getMediaSrc(url)} alt={`Anhang ${idx + 1}`} className="h-full w-full object-cover" />
+                            <img src={getMediaSrc(url)} alt={`${lang === "de" ? "Anhang" : "Allegato"} ${idx + 1}`} className="h-full w-full object-cover" />
                           )}
                         </a>
                       ))}
@@ -514,13 +518,13 @@ export default function SupplierComplaints() {
                     data-testid="button-detail-change-status"
                   >
                     <Settings className="h-3.5 w-3.5 mr-1.5" />
-                    Status ändern
+                    {t("supplierComplaints", "updateStatus")}
                   </Button>
                 </div>
               </div>
 
               <div className="border-t border-border pt-3 flex-1 overflow-auto min-h-0">
-                <p className="text-sm font-medium mb-2">Kommentare</p>
+                <p className="text-sm font-medium mb-2">{lang === "de" ? "Kommentare" : "Commenti"}</p>
                 <div className="space-y-3">
                   {loadingComments ? (
                     <div className="space-y-2">
@@ -538,7 +542,7 @@ export default function SupplierComplaints() {
                               {comment.user?.name?.substring(0, 2).toUpperCase() || "??"}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-sm font-medium">{comment.user?.name || "Unbekannt"}</span>
+                          <span className="text-sm font-medium">{comment.user?.name || t("common", "unknown")}</span>
                           <span className="text-xs text-muted-foreground ml-auto">
                             {formatDate(comment.createdAt)}
                           </span>
@@ -549,7 +553,7 @@ export default function SupplierComplaints() {
                   ) : (
                     <div className="text-center py-4 text-muted-foreground">
                       <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                      <p className="text-sm">Noch keine Kommentare</p>
+                      <p className="text-sm">{lang === "de" ? "Noch keine Kommentare" : "Nessun commento ancora"}</p>
                     </div>
                   )}
                 </div>
@@ -560,7 +564,7 @@ export default function SupplierComplaints() {
                   <Textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Schreiben Sie einen Kommentar..."
+                    placeholder={lang === "de" ? "Schreiben Sie einen Kommentar..." : "Scrivi un commento..."}
                     rows={2}
                     className="flex-1"
                     data-testid="input-detail-comment"
@@ -580,13 +584,12 @@ export default function SupplierComplaints() {
         </DialogContent>
       </Dialog>
 
-      {/* Status Change Dialog */}
       <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Status ändern</DialogTitle>
+            <DialogTitle>{t("supplierComplaints", "updateStatus")}</DialogTitle>
             <DialogDescription>
-              Wählen Sie den neuen Status für diese Reklamation
+              {lang === "de" ? "Wählen Sie den neuen Status für diese Reklamation" : "Seleziona il nuovo stato per questo reclamo"}
             </DialogDescription>
           </DialogHeader>
           
@@ -600,34 +603,34 @@ export default function SupplierComplaints() {
               </div>
 
               <div className="space-y-2">
-                <Label>Neuer Status</Label>
+                <Label>{lang === "de" ? "Neuer Status" : "Nuovo stato"}</Label>
                 <Select value={newStatus} onValueChange={setNewStatus}>
                   <SelectTrigger data-testid="select-complaint-status">
-                    <SelectValue placeholder="Status wählen" />
+                    <SelectValue placeholder={lang === "de" ? "Status wählen" : "Scegli stato"} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="open">
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
-                        Offen
+                        {getComplaintStatus("open", lang)}
                       </div>
                     </SelectItem>
                     <SelectItem value="in_progress">
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4" />
-                        In Bearbeitung
+                        {getComplaintStatus("in_progress", lang)}
                       </div>
                     </SelectItem>
                     <SelectItem value="resolved">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4" />
-                        Gelöst
+                        {getComplaintStatus("resolved", lang)}
                       </div>
                     </SelectItem>
                     <SelectItem value="closed">
                       <div className="flex items-center gap-2">
                         <XCircle className="h-4 w-4" />
-                        Geschlossen
+                        {getComplaintStatus("closed", lang)}
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -642,26 +645,25 @@ export default function SupplierComplaints() {
               onClick={() => setShowStatusDialog(false)}
               data-testid="button-cancel-status"
             >
-              Abbrechen
+              {t("common", "cancel")}
             </Button>
             <Button
               onClick={handleStatusSubmit}
               disabled={!newStatus || updateStatusMutation.isPending}
               data-testid="button-save-status"
             >
-              {updateStatusMutation.isPending ? "Wird gespeichert..." : "Speichern"}
+              {updateStatusMutation.isPending ? (lang === "de" ? "Wird gespeichert..." : "Salvataggio...") : t("common", "save")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Comment Dialog */}
       <Dialog open={showCommentDialog} onOpenChange={setShowCommentDialog}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Kommentare</DialogTitle>
+            <DialogTitle>{lang === "de" ? "Kommentare" : "Commenti"}</DialogTitle>
             <DialogDescription>
-              Kommentare zur Reklamation anzeigen und hinzufügen
+              {lang === "de" ? "Kommentare zur Reklamation anzeigen und hinzufügen" : "Visualizza e aggiungi commenti al reclamo"}
             </DialogDescription>
           </DialogHeader>
           
@@ -674,7 +676,6 @@ export default function SupplierComplaints() {
                 </div>
               </div>
 
-              {/* Existing comments */}
               <div className="flex-1 overflow-auto space-y-3 min-h-0">
                 {loadingComments ? (
                   <div className="space-y-2">
@@ -692,7 +693,7 @@ export default function SupplierComplaints() {
                             {comment.user?.name?.substring(0, 2).toUpperCase() || "??"}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm font-medium">{comment.user?.name || "Unbekannt"}</span>
+                        <span className="text-sm font-medium">{comment.user?.name || t("common", "unknown")}</span>
                         <span className="text-xs text-muted-foreground ml-auto">
                           {formatDate(comment.createdAt)}
                         </span>
@@ -703,19 +704,18 @@ export default function SupplierComplaints() {
                 ) : (
                   <div className="text-center py-6 text-muted-foreground">
                     <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                    <p className="text-sm">Noch keine Kommentare</p>
+                    <p className="text-sm">{lang === "de" ? "Noch keine Kommentare" : "Nessun commento ancora"}</p>
                   </div>
                 )}
               </div>
 
-              {/* Add comment */}
               <div className="space-y-2 shrink-0 border-t pt-4">
-                <Label>Neuer Kommentar</Label>
+                <Label>{lang === "de" ? "Neuer Kommentar" : "Nuovo commento"}</Label>
                 <div className="flex gap-2">
                   <Textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Schreiben Sie einen Kommentar..."
+                    placeholder={lang === "de" ? "Schreiben Sie einen Kommentar..." : "Scrivi un commento..."}
                     rows={2}
                     className="flex-1"
                     data-testid="input-new-comment"

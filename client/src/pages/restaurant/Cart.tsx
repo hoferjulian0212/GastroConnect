@@ -15,7 +15,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { format, addDays, isBefore, startOfDay } from "date-fns";
-import { de } from "date-fns/locale";
+import { de, it } from "date-fns/locale";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export default function RestaurantCart() {
   const { currentUser } = useUser();
@@ -24,6 +26,8 @@ export default function RestaurantCart() {
   const [orderNotes, setOrderNotes] = useState("");
   const [deliveryOption, setDeliveryOption] = useState<"asap" | "date">("asap");
   const [selectedDeliveryDate, setSelectedDeliveryDate] = useState<string>("");
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   const { data: cartItems, isLoading } = useQuery<CartItemWithPromotion[]>({
     queryKey: [`/api/cart?restaurantId=${currentUser?.id}`],
@@ -48,8 +52,8 @@ export default function RestaurantCart() {
       queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
       toast({
-        title: "Artikel entfernt",
-        description: "Der Artikel wurde aus dem Warenkorb entfernt.",
+        title: t("cart", "itemRemoved"),
+        description: t("cart", "itemRemovedDesc"),
       });
     },
   });
@@ -72,15 +76,15 @@ export default function RestaurantCart() {
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       toast({
-        title: "Bestellung aufgegeben",
-        description: "Ihre Bestellung wurde erfolgreich aufgegeben.",
+        title: t("cart", "orderPlaced"),
+        description: t("cart", "orderPlacedDesc"),
       });
       setLocation("/restaurant/orders");
     },
     onError: () => {
       toast({
-        title: "Fehler",
-        description: "Die Bestellung konnte nicht aufgegeben werden.",
+        title: t("common", "error"),
+        description: t("cart", "orderError"),
         variant: "destructive",
       });
     },
@@ -119,6 +123,8 @@ export default function RestaurantCart() {
     return perSupplierDays.reduce((acc, days) => acc.filter(d => days.includes(d)));
   }, [allDeliverySchedules, supplierIds]);
 
+  const dateLocale = lang === "it" ? it : de;
+
   const availableDeliveryDates = useMemo(() => {
     if (allowedWeekdays.length === 0) return [];
     const dates: { value: string; label: string }[] = [];
@@ -128,12 +134,12 @@ export default function RestaurantCart() {
       if (allowedWeekdays.includes(date.getDay())) {
         dates.push({
           value: format(date, "yyyy-MM-dd"),
-          label: format(date, "EEEE, dd. MMMM yyyy", { locale: de }),
+          label: format(date, "EEEE, dd. MMMM yyyy", { locale: dateLocale }),
         });
       }
     }
     return dates;
-  }, [allowedWeekdays]);
+  }, [allowedWeekdays, dateLocale]);
 
   const getEffectivePrice = (item: CartItemWithPromotion) => {
     const originalPrice = parseFloat(item.product.price);
@@ -167,8 +173,8 @@ export default function RestaurantCart() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Warenkorb</h1>
-        <p className="text-xs md:text-sm text-muted-foreground">Überprüfen Sie Ihre ausgewählten Produkte</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "cart")}</h1>
+        <p className="text-xs md:text-sm text-muted-foreground">{t("cart", "reviewProducts")}</p>
       </div>
 
       {isLoading ? (
@@ -189,7 +195,7 @@ export default function RestaurantCart() {
                     </div>
                     <div>
                       <CardTitle className="text-base md:text-lg">{supplier.companyName || supplier.name}</CardTitle>
-                      <CardDescription className="text-xs md:text-sm">{items.length} Artikel</CardDescription>
+                      <CardDescription className="text-xs md:text-sm">{items.length} {t("common", "items")}</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -284,7 +290,7 @@ export default function RestaurantCart() {
                 </CardContent>
                 <CardFooter className="border-t border-border pt-3 md:pt-4 p-3 md:p-6">
                   <div className="flex justify-between w-full text-sm md:text-base">
-                    <span className="text-muted-foreground">Zwischensumme</span>
+                    <span className="text-muted-foreground">{t("common", "subtotal")}</span>
                     <span className="font-medium">{calculateTotal(items)}€</span>
                   </div>
                 </CardFooter>
@@ -295,7 +301,7 @@ export default function RestaurantCart() {
           <div className="lg:col-span-1">
             <Card className="sticky top-4">
               <CardHeader className="p-3 md:p-6">
-                <CardTitle className="text-base md:text-lg">Bestellübersicht</CardTitle>
+                <CardTitle className="text-base md:text-lg">{t("cart", "orderSummary")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 md:space-y-4 p-3 pt-0 md:p-6 md:pt-0">
                 <div className="space-y-2">
@@ -308,13 +314,13 @@ export default function RestaurantCart() {
                 </div>
                 <Separator />
                 <div className="flex justify-between font-bold text-base md:text-lg">
-                  <span>Gesamt</span>
+                  <span>{t("common", "total")}</span>
                   <span data-testid="text-total-amount">{grandTotal}€</span>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs md:text-sm font-medium flex items-center gap-1.5">
                     <CalendarDays className="h-3.5 w-3.5" />
-                    Gewünschter Liefertermin
+                    {t("cart", "deliveryDate")}
                   </Label>
                   <div className="space-y-2">
                     <label
@@ -331,7 +337,7 @@ export default function RestaurantCart() {
                         className="accent-primary"
                       />
                       <Zap className="h-4 w-4 text-primary shrink-0" />
-                      <span className="text-sm">Sobald wie möglich</span>
+                      <span className="text-sm">{t("cart", "asap")}</span>
                     </label>
                     <label
                       className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
@@ -347,7 +353,7 @@ export default function RestaurantCart() {
                         className="accent-primary"
                       />
                       <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm">Liefertag auswählen</span>
+                      <span className="text-sm">{t("cart", "selectDeliveryDay")}</span>
                     </label>
                   </div>
                   {deliveryOption === "date" && (
@@ -377,16 +383,16 @@ export default function RestaurantCart() {
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground py-2">
-                          Keine Liefertage hinterlegt. Bitte wählen Sie "Sobald wie möglich".
+                          {t("cart", "noDeliveryDays")}
                         </p>
                       )}
                     </div>
                   )}
                 </div>
                 <div className="space-y-1.5 md:space-y-2">
-                  <Label className="text-xs md:text-sm font-medium">Anmerkungen zur Bestellung</Label>
+                  <Label className="text-xs md:text-sm font-medium">{t("cart", "orderNotes")}</Label>
                   <Textarea
-                    placeholder="Besondere Wünsche oder Hinweise..."
+                    placeholder={t("cart", "orderNotesPlaceholder")}
                     value={orderNotes}
                     onChange={(e) => setOrderNotes(e.target.value)}
                     className="resize-none"
@@ -402,7 +408,7 @@ export default function RestaurantCart() {
                   disabled={createOrderMutation.isPending || (deliveryOption === "date" && !selectedDeliveryDate && availableDeliveryDates.length > 0)}
                   data-testid="button-checkout"
                 >
-                  Bestellung aufgeben
+                  {t("cart", "placeOrder")}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </CardFooter>
@@ -413,13 +419,13 @@ export default function RestaurantCart() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ShoppingCart className="h-16 w-16 text-muted-foreground/50 mb-4" />
-            <h2 className="text-xl font-medium">Ihr Warenkorb ist leer</h2>
+            <h2 className="text-xl font-medium">{t("cart", "emptyCart")}</h2>
             <p className="text-muted-foreground mt-1">
-              Fügen Sie Produkte aus dem Katalog hinzu
+              {t("cart", "addFromCatalog")}
             </p>
             <Button className="mt-4" asChild>
               <Link href="/restaurant/catalog" data-testid="link-browse-catalog">
-                Zum Produktkatalog
+                {t("cart", "goToCatalog")}
               </Link>
             </Button>
           </CardContent>

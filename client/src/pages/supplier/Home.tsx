@@ -8,10 +8,14 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { de } from "date-fns/locale";
+import { de, it } from "date-fns/locale";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT, getOrderStatus } from "@/lib/translations";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   const { data: recentOrders, isLoading: ordersLoading } = useQuery<Order[]>({
     queryKey: ['/api/supplier/orders/recent', currentUser?.id],
@@ -53,33 +57,22 @@ export default function SupplierHome() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "pending": return "Neu";
-      case "confirmed": return "Bestätigt";
-      case "in_delivery": return "In Lieferung";
-      case "delivered": return "Geliefert";
-      case "cancelled": return "Storniert";
-      default: return status;
-    }
-  };
-
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">
-          Willkommen zurück{currentUser?.companyName ? `, ${currentUser.companyName}` : ""}!
+          {t("common", "welcomeBack")}{currentUser?.companyName ? `, ${currentUser.companyName}` : ""}!
         </h1>
         <p className="text-sm md:text-base text-muted-foreground mt-1">
-          Hier ist Ihre Übersicht für heute
+          {t("common", "overviewToday")}
         </p>
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div>
-            <CardTitle className="text-base md:text-lg">Schnellaktionen</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Häufig verwendete Funktionen</CardDescription>
+            <CardTitle className="text-base md:text-lg">{t("common", "quickActions")}</CardTitle>
+            <CardDescription className="text-xs md:text-sm">{t("common", "frequentFunctions")}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -87,25 +80,25 @@ export default function SupplierHome() {
             <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
               <Link href="/supplier/products" data-testid="link-quick-products">
                 <Package className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">Produkte</span>
+                <span className="text-xs md:text-sm">{t("common", "products")}</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
               <Link href="/supplier/orders" data-testid="link-quick-orders">
                 <ClipboardList className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">Aufträge</span>
+                <span className="text-xs md:text-sm">{t("supplierHome", "tasks")}</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
               <Link href="/supplier/inbox" data-testid="link-quick-inbox">
                 <MessageSquare className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">Nachrichten</span>
+                <span className="text-xs md:text-sm">{t("common", "messages")}</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
               <Link href="/supplier/orders" data-testid="link-quick-orders-all">
                 <Clock className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">Bestellungen</span>
+                <span className="text-xs md:text-sm">{t("common", "orders")}</span>
               </Link>
             </Button>
           </div>
@@ -116,7 +109,7 @@ export default function SupplierHome() {
         <Link href="/supplier/orders" data-testid="link-stat-orders">
           <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">Neue Bestellungen</CardTitle>
+              <CardTitle className="text-xs md:text-sm font-medium">{t("supplierHome", "newOrders")}</CardTitle>
               <ClipboardList className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -134,7 +127,7 @@ export default function SupplierHome() {
         <Link href="/supplier/inbox" data-testid="link-stat-messages">
           <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">Nachrichten</CardTitle>
+              <CardTitle className="text-xs md:text-sm font-medium">{t("common", "messages")}</CardTitle>
               <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -152,7 +145,7 @@ export default function SupplierHome() {
         <Link href="/supplier/products" data-testid="link-stat-products">
           <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">Produkte</CardTitle>
+              <CardTitle className="text-xs md:text-sm font-medium">{t("common", "products")}</CardTitle>
               <Package className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -169,7 +162,7 @@ export default function SupplierHome() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-            <CardTitle className="text-xs md:text-sm font-medium">Monatsumsatz</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">{t("supplierHome", "monthlyRevenue")}</CardTitle>
             <Euro className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -187,11 +180,11 @@ export default function SupplierHome() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div>
-            <CardTitle className="text-base md:text-lg">Neue Bestellungen</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Warten auf Bearbeitung</CardDescription>
+            <CardTitle className="text-base md:text-lg">{t("supplierHome", "newOrders")}</CardTitle>
+            <CardDescription className="text-xs md:text-sm">{t("supplierHome", "waitingForProcessing")}</CardDescription>
           </div>
           <Button variant="outline" size="sm" className="text-xs md:text-sm" asChild>
-            <Link href="/supplier/orders" data-testid="link-view-all-orders">Alle</Link>
+            <Link href="/supplier/orders" data-testid="link-view-all-orders">{t("common", "all")}</Link>
           </Button>
         </CardHeader>
         <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -217,14 +210,14 @@ export default function SupplierHome() {
                       <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
                       <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                        {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: de })}
+                        {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: lang === "de" ? de : it })}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 md:gap-2">
                     <span className="text-xs md:text-sm font-medium">{order.totalAmount}€</span>
                     <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5 md:px-2`} variant="outline">
-                      {getStatusLabel(order.status)}
+                      {getOrderStatus(order.status, lang, true)}
                     </Badge>
                   </div>
                 </div>
@@ -233,9 +226,9 @@ export default function SupplierHome() {
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle className="h-12 w-12 text-green-500/50 mb-3" />
-              <p className="text-sm text-muted-foreground">Keine neuen Bestellungen</p>
+              <p className="text-sm text-muted-foreground">{t("supplierHome", "noNewOrders")}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Alle Bestellungen wurden bearbeitet
+                {t("supplierHome", "allProcessed")}
               </p>
             </div>
           )}

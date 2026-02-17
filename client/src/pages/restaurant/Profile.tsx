@@ -13,6 +13,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useRef, useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 
 const profileSchema = z.object({
   name: z.string().min(1, "Name ist erforderlich"),
@@ -32,6 +34,8 @@ export default function RestaurantProfile() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -39,8 +43,8 @@ export default function RestaurantProfile() {
 
     if (!file.type.startsWith("image/")) {
       toast({
-        title: "Ungültiges Format",
-        description: "Bitte wählen Sie eine Bilddatei aus.",
+        title: t("profile", "invalidFormat"),
+        description: t("profile", "selectImageFile"),
         variant: "destructive",
       });
       return;
@@ -48,8 +52,8 @@ export default function RestaurantProfile() {
 
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: "Datei zu groß",
-        description: "Das Bild darf maximal 5 MB groß sein.",
+        title: t("profile", "fileTooLarge"),
+        description: t("profile", "maxImageSize"),
         variant: "destructive",
       });
       return;
@@ -75,14 +79,14 @@ export default function RestaurantProfile() {
 
       setCurrentUser({ ...currentUser, profileImageUrl });
       toast({
-        title: "Profilbild aktualisiert",
-        description: "Ihr Profilbild wurde erfolgreich hochgeladen.",
+        title: t("profile", "profilePhotoUpdated"),
+        description: t("profile", "photoUploadedDesc"),
       });
     } catch (error) {
       console.error("Upload failed:", error);
       toast({
-        title: "Fehler",
-        description: "Das Bild konnte nicht hochgeladen werden.",
+        title: t("common", "error"),
+        description: t("profile", "profilePhotoError"),
         variant: "destructive",
       });
     } finally {
@@ -116,14 +120,14 @@ export default function RestaurantProfile() {
       setCurrentUser(updatedUser);
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
-        title: "Profil aktualisiert",
-        description: "Ihre Änderungen wurden gespeichert.",
+        title: t("profile", "profileUpdated"),
+        description: t("profile", "profileUpdatedDesc"),
       });
     },
     onError: () => {
       toast({
-        title: "Fehler",
-        description: "Ihre Änderungen konnten nicht gespeichert werden.",
+        title: t("common", "error"),
+        description: t("profile", "profileUpdateError"),
         variant: "destructive",
       });
     },
@@ -136,8 +140,8 @@ export default function RestaurantProfile() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Profil</h1>
-        <p className="text-xs md:text-sm text-muted-foreground">Verwalten Sie Ihre Restaurantdaten</p>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("profile", "profileTitle")}</h1>
+        <p className="text-xs md:text-sm text-muted-foreground">{t("profile", "profileDesc")}</p>
       </div>
 
       <div className="grid gap-3 md:gap-6 lg:grid-cols-3">
@@ -146,10 +150,10 @@ export default function RestaurantProfile() {
             <CardHeader className="p-3 md:p-6">
               <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <User className="h-4 w-4 md:h-5 md:w-5" />
-                Profildaten
+                {t("profile", "personalInfo")}
               </CardTitle>
               <CardDescription className="text-xs md:text-sm">
-                Aktualisieren Sie Ihre Kontakt- und Unternehmensinformationen
+                {t("profile", "updateContactInfo")}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
@@ -163,10 +167,10 @@ export default function RestaurantProfile() {
                         <FormItem className="sm:col-span-2">
                           <FormLabel className="flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
-                            Restaurantname
+                            {t("profile", "restaurantName")}
                           </FormLabel>
                           <FormControl>
-                            <Input placeholder="Mein Restaurant" {...field} data-testid="input-company-name" />
+                            <Input placeholder={t("profile", "restaurantPlaceholder")} {...field} data-testid="input-company-name" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -178,9 +182,9 @@ export default function RestaurantProfile() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Ansprechpartner</FormLabel>
+                          <FormLabel>{t("profile", "contactPerson")}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Max Mustermann" {...field} data-testid="input-name" />
+                            <Input placeholder={t("profile", "contactPlaceholder")} {...field} data-testid="input-name" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -194,7 +198,7 @@ export default function RestaurantProfile() {
                         <FormItem>
                           <FormLabel className="flex items-center gap-2">
                             <Mail className="h-4 w-4" />
-                            E-Mail
+                            {t("profile", "email")}
                           </FormLabel>
                           <FormControl>
                             <Input type="email" placeholder="email@restaurant.de" {...field} data-testid="input-email" />
@@ -211,7 +215,7 @@ export default function RestaurantProfile() {
                         <FormItem>
                           <FormLabel className="flex items-center gap-2">
                             <Phone className="h-4 w-4" />
-                            Telefon
+                            {t("profile", "phone")}
                           </FormLabel>
                           <FormControl>
                             <Input type="tel" placeholder="+49 123 456789" {...field} data-testid="input-phone" />
@@ -228,10 +232,10 @@ export default function RestaurantProfile() {
                         <FormItem className="sm:col-span-2">
                           <FormLabel className="flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
-                            Adresse
+                            {t("profile", "companyAddress")}
                           </FormLabel>
                           <FormControl>
-                            <Input placeholder="Musterstraße 123" {...field} data-testid="input-address" />
+                            <Input placeholder={t("profile", "addressPlaceholder")} {...field} data-testid="input-address" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -243,7 +247,7 @@ export default function RestaurantProfile() {
                       name="postalCode"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>PLZ</FormLabel>
+                          <FormLabel>{t("profile", "postalCode")}</FormLabel>
                           <FormControl>
                             <Input placeholder="12345" {...field} data-testid="input-postal-code" />
                           </FormControl>
@@ -257,9 +261,9 @@ export default function RestaurantProfile() {
                       name="city"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Stadt</FormLabel>
+                          <FormLabel>{t("profile", "city")}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Berlin" {...field} data-testid="input-city" />
+                            <Input placeholder={t("profile", "cityPlaceholder")} {...field} data-testid="input-city" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -271,10 +275,10 @@ export default function RestaurantProfile() {
                       name="description"
                       render={({ field }) => (
                         <FormItem className="sm:col-span-2">
-                          <FormLabel>Beschreibung</FormLabel>
+                          <FormLabel>{t("common", "description")}</FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Kurze Beschreibung Ihres Restaurants..."
+                              placeholder={t("profile", "descriptionPlaceholder")}
                               className="resize-none min-h-[100px]"
                               {...field}
                               data-testid="textarea-description"
@@ -293,7 +297,7 @@ export default function RestaurantProfile() {
                     data-testid="button-save-profile"
                   >
                     <Save className="h-4 w-4" />
-                    Speichern
+                    {t("common", "save")}
                   </Button>
                 </form>
               </Form>
@@ -304,7 +308,7 @@ export default function RestaurantProfile() {
         <div>
           <Card>
             <CardHeader>
-              <CardTitle>Profil</CardTitle>
+              <CardTitle>{t("profile", "profileTitle")}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center text-center">
               <div className="relative group mb-4">
@@ -337,20 +341,20 @@ export default function RestaurantProfile() {
                 </button>
               </div>
               <h3 className="font-medium text-lg">
-                {currentUser?.companyName || currentUser?.name || "Mein Restaurant"}
+                {currentUser?.companyName || currentUser?.name || t("profile", "restaurantPlaceholder")}
               </h3>
               <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
               <div className="mt-4 w-full space-y-2">
                 <div className="flex justify-between text-sm py-2 border-b border-border">
-                  <span className="text-muted-foreground">Rolle</span>
-                  <span>Restaurant</span>
+                  <span className="text-muted-foreground">{t("profile", "role")}</span>
+                  <span>{t("common", "restaurant")}</span>
                 </div>
                 <div className="flex justify-between text-sm py-2 border-b border-border">
-                  <span className="text-muted-foreground">Telefon</span>
+                  <span className="text-muted-foreground">{t("profile", "phone")}</span>
                   <span>{currentUser?.phone || "-"}</span>
                 </div>
                 <div className="flex justify-between text-sm py-2">
-                  <span className="text-muted-foreground">Stadt</span>
+                  <span className="text-muted-foreground">{t("profile", "city")}</span>
                   <span>{currentUser?.city || "-"}</span>
                 </div>
               </div>
