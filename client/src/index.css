@@ -330,3 +330,16 @@
     inset: -1px;
   }
 }
+
+.floating-nav {
+  background: rgba(255, 255, 255, 0.95);
+}
+.dark .floating-nav {
+  background: rgba(23, 23, 23, 0.95);
+}
+.floating-nav-menu {
+  background: rgba(255, 255, 255, 0.95);
+}
+.dark .floating-nav-menu {
+  background: rgba(23, 23, 23, 0.95);
+}

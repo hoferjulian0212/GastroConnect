@@ -202,7 +202,7 @@ function AppLayout() {
                   <ThemeToggle />
                 </div>
               </header>
-              <main className={`flex-1 overflow-auto ${isInChat ? 'p-0 pb-0' : 'p-4 md:p-6 pb-20'} md:p-6 md:pb-6`}>
+              <main className={`flex-1 overflow-auto ${isInChat ? 'p-0 pb-0' : 'p-4 md:p-6 pb-28'} md:p-6 md:pb-6`}>
                 {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
               </main>
             </div>

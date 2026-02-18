@@ -56,6 +56,20 @@ export function SupplierMobileNav() {
     setLocation(url);
   };
 
+  const navStyle: React.CSSProperties = {
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 50,
+    margin: "0 16px 12px 16px",
+    paddingBottom: "env(safe-area-inset-bottom, 16px)",
+    borderRadius: "20px",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+  };
+
   return (
     <>
       {isMoreOpen && (
@@ -67,7 +81,7 @@ export function SupplierMobileNav() {
       )}
       
       {isMoreOpen && (
-        <div className="fixed bottom-16 right-2 z-50 bg-background border border-border rounded-lg shadow-lg p-2 min-w-[180px] md:hidden" data-testid="mobile-nav-more-menu">
+        <div className="fixed z-50 border border-border rounded-2xl shadow-lg p-2 min-w-[180px] md:hidden floating-nav-menu" style={{ bottom: "calc(80px + env(safe-area-inset-bottom, 16px))", right: "20px", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }} data-testid="mobile-nav-more-menu">
           <div className="flex items-center justify-between px-2 py-1 mb-1 border-b border-border">
             <span className="text-xs font-medium text-muted-foreground">{t("common", "moreOptions")}</span>
             <button 
@@ -84,7 +98,7 @@ export function SupplierMobileNav() {
               <button
                 key={item.url}
                 onClick={() => handleMoreItemClick(item.url)}
-                className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-left transition-colors ${
+                className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors ${
                   isActive 
                     ? "bg-primary/10 text-primary" 
                     : "hover-elevate"
@@ -99,7 +113,7 @@ export function SupplierMobileNav() {
           <div className="border-t border-border mt-1 pt-1">
             <button
               onClick={() => { setIsMoreOpen(false); setLocation("/"); }}
-              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-left transition-colors text-muted-foreground hover-elevate"
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors text-muted-foreground hover-elevate"
               data-testid="button-mobile-logout"
             >
               <LogOut className="h-4 w-4" />
@@ -109,8 +123,8 @@ export function SupplierMobileNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border md:hidden">
-        <div className="flex items-center justify-around h-16 px-2">
+      <nav className="md:hidden floating-nav" style={navStyle} data-testid="supplier-mobile-nav">
+        <div className="flex items-center justify-around px-2">
           {mainNavItems.map((item) => {
             const isActive = location === item.url || 
               (item.url !== "/supplier" && location.startsWith(item.url));
@@ -120,22 +134,26 @@ export function SupplierMobileNav() {
               <Link
                 key={item.url}
                 href={item.url}
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg min-w-[60px] relative transition-colors ${
-                  isActive 
-                    ? "text-primary" 
-                    : "text-muted-foreground"
-                }`}
+                className="flex flex-col items-center justify-center gap-1 min-w-[56px] relative transition-colors pt-3 pb-2"
+                style={{ color: isActive ? "hsl(var(--primary))" : "hsl(var(--foreground) / 0.5)" }}
                 data-testid={`mobile-nav-${item.url.split('/').pop()}`}
               >
-                <div className="relative">
-                  <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
+                <div
+                  className="relative flex items-center justify-center transition-all duration-200"
+                  style={isActive ? {
+                    background: "rgba(66, 133, 244, 0.12)",
+                    borderRadius: "12px",
+                    padding: "4px 16px",
+                  } : { padding: "4px 16px" }}
+                >
+                  <item.icon className="h-6 w-6" />
                   {badgeCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-medium">
+                    <span className="absolute -top-1 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-medium">
                       {badgeCount > 9 ? "9+" : badgeCount}
                     </span>
                   )}
                 </div>
-                <span className={`text-[10px] font-medium ${isActive ? "text-primary" : ""}`}>
+                <span className="text-[10px] font-medium">
                   {item.title}
                 </span>
               </Link>
@@ -144,15 +162,21 @@ export function SupplierMobileNav() {
           
           <button
             onClick={() => setIsMoreOpen(!isMoreOpen)}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg min-w-[60px] relative transition-colors ${
-              isMoreActive || isMoreOpen
-                ? "text-primary" 
-                : "text-muted-foreground"
-            }`}
+            className="flex flex-col items-center justify-center gap-1 min-w-[56px] relative transition-colors pt-3 pb-2"
+            style={{ color: (isMoreActive || isMoreOpen) ? "hsl(var(--primary))" : "hsl(var(--foreground) / 0.5)" }}
             data-testid="mobile-nav-more"
           >
-            <MoreHorizontal className={`h-5 w-5 ${isMoreActive || isMoreOpen ? "text-primary" : ""}`} />
-            <span className={`text-[10px] font-medium ${isMoreActive || isMoreOpen ? "text-primary" : ""}`}>
+            <div
+              className="relative flex items-center justify-center transition-all duration-200"
+              style={(isMoreActive || isMoreOpen) ? {
+                background: "rgba(66, 133, 244, 0.12)",
+                borderRadius: "12px",
+                padding: "4px 16px",
+              } : { padding: "4px 16px" }}
+            >
+              <MoreHorizontal className="h-6 w-6" />
+            </div>
+            <span className="text-[10px] font-medium">
               {t("common", "more")}
             </span>
           </button>
