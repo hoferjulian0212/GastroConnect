@@ -118,7 +118,7 @@ export function RestaurantSidebar() {
           <SidebarMenuItem>
             <Link
               href="/"
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover-elevate`}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-black dark:text-white hover-elevate`}
               data-testid="button-logout"
             >
               <LogOut className="h-4 w-4" />

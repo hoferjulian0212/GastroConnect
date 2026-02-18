@@ -114,7 +114,7 @@ export function SupplierMobileNav() {
           <div className="border-t border-border mt-1 pt-1">
             <button
               onClick={() => { setIsMoreOpen(false); setLocation("/"); }}
-              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors text-muted-foreground hover-elevate"
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors text-black dark:text-white hover-elevate"
               data-testid="button-mobile-logout"
             >
               <LogOut className="h-4 w-4" />
