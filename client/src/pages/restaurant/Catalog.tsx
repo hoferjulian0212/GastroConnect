@@ -340,7 +340,7 @@ export default function RestaurantCatalog() {
                             size="sm"
                             className={`gap-1 text-xs md:text-sm transition-all duration-300 ${
                               addedProductIds.has(product.id) 
-                                ? "bg-green-600 border-green-600 text-white no-default-hover-elevate no-default-active-elevate" 
+                                ? "bg-primary border-primary text-primary-foreground no-default-hover-elevate no-default-active-elevate" 
                                 : ""
                             }`}
                             disabled={!product.inStock || addToCartMutation.isPending}
