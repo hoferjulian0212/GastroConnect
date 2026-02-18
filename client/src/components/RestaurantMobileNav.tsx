@@ -124,7 +124,7 @@ export function RestaurantMobileNav() {
       )}
 
       <nav className="md:hidden floating-nav" style={navStyle} data-testid="restaurant-mobile-nav">
-        <div className="flex items-center justify-around px-2">
+        <div className="flex items-stretch">
           {mainNavItems.map((item) => {
             const isActive = location === item.url || 
               (item.url !== "/restaurant" && location.startsWith(item.url));
@@ -134,11 +134,11 @@ export function RestaurantMobileNav() {
               <Link
                 key={item.url}
                 href={item.url}
-                className="flex flex-col items-center justify-center gap-1 min-w-[56px] relative transition-colors pt-3 pb-2"
+                className="flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors pt-3 pb-2"
                 style={{ color: isActive ? "#4285F4" : "#8E8E93" }}
                 data-testid={`restaurant-mobile-nav-${item.url.split('/').pop()}`}
               >
-                <div className="relative flex items-center justify-center">
+                <div className="relative inline-flex items-center justify-center">
                   <item.icon className="h-6 w-6" />
                   {badgeCount > 0 && (
                     <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-medium">
@@ -146,7 +146,7 @@ export function RestaurantMobileNav() {
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] font-semibold">
+                <span className="text-[10px] font-medium text-center w-full">
                   {item.title}
                 </span>
               </Link>
@@ -155,14 +155,14 @@ export function RestaurantMobileNav() {
           
           <button
             onClick={() => setIsMoreOpen(!isMoreOpen)}
-            className="flex flex-col items-center justify-center gap-1 min-w-[56px] relative transition-colors pt-3 pb-2"
+            className="flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors pt-3 pb-2"
             style={{ color: (isMoreActive || isMoreOpen) ? "#4285F4" : "#8E8E93" }}
             data-testid="restaurant-mobile-nav-more"
           >
-            <div className="relative flex items-center justify-center">
+            <div className="relative inline-flex items-center justify-center">
               <MoreHorizontal className="h-6 w-6" />
             </div>
-            <span className="text-[10px] font-semibold">
+            <span className="text-[10px] font-medium text-center w-full">
               {t("common", "more")}
             </span>
           </button>
