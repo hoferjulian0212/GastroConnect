@@ -30,6 +30,7 @@ const productSchema = z.object({
   category: z.string().optional(),
   inStock: z.boolean().default(true),
   stockQuantity: z.number().optional(),
+  minOrderQuantity: z.number().int().min(1).default(1),
   imageUrl: z.string().optional(),
 });
 
@@ -58,6 +59,7 @@ export default function SupplierProducts() {
       category: "",
       inStock: true,
       stockQuantity: 0,
+      minOrderQuantity: 1,
       imageUrl: "",
     },
   });
@@ -159,6 +161,7 @@ export default function SupplierProducts() {
       category: product.category || "",
       inStock: product.inStock,
       stockQuantity: product.stockQuantity || 0,
+      minOrderQuantity: product.minOrderQuantity || 1,
       imageUrl: product.imageUrl || "",
     });
     setPreviewImage(product.imageUrl || null);
@@ -437,6 +440,28 @@ export default function SupplierProducts() {
 
                 <FormField
                   control={form.control}
+                  name="minOrderQuantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("supplierProducts", "minOrderQuantity")}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          placeholder="1"
+                          data-testid="input-product-moq"
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">{t("supplierProducts", "minOrderQuantityDesc")}</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="inStock"
                   render={({ field }) => (
                     <FormItem className="flex items-center justify-between rounded-md border p-3">
@@ -551,6 +576,11 @@ export default function SupplierProducts() {
                         ) : (
                           <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
                             {t("common", "unavailable")}
+                          </Badge>
+                        )}
+                        {product.minOrderQuantity && product.minOrderQuantity > 1 && (
+                          <Badge variant="outline" className="text-[10px] md:text-xs px-1 md:px-1.5 py-0">
+                            {t("supplierProducts", "minOrderQuantityShort")} {product.minOrderQuantity}
                           </Badge>
                         )}
                       </div>

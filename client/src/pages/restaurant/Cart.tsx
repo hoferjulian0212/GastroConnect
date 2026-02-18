@@ -231,6 +231,11 @@ export default function RestaurantCart() {
                                 {item.product.price}€/{item.product.unit}
                               </p>
                             )}
+                            {item.product?.minOrderQuantity && item.product.minOrderQuantity > 1 && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                {t("supplierProducts", "minOrderQuantityShort")} {item.product.minOrderQuantity} {item.product.unit}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center justify-between sm:justify-end gap-2 md:gap-3">
@@ -240,7 +245,8 @@ export default function RestaurantCart() {
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => {
-                                if (item.quantity <= 1) {
+                                const minQty = item.product?.minOrderQuantity || 1;
+                                if (item.quantity <= minQty) {
                                   removeItemMutation.mutate(item.id);
                                 } else {
                                   updateQuantityMutation.mutate({

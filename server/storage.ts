@@ -2,7 +2,7 @@ import { db } from "./db";
 import { eq, and, desc, or, sql, ne, inArray } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
-  orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules,
+  orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -14,7 +14,8 @@ import {
   type OrderStatusHistory, type OrderStatusHistoryWithUser,
   type ComplaintStatusHistory, type ComplaintStatusHistoryWithUser,
   type Promotion, type InsertPromotion, type PromotionWithProduct,
-  type DeliverySchedule, type InsertDeliverySchedule
+  type DeliverySchedule, type InsertDeliverySchedule,
+  type CustomMinOrderQuantity, type InsertCustomMinOrderQuantity
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -46,6 +47,7 @@ export interface IStorage {
 
   // Cart
   getCartItems(restaurantId: string): Promise<CartItemWithProduct[]>;
+  getCartItem(id: string): Promise<CartItem | undefined>;
   getCartCount(restaurantId: string): Promise<number>;
   addToCart(item: InsertCartItem): Promise<CartItem>;
   updateCartItem(id: string, quantity: number): Promise<CartItem | undefined>;
@@ -122,6 +124,13 @@ export interface IStorage {
   createPromotion(promotion: InsertPromotion): Promise<Promotion>;
   updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined>;
   deletePromotion(id: string): Promise<void>;
+
+  // Custom Min Order Quantities
+  getCustomMinOrderQuantities(supplierId: string): Promise<(CustomMinOrderQuantity & { product: Product; restaurant: User })[]>;
+  getCustomMinOrderQuantitiesByRestaurant(restaurantId: string): Promise<CustomMinOrderQuantity[]>;
+  getCustomMinOrderQuantity(productId: string, restaurantId: string): Promise<CustomMinOrderQuantity | undefined>;
+  setCustomMinOrderQuantity(data: InsertCustomMinOrderQuantity): Promise<CustomMinOrderQuantity>;
+  deleteCustomMinOrderQuantity(id: string): Promise<void>;
 
   // Seed
   seedData(): Promise<void>;
@@ -290,6 +299,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Cart
+  async getCartItem(id: string): Promise<CartItem | undefined> {
+    const [item] = await db.select().from(cartItems).where(eq(cartItems.id, id));
+    return item;
+  }
+
   async getCartItems(restaurantId: string): Promise<CartItemWithProduct[]> {
     const result = await db
       .select()
@@ -1070,6 +1084,47 @@ export class DatabaseStorage implements IStorage {
         days.map(day => ({ supplierId, restaurantId, dayOfWeek: day }))
       );
     }
+  }
+
+  async getCustomMinOrderQuantities(supplierId: string): Promise<(CustomMinOrderQuantity & { product: Product; restaurant: User })[]> {
+    const rows = await db.select().from(customMinOrderQuantities)
+      .where(eq(customMinOrderQuantities.supplierId, supplierId));
+    if (rows.length === 0) return [];
+    const productIds = [...new Set(rows.map(r => r.productId))];
+    const restaurantIds = [...new Set(rows.map(r => r.restaurantId))];
+    const productList = await db.select().from(products).where(inArray(products.id, productIds));
+    const restaurantList = await db.select().from(users).where(inArray(users.id, restaurantIds));
+    const productMap = Object.fromEntries(productList.map(p => [p.id, p]));
+    const restaurantMap = Object.fromEntries(restaurantList.map(r => [r.id, r]));
+    return rows.map(r => ({ ...r, product: productMap[r.productId], restaurant: restaurantMap[r.restaurantId] }));
+  }
+
+  async getCustomMinOrderQuantitiesByRestaurant(restaurantId: string): Promise<CustomMinOrderQuantity[]> {
+    return db.select().from(customMinOrderQuantities)
+      .where(eq(customMinOrderQuantities.restaurantId, restaurantId));
+  }
+
+  async getCustomMinOrderQuantity(productId: string, restaurantId: string): Promise<CustomMinOrderQuantity | undefined> {
+    const [row] = await db.select().from(customMinOrderQuantities)
+      .where(and(eq(customMinOrderQuantities.productId, productId), eq(customMinOrderQuantities.restaurantId, restaurantId)));
+    return row;
+  }
+
+  async setCustomMinOrderQuantity(data: InsertCustomMinOrderQuantity): Promise<CustomMinOrderQuantity> {
+    const existing = await this.getCustomMinOrderQuantity(data.productId, data.restaurantId);
+    if (existing) {
+      const [updated] = await db.update(customMinOrderQuantities)
+        .set({ minOrderQuantity: data.minOrderQuantity })
+        .where(eq(customMinOrderQuantities.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(customMinOrderQuantities).values(data).returning();
+    return created;
+  }
+
+  async deleteCustomMinOrderQuantity(id: string): Promise<void> {
+    await db.delete(customMinOrderQuantities).where(eq(customMinOrderQuantities.id, id));
   }
 }
 

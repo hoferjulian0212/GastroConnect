@@ -8,10 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, CalendarDays, Save, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, CalendarDays, Save, Loader2, Package, Trash2 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User, DeliverySchedule } from "@shared/schema";
+import type { User, DeliverySchedule, Product, CustomMinOrderQuantity } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getWeekdays, getWeekdayLabel } from "@/lib/translations";
 
@@ -22,6 +23,9 @@ export default function SupplierSettings() {
   const t = useT(lang);
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("");
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [moqRestaurant, setMoqRestaurant] = useState<string>("");
+  const [moqProduct, setMoqProduct] = useState<string>("");
+  const [moqValue, setMoqValue] = useState<number>(1);
 
   const [emailNewOrder, setEmailNewOrder] = useState(true);
   const [emailOrderStatus, setEmailOrderStatus] = useState(true);
@@ -77,6 +81,47 @@ export default function SupplierSettings() {
     },
     onError: () => {
       toast({ title: t("common", "error"), description: t("settings", "deliveryDaysSaveError"), variant: "destructive" });
+    },
+  });
+
+  const { data: supplierProducts } = useQuery<Product[]>({
+    queryKey: [`/api/supplier/products?supplierId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const { data: customMoqs } = useQuery<(CustomMinOrderQuantity & { product: Product; restaurant: User })[]>({
+    queryKey: [`/api/custom-moq?supplierId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const saveMoqMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PUT", "/api/custom-moq", {
+        productId: moqProduct,
+        supplierId: currentUser?.id,
+        restaurantId: moqRestaurant,
+        minOrderQuantity: moqValue,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/custom-moq?supplierId=${currentUser?.id}`] });
+      toast({ title: t("supplierProducts", "moqSaved") });
+      setMoqRestaurant("");
+      setMoqProduct("");
+      setMoqValue(1);
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    },
+  });
+
+  const deleteMoqMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/custom-moq/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/custom-moq?supplierId=${currentUser?.id}`] });
+      toast({ title: t("supplierProducts", "moqDeleted") });
     },
   });
 
@@ -187,6 +232,92 @@ export default function SupplierSettings() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="p-3 md:p-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Package className="h-4 w-4 md:h-5 md:w-5" />
+            {t("supplierProducts", "customMoq")}
+          </CardTitle>
+          <CardDescription className="text-xs md:text-sm">
+            {t("supplierProducts", "customMoqDesc")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-3 md:p-6 pt-0 md:pt-0 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Select value={moqRestaurant} onValueChange={setMoqRestaurant}>
+              <SelectTrigger data-testid="select-moq-restaurant">
+                <SelectValue placeholder={t("supplierProducts", "selectRestaurant")} />
+              </SelectTrigger>
+              <SelectContent>
+                {restaurants?.filter(r => r.role === "restaurant").map(r => (
+                  <SelectItem key={r.id} value={r.id}>{r.companyName || r.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={moqProduct} onValueChange={setMoqProduct}>
+              <SelectTrigger data-testid="select-moq-product">
+                <SelectValue placeholder={t("supplierProducts", "selectProductPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {supplierProducts?.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              type="number"
+              min={1}
+              value={moqValue}
+              onChange={(e) => setMoqValue(parseInt(e.target.value) || 1)}
+              placeholder={t("supplierProducts", "minOrderQuantity")}
+              data-testid="input-moq-value"
+            />
+            <Button
+              onClick={() => saveMoqMutation.mutate()}
+              disabled={!moqRestaurant || !moqProduct || moqValue < 1 || saveMoqMutation.isPending}
+              className="gap-2"
+              data-testid="button-save-moq"
+            >
+              {saveMoqMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {t("common", "save")}
+            </Button>
+          </div>
+
+          {customMoqs && customMoqs.length > 0 ? (
+            <div className="space-y-2 pt-2 border-t border-border">
+              {customMoqs.map(moq => (
+                <div key={moq.id} className="flex items-center justify-between gap-3 p-2.5 rounded-md bg-muted/50" data-testid={`moq-entry-${moq.id}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{moq.product?.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {moq.restaurant?.companyName || moq.restaurant?.name} — {t("supplierProducts", "minOrderQuantityShort")} {moq.minOrderQuantity} {moq.product?.unit}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteMoqMutation.mutate(moq.id)}
+                    disabled={deleteMoqMutation.isPending}
+                    data-testid={`button-delete-moq-${moq.id}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-sm text-muted-foreground">{t("supplierProducts", "noCustomMoq")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("supplierProducts", "noCustomMoqDesc")}</p>
             </div>
           )}
         </CardContent>

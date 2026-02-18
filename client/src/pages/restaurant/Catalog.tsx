@@ -47,7 +47,8 @@ export default function RestaurantCatalog() {
   const [onlyPromotions, setOnlyPromotions] = useState(false);
 
   const { data: products, isLoading: productsLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
-    queryKey: ["/api/products"],
+    queryKey: [`/api/products?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
   });
 
   const addToCartMutation = useMutation({
@@ -88,15 +89,20 @@ export default function RestaurantCatalog() {
 
   const categories = Array.from(new Set(products?.map(p => p.category).filter(Boolean) || []));
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const getMinOrderQty = (product: ProductWithSupplierAndPromotion) => {
+    return product.minOrderQuantity && product.minOrderQuantity > 1 ? product.minOrderQuantity : 1;
+  };
+
+  const updateQuantity = (productId: string, delta: number, minQty: number = 1) => {
     setQuantities(prev => ({
       ...prev,
-      [productId]: Math.max(1, (prev[productId] || 1) + delta),
+      [productId]: Math.max(minQty, (prev[productId] || minQty) + delta),
     }));
   };
 
   const handleAddToCart = (product: ProductWithSupplierAndPromotion) => {
-    const quantity = quantities[product.id] || 1;
+    const minQty = getMinOrderQty(product);
+    const quantity = quantities[product.id] || minQty;
     addToCartMutation.mutate({
       productId: product.id,
       supplierId: product.supplierId,
@@ -280,26 +286,31 @@ export default function RestaurantCatalog() {
                             </div>
                           );
                         })()}
+                        {product.minOrderQuantity && product.minOrderQuantity > 1 && (
+                          <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5" data-testid={`text-moq-${product.id}`}>
+                            {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
+                          </p>
+                        )}
                         <div className="flex items-center gap-1 md:gap-2 mt-2 justify-end flex-wrap">
                           <div className="flex items-center border border-border rounded-md" onClick={(e) => e.stopPropagation()}>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
-                              onClick={() => updateQuantity(product.id, -1)}
-                              disabled={!product.inStock}
+                              onClick={() => updateQuantity(product.id, -1, getMinOrderQty(product))}
+                              disabled={!product.inStock || (quantities[product.id] || getMinOrderQty(product)) <= getMinOrderQty(product)}
                               data-testid={`button-decrease-${product.id}`}
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
                             <span className="w-6 text-center text-sm" data-testid={`quantity-${product.id}`}>
-                              {quantities[product.id] || 1}
+                              {quantities[product.id] || getMinOrderQty(product)}
                             </span>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
-                              onClick={() => updateQuantity(product.id, 1)}
+                              onClick={() => updateQuantity(product.id, 1, getMinOrderQty(product))}
                               disabled={!product.inStock}
                               data-testid={`button-increase-${product.id}`}
                             >

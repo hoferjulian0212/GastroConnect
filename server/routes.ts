@@ -42,6 +42,7 @@ const updateProductSchema = z.object({
   category: safeShortString.optional().nullable(),
   inStock: z.boolean().optional(),
   stockQuantity: z.number().int().min(0).max(999999).optional(),
+  minOrderQuantity: z.number().int().min(1).max(999999).optional(),
   imageUrl: safeString.optional().nullable(),
 }).strict();
 
@@ -212,6 +213,7 @@ export async function registerRoutes(
   app.get("/api/products", async (req, res) => {
     try {
       const supplierId = req.query.supplierId as string;
+      const restaurantId = req.query.restaurantId as string;
       if (supplierId) {
         const products = await storage.getProductsBySupplier(supplierId);
         return res.json(products);
@@ -225,10 +227,21 @@ export async function registerRoutes(
           promoMap.set(promo.productId, promo);
         }
       }
-      const productsWithPromotions = products.map(p => ({
-        ...p,
-        activePromotion: promoMap.get(p.id) || null,
-      }));
+      let customMoqMap = new Map<string, number>();
+      if (restaurantId) {
+        const allCustomMoqs = await storage.getCustomMinOrderQuantitiesByRestaurant(restaurantId);
+        for (const moq of allCustomMoqs) {
+          customMoqMap.set(moq.productId, moq.minOrderQuantity);
+        }
+      }
+      const productsWithPromotions = products.map(p => {
+        const customMoq = customMoqMap.get(p.id);
+        return {
+          ...p,
+          activePromotion: promoMap.get(p.id) || null,
+          ...(customMoq !== undefined ? { minOrderQuantity: customMoq } : {}),
+        };
+      });
       productsWithPromotions.sort((a, b) => {
         if (a.activePromotion && !b.activePromotion) return -1;
         if (!a.activePromotion && b.activePromotion) return 1;
@@ -403,6 +416,56 @@ export async function registerRoutes(
     }
   });
 
+  // ===== CUSTOM MIN ORDER QUANTITIES =====
+  app.get("/api/custom-moq", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) {
+        return res.status(400).json({ error: "Supplier ID required" });
+      }
+      const moqs = await storage.getCustomMinOrderQuantities(supplierId);
+      res.json(moqs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch custom MOQs" });
+    }
+  });
+
+  app.get("/api/custom-moq/product", async (req, res) => {
+    try {
+      const productId = req.query.productId as string;
+      const restaurantId = req.query.restaurantId as string;
+      if (!productId || !restaurantId) {
+        return res.status(400).json({ error: "Product ID and Restaurant ID required" });
+      }
+      const moq = await storage.getCustomMinOrderQuantity(productId, restaurantId);
+      res.json(moq || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch custom MOQ" });
+    }
+  });
+
+  app.put("/api/custom-moq", async (req, res) => {
+    try {
+      const { productId, supplierId, restaurantId, minOrderQuantity } = req.body;
+      if (!productId || !supplierId || !restaurantId || !minOrderQuantity || minOrderQuantity < 1) {
+        return res.status(400).json({ error: "Invalid data" });
+      }
+      const moq = await storage.setCustomMinOrderQuantity({ productId, supplierId, restaurantId, minOrderQuantity });
+      res.json(moq);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to set custom MOQ" });
+    }
+  });
+
+  app.delete("/api/custom-moq/:id", async (req, res) => {
+    try {
+      await storage.deleteCustomMinOrderQuantity(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete custom MOQ" });
+    }
+  });
+
   // ===== CART =====
   app.get("/api/cart", async (req, res) => {
     try {
@@ -445,6 +508,18 @@ export async function registerRoutes(
   app.post("/api/cart", async (req, res) => {
     try {
       const validated = insertCartItemSchema.parse(req.body);
+      const product = await storage.getProduct(validated.productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      let minQty = product.minOrderQuantity || 1;
+      const customMoq = await storage.getCustomMinOrderQuantity(validated.productId, validated.restaurantId);
+      if (customMoq) {
+        minQty = customMoq.minOrderQuantity;
+      }
+      if (validated.quantity < minQty) {
+        return res.status(400).json({ error: `Minimum order quantity is ${minQty}` });
+      }
       const item = await storage.addToCart(validated);
       res.status(201).json(item);
     } catch (error) {
@@ -455,6 +530,21 @@ export async function registerRoutes(
   app.patch("/api/cart/:id", async (req, res) => {
     try {
       const validated = updateCartQuantitySchema.parse(req.body);
+      const cartItem = await storage.getCartItem(req.params.id);
+      if (!cartItem) {
+        return res.status(404).json({ error: "Cart item not found" });
+      }
+      const product = await storage.getProduct(cartItem.productId);
+      if (product) {
+        let minQty = product.minOrderQuantity || 1;
+        const customMoq = await storage.getCustomMinOrderQuantity(cartItem.productId, cartItem.restaurantId);
+        if (customMoq) {
+          minQty = customMoq.minOrderQuantity;
+        }
+        if (validated.quantity < minQty) {
+          return res.status(400).json({ error: `Minimum order quantity is ${minQty}` });
+        }
+      }
       const updated = await storage.updateCartItem(req.params.id, validated.quantity);
       if (!updated) {
         return res.status(404).json({ error: "Cart item not found" });

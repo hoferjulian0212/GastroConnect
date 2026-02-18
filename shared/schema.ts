@@ -35,7 +35,17 @@ export const products = pgTable("products", {
   category: text("category"),
   inStock: boolean("in_stock").default(true).notNull(),
   stockQuantity: integer("stock_quantity").default(0),
+  minOrderQuantity: integer("min_order_quantity").default(1).notNull(),
   imageUrl: text("image_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const customMinOrderQuantities = pgTable("custom_min_order_quantities", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  minOrderQuantity: integer("min_order_quantity").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -187,6 +197,7 @@ export const insertOrderStatusHistorySchema = createInsertSchema(orderStatusHist
 export const insertComplaintStatusHistorySchema = createInsertSchema(complaintStatusHistory).omit({ id: true, createdAt: true });
 export const insertDeliveryScheduleSchema = createInsertSchema(deliverySchedules).omit({ id: true, createdAt: true });
 export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: true, createdAt: true });
+export const insertCustomMinOrderQuantitySchema = createInsertSchema(customMinOrderQuantities).omit({ id: true, createdAt: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -220,6 +231,8 @@ export type InsertDeliverySchedule = z.infer<typeof insertDeliveryScheduleSchema
 export type DeliverySchedule = typeof deliverySchedules.$inferSelect;
 export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
 export type Promotion = typeof promotions.$inferSelect;
+export type InsertCustomMinOrderQuantity = z.infer<typeof insertCustomMinOrderQuantitySchema>;
+export type CustomMinOrderQuantity = typeof customMinOrderQuantities.$inferSelect;
 
 // Extended types for frontend
 export type ProductWithSupplier = Product & { supplier: User };
