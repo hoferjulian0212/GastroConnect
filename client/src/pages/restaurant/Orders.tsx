@@ -301,7 +301,7 @@ export default function RestaurantOrders() {
   }, [editItems]);
 
   const canEditOrder = (order: OrderWithDetails) => order.status === "pending";
-  const canRequestChange = (order: OrderWithDetails) => order.status === "confirmed" || order.status === "in_delivery";
+  const canRequestChange = (order: OrderWithDetails) => order.status === "confirmed";
 
   const OrderCard = ({ order }: { order: OrderWithDetails }) => {
     const isHighlighted = order.id === highlightOrderId;
