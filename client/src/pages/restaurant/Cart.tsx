@@ -6,14 +6,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Plus, Minus, Package, ArrowRight, CalendarDays, Zap, Tag } from "lucide-react";
+import { ShoppingCart, Trash2, Plus, Minus, Package, ArrowRight, CalendarDays, Zap, Tag, CheckCircle2, ShoppingBag, ClipboardList } from "lucide-react";
 import type { CartItemWithProduct, DeliverySchedule, Promotion } from "@shared/schema";
 
 type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion | null };
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { format, addDays, isBefore, startOfDay } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
@@ -22,10 +22,19 @@ import { useT } from "@/lib/translations";
 export default function RestaurantCart() {
   const { currentUser } = useUser();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const [orderNotes, setOrderNotes] = useState("");
   const [deliveryOption, setDeliveryOption] = useState<"asap" | "date">("asap");
   const [selectedDeliveryDate, setSelectedDeliveryDate] = useState<string>("");
+  const [orderConfirmation, setOrderConfirmation] = useState<{
+    orderId: string;
+    total: string;
+    itemCount: number;
+    suppliers: string[];
+    deliveryDate: string | null;
+    notes: string;
+    createdAt: string;
+  } | null>(null);
+  const [confirmationVisible, setConfirmationVisible] = useState(false);
   const { lang } = useLanguage();
   const t = useT(lang);
 
@@ -60,13 +69,28 @@ export default function RestaurantCart() {
 
   const createOrderMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/orders", {
+      const res = await apiRequest("POST", "/api/orders", {
         restaurantId: currentUser?.id,
         notes: orderNotes,
         requestedDeliveryDate: deliveryOption === "date" && selectedDeliveryDate ? selectedDeliveryDate : null,
       });
+      return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const supplierNames = Object.values(groupedBySupplier || {}).map(g => g.supplier.companyName || g.supplier.name);
+      const itemCount = cartItems?.length || 0;
+      const orders = Array.isArray(data) ? data : [data];
+      const orderId = orders.length === 1 ? orders[0]?.id?.slice(0, 8) : orders.map(o => o?.id?.slice(0, 8)).join(", ");
+      setOrderConfirmation({
+        orderId: orderId || "",
+        total: grandTotal,
+        itemCount,
+        suppliers: supplierNames,
+        deliveryDate: deliveryOption === "date" && selectedDeliveryDate ? selectedDeliveryDate : null,
+        notes: orderNotes,
+        createdAt: new Date().toISOString(),
+      });
+      setTimeout(() => setConfirmationVisible(true), 50);
       queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
@@ -75,11 +99,6 @@ export default function RestaurantCart() {
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
-      toast({
-        title: t("cart", "orderPlaced"),
-        description: t("cart", "orderPlacedDesc"),
-      });
-      setLocation("/restaurant/orders");
     },
     onError: () => {
       toast({
@@ -169,6 +188,87 @@ export default function RestaurantCart() {
     (total, item) => total + getEffectivePrice(item) * item.quantity,
     0
   ).toFixed(2) || "0.00";
+
+  const dateLocaleObj = lang === "it" ? it : de;
+
+  if (orderConfirmation) {
+    return (
+      <div className={`flex items-center justify-center min-h-[60vh] transition-all duration-500 ${confirmationVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+        <div className="w-full max-w-md mx-auto text-center space-y-6">
+          <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 mx-auto transition-all duration-700 ${confirmationVisible ? "scale-100" : "scale-0"}`}>
+            <CheckCircle2 className={`h-10 w-10 text-green-600 dark:text-green-400 transition-all duration-500 delay-300 ${confirmationVisible ? "scale-100 opacity-100" : "scale-0 opacity-0"}`} />
+          </div>
+
+          <div className={`space-y-2 transition-all duration-500 delay-200 ${confirmationVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+            <h1 className="text-2xl font-bold" data-testid="text-order-sent-title">{t("cart", "orderSentTitle")}</h1>
+            <p className="text-muted-foreground text-sm">{t("cart", "orderSentDesc")}</p>
+          </div>
+
+          <Card className={`text-left transition-all duration-500 delay-400 ${confirmationVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex justify-between items-center py-1">
+                <span className="text-sm text-muted-foreground">{t("cart", "orderNumber")}</span>
+                <span className="text-sm font-mono font-medium" data-testid="text-order-id">#{orderConfirmation.orderId}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between items-center py-1">
+                <span className="text-sm text-muted-foreground">{t("cart", "orderDate")}</span>
+                <span className="text-sm font-medium">{format(new Date(orderConfirmation.createdAt), "dd. MMM yyyy, HH:mm", { locale: dateLocaleObj })}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between items-center py-1">
+                <span className="text-sm text-muted-foreground">{t("common", "suppliers")}</span>
+                <span className="text-sm font-medium">{orderConfirmation.suppliers.join(", ")}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between items-center py-1">
+                <span className="text-sm text-muted-foreground">{t("common", "items")}</span>
+                <span className="text-sm font-medium">{orderConfirmation.itemCount}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between items-center py-1">
+                <span className="text-sm text-muted-foreground">{t("cart", "deliveryDateLabel")}</span>
+                <span className="text-sm font-medium">
+                  {orderConfirmation.deliveryDate
+                    ? format(new Date(orderConfirmation.deliveryDate), "dd. MMM yyyy", { locale: dateLocaleObj })
+                    : t("cart", "asapDelivery")}
+                </span>
+              </div>
+              {orderConfirmation.notes && (
+                <>
+                  <Separator />
+                  <div className="flex justify-between items-start gap-4 py-1">
+                    <span className="text-sm text-muted-foreground shrink-0">{t("cart", "notesLabel")}</span>
+                    <span className="text-sm text-right">{orderConfirmation.notes}</span>
+                  </div>
+                </>
+              )}
+              <Separator />
+              <div className="flex justify-between items-center py-1">
+                <span className="text-sm font-medium">{t("common", "total")}</span>
+                <span className="text-lg font-bold" data-testid="text-order-total">{orderConfirmation.total}€</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className={`flex flex-col sm:flex-row gap-3 transition-all duration-500 delay-500 ${confirmationVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+            <Button className="flex-1 gap-2" asChild>
+              <Link href="/restaurant/orders" data-testid="link-view-orders">
+                <ClipboardList className="h-4 w-4" />
+                {t("cart", "viewOrders")}
+              </Link>
+            </Button>
+            <Button variant="outline" className="flex-1 gap-2" asChild>
+              <Link href="/restaurant/catalog" data-testid="link-continue-shopping">
+                <ShoppingBag className="h-4 w-4" />
+                {t("cart", "continueShopping")}
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-6">

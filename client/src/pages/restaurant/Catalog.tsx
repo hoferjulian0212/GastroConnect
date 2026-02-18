@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Package, ShoppingCart, Plus, Minus, Store, Filter, Eye, Tag, Percent, Clock } from "lucide-react";
+import { Search, Package, ShoppingCart, Plus, Minus, Store, Filter, Eye, Tag, Percent, Clock, Check } from "lucide-react";
 import { differenceInDays, differenceInHours, format } from "date-fns";
 import { de, it } from "date-fns/locale";
 import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
@@ -29,8 +29,16 @@ export default function RestaurantCatalog() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [detailProduct, setDetailProduct] = useState<ProductWithSupplierAndPromotion | null>(null);
+  const [addedProductIds, setAddedProductIds] = useState<Set<string>>(new Set());
+  const [addedTimers, setAddedTimers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
   const { lang } = useLanguage();
   const t = useT(lang);
+
+  useEffect(() => {
+    return () => {
+      Object.values(addedTimers).forEach(clearTimeout);
+    };
+  }, [addedTimers]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -60,13 +68,23 @@ export default function RestaurantCatalog() {
         quantity,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
-      toast({
-        title: t("common", "addedToCart"),
-        description: t("common", "productAddedSuccess"),
-      });
+      setAddedProductIds(prev => new Set(prev).add(variables.productId));
+      const timer = setTimeout(() => {
+        setAddedProductIds(prev => {
+          const next = new Set(prev);
+          next.delete(variables.productId);
+          return next;
+        });
+        setAddedTimers(prev => {
+          const next = { ...prev };
+          delete next[variables.productId];
+          return next;
+        });
+      }, 1500);
+      setAddedTimers(prev => ({ ...prev, [variables.productId]: timer }));
     },
     onError: () => {
       toast({
@@ -318,16 +336,29 @@ export default function RestaurantCatalog() {
                             </Button>
                           </div>
                           <Button
-                            variant="outline"
+                            variant={addedProductIds.has(product.id) ? "default" : "outline"}
                             size="sm"
-                            className="gap-1 text-xs md:text-sm"
+                            className={`gap-1 text-xs md:text-sm transition-all duration-300 ${
+                              addedProductIds.has(product.id) 
+                                ? "bg-green-600 border-green-600 text-white no-default-hover-elevate no-default-active-elevate" 
+                                : ""
+                            }`}
                             disabled={!product.inStock || addToCartMutation.isPending}
                             onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
                             data-testid={`button-add-to-cart-${product.id}`}
                           >
-                            <ShoppingCart className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">{t("common", "add")}</span>
-                            <span className="sm:hidden">+</span>
+                            {addedProductIds.has(product.id) ? (
+                              <>
+                                <Check className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">{t("common", "addedToCart")}</span>
+                              </>
+                            ) : (
+                              <>
+                                <ShoppingCart className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">{t("common", "add")}</span>
+                                <span className="sm:hidden">+</span>
+                              </>
+                            )}
                           </Button>
                         </div>
                       </div>
