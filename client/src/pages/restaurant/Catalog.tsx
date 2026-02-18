@@ -218,7 +218,7 @@ export default function RestaurantCatalog() {
                 return (
                   <Card
                     key={product.id}
-                    className={`cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01] ${hasPromo ? "ring-1 ring-green-400/50 dark:ring-green-500/30" : ""}`}
+                    className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-px hover:scale-[1.003] ${hasPromo ? "ring-1 ring-green-400/50 dark:ring-green-500/30" : ""}`}
                     data-testid={`product-card-${product.id}`}
                     onClick={() => setDetailProduct(product)}
                   >
