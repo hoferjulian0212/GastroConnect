@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, ShoppingBag, Package, Settings, AlertCircle, Truck, FileText, LogOut } from "lucide-react";
+import { Home, MessageSquare, ShoppingBag, Package, Settings, AlertCircle, Truck, FileText, LogOut, ChevronRight } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -97,7 +97,8 @@ export function RestaurantSidebar() {
                 {currentUser.companyName?.substring(0, 2).toUpperCase() || currentUser.name.substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-sm font-semibold truncate">{currentUser.companyName || currentUser.name}</span>
+            <span className="text-sm font-semibold truncate flex-1">{currentUser.companyName || currentUser.name}</span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
           </Link>
         )}
       </SidebarHeader>
