@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, Package, ClipboardList, Settings, AlertCircle, FileText, Tag, LogOut, ChevronRight } from "lucide-react";
+import { Home, MessageSquare, Package, ClipboardList, Settings, AlertCircle, FileText, Tag, ChevronRight } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -116,16 +116,6 @@ export function SupplierSidebar() {
       <SidebarFooter className="p-4 mt-auto">
         <SidebarMenu className="space-y-1">
           {bottomMenuItems.map((item) => renderMenuItem(item, false))}
-          <SidebarMenuItem>
-            <Link
-              href="/"
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-black dark:text-white hover-elevate`}
-              data-testid="button-logout"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>{t("common", "logout")}</span>
-            </Link>
-          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

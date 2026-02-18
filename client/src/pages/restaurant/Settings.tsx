@@ -3,7 +3,8 @@ import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, Monitor, Moon } from "lucide-react";
+import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, Monitor, Moon, LogOut } from "lucide-react";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/context/LanguageContext";
@@ -217,6 +218,22 @@ export default function RestaurantSettings() {
               data-testid="switch-dark-mode"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/30">
+        <CardContent className="p-3 md:p-6">
+          <Link
+            href="/"
+            className="flex items-center gap-3 py-2 text-destructive font-medium transition-colors rounded-lg"
+            data-testid="button-logout"
+          >
+            <LogOut className="h-5 w-5" />
+            <div>
+              <span className="text-sm font-semibold">{t("common", "logout")}</span>
+              <p className="text-xs text-destructive/70">{t("settings", "logoutDesc")}</p>
+            </div>
+          </Link>
         </CardContent>
       </Card>
     </div>

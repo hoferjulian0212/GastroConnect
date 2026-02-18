@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, CalendarDays, Save, Loader2, Package, Trash2, Monitor, Moon } from "lucide-react";
+import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, CalendarDays, Save, Loader2, Package, Trash2, Monitor, Moon, LogOut } from "lucide-react";
+import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
@@ -501,6 +502,22 @@ export default function SupplierSettings() {
               data-testid="switch-dark-mode"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/30">
+        <CardContent className="p-3 md:p-6">
+          <Link
+            href="/"
+            className="flex items-center gap-3 py-2 text-destructive font-medium transition-colors rounded-lg"
+            data-testid="button-logout"
+          >
+            <LogOut className="h-5 w-5" />
+            <div>
+              <span className="text-sm font-semibold">{t("common", "logout")}</span>
+              <p className="text-xs text-destructive/70">{t("settings", "logoutDesc")}</p>
+            </div>
+          </Link>
         </CardContent>
       </Card>
     </div>

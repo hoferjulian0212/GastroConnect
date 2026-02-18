@@ -322,6 +322,7 @@ const t = {
     appearanceDesc: { de: "Passen Sie das Erscheinungsbild der Anwendung an", it: "Personalizza l'aspetto dell'applicazione" },
     darkMode: { de: "Dunkelmodus", it: "Modalità scura" },
     darkModeDesc: { de: "Dunkles Farbschema für die gesamte Anwendung verwenden", it: "Usa lo schema di colori scuro per tutta l'applicazione" },
+    logoutDesc: { de: "Von Ihrem Konto abmelden und zur Startseite zurückkehren", it: "Disconnettiti dal tuo account e torna alla pagina iniziale" },
   },
   weekdays: {
     monday: { de: "Montag", it: "Lunedì" },
