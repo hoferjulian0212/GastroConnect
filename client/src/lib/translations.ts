@@ -309,6 +309,10 @@ const t = {
     emailSupplierNewOrders: { de: "E-Mail bei eingehenden Bestellungen", it: "E-mail per ordini in arrivo" },
     emailSupplierNewMessages: { de: "E-Mail bei eingehenden Nachrichten", it: "E-mail per messaggi in arrivo" },
     emailSupplierComplaints: { de: "E-Mail bei Reklamations-Updates", it: "E-mail per aggiornamenti reclami" },
+    appearance: { de: "Darstellung", it: "Aspetto" },
+    appearanceDesc: { de: "Passen Sie das Erscheinungsbild der Anwendung an", it: "Personalizza l'aspetto dell'applicazione" },
+    darkMode: { de: "Dunkelmodus", it: "Modalità scura" },
+    darkModeDesc: { de: "Dunkles Farbschema für die gesamte Anwendung verwenden", it: "Usa lo schema di colori scuro per tutta l'applicazione" },
   },
   weekdays: {
     monday: { de: "Montag", it: "Lunedì" },

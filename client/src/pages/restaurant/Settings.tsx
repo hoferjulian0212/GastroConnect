@@ -3,14 +3,16 @@ import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Settings as SettingsIcon, Bell, Mail, ShoppingBag, MessageSquare, AlertCircle } from "lucide-react";
+import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, Monitor, Moon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 
 export default function RestaurantSettings() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const { isDark, setTheme } = useTheme();
   const { lang } = useLanguage();
   const t = useT(lang);
 
@@ -186,6 +188,37 @@ export default function RestaurantSettings() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="p-3 md:p-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Monitor className="h-4 w-4 md:h-5 md:w-5" />
+            {t("settings", "appearance")}
+          </CardTitle>
+          <CardDescription className="text-xs md:text-sm">
+            {t("settings", "appearanceDesc")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-4">
+          <div className="flex items-center justify-between gap-3 py-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <Moon className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="min-w-0">
+                <Label className="text-sm font-medium">{t("settings", "darkMode")}</Label>
+                <p className="text-xs text-muted-foreground">{t("settings", "darkModeDesc")}</p>
+              </div>
+            </div>
+            <Switch
+              checked={isDark}
+              onCheckedChange={(v) => {
+                setTheme(v);
+                handleToggle(() => {}, v, t("settings", "darkMode"));
+              }}
+              data-testid="switch-dark-mode"
+            />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

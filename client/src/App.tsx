@@ -7,7 +7,6 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { ChatProvider, useChat } from "@/context/ChatContext";
 import { LanguageProvider } from "@/context/LanguageContext";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
@@ -189,14 +188,13 @@ function AppLayout() {
                   <RoleSwitcher />
                 </div>
                 <div className="flex items-center gap-2">
-                  <NotificationBell />
+                  <LanguageToggle />
                   {currentRole === "restaurant" && (
                     <div className="hidden md:block">
                       <CartButton />
                     </div>
                   )}
-                  <LanguageToggle />
-                  <ThemeToggle />
+                  <NotificationBell />
                 </div>
               </header>
               <main className={`flex-1 overflow-auto ${isInChat ? 'p-0 pb-0' : 'p-4 md:p-6 pb-28'} md:p-6 md:pb-6`}>

@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, CalendarDays, Save, Loader2, Package, Trash2 } from "lucide-react";
+import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, CalendarDays, Save, Loader2, Package, Trash2, Monitor, Moon } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/hooks/use-theme";
 import type { User, DeliverySchedule, Product, CustomMinOrderQuantity } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getWeekdays, getWeekdayLabel } from "@/lib/translations";
@@ -19,6 +20,7 @@ import { useT, getWeekdays, getWeekdayLabel } from "@/lib/translations";
 export default function SupplierSettings() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const { isDark, setTheme } = useTheme();
   const { lang } = useLanguage();
   const t = useT(lang);
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("");
@@ -470,6 +472,37 @@ export default function SupplierSettings() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="p-3 md:p-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Monitor className="h-4 w-4 md:h-5 md:w-5" />
+            {t("settings", "appearance")}
+          </CardTitle>
+          <CardDescription className="text-xs md:text-sm">
+            {t("settings", "appearanceDesc")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-4">
+          <div className="flex items-center justify-between gap-3 py-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <Moon className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="min-w-0">
+                <Label className="text-sm font-medium">{t("settings", "darkMode")}</Label>
+                <p className="text-xs text-muted-foreground">{t("settings", "darkModeDesc")}</p>
+              </div>
+            </div>
+            <Switch
+              checked={isDark}
+              onCheckedChange={(v) => {
+                setTheme(v);
+                handleToggle(() => {}, v, t("settings", "darkMode"));
+              }}
+              data-testid="switch-dark-mode"
+            />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
