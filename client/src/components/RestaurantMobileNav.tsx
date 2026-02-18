@@ -67,8 +67,6 @@ export function RestaurantMobileNav() {
     paddingBottom: "env(safe-area-inset-bottom, 16px)",
     borderRadius: "9999px",
     boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
     overflow: "hidden",
   };
 
@@ -83,7 +81,7 @@ export function RestaurantMobileNav() {
       )}
       
       {isMoreOpen && (
-        <div className="fixed z-50 border border-border rounded-2xl shadow-lg p-2 min-w-[180px] md:hidden floating-nav-menu" style={{ bottom: "calc(80px + env(safe-area-inset-bottom, 16px))", right: "20px", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }} data-testid="restaurant-mobile-nav-more-menu">
+        <div className="fixed z-50 border border-border rounded-2xl shadow-lg p-2 min-w-[180px] md:hidden floating-nav-menu" style={{ bottom: "calc(80px + env(safe-area-inset-bottom, 16px))", right: "20px" }} data-testid="restaurant-mobile-nav-more-menu">
           <div className="flex items-center justify-between px-2 py-1 mb-1 border-b border-border">
             <span className="text-xs font-medium text-muted-foreground">{t("common", "moreOptions")}</span>
             <button 
