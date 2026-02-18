@@ -50,8 +50,8 @@ const updateProductSchema = z.object({
 const stockMovementSchema = z.object({
   productId: uuidField,
   supplierId: uuidField,
-  type: z.enum(["manual_in", "manual_out"]),
-  quantity: z.number().int().min(1).max(999999),
+  type: z.enum(["manual_in", "manual_out", "manual_set"]),
+  quantity: z.number().int().min(0).max(999999),
   note: safeString.optional(),
 }).strict();
 
@@ -517,7 +517,9 @@ export async function registerRoutes(
       }
       const currentStock = product.stockQuantity ?? 0;
       let newStock: number;
-      if (validated.type === "manual_in") {
+      if (validated.type === "manual_set") {
+        newStock = validated.quantity;
+      } else if (validated.type === "manual_in") {
         newStock = currentStock + validated.quantity;
       } else {
         newStock = Math.max(0, currentStock - validated.quantity);
@@ -532,7 +534,7 @@ export async function registerRoutes(
         newStock,
         note: validated.note || null,
       });
-      if (validated.type === "manual_out") {
+      if (validated.type === "manual_out" || validated.type === "manual_set") {
         await checkAndNotifyLowStock(validated.productId, validated.supplierId);
       }
       res.status(201).json(movement);
