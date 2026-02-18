@@ -11,6 +11,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ShoppingCart } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -139,6 +140,30 @@ function CartButton() {
   );
 }
 
+function MobileProfileButton() {
+  const { currentUser, currentRole } = useUser();
+  const [, setLocation] = useLocation();
+
+  const initials = currentUser?.name
+    ? currentUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+    : "?";
+
+  return (
+    <button
+      onClick={() => setLocation(`/${currentRole}/settings`)}
+      className="md:hidden"
+      data-testid="button-mobile-profile"
+    >
+      <Avatar className="h-8 w-8">
+        <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name || ""} />
+        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+    </button>
+  );
+}
+
 function AppLayout() {
   const { currentRole, isLoading } = useUser();
   const { isInChat } = useChat();
@@ -185,7 +210,10 @@ function AppLayout() {
             <div className="flex flex-col flex-1 min-w-0">
               <header className={`flex items-center justify-between gap-4 p-3 border-b border-border bg-background sticky top-0 z-10 ${isInChat ? 'hidden md:flex' : ''}`}>
                 <div className="flex items-center gap-2">
-                  <RoleSwitcher />
+                  <MobileProfileButton />
+                  <div className="hidden md:block">
+                    <RoleSwitcher />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <LanguageToggle />
