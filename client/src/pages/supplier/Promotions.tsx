@@ -127,6 +127,15 @@ export default function SupplierPromotions() {
       toast({ title: t("common", "error"), description: lang === "de" ? "Bitte füllen Sie alle Felder korrekt aus." : "Compila tutti i campi correttamente.", variant: "destructive" });
       return;
     }
+    const today = format(new Date(), "yyyy-MM-dd");
+    if (startDate < today) {
+      toast({ title: t("common", "error"), description: lang === "de" ? "Das Startdatum darf nicht in der Vergangenheit liegen." : "La data di inizio non può essere nel passato.", variant: "destructive" });
+      return;
+    }
+    if (endDate < today) {
+      toast({ title: t("common", "error"), description: lang === "de" ? "Das Enddatum darf nicht in der Vergangenheit liegen." : "La data di fine non può essere nel passato.", variant: "destructive" });
+      return;
+    }
     if (new Date(endDate) <= new Date(startDate)) {
       toast({ title: t("common", "error"), description: lang === "de" ? "Das Enddatum muss nach dem Startdatum liegen." : "La data di fine deve essere successiva alla data di inizio.", variant: "destructive" });
       return;
@@ -373,6 +382,7 @@ export default function SupplierPromotions() {
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
+                  min={format(new Date(), "yyyy-MM-dd")}
                   className="mt-1"
                   data-testid="input-start-date"
                 />
@@ -383,6 +393,7 @@ export default function SupplierPromotions() {
                   type="date"
                   value={endDate}
                   onChange={e => setEndDate(e.target.value)}
+                  min={format(new Date(), "yyyy-MM-dd")}
                   className="mt-1"
                   data-testid="input-end-date"
                 />

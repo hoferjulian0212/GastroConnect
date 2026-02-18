@@ -304,10 +304,20 @@ export async function registerRoutes(
 
   app.post("/api/promotions", async (req, res) => {
     try {
+      const startDate = new Date(req.body.startDate);
+      const endDate = new Date(req.body.endDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (startDate < today) {
+        return res.status(400).json({ error: "Start date cannot be in the past" });
+      }
+      if (endDate < today) {
+        return res.status(400).json({ error: "End date cannot be in the past" });
+      }
       const validated = insertPromotionSchema.parse({
         ...req.body,
-        startDate: new Date(req.body.startDate),
-        endDate: new Date(req.body.endDate),
+        startDate,
+        endDate,
       });
       const promo = await storage.createPromotion(validated);
       res.status(201).json(promo);
@@ -319,6 +329,14 @@ export async function registerRoutes(
   app.patch("/api/promotions/:id", async (req, res) => {
     try {
       const validated = updatePromotionSchema.parse(req.body);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (validated.startDate && new Date(validated.startDate) < today) {
+        return res.status(400).json({ error: "Start date cannot be in the past" });
+      }
+      if (validated.endDate && new Date(validated.endDate) < today) {
+        return res.status(400).json({ error: "End date cannot be in the past" });
+      }
       const data: Record<string, unknown> = { ...validated };
       if (validated.startDate) data.startDate = new Date(validated.startDate);
       if (validated.endDate) data.endDate = new Date(validated.endDate);
