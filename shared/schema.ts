@@ -6,9 +6,10 @@ import { z } from "zod";
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "in_delivery", "delivered", "cancelled"]);
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request"]);
-export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);
 export const complaintStatusEnum = pgEnum("complaint_status", ["open", "in_progress", "resolved", "closed"]);
+export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["manual_in", "manual_out", "order_confirmed", "order_reversed", "order_cancelled"]);
 
 export const users = pgTable("users", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -35,6 +36,7 @@ export const products = pgTable("products", {
   category: text("category"),
   inStock: boolean("in_stock").default(true).notNull(),
   stockQuantity: integer("stock_quantity").default(0),
+  lowStockThreshold: integer("low_stock_threshold").default(0),
   minOrderQuantity: integer("min_order_quantity").default(1).notNull(),
   imageUrl: text("image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -180,6 +182,19 @@ export const promotions = pgTable("promotions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const stockMovements = pgTable("stock_movements", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  orderId: varchar("order_id", { length: 36 }).references(() => orders.id),
+  type: stockMovementTypeEnum("type").notNull(),
+  quantity: integer("quantity").notNull(),
+  previousStock: integer("previous_stock").notNull(),
+  newStock: integer("new_stock").notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
@@ -198,6 +213,7 @@ export const insertComplaintStatusHistorySchema = createInsertSchema(complaintSt
 export const insertDeliveryScheduleSchema = createInsertSchema(deliverySchedules).omit({ id: true, createdAt: true });
 export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: true, createdAt: true });
 export const insertCustomMinOrderQuantitySchema = createInsertSchema(customMinOrderQuantities).omit({ id: true, createdAt: true });
+export const insertStockMovementSchema = createInsertSchema(stockMovements).omit({ id: true, createdAt: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -233,6 +249,8 @@ export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
 export type Promotion = typeof promotions.$inferSelect;
 export type InsertCustomMinOrderQuantity = z.infer<typeof insertCustomMinOrderQuantitySchema>;
 export type CustomMinOrderQuantity = typeof customMinOrderQuantities.$inferSelect;
+export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;
+export type StockMovement = typeof stockMovements.$inferSelect;
 
 // Extended types for frontend
 export type ProductWithSupplier = Product & { supplier: User };
@@ -254,3 +272,4 @@ export type OrderStatusHistoryWithUser = OrderStatusHistory & { changedByUser?: 
 export type ComplaintStatusHistoryWithUser = ComplaintStatusHistory & { changedByUser?: User };
 export type PromotionWithProduct = Promotion & { product: Product };
 export type ProductWithSupplierAndPromotion = ProductWithSupplier & { activePromotion?: Promotion | null };
+export type StockMovementWithProduct = StockMovement & { product: Product };

@@ -42,8 +42,17 @@ const updateProductSchema = z.object({
   category: safeShortString.optional().nullable(),
   inStock: z.boolean().optional(),
   stockQuantity: z.number().int().min(0).max(999999).optional(),
+  lowStockThreshold: z.number().int().min(0).max(999999).optional(),
   minOrderQuantity: z.number().int().min(1).max(999999).optional(),
   imageUrl: safeString.optional().nullable(),
+}).strict();
+
+const stockMovementSchema = z.object({
+  productId: uuidField,
+  supplierId: uuidField,
+  type: z.enum(["manual_in", "manual_out"]),
+  quantity: z.number().int().min(1).max(999999),
+  note: safeString.optional(),
 }).strict();
 
 const updatePromotionSchema = z.object({
@@ -466,6 +475,88 @@ export async function registerRoutes(
     }
   });
 
+  // ===== STOCK MOVEMENTS =====
+  async function checkAndNotifyLowStock(productId: string, supplierId: string) {
+    const product = await storage.getProduct(productId);
+    if (!product) return;
+    if (product.lowStockThreshold && product.lowStockThreshold > 0 && (product.stockQuantity ?? 0) <= product.lowStockThreshold) {
+      await storage.createNotification({
+        userId: supplierId,
+        type: "low_stock",
+        title: "Niedriger Lagerbestand",
+        message: `${product.name}: Nur noch ${product.stockQuantity ?? 0} ${product.unit} auf Lager (Schwellenwert: ${product.lowStockThreshold})`,
+        referenceId: product.id,
+      });
+    }
+  }
+
+  app.get("/api/stock-movements", async (req, res) => {
+    try {
+      const productId = req.query.productId as string;
+      const supplierId = req.query.supplierId as string;
+      if (productId) {
+        const movements = await storage.getStockMovements(productId);
+        return res.json(movements);
+      }
+      if (supplierId) {
+        const movements = await storage.getStockMovementsBySupplier(supplierId);
+        return res.json(movements);
+      }
+      return res.status(400).json({ error: "productId or supplierId required" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch stock movements" });
+    }
+  });
+
+  app.post("/api/stock-movements", async (req, res) => {
+    try {
+      const validated = stockMovementSchema.parse(req.body);
+      const product = await storage.getProduct(validated.productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      const currentStock = product.stockQuantity ?? 0;
+      let newStock: number;
+      if (validated.type === "manual_in") {
+        newStock = currentStock + validated.quantity;
+      } else {
+        newStock = Math.max(0, currentStock - validated.quantity);
+      }
+      await storage.updateProductStock(validated.productId, newStock);
+      const movement = await storage.addStockMovement({
+        productId: validated.productId,
+        supplierId: validated.supplierId,
+        type: validated.type,
+        quantity: validated.quantity,
+        previousStock: currentStock,
+        newStock,
+        note: validated.note || null,
+      });
+      if (validated.type === "manual_out") {
+        await checkAndNotifyLowStock(validated.productId, validated.supplierId);
+      }
+      res.status(201).json(movement);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create stock movement" });
+    }
+  });
+
+  app.get("/api/low-stock", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) {
+        return res.status(400).json({ error: "Supplier ID required" });
+      }
+      const lowStockProducts = await storage.getLowStockProducts(supplierId);
+      res.json(lowStockProducts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch low stock products" });
+    }
+  });
+
   // ===== CART =====
   app.get("/api/cart", async (req, res) => {
     try {
@@ -839,6 +930,60 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Order not found" });
       }
       await storage.addOrderStatusHistory(req.params.id, previousStatus, status, changedBy || undefined);
+
+      // Stock management: deduct stock when order is confirmed (idempotent - check for existing movements)
+      if (status === "confirmed" && previousStatus === "pending") {
+        const existingMovements = await storage.getStockMovementsByOrder(order.id);
+        const alreadyConfirmed = existingMovements.some(m => m.type === "order_confirmed");
+        if (!alreadyConfirmed) {
+          for (const item of order.items) {
+            const product = await storage.getProduct(item.productId);
+            if (product) {
+              const currentStock = product.stockQuantity ?? 0;
+              const newStock = Math.max(0, currentStock - item.quantity);
+              await storage.updateProductStock(item.productId, newStock);
+              await storage.addStockMovement({
+                productId: item.productId,
+                supplierId: order.supplierId,
+                orderId: order.id,
+                type: "order_confirmed",
+                quantity: item.quantity,
+                previousStock: currentStock,
+                newStock,
+                note: `Bestellung #${order.id.slice(0, 8)} bestätigt`,
+              });
+              await checkAndNotifyLowStock(item.productId, order.supplierId);
+            }
+          }
+        }
+      }
+
+      // Stock management: reverse stock when order is cancelled (idempotent - check for existing movements)
+      if (status === "cancelled" && (previousStatus === "confirmed" || previousStatus === "in_delivery")) {
+        const existingMovements = await storage.getStockMovementsByOrder(order.id);
+        const alreadyCancelled = existingMovements.some(m => m.type === "order_cancelled");
+        if (!alreadyCancelled) {
+          for (const item of order.items) {
+            const product = await storage.getProduct(item.productId);
+            if (product) {
+              const currentStock = product.stockQuantity ?? 0;
+              const newStock = currentStock + item.quantity;
+              await storage.updateProductStock(item.productId, newStock);
+              await storage.addStockMovement({
+                productId: item.productId,
+                supplierId: order.supplierId,
+                orderId: order.id,
+                type: "order_cancelled",
+                quantity: item.quantity,
+                previousStock: currentStock,
+                newStock,
+                note: `Bestellung #${order.id.slice(0, 8)} storniert`,
+              });
+            }
+          }
+        }
+      }
+
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update order status" });
@@ -974,6 +1119,32 @@ export async function registerRoutes(
         const previousStatus = order.status;
         await storage.updateOrderStatus(req.params.id, "pending");
         await storage.addOrderStatusHistory(req.params.id, previousStatus, "pending", supplierId);
+
+        // Reverse stock deductions since order goes back to pending (idempotent)
+        if (previousStatus === "confirmed" || previousStatus === "in_delivery") {
+          const existingMovements = await storage.getStockMovementsByOrder(order.id);
+          const alreadyReversed = existingMovements.some(m => m.type === "order_reversed");
+          if (!alreadyReversed) {
+            for (const item of order.items) {
+              const product = await storage.getProduct(item.productId);
+              if (product) {
+                const currentStock = product.stockQuantity ?? 0;
+                const newStock = currentStock + item.quantity;
+                await storage.updateProductStock(item.productId, newStock);
+                await storage.addStockMovement({
+                  productId: item.productId,
+                  supplierId: order.supplierId,
+                  orderId: order.id,
+                  type: "order_reversed",
+                  quantity: item.quantity,
+                  previousStock: currentStock,
+                  newStock,
+                  note: `Bestellung #${order.id.slice(0, 8)} zurück auf ausstehend (Änderungsanfrage genehmigt)`,
+                });
+              }
+            }
+          }
+        }
 
         await storage.sendMessage({
           conversationId: conversation.id,

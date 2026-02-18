@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, MessageSquare, Package, Euro, Clock, CheckCircle } from "lucide-react";
-import type { Order } from "@shared/schema";
+import { ClipboardList, MessageSquare, Package, Euro, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import type { Order, Product } from "@shared/schema";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,18 @@ export default function SupplierHome() {
     queryFn: async () => {
       const res = await fetch(`/api/supplier/stats?userId=${currentUser?.id}`);
       if (!res.ok) throw new Error('Failed to fetch stats');
+      return res.json();
+    },
+    enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
+  const { data: lowStockProducts, isLoading: lowStockLoading } = useQuery<Product[]>({
+    queryKey: ['/api/low-stock', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/low-stock?supplierId=${currentUser?.id}`);
+      if (!res.ok) throw new Error('Failed to fetch low stock');
       return res.json();
     },
     enabled: !!currentUser?.id,
@@ -176,6 +188,49 @@ export default function SupplierHome() {
           </CardContent>
         </Card>
       </div>
+
+      {lowStockProducts && lowStockProducts.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 text-orange-500" />
+              <div>
+                <CardTitle className="text-base md:text-lg">{t("supplierHome", "lowStockAlerts")}</CardTitle>
+                <CardDescription className="text-xs md:text-sm">{t("supplierHome", "lowStockAlertsDesc")}</CardDescription>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" className="text-xs md:text-sm" asChild>
+              <Link href="/supplier/products" data-testid="link-manage-stock">{t("common", "products")}</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="space-y-2 md:space-y-3">
+              {lowStockProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="flex items-center justify-between p-2 md:p-3 rounded-md bg-orange-50 dark:bg-orange-950/20"
+                  data-testid={`low-stock-item-${product.id}`}
+                >
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-md bg-orange-100 dark:bg-orange-900/30">
+                      <AlertTriangle className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs md:text-sm font-medium">{product.name}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground">
+                        {t("supplierHome", "threshold")}: {product.lowStockThreshold} {product.unit}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-[10px] md:text-xs">
+                    {product.stockQuantity ?? 0} {product.unit} {t("supplierHome", "stockLeft")}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">

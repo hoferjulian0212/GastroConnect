@@ -2,7 +2,7 @@ import { db } from "./db";
 import { eq, and, desc, or, sql, ne, inArray } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
-  orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities,
+  orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, stockMovements,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -15,7 +15,8 @@ import {
   type ComplaintStatusHistory, type ComplaintStatusHistoryWithUser,
   type Promotion, type InsertPromotion, type PromotionWithProduct,
   type DeliverySchedule, type InsertDeliverySchedule,
-  type CustomMinOrderQuantity, type InsertCustomMinOrderQuantity
+  type CustomMinOrderQuantity, type InsertCustomMinOrderQuantity,
+  type StockMovement, type InsertStockMovement, type StockMovementWithProduct
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -131,6 +132,14 @@ export interface IStorage {
   getCustomMinOrderQuantity(productId: string, restaurantId: string): Promise<CustomMinOrderQuantity | undefined>;
   setCustomMinOrderQuantity(data: InsertCustomMinOrderQuantity): Promise<CustomMinOrderQuantity>;
   deleteCustomMinOrderQuantity(id: string): Promise<void>;
+
+  // Stock Movements
+  getStockMovements(productId: string): Promise<StockMovement[]>;
+  getStockMovementsBySupplier(supplierId: string): Promise<StockMovementWithProduct[]>;
+  getStockMovementsByOrder(orderId: string): Promise<StockMovement[]>;
+  addStockMovement(movement: InsertStockMovement): Promise<StockMovement>;
+  updateProductStock(productId: string, newStock: number): Promise<Product | undefined>;
+  getLowStockProducts(supplierId: string): Promise<Product[]>;
 
   // Seed
   seedData(): Promise<void>;
@@ -1125,6 +1134,50 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCustomMinOrderQuantity(id: string): Promise<void> {
     await db.delete(customMinOrderQuantities).where(eq(customMinOrderQuantities.id, id));
+  }
+
+  // Stock Movements
+  async getStockMovements(productId: string): Promise<StockMovement[]> {
+    return db.select().from(stockMovements)
+      .where(eq(stockMovements.productId, productId))
+      .orderBy(desc(stockMovements.createdAt));
+  }
+
+  async getStockMovementsBySupplier(supplierId: string): Promise<StockMovementWithProduct[]> {
+    const result = await db.select()
+      .from(stockMovements)
+      .leftJoin(products, eq(stockMovements.productId, products.id))
+      .where(eq(stockMovements.supplierId, supplierId))
+      .orderBy(desc(stockMovements.createdAt));
+    return result.map(r => ({ ...r.stock_movements, product: r.products! }));
+  }
+
+  async getStockMovementsByOrder(orderId: string): Promise<StockMovement[]> {
+    return db.select().from(stockMovements)
+      .where(eq(stockMovements.orderId, orderId))
+      .orderBy(desc(stockMovements.createdAt));
+  }
+
+  async addStockMovement(movement: InsertStockMovement): Promise<StockMovement> {
+    const [created] = await db.insert(stockMovements).values(movement).returning();
+    return created;
+  }
+
+  async updateProductStock(productId: string, newStock: number): Promise<Product | undefined> {
+    const [updated] = await db.update(products)
+      .set({ stockQuantity: newStock })
+      .where(eq(products.id, productId))
+      .returning();
+    return updated;
+  }
+
+  async getLowStockProducts(supplierId: string): Promise<Product[]> {
+    const allProducts = await db.select().from(products)
+      .where(eq(products.supplierId, supplierId));
+    return allProducts.filter(p => 
+      p.lowStockThreshold != null && p.lowStockThreshold > 0 && 
+      (p.stockQuantity ?? 0) <= p.lowStockThreshold
+    );
   }
 }
 

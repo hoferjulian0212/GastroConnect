@@ -13,14 +13,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Package, Plus, Pencil, Trash2, Euro, Upload, X, ImageIcon, Eye } from "lucide-react";
-import type { Product } from "@shared/schema";
+import { Search, Package, Plus, Pencil, Trash2, Euro, Upload, X, ImageIcon, Eye, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse } from "lucide-react";
+import type { Product, StockMovement } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { z } from "zod";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import { formatDistanceToNow } from "date-fns";
+import { de, it as itLocale } from "date-fns/locale";
 
 const productSchema = z.object({
   name: z.string().min(1, "Name ist erforderlich"),
@@ -30,6 +32,7 @@ const productSchema = z.object({
   category: z.string().optional(),
   inStock: z.boolean().default(true),
   stockQuantity: z.number().optional(),
+  lowStockThreshold: z.number().int().min(0).optional(),
   minOrderQuantity: z.number().int().min(1).default(1),
   imageUrl: z.string().optional(),
 });
@@ -47,6 +50,10 @@ export default function SupplierProducts() {
   const [isUploading, setIsUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
+  const [stockDialogProduct, setStockDialogProduct] = useState<Product | null>(null);
+  const [stockType, setStockType] = useState<"manual_in" | "manual_out">("manual_in");
+  const [stockQty, setStockQty] = useState(1);
+  const [stockNote, setStockNote] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProductFormData>({
@@ -59,6 +66,7 @@ export default function SupplierProducts() {
       category: "",
       inStock: true,
       stockQuantity: 0,
+      lowStockThreshold: 0,
       minOrderQuantity: 1,
       imageUrl: "",
     },
@@ -145,6 +153,61 @@ export default function SupplierProducts() {
     },
   });
 
+  const { data: stockMovements } = useQuery<StockMovement[]>({
+    queryKey: ['/api/stock-movements', stockDialogProduct?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/stock-movements?productId=${stockDialogProduct?.id}`);
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    },
+    enabled: !!stockDialogProduct?.id,
+  });
+
+  const stockMovementMutation = useMutation({
+    mutationFn: async (data: { productId: string; supplierId: string; type: "manual_in" | "manual_out"; quantity: number; note?: string }) => {
+      return apiRequest("POST", "/api/stock-movements", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier/products?supplierId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stock-movements', stockDialogProduct?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/low-stock', currentUser?.id] });
+      toast({
+        title: t("supplierProducts", "stockUpdated"),
+      });
+      setStockQty(1);
+      setStockNote("");
+    },
+    onError: () => {
+      toast({
+        title: t("common", "error"),
+        description: t("supplierProducts", "stockUpdateError"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStockMovement = () => {
+    if (!stockDialogProduct || !currentUser) return;
+    stockMovementMutation.mutate({
+      productId: stockDialogProduct.id,
+      supplierId: currentUser.id,
+      type: stockType,
+      quantity: stockQty,
+      note: stockNote || undefined,
+    });
+  };
+
+  const getMovementTypeLabel = (type: string) => {
+    switch (type) {
+      case "manual_in": return t("supplierProducts", "manualIn");
+      case "manual_out": return t("supplierProducts", "manualOut");
+      case "order_confirmed": return t("supplierProducts", "orderConfirmedMovement");
+      case "order_cancelled": return t("supplierProducts", "orderCancelledMovement");
+      case "order_reversed": return t("supplierProducts", "orderReversedMovement");
+      default: return type;
+    }
+  };
+
   const filteredProducts = products?.filter(product =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -161,6 +224,7 @@ export default function SupplierProducts() {
       category: product.category || "",
       inStock: product.inStock,
       stockQuantity: product.stockQuantity || 0,
+      lowStockThreshold: product.lowStockThreshold || 0,
       minOrderQuantity: product.minOrderQuantity || 1,
       imageUrl: product.imageUrl || "",
     });
@@ -460,6 +524,50 @@ export default function SupplierProducts() {
                   )}
                 />
 
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="stockQuantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("supplierProducts", "stockQuantity")}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            placeholder="0"
+                            data-testid="input-product-stock"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="lowStockThreshold"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("supplierProducts", "lowStockThreshold")}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            placeholder="0"
+                            data-testid="input-product-threshold"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">{t("supplierProducts", "lowStockThresholdDesc")}</p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <FormField
                   control={form.control}
                   name="inStock"
@@ -583,6 +691,34 @@ export default function SupplierProducts() {
                             {t("supplierProducts", "minOrderQuantityShort")} {product.minOrderQuantity}
                           </Badge>
                         )}
+                        {product.stockQuantity != null && (
+                          <Badge 
+                            variant="outline" 
+                            className={`text-[10px] md:text-xs px-1 md:px-1.5 py-0 ${
+                              product.lowStockThreshold && product.lowStockThreshold > 0 && product.stockQuantity <= product.lowStockThreshold
+                                ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
+                                : ""
+                            }`}
+                            data-testid={`badge-stock-${product.id}`}
+                          >
+                            {product.lowStockThreshold && product.lowStockThreshold > 0 && product.stockQuantity <= product.lowStockThreshold && (
+                              <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                            )}
+                            {product.stockQuantity} {product.unit}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="mt-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-[10px] md:text-xs gap-1 px-1.5"
+                          onClick={(e) => { e.stopPropagation(); setStockDialogProduct(product); }}
+                          data-testid={`button-stock-${product.id}`}
+                        >
+                          <Warehouse className="h-3 w-3" />
+                          {t("supplierProducts", "manageStock")}
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -601,6 +737,114 @@ export default function SupplierProducts() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!stockDialogProduct} onOpenChange={(open) => { if (!open) setStockDialogProduct(null); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Warehouse className="h-5 w-5" />
+              {t("supplierProducts", "stockManagement")}
+            </DialogTitle>
+            <DialogDescription>
+              {stockDialogProduct?.name} - {stockDialogProduct?.stockQuantity ?? 0} {stockDialogProduct?.unit} {t("supplierProducts", "inStock").toLowerCase()}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Button
+                variant={stockType === "manual_in" ? "default" : "outline"}
+                className="flex-1 gap-1.5"
+                onClick={() => setStockType("manual_in")}
+                data-testid="button-stock-in"
+              >
+                <ArrowDown className="h-4 w-4" />
+                {t("supplierProducts", "stockIn")}
+              </Button>
+              <Button
+                variant={stockType === "manual_out" ? "default" : "outline"}
+                className="flex-1 gap-1.5"
+                onClick={() => setStockType("manual_out")}
+                data-testid="button-stock-out"
+              >
+                <ArrowUp className="h-4 w-4" />
+                {t("supplierProducts", "stockOut")}
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">{t("supplierProducts", "quantity")}</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={stockQty}
+                  onChange={(e) => setStockQty(Math.max(1, parseInt(e.target.value) || 1))}
+                  data-testid="input-stock-quantity"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">{t("supplierProducts", "note")}</label>
+                <Input
+                  value={stockNote}
+                  onChange={(e) => setStockNote(e.target.value)}
+                  placeholder={t("supplierProducts", "notePlaceholder")}
+                  data-testid="input-stock-note"
+                />
+              </div>
+            </div>
+
+            <Button
+              className="w-full gap-2"
+              onClick={handleStockMovement}
+              disabled={stockMovementMutation.isPending}
+              data-testid="button-submit-stock"
+            >
+              {stockType === "manual_in" ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
+              {stockType === "manual_in" ? t("supplierProducts", "stockIn") : t("supplierProducts", "stockOut")} ({stockQty} {stockDialogProduct?.unit})
+            </Button>
+
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium flex items-center gap-1.5 mb-3">
+                <History className="h-4 w-4" />
+                {t("supplierProducts", "stockMovements")}
+              </h4>
+              {stockMovements && stockMovements.length > 0 ? (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {stockMovements.slice(0, 20).map((movement) => (
+                    <div key={movement.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-xs" data-testid={`stock-movement-${movement.id}`}>
+                      <div className="flex items-center gap-2">
+                        {(movement.type === "manual_in" || movement.type === "order_cancelled" || movement.type === "order_reversed") ? (
+                          <ArrowDown className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <ArrowUp className="h-3 w-3 text-red-600" />
+                        )}
+                        <div>
+                          <span className="font-medium">{getMovementTypeLabel(movement.type)}</span>
+                          {movement.note && <p className="text-muted-foreground">{movement.note}</p>}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`font-medium ${(movement.type === "manual_in" || movement.type === "order_cancelled" || movement.type === "order_reversed") ? "text-green-600" : "text-red-600"}`}>
+                          {(movement.type === "manual_in" || movement.type === "order_cancelled" || movement.type === "order_reversed") ? "+" : "-"}{movement.quantity}
+                        </span>
+                        <p className="text-muted-foreground">
+                          {movement.previousStock} → {movement.newStock}
+                        </p>
+                        <p className="text-muted-foreground">
+                          {formatDistanceToNow(new Date(movement.createdAt), { addSuffix: true, locale: lang === "de" ? de : itLocale })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">{t("supplierProducts", "noStockMovements")}</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <ProductDetailDialog
         product={detailProduct}

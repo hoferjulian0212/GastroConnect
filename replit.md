@@ -28,6 +28,7 @@ The application uses a clean and modern UI design.
 - **Delivery Days Scheduling**: Suppliers can define specific delivery days for each restaurant. The restaurant's cart page displays available delivery dates based on these schedules, considering multiple suppliers in a single order.
 - **Order Modification**: Restaurants can edit pending orders. For confirmed orders, they can send a change request to the supplier, who can approve or deny it via the inbox. All changes are logged in the chat.
 - **Minimum Order Quantity (MOQ)**: Products can have a default MOQ, and suppliers can set custom MOQs for specific restaurants. The system enforces MOQs in the catalog and cart, both client-side and server-side.
+- **Inventory Management**: Products have `stockQuantity` and `lowStockThreshold` fields. Stock is automatically deducted when orders are confirmed, and reversed when orders are cancelled or set back to pending via change requests. Manual stock in/out with full audit trail via `stockMovements` table. Low stock alerts displayed on supplier home page.
 
 ### Core Data Models
 - **Users**: Role-based (restaurant/supplier) with company information and profile pictures.
