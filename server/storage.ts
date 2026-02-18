@@ -2,7 +2,7 @@ import { db } from "./db";
 import { eq, and, desc, or, sql, ne, inArray } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
-  orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, stockMovements,
+  orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -16,6 +16,7 @@ import {
   type Promotion, type InsertPromotion, type PromotionWithProduct,
   type DeliverySchedule, type InsertDeliverySchedule,
   type CustomMinOrderQuantity, type InsertCustomMinOrderQuantity,
+  type CustomPrice, type InsertCustomPrice,
   type StockMovement, type InsertStockMovement, type StockMovementWithProduct
 } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -132,6 +133,12 @@ export interface IStorage {
   getCustomMinOrderQuantity(productId: string, restaurantId: string): Promise<CustomMinOrderQuantity | undefined>;
   setCustomMinOrderQuantity(data: InsertCustomMinOrderQuantity): Promise<CustomMinOrderQuantity>;
   deleteCustomMinOrderQuantity(id: string): Promise<void>;
+
+  // Custom Prices
+  getCustomPrices(supplierId: string): Promise<(CustomPrice & { product: Product; restaurant: User })[]>;
+  getCustomPrice(productId: string, restaurantId: string): Promise<CustomPrice | undefined>;
+  setCustomPrice(data: InsertCustomPrice): Promise<CustomPrice>;
+  deleteCustomPrice(id: string): Promise<void>;
 
   // Stock Movements
   getStockMovements(productId: string): Promise<StockMovement[]>;
@@ -1134,6 +1141,43 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCustomMinOrderQuantity(id: string): Promise<void> {
     await db.delete(customMinOrderQuantities).where(eq(customMinOrderQuantities.id, id));
+  }
+
+  // Custom Prices
+  async getCustomPrices(supplierId: string): Promise<(CustomPrice & { product: Product; restaurant: User })[]> {
+    const rows = await db.select().from(customPrices)
+      .where(eq(customPrices.supplierId, supplierId));
+    if (rows.length === 0) return [];
+    const productIds = [...new Set(rows.map(r => r.productId))];
+    const restaurantIds = [...new Set(rows.map(r => r.restaurantId))];
+    const productList = await db.select().from(products).where(inArray(products.id, productIds));
+    const restaurantList = await db.select().from(users).where(inArray(users.id, restaurantIds));
+    const productMap = Object.fromEntries(productList.map(p => [p.id, p]));
+    const restaurantMap = Object.fromEntries(restaurantList.map(r => [r.id, r]));
+    return rows.map(r => ({ ...r, product: productMap[r.productId], restaurant: restaurantMap[r.restaurantId] }));
+  }
+
+  async getCustomPrice(productId: string, restaurantId: string): Promise<CustomPrice | undefined> {
+    const [row] = await db.select().from(customPrices)
+      .where(and(eq(customPrices.productId, productId), eq(customPrices.restaurantId, restaurantId)));
+    return row;
+  }
+
+  async setCustomPrice(data: InsertCustomPrice): Promise<CustomPrice> {
+    const existing = await this.getCustomPrice(data.productId, data.restaurantId);
+    if (existing) {
+      const [updated] = await db.update(customPrices)
+        .set({ customPrice: data.customPrice })
+        .where(eq(customPrices.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(customPrices).values(data).returning();
+    return created;
+  }
+
+  async deleteCustomPrice(id: string): Promise<void> {
+    await db.delete(customPrices).where(eq(customPrices.id, id));
   }
 
   // Stock Movements

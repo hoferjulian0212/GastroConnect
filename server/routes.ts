@@ -475,6 +475,56 @@ export async function registerRoutes(
     }
   });
 
+  // ===== CUSTOM PRICES =====
+  app.get("/api/custom-prices", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) {
+        return res.status(400).json({ error: "Supplier ID required" });
+      }
+      const prices = await storage.getCustomPrices(supplierId);
+      res.json(prices);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch custom prices" });
+    }
+  });
+
+  app.put("/api/custom-prices", async (req, res) => {
+    try {
+      const { productId, supplierId, restaurantId, customPrice } = req.body;
+      if (!productId || !supplierId || !restaurantId || !customPrice || parseFloat(customPrice) <= 0) {
+        return res.status(400).json({ error: "Invalid data" });
+      }
+      const price = await storage.setCustomPrice({ productId, supplierId, restaurantId, customPrice });
+      res.json(price);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to set custom price" });
+    }
+  });
+
+  app.delete("/api/custom-prices/:id", async (req, res) => {
+    try {
+      await storage.deleteCustomPrice(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete custom price" });
+    }
+  });
+
+  // ===== SUPPLIER CUSTOMERS =====
+  app.get("/api/supplier/customers", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) {
+        return res.status(400).json({ error: "Supplier ID required" });
+      }
+      const restaurants = await storage.getRestaurantsForSupplier(supplierId);
+      res.json(restaurants);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch supplier customers" });
+    }
+  });
+
   // ===== STOCK MOVEMENTS =====
   async function checkAndNotifyLowStock(productId: string, supplierId: string) {
     const product = await storage.getProduct(productId);

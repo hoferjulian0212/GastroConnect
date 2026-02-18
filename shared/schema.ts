@@ -51,6 +51,15 @@ export const customMinOrderQuantities = pgTable("custom_min_order_quantities", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const customPrices = pgTable("custom_prices", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  customPrice: decimal("custom_price", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const orders = pgTable("orders", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
@@ -213,6 +222,7 @@ export const insertComplaintStatusHistorySchema = createInsertSchema(complaintSt
 export const insertDeliveryScheduleSchema = createInsertSchema(deliverySchedules).omit({ id: true, createdAt: true });
 export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: true, createdAt: true });
 export const insertCustomMinOrderQuantitySchema = createInsertSchema(customMinOrderQuantities).omit({ id: true, createdAt: true });
+export const insertCustomPriceSchema = createInsertSchema(customPrices).omit({ id: true, createdAt: true });
 export const insertStockMovementSchema = createInsertSchema(stockMovements).omit({ id: true, createdAt: true });
 
 // Types
@@ -249,6 +259,8 @@ export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
 export type Promotion = typeof promotions.$inferSelect;
 export type InsertCustomMinOrderQuantity = z.infer<typeof insertCustomMinOrderQuantitySchema>;
 export type CustomMinOrderQuantity = typeof customMinOrderQuantities.$inferSelect;
+export type InsertCustomPrice = z.infer<typeof insertCustomPriceSchema>;
+export type CustomPrice = typeof customPrices.$inferSelect;
 export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;
 export type StockMovement = typeof stockMovements.$inferSelect;
 
