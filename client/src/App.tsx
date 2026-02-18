@@ -3,7 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { ChatProvider, useChat } from "@/context/ChatContext";
 import { LanguageProvider } from "@/context/LanguageContext";
@@ -186,9 +186,6 @@ function AppLayout() {
             <div className="flex flex-col flex-1 min-w-0">
               <header className={`flex items-center justify-between gap-4 p-3 border-b border-border bg-background sticky top-0 z-10 ${isInChat ? 'hidden md:flex' : ''}`}>
                 <div className="flex items-center gap-2">
-                  <div className="hidden md:block">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  </div>
                   <RoleSwitcher />
                 </div>
                 <div className="flex items-center gap-2">
