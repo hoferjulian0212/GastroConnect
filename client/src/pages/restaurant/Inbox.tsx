@@ -1484,7 +1484,7 @@ export default function RestaurantInbox() {
                   </div>
                 ) : null}
 
-                <div className="border-t border-border p-4">
+                <div className="border-t border-border p-4 md:rounded-none rounded-2xl md:mb-0 mb-2 mx-2 md:mx-0 floating-message-bar">
                   <div className="flex gap-2">
                     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                       <PopoverTrigger asChild>
