@@ -262,21 +262,30 @@ export default function SupplierOrders() {
           <div className="text-right shrink-0 flex flex-col items-end gap-1" onClick={(e) => e.stopPropagation()}>
             <p className="text-base md:text-lg font-bold" data-testid={`text-total-${order.id}`}>{order.totalAmount}€</p>
             {order.status !== "delivered" && order.status !== "cancelled" && (
-              <Select
-                value={order.status}
-                onValueChange={(value) => updateStatusMutation.mutate({ orderId: order.id, status: value })}
-              >
-                <SelectTrigger className="w-[120px] md:w-[140px] text-xs md:text-sm" data-testid={`select-status-${order.id}`}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">{getOrderStatus("pending", lang, true)}</SelectItem>
-                  <SelectItem value="confirmed">{getOrderStatus("confirmed", lang, true)}</SelectItem>
-                  <SelectItem value="in_delivery">{getOrderStatus("in_delivery", lang, true)}</SelectItem>
-                  <SelectItem value="delivered">{getOrderStatus("delivered", lang, true)}</SelectItem>
-                  <SelectItem value="cancelled">{getOrderStatus("cancelled", lang, true)}</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-1.5">
+                {order.status === "pending" && (
+                  <Button size="sm" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "confirmed" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-confirmed-${order.id}`}>
+                    <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                    {lang === "de" ? "Bestätigen" : "Confermare"}
+                  </Button>
+                )}
+                {order.status === "confirmed" && (
+                  <Button size="sm" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "in_delivery" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-in_delivery-${order.id}`}>
+                    <Truck className="h-3.5 w-3.5 mr-1" />
+                    {lang === "de" ? "In Lieferung" : "In consegna"}
+                  </Button>
+                )}
+                {order.status === "in_delivery" && (
+                  <Button size="sm" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-delivered-${order.id}`}>
+                    <Package className="h-3.5 w-3.5 mr-1" />
+                    {lang === "de" ? "Geliefert" : "Consegnato"}
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-cancelled-${order.id}`}>
+                  <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                  {lang === "de" ? "Stornieren" : "Annullare"}
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -476,24 +485,30 @@ export default function SupplierOrders() {
                   <span className="ml-1">{getOrderStatus(detailOrder.status, lang, true)}</span>
                 </Badge>
                 {detailOrder.status !== "delivered" && detailOrder.status !== "cancelled" && (
-                  <Select
-                    value={detailOrder.status}
-                    onValueChange={(value) => {
-                      updateStatusMutation.mutate({ orderId: detailOrder.id, status: value });
-                      setDetailOrder({ ...detailOrder, status: value });
-                    }}
-                  >
-                    <SelectTrigger className="w-[140px] text-xs md:text-sm" data-testid="select-detail-status">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">{getOrderStatus("pending", lang, true)}</SelectItem>
-                      <SelectItem value="confirmed">{getOrderStatus("confirmed", lang, true)}</SelectItem>
-                      <SelectItem value="in_delivery">{getOrderStatus("in_delivery", lang, true)}</SelectItem>
-                      <SelectItem value="delivered">{getOrderStatus("delivered", lang, true)}</SelectItem>
-                      <SelectItem value="cancelled">{getOrderStatus("cancelled", lang, true)}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap gap-1.5">
+                    {detailOrder.status === "pending" && (
+                      <Button size="sm" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "confirmed" }); setDetailOrder({ ...detailOrder, status: "confirmed" }); }} disabled={updateStatusMutation.isPending} data-testid="button-status-confirmed">
+                        <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                        {lang === "de" ? "Bestätigen" : "Confermare"}
+                      </Button>
+                    )}
+                    {detailOrder.status === "confirmed" && (
+                      <Button size="sm" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "in_delivery" }); setDetailOrder({ ...detailOrder, status: "in_delivery" }); }} disabled={updateStatusMutation.isPending} data-testid="button-status-in_delivery">
+                        <Truck className="h-3.5 w-3.5 mr-1" />
+                        {lang === "de" ? "In Lieferung" : "In consegna"}
+                      </Button>
+                    )}
+                    {detailOrder.status === "in_delivery" && (
+                      <Button size="sm" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "delivered" }); setDetailOrder({ ...detailOrder, status: "delivered" }); }} disabled={updateStatusMutation.isPending} data-testid="button-status-delivered">
+                        <Package className="h-3.5 w-3.5 mr-1" />
+                        {lang === "de" ? "Geliefert" : "Consegnato"}
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "cancelled" }); setDetailOrder({ ...detailOrder, status: "cancelled" }); }} disabled={updateStatusMutation.isPending} data-testid="button-status-cancelled">
+                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                      {lang === "de" ? "Stornieren" : "Annullare"}
+                    </Button>
+                  </div>
                 )}
               </div>
 

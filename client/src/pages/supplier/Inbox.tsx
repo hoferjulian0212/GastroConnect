@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
@@ -1337,24 +1337,37 @@ export default function SupplierInbox() {
                   <div className="text-xs text-muted-foreground mb-1">Bestellnummer</div>
                   <span className="font-mono text-sm font-semibold" data-testid="text-order-id">#{orderDetail.id.slice(0, 8)}</span>
                 </div>
-                <Select
-                  value={orderDetail.status}
-                  onValueChange={(value) => {
-                    updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: value });
-                  }}
-                  disabled={updateOrderStatusMutation.isPending}
-                >
-                  <SelectTrigger className="w-[160px]" data-testid="select-order-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Neu</SelectItem>
-                    <SelectItem value="confirmed">Bestätigt</SelectItem>
-                    <SelectItem value="in_delivery">In Lieferung</SelectItem>
-                    <SelectItem value="delivered">Geliefert</SelectItem>
-                    <SelectItem value="cancelled">Storniert</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge className={`${getStatusColor(orderDetail.status)} text-xs`} variant="outline">
+                    {getStatusLabel(orderDetail.status)}
+                  </Badge>
+                  {orderDetail.status !== "delivered" && orderDetail.status !== "cancelled" && (
+                    <>
+                      {orderDetail.status === "pending" && (
+                        <Button size="sm" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "confirmed" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-confirmed">
+                          <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                          Bestätigen
+                        </Button>
+                      )}
+                      {orderDetail.status === "confirmed" && (
+                        <Button size="sm" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "in_delivery" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-in_delivery">
+                          <Truck className="h-3.5 w-3.5 mr-1" />
+                          In Lieferung
+                        </Button>
+                      )}
+                      {orderDetail.status === "in_delivery" && (
+                        <Button size="sm" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "delivered" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-delivered">
+                          <Package className="h-3.5 w-3.5 mr-1" />
+                          Geliefert
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "cancelled" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-cancelled">
+                        <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                        Stornieren
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {orderDetail.restaurant && (
@@ -1691,39 +1704,49 @@ export default function SupplierInbox() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Neuer Status</Label>
-                <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger data-testid="select-inbox-complaint-status">
-                    <SelectValue placeholder="Status wählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        Offen
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="in_progress">
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4" />
-                        In Bearbeitung
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="resolved">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4" />
-                        Gelöst
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="closed">
-                      <div className="flex items-center gap-2">
-                        <XCircle className="h-4 w-4" />
-                        Geschlossen
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-wrap gap-1.5">
+                {complaintDetail.status === "open" && (
+                  <>
+                    <Button size="sm" onClick={() => updateComplaintStatusMutation.mutate({ id: selectedComplaintId!, status: "in_progress" })} disabled={updateComplaintStatusMutation.isPending} data-testid="button-status-in_progress">
+                      <Loader2 className="h-3.5 w-3.5 mr-1" />
+                      In Bearbeitung
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => updateComplaintStatusMutation.mutate({ id: selectedComplaintId!, status: "closed" })} disabled={updateComplaintStatusMutation.isPending} data-testid="button-status-closed">
+                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                      Schließen
+                    </Button>
+                  </>
+                )}
+                {complaintDetail.status === "in_progress" && (
+                  <>
+                    <Button size="sm" onClick={() => updateComplaintStatusMutation.mutate({ id: selectedComplaintId!, status: "resolved" })} disabled={updateComplaintStatusMutation.isPending} data-testid="button-status-resolved">
+                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                      Gelöst
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => updateComplaintStatusMutation.mutate({ id: selectedComplaintId!, status: "closed" })} disabled={updateComplaintStatusMutation.isPending} data-testid="button-status-closed">
+                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                      Schließen
+                    </Button>
+                  </>
+                )}
+                {complaintDetail.status === "resolved" && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => updateComplaintStatusMutation.mutate({ id: selectedComplaintId!, status: "closed" })} disabled={updateComplaintStatusMutation.isPending} data-testid="button-status-closed">
+                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                      Schließen
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => updateComplaintStatusMutation.mutate({ id: selectedComplaintId!, status: "open" })} disabled={updateComplaintStatusMutation.isPending} data-testid="button-status-open">
+                      <Clock className="h-3.5 w-3.5 mr-1" />
+                      Wieder öffnen
+                    </Button>
+                  </>
+                )}
+                {complaintDetail.status === "closed" && (
+                  <Button size="sm" variant="outline" onClick={() => updateComplaintStatusMutation.mutate({ id: selectedComplaintId!, status: "open" })} disabled={updateComplaintStatusMutation.isPending} data-testid="button-status-open">
+                    <Clock className="h-3.5 w-3.5 mr-1" />
+                    Wieder öffnen
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -1734,12 +1757,6 @@ export default function SupplierInbox() {
               onClick={() => setShowStatusDialog(false)}
             >
               Abbrechen
-            </Button>
-            <Button
-              onClick={handleComplaintStatusSubmit}
-              disabled={!newStatus || updateComplaintStatusMutation.isPending}
-            >
-              {updateComplaintStatusMutation.isPending ? "Wird gespeichert..." : "Speichern"}
             </Button>
           </DialogFooter>
         </DialogContent>

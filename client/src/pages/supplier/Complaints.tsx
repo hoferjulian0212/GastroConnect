@@ -679,39 +679,49 @@ export default function SupplierComplaints() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>{lang === "de" ? "Neuer Status" : "Nuovo stato"}</Label>
-                <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger data-testid="select-complaint-status">
-                    <SelectValue placeholder={lang === "de" ? "Status wählen" : "Scegli stato"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        {getComplaintStatus("open", lang)}
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="in_progress">
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4" />
-                        {getComplaintStatus("in_progress", lang)}
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="resolved">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4" />
-                        {getComplaintStatus("resolved", lang)}
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="closed">
-                      <div className="flex items-center gap-2">
-                        <XCircle className="h-4 w-4" />
-                        {getComplaintStatus("closed", lang)}
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedComplaint.status === "open" && (
+                  <>
+                    <Button size="sm" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "in_progress" })} disabled={updateStatusMutation.isPending} data-testid="button-status-in_progress">
+                      <Loader2 className="h-3.5 w-3.5 mr-1" />
+                      {lang === "de" ? "In Bearbeitung" : "In lavorazione"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
+                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                      {lang === "de" ? "Schließen" : "Chiudere"}
+                    </Button>
+                  </>
+                )}
+                {selectedComplaint.status === "in_progress" && (
+                  <>
+                    <Button size="sm" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "resolved" })} disabled={updateStatusMutation.isPending} data-testid="button-status-resolved">
+                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                      {lang === "de" ? "Gelöst" : "Risolto"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
+                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                      {lang === "de" ? "Schließen" : "Chiudere"}
+                    </Button>
+                  </>
+                )}
+                {selectedComplaint.status === "resolved" && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
+                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                      {lang === "de" ? "Schließen" : "Chiudere"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
+                      <Clock className="h-3.5 w-3.5 mr-1" />
+                      {lang === "de" ? "Wieder öffnen" : "Riaprire"}
+                    </Button>
+                  </>
+                )}
+                {selectedComplaint.status === "closed" && (
+                  <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
+                    <Clock className="h-3.5 w-3.5 mr-1" />
+                    {lang === "de" ? "Wieder öffnen" : "Riaprire"}
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -723,13 +733,6 @@ export default function SupplierComplaints() {
               data-testid="button-cancel-status"
             >
               {t("common", "cancel")}
-            </Button>
-            <Button
-              onClick={handleStatusSubmit}
-              disabled={!newStatus || updateStatusMutation.isPending}
-              data-testid="button-save-status"
-            >
-              {updateStatusMutation.isPending ? (lang === "de" ? "Wird gespeichert..." : "Salvataggio...") : t("common", "save")}
             </Button>
           </DialogFooter>
         </DialogContent>
