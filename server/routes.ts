@@ -859,8 +859,8 @@ export async function registerRoutes(
         await storage.createNotification({
           userId: supplierId,
           type: "new_order",
-          title: "Neue Bestellung",
-          message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat eine neue Bestellung aufgegeben (€${totalAmount})`,
+          title: `Neue Bestellung #${order.id.slice(0, 8)}`,
+          message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat eine neue Bestellung aufgegeben #${order.id.slice(0, 8)} (€${totalAmount})`,
           referenceId: order.id
         });
       }
@@ -1094,7 +1094,7 @@ export async function registerRoutes(
       await storage.createNotification({
         userId: order.supplierId,
         type: "order_status",
-        title: "Bestellung angepasst",
+        title: `Bestellung angepasst #${order.id.slice(0, 8)}`,
         message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat Bestellung #${order.id.slice(0, 8)} angepasst`,
         referenceId: order.id
       });
@@ -1141,7 +1141,7 @@ export async function registerRoutes(
       await storage.createNotification({
         userId: order.supplierId,
         type: "order_status",
-        title: "Änderungsanfrage",
+        title: `Änderungsanfrage #${order.id.slice(0, 8)}`,
         message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} möchte Bestellung #${order.id.slice(0, 8)} ändern`,
         referenceId: order.id
       });
@@ -1217,7 +1217,7 @@ export async function registerRoutes(
         await storage.createNotification({
           userId: order.restaurantId,
           type: "order_status",
-          title: "Änderung genehmigt",
+          title: `Änderung genehmigt #${order.id.slice(0, 8)}`,
           message: `${supplier?.companyName || supplier?.name || "Lieferant"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} genehmigt`,
           referenceId: order.id
         });
@@ -1238,7 +1238,7 @@ export async function registerRoutes(
         await storage.createNotification({
           userId: order.restaurantId,
           type: "order_status",
-          title: "Änderung abgelehnt",
+          title: `Änderung abgelehnt #${order.id.slice(0, 8)}`,
           message: `${supplier?.companyName || supplier?.name || "Lieferant"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} abgelehnt`,
           referenceId: order.id
         });
@@ -1550,8 +1550,8 @@ export async function registerRoutes(
       await storage.createNotification({
         userId: validated.supplierId,
         type: "new_complaint",
-        title: "Neue Reklamation",
-        message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat eine Reklamation eingereicht: ${validated.title}`,
+        title: `Neue Reklamation #${complaint.id.slice(0, 8)}`,
+        message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat eine Reklamation eingereicht #${complaint.id.slice(0, 8)}: ${validated.title}`,
         referenceId: complaint.id
       });
       
@@ -1698,8 +1698,8 @@ export async function registerRoutes(
       await storage.createNotification({
         userId: notifyUserId,
         type: "complaint_comment",
-        title: "Neuer Kommentar zur Reklamation",
-        message: `${commenter?.companyName || commenter?.name || "Jemand"} hat einen Kommentar hinzugefügt: "${validated.content.substring(0, 50)}${validated.content.length > 50 ? '...' : ''}"`,
+        title: `Neuer Kommentar #${complaint.id.slice(0, 8)}`,
+        message: `${commenter?.companyName || commenter?.name || "Jemand"} hat einen Kommentar zur Reklamation #${complaint.id.slice(0, 8)} hinzugefügt: "${validated.content.substring(0, 50)}${validated.content.length > 50 ? '...' : ''}"`,
         referenceId: complaint.id
       });
       
