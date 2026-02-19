@@ -6,13 +6,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer } from "lucide-react";
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import type { OrderWithDetails, Product, DeliverySchedule } from "@shared/schema";
 import { format, addDays, startOfDay, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -42,9 +41,11 @@ export default function RestaurantOrders() {
   const highlightOrderId = searchParams.get("orderId");
   const highlightRef = useRef<HTMLDivElement>(null);
 
+  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSupplier, setFilterSupplier] = useState<string>("all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
+  const [showSecondaryFilters, setShowSecondaryFilters] = useState(false);
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderWithDetails | null>(null);
   const [editItems, setEditItems] = useState<EditableItem[]>([]);
@@ -194,6 +195,16 @@ export default function RestaurantOrders() {
   });
 
   const hasActiveFilters = filterSupplier !== "all" || filterDateFrom || filterDateTo;
+  const hasSecondaryFilters = filterSupplier !== "all" || filterDateFrom || filterDateTo;
+
+  const statusCounts = useMemo(() => {
+    if (!orders) return { all: 0, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0 };
+    const counts = { all: orders.length, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0 };
+    orders.forEach(o => {
+      if (o.status in counts) (counts as any)[o.status]++;
+    });
+    return counts;
+  }, [orders]);
 
   const clearFilters = () => {
     setFilterSupplier("all");
@@ -486,11 +497,71 @@ export default function RestaurantOrders() {
         <p className="text-xs md:text-sm text-muted-foreground">{t("orders", "allOrdersOverview")}</p>
       </div>
 
-      <Card>
-        <CardContent className="p-3 md:p-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-2 items-end">
-              <div className="flex-1 min-w-0">
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
+        {([
+          { key: "all", icon: ShoppingBag, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
+          { key: "pending", icon: Clock, color: "bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400", activeColor: "bg-yellow-500 text-white dark:bg-yellow-600", borderColor: "border-yellow-400 dark:border-yellow-500" },
+          { key: "confirmed", icon: Package, color: "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400", activeColor: "bg-blue-500 text-white dark:bg-blue-600", borderColor: "border-blue-400 dark:border-blue-500" },
+          { key: "in_delivery", icon: Truck, color: "bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-400", activeColor: "bg-purple-500 text-white dark:bg-purple-600", borderColor: "border-purple-400 dark:border-purple-500" },
+          { key: "delivered", icon: CheckCircle, color: "bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-400", activeColor: "bg-green-500 text-white dark:bg-green-600", borderColor: "border-green-400 dark:border-green-500" },
+        ] as const).map(({ key, icon: Icon, color, activeColor, borderColor }) => {
+          const isActive = filterStatus === key;
+          const count = (statusCounts as any)[key] || 0;
+          return (
+            <button
+              key={key}
+              onClick={() => setFilterStatus(key)}
+              className={`relative flex flex-col items-center gap-1 p-2.5 md:p-3 rounded-md border-2 transition-all ${
+                isActive
+                  ? `${activeColor} ${borderColor} shadow-sm`
+                  : `${color} border-transparent`
+              }`}
+              data-testid={`filter-status-${key}`}
+            >
+              <Icon className="h-4 w-4 md:h-5 md:w-5" />
+              <span className="text-[10px] md:text-xs font-medium leading-tight text-center">
+                {key === "all" ? t("common", "all") : getOrderStatus(key, lang)}
+              </span>
+              <span className={`text-sm md:text-base font-bold leading-none ${isActive ? "" : "text-foreground"}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setShowSecondaryFilters(!showSecondaryFilters)}
+          className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground hover-elevate rounded-md px-2 py-1.5"
+          data-testid="button-toggle-filters"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <span>{lang === "de" ? "Filter" : "Filtri"}</span>
+          {hasSecondaryFilters && (
+            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+              {(filterSupplier !== "all" ? 1 : 0) + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
+            </span>
+          )}
+          {showSecondaryFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="text-xs text-muted-foreground hover-elevate rounded-md px-2 py-1.5 flex items-center gap-1"
+            data-testid="button-clear-filters"
+          >
+            <X className="h-3 w-3" />
+            {t("common", "reset")}
+          </button>
+        )}
+      </div>
+
+      {showSecondaryFilters && (
+        <Card>
+          <CardContent className="p-3 md:p-4">
+            <div className="flex flex-col gap-2">
+              <div className="min-w-0">
                 <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "supplier")}</label>
                 <Select value={filterSupplier} onValueChange={setFilterSupplier}>
                   <SelectTrigger className="h-9 text-xs md:text-sm" data-testid="filter-supplier">
@@ -505,81 +576,60 @@ export default function RestaurantOrders() {
                   </SelectContent>
                 </Select>
               </div>
-              {hasActiveFilters && (
-                <Button variant="ghost" size="icon" onClick={clearFilters} className="shrink-0" data-testid="button-clear-filters">
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <div className="flex-1 min-w-0">
-                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
-                <Input
-                  type="date"
-                  value={filterDateFrom}
-                  onChange={e => setFilterDateFrom(e.target.value)}
-                  className="h-9 text-xs md:text-sm w-full"
-                  data-testid="filter-date-from"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
-                <Input
-                  type="date"
-                  value={filterDateTo}
-                  onChange={e => setFilterDateTo(e.target.value)}
-                  className="h-9 text-xs md:text-sm w-full"
-                  data-testid="filter-date-to"
-                />
+              <div className="flex gap-2">
+                <div className="flex-1 min-w-0">
+                  <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
+                  <Input
+                    type="date"
+                    value={filterDateFrom}
+                    onChange={e => setFilterDateFrom(e.target.value)}
+                    className="h-9 text-xs md:text-sm w-full"
+                    data-testid="filter-date-from"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
+                  <Input
+                    type="date"
+                    value={filterDateTo}
+                    onChange={e => setFilterDateTo(e.target.value)}
+                    className="h-9 text-xs md:text-sm w-full"
+                    data-testid="filter-date-to"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      <Tabs defaultValue="all" className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex w-auto min-w-full md:w-full md:grid md:grid-cols-5 h-auto">
-            <TabsTrigger value="all" className="text-xs md:text-sm py-1.5 md:py-2 whitespace-nowrap" data-testid="tab-all">{t("common", "all")}</TabsTrigger>
-            <TabsTrigger value="pending" className="text-xs md:text-sm py-1.5 md:py-2 whitespace-nowrap" data-testid="tab-pending">{getOrderStatus("pending", lang)}</TabsTrigger>
-            <TabsTrigger value="confirmed" className="text-xs md:text-sm py-1.5 md:py-2 whitespace-nowrap" data-testid="tab-confirmed">{getOrderStatus("confirmed", lang)}</TabsTrigger>
-            <TabsTrigger value="in_delivery" className="text-xs md:text-sm py-1.5 md:py-2 whitespace-nowrap" data-testid="tab-delivery">{getOrderStatus("in_delivery", lang)}</TabsTrigger>
-            <TabsTrigger value="delivered" className="text-xs md:text-sm py-1.5 md:py-2 whitespace-nowrap" data-testid="tab-delivered">{getOrderStatus("delivered", lang)}</TabsTrigger>
-          </TabsList>
+      {isLoading ? (
+        <div className="space-y-3 md:space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-40 w-full" />
+          ))}
         </div>
-
-        {["all", "pending", "confirmed", "in_delivery", "delivered"].map((tab) => (
-          <TabsContent key={tab} value={tab} className="mt-4 md:mt-6">
-            {isLoading ? (
-              <div className="space-y-3 md:space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-40 w-full" />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3 md:space-y-4">
-                {filterOrders(tab === "all" ? null : tab).length > 0 ? (
-                  filterOrders(tab === "all" ? null : tab).map((order) => (
-                    <OrderCard key={order.id} order={order} />
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                      <ShoppingBag className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                      <p className="text-muted-foreground">{t("orders", "noOrdersFound")}</p>
-                      <Button variant="outline" className="mt-4" asChild>
-                        <Link href="/restaurant/catalog" data-testid="link-browse-catalog">
-                          {t("common", "browseCatalog")}
-                        </Link>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
+      ) : (
+        <div className="space-y-3 md:space-y-4">
+          {filterOrders(filterStatus === "all" ? null : filterStatus).length > 0 ? (
+            filterOrders(filterStatus === "all" ? null : filterStatus).map((order) => (
+              <OrderCard key={order.id} order={order} />
+            ))
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <ShoppingBag className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">{t("orders", "noOrdersFound")}</p>
+                <Button variant="outline" className="mt-4" asChild>
+                  <Link href="/restaurant/catalog" data-testid="link-browse-catalog">
+                    {t("common", "browseCatalog")}
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">
