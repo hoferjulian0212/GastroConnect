@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar } from "lucide-react";
+import { AlertCircle, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar, ShoppingBag, CalendarDays } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -630,8 +630,11 @@ export default function Complaints() {
                     >
                       <CardContent className="p-3 md:p-4 space-y-1.5 md:space-y-2">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="font-medium text-sm md:text-base">{complaint.title}</div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-sm md:text-base">{complaint.title}</div>
+                          <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 mt-0.5">{complaint.description}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <Badge variant={statusInfo.variant} className="text-[10px] md:text-xs shrink-0">
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {statusInfo.label}
@@ -658,10 +661,27 @@ export default function Complaints() {
                           )}
                         </div>
                       </div>
-                      <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">{complaint.description}</p>
+
+                      <div className="flex items-center gap-3 p-2 rounded-md bg-muted/40 border border-border/50 text-xs md:text-sm flex-wrap">
+                        <span className="flex items-center gap-1 font-mono font-semibold text-foreground" data-testid={`text-complaint-order-${complaint.id}`}>
+                          <ShoppingBag className="h-3 w-3 text-muted-foreground" />
+                          #{complaint.orderId.substring(0, 8)}
+                        </span>
+                        {complaint.order && (
+                          <>
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <CalendarDays className="h-3 w-3" />
+                              {formatDate(complaint.order.createdAt)}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {parseFloat(complaint.order.totalAmount).toFixed(2)}€
+                            </span>
+                          </>
+                        )}
+                      </div>
                       
                       {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
-                        <div className="flex gap-1.5 mt-2">
+                        <div className="flex gap-1.5 mt-1">
                           {complaint.mediaUrls.slice(0, 4).map((url, idx) => (
                             <div key={idx} className="h-12 w-12 rounded overflow-hidden border">
                               {isVideoFile(url) ? (
