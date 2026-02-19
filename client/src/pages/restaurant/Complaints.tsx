@@ -136,6 +136,7 @@ export default function Complaints() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   
   const [filterComplaintSupplier, setFilterComplaintSupplier] = useState<string>("all");
   const [filterComplaintStatus, setFilterComplaintStatus] = useState<string>("all");
@@ -275,6 +276,7 @@ export default function Complaints() {
     setTitle("");
     setDescription("");
     setMediaUrls([]);
+    setShowCreateDialog(false);
   };
 
   const handleSubmit = () => {
@@ -426,20 +428,173 @@ export default function Complaints() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex items-center gap-2 md:gap-3">
-        <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-primary" />
-        <div>
-          <h1 className="text-xl md:text-2xl font-semibold">{t("common", "complaints")}</h1>
-          <p className="text-xs md:text-sm text-muted-foreground">{t("complaints", "writeComplaint")}</p>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 md:gap-3">
+          <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+          <div>
+            <h1 className="text-xl md:text-2xl font-semibold">{t("common", "complaints")}</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">{t("complaints", "writeComplaint")}</p>
+          </div>
         </div>
+        <Button onClick={() => setShowCreateDialog(true)} data-testid="button-new-complaint">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          {t("complaints", "newComplaint")}
+        </Button>
       </div>
 
-      <div className="grid gap-3 md:gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="p-3 md:p-6">
-            <CardTitle className="text-base md:text-lg">{t("complaints", "newComplaint")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 md:space-y-4 p-3 pt-0 md:p-6 md:pt-0">
+      <Card>
+        <CardHeader className="p-3 md:p-6">
+          <CardTitle className="text-base md:text-lg">{t("complaints", "yourComplaints")}</CardTitle>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-3">
+            <ComplaintFilters
+              complaints={existingComplaints || []}
+              filterSupplier={filterComplaintSupplier}
+              setFilterSupplier={setFilterComplaintSupplier}
+              filterStatus={filterComplaintStatus}
+              setFilterStatus={setFilterComplaintStatus}
+              filterDateFrom={filterComplaintDateFrom}
+              setFilterDateFrom={setFilterComplaintDateFrom}
+              filterDateTo={filterComplaintDateTo}
+              setFilterDateTo={setFilterComplaintDateTo}
+            />
+            {loadingComplaints ? (
+              <div className="space-y-2 md:space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-16 md:h-20 w-full" />
+                ))}
+              </div>
+            ) : filteredComplaints.length > 0 ? (
+              <div className="space-y-2 md:space-y-3">
+                {filteredComplaints.map((complaint) => {
+                  const statusInfo = formatComplaintStatus(complaint.status);
+                  const StatusIcon = statusInfo.icon;
+                  const canEdit = complaint.status === "open";
+                  
+                  return (
+                    <Card
+                      key={complaint.id}
+                      className={`overflow-hidden rounded-md cursor-pointer hover-elevate ${getComplaintCardBg(complaint.status)}`}
+                      onClick={() => setDetailComplaint(complaint)}
+                      data-testid={`complaint-${complaint.id}`}
+                    >
+                      <CardContent className="p-3 md:p-4 space-y-1.5 md:space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-sm md:text-base">{complaint.title}</div>
+                          <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 mt-0.5">{complaint.description}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant={statusInfo.variant} className="text-[10px] md:text-xs shrink-0">
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {statusInfo.label}
+                          </Badge>
+                          {canEdit && (
+                            <>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => { e.stopPropagation(); openEditDialog(complaint); }}
+                                data-testid={`button-edit-complaint-${complaint.id}`}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => { e.stopPropagation(); setWithdrawComplaintId(complaint.id); }}
+                                data-testid={`button-withdraw-complaint-${complaint.id}`}
+                              >
+                                <XCircle className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-2 rounded-md bg-muted/40 border border-border/50 text-xs md:text-sm flex-wrap">
+                        <span className="flex items-center gap-1 font-mono font-semibold text-foreground" data-testid={`text-complaint-order-${complaint.id}`}>
+                          <ShoppingBag className="h-3 w-3 text-muted-foreground" />
+                          #{complaint.orderId.substring(0, 8)}
+                        </span>
+                        {complaint.order && (
+                          <>
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <CalendarDays className="h-3 w-3" />
+                              {formatDate(complaint.order.createdAt)}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {parseFloat(complaint.order.totalAmount).toFixed(2)}€
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      
+                      {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
+                        <div className="flex gap-1.5 mt-1">
+                          {complaint.mediaUrls.slice(0, 4).map((url, idx) => (
+                            <div key={idx} className="h-12 w-12 rounded overflow-hidden border">
+                              {isVideoFile(url) ? (
+                                <div className="h-full w-full flex items-center justify-center bg-muted">
+                                  <FileVideo className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              ) : (
+                                <img 
+                                  src={getMediaSrc(url)} 
+                                  alt={`${t("complaints", "attachment")} ${idx + 1}`}
+                                  className="h-full w-full object-cover"
+                                />
+                              )}
+                            </div>
+                          ))}
+                          {complaint.mediaUrls.length > 4 && (
+                            <div className="h-12 w-12 rounded border flex items-center justify-center bg-muted text-xs text-muted-foreground">
+                              +{complaint.mediaUrls.length - 4}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
+                        <span>{complaint.supplier?.companyName || t("orders", "unknownSupplier")}</span>
+                        <span>•</span>
+                        <span>{formatDate(complaint.createdAt)}</span>
+                        {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center gap-0.5">
+                              <FileImage className="h-3 w-3" />
+                              {complaint.mediaUrls.length}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 md:py-8 text-muted-foreground">
+                <AlertCircle className="mx-auto h-10 w-10 md:h-12 md:w-12 mb-2 md:mb-3 opacity-50" />
+                <p className="text-sm md:text-base">{t("complaints", "noComplaints")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+      <Dialog open={showCreateDialog} onOpenChange={(open) => { if (!open) resetForm(); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-create-complaint">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-primary" />
+              {t("complaints", "newComplaint")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("complaints", "writeComplaint")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 md:space-y-4">
             <div className="space-y-2">
               <Label>{t("complaints", "selectSupplier")}</Label>
               {loadingSuppliers ? (
@@ -607,160 +762,26 @@ export default function Complaints() {
                 {t("complaints", "maxFilesInfo")}
               </p>
             </div>
-
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => resetForm()}
+              data-testid="button-cancel-create-complaint"
+            >
+              {t("common", "cancel")}
+            </Button>
             <Button
               onClick={handleSubmit}
               disabled={!canSubmit || createComplaintMutation.isPending}
-              className="w-full"
               data-testid="button-submit-complaint"
             >
               <Send className="mr-2 h-4 w-4" />
               {createComplaintMutation.isPending ? t("complaints", "sending") : t("complaints", "submitComplaint")}
             </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="p-3 md:p-6">
-            <CardTitle className="text-base md:text-lg">{t("complaints", "yourComplaints")}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-3">
-            <ComplaintFilters
-              complaints={existingComplaints || []}
-              filterSupplier={filterComplaintSupplier}
-              setFilterSupplier={setFilterComplaintSupplier}
-              filterStatus={filterComplaintStatus}
-              setFilterStatus={setFilterComplaintStatus}
-              filterDateFrom={filterComplaintDateFrom}
-              setFilterDateFrom={setFilterComplaintDateFrom}
-              filterDateTo={filterComplaintDateTo}
-              setFilterDateTo={setFilterComplaintDateTo}
-            />
-            {loadingComplaints ? (
-              <div className="space-y-2 md:space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 md:h-20 w-full" />
-                ))}
-              </div>
-            ) : filteredComplaints.length > 0 ? (
-              <div className="space-y-2 md:space-y-3">
-                {filteredComplaints.map((complaint) => {
-                  const statusInfo = formatComplaintStatus(complaint.status);
-                  const StatusIcon = statusInfo.icon;
-                  const canEdit = complaint.status === "open";
-                  
-                  return (
-                    <Card
-                      key={complaint.id}
-                      className={`overflow-hidden rounded-md cursor-pointer hover-elevate ${getComplaintCardBg(complaint.status)}`}
-                      onClick={() => setDetailComplaint(complaint)}
-                      data-testid={`complaint-${complaint.id}`}
-                    >
-                      <CardContent className="p-3 md:p-4 space-y-1.5 md:space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-sm md:text-base">{complaint.title}</div>
-                          <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 mt-0.5">{complaint.description}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Badge variant={statusInfo.variant} className="text-[10px] md:text-xs shrink-0">
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {statusInfo.label}
-                          </Badge>
-                          {canEdit && (
-                            <>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={(e) => { e.stopPropagation(); openEditDialog(complaint); }}
-                                data-testid={`button-edit-complaint-${complaint.id}`}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={(e) => { e.stopPropagation(); setWithdrawComplaintId(complaint.id); }}
-                                data-testid={`button-withdraw-complaint-${complaint.id}`}
-                              >
-                                <XCircle className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 p-2 rounded-md bg-muted/40 border border-border/50 text-xs md:text-sm flex-wrap">
-                        <span className="flex items-center gap-1 font-mono font-semibold text-foreground" data-testid={`text-complaint-order-${complaint.id}`}>
-                          <ShoppingBag className="h-3 w-3 text-muted-foreground" />
-                          #{complaint.orderId.substring(0, 8)}
-                        </span>
-                        {complaint.order && (
-                          <>
-                            <span className="flex items-center gap-1 text-muted-foreground">
-                              <CalendarDays className="h-3 w-3" />
-                              {formatDate(complaint.order.createdAt)}
-                            </span>
-                            <span className="text-muted-foreground">
-                              {parseFloat(complaint.order.totalAmount).toFixed(2)}€
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      
-                      {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
-                        <div className="flex gap-1.5 mt-1">
-                          {complaint.mediaUrls.slice(0, 4).map((url, idx) => (
-                            <div key={idx} className="h-12 w-12 rounded overflow-hidden border">
-                              {isVideoFile(url) ? (
-                                <div className="h-full w-full flex items-center justify-center bg-muted">
-                                  <FileVideo className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                              ) : (
-                                <img 
-                                  src={getMediaSrc(url)} 
-                                  alt={`${t("complaints", "attachment")} ${idx + 1}`}
-                                  className="h-full w-full object-cover"
-                                />
-                              )}
-                            </div>
-                          ))}
-                          {complaint.mediaUrls.length > 4 && (
-                            <div className="h-12 w-12 rounded border flex items-center justify-center bg-muted text-xs text-muted-foreground">
-                              +{complaint.mediaUrls.length - 4}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
-                        <span>{complaint.supplier?.companyName || t("orders", "unknownSupplier")}</span>
-                        <span>•</span>
-                        <span>{formatDate(complaint.createdAt)}</span>
-                        {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
-                          <>
-                            <span>•</span>
-                            <span className="flex items-center gap-0.5">
-                              <FileImage className="h-3 w-3" />
-                              {complaint.mediaUrls.length}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-6 md:py-8 text-muted-foreground">
-                <AlertCircle className="mx-auto h-10 w-10 md:h-12 md:w-12 mb-2 md:mb-3 opacity-50" />
-                <p className="text-sm md:text-base">{t("complaints", "noComplaints")}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!detailComplaint} onOpenChange={(open) => { if (!open) { setDetailComplaint(null); setNewComment(""); setShowComplaintMessageInput(false); setComplaintMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">
