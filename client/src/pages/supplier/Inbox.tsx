@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
@@ -549,17 +549,22 @@ export default function SupplierInbox() {
                       const lastMessageTime = conv.lastMessage?.createdAt 
                         ? format(new Date(conv.lastMessage.createdAt), isToday(new Date(conv.lastMessage.createdAt)) ? "HH:mm" : "dd.MM.")
                         : "";
+                      let messagePreviewText = conv.lastMessage?.content || (lang === "de" ? "Keine Nachrichten" : "Nessun messaggio");
+                      try {
+                        const parsed = JSON.parse(conv.lastMessage?.content || "");
+                        if (parsed.refType && parsed.text) messagePreviewText = parsed.text;
+                      } catch {}
                       const messagePreview = conv.lastMessage?.messageType === "order" 
-                        ? "Neue Bestellung" 
+                        ? (lang === "de" ? "Neue Bestellung" : "Nuovo ordine")
                         : conv.lastMessage?.messageType === "complaint"
-                        ? "Reklamation"
+                        ? (lang === "de" ? "Reklamation" : "Reclamo")
                         : conv.lastMessage?.messageType === "document"
-                        ? "Lieferschein"
+                        ? (lang === "de" ? "Lieferschein" : "Bolla di consegna")
                         : conv.lastMessage?.messageType === "attachment"
-                        ? "Anhang"
+                        ? (lang === "de" ? "Anhang" : "Allegato")
                         : conv.lastMessage?.messageType === "order_change_request"
-                        ? "Änderungsanfrage"
-                        : conv.lastMessage?.content || "Keine Nachrichten";
+                        ? (lang === "de" ? "Änderungsanfrage" : "Richiesta modifica")
+                        : messagePreviewText;
                       const hasUnread = conv.unreadCount > 0;
                       return (
                         <button
@@ -1205,25 +1210,52 @@ export default function SupplierInbox() {
                                   userId={currentUser?.id}
                                 />
                               ) : (
-                                <div
-                                  className={`max-w-[70%] rounded-lg px-3 py-2 shadow-lg ${
-                                    isOwn
-                                      ? "bg-secondary text-secondary-foreground"
-                                      : "bg-muted"
-                                  }`}
-                                >
-                                  <p className="text-sm">{message.content}</p>
-                                  <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
-                                    <span className={`text-[10px] ${isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
-                                      {format(messageDate, "HH:mm")}
-                                    </span>
-                                    {isOwn && (
-                                      message.isRead 
-                                        ? <CheckCheck className="h-3 w-3 text-secondary-foreground/70" />
-                                        : <Check className="h-3 w-3 text-secondary-foreground/70" />
-                                    )}
-                                  </div>
-                                </div>
+                                (() => {
+                                  let refData: { refType?: string; refId?: string; refLabel?: string; text?: string } | null = null;
+                                  try {
+                                    const parsed = JSON.parse(message.content);
+                                    if (parsed.refType && parsed.refId && parsed.text) refData = parsed;
+                                  } catch {}
+                                  return (
+                                    <div
+                                      className={`max-w-[70%] rounded-lg px-3 py-2 shadow-lg ${
+                                        isOwn
+                                          ? "bg-secondary text-secondary-foreground"
+                                          : "bg-muted"
+                                      }`}
+                                    >
+                                      {refData && (
+                                        <div className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 ${
+                                          isOwn
+                                            ? "bg-secondary-foreground/10 border-secondary-foreground/40"
+                                            : "bg-background/60 border-primary/50"
+                                        }`}>
+                                          <div className="flex items-center gap-1.5">
+                                            {refData.refType === "order" ? (
+                                              <ShoppingBag className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
+                                            ) : (
+                                              <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
+                                            )}
+                                            <span className={`text-[11px] font-medium truncate ${isOwn ? "text-secondary-foreground/80" : "text-foreground/80"}`}>
+                                              {refData.refLabel || (refData.refType === "order" ? (lang === "de" ? "Bestellung" : "Ordine") : (lang === "de" ? "Reklamation" : "Reclamo"))}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+                                      <p className="text-sm">{refData ? refData.text : message.content}</p>
+                                      <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
+                                        <span className={`text-[10px] ${isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
+                                          {format(messageDate, "HH:mm")}
+                                        </span>
+                                        {isOwn && (
+                                          message.isRead 
+                                            ? <CheckCheck className="h-3 w-3 text-secondary-foreground/70" />
+                                            : <Check className="h-3 w-3 text-secondary-foreground/70" />
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })()
                               )}
                             </div>
                           </div>

@@ -147,6 +147,8 @@ export default function Complaints() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editMediaUrls, setEditMediaUrls] = useState<string[]>([]);
+  const [showComplaintMessageInput, setShowComplaintMessageInput] = useState(false);
+  const [complaintMessage, setComplaintMessage] = useState("");
 
   const { data: suppliers, isLoading: loadingSuppliers } = useQuery<User[]>({
     queryKey: [`/api/suppliers-with-orders?restaurantId=${currentUser?.id}`],
@@ -182,6 +184,32 @@ export default function Complaints() {
     },
     onError: () => {
       toast({ title: t("common", "error"), description: t("complaints", "commentError"), variant: "destructive" });
+    },
+  });
+
+  const sendComplaintMessageMutation = useMutation({
+    mutationFn: async ({ complaint, message }: { complaint: ComplaintWithDetails; message: string }) => {
+      const supplierName = complaint.supplier?.companyName || complaint.supplier?.name || "";
+      const refLabel = `${lang === "de" ? "Reklamation" : "Reclamo"}: ${complaint.title} - ${supplierName}`;
+      return await apiRequest("POST", "/api/send-referenced-message", {
+        senderId: currentUser?.id,
+        restaurantId: complaint.restaurantId,
+        supplierId: complaint.supplierId,
+        message,
+        referenceType: "complaint",
+        referenceId: complaint.id,
+        referenceLabel: refLabel,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: lang === "de" ? "Nachricht gesendet" : "Messaggio inviato" });
+      setComplaintMessage("");
+      setShowComplaintMessageInput(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
     },
   });
 
@@ -734,7 +762,7 @@ export default function Complaints() {
         </Card>
       </div>
 
-      <Dialog open={!!detailComplaint} onOpenChange={(open) => { if (!open) { setDetailComplaint(null); setNewComment(""); } }}>
+      <Dialog open={!!detailComplaint} onOpenChange={(open) => { if (!open) { setDetailComplaint(null); setNewComment(""); setShowComplaintMessageInput(false); setComplaintMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -841,7 +869,7 @@ export default function Complaints() {
                 </div>
               </div>
 
-              <div className="border-t border-border pt-3 shrink-0">
+              <div className="border-t border-border pt-3 shrink-0 space-y-2">
                 <div className="flex gap-2">
                   <Textarea
                     value={newComment}
@@ -860,6 +888,55 @@ export default function Complaints() {
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
+
+                {!showComplaintMessageInput ? (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    size="sm"
+                    onClick={() => setShowComplaintMessageInput(true)}
+                    data-testid="button-complaint-write-message"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    {lang === "de" ? "Nachricht schreiben" : "Scrivi messaggio"}
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/50 border-l-3 border-destructive/50">
+                      <AlertCircle className="h-3 w-3 text-destructive shrink-0" />
+                      <span className="text-[11px] text-muted-foreground truncate">
+                        {lang === "de" ? "Reklamation" : "Reclamo"}: {detailComplaint.title}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Textarea
+                        value={complaintMessage}
+                        onChange={(e) => setComplaintMessage(e.target.value)}
+                        placeholder={lang === "de" ? "Nachricht an Lieferant..." : "Messaggio al fornitore..."}
+                        rows={2}
+                        className="flex-1"
+                        data-testid="input-complaint-message"
+                      />
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          size="icon"
+                          onClick={() => detailComplaint && sendComplaintMessageMutation.mutate({ complaint: detailComplaint, message: complaintMessage.trim() })}
+                          disabled={!complaintMessage.trim() || sendComplaintMessageMutation.isPending}
+                          data-testid="button-send-complaint-message"
+                        >
+                          {sendComplaintMessageMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => { setShowComplaintMessageInput(false); setComplaintMessage(""); }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

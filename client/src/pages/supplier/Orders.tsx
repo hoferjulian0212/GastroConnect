@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails } from "@shared/schema";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -34,6 +35,8 @@ export default function SupplierOrders() {
   const [filterRestaurant, setFilterRestaurant] = useState<string>("all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
+  const [showMessageInput, setShowMessageInput] = useState(false);
+  const [orderMessage, setOrderMessage] = useState("");
 
   const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`],
@@ -105,6 +108,32 @@ export default function SupplierOrders() {
         description: t("supplierOrders", "statusUpdateError"),
         variant: "destructive",
       });
+    },
+  });
+
+  const sendOrderMessageMutation = useMutation({
+    mutationFn: async ({ order, message }: { order: OrderWithDetails; message: string }) => {
+      const restaurantName = order.restaurant?.companyName || order.restaurant?.name || "";
+      const refLabel = `${lang === "de" ? "Bestellung" : "Ordine"} #${order.id.substring(0, 8)} - ${restaurantName}`;
+      return await apiRequest("POST", "/api/send-referenced-message", {
+        senderId: currentUser?.id,
+        restaurantId: order.restaurantId,
+        supplierId: order.supplierId,
+        message,
+        referenceType: "order",
+        referenceId: order.id,
+        referenceLabel: refLabel,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: lang === "de" ? "Nachricht gesendet" : "Messaggio inviato" });
+      setOrderMessage("");
+      setShowMessageInput(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
     },
   });
 
@@ -428,7 +457,7 @@ export default function SupplierOrders() {
         ))}
       </Tabs>
 
-      <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
+      <Dialog open={!!detailOrder} onOpenChange={(open) => { if (!open) { setDetailOrder(null); setShowMessageInput(false); setOrderMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -536,6 +565,56 @@ export default function SupplierOrders() {
                   </Button>
                 </div>
               )}
+
+              <div className="border-t border-border pt-3">
+                {!showMessageInput ? (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowMessageInput(true)}
+                    data-testid="button-order-write-message"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    {lang === "de" ? "Nachricht schreiben" : "Scrivi messaggio"}
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/50 border-l-3 border-primary/50">
+                      <ShoppingBag className="h-3 w-3 text-primary shrink-0" />
+                      <span className="text-[11px] text-muted-foreground truncate">
+                        {lang === "de" ? "Bestellung" : "Ordine"} #{detailOrder.id.substring(0, 8)} - {detailOrder.restaurant?.companyName || detailOrder.restaurant?.name}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Textarea
+                        value={orderMessage}
+                        onChange={(e) => setOrderMessage(e.target.value)}
+                        placeholder={lang === "de" ? "Ihre Nachricht..." : "Il tuo messaggio..."}
+                        rows={2}
+                        className="flex-1"
+                        data-testid="input-order-message"
+                      />
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          size="icon"
+                          onClick={() => detailOrder && sendOrderMessageMutation.mutate({ order: detailOrder, message: orderMessage.trim() })}
+                          disabled={!orderMessage.trim() || sendOrderMessageMutation.isPending}
+                          data-testid="button-send-order-message"
+                        >
+                          {sendOrderMessageMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => { setShowMessageInput(false); setOrderMessage(""); }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

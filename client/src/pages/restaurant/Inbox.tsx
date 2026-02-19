@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
@@ -819,6 +819,11 @@ export default function RestaurantInbox() {
                       const lastMessageTime = conv.lastMessage?.createdAt 
                         ? format(new Date(conv.lastMessage.createdAt), isToday(new Date(conv.lastMessage.createdAt)) ? "HH:mm" : "dd.MM.")
                         : "";
+                      let msgPreviewText = conv.lastMessage?.content || t("inbox", "noConversations");
+                      try {
+                        const parsed = JSON.parse(conv.lastMessage?.content || "");
+                        if (parsed.refType && parsed.text) msgPreviewText = parsed.text;
+                      } catch {}
                       const messagePreview = conv.lastMessage?.messageType === "order" 
                         ? t("inbox", "orderMessage") 
                         : conv.lastMessage?.messageType === "complaint"
@@ -829,7 +834,7 @@ export default function RestaurantInbox() {
                         ? t("inbox", "changeRequest")
                         : conv.lastMessage?.messageType === "attachment"
                         ? t("inbox", "file")
-                        : conv.lastMessage?.content || t("inbox", "noConversations");
+                        : msgPreviewText;
                       const hasUnread = conv.unreadCount > 0;
                       return (
                         <button
@@ -1389,25 +1394,52 @@ export default function RestaurantInbox() {
                                     userId={currentUser?.id}
                                   />
                                 ) : (
-                                  <div
-                                    className={`max-w-[70%] rounded-lg px-3 py-2 shadow-lg ${
-                                      isOwn
-                                        ? "bg-primary text-primary-foreground"
-                                        : "bg-muted"
-                                    }`}
-                                  >
-                                    <p className="text-sm">{message.content}</p>
-                                    <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
-                                      <span className={`text-[10px] ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                                        {format(messageDate, "HH:mm")}
-                                      </span>
-                                      {isOwn && (
-                                        message.isRead 
-                                          ? <CheckCheck className="h-3 w-3 text-primary-foreground/70" />
-                                          : <Check className="h-3 w-3 text-primary-foreground/70" />
-                                      )}
-                                    </div>
-                                  </div>
+                                  (() => {
+                                    let refData: { refType?: string; refId?: string; refLabel?: string; text?: string } | null = null;
+                                    try {
+                                      const parsed = JSON.parse(message.content);
+                                      if (parsed.refType && parsed.refId && parsed.text) refData = parsed;
+                                    } catch {}
+                                    return (
+                                      <div
+                                        className={`max-w-[70%] rounded-lg px-3 py-2 shadow-lg ${
+                                          isOwn
+                                            ? "bg-primary text-primary-foreground"
+                                            : "bg-muted"
+                                        }`}
+                                      >
+                                        {refData && (
+                                          <div className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 ${
+                                            isOwn
+                                              ? "bg-primary-foreground/15 border-primary-foreground/50"
+                                              : "bg-background/60 border-primary/50"
+                                          }`}>
+                                            <div className="flex items-center gap-1.5">
+                                              {refData.refType === "order" ? (
+                                                <ShoppingBag className={`h-3 w-3 shrink-0 ${isOwn ? "text-primary-foreground/70" : "text-primary"}`} />
+                                              ) : (
+                                                <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-primary-foreground/70" : "text-primary"}`} />
+                                              )}
+                                              <span className={`text-[11px] font-medium truncate ${isOwn ? "text-primary-foreground/80" : "text-foreground/80"}`}>
+                                                {refData.refLabel || (refData.refType === "order" ? t("inbox", "orderMessage") : t("inbox", "complaintMessage"))}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <p className="text-sm">{refData ? refData.text : message.content}</p>
+                                        <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
+                                          <span className={`text-[10px] ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                                            {format(messageDate, "HH:mm")}
+                                          </span>
+                                          {isOwn && (
+                                            message.isRead 
+                                              ? <CheckCheck className="h-3 w-3 text-primary-foreground/70" />
+                                              : <Check className="h-3 w-3 text-primary-foreground/70" />
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()
                                 )}
                               </div>
                             </div>

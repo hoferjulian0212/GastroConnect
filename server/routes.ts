@@ -1418,6 +1418,51 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/send-referenced-message", async (req, res) => {
+    try {
+      const schema = z.object({
+        senderId: uuidField,
+        restaurantId: uuidField,
+        supplierId: uuidField,
+        message: z.string().min(1).max(5000),
+        referenceType: z.enum(["order", "complaint"]),
+        referenceId: uuidField,
+        referenceLabel: z.string().max(200),
+      }).strict();
+      const validated = schema.parse(req.body);
+      const conversation = await storage.getOrCreateConversation(validated.restaurantId, validated.supplierId);
+      const content = JSON.stringify({
+        refType: validated.referenceType,
+        refId: validated.referenceId,
+        refLabel: validated.referenceLabel,
+        text: validated.message,
+      });
+      const message = await storage.sendMessage({
+        conversationId: conversation.id,
+        senderId: validated.senderId,
+        messageType: "text",
+        content,
+      });
+      const sender = await storage.getUser(validated.senderId);
+      const recipientId = conversation.restaurantId === validated.senderId
+        ? conversation.supplierId
+        : conversation.restaurantId;
+      await storage.createNotification({
+        userId: recipientId,
+        type: "new_message",
+        title: "Neue Nachricht",
+        message: `${sender?.companyName || sender?.name || "Jemand"} hat Ihnen eine Nachricht gesendet`,
+        referenceId: conversation.id
+      });
+      res.status(201).json(message);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
   // ===== STATS =====
   app.get("/api/restaurant/stats", async (req, res) => {
     try {
