@@ -488,60 +488,65 @@ export default function RestaurantOrders() {
 
       <Card>
         <CardContent className="p-3 md:p-4">
-          <div className="flex flex-col sm:flex-row gap-2 md:gap-3 items-end">
-            <div className="flex-1 w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "supplier")}</label>
-              <Select value={filterSupplier} onValueChange={setFilterSupplier}>
-                <SelectTrigger className="h-9 text-xs md:text-sm" data-testid="filter-supplier">
-                  <Store className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                  <SelectValue placeholder={t("common", "allSuppliers")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("common", "allSuppliers")}</SelectItem>
-                  {uniqueSuppliers.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "supplier")}</label>
+                <Select value={filterSupplier} onValueChange={setFilterSupplier}>
+                  <SelectTrigger className="h-9 text-xs md:text-sm" data-testid="filter-supplier">
+                    <Store className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                    <SelectValue placeholder={t("common", "allSuppliers")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("common", "allSuppliers")}</SelectItem>
+                    {uniqueSuppliers.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {hasActiveFilters && (
+                <Button variant="ghost" size="icon" onClick={clearFilters} className="shrink-0" data-testid="button-clear-filters">
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
-            <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
-              <Input
-                type="date"
-                value={filterDateFrom}
-                onChange={e => setFilterDateFrom(e.target.value)}
-                className="h-9 text-xs md:text-sm w-full sm:w-[150px]"
-                data-testid="filter-date-from"
-              />
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
+                <Input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={e => setFilterDateFrom(e.target.value)}
+                  className="h-9 text-xs md:text-sm w-full"
+                  data-testid="filter-date-from"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
+                <Input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={e => setFilterDateTo(e.target.value)}
+                  className="h-9 text-xs md:text-sm w-full"
+                  data-testid="filter-date-to"
+                />
+              </div>
             </div>
-            <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
-              <Input
-                type="date"
-                value={filterDateTo}
-                onChange={e => setFilterDateTo(e.target.value)}
-                className="h-9 text-xs md:text-sm w-full sm:w-[150px]"
-                data-testid="filter-date-to"
-              />
-            </div>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0" data-testid="button-clear-filters">
-                <X className="h-3.5 w-3.5 mr-1" />
-                {t("common", "reset")}
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>
 
       <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:w-auto lg:inline-flex h-auto">
-          <TabsTrigger value="all" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-all">{t("common", "all")}</TabsTrigger>
-          <TabsTrigger value="pending" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-pending">{getOrderStatus("pending", lang)}</TabsTrigger>
-          <TabsTrigger value="confirmed" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-confirmed">{getOrderStatus("confirmed", lang)}</TabsTrigger>
-          <TabsTrigger value="in_delivery" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-delivery">{getOrderStatus("in_delivery", lang)}</TabsTrigger>
-          <TabsTrigger value="delivered" className="text-xs md:text-sm py-1.5 md:py-2" data-testid="tab-delivered">{getOrderStatus("delivered", lang)}</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex w-auto min-w-full md:w-full md:grid md:grid-cols-5 h-auto">
+            <TabsTrigger value="all" className="text-xs md:text-sm py-1.5 md:py-2 whitespace-nowrap" data-testid="tab-all">{t("common", "all")}</TabsTrigger>
+            <TabsTrigger value="pending" className="text-xs md:text-sm py-1.5 md:py-2 whitespace-nowrap" data-testid="tab-pending">{getOrderStatus("pending", lang)}</TabsTrigger>
+            <TabsTrigger value="confirmed" className="text-xs md:text-sm py-1.5 md:py-2 whitespace-nowrap" data-testid="tab-confirmed">{getOrderStatus("confirmed", lang)}</TabsTrigger>
+            <TabsTrigger value="in_delivery" className="text-xs md:text-sm py-1.5 md:py-2 whitespace-nowrap" data-testid="tab-delivery">{getOrderStatus("in_delivery", lang)}</TabsTrigger>
+            <TabsTrigger value="delivered" className="text-xs md:text-sm py-1.5 md:py-2 whitespace-nowrap" data-testid="tab-delivered">{getOrderStatus("delivered", lang)}</TabsTrigger>
+          </TabsList>
+        </div>
 
         {["all", "pending", "confirmed", "in_delivery", "delivered"].map((tab) => (
           <TabsContent key={tab} value={tab} className="mt-4 md:mt-6">
