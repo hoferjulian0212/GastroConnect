@@ -423,7 +423,7 @@ export default function SupplierOrders() {
       </Card>
 
       <Tabs defaultValue={highlightOrderId ? "all" : "pending"} className="w-full">
-        <TabsList className="w-full overflow-x-auto flex md:grid md:grid-cols-5 lg:w-auto lg:inline-flex">
+        <TabsList className="w-full overflow-x-auto flex md:grid md:grid-cols-6 lg:w-auto lg:inline-flex">
           <TabsTrigger value="pending" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-pending">
             {getOrderStatus("pending", lang, true)}
             {filterOrders("pending").length > 0 && (
@@ -435,10 +435,11 @@ export default function SupplierOrders() {
           <TabsTrigger value="confirmed" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-confirmed">{getOrderStatus("confirmed", lang, true)}</TabsTrigger>
           <TabsTrigger value="in_delivery" className="text-xs md:text-sm px-2 md:px-3 whitespace-nowrap" data-testid="tab-delivery">{lang === "de" ? "Lieferung" : "Consegna"}</TabsTrigger>
           <TabsTrigger value="delivered" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-delivered">{getOrderStatus("delivered", lang, true)}</TabsTrigger>
+          <TabsTrigger value="cancelled" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-cancelled">{getOrderStatus("cancelled", lang, true)}</TabsTrigger>
           <TabsTrigger value="all" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-all">{t("common", "all")}</TabsTrigger>
         </TabsList>
 
-        {["pending", "confirmed", "in_delivery", "delivered", "all"].map((tab) => (
+        {["pending", "confirmed", "in_delivery", "delivered", "cancelled", "all"].map((tab) => (
           <TabsContent key={tab} value={tab} className="mt-4 md:mt-6">
             {isLoading ? (
               <div className="space-y-4">
