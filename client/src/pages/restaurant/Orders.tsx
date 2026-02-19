@@ -12,9 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus } from "lucide-react";
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer } from "lucide-react";
 import type { OrderWithDetails, Product, DeliverySchedule } from "@shared/schema";
-import { format, addDays, startOfDay } from "date-fns";
+import { format, addDays, startOfDay, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { Link, useSearch } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -176,6 +176,23 @@ export default function RestaurantOrders() {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [orders]);
 
+  const supplierIds = useMemo(() => uniqueSuppliers.map(s => s.id), [uniqueSuppliers]);
+
+  const { data: avgDeliveryTimes } = useQuery<Record<string, { avgHours: number | null; avgDays: number | null; sampleSize: number }>>({
+    queryKey: ["/api/suppliers/avg-delivery-times", supplierIds],
+    queryFn: async () => {
+      const results: Record<string, any> = {};
+      await Promise.all(supplierIds.map(async (id) => {
+        try {
+          const res = await fetch(`/api/suppliers/${id}/avg-delivery-time`);
+          if (res.ok) results[id] = await res.json();
+        } catch {}
+      }));
+      return results;
+    },
+    enabled: supplierIds.length > 0,
+  });
+
   const hasActiveFilters = filterSupplier !== "all" || filterDateFrom || filterDateTo;
 
   const clearFilters = () => {
@@ -303,86 +320,148 @@ export default function RestaurantOrders() {
   const canEditOrder = (order: OrderWithDetails) => order.status === "pending";
   const canRequestChange = (order: OrderWithDetails) => order.status === "confirmed";
 
+  const statusSteps = ["pending", "confirmed", "in_delivery", "delivered"];
+
+  const getStepIndex = (status: string) => {
+    if (status === "cancelled") return -1;
+    return statusSteps.indexOf(status);
+  };
+
+  const getEstimatedDelivery = (order: OrderWithDetails) => {
+    if (order.status === "delivered" || order.status === "cancelled") return null;
+    if (order.requestedDeliveryDate) return null;
+    const avg = avgDeliveryTimes?.[order.supplierId];
+    if (!avg || avg.avgHours === null) return null;
+    const estimatedDate = addDays(new Date(order.createdAt), avg.avgDays || 1);
+    if (estimatedDate < new Date()) return null;
+    return { date: estimatedDate, avgDays: avg.avgDays, sampleSize: avg.sampleSize };
+  };
+
   const OrderCard = ({ order }: { order: OrderWithDetails }) => {
     const isHighlighted = order.id === highlightOrderId;
+    const currentStep = getStepIndex(order.status);
+    const isCancelled = order.status === "cancelled";
+    const supplierName = order.supplier?.companyName || order.supplier?.name || t("orders", "unknownSupplier");
+    const lastUpdate = order.updatedAt || order.createdAt;
+    const estimatedDelivery = getEstimatedDelivery(order);
+
     return (
     <div ref={isHighlighted ? highlightRef : undefined}>
     <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
       <Card className={`hover-elevate ${getStatusCardBg(order.status)}`}>
       <CardContent className="p-3 md:p-4">
-        <div className="flex items-start justify-between gap-2 md:gap-4">
-          <div className="flex items-start gap-2 md:gap-4">
-            <div className={`flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-md ${getStatusColor(order.status)}`}>
-              {getStatusIcon(order.status)}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-semibold text-sm md:text-base" data-testid={`text-supplier-${order.id}`}>
+                {supplierName}
+              </p>
+              <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs`} variant="outline">
+                {getStatusIcon(order.status)}
+                <span className="ml-1">{getStatusLabel(order.status)}</span>
+              </Badge>
             </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1 md:gap-2">
-                <p className="font-medium text-sm md:text-base">{t("orders", "order")} #{order.id.slice(0, 8)}</p>
-                <Badge className={`${getStatusColor(order.status)} text-xs`} variant="outline">
-                  {getStatusLabel(order.status)}
-                </Badge>
-              </div>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1 truncate">
-                {order.supplier?.companyName || order.supplier?.name || t("orders", "unknownSupplier")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+            <div className="flex items-center gap-3 mt-1 text-[11px] md:text-xs text-muted-foreground flex-wrap">
+              <span className="flex items-center gap-1">
+                <ShoppingBag className="h-3 w-3" />
+                #{order.id.slice(0, 8)}
+              </span>
+              <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}
-              </p>
+                {format(new Date(order.createdAt), "dd.MM.yy", { locale: dateLocale })}
+              </span>
+              <span>
+                {order.items?.length || 0} {t("common", "items")}
+              </span>
             </div>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-base md:text-lg font-bold">{order.totalAmount}€</p>
-            <p className="text-xs text-muted-foreground">
-              {order.items?.length || 0} {t("common", "items")}
-            </p>
+            <p className="text-base md:text-lg font-bold" data-testid={`text-total-${order.id}`}>{order.totalAmount}€</p>
           </div>
         </div>
-        {order.items && order.items.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <div className="space-y-2">
-              {order.items.slice(0, 3).map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {item.quantity}x {item.productName}
-                  </span>
-                  <span>{item.totalPrice}€</span>
-                </div>
-              ))}
-              {order.items.length > 3 && (
-                <p className="text-xs text-muted-foreground">
-                  + {order.items.length - 3} {t("orders", "moreItems")}
-                </p>
-              )}
+
+        {!isCancelled && (
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <div className="flex items-center gap-0">
+              {statusSteps.map((step, i) => {
+                const isActive = i <= currentStep;
+                const isCurrent = i === currentStep;
+                return (
+                  <div key={step} className="flex items-center flex-1 last:flex-none">
+                    <div className="flex flex-col items-center" data-testid={`status-step-${step}-${order.id}`}>
+                      <div className={`flex items-center justify-center h-6 w-6 md:h-7 md:w-7 rounded-full border-2 transition-colors ${
+                        isCurrent
+                          ? `${getStatusAccent(step)} border-transparent`
+                          : isActive
+                            ? `${getStatusAccent(step)} border-transparent opacity-60`
+                            : "bg-muted/50 border-border"
+                      }`}>
+                        {i === 0 && <Clock className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 1 && <Package className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 2 && <Truck className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 3 && <CheckCircle className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                      </div>
+                      <span className={`text-[9px] md:text-[10px] mt-0.5 text-center leading-tight ${isCurrent ? "font-semibold text-foreground" : isActive ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
+                        {getStatusLabel(step)}
+                      </span>
+                    </div>
+                    {i < statusSteps.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-1 rounded-full ${i < currentStep ? getStatusAccent(statusSteps[i + 1]) + " opacity-40" : "bg-border"}`} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
-        {(canEditOrder(order) || canRequestChange(order)) && (
-          <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-2">
-            {canEditOrder(order) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => { e.stopPropagation(); openEditDialog(order); }}
-                data-testid={`button-edit-order-${order.id}`}
-              >
-                <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                {t("orders", "editOrder")}
-              </Button>
+
+        <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-3 text-[11px] md:text-xs text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1" data-testid={`text-last-update-${order.id}`}>
+              <CalendarDays className="h-3 w-3" />
+              {lang === "de" ? "Aktualisiert" : "Aggiornato"}: {formatDistanceToNow(new Date(lastUpdate), { addSuffix: true, locale: dateLocale })}
+            </span>
+            {order.requestedDeliveryDate && (
+              <span className="flex items-center gap-1 text-primary font-medium" data-testid={`text-delivery-date-${order.id}`}>
+                <Truck className="h-3 w-3" />
+                {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "2-digit" })}
+              </span>
             )}
-            {canRequestChange(order) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => { e.stopPropagation(); setChangeRequestOrder(order); }}
-                data-testid={`button-change-request-${order.id}`}
-              >
-                <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
-                {t("orders", "requestChange")}
-              </Button>
+            {estimatedDelivery && (
+              <span className="flex items-center gap-1 text-muted-foreground italic" data-testid={`text-est-delivery-${order.id}`}>
+                <Timer className="h-3 w-3" />
+                ~{format(estimatedDelivery.date, "dd.MM.", { locale: dateLocale })}
+                <span className="text-[9px] md:text-[10px]">({lang === "de" ? `Ø ${estimatedDelivery.avgDays}T` : `Ø ${estimatedDelivery.avgDays}g`})</span>
+              </span>
             )}
           </div>
-        )}
+          {(canEditOrder(order) || canRequestChange(order)) && (
+            <div className="flex gap-1.5">
+              {canEditOrder(order) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); openEditDialog(order); }}
+                  data-testid={`button-edit-order-${order.id}`}
+                >
+                  <Pencil className="h-3 w-3 mr-1" />
+                  {t("orders", "editOrder")}
+                </Button>
+              )}
+              {canRequestChange(order) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); setChangeRequestOrder(order); }}
+                  data-testid={`button-change-request-${order.id}`}
+                >
+                  <MessageSquareText className="h-3 w-3 mr-1" />
+                  {t("orders", "requestChange")}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
     </div>

@@ -3,6 +3,9 @@ import express from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
+import { db } from "./db";
+import { orders } from "@shared/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema } from "@shared/schema";
 
 const insertProductSchema = _insertProductSchema.strict();
@@ -1511,6 +1514,40 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Create complaint error:", error);
       res.status(400).json({ error: "Invalid complaint data" });
+    }
+  });
+
+  app.get("/api/suppliers/:supplierId/avg-delivery-time", async (req, res) => {
+    try {
+      const { supplierId } = req.params;
+      const deliveredOrders = await db
+        .select({
+          orderId: orders.id,
+          createdAt: orders.createdAt,
+          updatedAt: orders.updatedAt,
+        })
+        .from(orders)
+        .where(and(eq(orders.supplierId, supplierId), eq(orders.status, "delivered")))
+        .orderBy(desc(orders.updatedAt))
+        .limit(5);
+
+      if (deliveredOrders.length === 0) {
+        return res.json({ avgHours: null, avgDays: null, sampleSize: 0 });
+      }
+
+      const durations = deliveredOrders.map(o => {
+        const created = new Date(o.createdAt).getTime();
+        const updated = new Date(o.updatedAt).getTime();
+        return (updated - created) / (1000 * 60 * 60);
+      });
+
+      const avgHours = durations.reduce((a, b) => a + b, 0) / durations.length;
+      const avgDays = Math.round(avgHours / 24 * 10) / 10;
+
+      res.json({ avgHours: Math.round(avgHours), avgDays, sampleSize: deliveredOrders.length });
+    } catch (error) {
+      console.error("Failed to calculate avg delivery time:", error);
+      res.status(500).json({ error: "Failed to calculate delivery time" });
     }
   });
 

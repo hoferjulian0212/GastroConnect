@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer } from "lucide-react";
 import type { OrderWithDetails } from "@shared/schema";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -186,37 +186,52 @@ export default function SupplierOrders() {
     });
   };
 
+  const statusSteps = ["pending", "confirmed", "in_delivery", "delivered"];
+
+  const getStepIndex = (status: string) => {
+    if (status === "cancelled") return -1;
+    return statusSteps.indexOf(status);
+  };
+
   const OrderCard = ({ order }: { order: OrderWithDetails }) => {
     const isHighlighted = order.id === highlightOrderId;
+    const currentStep = getStepIndex(order.status);
+    const isCancelled = order.status === "cancelled";
+    const restaurantName = order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown");
+    const lastUpdate = order.updatedAt || order.createdAt;
+
     return (
     <div ref={isHighlighted ? highlightRef : undefined}>
     <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
       <Card className={`hover-elevate ${getStatusCardBg(order.status)}`}>
       <CardContent className="p-3 md:p-4">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 md:gap-4">
-          <div className="flex items-start gap-3 md:gap-4">
-            <div className={`flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-md shrink-0 ${getStatusColor(order.status)}`}>
-              {getStatusIcon(order.status)}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-semibold text-sm md:text-base" data-testid={`text-restaurant-${order.id}`}>
+                {restaurantName}
+              </p>
+              <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs`} variant="outline">
+                {getStatusIcon(order.status)}
+                <span className="ml-1">{getOrderStatus(order.status, lang, true)}</span>
+              </Badge>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-                <p className="font-medium text-sm md:text-base">#{order.id.slice(0, 8)}</p>
-                <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs`} variant="outline">
-                  {getOrderStatus(order.status, lang, true)}
-                </Badge>
-              </div>
-              <p className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1 flex items-center gap-1 truncate">
-                <Building2 className="h-3 w-3 shrink-0" />
-                <span className="truncate">{order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}</span>
-              </p>
-              <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                {format(new Date(order.createdAt), "dd.MM.yy HH:mm", { locale: dateFnsLocale })}
-              </p>
+            <div className="flex items-center gap-3 mt-1 text-[11px] md:text-xs text-muted-foreground flex-wrap">
+              <span className="flex items-center gap-1">
+                <ShoppingBag className="h-3 w-3" />
+                #{order.id.slice(0, 8)}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {format(new Date(order.createdAt), "dd.MM.yy", { locale: dateFnsLocale })}
+              </span>
+              <span>
+                {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
+              </span>
             </div>
           </div>
-          <div className="flex items-center justify-between md:flex-col md:text-right gap-2 md:space-y-2 border-t md:border-t-0 pt-2 md:pt-0" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base md:text-lg font-bold">{order.totalAmount}€</p>
+          <div className="text-right shrink-0 flex flex-col items-end gap-1" onClick={(e) => e.stopPropagation()}>
+            <p className="text-base md:text-lg font-bold" data-testid={`text-total-${order.id}`}>{order.totalAmount}€</p>
             {order.status !== "delivered" && order.status !== "cancelled" && (
               <Select
                 value={order.status}
@@ -236,63 +251,77 @@ export default function SupplierOrders() {
             )}
           </div>
         </div>
-        {order.items && order.items.length > 0 && (
-          <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-border">
-            <div className="space-y-1.5 md:space-y-2">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex justify-between text-xs md:text-sm">
-                  <span className="text-muted-foreground flex items-center gap-1.5 md:gap-2">
-                    <Package className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                    {item.quantity}x {item.productName}
-                  </span>
-                  <span>{item.totalPrice}€</span>
-                </div>
-              ))}
+
+        {!isCancelled && (
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <div className="flex items-center gap-0">
+              {statusSteps.map((step, i) => {
+                const isActive = i <= currentStep;
+                const isCurrent = i === currentStep;
+                return (
+                  <div key={step} className="flex items-center flex-1 last:flex-none">
+                    <div className="flex flex-col items-center" data-testid={`status-step-${step}-${order.id}`}>
+                      <div className={`flex items-center justify-center h-6 w-6 md:h-7 md:w-7 rounded-full border-2 transition-colors ${
+                        isCurrent
+                          ? `${getStatusAccent(step)} border-transparent`
+                          : isActive
+                            ? `${getStatusAccent(step)} border-transparent opacity-60`
+                            : "bg-muted/50 border-border"
+                      }`}>
+                        {i === 0 && <Clock className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 1 && <Package className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 2 && <Truck className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 3 && <CheckCircle className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                      </div>
+                      <span className={`text-[9px] md:text-[10px] mt-0.5 text-center leading-tight ${isCurrent ? "font-semibold text-foreground" : isActive ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
+                        {getOrderStatus(step, lang, true)}
+                      </span>
+                    </div>
+                    {i < statusSteps.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-1 rounded-full ${i < currentStep ? getStatusAccent(statusSteps[i + 1]) + " opacity-40" : "bg-border"}`} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
-        {(order.notes || order.requestedDeliveryDate) && (
-          <div className="mt-3 md:mt-4 p-2 md:p-3 rounded-md bg-muted/50 space-y-1">
+
+        <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-3 text-[11px] md:text-xs text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1" data-testid={`text-last-update-${order.id}`}>
+              <CalendarDays className="h-3 w-3" />
+              {lang === "de" ? "Aktualisiert" : "Aggiornato"}: {formatDistanceToNow(new Date(lastUpdate), { addSuffix: true, locale: dateFnsLocale })}
+            </span>
             {order.requestedDeliveryDate && (
-              <div>
-                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5">{lang === "de" ? "Gewünschter Liefertermin:" : "Data di consegna richiesta:"}</p>
-                <p className="text-xs md:text-sm font-medium" data-testid={`text-delivery-date-${order.id}`}>
-                  {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-                </p>
-              </div>
-            )}
-            {!order.requestedDeliveryDate && (
-              <div>
-                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5">{lang === "de" ? "Gewünschter Liefertermin:" : "Data di consegna richiesta:"}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">{lang === "de" ? "Sobald wie möglich" : "Il prima possibile"}</p>
-              </div>
+              <span className="flex items-center gap-1 text-primary font-medium" data-testid={`text-delivery-date-${order.id}`}>
+                <Truck className="h-3 w-3" />
+                {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "2-digit" })}
+              </span>
             )}
             {order.notes && (
-              <div>
-                <p className="text-[10px] md:text-xs font-medium text-muted-foreground mb-0.5 md:mb-1">{lang === "de" ? "Anmerkungen:" : "Note:"}</p>
-                <p className="text-xs md:text-sm">{order.notes}</p>
-              </div>
+              <span className="text-[10px] md:text-xs italic truncate max-w-[200px]">
+                "{order.notes}"
+              </span>
             )}
           </div>
-        )}
-        {order.status === "in_delivery" && (
-          <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-border">
+          {order.status === "in_delivery" && (
             <Button
               variant="outline"
-              className="w-full"
+              size="sm"
               onClick={(e) => { e.stopPropagation(); deliveryNoteMutation.mutate(order.id); }}
               disabled={deliveryNoteMutation.isPending}
               data-testid={`button-delivery-note-${order.id}`}
             >
               {deliveryNoteMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
               ) : (
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="h-3.5 w-3.5 mr-1" />
               )}
-              {deliveryNoteMutation.isPending ? (lang === "de" ? "Wird erstellt..." : "Creazione...") : t("supplierOrders", "createDeliveryNote")}
+              {t("supplierOrders", "createDeliveryNote")}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
     </div>
