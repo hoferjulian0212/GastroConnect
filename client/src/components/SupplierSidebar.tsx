@@ -68,7 +68,7 @@ export function SupplierSidebar() {
           data-testid={`link-${item.url.split('/').pop()}`}
           className={`flex items-center h-11 rounded-xl px-2 gap-3 transition-all duration-200 text-left text-[13px] hover-elevate ${
             isActive
-              ? "bg-primary/10 text-primary font-semibold"
+              ? "text-primary font-semibold"
               : "text-foreground font-normal"
           }`}
         >
