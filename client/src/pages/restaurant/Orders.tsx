@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import type { OrderWithDetails, Product, DeliverySchedule } from "@shared/schema";
 import { format, addDays, startOfDay, formatDistanceToNow } from "date-fns";
@@ -168,13 +169,23 @@ export default function RestaurantOrders() {
 
   const uniqueSuppliers = useMemo(() => {
     if (!orders) return [];
-    const map = new Map<string, string>();
+    const map = new Map<string, { id: string; name: string; profileImageUrl: string | null; orderCount: number }>();
     orders.forEach(o => {
       if (o.supplier?.id) {
-        map.set(o.supplier.id, o.supplier.companyName || o.supplier.name || t("common", "unknown"));
+        const existing = map.get(o.supplier.id);
+        if (existing) {
+          existing.orderCount++;
+        } else {
+          map.set(o.supplier.id, {
+            id: o.supplier.id,
+            name: o.supplier.companyName || o.supplier.name || t("common", "unknown"),
+            profileImageUrl: o.supplier.profileImageUrl || null,
+            orderCount: 1,
+          });
+        }
       }
     });
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+    return Array.from(map.values());
   }, [orders]);
 
   const supplierIds = useMemo(() => uniqueSuppliers.map(s => s.id), [uniqueSuppliers]);
@@ -195,7 +206,7 @@ export default function RestaurantOrders() {
   });
 
   const hasActiveFilters = filterSupplier !== "all" || filterDateFrom || filterDateTo;
-  const hasSecondaryFilters = filterSupplier !== "all" || filterDateFrom || filterDateTo;
+  const hasSecondaryFilters = filterDateFrom || filterDateTo;
 
   const statusCounts = useMemo(() => {
     if (!orders) return { all: 0, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0 };
@@ -497,6 +508,70 @@ export default function RestaurantOrders() {
         <p className="text-xs md:text-sm text-muted-foreground">{t("orders", "allOrdersOverview")}</p>
       </div>
 
+      {uniqueSuppliers.length > 0 && (
+        <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+          <button
+            onClick={() => setFilterSupplier("all")}
+            className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+              filterSupplier === "all"
+                ? "border-primary bg-primary/10 dark:bg-primary/20"
+                : "border-transparent bg-muted/50 dark:bg-muted/30"
+            }`}
+            data-testid="filter-supplier-all"
+          >
+            <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
+              filterSupplier === "all"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              <Store className="h-5 w-5 md:h-6 md:w-6" />
+            </div>
+            <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
+              filterSupplier === "all" ? "text-primary" : "text-muted-foreground"
+            }`}>
+              {t("common", "all")}
+            </span>
+            <span className={`text-xs md:text-sm font-bold leading-none ${
+              filterSupplier === "all" ? "text-primary" : "text-foreground"
+            }`}>
+              {orders?.length || 0}
+            </span>
+          </button>
+          {uniqueSuppliers.map(supplier => {
+            const isActive = filterSupplier === supplier.id;
+            return (
+              <button
+                key={supplier.id}
+                onClick={() => setFilterSupplier(supplier.id)}
+                className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+                  isActive
+                    ? "border-primary bg-primary/10 dark:bg-primary/20"
+                    : "border-transparent bg-muted/50 dark:bg-muted/30"
+                }`}
+                data-testid={`filter-supplier-${supplier.id}`}
+              >
+                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+                  <AvatarImage src={supplier.profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                    {supplier.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 max-w-[64px] md:max-w-[80px] ${
+                  isActive ? "text-primary" : "text-muted-foreground"
+                }`}>
+                  {supplier.name}
+                </span>
+                <span className={`text-xs md:text-sm font-bold leading-none ${
+                  isActive ? "text-primary" : "text-foreground"
+                }`}>
+                  {supplier.orderCount}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
         {([
           { key: "all", icon: ShoppingBag, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
@@ -540,7 +615,7 @@ export default function RestaurantOrders() {
           <span>{lang === "de" ? "Filter" : "Filtri"}</span>
           {hasSecondaryFilters && (
             <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
-              {(filterSupplier !== "all" ? 1 : 0) + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
+              {(filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
             </span>
           )}
           {showSecondaryFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -560,44 +635,27 @@ export default function RestaurantOrders() {
       {showSecondaryFilters && (
         <Card>
           <CardContent className="p-3 md:p-4">
-            <div className="flex flex-col gap-2">
-              <div className="min-w-0">
-                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "supplier")}</label>
-                <Select value={filterSupplier} onValueChange={setFilterSupplier}>
-                  <SelectTrigger className="h-9 text-xs md:text-sm" data-testid="filter-supplier">
-                    <Store className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                    <SelectValue placeholder={t("common", "allSuppliers")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("common", "allSuppliers")}</SelectItem>
-                    {uniqueSuppliers.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
+                <Input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={e => setFilterDateFrom(e.target.value)}
+                  className="h-9 text-xs md:text-sm w-full"
+                  data-testid="filter-date-from"
+                />
               </div>
-              <div className="flex gap-2">
-                <div className="flex-1 min-w-0">
-                  <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
-                  <Input
-                    type="date"
-                    value={filterDateFrom}
-                    onChange={e => setFilterDateFrom(e.target.value)}
-                    className="h-9 text-xs md:text-sm w-full"
-                    data-testid="filter-date-from"
-                  />
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
+                <Input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={e => setFilterDateTo(e.target.value)}
+                  className="h-9 text-xs md:text-sm w-full"
+                  data-testid="filter-date-to"
+                />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
-                  <Input
-                    type="date"
-                    value={filterDateTo}
-                    onChange={e => setFilterDateTo(e.target.value)}
-                    className="h-9 text-xs md:text-sm w-full"
-                    data-testid="filter-date-to"
-                  />
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>
