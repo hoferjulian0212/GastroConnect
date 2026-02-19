@@ -61,13 +61,13 @@ export default function RestaurantSuppliers() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-64" />
           ))}
         </div>
       ) : filteredSuppliers && filteredSuppliers.length > 0 ? (
-        <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
           {filteredSuppliers.map((supplier) => (
             <Card 
               key={supplier.id} 
@@ -75,8 +75,8 @@ export default function RestaurantSuppliers() {
               data-testid={`supplier-card-${supplier.id}`}
             >
               <CardContent className="p-4 md:p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <Avatar className="h-12 w-12">
+                <div className="flex items-start justify-between gap-2 mb-4">
+                  <Avatar className="h-12 w-12 shrink-0">
                     <AvatarImage src={supplier.profileImageUrl || undefined} alt={supplier.companyName || supplier.name} />
                     <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
                       {(supplier.companyName || supplier.name).charAt(0).toUpperCase()}
@@ -86,12 +86,13 @@ export default function RestaurantSuppliers() {
                     <a 
                       href={`tel:${supplier.phone}`}
                       onClick={(e) => e.stopPropagation()}
+                      className="shrink-0"
                       data-testid={`button-call-${supplier.id}`}
                     >
                       <Button 
                         size="icon" 
                         variant="ghost" 
-                        className="h-9 w-9 rounded-full bg-primary/10 hover:bg-primary/20 text-primary"
+                        className="h-9 w-9 rounded-full bg-primary/10 text-primary"
                       >
                         <Phone className="h-4 w-4" />
                       </Button>
@@ -99,42 +100,42 @@ export default function RestaurantSuppliers() {
                   )}
                 </div>
 
-                <h3 className="font-semibold text-base md:text-lg mb-1">
+                <h3 className="font-semibold text-base md:text-lg mb-1 truncate">
                   {supplier.companyName || supplier.name}
                 </h3>
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-sm text-muted-foreground mb-4 truncate">
                   {t("suppliers", "foodCategory")} • {supplier.name}
                 </p>
 
                 <div className="space-y-2 mb-6">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{t("profile", "email")}</span>
-                    <span className="font-medium truncate ml-2">{supplier.email}</span>
+                  <div className="flex items-center gap-2 text-sm min-w-0">
+                    <span className="text-muted-foreground shrink-0">{t("profile", "email")}</span>
+                    <span className="font-medium truncate">{supplier.email}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{t("profile", "phone")}</span>
-                    <span className="font-medium">{supplier.phone || "-"}</span>
+                  <div className="flex items-center gap-2 text-sm min-w-0">
+                    <span className="text-muted-foreground shrink-0">{t("profile", "phone")}</span>
+                    <span className="font-medium truncate">{supplier.phone || "-"}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <Button 
                     variant="outline" 
-                    className="flex-1 gap-2"
+                    className="flex-1 gap-1.5"
                     onClick={() => handleViewCatalog(supplier.id)}
                     data-testid={`button-view-catalog-${supplier.id}`}
                   >
-                    <Package className="h-4 w-4" />
-                    {t("common", "catalog")}
+                    <Package className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{t("common", "catalog")}</span>
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="flex-1 gap-2"
+                    className="flex-1 gap-1.5"
                     onClick={() => handleMessage(supplier.id)}
                     data-testid={`button-message-${supplier.id}`}
                   >
-                    <MessageSquare className="h-4 w-4" />
-                    {t("common", "messages")}
+                    <MessageSquare className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{t("common", "messages")}</span>
                   </Button>
                 </div>
               </CardContent>
