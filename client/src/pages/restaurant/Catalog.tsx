@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Package, ShoppingCart, Plus, Minus, Store, Filter, Eye, Tag, Percent, Clock, Check } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { differenceInDays, differenceInHours, format } from "date-fns";
 import { de, it } from "date-fns/locale";
 import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
@@ -107,6 +108,16 @@ export default function RestaurantCatalog() {
 
   const categories = Array.from(new Set(products?.map(p => p.category).filter(Boolean) || []));
 
+  const supplierCards = useMemo(() => {
+    if (!suppliers || !products) return [];
+    return suppliers.map(s => ({
+      id: s.id,
+      name: s.companyName || s.name || "",
+      profileImageUrl: s.profileImageUrl || null,
+      productCount: products.filter(p => p.supplierId === s.id).length,
+    })).filter(s => s.productCount > 0);
+  }, [suppliers, products]);
+
   const getMinOrderQty = (product: ProductWithSupplierAndPromotion) => {
     return product.minOrderQuantity && product.minOrderQuantity > 1 ? product.minOrderQuantity : 1;
   };
@@ -137,6 +148,70 @@ export default function RestaurantCatalog() {
         <p className="text-xs md:text-sm text-muted-foreground">{t("common", "browseAllSuppliers")}</p>
       </div>
 
+      {supplierCards.length > 0 && (
+        <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+          <button
+            onClick={() => setSelectedSupplier("all")}
+            className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+              selectedSupplier === "all"
+                ? "border-primary bg-primary/10 dark:bg-primary/20"
+                : "border-transparent bg-muted/50 dark:bg-muted/30"
+            }`}
+            data-testid="filter-supplier-all"
+          >
+            <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
+              selectedSupplier === "all"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              <Store className="h-5 w-5 md:h-6 md:w-6" />
+            </div>
+            <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
+              selectedSupplier === "all" ? "text-primary" : "text-muted-foreground"
+            }`}>
+              {t("common", "all")}
+            </span>
+            <span className={`text-xs md:text-sm font-bold leading-none ${
+              selectedSupplier === "all" ? "text-primary" : "text-foreground"
+            }`}>
+              {products?.length || 0}
+            </span>
+          </button>
+          {supplierCards.map(supplier => {
+            const isActive = selectedSupplier === supplier.id;
+            return (
+              <button
+                key={supplier.id}
+                onClick={() => setSelectedSupplier(supplier.id)}
+                className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+                  isActive
+                    ? "border-primary bg-primary/10 dark:bg-primary/20"
+                    : "border-transparent bg-muted/50 dark:bg-muted/30"
+                }`}
+                data-testid={`filter-supplier-${supplier.id}`}
+              >
+                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+                  <AvatarImage src={supplier.profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                    {supplier.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 max-w-[64px] md:max-w-[80px] ${
+                  isActive ? "text-primary" : "text-muted-foreground"
+                }`}>
+                  {supplier.name}
+                </span>
+                <span className={`text-xs md:text-sm font-bold leading-none ${
+                  isActive ? "text-primary" : "text-foreground"
+                }`}>
+                  {supplier.productCount}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <Card>
         <CardHeader className="pb-2 md:pb-3 p-3 md:p-6">
           <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
@@ -151,20 +226,6 @@ export default function RestaurantCatalog() {
               />
             </div>
             <div className="flex flex-row gap-2 flex-wrap">
-              <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
-                <SelectTrigger className="w-full sm:w-[150px] md:w-[180px] h-9 md:h-10 text-xs md:text-sm" data-testid="select-supplier">
-                  <Store className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 shrink-0" />
-                  <SelectValue placeholder={t("common", "supplier")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("common", "allSuppliers")}</SelectItem>
-                  {suppliers?.map((supplier) => (
-                    <SelectItem key={supplier.id} value={supplier.id}>
-                      {supplier.companyName || supplier.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className="w-full sm:w-[150px] md:w-[180px] h-9 md:h-10 text-xs md:text-sm" data-testid="select-category">
                   <Filter className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 shrink-0" />
