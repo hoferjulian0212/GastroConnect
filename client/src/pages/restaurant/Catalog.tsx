@@ -283,10 +283,10 @@ export default function RestaurantCatalog() {
                     data-testid={`product-card-${product.id}`}
                     onClick={() => setDetailProduct(product)}
                   >
-                    <CardContent className="p-3 flex gap-3">
-                      <div className="relative">
+                    <CardContent className="p-3 flex gap-3 overflow-hidden">
+                      <div className="relative shrink-0">
                         {product.imageUrl ? (
-                          <div className="w-20 h-20 md:w-28 md:h-28 shrink-0 rounded-lg overflow-hidden bg-muted">
+                          <div className="w-20 h-20 md:w-28 md:h-28 rounded-lg overflow-hidden bg-muted">
                             <img 
                               src={product.imageUrl} 
                               alt={product.name}
@@ -294,7 +294,7 @@ export default function RestaurantCatalog() {
                             />
                           </div>
                         ) : (
-                          <div className="w-20 h-20 md:w-28 md:h-28 shrink-0 rounded-lg bg-muted flex items-center justify-center">
+                          <div className="w-20 h-20 md:w-28 md:h-28 rounded-lg bg-muted flex items-center justify-center">
                             <Package className="h-8 w-8 md:h-10 md:w-10 text-muted-foreground/30" />
                           </div>
                         )}
@@ -304,30 +304,30 @@ export default function RestaurantCatalog() {
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-1">
-                          <h3 className="font-medium text-sm md:text-base line-clamp-1">{product.name}</h3>
-                          <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-start gap-1 flex-wrap">
+                          <h3 className="font-medium text-sm md:text-base truncate">{product.name}</h3>
+                          <div className="flex items-center gap-1 flex-wrap">
                             {hasPromo && (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-[10px] md:text-xs px-1 md:px-1.5 py-0" data-testid={`badge-promo-${product.id}`}>
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-[10px] px-1 py-0" data-testid={`badge-promo-${product.id}`}>
                                 {t("common", "action")}
                               </Badge>
                             )}
                             {product.inStock ? (
-                              <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
+                              <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1 py-0">
                                 {t("common", "available")}
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
+                              <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1 py-0">
                                 {t("common", "unavailable")}
                               </Badge>
                             )}
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
                           {product.supplier?.companyName || product.supplier?.name}
                         </p>
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-baseline gap-1.5 mt-1 flex-wrap">
                           {hasPromo ? (
                             <>
                               <span className="text-xs text-muted-foreground line-through" data-testid={`text-original-price-${product.id}`}>{originalPrice.toFixed(2)}€</span>
@@ -359,14 +359,14 @@ export default function RestaurantCatalog() {
                           return (
                             <div className="flex items-center gap-1 mt-1" data-testid={`text-promo-remaining-${product.id}`}>
                               <Clock className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
-                              <span className="text-[10px] md:text-xs text-green-600 dark:text-green-400 font-medium">
+                              <span className="text-[10px] md:text-xs text-green-600 dark:text-green-400 font-medium truncate">
                                 {remainingText} — {t("common", "until")} {format(end, "dd.MM.yyyy", { locale: dateLocale })}
                               </span>
                             </div>
                           );
                         })()}
                         {product.minOrderQuantity && product.minOrderQuantity > 1 && (
-                          <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5" data-testid={`text-moq-${product.id}`}>
+                          <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 truncate" data-testid={`text-moq-${product.id}`}>
                             {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
                           </p>
                         )}
