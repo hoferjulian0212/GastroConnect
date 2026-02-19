@@ -252,7 +252,7 @@ export default function RestaurantOrders() {
       }
       return true;
     });
-    const counts = { all: filtered.length, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0 };
+    const counts = { all: filtered.length, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
     filtered.forEach(o => {
       if (o.status in counts) (counts as any)[o.status]++;
     });
@@ -629,13 +629,14 @@ export default function RestaurantOrders() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
         {([
           { key: "all", icon: ShoppingBag, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
           { key: "pending", icon: Clock, color: "bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400", activeColor: "bg-yellow-500 text-white dark:bg-yellow-600", borderColor: "border-yellow-400 dark:border-yellow-500" },
           { key: "confirmed", icon: Package, color: "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400", activeColor: "bg-blue-500 text-white dark:bg-blue-600", borderColor: "border-blue-400 dark:border-blue-500" },
           { key: "in_delivery", icon: Truck, color: "bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-400", activeColor: "bg-purple-500 text-white dark:bg-purple-600", borderColor: "border-purple-400 dark:border-purple-500" },
           { key: "delivered", icon: CheckCircle, color: "bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-400", activeColor: "bg-green-500 text-white dark:bg-green-600", borderColor: "border-green-400 dark:border-green-500" },
+          { key: "cancelled", icon: XCircle, color: "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-400", activeColor: "bg-red-500 text-white dark:bg-red-600", borderColor: "border-red-400 dark:border-red-500" },
         ] as const).map(({ key, icon: Icon, color, activeColor, borderColor }) => {
           const isActive = filterStatus === key;
           const count = (statusCounts as any)[key] || 0;
