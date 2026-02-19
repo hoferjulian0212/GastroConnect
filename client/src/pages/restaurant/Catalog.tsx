@@ -269,7 +269,7 @@ export default function RestaurantCatalog() {
               ))}
             </div>
           ) : filteredProducts && filteredProducts.length > 0 ? (
-            <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 md:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredProducts.map((product) => {
                 const promo = product.activePromotion;
                 const hasPromo = !!promo;
@@ -283,10 +283,10 @@ export default function RestaurantCatalog() {
                     data-testid={`product-card-${product.id}`}
                     onClick={() => setDetailProduct(product)}
                   >
-                    <CardContent className="p-3 flex gap-3 overflow-hidden">
-                      <div className="relative shrink-0">
+                    <CardContent className="p-2.5 md:p-3 flex flex-col overflow-hidden">
+                      <div className="relative">
                         {product.imageUrl ? (
-                          <div className="w-20 h-20 md:w-28 md:h-28 rounded-lg overflow-hidden bg-muted">
+                          <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted">
                             <img 
                               src={product.imageUrl} 
                               alt={product.name}
@@ -294,52 +294,47 @@ export default function RestaurantCatalog() {
                             />
                           </div>
                         ) : (
-                          <div className="w-20 h-20 md:w-28 md:h-28 rounded-lg bg-muted flex items-center justify-center">
-                            <Package className="h-8 w-8 md:h-10 md:w-10 text-muted-foreground/30" />
+                          <div className="w-full aspect-square rounded-lg bg-muted flex items-center justify-center">
+                            <Package className="h-10 w-10 text-muted-foreground/30" />
                           </div>
                         )}
                         {hasPromo && (
-                          <div className="absolute -top-1.5 -left-1.5 flex items-center justify-center rounded-full bg-green-600 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 shadow-sm" data-testid={`badge-discount-${product.id}`}>
+                          <div className="absolute top-1.5 left-1.5 flex items-center justify-center rounded-full bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 shadow-sm" data-testid={`badge-discount-${product.id}`}>
                             -{promo.discountPercent}%
                           </div>
                         )}
-                      </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <div className="flex items-start gap-1 flex-wrap">
-                          <h3 className="font-medium text-sm md:text-base truncate">{product.name}</h3>
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {hasPromo && (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-[10px] px-1 py-0" data-testid={`badge-promo-${product.id}`}>
-                                {t("common", "action")}
-                              </Badge>
-                            )}
-                            {product.inStock ? (
-                              <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1 py-0">
-                                {t("common", "available")}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1 py-0">
-                                {t("common", "unavailable")}
-                              </Badge>
-                            )}
-                          </div>
+                        <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+                          {hasPromo && (
+                            <Badge variant="outline" className="bg-green-50/90 text-green-700 border-green-200 dark:bg-green-900/80 dark:text-green-400 dark:border-green-800 text-[10px] px-1 py-0" data-testid={`badge-promo-${product.id}`}>
+                              {t("common", "action")}
+                            </Badge>
+                          )}
+                          {product.inStock ? (
+                            <Badge variant="outline" className="bg-green-100/90 text-green-800 dark:bg-green-900/80 dark:text-green-400 text-[10px] px-1 py-0">
+                              {t("common", "available")}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-red-100/90 text-red-800 dark:bg-red-900/80 dark:text-red-400 text-[10px] px-1 py-0">
+                              {t("common", "unavailable")}
+                            </Badge>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      </div>
+                      <div className="mt-2 min-w-0 overflow-hidden flex-1 flex flex-col">
+                        <h3 className="font-medium text-sm truncate">{product.name}</h3>
+                        <p className="text-xs text-muted-foreground truncate">
                           {product.supplier?.companyName || product.supplier?.name}
                         </p>
-                        <div className="flex items-baseline gap-1.5 mt-1 flex-wrap">
+                        <div className="flex items-baseline gap-1 mt-1 flex-wrap">
                           {hasPromo ? (
                             <>
-                              <span className="text-xs text-muted-foreground line-through" data-testid={`text-original-price-${product.id}`}>{originalPrice.toFixed(2)}€</span>
-                              <span className="font-bold text-sm md:text-base text-green-600 dark:text-green-400" data-testid={`text-discounted-price-${product.id}`}>{discountedPrice.toFixed(2)}€</span>
-                              <span className="text-xs text-muted-foreground">/{product.unit}</span>
+                              <span className="text-[11px] text-muted-foreground line-through" data-testid={`text-original-price-${product.id}`}>{originalPrice.toFixed(2)}€</span>
+                              <span className="font-bold text-base text-green-600 dark:text-green-400" data-testid={`text-discounted-price-${product.id}`}>{discountedPrice.toFixed(2)}€</span>
                             </>
                           ) : (
-                            <>
-                              <span className="font-bold text-sm md:text-base">{originalPrice.toFixed(2)}€</span>
-                              <span className="text-xs text-muted-foreground">/{product.unit}</span>
-                            </>
+                            <span className="font-bold text-base">{originalPrice.toFixed(2)}€</span>
                           )}
+                          <span className="text-xs text-muted-foreground">/{product.unit}</span>
                         </div>
                         {hasPromo && promo.endDate && (() => {
                           const now = new Date();
@@ -357,21 +352,21 @@ export default function RestaurantCatalog() {
                             remainingText = t("common", "endsSoon");
                           }
                           return (
-                            <div className="flex items-center gap-1 mt-1" data-testid={`text-promo-remaining-${product.id}`}>
+                            <div className="flex items-center gap-1 mt-0.5" data-testid={`text-promo-remaining-${product.id}`}>
                               <Clock className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
-                              <span className="text-[10px] md:text-xs text-green-600 dark:text-green-400 font-medium truncate">
-                                {remainingText} — {t("common", "until")} {format(end, "dd.MM.yyyy", { locale: dateLocale })}
+                              <span className="text-[10px] text-green-600 dark:text-green-400 font-medium truncate">
+                                {remainingText} — {format(end, "dd.MM.yyyy", { locale: dateLocale })}
                               </span>
                             </div>
                           );
                         })()}
                         {product.minOrderQuantity && product.minOrderQuantity > 1 && (
-                          <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 truncate" data-testid={`text-moq-${product.id}`}>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate" data-testid={`text-moq-${product.id}`}>
                             {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
                           </p>
                         )}
-                        <div className="flex items-center gap-1 md:gap-2 mt-2 justify-end flex-wrap">
-                          <div className="flex items-center border border-border rounded-md" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between gap-1 mt-auto pt-2">
+                          <div className="flex items-center border border-border rounded-md shrink-0" onClick={(e) => e.stopPropagation()}>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -399,7 +394,7 @@ export default function RestaurantCatalog() {
                           <Button
                             variant={addedProductIds.has(product.id) ? "default" : "outline"}
                             size="sm"
-                            className={`gap-1 text-xs md:text-sm transition-all duration-300 ${
+                            className={`gap-1 text-xs transition-all duration-300 flex-1 ${
                               addedProductIds.has(product.id) 
                                 ? "bg-primary border-primary text-primary-foreground no-default-hover-elevate no-default-active-elevate" 
                                 : ""
@@ -409,15 +404,11 @@ export default function RestaurantCatalog() {
                             data-testid={`button-add-to-cart-${product.id}`}
                           >
                             {addedProductIds.has(product.id) ? (
-                              <>
-                                <Check className="h-3.5 w-3.5" />
-                                <span className="hidden sm:inline">{t("common", "addedToCart")}</span>
-                              </>
+                              <Check className="h-3.5 w-3.5" />
                             ) : (
                               <>
                                 <ShoppingCart className="h-3.5 w-3.5" />
-                                <span className="hidden sm:inline">{t("common", "add")}</span>
-                                <span className="sm:hidden">+</span>
+                                <span>{t("common", "add")}</span>
                               </>
                             )}
                           </Button>
