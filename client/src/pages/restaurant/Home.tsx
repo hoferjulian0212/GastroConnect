@@ -1,13 +1,15 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, MessageSquare, Package, Clock, Zap } from "lucide-react";
-import type { Order, Conversation } from "@shared/schema";
+import { ShoppingBag, MessageSquare, Package, Clock, Zap, Truck, User as UserIcon } from "lucide-react";
+import type { OrderWithDetails } from "@shared/schema";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
@@ -16,8 +18,9 @@ export default function RestaurantHome() {
   const { currentUser } = useUser();
   const { lang } = useLanguage();
   const t = useT(lang);
+  const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
 
-  const { data: recentOrders, isLoading: ordersLoading } = useQuery<Order[]>({
+  const { data: recentOrders, isLoading: ordersLoading } = useQuery<OrderWithDetails[]>({
     queryKey: ['/api/orders/recent', currentUser?.id],
     queryFn: async () => {
       const res = await fetch(`/api/orders/recent?restaurantId=${currentUser?.id}`);
@@ -53,6 +56,16 @@ export default function RestaurantHome() {
       case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
       case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
       default: return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "pending": return <Clock className="h-3.5 w-3.5" />;
+      case "confirmed": return <Package className="h-3.5 w-3.5" />;
+      case "in_delivery": return <Truck className="h-3.5 w-3.5" />;
+      case "delivered": return <Package className="h-3.5 w-3.5" />;
+      default: return <ShoppingBag className="h-3.5 w-3.5" />;
     }
   };
 
@@ -190,26 +203,39 @@ export default function RestaurantHome() {
               {recentOrders.slice(0, 5).map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center justify-between p-2 md:p-3 rounded-md bg-muted/50 cursor-pointer transition-all duration-200 hover:shadow-md hover:bg-muted"
+                  className="flex items-center justify-between p-2.5 md:p-3 rounded-md bg-muted/50 cursor-pointer transition-all duration-200 hover:shadow-md hover:bg-muted"
+                  onClick={() => setDetailOrder(order)}
                   data-testid={`order-item-${order.id}`}
                 >
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
+                  <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
+                    <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 shrink-0">
                       <ShoppingBag className="h-4 w-4 text-primary" />
                     </div>
-                    <div>
-                      <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                        {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
+                        <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5`} variant="outline">
+                          {getOrderStatus(order.status, lang)}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <UserIcon className="h-2.5 w-2.5 md:h-3 md:w-3 text-muted-foreground shrink-0" />
+                        <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+                          {order.supplier?.companyName || order.supplier?.name || t("common", "unknown")}
+                        </p>
+                      </div>
+                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
+                        {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}
+                        <span className="text-muted-foreground/70">({formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })})</span>
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 md:gap-2">
-                    <span className="text-xs md:text-sm font-medium">{order.totalAmount}€</span>
-                    <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5 md:px-2`} variant="outline">
-                      {getOrderStatus(order.status, lang)}
-                    </Badge>
+                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                    <span className="text-sm md:text-base font-bold">{order.totalAmount}€</span>
+                    <span className="text-[10px] md:text-xs text-muted-foreground">
+                      {order.items?.length || 0} {t("common", "items")}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -225,6 +251,83 @@ export default function RestaurantHome() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {detailOrder && getStatusIcon(detailOrder.status)}
+              {t("orders", "order")} #{detailOrder?.id.slice(0, 8)}
+            </DialogTitle>
+            <DialogDescription>
+              {t("orders", "orderDetails")}
+            </DialogDescription>
+          </DialogHeader>
+          {detailOrder && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
+                  {getStatusIcon(detailOrder.status)}
+                  <span className="ml-1">{getOrderStatus(detailOrder.status, lang)}</span>
+                </Badge>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{t("common", "supplier")}</span>
+                  <span className="font-medium text-right">{detailOrder.supplier?.companyName || detailOrder.supplier?.name || t("common", "unknown")}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{t("orders", "createdAt")}</span>
+                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</span>
+                </div>
+                {detailOrder.requestedDeliveryDate && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">{t("orders", "requestedDeliveryDate")}</span>
+                    <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "it" ? "it-IT" : "de-DE", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-3">
+                <p className="text-sm font-medium mb-2">{t("common", "items")} ({detailOrder.items?.length || 0})</p>
+                <div className="space-y-2">
+                  {detailOrder.items?.map((item) => (
+                    <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50" data-testid={`home-detail-item-${item.id}`}>
+                      <div>
+                        <span className="font-medium">{item.quantity}x</span>{" "}
+                        <span>{item.productName}</span>
+                        <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
+                      </div>
+                      <span className="font-medium">{item.totalPrice}€</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {detailOrder.notes && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-sm font-medium mb-1">{t("orders", "notes")}</p>
+                  <p className="text-sm text-muted-foreground">{detailOrder.notes}</p>
+                </div>
+              )}
+
+              <div className="border-t border-border pt-3 flex items-center justify-between">
+                <span className="text-sm font-medium">{t("common", "total")}</span>
+                <span className="text-lg font-bold" data-testid="text-home-detail-total">{detailOrder.totalAmount}€</span>
+              </div>
+
+              <div className="border-t border-border pt-3">
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/restaurant/orders" data-testid="link-go-to-orders">
+                    {t("common", "all")} {t("common", "orders")}
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
