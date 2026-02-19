@@ -767,14 +767,14 @@ export default function RestaurantInbox() {
 
   return (
     <div className={`${selectedConversation ? 'h-screen md:h-[calc(100vh-8rem)]' : 'h-[calc(100vh-8rem)]'} flex flex-col`}>
-      <div className={`mb-3 md:mb-4 ${selectedConversation ? 'hidden md:block' : ''}`}>
+      <div className={`mb-3 md:mb-4 shrink-0 ${selectedConversation ? 'hidden md:block' : ''}`}>
         <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("inbox", "title")}</h1>
         <p className="text-xs md:text-sm text-muted-foreground">{t("inbox", "subtitle")}</p>
       </div>
 
       <Card className={`${selectedConversation ? 'flex-1 border-0 md:border rounded-none md:rounded-lg' : 'flex-1'} flex flex-col overflow-hidden`}>
         <div className="flex flex-1 min-h-0">
-          <div className={`w-full md:w-72 lg:w-80 border-r border-border flex flex-col max-h-[calc(100vh-12rem)] md:max-h-none ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+          <div className={`w-full md:w-72 lg:w-80 border-r border-border flex flex-col min-h-0 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
             <CardHeader className="pb-2 p-3 shrink-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -787,7 +787,7 @@ export default function RestaurantInbox() {
                 />
               </div>
             </CardHeader>
-            <div className="overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <div className="px-2 pb-2">
                 {conversationsLoading ? (
                   <div className="space-y-2">

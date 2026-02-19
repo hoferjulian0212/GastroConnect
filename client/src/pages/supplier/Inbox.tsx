@@ -522,7 +522,7 @@ export default function SupplierInbox() {
 
       <Card className={`${selectedConversation ? 'flex-1 border-0 md:border rounded-none md:rounded-lg' : 'flex-1'} flex flex-col overflow-hidden`}>
         <div className="flex flex-1 min-h-0">
-          <div className={`w-full md:w-72 lg:w-80 border-r border-border flex flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+          <div className={`w-full md:w-72 lg:w-80 border-r border-border flex flex-col min-h-0 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
             <CardHeader className="pb-2 p-3 shrink-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -535,7 +535,7 @@ export default function SupplierInbox() {
                 />
               </div>
             </CardHeader>
-            <div className="overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <div className="px-2 pb-2">
                 {conversationsLoading ? (
                   <div className="space-y-2">
