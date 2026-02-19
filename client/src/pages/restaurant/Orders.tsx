@@ -238,12 +238,26 @@ export default function RestaurantOrders() {
 
   const statusCounts = useMemo(() => {
     if (!orders) return { all: 0, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0 };
-    const counts = { all: orders.length, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0 };
-    orders.forEach(o => {
+    const filtered = orders.filter(o => {
+      if (filterSupplier !== "all" && o.supplier?.id !== filterSupplier) return false;
+      if (filterDateFrom) {
+        const from = new Date(filterDateFrom);
+        from.setHours(0, 0, 0, 0);
+        if (new Date(o.createdAt) < from) return false;
+      }
+      if (filterDateTo) {
+        const to = new Date(filterDateTo);
+        to.setHours(23, 59, 59, 999);
+        if (new Date(o.createdAt) > to) return false;
+      }
+      return true;
+    });
+    const counts = { all: filtered.length, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0 };
+    filtered.forEach(o => {
       if (o.status in counts) (counts as any)[o.status]++;
     });
     return counts;
-  }, [orders]);
+  }, [orders, filterSupplier, filterDateFrom, filterDateTo]);
 
   const clearFilters = () => {
     setFilterSupplier("all");
