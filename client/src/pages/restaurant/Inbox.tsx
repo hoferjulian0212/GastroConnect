@@ -694,6 +694,24 @@ export default function RestaurantInbox() {
     },
   });
 
+  const reopenComplaintMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("PATCH", `/api/complaints/${id}`, { status: "open", changedBy: currentUser?.id });
+    },
+    onSuccess: () => {
+      toast({ title: lang === "de" ? "Reklamation wieder geöffnet" : "Reclamo riaperto" });
+      queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId, "status-history"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
+      if (selectedConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+      }
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    },
+  });
+
   const addComplaintCommentMutation = useMutation({
     mutationFn: async ({ complaintId, content }: { complaintId: string; content: string }) => {
       return apiRequest("POST", `/api/complaints/${complaintId}/comments`, {
@@ -1075,12 +1093,44 @@ export default function RestaurantInbox() {
                                     const orderData = parseOrderContent(message.content);
                                     const orderStatus = message.orderId ? conversationStatuses?.orderStatuses?.[message.orderId] : undefined;
                                     const inactive = orderStatus ? isOrderInactive(orderStatus) : false;
+                                    if (inactive) {
+                                      return (
+                                        <div className="w-[85%] rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-order-${message.id}`}>
+                                          <div className="flex items-center justify-between px-3 py-2 gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                              <span className="text-xs text-muted-foreground truncate">{t("inbox", "orderMessage")}</span>
+                                              {orderStatus && (
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${getStatusColor(orderStatus)}`}>
+                                                  {getOrderStatus(orderStatus, lang)}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              <span className="text-[10px] text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                              {message.orderId && (
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-6 px-2 text-[10px]"
+                                                  onClick={() => setOrderDetailId(message.orderId)}
+                                                  data-testid={`button-order-details-${message.id}`}
+                                                >
+                                                  <Eye className="h-3 w-3 mr-1" />
+                                                  Details
+                                                </Button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
                                     return (
-                                      <div className={`w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden ${inactive ? "border-muted opacity-60" : "border-2 border-green-500/30 shadow-lg"}`}>
-                                        <div className={`flex items-center justify-between px-4 py-2.5 border-b ${inactive ? "bg-muted/30 border-muted" : "bg-green-500/10 border-green-500/20"}`}>
+                                      <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-green-500/30 shadow-lg">
+                                        <div className="flex items-center justify-between px-4 py-2.5 border-b bg-green-500/10 border-green-500/20">
                                           <div className="flex items-center gap-2">
-                                            <ClipboardList className={`h-4 w-4 ${inactive ? "text-muted-foreground" : "text-green-600 dark:text-green-400"}`} />
-                                            <span className={`text-sm font-semibold ${inactive ? "text-muted-foreground" : "text-green-600 dark:text-green-400"}`}>Bestellung</span>
+                                            <ClipboardList className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                            <span className="text-sm font-semibold text-green-600 dark:text-green-400">{t("inbox", "orderMessage")}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {orderStatus && (
@@ -1113,9 +1163,9 @@ export default function RestaurantInbox() {
                                           )}
                                         </div>
                                         {message.orderId && (
-                                          <div className={`px-4 py-2.5 border-t ${inactive ? "border-muted bg-muted/20" : "border-green-500/20 bg-green-500/5"}`}>
+                                          <div className="px-4 py-2.5 border-t border-green-500/20 bg-green-500/5">
                                             <Button
-                                              variant={inactive ? "outline" : "default"}
+                                              variant="default"
                                               size="sm"
                                               className="w-full"
                                               onClick={() => setOrderDetailId(message.orderId)}
@@ -1134,12 +1184,50 @@ export default function RestaurantInbox() {
                                     const complaintData = parseComplaintContent(message.content);
                                     const complaintStatus = complaintData?.orderId ? conversationStatuses?.complaintStatuses?.[complaintData.orderId]?.status : undefined;
                                     const inactive = complaintStatus ? isComplaintInactive(complaintStatus) : false;
+                                    if (inactive) {
+                                      return (
+                                        <div className="w-[85%] rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-complaint-${message.id}`}>
+                                          <div className="flex items-center justify-between px-3 py-2 gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <AlertCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                              <span className="text-xs text-muted-foreground truncate">{complaintData?.title || t("inbox", "complaintMessage")}</span>
+                                              {complaintStatus && (
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${getComplaintStatusColor(complaintStatus)}`}>
+                                                  {getComplaintStatus(complaintStatus, lang)}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              <span className="text-[10px] text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                              {(complaintData?.complaintId || complaintData?.orderId) && (
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-6 px-2 text-[10px]"
+                                                  onClick={() => {
+                                                    if (complaintData.complaintId) {
+                                                      openComplaintDetailById(complaintData.complaintId);
+                                                    } else if (complaintData.orderId) {
+                                                      openComplaintDetailByOrderId(complaintData.orderId);
+                                                    }
+                                                  }}
+                                                  data-testid={`button-complaint-details-${message.id}`}
+                                                >
+                                                  <Eye className="h-3 w-3 mr-1" />
+                                                  Details
+                                                </Button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
                                     return (
-                                      <div className={`w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden ${inactive ? "border-muted opacity-60" : "border-2 border-red-500/30 shadow-lg"}`}>
-                                        <div className={`flex items-center justify-between px-4 py-2.5 border-b ${inactive ? "bg-muted/30 border-muted" : "bg-red-500/10 border-red-500/20"}`}>
+                                      <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-red-500/30 shadow-lg">
+                                        <div className="flex items-center justify-between px-4 py-2.5 border-b bg-red-500/10 border-red-500/20">
                                           <div className="flex items-center gap-2">
-                                            <AlertCircle className={`h-4 w-4 ${inactive ? "text-muted-foreground" : "text-red-600 dark:text-red-400"}`} />
-                                            <span className={`text-sm font-semibold ${inactive ? "text-muted-foreground" : "text-red-600 dark:text-red-400"}`}>{t("inbox", "complaintMessage")}</span>
+                                            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                            <span className="text-sm font-semibold text-red-600 dark:text-red-400">{t("inbox", "complaintMessage")}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {complaintStatus && (
@@ -1168,9 +1256,9 @@ export default function RestaurantInbox() {
                                           )}
                                         </div>
                                         {(complaintData?.complaintId || complaintData?.orderId) && (
-                                          <div className={`px-4 py-2.5 border-t ${inactive ? "border-muted bg-muted/20" : "border-red-500/20 bg-red-500/5"}`}>
+                                          <div className="px-4 py-2.5 border-t border-red-500/20 bg-red-500/5">
                                             <Button
-                                              variant={inactive ? "outline" : "destructive"}
+                                              variant="destructive"
                                               size="sm"
                                               className="w-full"
                                               onClick={() => {
@@ -1238,14 +1326,45 @@ export default function RestaurantInbox() {
                                     try { changeData = JSON.parse(message.content); } catch {}
                                     const isResponse = changeData.type === "change_request_response";
                                     const isEdited = changeData.type === "order_edited";
+                                    const isChangeRequest = changeData.type === "change_request";
+                                    const changeInactive = isResponse || isEdited || (isChangeRequest && changeData.status !== "pending");
+                                    const label = isEdited ? t("inbox", "orderEdited") : isResponse ? (changeData.approved ? t("inbox", "changeApproved") : t("inbox", "changeRejected")) : t("inbox", "changeRequest");
+                                    if (changeInactive) {
+                                      return (
+                                        <div className="w-[85%] rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-change-${message.id}`}>
+                                          <div className="flex items-center justify-between px-3 py-2 gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <Pencil className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                              <span className="text-xs text-muted-foreground truncate">{label}</span>
+                                              {changeData.orderId && (
+                                                <span className="text-[10px] text-muted-foreground shrink-0">#{changeData.orderId.slice(0, 8)}</span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              <span className="text-[10px] text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                              {changeData.orderId && (
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-6 px-2 text-[10px]"
+                                                  onClick={() => setOrderDetailId(changeData.orderId!)}
+                                                  data-testid={`button-change-details-${message.id}`}
+                                                >
+                                                  <Eye className="h-3 w-3 mr-1" />
+                                                  Details
+                                                </Button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
                                     return (
-                                      <div className={`w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden ${isResponse ? (changeData.approved ? "border-2 border-green-500/30" : "border-2 border-red-500/30") : "border-2 border-amber-500/30"}`}>
-                                        <div className={`flex items-center justify-between px-4 py-2.5 border-b ${isResponse ? (changeData.approved ? "bg-green-500/10 border-green-500/20" : "bg-red-500/10 border-red-500/20") : "bg-amber-500/10 border-amber-500/20"}`}>
+                                      <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-amber-500/30">
+                                        <div className="flex items-center justify-between px-4 py-2.5 border-b bg-amber-500/10 border-amber-500/20">
                                           <div className="flex items-center gap-2">
-                                            <Pencil className={`h-4 w-4 ${isResponse ? (changeData.approved ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400") : "text-amber-600 dark:text-amber-400"}`} />
-                                            <span className={`text-sm font-semibold ${isResponse ? (changeData.approved ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400") : "text-amber-600 dark:text-amber-400"}`}>
-                                              {isEdited ? t("inbox", "orderEdited") : isResponse ? (changeData.approved ? t("inbox", "changeApproved") : t("inbox", "changeRejected")) : t("inbox", "changeRequest")}
-                                            </span>
+                                            <Pencil className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                            <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{label}</span>
                                           </div>
                                           <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
                                         </div>
@@ -1256,22 +1375,6 @@ export default function RestaurantInbox() {
                                           <p className="text-sm">{changeData.message}</p>
                                           {changeData.reason && (
                                             <p className="text-sm text-muted-foreground mt-1">{t("inbox", "reason")}: {changeData.reason}</p>
-                                          )}
-                                          {isEdited && changeData.items && (
-                                            <div className="mt-2 space-y-1">
-                                              {changeData.items.map((item, idx) => (
-                                                <div key={idx} className="flex justify-between text-sm">
-                                                  <span>{item.quantity}x {item.name}</span>
-                                                  <span className="text-muted-foreground">{item.price}€</span>
-                                                </div>
-                                              ))}
-                                              {changeData.total && (
-                                                <div className="flex justify-between text-sm font-semibold pt-1 border-t border-border">
-                                                  <span>{t("common", "total")}</span>
-                                                  <span>{changeData.total}€</span>
-                                                </div>
-                                              )}
-                                            </div>
                                           )}
                                         </div>
                                       </div>
@@ -1944,6 +2047,22 @@ export default function RestaurantInbox() {
                     </Button>
                   </div>
                 </div>
+              )}
+
+              {(complaintDetail.status === "resolved" || complaintDetail.status === "closed") && (
+                <>
+                  <Separator />
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => selectedComplaintId && reopenComplaintMutation.mutate(selectedComplaintId)}
+                    disabled={reopenComplaintMutation.isPending}
+                    data-testid="button-reopen-complaint"
+                  >
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    {lang === "de" ? "Reklamation wieder öffnen" : "Riapri reclamo"}
+                  </Button>
+                </>
               )}
 
               {complaintDetail.status === "open" && (
