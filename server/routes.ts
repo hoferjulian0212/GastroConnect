@@ -1844,6 +1844,98 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/orders/:id/delivery-note/preview", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      const deliveryDate = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const orderDate = new Date(order.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+      res.json({
+        orderId: order.id,
+        supplierName: order.supplier?.companyName || order.supplier?.name || "",
+        supplierAddress: order.supplier?.address || "",
+        supplierCity: `${order.supplier?.postalCode || ""} ${order.supplier?.city || ""}`.trim(),
+        supplierPhone: order.supplier?.phone || "",
+        supplierEmail: order.supplier?.email || "",
+        restaurantName: order.restaurant?.companyName || order.restaurant?.name || "",
+        restaurantAddress: order.restaurant?.address || "",
+        restaurantCity: `${order.restaurant?.postalCode || ""} ${order.restaurant?.city || ""}`.trim(),
+        orderDate,
+        deliveryDate,
+        items: order.items?.map(item => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+        })) || [],
+        totalAmount: order.totalAmount,
+        notes: order.notes || "",
+      });
+    } catch (error) {
+      console.error("Failed to get delivery note preview:", error);
+      res.status(500).json({ error: "Failed to get delivery note preview" });
+    }
+  });
+
+  app.post("/api/orders/:id/delivery-note/regenerate", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      const editedData = req.body;
+      if (editedData.items && Array.isArray(editedData.items)) {
+        editedData.items = editedData.items.filter((item: any) => item.productName && Number(item.quantity) > 0 && Number(item.unitPrice) >= 0);
+        editedData.items.forEach((item: any) => {
+          item.quantity = Math.max(1, Math.round(Number(item.quantity)));
+          item.unitPrice = Math.max(0, Number(item.unitPrice)).toFixed(2);
+          item.totalPrice = (item.quantity * Number(item.unitPrice)).toFixed(2);
+        });
+        editedData.totalAmount = editedData.items.reduce((sum: number, item: any) => sum + Number(item.totalPrice), 0).toFixed(2);
+      }
+
+      const pdfOrder = {
+        id: order.id,
+        restaurant: {
+          name: editedData.restaurantName || order.restaurant?.name || "",
+          companyName: editedData.restaurantName || order.restaurant?.companyName || null,
+          address: editedData.restaurantAddress || order.restaurant?.address || null,
+          city: editedData.restaurantCity?.split(" ").slice(1).join(" ") || order.restaurant?.city || null,
+          postalCode: editedData.restaurantCity?.split(" ")[0] || order.restaurant?.postalCode || null,
+        },
+        supplier: {
+          name: editedData.supplierName || order.supplier?.name || "",
+          companyName: editedData.supplierName || order.supplier?.companyName || null,
+          address: editedData.supplierAddress || order.supplier?.address || null,
+          city: editedData.supplierCity?.split(" ").slice(1).join(" ") || order.supplier?.city || null,
+          postalCode: editedData.supplierCity?.split(" ")[0] || order.supplier?.postalCode || null,
+          phone: editedData.supplierPhone || order.supplier?.phone || null,
+          email: editedData.supplierEmail || order.supplier?.email || "",
+        },
+        items: (editedData.items || order.items || []).map((item: any) => ({
+          productName: item.productName,
+          quantity: Number(item.quantity),
+          unitPrice: String(item.unitPrice),
+          totalPrice: String(item.totalPrice),
+        })),
+        totalAmount: editedData.totalAmount || order.totalAmount,
+        createdAt: order.createdAt,
+        notes: editedData.notes ?? order.notes,
+      };
+
+      const pdfBuffer = await generateDeliveryNotePDF(pdfOrder);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="Lieferschein_${order.id.slice(0, 8)}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Failed to regenerate delivery note:", error);
+      res.status(500).json({ error: "Failed to regenerate delivery note" });
+    }
+  });
+
   // ===== CHAT ATTACHMENTS =====
   const ALLOWED_ATTACHMENT_TYPES = [
     "application/pdf",
