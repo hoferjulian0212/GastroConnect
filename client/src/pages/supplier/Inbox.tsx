@@ -3,6 +3,8 @@ import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { useChat } from "@/context/ChatContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { useT } from "@/lib/translations";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -115,6 +117,8 @@ export default function SupplierInbox() {
   const { currentUser } = useUser();
   const { setIsInChat } = useChat();
   const { toast } = useToast();
+  const { lang } = useLanguage();
+  const t = useT(lang);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
