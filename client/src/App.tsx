@@ -42,7 +42,6 @@ import SupplierOrders from "@/pages/supplier/Orders";
 import SupplierSettings from "@/pages/supplier/Settings";
 import SupplierProfile from "@/pages/supplier/Profile";
 import SupplierComplaints from "@/pages/supplier/Complaints";
-import SupplierPromotions from "@/pages/supplier/Promotions";
 import SupplierRestaurants from "@/pages/supplier/Restaurants";
 import About from "@/pages/About";
 import Documents from "@/pages/Documents";
@@ -75,7 +74,6 @@ function SupplierRouter() {
       <Route path="/supplier/restaurants" component={SupplierRestaurants} />
       <Route path="/supplier/orders" component={SupplierOrders} />
       <Route path="/supplier/complaints" component={SupplierComplaints} />
-      <Route path="/supplier/promotions" component={SupplierPromotions} />
       <Route path="/supplier/settings" component={SupplierSettings} />
       <Route path="/supplier/profile" component={SupplierProfile} />
       <Route path="/supplier/documents" component={Documents} />
