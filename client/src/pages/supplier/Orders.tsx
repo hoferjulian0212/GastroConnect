@@ -259,7 +259,7 @@ export default function SupplierOrders() {
               </span>
             </div>
           </div>
-          <div className="text-right shrink-0 flex flex-col items-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <div className="text-right shrink-0" onClick={(e) => e.stopPropagation()}>
             <p className="text-base md:text-lg font-bold" data-testid={`text-total-${order.id}`}>{order.totalAmount}€</p>
             {order.status !== "delivered" && order.status !== "cancelled" && (
               <div className="flex flex-wrap gap-1.5">
@@ -289,6 +289,21 @@ export default function SupplierOrders() {
             )}
           </div>
         </div>
+
+        {order.items && order.items.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-border/30">
+            <div className="space-y-1">
+              {order.items.map((item) => (
+                <div key={item.id} className="flex items-center justify-between text-xs md:text-sm" data-testid={`card-item-${item.id}`}>
+                  <span className="text-muted-foreground">
+                    <span className="font-medium text-foreground">{item.quantity}x</span> {item.productName}
+                  </span>
+                  <span className="text-muted-foreground shrink-0 ml-2">{item.totalPrice}€</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {!isCancelled && (
           <div className="mt-3 pt-3 border-t border-border/50">
