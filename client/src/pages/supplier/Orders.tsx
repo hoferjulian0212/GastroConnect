@@ -7,9 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails } from "@shared/schema";
 import { format, formatDistanceToNow } from "date-fns";
@@ -45,13 +45,23 @@ export default function SupplierOrders() {
 
   const uniqueRestaurants = useMemo(() => {
     if (!orders) return [];
-    const map = new Map<string, string>();
+    const map = new Map<string, { id: string; name: string; profileImageUrl: string | null; orderCount: number }>();
     orders.forEach(o => {
       if (o.restaurant?.id) {
-        map.set(o.restaurant.id, o.restaurant.companyName || o.restaurant.name || t("common", "unknown"));
+        const existing = map.get(o.restaurant.id);
+        if (existing) {
+          existing.orderCount++;
+        } else {
+          map.set(o.restaurant.id, {
+            id: o.restaurant.id,
+            name: o.restaurant.companyName || o.restaurant.name || t("common", "unknown"),
+            profileImageUrl: o.restaurant.profileImageUrl || null,
+            orderCount: 1,
+          });
+        }
       }
     });
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+    return Array.from(map.values());
   }, [orders, t]);
 
   const hasActiveFilters = filterRestaurant !== "all" || filterDateFrom || filterDateTo;
@@ -389,53 +399,98 @@ export default function SupplierOrders() {
         <p className="text-sm md:text-base text-muted-foreground">{t("supplierOrders", "incomingOrders")}</p>
       </div>
 
-      <Card>
-        <CardContent className="p-3 md:p-4">
-          <div className="flex flex-col sm:flex-row gap-2 md:gap-3 items-end">
-            <div className="flex-1 w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "restaurant")}</label>
-              <Select value={filterRestaurant} onValueChange={setFilterRestaurant}>
-                <SelectTrigger className="h-9 text-xs md:text-sm" data-testid="filter-restaurant">
-                  <Building2 className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                  <SelectValue placeholder={t("supplierOrders", "allRestaurants")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("supplierOrders", "allRestaurants")}</SelectItem>
-                  {uniqueRestaurants.map(r => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      {uniqueRestaurants.length > 0 && (
+        <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+          <button
+            onClick={() => setFilterRestaurant("all")}
+            className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+              filterRestaurant === "all"
+                ? "border-primary bg-primary/10 dark:bg-primary/20"
+                : "border-transparent bg-muted/50 dark:bg-muted/30"
+            }`}
+            data-testid="filter-restaurant-all"
+          >
+            <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
+              filterRestaurant === "all"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              <Store className="h-5 w-5 md:h-6 md:w-6" />
             </div>
-            <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
-              <Input
-                type="date"
-                value={filterDateFrom}
-                onChange={e => setFilterDateFrom(e.target.value)}
-                className="h-9 text-xs md:text-sm w-full sm:w-[150px]"
-                data-testid="filter-date-from"
-              />
-            </div>
-            <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
-              <Input
-                type="date"
-                value={filterDateTo}
-                onChange={e => setFilterDateTo(e.target.value)}
-                className="h-9 text-xs md:text-sm w-full sm:w-[150px]"
-                data-testid="filter-date-to"
-              />
-            </div>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0" data-testid="button-clear-filters">
-                <X className="h-3.5 w-3.5 mr-1" />
-                {t("common", "reset")}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
+              filterRestaurant === "all" ? "text-primary" : "text-muted-foreground"
+            }`}>
+              {t("common", "all")}
+            </span>
+            <span className={`text-xs md:text-sm font-bold leading-none ${
+              filterRestaurant === "all" ? "text-primary" : "text-foreground"
+            }`}>
+              {orders?.length || 0}
+            </span>
+          </button>
+          {uniqueRestaurants.map(restaurant => {
+            const isActive = filterRestaurant === restaurant.id;
+            return (
+              <button
+                key={restaurant.id}
+                onClick={() => setFilterRestaurant(restaurant.id)}
+                className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+                  isActive
+                    ? "border-primary bg-primary/10 dark:bg-primary/20"
+                    : "border-transparent bg-muted/50 dark:bg-muted/30"
+                }`}
+                data-testid={`filter-restaurant-${restaurant.id}`}
+              >
+                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+                  <AvatarImage src={restaurant.profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                    {restaurant.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 max-w-[64px] md:max-w-[80px] ${
+                  isActive ? "text-primary" : "text-muted-foreground"
+                }`}>
+                  {restaurant.name}
+                </span>
+                <span className={`text-xs md:text-sm font-bold leading-none ${
+                  isActive ? "text-primary" : "text-foreground"
+                }`}>
+                  {restaurant.orderCount}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex flex-row gap-2 md:gap-3 items-end">
+        <div className="w-full sm:w-auto">
+          <label className="text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
+          <Input
+            type="date"
+            value={filterDateFrom}
+            onChange={e => setFilterDateFrom(e.target.value)}
+            className="h-9 text-xs md:text-sm w-full sm:w-[150px]"
+            data-testid="filter-date-from"
+          />
+        </div>
+        <div className="w-full sm:w-auto">
+          <label className="text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
+          <Input
+            type="date"
+            value={filterDateTo}
+            onChange={e => setFilterDateTo(e.target.value)}
+            className="h-9 text-xs md:text-sm w-full sm:w-[150px]"
+            data-testid="filter-date-to"
+          />
+        </div>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0" data-testid="button-clear-filters">
+            <X className="h-3.5 w-3.5 mr-1" />
+            {t("common", "reset")}
+          </Button>
+        )}
+      </div>
 
       <Tabs defaultValue={highlightOrderId ? "all" : "pending"} className="w-full">
         <TabsList className="w-full overflow-x-auto flex md:grid md:grid-cols-6 lg:w-auto lg:inline-flex">
