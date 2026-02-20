@@ -365,7 +365,7 @@ export default function RestaurantCatalog() {
                             {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
                           </p>
                         )}
-                        <div className="flex items-center justify-between gap-1 mt-auto pt-2">
+                        <div className="flex items-center gap-1.5 mt-auto pt-2">
                           <div className="flex items-center border border-border rounded-md shrink-0" onClick={(e) => e.stopPropagation()}>
                             <Button
                               variant="ghost"
@@ -394,7 +394,7 @@ export default function RestaurantCatalog() {
                           <Button
                             variant={addedProductIds.has(product.id) ? "default" : "outline"}
                             size="sm"
-                            className={`gap-1 text-xs transition-all duration-300 flex-1 ${
+                            className={`gap-1 text-xs transition-all duration-300 min-w-0 flex-1 overflow-hidden ${
                               addedProductIds.has(product.id) 
                                 ? "bg-primary border-primary text-primary-foreground no-default-hover-elevate no-default-active-elevate" 
                                 : ""
@@ -404,11 +404,11 @@ export default function RestaurantCatalog() {
                             data-testid={`button-add-to-cart-${product.id}`}
                           >
                             {addedProductIds.has(product.id) ? (
-                              <Check className="h-3.5 w-3.5" />
+                              <Check className="h-3.5 w-3.5 shrink-0" />
                             ) : (
                               <>
-                                <ShoppingCart className="h-3.5 w-3.5" />
-                                <span>{t("common", "add")}</span>
+                                <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
+                                <span className="truncate">{t("common", "add")}</span>
                               </>
                             )}
                           </Button>
