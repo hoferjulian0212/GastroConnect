@@ -2,12 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, MessageSquare, Package, Euro, Clock, CheckCircle, AlertTriangle } from "lucide-react";
-import type { Order, Product } from "@shared/schema";
+import { ClipboardList, MessageSquare, Package, Euro, Clock, CheckCircle, AlertTriangle, ShoppingBag, User as UserIcon } from "lucide-react";
+import type { OrderWithDetails, Product } from "@shared/schema";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
@@ -17,7 +17,9 @@ export default function SupplierHome() {
   const { lang } = useLanguage();
   const t = useT(lang);
 
-  const { data: recentOrders, isLoading: ordersLoading } = useQuery<Order[]>({
+  const dateLocale = lang === "de" ? de : it;
+
+  const { data: recentOrders, isLoading: ordersLoading } = useQuery<OrderWithDetails[]>({
     queryKey: ['/api/supplier/orders/recent', currentUser?.id],
     queryFn: async () => {
       const res = await fetch(`/api/supplier/orders/recent?supplierId=${currentUser?.id}`);
@@ -252,30 +254,43 @@ export default function SupplierHome() {
           ) : recentOrders && recentOrders.length > 0 ? (
             <div className="space-y-2 md:space-y-3">
               {recentOrders.slice(0, 5).map((order) => (
-                <div
+                <Link
                   key={order.id}
-                  className="flex items-center justify-between p-2 md:p-3 rounded-md bg-muted/50 cursor-pointer transition-all duration-200 hover:shadow-md hover:bg-muted"
+                  href={`/supplier/orders?orderId=${order.id}`}
+                  className="flex items-center justify-between p-2.5 md:p-3 rounded-md bg-muted/50 cursor-pointer transition-all duration-200 hover:shadow-md hover:bg-muted"
                   data-testid={`order-item-${order.id}`}
                 >
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-md bg-secondary/10">
-                      <ClipboardList className="h-4 w-4 text-secondary" />
+                  <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
+                    <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 shrink-0">
+                      <ShoppingBag className="h-4 w-4 text-primary" />
                     </div>
-                    <div>
-                      <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                        {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: lang === "de" ? de : it })}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
+                        <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5`} variant="outline">
+                          {getOrderStatus(order.status, lang, true)}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <UserIcon className="h-2.5 w-2.5 md:h-3 md:w-3 text-muted-foreground shrink-0" />
+                        <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+                          {order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}
+                        </p>
+                      </div>
+                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
+                        {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}
+                        <span className="text-muted-foreground/70">({formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })})</span>
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 md:gap-2">
-                    <span className="text-xs md:text-sm font-medium">{order.totalAmount}€</span>
-                    <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5 md:px-2`} variant="outline">
-                      {getOrderStatus(order.status, lang, true)}
-                    </Badge>
+                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                    <span className="text-sm md:text-base font-bold">{order.totalAmount}€</span>
+                    <span className="text-[10px] md:text-xs text-muted-foreground">
+                      {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
+                    </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (

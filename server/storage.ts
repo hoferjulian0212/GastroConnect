@@ -41,7 +41,7 @@ export interface IStorage {
   getOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]>;
   getOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]>;
   getRecentOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]>;
-  getRecentOrdersBySupplier(supplierId: string): Promise<Order[]>;
+  getRecentOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]>;
   getOrder(id: string): Promise<OrderWithDetails | undefined>;
   createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
   updateOrderStatus(id: string, status: string): Promise<Order | undefined>;
@@ -267,13 +267,22 @@ export class DatabaseStorage implements IStorage {
     return ordersWithDetails;
   }
 
-  async getRecentOrdersBySupplier(supplierId: string): Promise<Order[]> {
-    return db
+  async getRecentOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]> {
+    const recentOrders = await db
       .select()
       .from(orders)
       .where(and(eq(orders.supplierId, supplierId), eq(orders.status, "pending")))
       .orderBy(desc(orders.createdAt))
       .limit(5);
+
+    const ordersWithDetails: OrderWithDetails[] = [];
+    for (const order of recentOrders) {
+      const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+      const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
+      const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
+      ordersWithDetails.push({ ...order, items, restaurant, supplier });
+    }
+    return ordersWithDetails;
   }
 
   async getOrder(id: string): Promise<OrderWithDetails | undefined> {
