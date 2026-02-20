@@ -142,6 +142,8 @@ const t = {
     orderNotes: { de: "Anmerkungen zur Bestellung", it: "Note sull'ordine" },
     orderNotesPlaceholder: { de: "Besondere Wünsche oder Hinweise...", it: "Desideri o note particolari..." },
     placeOrder: { de: "Bestellung aufgeben", it: "Effettua ordine" },
+    sendToSupplier: { de: "Bestellung senden", it: "Invia ordine" },
+    placeAllOrders: { de: "Alle Bestellungen aufgeben", it: "Effettua tutti gli ordini" },
     emptyCart: { de: "Ihr Warenkorb ist leer", it: "Il tuo carrello è vuoto" },
     addFromCatalog: { de: "Fügen Sie Produkte aus dem Katalog hinzu", it: "Aggiungi prodotti dal catalogo" },
     goToCatalog: { de: "Zum Produktkatalog", it: "Vai al catalogo" },

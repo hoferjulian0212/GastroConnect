@@ -55,6 +55,7 @@ export interface IStorage {
   updateCartItem(id: string, quantity: number): Promise<CartItem | undefined>;
   removeCartItem(id: string): Promise<void>;
   clearCart(restaurantId: string): Promise<void>;
+  clearCartBySupplier(restaurantId: string, supplierId: string): Promise<void>;
 
   // Conversations & Messages
   getConversations(userId: string, role: "restaurant" | "supplier"): Promise<ConversationWithUser[]>;
@@ -399,6 +400,10 @@ export class DatabaseStorage implements IStorage {
 
   async clearCart(restaurantId: string): Promise<void> {
     await db.delete(cartItems).where(eq(cartItems.restaurantId, restaurantId));
+  }
+
+  async clearCartBySupplier(restaurantId: string, supplierId: string): Promise<void> {
+    await db.delete(cartItems).where(and(eq(cartItems.restaurantId, restaurantId), eq(cartItems.supplierId, supplierId)));
   }
 
   // Conversations & Messages

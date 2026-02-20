@@ -78,6 +78,7 @@ const updateCartQuantitySchema = z.object({
 
 const createOrderSchema = z.object({
   restaurantId: uuidField,
+  supplierId: uuidField.optional().nullable(),
   notes: safeString.optional().nullable(),
   requestedDeliveryDate: safeShortString.optional().nullable(),
 }).strict();
@@ -778,12 +779,21 @@ export async function registerRoutes(
   app.post("/api/orders", async (req, res) => {
     try {
       const validated = createOrderSchema.parse(req.body);
-      const { restaurantId, notes, requestedDeliveryDate } = validated;
+      const { restaurantId, supplierId: targetSupplierId, notes, requestedDeliveryDate } = validated;
 
       // Get cart items
-      const cartItems = await storage.getCartItems(restaurantId);
-      if (cartItems.length === 0) {
+      const allCartItems = await storage.getCartItems(restaurantId);
+      if (allCartItems.length === 0) {
         return res.status(400).json({ error: "Cart is empty" });
+      }
+
+      // Filter to specific supplier if provided
+      const cartItems = targetSupplierId
+        ? allCartItems.filter(item => item.supplierId === targetSupplierId)
+        : allCartItems;
+
+      if (cartItems.length === 0) {
+        return res.status(400).json({ error: "No items found for this supplier" });
       }
 
       // Group cart items by supplier
@@ -865,8 +875,12 @@ export async function registerRoutes(
         });
       }
 
-      // Clear cart
-      await storage.clearCart(restaurantId);
+      // Clear cart - only for targeted supplier or all
+      if (targetSupplierId) {
+        await storage.clearCartBySupplier(restaurantId, targetSupplierId);
+      } else {
+        await storage.clearCart(restaurantId);
+      }
 
       res.status(201).json(createdOrders);
     } catch (error) {

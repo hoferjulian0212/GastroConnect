@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Plus, Minus, Package, ArrowRight, CalendarDays, Zap, Tag, CheckCircle2, ShoppingBag, ClipboardList } from "lucide-react";
+import { ShoppingCart, Trash2, Plus, Minus, Package, ArrowRight, CalendarDays, Zap, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2 } from "lucide-react";
 import type { CartItemWithProduct, DeliverySchedule, Promotion } from "@shared/schema";
 
 type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion | null };
@@ -35,6 +35,7 @@ export default function RestaurantCart() {
     createdAt: string;
   } | null>(null);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
+  const [sendingSupplier, setSendingSupplier] = useState<string | null>(null);
   const { lang } = useLanguage();
   const t = useT(lang);
 
@@ -101,6 +102,42 @@ export default function RestaurantCart() {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
     },
     onError: () => {
+      toast({
+        title: t("common", "error"),
+        description: t("cart", "orderError"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createSupplierOrderMutation = useMutation({
+    mutationFn: async (supplierId: string) => {
+      setSendingSupplier(supplierId);
+      const res = await apiRequest("POST", "/api/orders", {
+        restaurantId: currentUser?.id,
+        supplierId,
+        notes: orderNotes,
+        requestedDeliveryDate: deliveryOption === "date" && selectedDeliveryDate ? selectedDeliveryDate : null,
+      });
+      return res.json();
+    },
+    onSuccess: (data, supplierId) => {
+      setSendingSupplier(null);
+      const supplierGroup = groupedBySupplier?.[supplierId];
+      const supplierName = supplierGroup?.supplier.companyName || supplierGroup?.supplier.name || "";
+      toast({
+        title: t("cart", "orderSentTitle"),
+        description: `${supplierName}`,
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/recent', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+    },
+    onError: () => {
+      setSendingSupplier(null);
       toast({
         title: t("common", "error"),
         description: t("cart", "orderError"),
@@ -395,9 +432,28 @@ export default function RestaurantCart() {
                   </div>
                 </CardContent>
                 <CardFooter className="border-t border-border pt-3 md:pt-4 p-3 md:p-6">
-                  <div className="flex justify-between w-full text-sm md:text-base">
-                    <span className="text-muted-foreground">{t("common", "subtotal")}</span>
-                    <span className="font-medium">{calculateTotal(items)}€</span>
+                  <div className="flex items-center justify-between w-full gap-3">
+                    <div className="flex items-center gap-2 text-sm md:text-base">
+                      <span className="text-muted-foreground">{t("common", "subtotal")}</span>
+                      <span className="font-medium">{calculateTotal(items)}€</span>
+                    </div>
+                    {Object.keys(groupedBySupplier || {}).length > 1 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-xs md:text-sm shrink-0"
+                        onClick={() => createSupplierOrderMutation.mutate(supplierId)}
+                        disabled={createSupplierOrderMutation.isPending || createOrderMutation.isPending}
+                        data-testid={`button-send-supplier-${supplierId}`}
+                      >
+                        {sendingSupplier === supplierId ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Send className="h-3.5 w-3.5" />
+                        )}
+                        <span className="hidden sm:inline">{t("cart", "sendToSupplier")}</span>
+                      </Button>
+                    )}
                   </div>
                 </CardFooter>
               </Card>
@@ -511,10 +567,10 @@ export default function RestaurantCart() {
                   className="w-full gap-2 text-sm md:text-base"
                   size="default"
                   onClick={() => createOrderMutation.mutate()}
-                  disabled={createOrderMutation.isPending || (deliveryOption === "date" && !selectedDeliveryDate && availableDeliveryDates.length > 0)}
+                  disabled={createOrderMutation.isPending || createSupplierOrderMutation.isPending || (deliveryOption === "date" && !selectedDeliveryDate && availableDeliveryDates.length > 0)}
                   data-testid="button-checkout"
                 >
-                  {t("cart", "placeOrder")}
+                  {Object.keys(groupedBySupplier || {}).length > 1 ? t("cart", "placeAllOrders") : t("cart", "placeOrder")}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </CardFooter>
