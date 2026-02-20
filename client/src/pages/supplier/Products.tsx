@@ -646,41 +646,47 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="grid gap-3 grid-cols-3 flex-1">
-          <Card>
-            <CardContent className="pt-4 p-3">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary" data-testid="text-total-promotions">{promotions?.length || 0}</div>
-                <p className="text-xs text-muted-foreground">{t("common", "total")}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 p-3">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600" data-testid="text-active-promotions">
-                  {promotions?.filter(p => {
-                    const now = new Date();
-                    return p.isActive && new Date(p.startDate) <= now && new Date(p.endDate) >= now;
-                  }).length || 0}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="grid gap-2 md:gap-3 grid-cols-3 flex-1">
+            <Card>
+              <CardContent className="pt-3 p-2.5 md:pt-4 md:p-3">
+                <div className="text-center">
+                  <div className="text-xl md:text-2xl font-bold text-primary" data-testid="text-total-promotions">{promotions?.length || 0}</div>
+                  <p className="text-[10px] md:text-xs text-muted-foreground">{t("common", "total")}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">{t("promotionsPage", "active")}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 p-3">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-muted-foreground" data-testid="text-expired-promotions">
-                  {promotions?.filter(p => new Date(p.endDate) < new Date()).length || 0}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 p-2.5 md:pt-4 md:p-3">
+                <div className="text-center">
+                  <div className="text-xl md:text-2xl font-bold text-green-600" data-testid="text-active-promotions">
+                    {promotions?.filter(p => {
+                      const now = new Date();
+                      return p.isActive && new Date(p.startDate) <= now && new Date(p.endDate) >= now;
+                    }).length || 0}
+                  </div>
+                  <p className="text-[10px] md:text-xs text-muted-foreground">{t("promotionsPage", "active")}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">{t("promotionsPage", "expired")}</p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 p-2.5 md:pt-4 md:p-3">
+                <div className="text-center">
+                  <div className="text-xl md:text-2xl font-bold text-muted-foreground" data-testid="text-expired-promotions">
+                    {promotions?.filter(p => new Date(p.endDate) < new Date()).length || 0}
+                  </div>
+                  <p className="text-[10px] md:text-xs text-muted-foreground">{t("promotionsPage", "expired")}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <Button onClick={openCreateDialog} size="sm" className="gap-1.5 shrink-0 hidden md:flex" data-testid="button-create-promotion">
+            <Plus className="h-4 w-4" />
+            {t("promotionsPage", "createPromotion")}
+          </Button>
         </div>
-        <Button onClick={openCreateDialog} size="sm" className="gap-1.5 shrink-0" data-testid="button-create-promotion">
+        <Button onClick={openCreateDialog} size="sm" className="gap-1.5 w-full md:hidden" data-testid="button-create-promotion-mobile">
           <Plus className="h-4 w-4" />
           {t("promotionsPage", "createPromotion")}
         </Button>
