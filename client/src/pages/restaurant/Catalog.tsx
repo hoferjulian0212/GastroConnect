@@ -408,7 +408,7 @@ export default function RestaurantCatalog() {
                             ) : (
                               <>
                                 <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
-                                <span className="truncate">{t("common", "add")}</span>
+                                <span className="hidden sm:inline">{t("common", "add")}</span>
                               </>
                             )}
                           </Button>
