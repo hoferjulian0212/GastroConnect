@@ -50,18 +50,12 @@ export default function SupplierSettings() {
               <Bell className="h-4 w-4 md:h-5 md:w-5" />
               {t("settings", "notifications")}
             </CardTitle>
-            <CardDescription className="text-xs md:text-sm">
-              {t("settings", "notificationsDesc")}
-            </CardDescription>
           </CardHeader>
           <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-4">
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="flex items-center gap-3 min-w-0">
                 <ShoppingBag className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <Label className="text-sm font-medium">{t("settings", "newOrders")}</Label>
-                  <p className="text-xs text-muted-foreground">{t("settings", "supplierNewOrdersDesc")}</p>
-                </div>
+                <Label className="text-sm font-medium">{t("settings", "newOrders")}</Label>
               </div>
               <Switch
                 checked={notifNewOrder}
@@ -73,10 +67,7 @@ export default function SupplierSettings() {
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="flex items-center gap-3 min-w-0">
                 <ShoppingBag className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <Label className="text-sm font-medium">{t("settings", "orderStatus")}</Label>
-                  <p className="text-xs text-muted-foreground">{t("settings", "orderStatusDesc")}</p>
-                </div>
+                <Label className="text-sm font-medium">{t("settings", "orderStatus")}</Label>
               </div>
               <Switch
                 checked={notifOrderStatus}
@@ -88,10 +79,7 @@ export default function SupplierSettings() {
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="flex items-center gap-3 min-w-0">
                 <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <Label className="text-sm font-medium">{t("settings", "newMessages")}</Label>
-                  <p className="text-xs text-muted-foreground">{t("settings", "newMessagesDesc")}</p>
-                </div>
+                <Label className="text-sm font-medium">{t("settings", "newMessages")}</Label>
               </div>
               <Switch
                 checked={notifNewMessage}
@@ -103,10 +91,7 @@ export default function SupplierSettings() {
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="flex items-center gap-3 min-w-0">
                 <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <Label className="text-sm font-medium">{t("settings", "complaintsNotif")}</Label>
-                  <p className="text-xs text-muted-foreground">{t("settings", "supplierComplaintsDesc")}</p>
-                </div>
+                <Label className="text-sm font-medium">{t("settings", "complaintsNotif")}</Label>
               </div>
               <Switch
                 checked={notifComplaint}
@@ -123,18 +108,12 @@ export default function SupplierSettings() {
               <Mail className="h-4 w-4 md:h-5 md:w-5" />
               {t("settings", "emailNotifications")}
             </CardTitle>
-            <CardDescription className="text-xs md:text-sm">
-              {t("settings", "emailNotificationsDesc")}
-            </CardDescription>
           </CardHeader>
           <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-4">
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="flex items-center gap-3 min-w-0">
                 <ShoppingBag className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <Label className="text-sm font-medium">{t("settings", "newOrders")}</Label>
-                  <p className="text-xs text-muted-foreground">{t("settings", "emailSupplierNewOrders")}</p>
-                </div>
+                <Label className="text-sm font-medium">{t("settings", "newOrders")}</Label>
               </div>
               <Switch
                 checked={emailNewOrder}
@@ -146,10 +125,7 @@ export default function SupplierSettings() {
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="flex items-center gap-3 min-w-0">
                 <ShoppingBag className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <Label className="text-sm font-medium">{t("settings", "orderStatus")}</Label>
-                  <p className="text-xs text-muted-foreground">{t("settings", "emailOrderStatus")}</p>
-                </div>
+                <Label className="text-sm font-medium">{t("settings", "orderStatus")}</Label>
               </div>
               <Switch
                 checked={emailOrderStatus}
@@ -161,10 +137,7 @@ export default function SupplierSettings() {
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="flex items-center gap-3 min-w-0">
                 <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <Label className="text-sm font-medium">{t("settings", "newMessages")}</Label>
-                  <p className="text-xs text-muted-foreground">{t("settings", "emailSupplierNewMessages")}</p>
-                </div>
+                <Label className="text-sm font-medium">{t("settings", "newMessages")}</Label>
               </div>
               <Switch
                 checked={emailNewMessage}
@@ -176,10 +149,7 @@ export default function SupplierSettings() {
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="flex items-center gap-3 min-w-0">
                 <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <Label className="text-sm font-medium">{t("settings", "complaintsNotif")}</Label>
-                  <p className="text-xs text-muted-foreground">{t("settings", "emailSupplierComplaints")}</p>
-                </div>
+                <Label className="text-sm font-medium">{t("settings", "complaintsNotif")}</Label>
               </div>
               <Switch
                 checked={emailComplaint}
@@ -192,23 +162,11 @@ export default function SupplierSettings() {
       </div>
 
       <Card>
-        <CardHeader className="p-3 md:p-6">
-          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-            <Monitor className="h-4 w-4 md:h-5 md:w-5" />
-            {t("settings", "appearance")}
-          </CardTitle>
-          <CardDescription className="text-xs md:text-sm">
-            {t("settings", "appearanceDesc")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-4">
+        <CardContent className="p-3 md:p-6">
           <div className="flex items-center justify-between gap-3 py-2">
             <div className="flex items-center gap-3 min-w-0">
               <Moon className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div className="min-w-0">
-                <Label className="text-sm font-medium">{t("settings", "darkMode")}</Label>
-                <p className="text-xs text-muted-foreground">{t("settings", "darkModeDesc")}</p>
-              </div>
+              <Label className="text-sm font-medium">{t("settings", "darkMode")}</Label>
             </div>
             <Switch
               checked={isDark}
@@ -230,10 +188,7 @@ export default function SupplierSettings() {
             data-testid="button-logout"
           >
             <LogOut className="h-5 w-5" />
-            <div>
-              <span className="text-sm font-semibold">{t("common", "logout")}</span>
-              <p className="text-xs text-destructive/70">{t("settings", "logoutDesc")}</p>
-            </div>
+            <span className="text-sm font-semibold">{t("common", "logout")}</span>
           </Link>
         </CardContent>
       </Card>
