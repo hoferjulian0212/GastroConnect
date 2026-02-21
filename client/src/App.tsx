@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { ChatProvider, useChat } from "@/context/ChatContext";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { ThemeProvider } from "@/hooks/use-theme";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
@@ -241,14 +242,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <LanguageProvider>
-          <UserProvider>
-            <ChatProvider>
-              <AppLayout />
-              <Toaster />
-            </ChatProvider>
-          </UserProvider>
-        </LanguageProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <UserProvider>
+              <ChatProvider>
+                <AppLayout />
+                <Toaster />
+              </ChatProvider>
+            </UserProvider>
+          </LanguageProvider>
+        </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
