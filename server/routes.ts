@@ -655,7 +655,8 @@ export async function registerRoutes(
 
   app.post("/api/cart", async (req, res) => {
     try {
-      const validated = insertCartItemSchema.parse(req.body);
+      const { mode: modeParam, ...cartData } = req.body;
+      const validated = insertCartItemSchema.parse(cartData);
       const product = await storage.getProduct(validated.productId);
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
@@ -668,7 +669,7 @@ export async function registerRoutes(
       if (validated.quantity < minQty) {
         return res.status(400).json({ error: `Minimum order quantity is ${minQty}` });
       }
-      const mode = req.body.mode === "set" ? "set" as const : "add" as const;
+      const mode = modeParam === "set" ? "set" as const : "add" as const;
       const item = await storage.addToCart(validated, mode);
       res.status(201).json(item);
     } catch (error) {
