@@ -636,7 +636,7 @@ export default function SupplierInbox() {
           <div className={`flex-1 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && selectedConv ? (
               <>
-                <div className="border-b border-border p-2.5 md:p-4 bg-background">
+                <div className="border-b border-border px-3 py-2.5 md:p-4 bg-background">
                   <div className="flex items-center gap-2 md:gap-3">
                     <Button
                       variant="ghost"
@@ -923,7 +923,7 @@ export default function SupplierInbox() {
                                     );
                                   }
                                   return (
-                                    <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-green-500/30 shadow-lg">
+                                    <div className="w-[92%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-green-500/30 shadow-lg">
                                       <div className="flex items-center justify-between px-4 py-2.5 border-b bg-green-500/10 border-green-500/20">
                                         <div className="flex items-center gap-2">
                                           <ClipboardList className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -1002,26 +1002,26 @@ export default function SupplierInbox() {
                                             <>
                                               <div className="flex gap-2">
                                                 {orderStatus === "pending" && (
-                                                  <Button size="sm" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "confirmed" })} data-testid={`button-card-confirm-${message.id}`}>
-                                                    <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                                  <Button size="sm" className="flex-1 text-xs px-2" onClick={() => setCardWizard({ orderId: message.orderId!, action: "confirmed" })} data-testid={`button-card-confirm-${message.id}`}>
+                                                    <CheckCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
                                                     {lang === "it" ? "Conferma" : "Bestätigen"}
                                                   </Button>
                                                 )}
                                                 {orderStatus === "confirmed" && (
-                                                  <Button size="sm" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "in_delivery" })} data-testid={`button-card-in_delivery-${message.id}`}>
-                                                    <Truck className="h-3.5 w-3.5 mr-1" />
-                                                    {lang === "it" ? "In consegna" : "In Lieferung"}
+                                                  <Button size="sm" className="flex-1 text-xs px-2" onClick={() => setCardWizard({ orderId: message.orderId!, action: "in_delivery" })} data-testid={`button-card-in_delivery-${message.id}`}>
+                                                    <Truck className="h-3.5 w-3.5 mr-1 shrink-0" />
+                                                    {lang === "it" ? "Consegna" : "Lieferung"}
                                                   </Button>
                                                 )}
                                                 {orderStatus === "in_delivery" && (
-                                                  <Button size="sm" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "delivered" })} data-testid={`button-card-delivered-${message.id}`}>
-                                                    <Package className="h-3.5 w-3.5 mr-1" />
+                                                  <Button size="sm" className="flex-1 text-xs px-2" onClick={() => setCardWizard({ orderId: message.orderId!, action: "delivered" })} data-testid={`button-card-delivered-${message.id}`}>
+                                                    <Package className="h-3.5 w-3.5 mr-1 shrink-0" />
                                                     {lang === "it" ? "Consegnato" : "Geliefert"}
                                                   </Button>
                                                 )}
                                                 {orderStatus && !["delivered", "cancelled"].includes(orderStatus) && (
-                                                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "cancelled" })} data-testid={`button-card-cancel-${message.id}`}>
-                                                    <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                                                  <Button size="sm" variant="outline" className="flex-1 text-xs px-2" onClick={() => setCardWizard({ orderId: message.orderId!, action: "cancelled" })} data-testid={`button-card-cancel-${message.id}`}>
+                                                    <XCircle className="h-3.5 w-3.5 mr-1 shrink-0 text-destructive" />
                                                     {lang === "it" ? "Annulla" : "Stornieren"}
                                                   </Button>
                                                 )}
@@ -1029,12 +1029,12 @@ export default function SupplierInbox() {
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="w-full text-muted-foreground"
+                                                className="w-full text-muted-foreground text-xs"
                                                 onClick={() => setOrderDetailId(message.orderId)}
                                                 data-testid={`button-order-details-${message.id}`}
                                               >
-                                                <Eye className="h-4 w-4 mr-2" />
-                                                {lang === "it" ? "Mostra dettagli ordine" : "Bestelldetails anzeigen"}
+                                                <Eye className="h-3.5 w-3.5 mr-1.5" />
+                                                {lang === "it" ? "Dettagli ordine" : "Details anzeigen"}
                                               </Button>
                                             </>
                                           )}

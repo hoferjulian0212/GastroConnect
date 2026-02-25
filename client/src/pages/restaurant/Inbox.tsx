@@ -925,7 +925,7 @@ export default function RestaurantInbox() {
           <div className={`flex-1 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && selectedConv ? (
               <>
-                <div className="border-b border-border p-2.5 md:p-4 bg-background">
+                <div className="border-b border-border px-3 py-2.5 md:p-4 bg-background">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 md:gap-3">
                       <Button
@@ -1154,7 +1154,7 @@ export default function RestaurantInbox() {
                                       );
                                     }
                                     return (
-                                      <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-green-500/30 shadow-lg">
+                                      <div className="w-[92%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-green-500/30 shadow-lg">
                                         <div className="flex items-center justify-between px-4 py-2.5 border-b bg-green-500/10 border-green-500/20">
                                           <div className="flex items-center gap-2">
                                             <ClipboardList className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -1279,32 +1279,32 @@ export default function RestaurantInbox() {
                                               <>
                                                 <div className="flex gap-2">
                                                   {orderStatus === "pending" && (
-                                                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "edit" })} data-testid={`button-card-edit-${message.id}`}>
-                                                      <Pencil className="h-3.5 w-3.5 mr-1" />
-                                                      {t("orders", "editOrder")}
+                                                    <Button size="sm" variant="outline" className="flex-1 text-xs px-2" onClick={() => setCardWizard({ orderId: message.orderId!, action: "edit" })} data-testid={`button-card-edit-${message.id}`}>
+                                                      <Pencil className="h-3.5 w-3.5 mr-1 shrink-0" />
+                                                      {lang === "it" ? "Modifica" : "Bearbeiten"}
                                                     </Button>
                                                   )}
                                                   {orderStatus === "confirmed" && (
-                                                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "change_request", reason: "" })} data-testid={`button-card-change-request-${message.id}`}>
-                                                      <Pencil className="h-3.5 w-3.5 mr-1" />
-                                                      {lang === "it" ? "Richiedi modifica" : "Änderung anfragen"}
+                                                    <Button size="sm" variant="outline" className="flex-1 text-xs px-2" onClick={() => setCardWizard({ orderId: message.orderId!, action: "change_request", reason: "" })} data-testid={`button-card-change-request-${message.id}`}>
+                                                      <Pencil className="h-3.5 w-3.5 mr-1 shrink-0" />
+                                                      {lang === "it" ? "Modifica" : "Ändern"}
                                                     </Button>
                                                   )}
                                                   {orderStatus && !["delivered", "cancelled"].includes(orderStatus) && (
-                                                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "cancel" })} data-testid={`button-card-cancel-${message.id}`}>
-                                                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
-                                                      {t("orders", "cancelOrder")}
+                                                    <Button size="sm" variant="outline" className="flex-1 text-xs px-2" onClick={() => setCardWizard({ orderId: message.orderId!, action: "cancel" })} data-testid={`button-card-cancel-${message.id}`}>
+                                                      <XCircle className="h-3.5 w-3.5 mr-1 shrink-0 text-destructive" />
+                                                      {lang === "it" ? "Annulla" : "Stornieren"}
                                                     </Button>
                                                   )}
                                                 </div>
                                                 <Button
                                                   variant="ghost"
                                                   size="sm"
-                                                  className="w-full text-muted-foreground"
+                                                  className="w-full text-muted-foreground text-xs"
                                                   onClick={() => setOrderDetailId(message.orderId)}
                                                   data-testid={`button-order-details-${message.id}`}
                                                 >
-                                                  <Eye className="h-4 w-4 mr-2" />
+                                                  <Eye className="h-3.5 w-3.5 mr-1.5" />
                                                   {t("inbox", "showOrderDetails")}
                                                 </Button>
                                               </>
