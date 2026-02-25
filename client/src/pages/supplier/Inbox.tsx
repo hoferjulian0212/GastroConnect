@@ -518,7 +518,7 @@ export default function SupplierInbox() {
   };
 
   return (
-    <div className={`${selectedConversation ? 'h-screen md:h-[calc(100vh-8rem)]' : 'h-[calc(100vh-8rem)]'} flex flex-col`}>
+    <div className={`${selectedConversation ? 'h-dvh md:h-[calc(100dvh-8rem)]' : 'h-[calc(100dvh-8rem)]'} flex flex-col`}>
       <div className={`mb-3 md:mb-4 shrink-0 ${selectedConversation ? 'hidden md:block' : ''}`}>
         <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Inbox</h1>
         <p className="text-xs md:text-sm text-muted-foreground">Kommunizieren Sie mit Ihren Kunden</p>

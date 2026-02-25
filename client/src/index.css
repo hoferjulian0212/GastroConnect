@@ -12,6 +12,26 @@
   }
 }
 
+html, body, #root {
+  height: 100dvh;
+  height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  html, body, #root {
+    height: 100dvh;
+  }
+}
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);

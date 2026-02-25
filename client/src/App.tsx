@@ -187,7 +187,7 @@ function AppLayout() {
     <>
       <UserLoader />
       {isLoading ? (
-        <div className="flex h-screen items-center justify-center">
+        <div className="flex h-dvh items-center justify-center">
           <div className="space-y-4 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-xl mx-auto">
               G
@@ -200,7 +200,7 @@ function AppLayout() {
         </div>
       ) : (
         <SidebarProvider style={sidebarStyle}>
-          <div className="flex h-screen w-full">
+          <div className="flex h-dvh w-full">
             <div className="hidden md:block">
               {currentRole === "restaurant" ? (
                 <RestaurantSidebar />
