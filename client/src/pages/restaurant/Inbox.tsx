@@ -1092,6 +1092,7 @@ export default function RestaurantInbox() {
                               <div
                                 className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" || message.messageType === "order_change_request" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
                                 data-testid={`message-${message.id}`}
+                                {...(message.orderId ? { "data-order-id": message.orderId } : {})}
                               >
                                 {message.messageType === "order" ? (
                                   (() => {
@@ -1409,11 +1410,24 @@ export default function RestaurantInbox() {
                                         }`}
                                       >
                                         {refData && (
-                                          <div className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 ${
-                                            isOwn
-                                              ? "bg-primary-foreground/15 border-primary-foreground/50"
-                                              : "bg-background/60 border-primary/50"
-                                          }`}>
+                                          <div
+                                            className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 cursor-pointer hover:opacity-80 transition-opacity ${
+                                              isOwn
+                                                ? "bg-primary-foreground/15 border-primary-foreground/50"
+                                                : "bg-background/60 border-primary/50"
+                                            }`}
+                                            onClick={() => {
+                                              if (refData.refType === "order" && refData.refId) {
+                                                const target = document.querySelector(`[data-order-id="${refData.refId}"]`);
+                                                if (target) {
+                                                  target.scrollIntoView({ behavior: "smooth", block: "center" });
+                                                  target.classList.add("highlight-message");
+                                                  setTimeout(() => target.classList.remove("highlight-message"), 2000);
+                                                }
+                                              }
+                                            }}
+                                            data-testid={`ref-link-${message.id}`}
+                                          >
                                             <div className="flex items-center gap-1.5">
                                               {refData.refType === "order" ? (
                                                 <ShoppingBag className={`h-3 w-3 shrink-0 ${isOwn ? "text-primary-foreground/70" : "text-primary"}`} />

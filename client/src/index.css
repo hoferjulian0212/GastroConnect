@@ -319,6 +319,41 @@
     z-index: 0;
   }
 
+  .highlight-message {
+    position: relative;
+  }
+
+  .highlight-message > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .highlight-message::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 0.75rem;
+    background: hsl(var(--primary) / 0.12);
+    animation: ref-highlight-pulse 2s ease-out forwards;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes ref-highlight-pulse {
+    0% {
+      opacity: 0;
+    }
+    15% {
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
   @keyframes message-highlight-fade {
     0% {
       opacity: 1;
