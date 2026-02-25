@@ -31,6 +31,7 @@ export default function RestaurantCatalog() {
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [detailProduct, setDetailProduct] = useState<ProductWithSupplierAndPromotion | null>(null);
   const [addedProductIds, setAddedProductIds] = useState<Set<string>>(new Set());
+  const [addedTimers, setAddedTimers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
   const { lang } = useLanguage();
   const t = useT(lang);
 
@@ -60,8 +61,6 @@ export default function RestaurantCatalog() {
 
   useEffect(() => {
     if (cartItems && cartItems.length > 0) {
-      const inCartIds = new Set(cartItems.map(ci => ci.productId));
-      setAddedProductIds(inCartIds);
       setQuantities(prev => {
         const next = { ...prev };
         cartItems.forEach(ci => {
@@ -88,6 +87,15 @@ export default function RestaurantCatalog() {
       queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
       setAddedProductIds(prev => new Set(prev).add(variables.productId));
+      if (addedTimers[variables.productId]) clearTimeout(addedTimers[variables.productId]);
+      const timer = setTimeout(() => {
+        setAddedProductIds(prev => {
+          const next = new Set(prev);
+          next.delete(variables.productId);
+          return next;
+        });
+      }, 2000);
+      setAddedTimers(prev => ({ ...prev, [variables.productId]: timer }));
     },
     onError: () => {
       toast({
