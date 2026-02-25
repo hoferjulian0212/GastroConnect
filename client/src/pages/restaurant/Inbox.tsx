@@ -601,6 +601,7 @@ export default function RestaurantInbox() {
       });
       setOrderItems({});
       setActionMode("none");
+      setTimeout(scrollToBottom, 200);
     },
     onError: () => {
       toast({
