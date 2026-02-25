@@ -141,6 +141,7 @@ export default function RestaurantInbox() {
   const [openActionsPopover, setOpenActionsPopover] = useState(false);
   const [orderItems, setOrderItems] = useState<Record<string, number>>({});
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
+  const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string; reason?: string } | null>(null);
   const [editingOrderInbox, setEditingOrderInbox] = useState<OrderWithDetails | null>(null);
   const [editItemsInbox, setEditItemsInbox] = useState<EditableItem[]>([]);
   const [editProductSearchInbox, setEditProductSearchInbox] = useState("");
@@ -660,6 +661,7 @@ export default function RestaurantInbox() {
     },
     onSuccess: () => {
       toast({ title: t("orders", "orderCancelled"), description: t("orders", "orderCancelledDesc") });
+      setCardWizard(null);
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders", orderDetailId] });
@@ -673,6 +675,25 @@ export default function RestaurantInbox() {
     },
     onError: () => {
       toast({ title: t("common", "error"), description: t("orders", "orderCancelError"), variant: "destructive" });
+    },
+  });
+
+  const changeRequestMutation = useMutation({
+    mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
+      return apiRequest("POST", `/api/orders/${orderId}/change-request`, { restaurantId: currentUser?.id, reason });
+    },
+    onSuccess: () => {
+      toast({ title: lang === "it" ? "Richiesta inviata" : "Anfrage gesendet", description: lang === "it" ? "La richiesta di modifica è stata inviata al fornitore." : "Die Änderungsanfrage wurde an den Lieferanten gesendet." });
+      setCardWizard(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
+      if (selectedConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'messages'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+      }
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), description: lang === "it" ? "La richiesta non è stata inviata." : "Die Anfrage konnte nicht gesendet werden.", variant: "destructive" });
     },
   });
 
@@ -1170,17 +1191,124 @@ export default function RestaurantInbox() {
                                           )}
                                         </div>
                                         {message.orderId && (
-                                          <div className="px-4 py-2.5 border-t border-green-500/20 bg-green-500/5">
-                                            <Button
-                                              variant="default"
-                                              size="sm"
-                                              className="w-full"
-                                              onClick={() => setOrderDetailId(message.orderId)}
-                                              data-testid={`button-order-details-${message.id}`}
-                                            >
-                                              <Eye className="h-4 w-4 mr-2" />
-                                              {t("inbox", "showOrderDetails")}
-                                            </Button>
+                                          <div className="px-4 py-2.5 border-t border-green-500/20 bg-green-500/5 space-y-2">
+                                            {cardWizard?.orderId === message.orderId ? (
+                                              <div className="p-3 rounded-lg border bg-card space-y-3" data-testid={`wizard-confirm-${message.orderId}`}>
+                                                {cardWizard.action === "change_request" ? (
+                                                  <>
+                                                    <div className="flex items-center gap-2">
+                                                      <Pencil className="h-4 w-4 text-amber-600" />
+                                                      <span className="text-sm font-medium">{lang === "it" ? "Richiedi modifica ordine" : "Änderung anfragen"}</span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">{lang === "it" ? "Descrivi le modifiche desiderate. Il fornitore dovrà approvare la richiesta." : "Beschreiben Sie die gewünschten Änderungen. Der Lieferant muss die Anfrage genehmigen."}</p>
+                                                    <Textarea
+                                                      placeholder={lang === "it" ? "Motivo della modifica..." : "Grund der Änderung..."}
+                                                      value={cardWizard.reason || ""}
+                                                      onChange={(e) => setCardWizard({ ...cardWizard, reason: e.target.value })}
+                                                      className="min-h-[60px] text-sm"
+                                                      data-testid={`wizard-reason-${message.orderId}`}
+                                                    />
+                                                    <div className="flex gap-2">
+                                                      <Button variant="outline" size="sm" className="flex-1" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
+                                                        {t("common", "cancel")}
+                                                      </Button>
+                                                      <Button
+                                                        size="sm"
+                                                        className="flex-1"
+                                                        onClick={() => changeRequestMutation.mutate({ orderId: message.orderId!, reason: cardWizard.reason || "" })}
+                                                        disabled={!cardWizard.reason?.trim() || changeRequestMutation.isPending}
+                                                        data-testid={`wizard-send-change-${message.orderId}`}
+                                                      >
+                                                        {changeRequestMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Send className="h-3.5 w-3.5 mr-1" />}
+                                                        {lang === "it" ? "Invia richiesta" : "Anfrage senden"}
+                                                      </Button>
+                                                    </div>
+                                                  </>
+                                                ) : cardWizard.action === "cancel" ? (
+                                                  <>
+                                                    <div className="flex items-center gap-2">
+                                                      <XCircle className="h-4 w-4 text-red-600" />
+                                                      <span className="text-sm font-medium">{lang === "it" ? "Annullare l'ordine?" : "Bestellung stornieren?"}</span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">{lang === "it" ? "Questa azione non può essere annullata." : "Diese Aktion kann nicht rückgängig gemacht werden."}</p>
+                                                    <div className="flex gap-2">
+                                                      <Button variant="outline" size="sm" className="flex-1" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
+                                                        {t("common", "cancel")}
+                                                      </Button>
+                                                      <Button
+                                                        variant="destructive"
+                                                        size="sm"
+                                                        className="flex-1"
+                                                        onClick={() => cancelOrderMutation.mutate(message.orderId!)}
+                                                        disabled={cancelOrderMutation.isPending}
+                                                        data-testid={`wizard-confirm-cancel-${message.orderId}`}
+                                                      >
+                                                        {cancelOrderMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                                                        {lang === "it" ? "Sì, annulla" : "Ja, stornieren"}
+                                                      </Button>
+                                                    </div>
+                                                  </>
+                                                ) : cardWizard.action === "edit" ? (
+                                                  <>
+                                                    <div className="flex items-center gap-2">
+                                                      <Pencil className="h-4 w-4 text-primary" />
+                                                      <span className="text-sm font-medium">{lang === "it" ? "Modificare l'ordine?" : "Bestellung bearbeiten?"}</span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">{lang === "it" ? "Apri l'editor per modificare prodotti e quantità." : "Öffne den Editor um Produkte und Mengen zu ändern."}</p>
+                                                    <div className="flex gap-2">
+                                                      <Button variant="outline" size="sm" className="flex-1" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
+                                                        {t("common", "cancel")}
+                                                      </Button>
+                                                      <Button
+                                                        size="sm"
+                                                        className="flex-1"
+                                                        onClick={() => {
+                                                          setCardWizard(null);
+                                                          setOrderDetailId(message.orderId);
+                                                        }}
+                                                        data-testid={`wizard-open-edit-${message.orderId}`}
+                                                      >
+                                                        <Pencil className="h-3.5 w-3.5 mr-1" />
+                                                        {lang === "it" ? "Apri editor" : "Editor öffnen"}
+                                                      </Button>
+                                                    </div>
+                                                  </>
+                                                ) : null}
+                                              </div>
+                                            ) : (
+                                              <>
+                                                <div className="flex gap-2">
+                                                  {orderStatus === "pending" && (
+                                                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "edit" })} data-testid={`button-card-edit-${message.id}`}>
+                                                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                                                      {t("orders", "editOrder")}
+                                                    </Button>
+                                                  )}
+                                                  {orderStatus === "confirmed" && (
+                                                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "change_request", reason: "" })} data-testid={`button-card-change-request-${message.id}`}>
+                                                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                                                      {lang === "it" ? "Richiedi modifica" : "Änderung anfragen"}
+                                                    </Button>
+                                                  )}
+                                                  {orderStatus && !["delivered", "cancelled"].includes(orderStatus) && (
+                                                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "cancel" })} data-testid={`button-card-cancel-${message.id}`}>
+                                                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                                                      {t("orders", "cancelOrder")}
+                                                    </Button>
+                                                  )}
+                                                </div>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="w-full text-muted-foreground"
+                                                  onClick={() => setOrderDetailId(message.orderId)}
+                                                  data-testid={`button-order-details-${message.id}`}
+                                                >
+                                                  <Eye className="h-4 w-4 mr-2" />
+                                                  {t("inbox", "showOrderDetails")}
+                                                </Button>
+                                              </>
+                                            )}
                                           </div>
                                         )}
                                       </div>

@@ -122,7 +122,8 @@ export default function SupplierInbox() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
-  
+  const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string } | null>(null);
+
   // Complaint management state
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
   const [showComplaintDetail, setShowComplaintDetail] = useState(false);
@@ -184,6 +185,7 @@ export default function SupplierInbox() {
     },
     onSuccess: (_, variables) => {
       toast({ title: "Status aktualisiert", description: "Der Bestellstatus wurde erfolgreich geändert." });
+      setCardWizard(null);
       refetchOrderDetail();
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
@@ -197,6 +199,7 @@ export default function SupplierInbox() {
       }
     },
     onError: () => {
+      setCardWizard(null);
       toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden.", variant: "destructive" });
     },
   });
@@ -957,17 +960,84 @@ export default function SupplierInbox() {
                                         )}
                                       </div>
                                       {message.orderId && (
-                                        <div className="px-4 py-2.5 border-t border-green-500/20 bg-green-500/5">
-                                          <Button
-                                            variant="default"
-                                            size="sm"
-                                            className="w-full"
-                                            onClick={() => setOrderDetailId(message.orderId)}
-                                            data-testid={`button-order-details-${message.id}`}
-                                          >
-                                            <Eye className="h-4 w-4 mr-2" />
-                                            Bestelldetails anzeigen
-                                          </Button>
+                                        <div className="px-4 py-2.5 border-t border-green-500/20 bg-green-500/5 space-y-2">
+                                          {cardWizard?.orderId === message.orderId ? (
+                                            <div className="p-3 rounded-lg border bg-card space-y-3" data-testid={`wizard-confirm-${message.orderId}`}>
+                                              <div className="flex items-center gap-2">
+                                                {cardWizard.action === "confirmed" && <CheckCircle className="h-4 w-4 text-blue-600" />}
+                                                {cardWizard.action === "in_delivery" && <Truck className="h-4 w-4 text-purple-600" />}
+                                                {cardWizard.action === "delivered" && <Package className="h-4 w-4 text-green-600" />}
+                                                {cardWizard.action === "cancelled" && <XCircle className="h-4 w-4 text-red-600" />}
+                                                <span className="text-sm font-medium">
+                                                  {cardWizard.action === "confirmed" && (lang === "it" ? "Confermare l'ordine?" : "Bestellung bestätigen?")}
+                                                  {cardWizard.action === "in_delivery" && (lang === "it" ? "Contrassegnare come in consegna?" : "Als in Lieferung markieren?")}
+                                                  {cardWizard.action === "delivered" && (lang === "it" ? "Contrassegnare come consegnato?" : "Als geliefert markieren?")}
+                                                  {cardWizard.action === "cancelled" && (lang === "it" ? "Annullare l'ordine?" : "Bestellung stornieren?")}
+                                                </span>
+                                              </div>
+                                              <p className="text-xs text-muted-foreground">
+                                                {cardWizard.action === "confirmed" && (lang === "it" ? "Il magazzino verrà aggiornato automaticamente." : "Der Lagerbestand wird automatisch aktualisiert.")}
+                                                {cardWizard.action === "in_delivery" && (lang === "it" ? "Lo stato cambierà a 'in consegna'." : "Der Status wird auf 'In Lieferung' geändert.")}
+                                                {cardWizard.action === "delivered" && (lang === "it" ? "L'ordine verrà contrassegnato come completato." : "Die Bestellung wird als abgeschlossen markiert.")}
+                                                {cardWizard.action === "cancelled" && (lang === "it" ? "Questa azione non può essere annullata." : "Diese Aktion kann nicht rückgängig gemacht werden.")}
+                                              </p>
+                                              <div className="flex gap-2">
+                                                <Button variant="outline" size="sm" className="flex-1" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
+                                                  {lang === "it" ? "Annulla" : "Abbrechen"}
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  className="flex-1"
+                                                  variant={cardWizard.action === "cancelled" ? "destructive" : "default"}
+                                                  onClick={() => updateOrderStatusMutation.mutate({ orderId: message.orderId!, status: cardWizard.action })}
+                                                  disabled={updateOrderStatusMutation.isPending}
+                                                  data-testid={`wizard-confirm-action-${message.orderId}`}
+                                                >
+                                                  {updateOrderStatusMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                                                  {lang === "it" ? "Conferma" : "Bestätigen"}
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <>
+                                              <div className="flex gap-2">
+                                                {orderStatus === "pending" && (
+                                                  <Button size="sm" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "confirmed" })} data-testid={`button-card-confirm-${message.id}`}>
+                                                    <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                                    {lang === "it" ? "Conferma" : "Bestätigen"}
+                                                  </Button>
+                                                )}
+                                                {orderStatus === "confirmed" && (
+                                                  <Button size="sm" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "in_delivery" })} data-testid={`button-card-in_delivery-${message.id}`}>
+                                                    <Truck className="h-3.5 w-3.5 mr-1" />
+                                                    {lang === "it" ? "In consegna" : "In Lieferung"}
+                                                  </Button>
+                                                )}
+                                                {orderStatus === "in_delivery" && (
+                                                  <Button size="sm" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "delivered" })} data-testid={`button-card-delivered-${message.id}`}>
+                                                    <Package className="h-3.5 w-3.5 mr-1" />
+                                                    {lang === "it" ? "Consegnato" : "Geliefert"}
+                                                  </Button>
+                                                )}
+                                                {orderStatus && !["delivered", "cancelled"].includes(orderStatus) && (
+                                                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setCardWizard({ orderId: message.orderId!, action: "cancelled" })} data-testid={`button-card-cancel-${message.id}`}>
+                                                    <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                                                    {lang === "it" ? "Annulla" : "Stornieren"}
+                                                  </Button>
+                                                )}
+                                              </div>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="w-full text-muted-foreground"
+                                                onClick={() => setOrderDetailId(message.orderId)}
+                                                data-testid={`button-order-details-${message.id}`}
+                                              >
+                                                <Eye className="h-4 w-4 mr-2" />
+                                                {lang === "it" ? "Mostra dettagli ordine" : "Bestelldetails anzeigen"}
+                                              </Button>
+                                            </>
+                                          )}
                                         </div>
                                       )}
                                     </div>
