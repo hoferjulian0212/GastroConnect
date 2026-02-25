@@ -260,9 +260,13 @@ export default function RestaurantCart() {
                 <span className="text-sm font-medium">{format(new Date(orderConfirmation.createdAt), "dd. MMM yyyy, HH:mm", { locale: dateLocaleObj })}</span>
               </div>
               <Separator />
-              <div className="flex justify-between items-center py-1">
-                <span className="text-sm text-muted-foreground">{t("common", "suppliers")}</span>
-                <span className="text-sm font-medium">{orderConfirmation.suppliers.join(", ")}</span>
+              <div className="flex justify-between items-start gap-4 py-1">
+                <span className="text-sm text-muted-foreground shrink-0">{t("common", "suppliers")}</span>
+                <div className="flex flex-col items-end gap-0.5">
+                  {orderConfirmation.suppliers.map((name, i) => (
+                    <span key={i} className="text-sm font-medium">{name}</span>
+                  ))}
+                </div>
               </div>
               <Separator />
               <div className="flex justify-between items-center py-1">
