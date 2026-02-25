@@ -51,7 +51,7 @@ export interface IStorage {
   getCartItems(restaurantId: string): Promise<CartItemWithProduct[]>;
   getCartItem(id: string): Promise<CartItem | undefined>;
   getCartCount(restaurantId: string): Promise<number>;
-  addToCart(item: InsertCartItem): Promise<CartItem>;
+  addToCart(item: InsertCartItem, mode?: "add" | "set"): Promise<CartItem>;
   updateCartItem(id: string, quantity: number): Promise<CartItem | undefined>;
   removeCartItem(id: string): Promise<void>;
   clearCart(restaurantId: string): Promise<void>;
@@ -362,8 +362,7 @@ export class DatabaseStorage implements IStorage {
     return result[0]?.count || 0;
   }
 
-  async addToCart(item: InsertCartItem): Promise<CartItem> {
-    // Check if item already exists
+  async addToCart(item: InsertCartItem, mode: "add" | "set" = "add"): Promise<CartItem> {
     const [existing] = await db
       .select()
       .from(cartItems)
@@ -373,9 +372,10 @@ export class DatabaseStorage implements IStorage {
       ));
 
     if (existing) {
+      const newQuantity = mode === "set" ? (item.quantity || 1) : existing.quantity + (item.quantity || 1);
       const [updated] = await db
         .update(cartItems)
-        .set({ quantity: existing.quantity + (item.quantity || 1) })
+        .set({ quantity: newQuantity })
         .where(eq(cartItems.id, existing.id))
         .returning();
       return updated;

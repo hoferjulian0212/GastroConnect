@@ -667,7 +667,8 @@ export async function registerRoutes(
       if (validated.quantity < minQty) {
         return res.status(400).json({ error: `Minimum order quantity is ${minQty}` });
       }
-      const item = await storage.addToCart(validated);
+      const mode = req.body.mode === "set" ? "set" as const : "add" as const;
+      const item = await storage.addToCart(validated, mode);
       res.status(201).json(item);
     } catch (error) {
       res.status(400).json({ error: "Invalid cart data" });

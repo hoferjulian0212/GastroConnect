@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
@@ -13,7 +13,7 @@ import { Search, Package, ShoppingCart, Plus, Minus, Store, Filter, Eye, Tag, Pe
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { differenceInDays, differenceInHours, format } from "date-fns";
 import { de, it } from "date-fns/locale";
-import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
+import type { User, ProductWithSupplierAndPromotion, CartItemWithProduct } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
@@ -31,15 +31,8 @@ export default function RestaurantCatalog() {
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [detailProduct, setDetailProduct] = useState<ProductWithSupplierAndPromotion | null>(null);
   const [addedProductIds, setAddedProductIds] = useState<Set<string>>(new Set());
-  const [addedTimers, setAddedTimers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
   const { lang } = useLanguage();
   const t = useT(lang);
-
-  useEffect(() => {
-    return () => {
-      Object.values(addedTimers).forEach(clearTimeout);
-    };
-  }, [addedTimers]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -60,32 +53,41 @@ export default function RestaurantCatalog() {
     enabled: !!currentUser?.id,
   });
 
+  const { data: cartItems } = useQuery<CartItemWithProduct[]>({
+    queryKey: [`/api/cart?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  useEffect(() => {
+    if (cartItems && cartItems.length > 0) {
+      const inCartIds = new Set(cartItems.map(ci => ci.productId));
+      setAddedProductIds(inCartIds);
+      setQuantities(prev => {
+        const next = { ...prev };
+        cartItems.forEach(ci => {
+          if (!(ci.productId in next)) {
+            next[ci.productId] = ci.quantity;
+          }
+        });
+        return next;
+      });
+    }
+  }, [cartItems]);
+
   const addToCartMutation = useMutation({
-    mutationFn: async ({ productId, supplierId, quantity }: { productId: string; supplierId: string; quantity: number }) => {
+    mutationFn: async ({ productId, supplierId, quantity, mode }: { productId: string; supplierId: string; quantity: number; mode?: "set" }) => {
       return apiRequest("POST", "/api/cart", {
         restaurantId: currentUser?.id,
         productId,
         supplierId,
         quantity,
+        mode: mode || undefined,
       });
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
       setAddedProductIds(prev => new Set(prev).add(variables.productId));
-      const timer = setTimeout(() => {
-        setAddedProductIds(prev => {
-          const next = new Set(prev);
-          next.delete(variables.productId);
-          return next;
-        });
-        setAddedTimers(prev => {
-          const next = { ...prev };
-          delete next[variables.productId];
-          return next;
-        });
-      }, 1500);
-      setAddedTimers(prev => ({ ...prev, [variables.productId]: timer }));
     },
     onError: () => {
       toast({
@@ -122,11 +124,20 @@ export default function RestaurantCatalog() {
     return product.minOrderQuantity && product.minOrderQuantity > 1 ? product.minOrderQuantity : 1;
   };
 
-  const updateQuantity = (productId: string, delta: number, minQty: number = 1) => {
+  const updateQuantity = (productId: string, delta: number, minQty: number = 1, product?: ProductWithSupplierAndPromotion) => {
+    const newQty = Math.max(minQty, (quantities[productId] || minQty) + delta);
     setQuantities(prev => ({
       ...prev,
-      [productId]: Math.max(minQty, (prev[productId] || minQty) + delta),
+      [productId]: newQty,
     }));
+    if (addedProductIds.has(productId) && product) {
+      addToCartMutation.mutate({
+        productId: product.id,
+        supplierId: product.supplierId,
+        quantity: newQty,
+        mode: "set",
+      });
+    }
   };
 
   const handleAddToCart = (product: ProductWithSupplierAndPromotion) => {
@@ -136,6 +147,7 @@ export default function RestaurantCatalog() {
       productId: product.id,
       supplierId: product.supplierId,
       quantity,
+      mode: "set",
     });
   };
 
@@ -371,7 +383,7 @@ export default function RestaurantCatalog() {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
-                              onClick={() => updateQuantity(product.id, -1, getMinOrderQty(product))}
+                              onClick={() => updateQuantity(product.id, -1, getMinOrderQty(product), product)}
                               disabled={!product.inStock || (quantities[product.id] || getMinOrderQty(product)) <= getMinOrderQty(product)}
                               data-testid={`button-decrease-${product.id}`}
                             >
@@ -384,7 +396,7 @@ export default function RestaurantCatalog() {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
-                              onClick={() => updateQuantity(product.id, 1, getMinOrderQty(product))}
+                              onClick={() => updateQuantity(product.id, 1, getMinOrderQty(product), product)}
                               disabled={!product.inStock}
                               data-testid={`button-increase-${product.id}`}
                             >
