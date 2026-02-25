@@ -266,8 +266,12 @@ export type StockMovement = typeof stockMovements.$inferSelect;
 
 // Extended types for frontend
 export type ProductWithSupplier = Product & { supplier: User };
+export type OrderItemWithProduct = OrderItem & {
+  productImageUrl?: string | null;
+  productUnit?: string | null;
+};
 export type OrderWithDetails = Order & { 
-  items: OrderItem[];
+  items: OrderItemWithProduct[];
   restaurant: User;
   supplier: User;
 };
