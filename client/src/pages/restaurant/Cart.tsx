@@ -14,7 +14,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
-import { format, addDays, isBefore, startOfDay } from "date-fns";
+import { format, addDays, startOfDay } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -23,8 +23,8 @@ export default function RestaurantCart() {
   const { currentUser } = useUser();
   const { toast } = useToast();
   const [orderNotes, setOrderNotes] = useState("");
-  const [deliveryOption, setDeliveryOption] = useState<"asap" | "date">("asap");
-  const [selectedDeliveryDate, setSelectedDeliveryDate] = useState<string>("");
+  const [deliveryOptions, setDeliveryOptions] = useState<Record<string, "asap" | "date">>({});
+  const [selectedDeliveryDates, setSelectedDeliveryDates] = useState<Record<string, string>>({});
   const [orderConfirmation, setOrderConfirmation] = useState<{
     orderId: string;
     total: string;
@@ -70,10 +70,14 @@ export default function RestaurantCart() {
 
   const createOrderMutation = useMutation({
     mutationFn: async () => {
+      const perSupplierDates: Record<string, string | null> = {};
+      for (const sid of supplierIds) {
+        perSupplierDates[sid] = deliveryOptions[sid] === "date" && selectedDeliveryDates[sid] ? selectedDeliveryDates[sid] : null;
+      }
       const res = await apiRequest("POST", "/api/orders", {
         restaurantId: currentUser?.id,
         notes: orderNotes,
-        requestedDeliveryDate: deliveryOption === "date" && selectedDeliveryDate ? selectedDeliveryDate : null,
+        deliveryDates: perSupplierDates,
       });
       return res.json();
     },
@@ -82,12 +86,13 @@ export default function RestaurantCart() {
       const itemCount = cartItems?.length || 0;
       const orders = Array.isArray(data) ? data : [data];
       const orderId = orders.length === 1 ? orders[0]?.id?.slice(0, 8) : orders.map(o => o?.id?.slice(0, 8)).join(", ");
+      const firstDeliveryDate = Object.values(selectedDeliveryDates).find(d => d) || null;
       setOrderConfirmation({
         orderId: orderId || "",
         total: grandTotal,
         itemCount,
         suppliers: supplierNames,
-        deliveryDate: deliveryOption === "date" && selectedDeliveryDate ? selectedDeliveryDate : null,
+        deliveryDate: firstDeliveryDate,
         notes: orderNotes,
         createdAt: new Date().toISOString(),
       });
@@ -113,11 +118,12 @@ export default function RestaurantCart() {
   const createSupplierOrderMutation = useMutation({
     mutationFn: async (supplierId: string) => {
       setSendingSupplier(supplierId);
+      const deliveryDate = deliveryOptions[supplierId] === "date" && selectedDeliveryDates[supplierId] ? selectedDeliveryDates[supplierId] : null;
       const res = await apiRequest("POST", "/api/orders", {
         restaurantId: currentUser?.id,
         supplierId,
         notes: orderNotes,
-        requestedDeliveryDate: deliveryOption === "date" && selectedDeliveryDate ? selectedDeliveryDate : null,
+        requestedDeliveryDate: deliveryDate,
       });
       return res.json();
     },
@@ -170,32 +176,33 @@ export default function RestaurantCart() {
     enabled: !!currentUser?.id && supplierIds.length > 0,
   });
 
-  const allowedWeekdays = useMemo(() => {
-    if (!allDeliverySchedules || supplierIds.length === 0) return [];
-    const perSupplierDays = supplierIds
-      .map(id => (allDeliverySchedules[id] || []).map(s => s.dayOfWeek))
-      .filter(d => d.length > 0);
-    if (perSupplierDays.length === 0) return [];
-    return perSupplierDays.reduce((acc, days) => acc.filter(d => days.includes(d)));
-  }, [allDeliverySchedules, supplierIds]);
-
   const dateLocale = lang === "it" ? it : de;
 
-  const availableDeliveryDates = useMemo(() => {
-    if (allowedWeekdays.length === 0) return [];
-    const dates: { value: string; label: string }[] = [];
-    const today = startOfDay(new Date());
-    for (let i = 1; i <= 28; i++) {
-      const date = addDays(today, i);
-      if (allowedWeekdays.includes(date.getDay())) {
-        dates.push({
-          value: format(date, "yyyy-MM-dd"),
-          label: format(date, "EEEE, dd. MMMM yyyy", { locale: dateLocale }),
-        });
+  const perSupplierDeliveryDates = useMemo(() => {
+    if (!allDeliverySchedules) return {};
+    const result: Record<string, { value: string; label: string }[]> = {};
+    for (const sid of supplierIds) {
+      const schedules = allDeliverySchedules[sid] || [];
+      const weekdays = schedules.map(s => s.dayOfWeek);
+      if (weekdays.length === 0) {
+        result[sid] = [];
+        continue;
       }
+      const dates: { value: string; label: string }[] = [];
+      const today = startOfDay(new Date());
+      for (let i = 1; i <= 28; i++) {
+        const date = addDays(today, i);
+        if (weekdays.includes(date.getDay())) {
+          dates.push({
+            value: format(date, "yyyy-MM-dd"),
+            label: format(date, "EEEE, dd. MMMM yyyy", { locale: dateLocale }),
+          });
+        }
+      }
+      result[sid] = dates;
     }
-    return dates;
-  }, [allowedWeekdays, dateLocale]);
+    return result;
+  }, [allDeliverySchedules, supplierIds, dateLocale]);
 
   const getEffectivePrice = (item: CartItemWithPromotion) => {
     const originalPrice = parseFloat(item.product.price);
@@ -431,6 +438,81 @@ export default function RestaurantCart() {
                     ))}
                   </div>
                 </CardContent>
+                <div className="border-t border-border px-3 md:px-6 py-3 md:py-4 space-y-2">
+                  <Label className="text-xs md:text-sm font-medium flex items-center gap-1.5">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    {t("cart", "deliveryDate")}
+                  </Label>
+                  <div className="space-y-2">
+                    <label
+                      className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                        (deliveryOptions[supplierId] || "asap") === "asap" ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                      data-testid={`radio-delivery-asap-${supplierId}`}
+                    >
+                      <input
+                        type="radio"
+                        name={`deliveryOption-${supplierId}`}
+                        checked={(deliveryOptions[supplierId] || "asap") === "asap"}
+                        onChange={() => {
+                          setDeliveryOptions(prev => ({ ...prev, [supplierId]: "asap" }));
+                          setSelectedDeliveryDates(prev => ({ ...prev, [supplierId]: "" }));
+                        }}
+                        className="accent-primary"
+                      />
+                      <Zap className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-sm">{t("cart", "asap")}</span>
+                    </label>
+                    <label
+                      className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                        deliveryOptions[supplierId] === "date" ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                      data-testid={`radio-delivery-date-${supplierId}`}
+                    >
+                      <input
+                        type="radio"
+                        name={`deliveryOption-${supplierId}`}
+                        checked={deliveryOptions[supplierId] === "date"}
+                        onChange={() => setDeliveryOptions(prev => ({ ...prev, [supplierId]: "date" }))}
+                        className="accent-primary"
+                      />
+                      <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm">{t("cart", "selectDeliveryDay")}</span>
+                    </label>
+                  </div>
+                  {deliveryOptions[supplierId] === "date" && (
+                    <div className="pt-1">
+                      {(perSupplierDeliveryDates[supplierId] || []).length > 0 ? (
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {(perSupplierDeliveryDates[supplierId] || []).map(date => (
+                            <label
+                              key={date.value}
+                              className={`flex items-center gap-2.5 p-2 rounded-md border cursor-pointer transition-colors text-sm ${
+                                selectedDeliveryDates[supplierId] === date.value
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border"
+                              }`}
+                              data-testid={`delivery-date-${supplierId}-${date.value}`}
+                            >
+                              <input
+                                type="radio"
+                                name={`deliveryDate-${supplierId}`}
+                                checked={selectedDeliveryDates[supplierId] === date.value}
+                                onChange={() => setSelectedDeliveryDates(prev => ({ ...prev, [supplierId]: date.value }))}
+                                className="accent-primary"
+                              />
+                              <span>{date.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground py-2">
+                          {t("cart", "noDeliveryDays")}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <CardFooter className="border-t border-border pt-3 md:pt-4 p-3 md:p-6">
                   <div className="flex items-center justify-between w-full gap-3">
                     <div className="flex items-center gap-2 text-sm md:text-base">
@@ -443,7 +525,7 @@ export default function RestaurantCart() {
                         variant="outline"
                         className="gap-1.5 text-xs md:text-sm shrink-0"
                         onClick={() => createSupplierOrderMutation.mutate(supplierId)}
-                        disabled={createSupplierOrderMutation.isPending || createOrderMutation.isPending}
+                        disabled={createSupplierOrderMutation.isPending || createOrderMutation.isPending || (deliveryOptions[supplierId] === "date" && !selectedDeliveryDates[supplierId] && (perSupplierDeliveryDates[supplierId] || []).length > 0)}
                         data-testid={`button-send-supplier-${supplierId}`}
                       >
                         {sendingSupplier === supplierId ? (
@@ -479,78 +561,6 @@ export default function RestaurantCart() {
                   <span>{t("common", "total")}</span>
                   <span data-testid="text-total-amount">{grandTotal}€</span>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs md:text-sm font-medium flex items-center gap-1.5">
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    {t("cart", "deliveryDate")}
-                  </Label>
-                  <div className="space-y-2">
-                    <label
-                      className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                        deliveryOption === "asap" ? "border-primary bg-primary/5" : "border-border"
-                      }`}
-                      data-testid="radio-delivery-asap"
-                    >
-                      <input
-                        type="radio"
-                        name="deliveryOption"
-                        checked={deliveryOption === "asap"}
-                        onChange={() => { setDeliveryOption("asap"); setSelectedDeliveryDate(""); }}
-                        className="accent-primary"
-                      />
-                      <Zap className="h-4 w-4 text-primary shrink-0" />
-                      <span className="text-sm">{t("cart", "asap")}</span>
-                    </label>
-                    <label
-                      className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                        deliveryOption === "date" ? "border-primary bg-primary/5" : "border-border"
-                      }`}
-                      data-testid="radio-delivery-date"
-                    >
-                      <input
-                        type="radio"
-                        name="deliveryOption"
-                        checked={deliveryOption === "date"}
-                        onChange={() => setDeliveryOption("date")}
-                        className="accent-primary"
-                      />
-                      <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm">{t("cart", "selectDeliveryDay")}</span>
-                    </label>
-                  </div>
-                  {deliveryOption === "date" && (
-                    <div className="pt-1">
-                      {availableDeliveryDates.length > 0 ? (
-                        <div className="space-y-1 max-h-40 overflow-y-auto">
-                          {availableDeliveryDates.map(date => (
-                            <label
-                              key={date.value}
-                              className={`flex items-center gap-2.5 p-2 rounded-md border cursor-pointer transition-colors text-sm ${
-                                selectedDeliveryDate === date.value
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border"
-                              }`}
-                              data-testid={`delivery-date-${date.value}`}
-                            >
-                              <input
-                                type="radio"
-                                name="deliveryDate"
-                                checked={selectedDeliveryDate === date.value}
-                                onChange={() => setSelectedDeliveryDate(date.value)}
-                                className="accent-primary"
-                              />
-                              <span>{date.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground py-2">
-                          {t("cart", "noDeliveryDays")}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
                 <div className="space-y-1.5 md:space-y-2">
                   <Label className="text-xs md:text-sm font-medium">{t("cart", "orderNotes")}</Label>
                   <Textarea
@@ -567,7 +577,7 @@ export default function RestaurantCart() {
                   className="w-full gap-2 text-sm md:text-base"
                   size="default"
                   onClick={() => createOrderMutation.mutate()}
-                  disabled={createOrderMutation.isPending || createSupplierOrderMutation.isPending || (deliveryOption === "date" && !selectedDeliveryDate && availableDeliveryDates.length > 0)}
+                  disabled={createOrderMutation.isPending || createSupplierOrderMutation.isPending || supplierIds.some(sid => deliveryOptions[sid] === "date" && !selectedDeliveryDates[sid] && (perSupplierDeliveryDates[sid] || []).length > 0)}
                   data-testid="button-checkout"
                 >
                   {Object.keys(groupedBySupplier || {}).length > 1 ? t("cart", "placeAllOrders") : t("cart", "placeOrder")}

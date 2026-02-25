@@ -81,6 +81,7 @@ const createOrderSchema = z.object({
   supplierId: uuidField.optional().nullable(),
   notes: safeString.optional().nullable(),
   requestedDeliveryDate: safeShortString.optional().nullable(),
+  deliveryDates: z.record(z.string(), z.string().nullable()).optional().nullable(),
 }).strict();
 
 const directOrderItemSchema = z.object({
@@ -780,7 +781,7 @@ export async function registerRoutes(
   app.post("/api/orders", async (req, res) => {
     try {
       const validated = createOrderSchema.parse(req.body);
-      const { restaurantId, supplierId: targetSupplierId, notes, requestedDeliveryDate } = validated;
+      const { restaurantId, supplierId: targetSupplierId, notes, requestedDeliveryDate, deliveryDates } = validated;
 
       // Get cart items
       const allCartItems = await storage.getCartItems(restaurantId);
@@ -839,8 +840,9 @@ export async function registerRoutes(
           .reduce((sum, item) => sum + parseFloat(item.totalPrice), 0)
           .toFixed(2);
 
+        const supplierDeliveryDate = deliveryDates?.[supplierId] || requestedDeliveryDate || null;
         const order = await storage.createOrder(
-          { restaurantId, supplierId, totalAmount, status: "pending", notes, requestedDeliveryDate: requestedDeliveryDate || null },
+          { restaurantId, supplierId, totalAmount, status: "pending", notes, requestedDeliveryDate: supplierDeliveryDate },
           orderItems as any
         );
         createdOrders.push(order);
