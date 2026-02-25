@@ -212,17 +212,18 @@ export default function RestaurantCart() {
     return originalPrice;
   };
 
-  const groupedBySupplier = cartItems?.reduce((acc, item) => {
-    const supplierId = item.supplierId;
-    if (!acc[supplierId]) {
-      acc[supplierId] = {
-        supplier: item.supplier,
-        items: [],
-      };
+  const groupedBySupplier = useMemo(() => {
+    if (!cartItems) return undefined;
+    const sorted = [...cartItems].sort((a, b) => a.id.localeCompare(b.id));
+    const groups: Record<string, { supplier: typeof cartItems[0]["supplier"]; items: CartItemWithPromotion[] }> = {};
+    for (const item of sorted) {
+      if (!groups[item.supplierId]) {
+        groups[item.supplierId] = { supplier: item.supplier, items: [] };
+      }
+      groups[item.supplierId].items.push(item);
     }
-    acc[supplierId].items.push(item);
-    return acc;
-  }, {} as Record<string, { supplier: typeof cartItems[0]["supplier"]; items: CartItemWithPromotion[] }>);
+    return groups;
+  }, [cartItems]);
 
   const calculateTotal = (items: CartItemWithPromotion[]) => {
     return items.reduce((total, item) => total + getEffectivePrice(item) * item.quantity, 0).toFixed(2);
