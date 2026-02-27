@@ -42,6 +42,7 @@ export default function Complaints() {
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const highlightComplaintId = searchParams.get("complaintId");
+  const initialSupplierId = searchParams.get("supplierId");
 
   const [detailComplaint, setDetailComplaint] = useState<ComplaintWithDetails | null>(null);
   const [newComment, setNewComment] = useState("");
@@ -52,7 +53,7 @@ export default function Complaints() {
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   
-  const [filterComplaintSupplier, setFilterComplaintSupplier] = useState<string>("all");
+  const [filterComplaintSupplier, setFilterComplaintSupplier] = useState<string>(initialSupplierId || "all");
   const [filterComplaintStatus, setFilterComplaintStatus] = useState<string>("all");
   const [filterComplaintDateFrom, setFilterComplaintDateFrom] = useState<string>("");
   const [filterComplaintDateTo, setFilterComplaintDateTo] = useState<string>("");

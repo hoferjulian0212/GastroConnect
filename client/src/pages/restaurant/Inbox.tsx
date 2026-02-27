@@ -1078,6 +1078,28 @@ export default function RestaurantInbox() {
                               </div>
                             )}
                           </div>
+                          <div className="border-t border-border p-2 space-y-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start text-xs"
+                              onClick={() => { setOpenActionsPopover(false); setLocation(`/restaurant/orders?supplierId=${selectedConv.otherUser.id}`); }}
+                              data-testid="button-view-all-orders"
+                            >
+                              <ShoppingBag className="h-3.5 w-3.5 mr-2" />
+                              {t("inbox", "viewAllOrders")}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start text-xs"
+                              onClick={() => { setOpenActionsPopover(false); setLocation(`/restaurant/complaints?supplierId=${selectedConv.otherUser.id}`); }}
+                              data-testid="button-view-all-complaints"
+                            >
+                              <AlertCircle className="h-3.5 w-3.5 mr-2" />
+                              {t("inbox", "viewAllComplaints")}
+                            </Button>
+                          </div>
                         </PopoverContent>
                       </Popover>
                       {selectedConv.otherUser.phone && (

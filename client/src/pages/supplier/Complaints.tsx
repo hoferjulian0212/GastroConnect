@@ -40,6 +40,7 @@ export default function SupplierComplaints() {
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const highlightComplaintId = searchParams.get("complaintId");
+  const initialRestaurantId = searchParams.get("restaurantId");
 
   const [selectedComplaint, setSelectedComplaint] = useState<ComplaintWithDetails | null>(null);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
@@ -48,7 +49,7 @@ export default function SupplierComplaints() {
   const [newStatus, setNewStatus] = useState<string>("");
   const [newComment, setNewComment] = useState("");
 
-  const [filterRestaurant, setFilterRestaurant] = useState<string>("all");
+  const [filterRestaurant, setFilterRestaurant] = useState<string>(initialRestaurantId || "all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useSearch } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { useChat } from "@/context/ChatContext";
@@ -130,6 +130,7 @@ export default function SupplierInbox() {
   const { toast } = useToast();
   const { lang } = useLanguage();
   const t = useT(lang);
+  const [, setLocation] = useLocation();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
@@ -857,9 +858,31 @@ export default function SupplierInbox() {
                           {(!openActionsOrders || openActionsOrders.length === 0) && (!openActionsComplaints || openActionsComplaints.length === 0) && (
                             <div className="flex flex-col items-center justify-center py-6 text-center">
                               <CheckCircle className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                              <p className="text-sm text-muted-foreground" data-testid="text-no-open-actions">Keine offenen Aktionen</p>
+                              <p className="text-sm text-muted-foreground" data-testid="text-no-open-actions">{t("inbox", "noOpenActions")}</p>
                             </div>
                           )}
+                        </div>
+                        <div className="border-t border-border p-2 space-y-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start text-xs"
+                            onClick={() => { setOpenActionsPopover(false); setLocation(`/supplier/orders?restaurantId=${selectedConv.otherUser.id}`); }}
+                            data-testid="button-view-all-orders"
+                          >
+                            <ShoppingBag className="h-3.5 w-3.5 mr-2" />
+                            {t("inbox", "viewAllOrders")}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start text-xs"
+                            onClick={() => { setOpenActionsPopover(false); setLocation(`/supplier/complaints?restaurantId=${selectedConv.otherUser.id}`); }}
+                            data-testid="button-view-all-complaints"
+                          >
+                            <AlertCircle className="h-3.5 w-3.5 mr-2" />
+                            {t("inbox", "viewAllComplaints")}
+                          </Button>
                         </div>
                       </PopoverContent>
                     </Popover>

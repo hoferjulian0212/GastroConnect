@@ -29,10 +29,11 @@ export default function SupplierOrders() {
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const highlightOrderId = searchParams.get("orderId");
+  const initialRestaurantId = searchParams.get("restaurantId");
   const highlightRef = useRef<HTMLDivElement>(null);
 
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
-  const [filterRestaurant, setFilterRestaurant] = useState<string>("all");
+  const [filterRestaurant, setFilterRestaurant] = useState<string>(initialRestaurantId || "all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
   const [showMessageInput, setShowMessageInput] = useState(false);

@@ -509,6 +509,8 @@ const t = {
     openOrders: { de: "Offene Bestellungen", it: "Ordini aperti" },
     openComplaints: { de: "Offene Reklamationen", it: "Reclami aperti" },
     noOpenActions: { de: "Keine offenen Aktionen", it: "Nessuna azione aperta" },
+    viewAllOrders: { de: "Alle Bestellungen anzeigen", it: "Mostra tutti gli ordini" },
+    viewAllComplaints: { de: "Alle Reklamationen anzeigen", it: "Mostra tutti i reclami" },
     showOrderDetails: { de: "Bestelldetails anzeigen", it: "Mostra dettagli ordine" },
     showComplaint: { de: "Reklamation anzeigen", it: "Mostra reclamo" },
     deliveryNote: { de: "Lieferschein", it: "Bolla di consegna" },

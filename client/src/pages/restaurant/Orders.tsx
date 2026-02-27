@@ -40,10 +40,11 @@ export default function RestaurantOrders() {
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const highlightOrderId = searchParams.get("orderId");
+  const initialSupplierId = searchParams.get("supplierId");
   const highlightRef = useRef<HTMLDivElement>(null);
 
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterSupplier, setFilterSupplier] = useState<string>("all");
+  const [filterSupplier, setFilterSupplier] = useState<string>(initialSupplierId || "all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
   const [showSecondaryFilters, setShowSecondaryFilters] = useState(false);
