@@ -88,17 +88,16 @@ export function SupplierSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      <SidebarHeader className="pt-5 pb-3 px-4">
+      <SidebarHeader className="pt-5 pb-5 px-4">
         {currentUser && (
-          <Link href="/supplier/profile" className="flex items-center gap-3 px-2 rounded-xl hover-elevate cursor-pointer" data-testid="link-profile">
-            <Avatar className="h-9 w-9 rounded-full">
+          <Link href="/supplier/profile" className="flex flex-col items-center gap-2 px-2 py-3 rounded-xl hover-elevate cursor-pointer" data-testid="link-profile">
+            <Avatar className="h-12 w-12 rounded-full">
               <AvatarImage src={currentUser.profileImageUrl || undefined} alt={currentUser.name} />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-base">
                 {currentUser.companyName?.substring(0, 2).toUpperCase() || currentUser.name.substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-sm font-semibold truncate flex-1">{currentUser.companyName || currentUser.name}</span>
-            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-sm font-semibold text-center leading-snug w-full">{currentUser.companyName || currentUser.name}</span>
           </Link>
         )}
       </SidebarHeader>
