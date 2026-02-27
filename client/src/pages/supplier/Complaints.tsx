@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, Building2, Filter, X } from "lucide-react";
+import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, Building2, Filter, X, Store, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import type { ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getComplaintStatus } from "@/lib/translations";
@@ -52,6 +52,7 @@ export default function SupplierComplaints() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
+  const [showSecondaryFilters, setShowSecondaryFilters] = useState(false);
   const [showComplaintMessageInput, setShowComplaintMessageInput] = useState(false);
   const [complaintMessage, setComplaintMessage] = useState("");
 
@@ -225,16 +226,36 @@ export default function SupplierComplaints() {
 
   const uniqueRestaurants = useMemo(() => {
     if (!complaints) return [];
-    const map = new Map<string, string>();
+    const map = new Map<string, { id: string; name: string; profileImageUrl: string | null; complaintCount: number }>();
     complaints.forEach(c => {
       if (c.restaurant?.id) {
-        map.set(c.restaurant.id, c.restaurant.companyName || c.restaurant.name || t("common", "unknown"));
+        const existing = map.get(c.restaurant.id);
+        if (existing) {
+          existing.complaintCount++;
+        } else {
+          map.set(c.restaurant.id, {
+            id: c.restaurant.id,
+            name: c.restaurant.companyName || c.restaurant.name || "",
+            profileImageUrl: c.restaurant.profileImageUrl,
+            complaintCount: 1,
+          });
+        }
       }
     });
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [complaints, t]);
+    return Array.from(map.values());
+  }, [complaints]);
 
-  const hasActiveFilters = filterRestaurant !== "all" || filterStatus !== "all" || filterDateFrom || filterDateTo;
+  const statusCounts = useMemo(() => {
+    if (!complaints) return { all: 0, open: 0, in_progress: 0, resolved: 0, closed: 0 };
+    const counts = { all: complaints.length, open: 0, in_progress: 0, resolved: 0, closed: 0 };
+    complaints.forEach(c => {
+      if (c.status in counts) (counts as any)[c.status]++;
+    });
+    return counts;
+  }, [complaints]);
+
+  const hasActiveFilters = filterRestaurant !== "all" || filterDateFrom || filterDateTo;
+  const hasSecondaryFilters = filterDateFrom || filterDateTo;
 
   const clearFilters = () => {
     setFilterRestaurant("all");
@@ -262,9 +283,6 @@ export default function SupplierComplaints() {
     });
   }, [complaints, filterRestaurant, filterStatus, filterDateFrom, filterDateTo]);
 
-  const openCount = complaints?.filter(c => c.status === "open").length || 0;
-  const inProgressCount = complaints?.filter(c => c.status === "in_progress").length || 0;
-
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex items-center gap-2 md:gap-3">
@@ -275,86 +293,148 @@ export default function SupplierComplaints() {
         </div>
       </div>
 
-      <div className="grid gap-3 grid-cols-3 md:gap-4">
-        <Card>
-          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
-            <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-primary">{complaints?.length || 0}</div>
-              <p className="text-xs md:text-sm text-muted-foreground">{t("common", "total")}</p>
+      {uniqueRestaurants.length > 0 && (
+        <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+          <button
+            onClick={() => setFilterRestaurant("all")}
+            className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+              filterRestaurant === "all"
+                ? "border-primary bg-primary/10 dark:bg-primary/20"
+                : "border-transparent bg-muted/50 dark:bg-muted/30"
+            }`}
+            data-testid="filter-complaint-restaurant-all"
+          >
+            <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
+              filterRestaurant === "all"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              <Store className="h-5 w-5 md:h-6 md:w-6" />
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
-            <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-yellow-600">{openCount}</div>
-              <p className="text-xs md:text-sm text-muted-foreground">{getComplaintStatus("open", lang)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
-            <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-blue-600">{inProgressCount}</div>
-              <p className="text-xs md:text-sm text-muted-foreground">{getComplaintStatus("in_progress", lang)}</p>
-            </div>
-          </CardContent>
-        </Card>
+            <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
+              filterRestaurant === "all" ? "text-primary" : "text-muted-foreground"
+            }`}>
+              {t("common", "all")}
+            </span>
+            <span className={`text-xs md:text-sm font-bold leading-none ${
+              filterRestaurant === "all" ? "text-primary" : "text-foreground"
+            }`}>
+              {complaints?.length || 0}
+            </span>
+          </button>
+          {uniqueRestaurants.map(restaurant => {
+            const isActive = filterRestaurant === restaurant.id;
+            return (
+              <button
+                key={restaurant.id}
+                onClick={() => setFilterRestaurant(restaurant.id)}
+                className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+                  isActive
+                    ? "border-primary bg-primary/10 dark:bg-primary/20"
+                    : "border-transparent bg-muted/50 dark:bg-muted/30"
+                }`}
+                data-testid={`filter-complaint-restaurant-${restaurant.id}`}
+              >
+                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+                  <AvatarImage src={restaurant.profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                    {restaurant.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 max-w-[64px] md:max-w-[80px] ${
+                  isActive ? "text-primary" : "text-muted-foreground"
+                }`}>
+                  {restaurant.name}
+                </span>
+                <span className={`text-xs md:text-sm font-bold leading-none ${
+                  isActive ? "text-primary" : "text-foreground"
+                }`}>
+                  {restaurant.complaintCount}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
+        {([
+          { key: "all", icon: AlertCircle, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
+          { key: "open", icon: Clock, color: "bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400", activeColor: "bg-yellow-500 text-white dark:bg-yellow-600", borderColor: "border-yellow-400 dark:border-yellow-500" },
+          { key: "in_progress", icon: Loader2, color: "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400", activeColor: "bg-blue-500 text-white dark:bg-blue-600", borderColor: "border-blue-400 dark:border-blue-500" },
+          { key: "resolved", icon: CheckCircle, color: "bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-400", activeColor: "bg-green-500 text-white dark:bg-green-600", borderColor: "border-green-400 dark:border-green-500" },
+          { key: "closed", icon: XCircle, color: "bg-muted/60 text-muted-foreground", activeColor: "bg-muted-foreground text-background", borderColor: "border-muted-foreground" },
+        ] as const).map(({ key, icon: Icon, color, activeColor, borderColor }) => {
+          const isActive = filterStatus === key;
+          const count = (statusCounts as any)[key] || 0;
+          return (
+            <button
+              key={key}
+              onClick={() => setFilterStatus(key)}
+              className={`relative flex flex-col items-center gap-1 p-2.5 md:p-3 rounded-md border-2 transition-all ${
+                isActive
+                  ? `${activeColor} ${borderColor} shadow-sm`
+                  : `${color} border-transparent`
+              }`}
+              data-testid={`filter-complaint-status-${key}`}
+            >
+              <Icon className="h-4 w-4 md:h-5 md:w-5" />
+              <span className="text-[10px] md:text-xs font-medium leading-tight text-center">
+                {key === "all" ? t("common", "all") : getComplaintStatus(key, lang)}
+              </span>
+              <span className={`text-sm md:text-base font-bold leading-none ${isActive ? "" : "text-foreground"}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      <Card>
-        <CardHeader className="p-3 md:p-6">
-          <CardTitle className="text-base md:text-lg">{lang === "de" ? "Alle Reklamationen" : "Tutti i reclami"}</CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-2 items-end flex-wrap">
-            <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "restaurant")}</label>
-              <Select value={filterRestaurant} onValueChange={setFilterRestaurant}>
-                <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[160px]" data-testid="filter-complaint-restaurant">
-                  <Building2 className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                  <SelectValue placeholder={t("common", "all")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("supplierComplaints", "allRestaurants")}</SelectItem>
-                  {uniqueRestaurants.map(r => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "status")}</label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[150px]" data-testid="filter-complaint-status">
-                  <Filter className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                  <SelectValue placeholder={t("common", "all")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{lang === "de" ? "Alle Status" : "Tutti gli stati"}</SelectItem>
-                  <SelectItem value="open">{getComplaintStatus("open", lang)}</SelectItem>
-                  <SelectItem value="in_progress">{getComplaintStatus("in_progress", lang)}</SelectItem>
-                  <SelectItem value="resolved">{getComplaintStatus("resolved", lang)}</SelectItem>
-                  <SelectItem value="closed">{getComplaintStatus("closed", lang)}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
-              <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-from" />
-            </div>
-            <div className="w-full sm:w-auto">
-              <label className="text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
-              <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-to" />
-            </div>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0" data-testid="button-clear-complaint-filters">
-                <X className="h-3.5 w-3.5 mr-1" />
-                {t("common", "reset")}
-              </Button>
-            )}
-          </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setShowSecondaryFilters(!showSecondaryFilters)}
+          className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground hover-elevate rounded-md px-2 py-1.5"
+          data-testid="button-toggle-complaint-filters"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <span>{lang === "de" ? "Filter" : "Filtri"}</span>
+          {hasSecondaryFilters && (
+            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+              {(filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
+            </span>
+          )}
+          {showSecondaryFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="text-xs text-muted-foreground hover-elevate rounded-md px-2 py-1.5 flex items-center gap-1"
+            data-testid="button-clear-complaint-filters"
+          >
+            <X className="h-3 w-3" />
+            {t("common", "reset")}
+          </button>
+        )}
+      </div>
 
+      {showSecondaryFilters && (
+        <Card>
+          <CardContent className="p-3 md:p-4">
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
+                <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="h-9 text-xs md:text-sm" data-testid="filter-complaint-date-from" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
+                <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="h-9 text-xs md:text-sm" data-testid="filter-complaint-date-to" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-3 md:space-y-4">
           {isLoading ? (
             <div className="space-y-3 md:space-y-4">
               {[1, 2, 3].map((i) => (
@@ -465,8 +545,7 @@ export default function SupplierComplaints() {
               <p className="text-xs md:text-sm">{lang === "de" ? "Keine Reklamationen erhalten." : "Nessun reclamo ricevuto."}</p>
             </div>
           )}
-        </CardContent>
-      </Card>
+      </div>
 
       <Dialog open={showDetailDialog} onOpenChange={(open) => { if (!open) { setShowDetailDialog(false); setSelectedComplaint(null); setNewComment(""); setShowComplaintMessageInput(false); setComplaintMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">

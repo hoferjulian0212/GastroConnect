@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar, ShoppingBag, CalendarDays } from "lucide-react";
+import { AlertCircle, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -33,92 +33,6 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus, getComplaintStatus } from "@/lib/translations";
 
-function ComplaintFilters({
-  complaints,
-  filterSupplier,
-  setFilterSupplier,
-  filterStatus,
-  setFilterStatus,
-  filterDateFrom,
-  setFilterDateFrom,
-  filterDateTo,
-  setFilterDateTo,
-}: {
-  complaints: ComplaintWithDetails[];
-  filterSupplier: string;
-  setFilterSupplier: (v: string) => void;
-  filterStatus: string;
-  setFilterStatus: (v: string) => void;
-  filterDateFrom: string;
-  setFilterDateFrom: (v: string) => void;
-  filterDateTo: string;
-  setFilterDateTo: (v: string) => void;
-}) {
-  const { lang } = useLanguage();
-  const t = useT(lang);
-
-  const uniqueSuppliers = useMemo(() => {
-    const map = new Map<string, string>();
-    complaints.forEach(c => {
-      if (c.supplier?.id) {
-        map.set(c.supplier.id, c.supplier.companyName || c.supplier.name || t("common", "unknown"));
-      }
-    });
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [complaints]);
-
-  const hasFilters = filterSupplier !== "all" || filterStatus !== "all" || filterDateFrom || filterDateTo;
-
-  return (
-    <div className="flex flex-col sm:flex-row gap-2 items-end flex-wrap">
-      <div className="w-full sm:w-auto">
-        <label className="text-xs text-muted-foreground mb-1 block">{t("common", "supplier")}</label>
-        <Select value={filterSupplier} onValueChange={setFilterSupplier}>
-          <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[160px]" data-testid="filter-complaint-supplier">
-            <Store className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-            <SelectValue placeholder={t("common", "all")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("common", "allSuppliers")}</SelectItem>
-            {uniqueSuppliers.map(s => (
-              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="w-full sm:w-auto">
-        <label className="text-xs text-muted-foreground mb-1 block">{t("common", "status")}</label>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="h-9 text-xs md:text-sm w-full sm:w-[150px]" data-testid="filter-complaint-status">
-            <Filter className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-            <SelectValue placeholder={t("common", "all")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("complaints", "allStatuses")}</SelectItem>
-            <SelectItem value="open">{getComplaintStatus("open", lang)}</SelectItem>
-            <SelectItem value="in_progress">{getComplaintStatus("in_progress", lang)}</SelectItem>
-            <SelectItem value="resolved">{getComplaintStatus("resolved", lang)}</SelectItem>
-            <SelectItem value="closed">{getComplaintStatus("closed", lang)}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="w-full sm:w-auto">
-        <label className="text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
-        <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-from" />
-      </div>
-      <div className="w-full sm:w-auto">
-        <label className="text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
-        <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="h-9 text-xs md:text-sm w-full sm:w-[140px]" data-testid="filter-complaint-date-to" />
-      </div>
-      {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={() => { setFilterSupplier("all"); setFilterStatus("all"); setFilterDateFrom(""); setFilterDateTo(""); }} className="shrink-0" data-testid="button-clear-complaint-filters">
-          <X className="h-3.5 w-3.5 mr-1" />
-          {t("common", "reset")}
-        </Button>
-      )}
-    </div>
-  );
-}
 
 export default function Complaints() {
   const { currentUser } = useUser();
@@ -142,6 +56,7 @@ export default function Complaints() {
   const [filterComplaintStatus, setFilterComplaintStatus] = useState<string>("all");
   const [filterComplaintDateFrom, setFilterComplaintDateFrom] = useState<string>("");
   const [filterComplaintDateTo, setFilterComplaintDateTo] = useState<string>("");
+  const [showSecondaryFilters, setShowSecondaryFilters] = useState(false);
   
   // Edit state
   const [editingComplaint, setEditingComplaint] = useState<ComplaintWithDetails | null>(null);
@@ -405,6 +320,36 @@ export default function Complaints() {
     toast({ title: t("complaints", "uploadSuccess"), description: `${uploadedFiles.length} ${t("complaints", "filesUploaded")}` });
   };
 
+  const uniqueSuppliers = useMemo(() => {
+    if (!existingComplaints) return [];
+    const map = new Map<string, { id: string; name: string; profileImageUrl: string | null; complaintCount: number }>();
+    existingComplaints.forEach(c => {
+      if (c.supplier?.id) {
+        const existing = map.get(c.supplier.id);
+        if (existing) {
+          existing.complaintCount++;
+        } else {
+          map.set(c.supplier.id, {
+            id: c.supplier.id,
+            name: c.supplier.companyName || c.supplier.name || "",
+            profileImageUrl: c.supplier.profileImageUrl,
+            complaintCount: 1,
+          });
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [existingComplaints]);
+
+  const statusCounts = useMemo(() => {
+    if (!existingComplaints) return { all: 0, open: 0, in_progress: 0, resolved: 0, closed: 0 };
+    const counts = { all: existingComplaints.length, open: 0, in_progress: 0, resolved: 0, closed: 0 };
+    existingComplaints.forEach(c => {
+      if (c.status in counts) (counts as any)[c.status]++;
+    });
+    return counts;
+  }, [existingComplaints]);
+
   const filteredComplaints = useMemo(() => {
     if (!existingComplaints) return [];
     return existingComplaints.filter(c => {
@@ -424,6 +369,16 @@ export default function Complaints() {
     });
   }, [existingComplaints, filterComplaintSupplier, filterComplaintStatus, filterComplaintDateFrom, filterComplaintDateTo]);
 
+  const hasActiveFilters = filterComplaintSupplier !== "all" || filterComplaintDateFrom || filterComplaintDateTo;
+  const hasSecondaryFilters = filterComplaintDateFrom || filterComplaintDateTo;
+
+  const clearFilters = () => {
+    setFilterComplaintSupplier("all");
+    setFilterComplaintStatus("all");
+    setFilterComplaintDateFrom("");
+    setFilterComplaintDateTo("");
+  };
+
   const canSubmit = selectedOrderId && selectedSupplierId && title.trim() && description.trim();
 
   return (
@@ -442,22 +397,148 @@ export default function Complaints() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader className="p-3 md:p-6">
-          <CardTitle className="text-base md:text-lg">{t("complaints", "yourComplaints")}</CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-3">
-            <ComplaintFilters
-              complaints={existingComplaints || []}
-              filterSupplier={filterComplaintSupplier}
-              setFilterSupplier={setFilterComplaintSupplier}
-              filterStatus={filterComplaintStatus}
-              setFilterStatus={setFilterComplaintStatus}
-              filterDateFrom={filterComplaintDateFrom}
-              setFilterDateFrom={setFilterComplaintDateFrom}
-              filterDateTo={filterComplaintDateTo}
-              setFilterDateTo={setFilterComplaintDateTo}
-            />
+      {uniqueSuppliers.length > 0 && (
+        <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+          <button
+            onClick={() => setFilterComplaintSupplier("all")}
+            className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+              filterComplaintSupplier === "all"
+                ? "border-primary bg-primary/10 dark:bg-primary/20"
+                : "border-transparent bg-muted/50 dark:bg-muted/30"
+            }`}
+            data-testid="filter-complaint-supplier-all"
+          >
+            <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
+              filterComplaintSupplier === "all"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              <Store className="h-5 w-5 md:h-6 md:w-6" />
+            </div>
+            <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
+              filterComplaintSupplier === "all" ? "text-primary" : "text-muted-foreground"
+            }`}>
+              {t("common", "all")}
+            </span>
+            <span className={`text-xs md:text-sm font-bold leading-none ${
+              filterComplaintSupplier === "all" ? "text-primary" : "text-foreground"
+            }`}>
+              {existingComplaints?.length || 0}
+            </span>
+          </button>
+          {uniqueSuppliers.map(supplier => {
+            const isActive = filterComplaintSupplier === supplier.id;
+            return (
+              <button
+                key={supplier.id}
+                onClick={() => setFilterComplaintSupplier(supplier.id)}
+                className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+                  isActive
+                    ? "border-primary bg-primary/10 dark:bg-primary/20"
+                    : "border-transparent bg-muted/50 dark:bg-muted/30"
+                }`}
+                data-testid={`filter-complaint-supplier-${supplier.id}`}
+              >
+                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+                  <AvatarImage src={supplier.profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                    {supplier.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 max-w-[64px] md:max-w-[80px] ${
+                  isActive ? "text-primary" : "text-muted-foreground"
+                }`}>
+                  {supplier.name}
+                </span>
+                <span className={`text-xs md:text-sm font-bold leading-none ${
+                  isActive ? "text-primary" : "text-foreground"
+                }`}>
+                  {supplier.complaintCount}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
+        {([
+          { key: "all", icon: AlertCircle, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
+          { key: "open", icon: Clock, color: "bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400", activeColor: "bg-yellow-500 text-white dark:bg-yellow-600", borderColor: "border-yellow-400 dark:border-yellow-500" },
+          { key: "in_progress", icon: Loader2, color: "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400", activeColor: "bg-blue-500 text-white dark:bg-blue-600", borderColor: "border-blue-400 dark:border-blue-500" },
+          { key: "resolved", icon: CheckCircle, color: "bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-400", activeColor: "bg-green-500 text-white dark:bg-green-600", borderColor: "border-green-400 dark:border-green-500" },
+          { key: "closed", icon: XCircle, color: "bg-muted/60 text-muted-foreground", activeColor: "bg-muted-foreground text-background", borderColor: "border-muted-foreground" },
+        ] as const).map(({ key, icon: Icon, color, activeColor, borderColor }) => {
+          const isActive = filterComplaintStatus === key;
+          const count = (statusCounts as any)[key] || 0;
+          return (
+            <button
+              key={key}
+              onClick={() => setFilterComplaintStatus(key)}
+              className={`relative flex flex-col items-center gap-1 p-2.5 md:p-3 rounded-md border-2 transition-all ${
+                isActive
+                  ? `${activeColor} ${borderColor} shadow-sm`
+                  : `${color} border-transparent`
+              }`}
+              data-testid={`filter-complaint-status-${key}`}
+            >
+              <Icon className="h-4 w-4 md:h-5 md:w-5" />
+              <span className="text-[10px] md:text-xs font-medium leading-tight text-center">
+                {key === "all" ? t("common", "all") : getComplaintStatus(key, lang)}
+              </span>
+              <span className={`text-sm md:text-base font-bold leading-none ${isActive ? "" : "text-foreground"}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setShowSecondaryFilters(!showSecondaryFilters)}
+          className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground hover-elevate rounded-md px-2 py-1.5"
+          data-testid="button-toggle-complaint-filters"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <span>{lang === "de" ? "Filter" : "Filtri"}</span>
+          {hasSecondaryFilters && (
+            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+              {(filterComplaintDateFrom ? 1 : 0) + (filterComplaintDateTo ? 1 : 0)}
+            </span>
+          )}
+          {showSecondaryFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="text-xs text-muted-foreground hover-elevate rounded-md px-2 py-1.5 flex items-center gap-1"
+            data-testid="button-clear-complaint-filters"
+          >
+            <X className="h-3 w-3" />
+            {t("common", "reset")}
+          </button>
+        )}
+      </div>
+
+      {showSecondaryFilters && (
+        <Card>
+          <CardContent className="p-3 md:p-4">
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
+                <Input type="date" value={filterComplaintDateFrom} onChange={e => setFilterComplaintDateFrom(e.target.value)} className="h-9 text-xs md:text-sm" data-testid="filter-complaint-date-from" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
+                <Input type="date" value={filterComplaintDateTo} onChange={e => setFilterComplaintDateTo(e.target.value)} className="h-9 text-xs md:text-sm" data-testid="filter-complaint-date-to" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-2 md:space-y-3">
             {loadingComplaints ? (
               <div className="space-y-2 md:space-y-3">
                 {[1, 2, 3].map((i) => (
@@ -580,8 +661,7 @@ export default function Complaints() {
                 <p className="text-sm md:text-base">{t("complaints", "noComplaints")}</p>
               </div>
             )}
-          </CardContent>
-        </Card>
+      </div>
 
       <Dialog open={showCreateDialog} onOpenChange={(open) => { if (!open) resetForm(); }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-create-complaint">
