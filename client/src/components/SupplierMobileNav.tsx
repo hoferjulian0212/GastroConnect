@@ -64,7 +64,7 @@ export function SupplierMobileNav() {
     right: 0,
     zIndex: 50,
     margin: "0 16px 12px 16px",
-    paddingBottom: "env(safe-area-inset-bottom, 16px)",
+    paddingBottom: "env(safe-area-inset-bottom, 4px)",
     borderRadius: "9999px",
     boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
     overflow: "hidden",
@@ -124,12 +124,12 @@ export function SupplierMobileNav() {
               <Link
                 key={item.url}
                 href={item.url}
-                className="flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors pt-3 pb-2"
+                className="flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors pt-2 pb-1"
                 style={{ color: isActive ? "#4285F4" : "#8E8E93" }}
                 data-testid={`mobile-nav-${item.url.split('/').pop()}`}
               >
                 <div className="relative inline-flex items-center justify-center">
-                  <item.icon className="h-6 w-6" />
+                  <item.icon className="h-5 w-5" />
                   {badgeCount > 0 && (
                     <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-medium">
                       {badgeCount > 9 ? "9+" : badgeCount}
@@ -145,12 +145,12 @@ export function SupplierMobileNav() {
           
           <button
             onClick={() => setIsMoreOpen(!isMoreOpen)}
-            className="flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors pt-3 pb-2"
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors pt-2 pb-1"
             style={{ color: (isMoreActive || isMoreOpen) ? "#4285F4" : "#8E8E93" }}
             data-testid="mobile-nav-more"
           >
             <div className="relative inline-flex items-center justify-center">
-              <MoreHorizontal className="h-6 w-6" />
+              <MoreHorizontal className="h-5 w-5" />
             </div>
             <span className="text-[10px] font-medium text-center w-full">
               {t("common", "more")}
