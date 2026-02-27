@@ -107,6 +107,7 @@ const reorderSchema = z.object({
 const updateOrderStatusSchema = z.object({
   status: z.enum(["pending", "confirmed", "in_delivery", "delivered", "cancelled"]),
   changedBy: uuidField.optional(),
+  requestedDeliveryDate: safeShortString.optional().nullable(),
 }).strict();
 
 const editOrderItemSchema = z.object({
@@ -1077,13 +1078,13 @@ export async function registerRoutes(
 
   app.patch("/api/orders/:id/status", async (req, res) => {
     try {
-      const { status, changedBy } = updateOrderStatusSchema.parse(req.body);
+      const { status, changedBy, requestedDeliveryDate } = updateOrderStatusSchema.parse(req.body);
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
       const previousStatus = order.status;
-      const updated = await storage.updateOrderStatus(req.params.id, status);
+      const updated = await storage.updateOrderStatus(req.params.id, status, requestedDeliveryDate ?? undefined);
       if (!updated) {
         return res.status(404).json({ error: "Order not found" });
       }

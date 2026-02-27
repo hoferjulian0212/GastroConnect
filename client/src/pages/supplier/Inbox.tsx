@@ -19,6 +19,7 @@ import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, Ale
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
+import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -135,6 +136,7 @@ export default function SupplierInbox() {
   const [messageText, setMessageText] = useState("");
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
   const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string } | null>(null);
+  const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
 
   // Complaint management state
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
@@ -192,8 +194,8 @@ export default function SupplierInbox() {
   });
 
   const updateOrderStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status }: { orderId: string; status: string }) => {
-      return await apiRequest("PATCH", `/api/orders/${orderId}/status`, { status, changedBy: currentUser?.id });
+    mutationFn: async ({ orderId, status, requestedDeliveryDate }: { orderId: string; status: string; requestedDeliveryDate?: string }) => {
+      return await apiRequest("PATCH", `/api/orders/${orderId}/status`, { status, changedBy: currentUser?.id, requestedDeliveryDate: requestedDeliveryDate || undefined });
     },
     onSuccess: (_, variables) => {
       toast({ title: "Status aktualisiert", description: "Der Bestellstatus wurde erfolgreich geändert." });
@@ -745,6 +747,11 @@ export default function SupplierInbox() {
                                           className="text-xs flex-1"
                                           onClick={(e) => {
                                             e.stopPropagation();
+                                            if (nextStatus === "in_delivery") {
+                                              setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId });
+                                              setOpenActionsPopover(false);
+                                              return;
+                                            }
                                             apiRequest("PATCH", `/api/orders/${order.id}/status`, { status: nextStatus, changedBy: currentUser?.id })
                                               .then(() => {
                                                 queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
@@ -1093,12 +1100,20 @@ export default function SupplierInbox() {
                                                   size="sm"
                                                   className="flex-1"
                                                   variant={cardWizard.action === "cancelled" ? "destructive" : "default"}
-                                                  onClick={() => updateOrderStatusMutation.mutate({ orderId: message.orderId!, status: cardWizard.action })}
+                                                  onClick={() => {
+                                                    if (cardWizard.action === "in_delivery" && selectedConv) {
+                                                      setDeliveryDatePicker({ orderId: message.orderId!, restaurantId: selectedConv.restaurantId });
+                                                    } else {
+                                                      updateOrderStatusMutation.mutate({ orderId: message.orderId!, status: cardWizard.action });
+                                                    }
+                                                  }}
                                                   disabled={updateOrderStatusMutation.isPending}
                                                   data-testid={`wizard-confirm-action-${message.orderId}`}
                                                 >
                                                   {updateOrderStatusMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-                                                  {lang === "it" ? "Conferma" : "Bestätigen"}
+                                                  {cardWizard.action === "in_delivery"
+                                                    ? (lang === "it" ? "Scegli data" : "Datum wählen")
+                                                    : (lang === "it" ? "Conferma" : "Bestätigen")}
                                                 </Button>
                                               </div>
                                             </div>
@@ -2031,6 +2046,22 @@ export default function SupplierInbox() {
           )}
         </DialogContent>
       </Dialog>
+
+      <DeliveryDatePicker
+        open={!!deliveryDatePicker}
+        onOpenChange={(open) => { if (!open) { setDeliveryDatePicker(null); setCardWizard(null); } }}
+        supplierId={currentUser?.id || ""}
+        restaurantId={deliveryDatePicker?.restaurantId || ""}
+        isPending={updateOrderStatusMutation.isPending}
+        onConfirm={(date) => {
+          if (deliveryDatePicker) {
+            updateOrderStatusMutation.mutate(
+              { orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date },
+              { onSuccess: () => { setDeliveryDatePicker(null); setCardWizard(null); } }
+            );
+          }
+        }}
+      />
     </div>
   );
 }

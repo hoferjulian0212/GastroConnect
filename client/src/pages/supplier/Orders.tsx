@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSearch } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
+import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 
 export default function SupplierOrders() {
   const { currentUser } = useUser();
@@ -38,6 +39,7 @@ export default function SupplierOrders() {
   const [filterDateTo, setFilterDateTo] = useState<string>("");
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [orderMessage, setOrderMessage] = useState("");
+  const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
 
   const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`],
@@ -99,8 +101,8 @@ export default function SupplierOrders() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status }: { orderId: string; status: string }) => {
-      return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status });
+    mutationFn: async ({ orderId, status, requestedDeliveryDate }: { orderId: string; status: string; requestedDeliveryDate?: string }) => {
+      return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status, requestedDeliveryDate: requestedDeliveryDate || undefined });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
@@ -281,7 +283,7 @@ export default function SupplierOrders() {
                   </Button>
                 )}
                 {order.status === "confirmed" && (
-                  <Button size="sm" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "in_delivery" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-in_delivery-${order.id}`}>
+                  <Button size="sm" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-status-in_delivery-${order.id}`}>
                     <Truck className="h-3.5 w-3.5 mr-1" />
                     {lang === "de" ? "In Lieferung" : "In consegna"}
                   </Button>
@@ -565,7 +567,7 @@ export default function SupplierOrders() {
                       </Button>
                     )}
                     {detailOrder.status === "confirmed" && (
-                      <Button size="sm" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "in_delivery" }); setDetailOrder({ ...detailOrder, status: "in_delivery" }); }} disabled={updateStatusMutation.isPending} data-testid="button-status-in_delivery">
+                      <Button size="sm" onClick={() => setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId })} disabled={updateStatusMutation.isPending} data-testid="button-status-in_delivery">
                         <Truck className="h-3.5 w-3.5 mr-1" />
                         {lang === "de" ? "In Lieferung" : "In consegna"}
                       </Button>
@@ -706,6 +708,29 @@ export default function SupplierOrders() {
           )}
         </DialogContent>
       </Dialog>
+
+      <DeliveryDatePicker
+        open={!!deliveryDatePicker}
+        onOpenChange={(open) => { if (!open) setDeliveryDatePicker(null); }}
+        supplierId={currentUser?.id || ""}
+        restaurantId={deliveryDatePicker?.restaurantId || ""}
+        isPending={updateStatusMutation.isPending}
+        onConfirm={(date) => {
+          if (deliveryDatePicker) {
+            updateStatusMutation.mutate(
+              { orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date },
+              {
+                onSuccess: () => {
+                  setDeliveryDatePicker(null);
+                  if (detailOrder && detailOrder.id === deliveryDatePicker.orderId) {
+                    setDetailOrder({ ...detailOrder, status: "in_delivery" });
+                  }
+                },
+              }
+            );
+          }
+        }}
+      />
     </div>
   );
 }

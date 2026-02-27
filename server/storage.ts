@@ -46,7 +46,7 @@ export interface IStorage {
   getRecentOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]>;
   getOrder(id: string): Promise<OrderWithDetails | undefined>;
   createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
-  updateOrderStatus(id: string, status: string): Promise<Order | undefined>;
+  updateOrderStatus(id: string, status: string, requestedDeliveryDate?: string): Promise<Order | undefined>;
   updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string, requestedDeliveryDate?: string | null): Promise<Order | undefined>;
 
   // Cart
@@ -317,10 +317,14 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateOrderStatus(id: string, status: string): Promise<Order | undefined> {
+  async updateOrderStatus(id: string, status: string, requestedDeliveryDate?: string): Promise<Order | undefined> {
+    const setData: any = { status: status as any, updatedAt: new Date() };
+    if (requestedDeliveryDate !== undefined) {
+      setData.requestedDeliveryDate = requestedDeliveryDate;
+    }
     const [updated] = await db
       .update(orders)
-      .set({ status: status as any, updatedAt: new Date() })
+      .set(setData)
       .where(eq(orders.id, id))
       .returning();
     return updated;
