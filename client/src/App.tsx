@@ -13,7 +13,8 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShoppingCart, UtensilsCrossed } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
+import logoImg from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-Photoroom_1772219389604.png";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { RestaurantSidebar } from "@/components/RestaurantSidebar";
@@ -214,9 +215,7 @@ function AppLayout() {
                   <MobileProfileButton />
                   <div className="hidden md:flex items-center gap-2">
                     <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                        <UtensilsCrossed className="h-4.5 w-4.5 text-primary-foreground" />
-                      </div>
+                      <img src={logoImg} alt="GastroConnect Logo" className="h-8 w-8 object-contain dark:invert" />
                       <span className="text-lg font-bold text-foreground tracking-tight">GastroConnect</span>
                     </div>
                   </div>
