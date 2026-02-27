@@ -1276,7 +1276,7 @@ export default function SupplierInbox() {
                                             size="sm"
                                             className="w-full"
                                             onClick={() => {
-                                              window.open(`/api/orders/${docData.orderId}/delivery-note/download`, "_blank");
+                                              const a = document.createElement("a"); a.href = `/api/orders/${docData.orderId}/delivery-note/download`; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
                                             }}
                                             data-testid={`button-download-doc-${message.id}`}
                                           >
@@ -1738,7 +1738,6 @@ export default function SupplierInbox() {
                       <a 
                         key={idx} 
                         href={getMediaSrc(url)}
-                        target="_blank"
                         rel="noopener noreferrer"
                         className="block aspect-square rounded-lg overflow-hidden border hover-elevate"
                       >

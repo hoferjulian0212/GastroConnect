@@ -22,7 +22,8 @@ import { SupplierSidebar } from "@/components/SupplierSidebar";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
+import { navigate } from "wouter/use-browser-location";
 import type { User } from "@shared/schema";
 
 import Landing from "@/pages/Landing";
@@ -172,6 +173,25 @@ function AppLayout() {
   const { currentRole, isLoading } = useUser();
   const { isInChat } = useChat();
   const [location] = useLocation();
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const anchor = (e.target as Element)?.closest?.("a");
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href) return;
+      if (anchor.getAttribute("download") !== null) return;
+      if (href.startsWith("tel:") || href.startsWith("mailto:")) return;
+      const isInternal = href.startsWith("/") || href.startsWith(window.location.origin);
+      if (isInternal) {
+        e.preventDefault();
+        const path = href.startsWith("/") ? href : new URL(href).pathname + new URL(href).search;
+        navigate(path);
+      }
+    };
+    document.addEventListener("click", handler, true);
+    return () => document.removeEventListener("click", handler, true);
+  }, []);
 
   const sidebarStyle = {
     "--sidebar-width": "16rem",

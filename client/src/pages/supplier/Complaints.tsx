@@ -494,7 +494,6 @@ export default function SupplierComplaints() {
                           <a 
                             key={idx} 
                             href={getMediaSrc(url)}
-                            target="_blank"
                             rel="noopener noreferrer"
                             className="h-14 w-14 md:h-16 md:w-16 rounded-lg overflow-hidden border hover:opacity-80 transition-opacity"
                           >
@@ -601,7 +600,6 @@ export default function SupplierComplaints() {
                         <a
                           key={idx}
                           href={getMediaSrc(url)}
-                          target="_blank"
                           rel="noopener noreferrer"
                           className="h-16 w-16 rounded-lg border bg-muted overflow-hidden"
                         >

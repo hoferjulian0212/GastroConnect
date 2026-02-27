@@ -1557,7 +1557,7 @@ export default function RestaurantInbox() {
                                               size="sm"
                                               className="w-full"
                                               onClick={() => {
-                                                window.open(`/api/orders/${docData.orderId}/delivery-note/download`, "_blank");
+                                                const a = document.createElement("a"); a.href = `/api/orders/${docData.orderId}/delivery-note/download`; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
                                               }}
                                               data-testid={`button-download-doc-${message.id}`}
                                             >
@@ -2065,7 +2065,7 @@ export default function RestaurantInbox() {
                     variant="outline"
                     className="w-full"
                     onClick={() => {
-                      window.open(`/api/orders/${orderDetail.id}/delivery-note/download`, "_blank");
+                      const a = document.createElement("a"); a.href = `/api/orders/${orderDetail.id}/delivery-note/download`; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
                     }}
                     data-testid="button-download-delivery-note"
                   >
@@ -2223,7 +2223,7 @@ export default function RestaurantInbox() {
                   <h4 className="font-medium text-sm mb-2">{t("complaints", "attachments")}</h4>
                   <div className="grid grid-cols-3 gap-2">
                     {complaintDetail.mediaUrls.map((url: string, idx: number) => (
-                      <a key={idx} href={getMediaSrc(url)} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-lg overflow-hidden border hover-elevate">
+                      <a key={idx} href={getMediaSrc(url)} rel="noopener noreferrer" className="block aspect-square rounded-lg overflow-hidden border hover-elevate">
                         {isVideoFile(url) ? (
                           <div className="h-full w-full flex items-center justify-center bg-muted">
                             <Package className="h-6 w-6 text-muted-foreground" />

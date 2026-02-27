@@ -917,7 +917,6 @@ export default function Complaints() {
                         <a
                           key={idx}
                           href={getMediaSrc(url)}
-                          target="_blank"
                           rel="noopener noreferrer"
                           className="h-16 w-16 rounded-lg border bg-muted overflow-hidden"
                         >

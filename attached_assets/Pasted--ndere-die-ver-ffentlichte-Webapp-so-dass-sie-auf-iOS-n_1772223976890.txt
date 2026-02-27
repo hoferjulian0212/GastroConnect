@@ -1,0 +1,41 @@
+Ändere die veröffentlichte Webapp so, dass sie auf iOS niemals in eine externe “Browser/Safari View” (SFSafariViewController mit X oben links) springt. Ziel: Jede interne Navigation bleibt zu 100% in der App-View, ohne neue Tabs, ohne Full-Reloads, ohne externe In-App-Browser Views. Das betrifft Landing Page → Dashboard, Tab-Bar Wechsel, Card-Klicks, Language Switch (DE/IT), “Mehr”-Menü usw.
+
+Setze das strikt um:
+	1.	Verbotene Patterns entfernen (global refactor)
+
+	•	Entferne überall target="_blank" bei internen Links.
+	•	Entferne überall window.open(...).
+	•	Entferne überall window.location = ..., location.href = ..., location.assign(), location.replace() für interne Navigation.
+	•	Entferne absolute interne URLs wie https://gastro-connect.replit.app/... und ersetze sie durch relative Pfade wie /dashboard, /, /orders.
+
+	2.	Erzwinge Router-Navigation für ALLES interne
+
+	•	Nutze ausschließlich den SPA-Router des Projekts (erkenne automatisch ob React Router oder Next.js).
+	•	Ersetze alle internen <a href="/..."> durch Router-Links:
+	•	React Router: <Link to="/..."> und navigate("/...")
+	•	Next.js: <Link href="/..."> und router.push("/...")
+	•	Wenn UI-Komponenten (Card/Button/ListItem) intern ein <a> rendern oder href props nutzen: refactore sie so, dass sie Router-Navigation nutzen (onClick → router push/navigate) oder als Router-Link gerendert werden.
+
+	3.	Language Switch ohne Reload
+
+	•	DE/IT Switch darf keinen Seitenreload machen und keine absolute URL verwenden.
+	•	Lösung: Sprache als State (Context/Store) oder als Router-Query/Segment verwalten, aber nur über Router ändern (push/replace) und ohne window.location.
+	•	Beim Wechsel muss die Seite exakt im selben Layout bleiben.
+
+	4.	Globaler Interceptor als Sicherheitsnetz
+
+	•	Implementiere zentral (z.B. in App/Layout) einen Click-Interceptor:
+	•	Für alle Klicks auf <a>:
+	•	Wenn href mit “/” beginnt oder gleiche Origin ist: preventDefault() und Router-Navigation ausführen.
+	•	Externe Links (http/https andere Domain): standardmäßig im selben Tab öffnen (kein _blank). Optional komplett blocken, wenn nicht gebraucht.
+	•	Damit ist selbst ein versehentliches <a> abgesichert und kann nicht mehr Safari-View triggern.
+
+	5.	Enforce Utility
+
+	•	Erstelle eine Helper-Funktion appNavigate(path) (oder Hook), die intern immer Router nutzt.
+	•	Ersetze im gesamten Code jede interne Navigation durch diese Utility.
+	•	Füge in Dev-Mode Warnungen hinzu, wenn target="_blank" oder window.open irgendwo auftaucht (z.B. simple runtime check).
+
+Am Ende:
+	•	Liste alle geänderten Dateien.
+	•	Stelle sicher, dass Landing→Dashboard, Bottom-Tab Wechsel, Card-Klicks und DE/IT Switch niemals eine externe Browser-View öffnen.

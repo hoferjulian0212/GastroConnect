@@ -311,7 +311,7 @@ export function AttachmentMessageCard({ content, timestamp, isOwn, conversationI
           variant="outline"
           size="sm"
           className="w-full"
-          onClick={() => window.open(getDownloadUrl(), "_blank")}
+          onClick={() => { const a = document.createElement("a"); a.href = getDownloadUrl(); a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a); }}
           data-testid="button-download-attachment"
         >
           <Download className="h-3 w-3 mr-1" />

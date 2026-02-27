@@ -241,11 +241,10 @@ export default function Documents() {
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (doc.type === "delivery_note") {
-                            window.open(`/api/orders/${doc.orderId}/delivery-note/download`, "_blank");
-                          } else {
-                            window.open(doc.fileUrl, "_blank");
-                          }
+                          const url = doc.type === "delivery_note"
+                            ? `/api/orders/${doc.orderId}/delivery-note/download`
+                            : doc.fileUrl;
+                          const a = document.createElement("a"); a.href = url; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
                         }}
                         data-testid={`button-download-${doc.id}`}
                       >
@@ -358,7 +357,7 @@ export default function Documents() {
                       className="flex-1"
                       onClick={() => {
                         if (selectedDoc) {
-                          window.open(`/api/orders/${selectedDoc.orderId}/delivery-note/download`, "_blank");
+                          const a = document.createElement("a"); a.href = `/api/orders/${selectedDoc.orderId}/delivery-note/download`; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
                         }
                       }}
                       data-testid="button-download-original"
