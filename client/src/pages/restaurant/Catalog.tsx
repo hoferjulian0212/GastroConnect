@@ -29,6 +29,7 @@ export default function RestaurantCatalog() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [onlyAvailable, setOnlyAvailable] = useState(false);
+  const [onlyPromotions, setOnlyPromotions] = useState(false);
   const [detailProduct, setDetailProduct] = useState<ProductWithSupplierAndPromotion | null>(null);
   const [addedProductIds, setAddedProductIds] = useState<Set<string>>(new Set());
   const [addedTimers, setAddedTimers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -41,13 +42,13 @@ export default function RestaurantCatalog() {
     if (supplierParam) {
       setSelectedSupplier(supplierParam);
     }
+    const promotionsParam = params.get("promotions");
+    setOnlyPromotions(promotionsParam === "true");
   }, [location]);
 
   const { data: suppliers, isLoading: suppliersLoading } = useQuery<User[]>({
     queryKey: ["/api/suppliers"],
   });
-
-  const [onlyPromotions, setOnlyPromotions] = useState(false);
 
   const { data: products, isLoading: productsLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
     queryKey: [`/api/products?restaurantId=${currentUser?.id}`],
