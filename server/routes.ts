@@ -64,7 +64,11 @@ const updatePromotionSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   isActive: z.boolean().optional(),
-}).strict();
+  name: z.string().optional(),
+  description: z.string().optional(),
+  groupId: z.string().optional(),
+  targetRestaurantIds: z.array(z.string()).optional(),
+});
 
 const deliveryScheduleSchema = z.object({
   supplierId: uuidField,
@@ -236,6 +240,9 @@ export async function registerRoutes(
       const activePromotions = await storage.getActivePromotions();
       const promoMap = new Map<string, typeof activePromotions[0]>();
       for (const promo of activePromotions) {
+        if (promo.targetRestaurantIds && promo.targetRestaurantIds.length > 0 && restaurantId) {
+          if (!promo.targetRestaurantIds.includes(restaurantId)) continue;
+        }
         const existing = promoMap.get(promo.productId);
         if (!existing || promo.discountPercent > existing.discountPercent) {
           promoMap.set(promo.productId, promo);
@@ -353,6 +360,64 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/promotions/bulk", async (req, res) => {
+    try {
+      const { productIds, supplierId, discountPercent, startDate: startStr, endDate: endStr, name, description, targetRestaurantIds } = req.body;
+      if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+        return res.status(400).json({ error: "At least one product is required" });
+      }
+      const startDate = new Date(startStr);
+      const endDate = new Date(endStr);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (startDate < today) return res.status(400).json({ error: "Start date cannot be in the past" });
+      if (endDate < today) return res.status(400).json({ error: "End date cannot be in the past" });
+      if (endDate <= startDate) return res.status(400).json({ error: "End date must be after start date" });
+
+      const groupId = randomUUID();
+      const created = [];
+      for (const productId of productIds) {
+        const promo = await storage.createPromotion({
+          productId,
+          supplierId,
+          discountPercent,
+          startDate,
+          endDate,
+          isActive: true,
+          name: name || null,
+          description: description || null,
+          groupId,
+          targetRestaurantIds: targetRestaurantIds || null,
+        });
+        created.push(promo);
+      }
+      res.status(201).json({ groupId, promotions: created });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid promotion data" });
+    }
+  });
+
+  app.post("/api/promotions/notify", async (req, res) => {
+    try {
+      const { supplierId, restaurantIds, message } = req.body;
+      if (!supplierId || !restaurantIds || !Array.isArray(restaurantIds) || restaurantIds.length === 0 || !message) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      for (const restaurantId of restaurantIds) {
+        const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
+        await storage.createMessage({
+          conversationId: conversation.id,
+          senderId: supplierId,
+          content: message,
+          messageType: "text",
+        });
+      }
+      res.status(200).json({ sent: restaurantIds.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send notifications" });
+    }
+  });
+
   app.patch("/api/promotions/:id", async (req, res) => {
     try {
       const validated = updatePromotionSchema.parse(req.body);
@@ -377,6 +442,15 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid input", details: error.errors });
       }
       res.status(500).json({ error: "Failed to update promotion" });
+    }
+  });
+
+  app.delete("/api/promotions/group/:groupId", async (req, res) => {
+    try {
+      await storage.deletePromotionsByGroup(req.params.groupId);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete promotion group" });
     }
   });
 

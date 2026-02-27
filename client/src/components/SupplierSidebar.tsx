@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, Package, ClipboardList, Settings, AlertCircle, FileText, ChevronRight, Store } from "lucide-react";
+import { Home, MessageSquare, Package, ClipboardList, Settings, AlertCircle, FileText, ChevronRight, Store, Tag } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -29,6 +29,7 @@ export function SupplierSidebar() {
     { title: t("common", "products"), url: "/supplier/products", icon: Package },
     { title: t("common", "restaurants"), url: "/supplier/restaurants", icon: Store },
     { title: t("common", "orders"), url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
+    { title: t("common", "promotions"), url: "/supplier/promotions", icon: Tag },
     { title: t("common", "complaints"), url: "/supplier/complaints", icon: AlertCircle },
     { title: t("common", "documents"), url: "/supplier/documents", icon: FileText },
   ];

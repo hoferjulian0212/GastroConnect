@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, Package, ClipboardList, MoreHorizontal, AlertCircle, Settings, X, FileText, Store } from "lucide-react";
+import { Home, MessageSquare, Package, ClipboardList, MoreHorizontal, AlertCircle, Settings, X, FileText, Store, Tag } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useChat } from "@/context/ChatContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -24,6 +24,7 @@ export function SupplierMobileNav() {
 
   const moreMenuItems = [
     { title: t("common", "restaurants"), url: "/supplier/restaurants", icon: Store },
+    { title: t("common", "promotions"), url: "/supplier/promotions", icon: Tag },
     { title: t("common", "complaints"), url: "/supplier/complaints", icon: AlertCircle },
     { title: t("common", "documents"), url: "/supplier/documents", icon: FileText },
     { title: t("common", "settings"), url: "/supplier/settings", icon: Settings },

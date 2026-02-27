@@ -188,6 +188,10 @@ export const promotions = pgTable("promotions", {
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  name: text("name"),
+  description: text("description"),
+  groupId: varchar("group_id", { length: 36 }),
+  targetRestaurantIds: text("target_restaurant_ids").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

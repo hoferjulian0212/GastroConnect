@@ -127,6 +127,7 @@ export interface IStorage {
   createPromotion(promotion: InsertPromotion): Promise<Promotion>;
   updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined>;
   deletePromotion(id: string): Promise<void>;
+  deletePromotionsByGroup(groupId: string): Promise<void>;
 
   // Custom Min Order Quantities
   getCustomMinOrderQuantities(supplierId: string): Promise<(CustomMinOrderQuantity & { product: Product; restaurant: User })[]>;
@@ -1097,6 +1098,10 @@ export class DatabaseStorage implements IStorage {
 
   async deletePromotion(id: string): Promise<void> {
     await db.delete(promotions).where(eq(promotions.id, id));
+  }
+
+  async deletePromotionsByGroup(groupId: string): Promise<void> {
+    await db.delete(promotions).where(eq(promotions.groupId, groupId));
   }
 
   async getDeliverySchedules(supplierId: string): Promise<(DeliverySchedule & { restaurant: User })[]> {

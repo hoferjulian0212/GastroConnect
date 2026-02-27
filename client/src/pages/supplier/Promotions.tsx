@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -15,21 +18,26 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Tag, Plus, Pencil, Trash2, Package, Calendar, Percent, Loader2 } from "lucide-react";
-import type { Product, PromotionWithProduct } from "@shared/schema";
+import { Tag, Plus, Trash2, Package, Calendar, Percent, Loader2, Send, Check, ChevronRight, ChevronLeft, Users, MessageSquare, Search, X } from "lucide-react";
+import type { Product, PromotionWithProduct, User } from "@shared/schema";
 import { format } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+
+type PromotionGroup = {
+  groupId: string | null;
+  name: string | null;
+  description: string | null;
+  discountPercent: number;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  targetRestaurantIds: string[] | null;
+  promotions: PromotionWithProduct[];
+};
 
 export default function SupplierPromotions() {
   const { currentUser } = useUser();
@@ -38,11 +46,19 @@ export default function SupplierPromotions() {
   const t = useT(lang);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPromo, setEditingPromo] = useState<PromotionWithProduct | null>(null);
-  const [selectedProductId, setSelectedProductId] = useState<string>("");
-  const [discountPercent, setDiscountPercent] = useState<string>("");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [wizardStep, setWizardStep] = useState(1);
+
+  const [promoName, setPromoName] = useState("");
+  const [promoDescription, setPromoDescription] = useState("");
+  const [discountPercent, setDiscountPercent] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [targetMode, setTargetMode] = useState<"all" | "specific">("all");
+  const [selectedRestaurantIds, setSelectedRestaurantIds] = useState<string[]>([]);
+  const [notifyChat, setNotifyChat] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [restaurantSearch, setRestaurantSearch] = useState("");
 
   const { data: promotions, isLoading } = useQuery<PromotionWithProduct[]>({
     queryKey: [`/api/promotions?supplierId=${currentUser?.id}`],
@@ -54,14 +70,39 @@ export default function SupplierPromotions() {
     enabled: !!currentUser?.id,
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: { productId: string; supplierId: string; discountPercent: number; startDate: string; endDate: string }) => {
-      return apiRequest("POST", "/api/promotions", data);
+  const { data: restaurants } = useQuery<User[]>({
+    queryKey: [`/api/supplier/restaurants?supplierId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const bulkCreateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("POST", "/api/promotions/bulk", data);
     },
-    onSuccess: () => {
+    onSuccess: async (_data: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/promotions?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: t("promotionsPage", "promotionCreated"), description: lang === "de" ? "Die Rabattaktion wurde erfolgreich erstellt." : "La promozione è stata creata con successo." });
+      toast({ title: t("promotionsPage", "promotionCreated") });
+
+      if (notifyChat && currentUser) {
+        const targetIds = targetMode === "all"
+          ? (restaurants?.map(r => r.id) || [])
+          : selectedRestaurantIds;
+        if (targetIds.length > 0) {
+          const productNames = selectedProductIds.map(id => products?.find(p => p.id === id)?.name).filter(Boolean).join(", ");
+          const message = `*${promoName || (lang === "de" ? "Neue Aktion" : "Nuova promozione")}*\n${promoDescription ? promoDescription + "\n" : ""}${lang === "de" ? "Rabatt" : "Sconto"}: -${discountPercent}%\n${lang === "de" ? "Produkte" : "Prodotti"}: ${productNames}\n${lang === "de" ? "Gültig" : "Valido"}: ${format(new Date(startDate), "dd.MM.yyyy")} - ${format(new Date(endDate), "dd.MM.yyyy")}`;
+          try {
+            await apiRequest("POST", "/api/promotions/notify", {
+              supplierId: currentUser.id,
+              restaurantIds: targetIds,
+              message,
+            });
+            toast({ title: t("promotionsPage", "notificationSent"), description: t("promotionsPage", "notificationSentDesc") });
+          } catch {
+            // notification failed silently
+          }
+        }
+      }
       resetForm();
     },
     onError: () => {
@@ -69,18 +110,14 @@ export default function SupplierPromotions() {
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return apiRequest("PATCH", `/api/promotions/${id}`, data);
+  const deleteGroupMutation = useMutation({
+    mutationFn: async (groupId: string) => {
+      return apiRequest("DELETE", `/api/promotions/group/${groupId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/promotions?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: t("promotionsPage", "promotionUpdated"), description: lang === "de" ? "Die Rabattaktion wurde aktualisiert." : "La promozione è stata aggiornata." });
-      resetForm();
-    },
-    onError: () => {
-      toast({ title: t("common", "error"), description: t("promotionsPage", "promotionError"), variant: "destructive" });
+      toast({ title: t("promotionsPage", "promotionDeleted") });
     },
   });
 
@@ -91,89 +128,106 @@ export default function SupplierPromotions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/promotions?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: t("promotionsPage", "promotionDeleted"), description: lang === "de" ? "Die Rabattaktion wurde gelöscht." : "La promozione è stata eliminata." });
-    },
-    onError: () => {
-      toast({ title: t("common", "error"), description: lang === "de" ? "Die Aktion konnte nicht gelöscht werden." : "Impossibile eliminare la promozione.", variant: "destructive" });
+      toast({ title: t("promotionsPage", "promotionDeleted") });
     },
   });
 
   const resetForm = () => {
     setIsDialogOpen(false);
-    setEditingPromo(null);
-    setSelectedProductId("");
+    setWizardStep(1);
+    setPromoName("");
+    setPromoDescription("");
     setDiscountPercent("");
     setStartDate("");
     setEndDate("");
-  };
-
-  const openCreateDialog = () => {
-    resetForm();
-    setIsDialogOpen(true);
-  };
-
-  const openEditDialog = (promo: PromotionWithProduct) => {
-    setEditingPromo(promo);
-    setSelectedProductId(promo.productId);
-    setDiscountPercent(String(promo.discountPercent));
-    setStartDate(format(new Date(promo.startDate), "yyyy-MM-dd"));
-    setEndDate(format(new Date(promo.endDate), "yyyy-MM-dd"));
-    setIsDialogOpen(true);
+    setSelectedProductIds([]);
+    setTargetMode("all");
+    setSelectedRestaurantIds([]);
+    setNotifyChat(false);
+    setProductSearch("");
+    setRestaurantSearch("");
   };
 
   const handleSubmit = () => {
     const discount = parseInt(discountPercent);
-    if (!selectedProductId || !discount || discount < 1 || discount > 99 || !startDate || !endDate) {
-      toast({ title: t("common", "error"), description: lang === "de" ? "Bitte füllen Sie alle Felder korrekt aus." : "Compila tutti i campi correttamente.", variant: "destructive" });
-      return;
-    }
-    const today = format(new Date(), "yyyy-MM-dd");
-    if (startDate < today) {
-      toast({ title: t("common", "error"), description: lang === "de" ? "Das Startdatum darf nicht in der Vergangenheit liegen." : "La data di inizio non può essere nel passato.", variant: "destructive" });
-      return;
-    }
-    if (endDate < today) {
-      toast({ title: t("common", "error"), description: lang === "de" ? "Das Enddatum darf nicht in der Vergangenheit liegen." : "La data di fine non può essere nel passato.", variant: "destructive" });
-      return;
-    }
-    if (new Date(endDate) <= new Date(startDate)) {
-      toast({ title: t("common", "error"), description: lang === "de" ? "Das Enddatum muss nach dem Startdatum liegen." : "La data di fine deve essere successiva alla data di inizio.", variant: "destructive" });
+    if (selectedProductIds.length === 0 || !discount || discount < 1 || discount > 99 || !startDate || !endDate) {
+      toast({ title: t("common", "error"), variant: "destructive" });
       return;
     }
 
-    if (editingPromo) {
-      updateMutation.mutate({
-        id: editingPromo.id,
-        data: {
-          productId: selectedProductId,
-          discountPercent: discount,
-          startDate,
-          endDate,
-        },
-      });
-    } else {
-      createMutation.mutate({
-        productId: selectedProductId,
-        supplierId: currentUser!.id,
-        discountPercent: discount,
-        startDate,
-        endDate,
-      });
-    }
+    bulkCreateMutation.mutate({
+      productIds: selectedProductIds,
+      supplierId: currentUser!.id,
+      discountPercent: discount,
+      startDate,
+      endDate,
+      name: promoName || null,
+      description: promoDescription || null,
+      targetRestaurantIds: targetMode === "specific" ? selectedRestaurantIds : null,
+    });
   };
 
-  const getPromoStatus = (promo: PromotionWithProduct) => {
+  const toggleProduct = (productId: string) => {
+    setSelectedProductIds(prev =>
+      prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
+    );
+  };
+
+  const toggleRestaurant = (restaurantId: string) => {
+    setSelectedRestaurantIds(prev =>
+      prev.includes(restaurantId) ? prev.filter(id => id !== restaurantId) : [...prev, restaurantId]
+    );
+  };
+
+  const promotionGroups = useMemo(() => {
+    if (!promotions) return [];
+    const groupMap = new Map<string, PromotionGroup>();
+    for (const promo of promotions) {
+      const key = promo.groupId || promo.id;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          groupId: promo.groupId,
+          name: promo.name,
+          description: promo.description,
+          discountPercent: promo.discountPercent,
+          startDate: promo.startDate as any,
+          endDate: promo.endDate as any,
+          isActive: promo.isActive,
+          targetRestaurantIds: promo.targetRestaurantIds,
+          promotions: [],
+        });
+      }
+      groupMap.get(key)!.promotions.push(promo);
+    }
+    return Array.from(groupMap.values());
+  }, [promotions]);
+
+  const getGroupStatus = (group: PromotionGroup) => {
     const now = new Date();
-    const start = new Date(promo.startDate);
-    const end = new Date(promo.endDate);
-    if (!promo.isActive) return { label: lang === "de" ? "Deaktiviert" : "Disattivato", variant: "secondary" as const };
-    if (now < start) return { label: lang === "de" ? "Geplant" : "Pianificato", variant: "outline" as const };
-    if (now > end) return { label: t("promotionsPage", "expired"), variant: "secondary" as const };
-    return { label: t("promotionsPage", "active"), variant: "default" as const };
+    const start = new Date(group.startDate);
+    const end = new Date(group.endDate);
+    if (!group.isActive) return { label: lang === "de" ? "Deaktiviert" : "Disattivato", variant: "secondary" as const, color: "text-muted-foreground" };
+    if (now < start) return { label: lang === "de" ? "Geplant" : "Pianificato", variant: "outline" as const, color: "text-blue-600" };
+    if (now > end) return { label: t("promotionsPage", "expired"), variant: "secondary" as const, color: "text-muted-foreground" };
+    return { label: t("promotionsPage", "active"), variant: "default" as const, color: "text-green-600" };
   };
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isPending = bulkCreateMutation.isPending;
   const dateFnsLocale = lang === "de" ? de : it;
+
+  const filteredProducts = products?.filter(p =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.category?.toLowerCase().includes(productSearch.toLowerCase())
+  );
+
+  const filteredRestaurants = restaurants?.filter(r =>
+    r.companyName?.toLowerCase().includes(restaurantSearch.toLowerCase()) ||
+    r.name.toLowerCase().includes(restaurantSearch.toLowerCase())
+  );
+
+  const canGoToStep2 = promoName.trim().length > 0 && discountPercent && parseInt(discountPercent) >= 1 && parseInt(discountPercent) <= 99 && startDate && endDate && new Date(endDate) > new Date(startDate);
+  const canGoToStep3 = selectedProductIds.length > 0;
+  const canSubmit = canGoToStep3 && (targetMode === "all" || selectedRestaurantIds.length > 0);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -185,7 +239,7 @@ export default function SupplierPromotions() {
             <p className="text-xs md:text-sm text-muted-foreground">{lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti"}</p>
           </div>
         </div>
-        <Button onClick={openCreateDialog} data-testid="button-create-promotion">
+        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} data-testid="button-create-promotion">
           <Plus className="h-4 w-4 mr-1.5" />
           {t("promotionsPage", "createPromotion")}
         </Button>
@@ -195,7 +249,7 @@ export default function SupplierPromotions() {
         <Card>
           <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
             <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-primary" data-testid="text-total-promotions">{promotions?.length || 0}</div>
+              <div className="text-2xl md:text-3xl font-bold text-primary" data-testid="text-total-promotions">{promotionGroups.length}</div>
               <p className="text-xs md:text-sm text-muted-foreground">{t("common", "total")}</p>
             </div>
           </CardContent>
@@ -204,10 +258,10 @@ export default function SupplierPromotions() {
           <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
             <div className="text-center">
               <div className="text-2xl md:text-3xl font-bold text-green-600" data-testid="text-active-promotions">
-                {promotions?.filter(p => {
+                {promotionGroups.filter(g => {
                   const now = new Date();
-                  return p.isActive && new Date(p.startDate) <= now && new Date(p.endDate) >= now;
-                }).length || 0}
+                  return g.isActive && new Date(g.startDate) <= now && new Date(g.endDate) >= now;
+                }).length}
               </div>
               <p className="text-xs md:text-sm text-muted-foreground">{t("promotionsPage", "active")}</p>
             </div>
@@ -217,7 +271,7 @@ export default function SupplierPromotions() {
           <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
             <div className="text-center">
               <div className="text-2xl md:text-3xl font-bold text-muted-foreground" data-testid="text-expired-promotions">
-                {promotions?.filter(p => new Date(p.endDate) < new Date()).length || 0}
+                {promotionGroups.filter(g => new Date(g.endDate) < new Date()).length}
               </div>
               <p className="text-xs md:text-sm text-muted-foreground">{t("promotionsPage", "expired")}</p>
             </div>
@@ -225,194 +279,395 @@ export default function SupplierPromotions() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="p-3 md:p-6">
-          <CardTitle className="text-base md:text-lg">{lang === "de" ? "Alle Aktionen" : "Tutte le promozioni"}</CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}
-            </div>
-          ) : promotions && promotions.length > 0 ? (
-            <div className="space-y-3">
-              {promotions.map(promo => {
-                const status = getPromoStatus(promo);
-                const originalPrice = parseFloat(promo.product.price);
-                const discountedPrice = originalPrice * (1 - promo.discountPercent / 100);
-                return (
-                  <Card key={promo.id} data-testid={`promotion-card-${promo.id}`}>
-                    <CardContent className="p-3 md:p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3 min-w-0 flex-1">
-                          <div className="flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-lg bg-primary/10 shrink-0">
-                            <Percent className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-medium text-sm md:text-base truncate" data-testid={`text-promo-product-${promo.id}`}>
-                                {promo.product.name}
-                              </h3>
-                              <Badge variant={status.variant} data-testid={`badge-promo-status-${promo.id}`}>
-                                {status.label}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-3 mt-1 flex-wrap">
-                              <span className="text-sm font-bold text-primary" data-testid={`text-promo-discount-${promo.id}`}>
-                                -{promo.discountPercent}%
-                              </span>
-                              <span className="text-xs text-muted-foreground line-through">
-                                {originalPrice.toFixed(2)}€
-                              </span>
-                              <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                                {discountedPrice.toFixed(2)}€
-                              </span>
-                              <span className="text-xs text-muted-foreground">/{promo.product.unit}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
-                              <Calendar className="h-3 w-3" />
-                              <span>
-                                {format(new Date(promo.startDate), "dd.MM.yyyy", { locale: dateFnsLocale })} - {format(new Date(promo.endDate), "dd.MM.yyyy", { locale: dateFnsLocale })}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(promo)}
-                            data-testid={`button-edit-promo-${promo.id}`}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteMutation.mutate(promo.id)}
-                            disabled={deleteMutation.isPending}
-                            data-testid={`button-delete-promo-${promo.id}`}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+      <div className="space-y-3">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+          </div>
+        ) : promotionGroups.length > 0 ? (
+          promotionGroups.map((group) => {
+            const status = getGroupStatus(group);
+            const isGroup = group.promotions.length > 1;
+            return (
+              <Card key={group.groupId || group.promotions[0].id} data-testid={`promotion-group-${group.groupId || group.promotions[0].id}`}>
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h3 className="font-semibold text-sm md:text-base" data-testid={`text-promo-name-${group.groupId || group.promotions[0].id}`}>
+                          {group.name || group.promotions[0].product.name}
+                        </h3>
+                        <Badge variant={status.variant}>{status.label}</Badge>
+                        <Badge variant="secondary" className="text-[10px]">-{group.discountPercent}%</Badge>
+                        {isGroup && (
+                          <Badge variant="outline" className="text-[10px] gap-1">
+                            <Package className="h-2.5 w-2.5" />
+                            {group.promotions.length} {t("promotionsPage", "products")}
+                          </Badge>
+                        )}
+                        {group.targetRestaurantIds && group.targetRestaurantIds.length > 0 && (
+                          <Badge variant="outline" className="text-[10px] gap-1">
+                            <Users className="h-2.5 w-2.5" />
+                            {group.targetRestaurantIds.length}
+                          </Badge>
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Tag className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">{t("promotionsPage", "noPromotions")}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t("promotionsPage", "noPromotionsDesc")}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      {group.description && (
+                        <p className="text-xs text-muted-foreground mb-1.5">{group.description}</p>
+                      )}
+                      <div className="flex flex-wrap gap-1.5 mb-1.5">
+                        {group.promotions.map(promo => {
+                          const orig = parseFloat(promo.product.price);
+                          const disc = orig * (1 - promo.discountPercent / 100);
+                          return (
+                            <div key={promo.id} className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/50 text-[11px]">
+                              <span className="font-medium">{promo.product.name}</span>
+                              <span className="text-muted-foreground line-through">{orig.toFixed(2)}€</span>
+                              <span className="font-semibold text-green-600 dark:text-green-400">{disc.toFixed(2)}€</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        <span>
+                          {format(new Date(group.startDate), "dd.MM.yyyy", { locale: dateFnsLocale })} - {format(new Date(group.endDate), "dd.MM.yyyy", { locale: dateFnsLocale })}
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      onClick={() => {
+                        if (group.groupId) {
+                          deleteGroupMutation.mutate(group.groupId);
+                        } else {
+                          deleteMutation.mutate(group.promotions[0].id);
+                        }
+                      }}
+                      disabled={deleteGroupMutation.isPending || deleteMutation.isPending}
+                      data-testid={`button-delete-group-${group.groupId || group.promotions[0].id}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        ) : (
+          <Card>
+            <CardContent className="p-8 md:p-12">
+              <div className="flex flex-col items-center justify-center text-center">
+                <Tag className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">{t("promotionsPage", "noPromotions")}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t("promotionsPage", "noPromotionsDesc")}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-        <DialogContent className="max-w-md">
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>{editingPromo ? t("promotionsPage", "editPromotion") : lang === "de" ? "Neue Aktion erstellen" : "Crea nuova promozione"}</DialogTitle>
+            <DialogTitle>{t("promotionsPage", "createPromotion")}</DialogTitle>
             <DialogDescription>
-              {editingPromo ? (lang === "de" ? "Ändern Sie die Rabattaktion." : "Modifica la promozione.") : (lang === "de" ? "Erstellen Sie eine Rabattaktion für eines Ihrer Produkte." : "Crea una promozione per uno dei tuoi prodotti.")}
+              <div className="flex items-center gap-2 mt-2">
+                {[1, 2, 3].map(step => (
+                  <div key={step} className="flex items-center gap-1.5">
+                    <div className={`flex items-center justify-center h-6 w-6 rounded-full text-[11px] font-bold ${
+                      wizardStep === step ? "bg-primary text-primary-foreground" :
+                      wizardStep > step ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      {wizardStep > step ? <Check className="h-3 w-3" /> : step}
+                    </div>
+                    <span className={`text-xs hidden sm:inline ${wizardStep === step ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                      {t("promotionsPage", step === 1 ? "step1" : step === 2 ? "step2" : "step3")}
+                    </span>
+                    {step < 3 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                  </div>
+                ))}
+              </div>
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm">{lang === "de" ? "Produkt" : "Prodotto"}</Label>
-              <Select value={selectedProductId} onValueChange={setSelectedProductId}>
-                <SelectTrigger className="mt-1" data-testid="select-promotion-product">
-                  <Package className="h-4 w-4 mr-2 shrink-0" />
-                  <SelectValue placeholder={t("promotionsPage", "selectProductPlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {products?.map(p => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} ({p.price}€/{p.unit})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label className="text-sm">{t("promotionsPage", "discount")}</Label>
-              <div className="relative mt-1">
-                <Input
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={discountPercent}
-                  onChange={e => setDiscountPercent(e.target.value)}
-                  placeholder={lang === "de" ? "z.B. 15" : "es. 15"}
-                  data-testid="input-discount-percent"
-                />
-                <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              </div>
-              {selectedProductId && discountPercent && (
-                <div className="mt-1.5 text-xs text-muted-foreground">
-                  {(() => {
-                    const product = products?.find(p => p.id === selectedProductId);
-                    if (!product) return null;
-                    const orig = parseFloat(product.price);
-                    const disc = orig * (1 - parseInt(discountPercent) / 100);
-                    return (
-                      <span>
-                        <span className="line-through">{orig.toFixed(2)}€</span>
-                        {" → "}
-                        <span className="font-medium text-green-600 dark:text-green-400">{disc.toFixed(2)}€</span>
-                        <span> /{product.unit}</span>
-                      </span>
-                    );
-                  })()}
+          <div className="flex-1 overflow-y-auto pr-1">
+            {wizardStep === 1 && (
+              <div className="space-y-4 py-2">
+                <div>
+                  <Label className="text-sm">{t("promotionsPage", "promotionName")} *</Label>
+                  <Input
+                    value={promoName}
+                    onChange={e => setPromoName(e.target.value)}
+                    placeholder={t("promotionsPage", "promotionNamePlaceholder")}
+                    className="mt-1"
+                    data-testid="input-promo-name"
+                  />
                 </div>
-              )}
-            </div>
+                <div>
+                  <Label className="text-sm">{t("promotionsPage", "promotionDescription")}</Label>
+                  <Textarea
+                    value={promoDescription}
+                    onChange={e => setPromoDescription(e.target.value)}
+                    placeholder={t("promotionsPage", "promotionDescPlaceholder")}
+                    className="mt-1 resize-none"
+                    rows={2}
+                    data-testid="input-promo-description"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">{t("promotionsPage", "discount")} *</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={discountPercent}
+                      onChange={e => setDiscountPercent(e.target.value)}
+                      placeholder={lang === "de" ? "z.B. 15" : "es. 15"}
+                      data-testid="input-discount-percent"
+                    />
+                    <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm">{t("promotionsPage", "startDate")} *</Label>
+                    <Input
+                      type="date"
+                      value={startDate}
+                      onChange={e => setStartDate(e.target.value)}
+                      min={format(new Date(), "yyyy-MM-dd")}
+                      className="mt-1"
+                      data-testid="input-start-date"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm">{t("promotionsPage", "endDate")} *</Label>
+                    <Input
+                      type="date"
+                      value={endDate}
+                      onChange={e => setEndDate(e.target.value)}
+                      min={startDate || format(new Date(), "yyyy-MM-dd")}
+                      className="mt-1"
+                      data-testid="input-end-date"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">{t("promotionsPage", "startDate")}</Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                  min={format(new Date(), "yyyy-MM-dd")}
-                  className="mt-1"
-                  data-testid="input-start-date"
-                />
+            {wizardStep === 2 && (
+              <div className="space-y-3 py-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">{t("promotionsPage", "selectProducts")} *</Label>
+                  <Badge variant="secondary" className="text-xs">{selectedProductIds.length} {t("promotionsPage", "selectedProducts")}</Badge>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={t("common", "search") + "..."}
+                    value={productSearch}
+                    onChange={e => setProductSearch(e.target.value)}
+                    className="pl-9 text-sm"
+                    data-testid="input-search-products"
+                  />
+                </div>
+                <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                  {filteredProducts?.map(product => {
+                    const isSelected = selectedProductIds.includes(product.id);
+                    const orig = parseFloat(product.price);
+                    const disc = orig * (1 - (parseInt(discountPercent) || 0) / 100);
+                    return (
+                      <div
+                        key={product.id}
+                        onClick={() => toggleProduct(product.id)}
+                        className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                          isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                        }`}
+                        data-testid={`product-option-${product.id}`}
+                      >
+                        <Checkbox checked={isSelected} className="pointer-events-none" />
+                        {product.imageUrl ? (
+                          <div className="w-8 h-8 rounded-md overflow-hidden bg-muted shrink-0">
+                            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                            <Package className="h-3.5 w-3.5 text-muted-foreground/30" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{product.name}</p>
+                          <div className="flex items-center gap-1.5 text-[11px]">
+                            <span className="text-muted-foreground line-through">{orig.toFixed(2)}€</span>
+                            <span className="font-medium text-green-600 dark:text-green-400">{disc.toFixed(2)}€</span>
+                            <span className="text-muted-foreground">/{product.unit}</span>
+                          </div>
+                        </div>
+                        {product.category && (
+                          <Badge variant="secondary" className="text-[10px] shrink-0">{product.category}</Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {filteredProducts?.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">{t("supplierProducts", "noProducts")}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <Label className="text-sm">{t("promotionsPage", "endDate")}</Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                  min={format(new Date(), "yyyy-MM-dd")}
-                  className="mt-1"
-                  data-testid="input-end-date"
-                />
+            )}
+
+            {wizardStep === 3 && (
+              <div className="space-y-4 py-2">
+                <div>
+                  <Label className="text-sm font-medium">{t("promotionsPage", "targetRestaurants")}</Label>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <button
+                      onClick={() => { setTargetMode("all"); setSelectedRestaurantIds([]); }}
+                      className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-colors ${
+                        targetMode === "all" ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                      }`}
+                      data-testid="button-target-all"
+                    >
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">{t("promotionsPage", "allRestaurants")}</span>
+                    </button>
+                    <button
+                      onClick={() => setTargetMode("specific")}
+                      className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-colors ${
+                        targetMode === "specific" ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                      }`}
+                      data-testid="button-target-specific"
+                    >
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">{t("promotionsPage", "specificRestaurants")}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {targetMode === "specific" && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm">{t("promotionsPage", "selectRestaurants")}</Label>
+                      <Badge variant="secondary" className="text-xs">{selectedRestaurantIds.length}</Badge>
+                    </div>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder={t("common", "search") + "..."}
+                        value={restaurantSearch}
+                        onChange={e => setRestaurantSearch(e.target.value)}
+                        className="pl-9 text-sm"
+                        data-testid="input-search-restaurants"
+                      />
+                    </div>
+                    <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                      {filteredRestaurants?.map(restaurant => {
+                        const isSelected = selectedRestaurantIds.includes(restaurant.id);
+                        return (
+                          <div
+                            key={restaurant.id}
+                            onClick={() => toggleRestaurant(restaurant.id)}
+                            className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                              isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                            }`}
+                            data-testid={`restaurant-option-${restaurant.id}`}
+                          >
+                            <Checkbox checked={isSelected} className="pointer-events-none" />
+                            <Avatar className="h-7 w-7">
+                              <AvatarImage src={restaurant.profileImageUrl || undefined} />
+                              <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                                {(restaurant.companyName || restaurant.name).substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{restaurant.companyName || restaurant.name}</p>
+                              {restaurant.city && <p className="text-[11px] text-muted-foreground">{restaurant.city}</p>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t pt-4">
+                  <div
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      notifyChat ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                    }`}
+                    onClick={() => setNotifyChat(!notifyChat)}
+                    data-testid="checkbox-notify-chat"
+                  >
+                    <Checkbox checked={notifyChat} className="pointer-events-none" />
+                    <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium">{t("promotionsPage", "notifyRestaurants")}</p>
+                      <p className="text-[11px] text-muted-foreground">{t("promotionsPage", "notifyDesc")}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">{lang === "de" ? "Zusammenfassung" : "Riepilogo"}</p>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("promotionsPage", "promotionName")}:</span>
+                      <span className="font-medium">{promoName || "—"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("promotionsPage", "discount")}:</span>
+                      <span className="font-medium text-green-600">-{discountPercent}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("promotionsPage", "products")}:</span>
+                      <span className="font-medium">{selectedProductIds.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("promotionsPage", "targetRestaurants")}:</span>
+                      <span className="font-medium">{targetMode === "all" ? t("promotionsPage", "allRestaurants") : `${selectedRestaurantIds.length} ${t("promotionsPage", "specificRestaurants")}`}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{lang === "de" ? "Zeitraum" : "Periodo"}:</span>
+                      <span className="font-medium text-xs">{startDate && endDate ? `${format(new Date(startDate), "dd.MM.yy")} - ${format(new Date(endDate), "dd.MM.yy")}` : "—"}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={resetForm} data-testid="button-cancel-promotion">
-              {t("common", "cancel")}
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={isPending || !selectedProductId || !discountPercent || !startDate || !endDate}
-              data-testid="button-save-promotion"
-            >
-              {isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-              {editingPromo ? t("common", "save") : t("common", "create")}
-            </Button>
+          <DialogFooter className="gap-2 border-t pt-3">
+            {wizardStep > 1 && (
+              <Button variant="outline" onClick={() => setWizardStep(wizardStep - 1)} data-testid="button-wizard-back">
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                {t("promotionsPage", "back")}
+              </Button>
+            )}
+            <div className="flex-1" />
+            {wizardStep < 3 ? (
+              <Button
+                onClick={() => setWizardStep(wizardStep + 1)}
+                disabled={wizardStep === 1 ? !canGoToStep2 : !canGoToStep3}
+                data-testid="button-wizard-next"
+              >
+                {t("promotionsPage", "next")}
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={isPending || !canSubmit}
+                data-testid="button-save-promotion"
+              >
+                {isPending ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Check className="h-4 w-4 mr-1.5" />}
+                {t("common", "create")}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
