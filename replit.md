@@ -15,6 +15,7 @@ The application uses a clean and modern UI design.
 - **Layout**: A fixed-width (`w-64`) left sidebar and a flexible, scrollable main content area.
 - **Mobile Responsiveness**: Both restaurant and supplier interfaces are fully mobile-responsive. This is achieved through fixed bottom navigation bars on mobile (`md:hidden`), hiding the sidebar on mobile, and adjusting content padding. The `md:` (768px) breakpoint separates mobile and desktop layouts.
 - **Immersive Chat**: The inbox features a WhatsApp-style immersive chat on mobile, taking full screen height and hiding other UI elements for a focused experience.
+- **Restaurant Home Page**: Simplified layout with a single "Anstehende Lieferungen" (Upcoming Deliveries) card showing the next 3 confirmed/in-delivery orders grouped by delivery date. Each delivery is clickable to open an order detail dialog. API endpoint: `GET /api/restaurant/upcoming-deliveries`.
 
 ### Technical Implementations
 - **Frontend**: React with TypeScript and Vite. Uses Wouter for routing, TanStack React Query for state management, Shadcn/ui for UI components, and Tailwind CSS for styling. React Context API manages user state and role switching.

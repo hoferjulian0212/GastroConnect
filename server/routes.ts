@@ -1567,6 +1567,31 @@ export async function registerRoutes(
   });
 
   // ===== STATS =====
+  app.get("/api/restaurant/upcoming-deliveries", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      if (!restaurantId) return res.json([]);
+      const allOrders = await storage.getOrdersByRestaurant(restaurantId);
+      const upcoming = allOrders
+        .filter(o => (o.status === "confirmed" || o.status === "in_delivery") && o.requestedDeliveryDate)
+        .sort((a, b) => {
+          const dateA = new Date(a.requestedDeliveryDate! + "T00:00:00");
+          const dateB = new Date(b.requestedDeliveryDate! + "T00:00:00");
+          return dateA.getTime() - dateB.getTime();
+        })
+        .filter(o => {
+          const deliveryDate = new Date(o.requestedDeliveryDate! + "T00:00:00");
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return deliveryDate >= today;
+        })
+        .slice(0, 3);
+      res.json(upcoming);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch upcoming deliveries" });
+    }
+  });
+
   app.get("/api/restaurant/stats", async (req, res) => {
     try {
       const restaurantId = (req.query.restaurantId || req.query.userId) as string;

@@ -112,6 +112,12 @@ const t = {
     openOrders: { de: "Offene Bestellungen", it: "Ordini aperti" },
     activeSuppliers: { de: "Aktive Lieferanten", it: "Fornitori attivi" },
     actions: { de: "Aktionen", it: "Promozioni" },
+    upcomingDeliveries: { de: "Anstehende Lieferungen", it: "Consegne in arrivo" },
+    upcomingDeliveriesDesc: { de: "Ihre nächsten geplanten Lieferungen", it: "Le prossime consegne pianificate" },
+    noUpcomingDeliveries: { de: "Keine anstehenden Lieferungen", it: "Nessuna consegna in arrivo" },
+    noUpcomingDeliveriesDesc: { de: "Bestätigte Bestellungen mit Lieferdatum erscheinen hier.", it: "Gli ordini confermati con data di consegna appariranno qui." },
+    today: { de: "Heute", it: "Oggi" },
+    tomorrow: { de: "Morgen", it: "Domani" },
   },
   supplierHome: {
     newOrders: { de: "Neue Bestellungen", it: "Nuovi ordini" },

@@ -1,15 +1,15 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, MessageSquare, Package, Clock, Zap, Truck, User as UserIcon } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, User as UserIcon, Calendar } from "lucide-react";
 import type { OrderWithDetails } from "@shared/schema";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { format, formatDistanceToNow } from "date-fns";
+import { Link } from "wouter";
+import { format, isToday, isTomorrow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
@@ -19,28 +19,13 @@ export default function RestaurantHome() {
   const { lang } = useLanguage();
   const t = useT(lang);
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
+  const dateLocale = lang === "it" ? it : de;
 
-  const { data: recentOrders, isLoading: ordersLoading } = useQuery<OrderWithDetails[]>({
-    queryKey: ['/api/orders/recent', currentUser?.id],
+  const { data: upcomingDeliveries, isLoading } = useQuery<OrderWithDetails[]>({
+    queryKey: ['/api/restaurant/upcoming-deliveries', currentUser?.id],
     queryFn: async () => {
-      const res = await fetch(`/api/orders/recent?restaurantId=${currentUser?.id}`);
-      if (!res.ok) throw new Error('Failed to fetch orders');
-      return res.json();
-    },
-    enabled: !!currentUser?.id,
-    staleTime: 0,
-    refetchOnMount: "always",
-  });
-
-  const { data: stats, isLoading: statsLoading } = useQuery<{
-    pendingOrders: number;
-    unreadMessages: number;
-    totalSuppliers: number;
-  }>({
-    queryKey: ['/api/restaurant/stats', currentUser?.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/restaurant/stats?userId=${currentUser?.id}`);
-      if (!res.ok) throw new Error('Failed to fetch stats');
+      const res = await fetch(`/api/restaurant/upcoming-deliveries?restaurantId=${currentUser?.id}`);
+      if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
     },
     enabled: !!currentUser?.id,
@@ -69,7 +54,28 @@ export default function RestaurantHome() {
     }
   };
 
-  const dateLocale = lang === "it" ? it : de;
+  const getDeliveryDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr + "T00:00:00");
+    if (isToday(date)) return t("restaurantHome", "today");
+    if (isTomorrow(date)) return t("restaurantHome", "tomorrow");
+    return format(date, "EEEE, dd.MM.", { locale: dateLocale });
+  };
+
+  const groupedDeliveries = useMemo(() => {
+    if (!upcomingDeliveries) return [];
+    const groups = new Map<string, OrderWithDetails[]>();
+    for (const order of upcomingDeliveries) {
+      const dateKey = order.requestedDeliveryDate || "";
+      if (!groups.has(dateKey)) groups.set(dateKey, []);
+      groups.get(dateKey)!.push(order);
+    }
+    return Array.from(groups.entries()).map(([dateKey, orders]) => ({
+      dateKey,
+      label: getDeliveryDateLabel(dateKey),
+      isToday: isToday(new Date(dateKey + "T00:00:00")),
+      orders,
+    }));
+  }, [upcomingDeliveries, lang]);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -84,169 +90,88 @@ export default function RestaurantHome() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
-          <div>
-            <CardTitle className="text-base md:text-lg">{t("common", "quickActions")}</CardTitle>
-            <CardDescription className="text-xs md:text-sm">{t("common", "frequentFunctions")}</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-          <div className="grid grid-cols-2 gap-2 md:gap-3">
-            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
-              <Link href="/restaurant/catalog" data-testid="link-quick-catalog">
-                <Package className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">{t("common", "catalog")}</span>
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
-              <Link href="/restaurant/cart" data-testid="link-quick-cart">
-                <ShoppingBag className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">{t("common", "cart")}</span>
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col py-3 md:py-4 gap-1.5 md:gap-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" asChild>
-              <Link href="/restaurant/inbox" data-testid="link-quick-inbox">
-                <MessageSquare className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-xs md:text-sm">{t("common", "messages")}</span>
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-        <Link href="/restaurant/orders" data-testid="link-stat-orders">
-          <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-md hover:-translate-y-px hover:scale-[1.003]">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">{t("restaurantHome", "openOrders")}</CardTitle>
-              <ShoppingBag className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-              {statsLoading ? (
-                <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
-              ) : (
-                <div className="text-xl md:text-2xl font-bold" data-testid="text-pending-orders">
-                  {stats?.pendingOrders || 0}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/restaurant/inbox" data-testid="link-stat-messages">
-          <Card className="cursor-pointer h-full transition-all duration-200 hover:shadow-md hover:-translate-y-px hover:scale-[1.003]">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">{t("common", "messages")}</CardTitle>
-              <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-              {statsLoading ? (
-                <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
-              ) : (
-                <div className="text-xl md:text-2xl font-bold" data-testid="text-unread-messages">
-                  {stats?.unreadMessages || 0}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/restaurant/suppliers">
-          <Card className="transition-all duration-200 hover:shadow-md hover:-translate-y-px hover:scale-[1.003] cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">{t("restaurantHome", "activeSuppliers")}</CardTitle>
-              <Package className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-              {statsLoading ? (
-                <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
-              ) : (
-                <div className="text-xl md:text-2xl font-bold" data-testid="text-total-suppliers">
-                  {stats?.totalSuppliers || 0}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 gap-2 p-3 md:p-6">
-            <CardTitle className="text-xs md:text-sm font-medium">{t("restaurantHome", "actions")}</CardTitle>
-            <Zap className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-            <div className="text-xs md:text-sm text-muted-foreground" data-testid="text-actions-placeholder">
-              {t("common", "comingSoon")}
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0">
+              <Truck className="h-5 w-5 text-primary" />
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
-          <div>
-            <CardTitle className="text-base md:text-lg">{t("common", "recentOrders")}</CardTitle>
-            <CardDescription className="text-xs md:text-sm">{t("common", "yourLatestOrders")}</CardDescription>
+            <div>
+              <CardTitle className="text-base md:text-lg" data-testid="text-upcoming-deliveries-title">
+                {t("restaurantHome", "upcomingDeliveries")}
+              </CardTitle>
+              <CardDescription className="text-xs md:text-sm">
+                {t("restaurantHome", "upcomingDeliveriesDesc")}
+              </CardDescription>
+            </div>
           </div>
-          <Button variant="outline" size="sm" className="text-xs md:text-sm" asChild>
+          <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
             <Link href="/restaurant/orders" data-testid="link-view-all-orders">{t("common", "all")}</Link>
           </Button>
         </CardHeader>
         <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-          {ordersLoading ? (
+          {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16 w-full" />
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
               ))}
             </div>
-          ) : recentOrders && recentOrders.length > 0 ? (
-            <div className="space-y-2 md:space-y-3">
-              {recentOrders.slice(0, 5).map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-center justify-between p-2.5 md:p-3 rounded-md bg-muted/50 cursor-pointer transition-all duration-200 hover:shadow-md hover:bg-muted"
-                  onClick={() => setDetailOrder(order)}
-                  data-testid={`order-item-${order.id}`}
-                >
-                  <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
-                    <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 shrink-0">
-                      <ShoppingBag className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                        <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5`} variant="outline">
-                          {getOrderStatus(order.status, lang)}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <UserIcon className="h-2.5 w-2.5 md:h-3 md:w-3 text-muted-foreground shrink-0" />
-                        <p className="text-[10px] md:text-xs text-muted-foreground truncate">
-                          {order.supplier?.companyName || order.supplier?.name || t("common", "unknown")}
-                        </p>
-                      </div>
-                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
-                        {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}
-                        <span className="text-muted-foreground/70">({formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })})</span>
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
-                    <span className="text-sm md:text-base font-bold">{order.totalAmount}€</span>
-                    <span className="text-[10px] md:text-xs text-muted-foreground">
-                      {order.items?.length || 0} {t("common", "items")}
+          ) : groupedDeliveries.length > 0 ? (
+            <div className="space-y-4">
+              {groupedDeliveries.map((group) => (
+                <div key={group.dateKey}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className={`text-xs font-semibold uppercase tracking-wide ${group.isToday ? "text-primary" : "text-muted-foreground"}`}>
+                      {group.label}
                     </span>
+                    {group.isToday && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {group.orders.map((order) => (
+                      <div
+                        key={order.id}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/20"
+                        onClick={() => setDetailOrder(order)}
+                        data-testid={`delivery-item-${order.id}`}
+                      >
+                        <div className={`flex items-center justify-center h-10 w-10 rounded-lg shrink-0 ${
+                          order.status === "in_delivery"
+                            ? "bg-purple-100 dark:bg-purple-900/30"
+                            : "bg-blue-100 dark:bg-blue-900/30"
+                        }`}>
+                          {order.status === "in_delivery"
+                            ? <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                            : <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-sm font-medium truncate">
+                              {order.supplier?.companyName || order.supplier?.name || t("common", "unknown")}
+                            </span>
+                            <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
+                              {getOrderStatus(order.status, lang)}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {order.items?.length || 0} {t("common", "items")} — #{order.id.slice(0, 8)}
+                          </p>
+                        </div>
+                        <span className="text-sm font-bold shrink-0">{order.totalAmount}€</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <ShoppingBag className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-sm text-muted-foreground">{t("common", "noOrders")}</p>
-              <Button variant="outline" size="sm" className="mt-3" asChild>
-                <Link href="/restaurant/catalog" data-testid="link-browse-catalog">{t("common", "browseCatalog")}</Link>
-              </Button>
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="flex items-center justify-center h-14 w-14 rounded-full bg-muted/50 mb-3">
+                <Truck className="h-7 w-7 text-muted-foreground/40" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">{t("restaurantHome", "noUpcomingDeliveries")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("restaurantHome", "noUpcomingDeliveriesDesc")}</p>
             </div>
           )}
         </CardContent>
