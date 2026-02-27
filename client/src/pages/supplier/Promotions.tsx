@@ -394,7 +394,7 @@ export default function SupplierPromotions() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto pr-1">
+          <div className="flex-1 overflow-y-auto px-1">
             {wizardStep === 1 && (
               <div className="space-y-4 py-2">
                 <div>
