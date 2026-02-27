@@ -73,6 +73,17 @@ const getStatusColor = (status: string) => {
   }
 };
 
+const getStatusCardBg = (status: string) => {
+  switch (status) {
+    case "pending": return { card: "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40", header: "bg-yellow-500/10 border-yellow-500/20", icon: "text-yellow-600 dark:text-yellow-400" };
+    case "confirmed": return { card: "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40", header: "bg-blue-500/10 border-blue-500/20", icon: "text-blue-600 dark:text-blue-400" };
+    case "in_delivery": return { card: "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40", header: "bg-purple-500/10 border-purple-500/20", icon: "text-purple-600 dark:text-purple-400" };
+    case "delivered": return { card: "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40", header: "bg-green-500/10 border-green-500/20", icon: "text-green-600 dark:text-green-400" };
+    case "cancelled": return { card: "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40", header: "bg-red-500/10 border-red-500/20", icon: "text-red-600 dark:text-red-400" };
+    default: return { card: "bg-card border-green-500/30", header: "bg-green-500/10 border-green-500/20", icon: "text-green-600 dark:text-green-400" };
+  }
+};
+
 const getStatusLabel = (status: string) => {
   switch (status) {
     case "pending": return "Neu";
@@ -922,12 +933,13 @@ export default function SupplierInbox() {
                                       </div>
                                     );
                                   }
+                                  const statusStyle = getStatusCardBg(orderStatus || "pending");
                                   return (
-                                    <div className="w-[92%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-green-500/30 shadow-lg">
-                                      <div className="flex items-center justify-between px-4 py-2.5 border-b bg-green-500/10 border-green-500/20">
+                                    <div className={`w-[92%] rounded-lg border-2 shadow-sm overflow-hidden ${statusStyle.card}`}>
+                                      <div className={`flex items-center justify-between px-4 py-2.5 border-b ${statusStyle.header}`}>
                                         <div className="flex items-center gap-2">
-                                          <ClipboardList className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                          <span className="text-sm font-semibold text-green-600 dark:text-green-400">Bestellung</span>
+                                          <ClipboardList className={`h-4 w-4 ${statusStyle.icon}`} />
+                                          <span className={`text-sm font-semibold ${statusStyle.icon}`}>Bestellung</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                           {orderStatus && (
