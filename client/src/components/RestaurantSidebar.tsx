@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, ShoppingBag, Package, Settings, AlertCircle, Truck, FileText, ChevronRight } from "lucide-react";
+import { Home, MessageSquare, ShoppingBag, Package, Settings, AlertCircle, Truck, FileText, ChevronRight, ClipboardList } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -29,6 +29,7 @@ export function RestaurantSidebar() {
     { title: t("common", "suppliers"), url: "/restaurant/suppliers", icon: Truck },
     { title: t("common", "products"), url: "/restaurant/catalog", icon: Package },
     { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag },
+    { title: t("templates", "orderTemplates"), url: "/restaurant/templates", icon: ClipboardList },
     { title: t("common", "complaints"), url: "/restaurant/complaints", icon: AlertCircle },
     { title: t("common", "documents"), url: "/restaurant/documents", icon: FileText },
   ];

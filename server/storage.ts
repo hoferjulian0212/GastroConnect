@@ -3,6 +3,7 @@ import { eq, and, desc, or, sql, ne, inArray } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
+  orderTemplates, orderTemplateItems,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -17,7 +18,8 @@ import {
   type DeliverySchedule, type InsertDeliverySchedule,
   type CustomMinOrderQuantity, type InsertCustomMinOrderQuantity,
   type CustomPrice, type InsertCustomPrice,
-  type StockMovement, type InsertStockMovement, type StockMovementWithProduct
+  type StockMovement, type InsertStockMovement, type StockMovementWithProduct,
+  type OrderTemplate, type InsertOrderTemplate, type InsertOrderTemplateItem, type OrderTemplateWithItems
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -149,6 +151,13 @@ export interface IStorage {
   addStockMovement(movement: InsertStockMovement): Promise<StockMovement>;
   updateProductStock(productId: string, newStock: number): Promise<Product | undefined>;
   getLowStockProducts(supplierId: string): Promise<Product[]>;
+
+  // Order Templates
+  getOrderTemplates(restaurantId: string): Promise<OrderTemplateWithItems[]>;
+  getOrderTemplate(id: string): Promise<OrderTemplateWithItems | undefined>;
+  createOrderTemplate(template: InsertOrderTemplate, items: InsertOrderTemplateItem[]): Promise<OrderTemplate>;
+  updateOrderTemplate(id: string, name: string, items: InsertOrderTemplateItem[]): Promise<OrderTemplate | undefined>;
+  deleteOrderTemplate(id: string): Promise<void>;
 
   // Seed
   seedData(): Promise<void>;
@@ -833,6 +842,79 @@ export class DatabaseStorage implements IStorage {
       .values({ complaintId, fromStatus, toStatus, changedBy: changedBy || null })
       .returning();
     return entry;
+  }
+
+  async getOrderTemplates(restaurantId: string): Promise<OrderTemplateWithItems[]> {
+    const templates = await db.select().from(orderTemplates)
+      .where(eq(orderTemplates.restaurantId, restaurantId))
+      .orderBy(desc(orderTemplates.updatedAt));
+    
+    const result: OrderTemplateWithItems[] = [];
+    for (const template of templates) {
+      const items = await db.select().from(orderTemplateItems)
+        .where(eq(orderTemplateItems.templateId, template.id));
+      
+      const itemsWithProducts: OrderTemplateWithItems["items"] = [];
+      for (const item of items) {
+        const [product] = await db.select().from(products).where(eq(products.id, item.productId));
+        if (product) {
+          const [supplier] = await db.select().from(users).where(eq(users.id, product.supplierId));
+          if (supplier) {
+            itemsWithProducts.push({ ...item, product: { ...product, supplier } });
+          }
+        }
+      }
+      result.push({ ...template, items: itemsWithProducts });
+    }
+    return result;
+  }
+
+  async getOrderTemplate(id: string): Promise<OrderTemplateWithItems | undefined> {
+    const [template] = await db.select().from(orderTemplates).where(eq(orderTemplates.id, id));
+    if (!template) return undefined;
+    
+    const items = await db.select().from(orderTemplateItems)
+      .where(eq(orderTemplateItems.templateId, template.id));
+    
+    const itemsWithProducts: OrderTemplateWithItems["items"] = [];
+    for (const item of items) {
+      const [product] = await db.select().from(products).where(eq(products.id, item.productId));
+      if (product) {
+        const [supplier] = await db.select().from(users).where(eq(users.id, product.supplierId));
+        if (supplier) {
+          itemsWithProducts.push({ ...item, product: { ...product, supplier } });
+        }
+      }
+    }
+    return { ...template, items: itemsWithProducts };
+  }
+
+  async createOrderTemplate(template: InsertOrderTemplate, items: InsertOrderTemplateItem[]): Promise<OrderTemplate> {
+    const id = randomUUID();
+    const [created] = await db.insert(orderTemplates).values({ ...template, id }).returning();
+    for (const item of items) {
+      await db.insert(orderTemplateItems).values({ ...item, id: randomUUID(), templateId: id });
+    }
+    return created;
+  }
+
+  async updateOrderTemplate(id: string, name: string, items: InsertOrderTemplateItem[]): Promise<OrderTemplate | undefined> {
+    const [updated] = await db.update(orderTemplates)
+      .set({ name, updatedAt: new Date() })
+      .where(eq(orderTemplates.id, id))
+      .returning();
+    if (!updated) return undefined;
+    
+    await db.delete(orderTemplateItems).where(eq(orderTemplateItems.templateId, id));
+    for (const item of items) {
+      await db.insert(orderTemplateItems).values({ ...item, id: randomUUID(), templateId: id });
+    }
+    return updated;
+  }
+
+  async deleteOrderTemplate(id: string): Promise<void> {
+    await db.delete(orderTemplateItems).where(eq(orderTemplateItems.templateId, id));
+    await db.delete(orderTemplates).where(eq(orderTemplates.id, id));
   }
 
   async seedData(): Promise<void> {

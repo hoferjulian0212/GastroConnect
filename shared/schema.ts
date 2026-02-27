@@ -209,6 +209,21 @@ export const stockMovements = pgTable("stock_movements", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const orderTemplates = pgTable("order_templates", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const orderTemplateItems = pgTable("order_template_items", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id", { length: 36 }).notNull().references(() => orderTemplates.id, { onDelete: "cascade" }),
+  productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
+  quantity: integer("quantity").notNull().default(1),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
@@ -229,6 +244,8 @@ export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: t
 export const insertCustomMinOrderQuantitySchema = createInsertSchema(customMinOrderQuantities).omit({ id: true, createdAt: true });
 export const insertCustomPriceSchema = createInsertSchema(customPrices).omit({ id: true, createdAt: true });
 export const insertStockMovementSchema = createInsertSchema(stockMovements).omit({ id: true, createdAt: true });
+export const insertOrderTemplateSchema = createInsertSchema(orderTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertOrderTemplateItemSchema = createInsertSchema(orderTemplateItems).omit({ id: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -294,3 +311,9 @@ export type ComplaintStatusHistoryWithUser = ComplaintStatusHistory & { changedB
 export type PromotionWithProduct = Promotion & { product: Product };
 export type ProductWithSupplierAndPromotion = ProductWithSupplier & { activePromotion?: Promotion | null };
 export type StockMovementWithProduct = StockMovement & { product: Product };
+export type InsertOrderTemplate = z.infer<typeof insertOrderTemplateSchema>;
+export type OrderTemplate = typeof orderTemplates.$inferSelect;
+export type InsertOrderTemplateItem = z.infer<typeof insertOrderTemplateItemSchema>;
+export type OrderTemplateItem = typeof orderTemplateItems.$inferSelect;
+export type OrderTemplateItemWithProduct = OrderTemplateItem & { product: Product & { supplier: User } };
+export type OrderTemplateWithItems = OrderTemplate & { items: OrderTemplateItemWithProduct[] };

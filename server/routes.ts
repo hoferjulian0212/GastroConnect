@@ -1566,6 +1566,71 @@ export async function registerRoutes(
     }
   });
 
+  // ===== ORDER TEMPLATES =====
+  app.get("/api/order-templates", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      if (!restaurantId) return res.json([]);
+      const templates = await storage.getOrderTemplates(restaurantId);
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  app.get("/api/order-templates/:id", async (req, res) => {
+    try {
+      const template = await storage.getOrderTemplate(req.params.id);
+      if (!template) return res.status(404).json({ error: "Template not found" });
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch template" });
+    }
+  });
+
+  app.post("/api/order-templates", async (req, res) => {
+    try {
+      const { restaurantId, name, items } = req.body;
+      if (!restaurantId || !name || !items?.length) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      const template = await storage.createOrderTemplate(
+        { restaurantId, name },
+        items.map((i: { productId: string; quantity: number }) => ({ templateId: "", productId: i.productId, quantity: i.quantity }))
+      );
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create template" });
+    }
+  });
+
+  app.patch("/api/order-templates/:id", async (req, res) => {
+    try {
+      const { name, items } = req.body;
+      if (!name || !items?.length) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      const template = await storage.updateOrderTemplate(
+        req.params.id,
+        name,
+        items.map((i: { productId: string; quantity: number }) => ({ templateId: req.params.id, productId: i.productId, quantity: i.quantity }))
+      );
+      if (!template) return res.status(404).json({ error: "Template not found" });
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update template" });
+    }
+  });
+
+  app.delete("/api/order-templates/:id", async (req, res) => {
+    try {
+      await storage.deleteOrderTemplate(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete template" });
+    }
+  });
+
   // ===== STATS =====
   app.get("/api/restaurant/upcoming-deliveries", async (req, res) => {
     try {
