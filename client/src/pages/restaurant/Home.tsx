@@ -79,13 +79,13 @@ export default function RestaurantHome() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">
-          {t("common", "welcomeBack")}{currentUser?.companyName ? `, ${currentUser.companyName}` : ""}!
-        </h1>
-        <p className="text-sm md:text-base text-muted-foreground mt-1">
-          {t("common", "overviewToday")}
+      <div className="text-center">
+        <p className="text-sm md:text-base text-muted-foreground">
+          {t("common", "welcomeBack")}
         </p>
+        <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">
+          {currentUser?.companyName || ""}
+        </h1>
       </div>
 
       <Card>
