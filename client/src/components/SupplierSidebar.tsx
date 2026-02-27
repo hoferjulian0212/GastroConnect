@@ -97,7 +97,7 @@ export function SupplierSidebar() {
                 {currentUser.companyName?.substring(0, 2).toUpperCase() || currentUser.name.substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-sm font-semibold text-center leading-snug w-full">{currentUser.companyName || currentUser.name}</span>
+            <span className="text-base font-semibold text-center leading-snug w-full break-words">{currentUser.companyName || currentUser.name}</span>
           </Link>
         )}
       </SidebarHeader>
