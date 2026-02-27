@@ -149,10 +149,12 @@ function MobileProfileButton() {
     ? currentUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
+  const displayName = currentUser?.companyName || currentUser?.name || "";
+
   return (
     <button
       onClick={() => setLocation(`/${currentRole}/settings`)}
-      className="md:hidden"
+      className="md:hidden flex flex-col items-center gap-0.5 min-w-0"
       data-testid="button-mobile-profile"
     >
       <Avatar className="h-8 w-8">
@@ -161,6 +163,11 @@ function MobileProfileButton() {
           {initials}
         </AvatarFallback>
       </Avatar>
+      {displayName && (
+        <span className="text-[10px] font-semibold text-foreground leading-tight max-w-[80px] truncate">
+          {displayName}
+        </span>
+      )}
     </button>
   );
 }
@@ -209,8 +216,8 @@ function AppLayout() {
               )}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <header className={`flex items-center justify-between gap-4 p-3 border-b border-border bg-background sticky top-0 z-10 ${isInChat ? 'hidden md:flex' : ''}`}>
-                <div className="flex items-center gap-2">
+              <header className={`flex items-center justify-between gap-4 px-3 py-2 md:p-3 border-b border-border bg-background sticky top-0 z-10 ${isInChat ? 'hidden md:flex' : ''}`}>
+                <div className="flex items-center gap-4">
                   <MobileProfileButton />
                   <div className="hidden md:block">
                     <RoleSwitcher />
