@@ -89,17 +89,30 @@ export default function SupplierPromotions() {
           ? (restaurants?.map(r => r.id) || [])
           : selectedRestaurantIds;
         if (targetIds.length > 0) {
-          const productNames = selectedProductIds.map(id => products?.find(p => p.id === id)?.name).filter(Boolean).join(", ");
-          const message = `*${promoName || (lang === "de" ? "Neue Aktion" : "Nuova promozione")}*\n${promoDescription ? promoDescription + "\n" : ""}${lang === "de" ? "Rabatt" : "Sconto"}: -${discountPercent}%\n${lang === "de" ? "Produkte" : "Prodotti"}: ${productNames}\n${lang === "de" ? "Gültig" : "Valido"}: ${format(new Date(startDate), "dd.MM.yyyy")} - ${format(new Date(endDate), "dd.MM.yyyy")}`;
+          const promoProducts = selectedProductIds.map(id => {
+            const p = products?.find(pr => pr.id === id);
+            if (!p) return null;
+            const orig = parseFloat(p.price);
+            const disc = orig * (1 - (parseInt(discountPercent) || 0) / 100);
+            return { id: p.id, name: p.name, originalPrice: orig.toFixed(2), discountedPrice: disc.toFixed(2), unit: p.unit, imageUrl: p.imageUrl };
+          }).filter(Boolean);
+          const promotionData = {
+            name: promoName || (lang === "de" ? "Neue Aktion" : "Nuova promozione"),
+            description: promoDescription || null,
+            discountPercent: parseInt(discountPercent),
+            startDate,
+            endDate,
+            products: promoProducts,
+            supplierId: currentUser.id,
+          };
           try {
             await apiRequest("POST", "/api/promotions/notify", {
               supplierId: currentUser.id,
               restaurantIds: targetIds,
-              message,
+              promotionData,
             });
             toast({ title: t("promotionsPage", "notificationSent"), description: t("promotionsPage", "notificationSentDesc") });
           } catch {
-            // notification failed silently
           }
         }
       }

@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
@@ -583,6 +583,8 @@ export default function SupplierInbox() {
                         ? (lang === "de" ? "Anhang" : "Allegato")
                         : conv.lastMessage?.messageType === "order_change_request"
                         ? (lang === "de" ? "Änderungsanfrage" : "Richiesta modifica")
+                        : conv.lastMessage?.messageType === "promotion"
+                        ? (lang === "de" ? "Aktion" : "Promozione")
                         : messagePreviewText;
                       const hasUnread = conv.unreadCount > 0;
                       return (
@@ -915,11 +917,78 @@ export default function SupplierInbox() {
                               </div>
                             )}
                             <div
-                              className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" || message.messageType === "order_change_request" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
+                              className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" || message.messageType === "order_change_request" || message.messageType === "promotion" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
                               data-testid={`message-${message.id}`}
                               {...(message.orderId ? { "data-order-id": message.orderId } : {})}
                             >
-                              {message.messageType === "order" ? (
+                              {message.messageType === "promotion" ? (
+                                (() => {
+                                  let promoData: any = null;
+                                  try { promoData = JSON.parse(message.content); } catch {}
+                                  if (!promoData) return null;
+                                  const now = new Date();
+                                  const endDate = new Date(promoData.endDate);
+                                  const isExpired = endDate < now;
+                                  const isDismissed = message.dismissed;
+                                  if (isDismissed) {
+                                    return (
+                                      <div className="w-[85%] rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`promotion-dismissed-${message.id}`}>
+                                        <div className="flex items-center justify-between px-3 py-2 gap-2">
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            <span className="text-xs text-muted-foreground truncate">{promoData.name}</span>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted text-muted-foreground shrink-0">
+                                              {lang === "de" ? "Abgelehnt" : "Rifiutato"}
+                                            </span>
+                                          </div>
+                                          <span className="text-[10px] text-muted-foreground shrink-0">{format(messageDate, "HH:mm")}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <div className={`w-[92%] rounded-lg border-2 shadow-sm overflow-hidden ${isExpired ? "border-muted bg-muted/20 opacity-60" : "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"}`} data-testid={`promotion-card-${message.id}`}>
+                                      <div className={`flex items-center justify-between px-4 py-2.5 border-b ${isExpired ? "border-muted bg-muted/30" : "border-green-200 dark:border-green-800 bg-green-100/50 dark:bg-green-900/30"}`}>
+                                        <div className="flex items-center gap-2">
+                                          <Tag className={`h-4 w-4 ${isExpired ? "text-muted-foreground" : "text-green-600 dark:text-green-400"}`} />
+                                          <span className={`text-sm font-semibold ${isExpired ? "text-muted-foreground" : "text-green-700 dark:text-green-300"}`}>{promoData.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/50 px-1.5 py-0.5 rounded">-{promoData.discountPercent}%</span>
+                                          <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                        </div>
+                                      </div>
+                                      <div className="p-3 space-y-2">
+                                        {promoData.description && (
+                                          <p className="text-xs text-muted-foreground">{promoData.description}</p>
+                                        )}
+                                        <div className="space-y-1">
+                                          {promoData.products?.map((prod: any) => (
+                                            <div key={prod.id} className="flex items-center gap-2 text-xs bg-background/50 rounded-md px-2 py-1.5">
+                                              {prod.imageUrl ? (
+                                                <div className="w-6 h-6 rounded overflow-hidden bg-muted shrink-0">
+                                                  <img src={prod.imageUrl} alt={prod.name} className="w-full h-full object-cover" />
+                                                </div>
+                                              ) : (
+                                                <div className="w-6 h-6 rounded bg-muted flex items-center justify-center shrink-0">
+                                                  <Package className="h-3 w-3 text-muted-foreground/30" />
+                                                </div>
+                                              )}
+                                              <span className="font-medium flex-1">{prod.name}</span>
+                                              <span className="text-muted-foreground line-through">{prod.originalPrice}€</span>
+                                              <span className="font-semibold text-green-600 dark:text-green-400">{prod.discountedPrice}€/{prod.unit}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                          <Calendar className="h-3 w-3" />
+                                          <span>{lang === "de" ? "Gültig bis" : "Valido fino al"} {format(endDate, "dd.MM.yyyy")}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })()
+                              ) : message.messageType === "order" ? (
                                 (() => {
                                   const orderData = parseOrderContent(message.content);
                                   const orderStatus = message.orderId ? conversationStatuses?.orderStatuses?.[message.orderId] : undefined;

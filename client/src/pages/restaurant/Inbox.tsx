@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
@@ -865,6 +865,8 @@ export default function RestaurantInbox() {
                         ? t("inbox", "documentMessage")
                         : conv.lastMessage?.messageType === "order_change_request"
                         ? t("inbox", "changeRequest")
+                        : conv.lastMessage?.messageType === "promotion"
+                        ? t("promotionsPage", "promotionMessage")
                         : conv.lastMessage?.messageType === "attachment"
                         ? t("inbox", "file")
                         : msgPreviewText;
@@ -1145,11 +1147,89 @@ export default function RestaurantInbox() {
                                 </div>
                               )}
                               <div
-                                className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" || message.messageType === "order_change_request" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
+                                className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" || message.messageType === "order_change_request" || message.messageType === "promotion" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
                                 data-testid={`message-${message.id}`}
                                 {...(message.orderId ? { "data-order-id": message.orderId } : {})}
                               >
-                                {message.messageType === "order" ? (
+                                {message.messageType === "promotion" && !message.dismissed ? (
+                                  (() => {
+                                    let promoData: any = null;
+                                    try { promoData = JSON.parse(message.content); } catch {}
+                                    if (!promoData) return null;
+                                    const now = new Date();
+                                    const endDate = new Date(promoData.endDate);
+                                    const isExpired = endDate < now;
+                                    return (
+                                      <div className={`w-[92%] rounded-lg border-2 shadow-sm overflow-hidden ${isExpired ? "border-muted bg-muted/20 opacity-60" : "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"}`} data-testid={`promotion-card-${message.id}`}>
+                                        <div className={`flex items-center justify-between px-4 py-2.5 border-b ${isExpired ? "border-muted bg-muted/30" : "border-green-200 dark:border-green-800 bg-green-100/50 dark:bg-green-900/30"}`}>
+                                          <div className="flex items-center gap-2">
+                                            <Tag className={`h-4 w-4 ${isExpired ? "text-muted-foreground" : "text-green-600 dark:text-green-400"}`} />
+                                            <span className={`text-sm font-semibold ${isExpired ? "text-muted-foreground" : "text-green-700 dark:text-green-300"}`}>{promoData.name}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/50 px-1.5 py-0.5 rounded">-{promoData.discountPercent}%</span>
+                                            <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                          </div>
+                                        </div>
+                                        <div className="p-3 space-y-2">
+                                          {promoData.description && (
+                                            <p className="text-xs text-muted-foreground">{promoData.description}</p>
+                                          )}
+                                          <div className="space-y-1">
+                                            {promoData.products?.map((prod: any) => (
+                                              <div key={prod.id} className="flex items-center gap-2 text-xs bg-background/50 rounded-md px-2 py-1.5">
+                                                {prod.imageUrl ? (
+                                                  <div className="w-6 h-6 rounded overflow-hidden bg-muted shrink-0">
+                                                    <img src={prod.imageUrl} alt={prod.name} className="w-full h-full object-cover" />
+                                                  </div>
+                                                ) : (
+                                                  <div className="w-6 h-6 rounded bg-muted flex items-center justify-center shrink-0">
+                                                    <Package className="h-3 w-3 text-muted-foreground/30" />
+                                                  </div>
+                                                )}
+                                                <span className="font-medium flex-1">{prod.name}</span>
+                                                <span className="text-muted-foreground line-through">{prod.originalPrice}€</span>
+                                                <span className="font-semibold text-green-600 dark:text-green-400">{prod.discountedPrice}€/{prod.unit}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                            <Calendar className="h-3 w-3" />
+                                            <span>{t("promotionsPage", "validUntil")} {format(endDate, "dd.MM.yyyy")}</span>
+                                          </div>
+                                          {!isExpired && (
+                                            <div className="flex gap-2 pt-1">
+                                              <Button
+                                                size="sm"
+                                                className="flex-1 h-8 text-xs"
+                                                onClick={() => setLocation(`/restaurant/catalog?supplierId=${promoData.supplierId}`)}
+                                                data-testid={`button-order-promo-${message.id}`}
+                                              >
+                                                <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                                                {t("promotionsPage", "orderNow")}
+                                              </Button>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 text-xs"
+                                                onClick={async () => {
+                                                  try {
+                                                    await apiRequest("PATCH", `/api/messages/${message.id}/dismiss`);
+                                                    queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
+                                                  } catch {}
+                                                }}
+                                                data-testid={`button-dismiss-promo-${message.id}`}
+                                              >
+                                                <X className="h-3.5 w-3.5 mr-1" />
+                                                {t("promotionsPage", "notInterested")}
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()
+                                ) : message.messageType === "order" ? (
                                   (() => {
                                     const orderData = parseOrderContent(message.content);
                                     const orderStatus = message.orderId ? conversationStatuses?.orderStatuses?.[message.orderId] : undefined;

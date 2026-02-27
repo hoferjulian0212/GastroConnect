@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
-import { orders } from "@shared/schema";
+import { orders, messages } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema } from "@shared/schema";
 
@@ -399,22 +399,33 @@ export async function registerRoutes(
 
   app.post("/api/promotions/notify", async (req, res) => {
     try {
-      const { supplierId, restaurantIds, message } = req.body;
-      if (!supplierId || !restaurantIds || !Array.isArray(restaurantIds) || restaurantIds.length === 0 || !message) {
+      const { supplierId, restaurantIds, promotionData } = req.body;
+      if (!supplierId || !restaurantIds || !Array.isArray(restaurantIds) || restaurantIds.length === 0 || !promotionData) {
         return res.status(400).json({ error: "Missing required fields" });
       }
       for (const restaurantId of restaurantIds) {
         const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
-        await storage.createMessage({
+        await storage.sendMessage({
           conversationId: conversation.id,
           senderId: supplierId,
-          content: message,
-          messageType: "text",
+          content: JSON.stringify(promotionData),
+          messageType: "promotion",
         });
       }
       res.status(200).json({ sent: restaurantIds.length });
     } catch (error) {
+      console.error("Failed to send promotions notify:", error);
       res.status(500).json({ error: "Failed to send notifications" });
+    }
+  });
+
+  app.patch("/api/messages/:id/dismiss", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await db.update(messages).set({ dismissed: true }).where(eq(messages.id, id));
+      res.status(200).json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to dismiss message" });
     }
   });
 
