@@ -559,6 +559,7 @@ const t = {
     step3: { de: "Zielgruppe & Benachrichtigung", it: "Destinatari e notifica" },
     next: { de: "Weiter", it: "Avanti" },
     back: { de: "Zurück", it: "Indietro" },
+    noStockAvailable: { de: "Kein Bestand vorrätig", it: "Nessuna scorta disponibile" },
   },
   documents: {
     title: { de: "Dokumente", it: "Documenti" },

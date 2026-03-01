@@ -163,13 +163,16 @@ export default function SupplierPromotions() {
 
   const handleSubmit = () => {
     const discount = parseInt(discountPercent);
-    if (selectedProductIds.length === 0 || !discount || discount < 1 || discount > 99 || !startDate || !endDate) {
+    const validProductIds = products
+      ? selectedProductIds.filter(id => { const p = products.find(pr => pr.id === id); return p && p.inStock !== false; })
+      : selectedProductIds;
+    if (validProductIds.length === 0 || !discount || discount < 1 || discount > 99 || !startDate || !endDate) {
       toast({ title: t("common", "error"), variant: "destructive" });
       return;
     }
 
     bulkCreateMutation.mutate({
-      productIds: selectedProductIds,
+      productIds: validProductIds,
       supplierId: currentUser!.id,
       discountPercent: discount,
       startDate,
@@ -494,19 +497,21 @@ export default function SupplierPromotions() {
                     const isSelected = selectedProductIds.includes(product.id);
                     const orig = parseFloat(product.price);
                     const disc = orig * (1 - (parseInt(discountPercent) || 0) / 100);
+                    const outOfStock = product.inStock === false;
                     return (
                       <div
                         key={product.id}
-                        onClick={() => toggleProduct(product.id)}
-                        className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-                          isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                        onClick={() => !outOfStock && toggleProduct(product.id)}
+                        className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors ${
+                          outOfStock ? "opacity-60 cursor-not-allowed bg-muted/30" :
+                          isSelected ? "border-primary bg-primary/5 cursor-pointer" : "border-border hover:bg-muted/50 cursor-pointer"
                         }`}
                         data-testid={`product-option-${product.id}`}
                       >
-                        <Checkbox checked={isSelected} className="pointer-events-none" />
+                        <Checkbox checked={isSelected} disabled={outOfStock} className="pointer-events-none" />
                         {product.imageUrl ? (
                           <div className="w-8 h-8 rounded-md overflow-hidden bg-muted shrink-0">
-                            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                            <img src={product.imageUrl} alt={product.name} className={`w-full h-full object-cover ${outOfStock ? "grayscale" : ""}`} />
                           </div>
                         ) : (
                           <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
@@ -515,11 +520,15 @@ export default function SupplierPromotions() {
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{product.name}</p>
-                          <div className="flex items-center gap-1.5 text-[11px]">
-                            <span className="text-muted-foreground line-through">{orig.toFixed(2)}€</span>
-                            <span className="font-medium text-green-600 dark:text-green-400">{disc.toFixed(2)}€</span>
-                            <span className="text-muted-foreground">/{product.unit}</span>
-                          </div>
+                          {outOfStock ? (
+                            <p className="text-[11px] text-red-500 font-medium">{t("promotionsPage", "noStockAvailable")}</p>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-[11px]">
+                              <span className="text-muted-foreground line-through">{orig.toFixed(2)}€</span>
+                              <span className="font-medium text-green-600 dark:text-green-400">{disc.toFixed(2)}€</span>
+                              <span className="text-muted-foreground">/{product.unit}</span>
+                            </div>
+                          )}
                         </div>
                         {product.category && (
                           <Badge variant="secondary" className="text-[10px] shrink-0">{product.category}</Badge>
