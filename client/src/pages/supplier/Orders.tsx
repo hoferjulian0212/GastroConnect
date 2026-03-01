@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import type { OrderWithDetails } from "@shared/schema";
+import type { OrderWithDetails, ProductWithSupplierAndPromotion } from "@shared/schema";
+import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -40,11 +41,23 @@ export default function SupplierOrders() {
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [orderMessage, setOrderMessage] = useState("");
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductWithSupplierAndPromotion | null>(null);
 
   const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
+
+  const { data: allProducts } = useQuery<ProductWithSupplierAndPromotion[]>({
+    queryKey: [`/api/products?supplierId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const productsMap = useMemo(() => {
+    const map = new Map<string, ProductWithSupplierAndPromotion>();
+    allProducts?.forEach(p => map.set(p.id, p));
+    return map;
+  }, [allProducts]);
 
   const uniqueRestaurants = useMemo(() => {
     if (!orders) return [];
@@ -645,16 +658,33 @@ export default function SupplierOrders() {
               <div className="border-t border-border pt-3">
                 <p className="text-sm font-medium mb-2">{t("common", "items")} ({detailOrder.items?.length || 0})</p>
                 <div className="space-y-2">
-                  {detailOrder.items?.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50" data-testid={`detail-item-${item.id}`}>
-                      <div>
-                        <span className="font-medium">{item.quantity}x</span>{" "}
-                        <span>{item.productName}</span>
-                        <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
+                  {detailOrder.items?.map((item) => {
+                    const product = productsMap.get(item.productId);
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex justify-between items-center text-sm p-2 rounded-md bg-muted/50 ${product ? "cursor-pointer hover:bg-muted transition-colors" : ""}`}
+                        onClick={() => product && setSelectedProduct(product)}
+                        data-testid={`detail-item-${item.id}`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {product?.imageUrl ? (
+                            <img src={product.imageUrl} alt={item.productName} className="h-8 w-8 rounded object-cover shrink-0" />
+                          ) : (
+                            <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
+                              <Package className="h-4 w-4 text-muted-foreground/40" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <span className="font-medium">{item.quantity}x</span>{" "}
+                            <span className={product ? "underline decoration-dotted underline-offset-2" : ""}>{item.productName}</span>
+                            <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
+                          </div>
+                        </div>
+                        <span className="font-medium shrink-0 ml-2">{item.totalPrice}€</span>
                       </div>
-                      <span className="font-medium">{item.totalPrice}€</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -761,6 +791,12 @@ export default function SupplierOrders() {
             );
           }
         }}
+      />
+
+      <ProductDetailDialog
+        product={selectedProduct}
+        open={!!selectedProduct}
+        onOpenChange={(open) => { if (!open) setSelectedProduct(null); }}
       />
     </div>
   );
