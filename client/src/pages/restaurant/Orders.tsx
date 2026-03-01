@@ -533,9 +533,16 @@ export default function RestaurantOrders() {
         {order.items && order.items.length > 0 && (
           <div className="mt-2 pt-2 border-t border-border/30">
             <div className="space-y-1">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-xs md:text-sm" data-testid={`card-item-${item.id}`}>
-                  <span className="text-muted-foreground">
+              {order.items.map((item: any) => (
+                <div key={item.id} className="flex items-center gap-2 text-xs md:text-sm" data-testid={`card-item-${item.id}`}>
+                  {item.productImageUrl ? (
+                    <img src={item.productImageUrl} alt="" className="h-6 w-6 rounded object-cover shrink-0" />
+                  ) : (
+                    <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0">
+                      <Package className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                  )}
+                  <span className="text-muted-foreground flex-1 truncate">
                     <span className="font-medium text-foreground">{item.quantity}x</span> {item.productName}
                   </span>
                   <span className="text-muted-foreground shrink-0 ml-2">{item.totalPrice}€</span>
@@ -1115,8 +1122,15 @@ export default function RestaurantOrders() {
             <div>
               <Label className="text-sm font-medium mb-2 block">{t("orders", "orderItems")}</Label>
               <div className="space-y-2">
-                {editItems.map((item, index) => (
-                  <div key={item.id} className="flex items-center justify-between gap-3 p-3 rounded-md bg-muted/50" data-testid={`edit-item-${item.productId}`}>
+                {editItems.map((item: any, index) => (
+                  <div key={item.id} className="flex items-center gap-2.5 p-3 rounded-md bg-muted/50" data-testid={`edit-item-${item.productId}`}>
+                    {item.productImageUrl ? (
+                      <img src={item.productImageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
+                    ) : (
+                      <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{item.productName}</p>
                       <p className="text-xs text-muted-foreground">{parseFloat(item.unitPrice).toFixed(2)}€ {t("orders", "perUnit")}</p>

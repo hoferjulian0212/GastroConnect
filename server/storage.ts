@@ -231,6 +231,14 @@ export class DatabaseStorage implements IStorage {
     await db.delete(products).where(eq(products.id, id));
   }
 
+  private async enrichOrderItemsWithImages(items: OrderItem[]): Promise<OrderItem[]> {
+    if (items.length === 0) return items;
+    const productIds = [...new Set(items.map(i => i.productId))];
+    const productRows = await db.select({ id: products.id, imageUrl: products.imageUrl }).from(products).where(inArray(products.id, productIds));
+    const imageMap = new Map(productRows.map(p => [p.id, p.imageUrl]));
+    return items.map(item => ({ ...item, productImageUrl: imageMap.get(item.productId) || null })) as any;
+  }
+
   // Orders
   async getOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]> {
     const ordersResult = await db
@@ -241,7 +249,7 @@ export class DatabaseStorage implements IStorage {
 
     const ordersWithDetails: OrderWithDetails[] = [];
     for (const order of ordersResult) {
-      const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+      const items = await this.enrichOrderItemsWithImages(await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)));
       const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
       const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
       ordersWithDetails.push({ ...order, items, restaurant, supplier });
@@ -258,7 +266,7 @@ export class DatabaseStorage implements IStorage {
 
     const ordersWithDetails: OrderWithDetails[] = [];
     for (const order of ordersResult) {
-      const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+      const items = await this.enrichOrderItemsWithImages(await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)));
       const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
       const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
       ordersWithDetails.push({ ...order, items, restaurant, supplier });
@@ -276,7 +284,7 @@ export class DatabaseStorage implements IStorage {
 
     const ordersWithDetails: OrderWithDetails[] = [];
     for (const order of recentOrders) {
-      const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+      const items = await this.enrichOrderItemsWithImages(await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)));
       const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
       const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
       ordersWithDetails.push({ ...order, items, restaurant, supplier });
@@ -294,7 +302,7 @@ export class DatabaseStorage implements IStorage {
 
     const ordersWithDetails: OrderWithDetails[] = [];
     for (const order of recentOrders) {
-      const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+      const items = await this.enrichOrderItemsWithImages(await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)));
       const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
       const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
       ordersWithDetails.push({ ...order, items, restaurant, supplier });
@@ -306,7 +314,7 @@ export class DatabaseStorage implements IStorage {
     const [order] = await db.select().from(orders).where(eq(orders.id, id));
     if (!order) return undefined;
     
-    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
+    const items = await this.enrichOrderItemsWithImages(await db.select().from(orderItems).where(eq(orderItems.orderId, id)));
     const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
     const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
     

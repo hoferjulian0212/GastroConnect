@@ -214,9 +214,13 @@ export default function SupplierHome() {
                   data-testid={`low-stock-item-${product.id}`}
                 >
                   <div className="flex items-center gap-2 md:gap-3">
-                    <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-md bg-orange-100 dark:bg-orange-900/30">
-                      <AlertTriangle className="h-4 w-4 text-orange-600" />
-                    </div>
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt="" className="h-8 w-8 md:h-9 md:w-9 rounded-md object-cover shrink-0" />
+                    ) : (
+                      <div className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-md bg-orange-100 dark:bg-orange-900/30 shrink-0">
+                        <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      </div>
+                    )}
                     <div>
                       <p className="text-xs md:text-sm font-medium">{product.name}</p>
                       <p className="text-[10px] md:text-xs text-muted-foreground">

@@ -862,8 +862,15 @@ export default function RestaurantHome() {
                                 {group.items.map((item) => {
                                   const oos = item.product.inStock === false;
                                   return (
-                                    <div key={item.id} className={`flex items-center justify-between text-xs ${oos ? "text-muted-foreground/50 line-through" : ""}`} data-testid={`template-item-${item.id}`}>
-                                      <span className="truncate">
+                                    <div key={item.id} className={`flex items-center gap-2 text-xs ${oos ? "text-muted-foreground/50 line-through" : ""}`} data-testid={`template-item-${item.id}`}>
+                                      {item.product.imageUrl ? (
+                                        <img src={item.product.imageUrl} alt="" className="h-6 w-6 rounded object-cover shrink-0" />
+                                      ) : (
+                                        <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0">
+                                          <Package className="h-3 w-3 text-muted-foreground" />
+                                        </div>
+                                      )}
+                                      <span className="truncate flex-1">
                                         <span className="font-medium">{item.quantity}x</span> {item.product.name}
                                       </span>
                                       <span className="shrink-0 ml-2 tabular-nums">{(parseFloat(item.product.price) * item.quantity).toFixed(2)}&euro;</span>
@@ -969,14 +976,21 @@ export default function RestaurantHome() {
               <div className="border-t border-border pt-3">
                 <p className="text-sm font-medium mb-2">{t("common", "items")} ({detailOrder.items?.length || 0})</p>
                 <div className="space-y-2">
-                  {detailOrder.items?.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50" data-testid={`home-detail-item-${item.id}`}>
-                      <div>
+                  {detailOrder.items?.map((item: any) => (
+                    <div key={item.id} className="flex items-center gap-2.5 text-sm p-2 rounded-md bg-muted/50" data-testid={`home-detail-item-${item.id}`}>
+                      {item.productImageUrl ? (
+                        <img src={item.productImageUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
+                      ) : (
+                        <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
                         <span className="font-medium">{item.quantity}x</span>{" "}
                         <span>{item.productName}</span>
                         <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
                       </div>
-                      <span className="font-medium">{item.totalPrice}€</span>
+                      <span className="font-medium shrink-0">{item.totalPrice}€</span>
                     </div>
                   ))}
                 </div>
@@ -1062,9 +1076,16 @@ export default function RestaurantHome() {
                     {wizardTemplate.items.filter(i => i.product.inStock !== false).map((item) => (
                       <div
                         key={item.productId}
-                        className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-border bg-card"
+                        className="flex items-center gap-2.5 p-2.5 rounded-lg border border-border bg-card"
                         data-testid={`wizard-item-${item.productId}`}
                       >
+                        {item.product.imageUrl ? (
+                          <img src={item.product.imageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
+                        ) : (
+                          <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{item.product.name}</p>
                           <p className="text-xs text-muted-foreground truncate">
@@ -1086,6 +1107,13 @@ export default function RestaurantHome() {
                         <p className="text-xs text-muted-foreground mb-1">{lang === "de" ? "Nicht verfuegbar:" : "Non disponibile:"}</p>
                         {wizardTemplate.items.filter(i => i.product.inStock === false).map((item) => (
                           <div key={item.productId} className="flex items-center gap-2 text-xs text-muted-foreground/60 line-through py-0.5">
+                            {item.product.imageUrl ? (
+                              <img src={item.product.imageUrl} alt="" className="h-5 w-5 rounded object-cover shrink-0 opacity-50" />
+                            ) : (
+                              <div className="h-5 w-5 rounded bg-muted flex items-center justify-center shrink-0">
+                                <Package className="h-2.5 w-2.5 text-muted-foreground" />
+                              </div>
+                            )}
                             <span>{item.quantity}x {item.product.name}</span>
                           </div>
                         ))}

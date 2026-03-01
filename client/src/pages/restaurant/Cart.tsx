@@ -358,9 +358,13 @@ export default function RestaurantCart() {
                         data-testid={`cart-item-${item.id}`}
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-md bg-background">
-                            <Package className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
-                          </div>
+                          {item.product.imageUrl ? (
+                            <img src={item.product.imageUrl} alt={item.product.name} className="h-10 w-10 md:h-12 md:w-12 rounded-md object-cover shrink-0" />
+                          ) : (
+                            <div className="flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-md bg-muted">
+                              <Package className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
+                            </div>
+                          )}
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-sm md:text-base truncate">{item.product.name}</p>
                             {item.activePromotion ? (

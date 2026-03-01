@@ -378,9 +378,16 @@ export default function SupplierOrders() {
         {order.items && order.items.length > 0 && (
           <div className="mt-2 pt-2 border-t border-border/30">
             <div className="space-y-1">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-xs md:text-sm" data-testid={`card-item-${item.id}`}>
-                  <span className="text-muted-foreground">
+              {order.items.map((item: any) => (
+                <div key={item.id} className="flex items-center gap-2 text-xs md:text-sm" data-testid={`card-item-${item.id}`}>
+                  {item.productImageUrl ? (
+                    <img src={item.productImageUrl} alt="" className="h-6 w-6 rounded object-cover shrink-0" />
+                  ) : (
+                    <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0">
+                      <Package className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                  )}
+                  <span className="text-muted-foreground flex-1 truncate">
                     <span className="font-medium text-foreground">{item.quantity}x</span> {item.productName}
                   </span>
                   <span className="text-muted-foreground shrink-0 ml-2">{item.totalPrice}€</span>
