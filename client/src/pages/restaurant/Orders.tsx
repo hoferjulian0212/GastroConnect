@@ -207,6 +207,25 @@ export default function RestaurantOrders() {
     },
   });
 
+  const cancelOrderMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status: "cancelled" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/recent"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/upcoming-deliveries"] });
+      toast({ title: lang === "de" ? "Bestellung storniert" : "Ordine annullato" });
+      if (detailOrder) {
+        setDetailOrder(null);
+      }
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    },
+  });
+
   const uniqueSuppliers = useMemo(() => {
     if (!orders) return [];
     const map = new Map<string, { id: string; name: string; profileImageUrl: string | null; orderCount: number }>();
@@ -556,15 +575,28 @@ export default function RestaurantOrders() {
           {(canEditOrder(order) || canRequestChange(order)) && (
             <div className="flex gap-1.5">
               {canEditOrder(order) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); openEditDialog(order); }}
-                  data-testid={`button-edit-order-${order.id}`}
-                >
-                  <Pencil className="h-3 w-3 mr-1" />
-                  {t("orders", "editOrder")}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); openEditDialog(order); }}
+                    data-testid={`button-edit-order-${order.id}`}
+                  >
+                    <Pencil className="h-3 w-3 mr-1" />
+                    {t("orders", "editOrder")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={(e) => { e.stopPropagation(); cancelOrderMutation.mutate(order.id); }}
+                    disabled={cancelOrderMutation.isPending}
+                    data-testid={`button-cancel-order-${order.id}`}
+                  >
+                    <XCircle className="h-3 w-3 mr-1" />
+                    {lang === "de" ? "Stornieren" : "Annullare"}
+                  </Button>
+                </>
               )}
               {canRequestChange(order) && (
                 <Button
@@ -905,15 +937,28 @@ export default function RestaurantOrders() {
               {(canEditOrder(detailOrder) || canRequestChange(detailOrder)) && (
                 <div className="border-t border-border pt-3 flex flex-wrap gap-2">
                   {canEditOrder(detailOrder) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { const o = detailOrder; setDetailOrder(null); openEditDialog(o); }}
-                      data-testid="button-detail-edit-order"
-                    >
-                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                      {t("orders", "editOrder")}
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { const o = detailOrder; setDetailOrder(null); openEditDialog(o); }}
+                        data-testid="button-detail-edit-order"
+                      >
+                        <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                        {t("orders", "editOrder")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                        onClick={() => cancelOrderMutation.mutate(detailOrder.id)}
+                        disabled={cancelOrderMutation.isPending}
+                        data-testid="button-detail-cancel-order"
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                        {lang === "de" ? "Stornieren" : "Annullare"}
+                      </Button>
+                    </>
                   )}
                   {canRequestChange(detailOrder) && (
                     <Button
