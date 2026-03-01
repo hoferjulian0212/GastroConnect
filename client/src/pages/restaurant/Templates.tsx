@@ -5,7 +5,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { OrderTemplateWithItems, Product, User } from "@shared/schema";
+import type { OrderTemplateWithItems, Product, User, OrderWithDetails } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +14,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
-  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Minus, Check, X, ChevronRight
+  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Minus, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle
 } from "lucide-react";
+import { format } from "date-fns";
+import { de, it } from "date-fns/locale";
 
 type ProductWithSupplier = Product & { supplier: User };
 
@@ -201,8 +203,11 @@ function CreateEditDialog({
   t: ReturnType<typeof useT>;
 }) {
   const { toast } = useToast();
+  const dateFnsLocale = lang === "it" ? it : de;
+  const [mode, setMode] = useState<"choose" | "scratch" | "from_order">(template ? "scratch" : "choose");
   const [name, setName] = useState(template?.name || "");
   const [search, setSearch] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<{ productId: string; quantity: number; product: ProductWithSupplier }[]>(
     template?.items.map(i => ({ productId: i.productId, quantity: i.quantity, product: i.product })) || []
   );
@@ -216,13 +221,31 @@ function CreateEditDialog({
     },
   });
 
+  const { data: orders, isLoading: ordersLoading } = useQuery<OrderWithDetails[]>({
+    queryKey: ["/api/orders", restaurantId],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders?restaurantId=${restaurantId}`, { credentials: "include" });
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    },
+    enabled: mode === "choose" || mode === "from_order",
+  });
+
+  const suppliers = useMemo(() => {
+    if (!allProducts) return [];
+    const map = new Map<string, User>();
+    allProducts.forEach(p => { if (p.supplier) map.set(p.supplier.id, p.supplier); });
+    return Array.from(map.values());
+  }, [allProducts]);
+
   const availableProducts = useMemo(() => {
     if (!allProducts) return [];
     const selectedIds = new Set(selectedItems.map(i => i.productId));
     return allProducts
       .filter(p => !selectedIds.has(p.id) && p.inStock)
+      .filter(p => !supplierFilter || p.supplierId === supplierFilter)
       .filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.supplier?.companyName?.toLowerCase().includes(search.toLowerCase()));
-  }, [allProducts, selectedItems, search]);
+  }, [allProducts, selectedItems, search, supplierFilter]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -246,7 +269,6 @@ function CreateEditDialog({
 
   const addProduct = (product: ProductWithSupplier) => {
     setSelectedItems(prev => [...prev, { productId: product.id, quantity: product.minOrderQuantity || 1, product }]);
-    setSearch("");
   };
 
   const removeProduct = (productId: string) => {
@@ -262,11 +284,147 @@ function CreateEditDialog({
     }));
   };
 
+  const loadFromOrder = (order: OrderWithDetails) => {
+    if (!allProducts) return;
+    const productMap = new Map(allProducts.map(p => [p.id, p]));
+    const items = order.items
+      .map(item => {
+        const product = productMap.get(item.productId);
+        if (!product) return null;
+        return { productId: item.productId, quantity: item.quantity, product };
+      })
+      .filter(Boolean) as { productId: string; quantity: number; product: ProductWithSupplier }[];
+    setSelectedItems(items);
+    setName(name || `${order.supplier?.companyName || ""} ${format(new Date(order.createdAt), "dd.MM.yy", { locale: dateFnsLocale })}`.trim());
+    setMode("scratch");
+  };
+
+  const isSelected = (productId: string) => selectedItems.some(i => i.productId === productId);
+
+  if (mode === "choose") {
+    return (
+      <Dialog open onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="max-w-md" data-testid="dialog-choose-template-mode">
+          <DialogHeader>
+            <DialogTitle>{t("templates", "newTemplate")}</DialogTitle>
+            <DialogDescription>{t("templates", "orderTemplatesDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <button
+              type="button"
+              className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-transparent hover:border-primary/30 bg-muted/30 hover:bg-primary/5 transition-all text-left"
+              onClick={() => setMode("scratch")}
+              data-testid="button-mode-scratch"
+            >
+              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 shrink-0">
+                <Plus className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">{t("templates", "createFromScratch")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("templates", "createFromScratchDesc")}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </button>
+            <button
+              type="button"
+              className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-transparent hover:border-primary/30 bg-muted/30 hover:bg-primary/5 transition-all text-left"
+              onClick={() => setMode("from_order")}
+              data-testid="button-mode-from-order"
+            >
+              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-950/30 shrink-0">
+                <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">{t("templates", "createFromOrder")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("templates", "createFromOrderDesc")}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (mode === "from_order") {
+    const sortedOrders = orders ? [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : [];
+    return (
+      <Dialog open onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-from-order">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setMode("choose")} data-testid="button-back-to-choose">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              {t("templates", "selectOrder")}
+            </DialogTitle>
+            <DialogDescription>{t("templates", "createFromOrderDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            {ordersLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg border">
+                    <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+            ) : sortedOrders.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                {t("templates", "noOrders")}
+              </div>
+            ) : (
+              sortedOrders.map(order => (
+                <button
+                  key={order.id}
+                  type="button"
+                  className="w-full flex items-start gap-3 p-3 rounded-lg border hover:border-primary/30 hover:bg-muted/30 transition-all text-left"
+                  onClick={() => loadFromOrder(order)}
+                  data-testid={`button-select-order-${order.id}`}
+                >
+                  <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted shrink-0 mt-0.5">
+                    <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-muted-foreground">#{order.id.slice(0, 8)}</span>
+                      <span className="text-xs text-muted-foreground">{format(new Date(order.createdAt), "dd.MM.yyyy", { locale: dateFnsLocale })}</span>
+                    </div>
+                    <p className="text-sm font-medium mt-0.5">{order.supplier?.companyName}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {order.items.slice(0, 3).map(i => `${i.quantity}x ${i.productName}`).join(", ")}
+                      {order.items.length > 3 && ` +${order.items.length - 3}`}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold">{order.totalAmount ? `${Number(order.totalAmount).toFixed(2)}€` : ""}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{order.items.length} {t("templates", "products")}</p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-create-template">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {!template && (
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => { setMode("choose"); setSelectedItems([]); setName(""); }} data-testid="button-back-to-choose">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
             {template ? t("templates", "editTemplate") : t("templates", "newTemplate")}
           </DialogTitle>
           <DialogDescription>
@@ -285,11 +443,64 @@ function CreateEditDialog({
             />
           </div>
 
+          {selectedItems.length > 0 && (
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                {t("templates", "selectedProducts")} ({selectedItems.length})
+              </label>
+              <div className="space-y-1.5">
+                {selectedItems.map(item => (
+                  <div key={item.productId} className="flex items-center gap-2 p-2 rounded-lg border bg-card" data-testid={`selected-product-${item.productId}`}>
+                    {item.product.imageUrl ? (
+                      <img src={item.product.imageUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
+                    ) : (
+                      <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
+                        <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{item.product.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{item.product.supplier?.companyName} — {item.product.price}€/{item.product.unit}</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => updateQuantity(item.productId, -1)}
+                        disabled={item.quantity <= (item.product.minOrderQuantity || 1)}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-7 text-center text-xs font-medium">{item.quantity}</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => updateQuantity(item.productId, 1)}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive hover:text-destructive shrink-0"
+                      onClick={() => removeProduct(item.productId)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Separator />
 
           <div>
-            <label className="text-sm font-medium mb-1.5 block">{t("templates", "selectProducts")}</label>
-            <div className="relative">
+            <label className="text-sm font-medium mb-1.5 block">{t("templates", "allProducts")}</label>
+            <div className="relative mb-2">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 value={search}
@@ -300,93 +511,68 @@ function CreateEditDialog({
               />
             </div>
 
-            {search && availableProducts.length > 0 && (
-              <div className="mt-2 border rounded-lg max-h-48 overflow-y-auto divide-y">
-                {availableProducts.slice(0, 20).map(product => (
+            {suppliers.length > 1 && (
+              <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
+                <Badge
+                  variant={supplierFilter === null ? "default" : "outline"}
+                  className="cursor-pointer shrink-0 text-xs"
+                  onClick={() => setSupplierFilter(null)}
+                  data-testid="filter-supplier-all"
+                >
+                  {t("templates", "allProducts")}
+                </Badge>
+                {suppliers.map(s => (
+                  <Badge
+                    key={s.id}
+                    variant={supplierFilter === s.id ? "default" : "outline"}
+                    className="cursor-pointer shrink-0 text-xs"
+                    onClick={() => setSupplierFilter(supplierFilter === s.id ? null : s.id)}
+                    data-testid={`filter-supplier-${s.id}`}
+                  >
+                    {s.companyName}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            <div className="border rounded-lg max-h-60 overflow-y-auto divide-y">
+              {availableProducts.length === 0 ? (
+                <div className="text-center py-4 text-xs text-muted-foreground">
+                  {t("templates", "noProductsSelected")}
+                </div>
+              ) : (
+                availableProducts.map(product => (
                   <button
                     key={product.id}
                     type="button"
-                    className="w-full flex items-center gap-2.5 p-2.5 hover:bg-muted/50 transition-colors text-left"
-                    onClick={() => addProduct(product)}
+                    className="w-full flex items-center gap-2 p-2 hover:bg-muted/50 transition-colors text-left"
+                    onClick={() => isSelected(product.id) ? removeProduct(product.id) : addProduct(product)}
                     data-testid={`button-add-product-${product.id}`}
                   >
                     {product.imageUrl ? (
                       <img src={product.imageUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
                     ) : (
                       <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
-                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <Package className="h-3.5 w-3.5 text-muted-foreground" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{product.name}</p>
+                      <p className="text-xs font-medium truncate">{product.name}</p>
                       <p className="text-[10px] text-muted-foreground truncate">{product.supplier?.companyName}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold">{product.price}€</p>
+                      <p className="text-xs font-semibold">{product.price}€</p>
                       <p className="text-[10px] text-muted-foreground">/{product.unit}</p>
                     </div>
-                    <Plus className="h-4 w-4 text-primary shrink-0" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="text-sm font-medium mb-1.5 block">
-              {t("templates", "selectedProducts")} ({selectedItems.length})
-            </label>
-            {selectedItems.length === 0 ? (
-              <div className="text-center py-6 text-sm text-muted-foreground border rounded-lg border-dashed">
-                {t("templates", "noProductsSelected")}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {selectedItems.map(item => (
-                  <div key={item.productId} className="flex items-center gap-2.5 p-2.5 rounded-lg border bg-card" data-testid={`selected-product-${item.productId}`}>
-                    {item.product.imageUrl ? (
-                      <img src={item.product.imageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
+                    {isSelected(product.id) ? (
+                      <CheckCircle className="h-4 w-4 text-primary shrink-0" />
                     ) : (
-                      <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                      <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
                     )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.product.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{item.product.supplier?.companyName} — {item.product.price}€/{item.product.unit}</p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => updateQuantity(item.productId, -1)}
-                        disabled={item.quantity <= (item.product.minOrderQuantity || 1)}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => updateQuantity(item.productId, 1)}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive shrink-0"
-                      onClick={() => removeProduct(item.productId)}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </div>
 
