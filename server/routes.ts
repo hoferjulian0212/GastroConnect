@@ -7,6 +7,7 @@ import { db } from "./db";
 import { orders, messages } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema } from "@shared/schema";
+import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 
 const insertProductSchema = _insertProductSchema.strict();
 const insertCartItemSchema = _insertCartItemSchema.strict();
@@ -20,6 +21,37 @@ import { objectStorageClient, ObjectStorageService } from "./replit_integrations
 import PDFDocument from "pdfkit";
 import { randomUUID } from "crypto";
 import { z } from "zod";
+
+import type { InsertNotification } from "@shared/schema";
+
+async function createNotificationWithPush(notification: InsertNotification, role?: string) {
+  const created = await storage.createNotification(notification);
+  const urlRole = role || "restaurant";
+  let url = "/";
+  switch (notification.type) {
+    case "new_order":
+    case "order_status":
+      url = `/${urlRole}/orders?orderId=${notification.referenceId}`;
+      break;
+    case "new_message":
+      url = `/${urlRole}/inbox?conversationId=${notification.referenceId}`;
+      break;
+    case "new_complaint":
+    case "complaint_comment":
+      url = `/${urlRole}/complaints?complaintId=${notification.referenceId}`;
+      break;
+    case "low_stock":
+      url = `/${urlRole}/inventory`;
+      break;
+  }
+  sendPushNotification(notification.userId, {
+    title: notification.title,
+    message: notification.message,
+    url,
+    type: notification.type,
+  }).catch(() => {});
+  return created;
+}
 
 const uuidField = z.string().min(1).max(100);
 const safeString = z.string().max(5000);
@@ -621,13 +653,13 @@ export async function registerRoutes(
     const product = await storage.getProduct(productId);
     if (!product) return;
     if (product.lowStockThreshold && product.lowStockThreshold > 0 && (product.stockQuantity ?? 0) <= product.lowStockThreshold) {
-      await storage.createNotification({
+      await createNotificationWithPush({
         userId: supplierId,
         type: "low_stock",
         title: "Niedriger Lagerbestand",
         message: `${product.name}: Nur noch ${product.stockQuantity ?? 0} ${product.unit} auf Lager (Schwellenwert: ${product.lowStockThreshold})`,
         referenceId: product.id,
-      });
+      }, "supplier");
     }
   }
 
@@ -954,15 +986,14 @@ export async function registerRoutes(
           orderId: order.id,
         });
         
-        // Create notification for supplier
         const restaurant = await storage.getUser(restaurantId);
-        await storage.createNotification({
+        await createNotificationWithPush({
           userId: supplierId,
           type: "new_order",
           title: `Neue Bestellung #${order.id.slice(0, 8)}`,
           message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat eine neue Bestellung aufgegeben #${order.id.slice(0, 8)} (€${totalAmount})`,
           referenceId: order.id
-        });
+        }, "supplier");
       }
 
       // Clear cart - only for targeted supplier or all
@@ -1225,13 +1256,13 @@ export async function registerRoutes(
         orderId: order.id,
       });
 
-      await storage.createNotification({
+      await createNotificationWithPush({
         userId: order.supplierId,
         type: "order_status",
         title: `Bestellung angepasst #${order.id.slice(0, 8)}`,
         message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat Bestellung #${order.id.slice(0, 8)} angepasst`,
         referenceId: order.id
-      });
+      }, "supplier");
 
       res.json(updated);
     } catch (error) {
@@ -1272,13 +1303,13 @@ export async function registerRoutes(
         orderId: order.id,
       });
 
-      await storage.createNotification({
+      await createNotificationWithPush({
         userId: order.supplierId,
         type: "order_status",
         title: `Änderungsanfrage #${order.id.slice(0, 8)}`,
         message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} möchte Bestellung #${order.id.slice(0, 8)} ändern`,
         referenceId: order.id
-      });
+      }, "supplier");
 
       res.json({ success: true });
     } catch (error) {
@@ -1348,13 +1379,13 @@ export async function registerRoutes(
           orderId: order.id,
         });
 
-        await storage.createNotification({
+        await createNotificationWithPush({
           userId: order.restaurantId,
           type: "order_status",
           title: `Änderung genehmigt #${order.id.slice(0, 8)}`,
           message: `${supplier?.companyName || supplier?.name || "Lieferant"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} genehmigt`,
           referenceId: order.id
-        });
+        }, "restaurant");
       } else {
         await storage.sendMessage({
           conversationId: conversation.id,
@@ -1369,13 +1400,13 @@ export async function registerRoutes(
           orderId: order.id,
         });
 
-        await storage.createNotification({
+        await createNotificationWithPush({
           userId: order.restaurantId,
           type: "order_status",
           title: `Änderung abgelehnt #${order.id.slice(0, 8)}`,
           message: `${supplier?.companyName || supplier?.name || "Lieferant"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} abgelehnt`,
           referenceId: order.id
-        });
+        }, "restaurant");
       }
 
       res.json({ success: true, approved });
@@ -1511,13 +1542,14 @@ export async function registerRoutes(
           : conversation.restaurantId;
         
         const sender = await storage.getUser(senderId);
-        await storage.createNotification({
+        const recipientRole = recipientId === conversation.restaurantId ? "restaurant" : "supplier";
+        await createNotificationWithPush({
           userId: recipientId,
           type: "new_message",
           title: "Neue Nachricht",
           message: `${sender?.companyName || sender?.name || "Jemand"} hat Ihnen eine Nachricht gesendet`,
           referenceId: req.params.id
-        });
+        }, recipientRole);
       }
       
       res.status(201).json(message);
@@ -1581,13 +1613,14 @@ export async function registerRoutes(
       const recipientId = conversation.restaurantId === validated.senderId
         ? conversation.supplierId
         : conversation.restaurantId;
-      await storage.createNotification({
+      const recipientRole2 = recipientId === conversation.restaurantId ? "restaurant" : "supplier";
+      await createNotificationWithPush({
         userId: recipientId,
         type: "new_message",
         title: "Neue Nachricht",
         message: `${sender?.companyName || sender?.name || "Jemand"} hat Ihnen eine Nachricht gesendet`,
         referenceId: conversation.id
-      });
+      }, recipientRole2);
       res.status(201).json(message);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1781,15 +1814,14 @@ export async function registerRoutes(
         orderId: validated.orderId,
       });
       
-      // Create notification for supplier about new complaint
       const restaurant = await storage.getUser(validated.restaurantId);
-      await storage.createNotification({
+      await createNotificationWithPush({
         userId: validated.supplierId,
         type: "new_complaint",
         title: `Neue Reklamation #${complaint.id.slice(0, 8)}`,
         message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat eine Reklamation eingereicht #${complaint.id.slice(0, 8)}: ${validated.title}`,
         referenceId: complaint.id
-      });
+      }, "supplier");
       
       res.status(201).json(complaint);
     } catch (error) {
@@ -1930,14 +1962,15 @@ export async function registerRoutes(
         ? complaint.supplierId 
         : complaint.restaurantId;
       const commenter = await storage.getUser(validated.userId);
+      const commentRecipientRole = notifyUserId === complaint.restaurantId ? "restaurant" : "supplier";
       
-      await storage.createNotification({
+      await createNotificationWithPush({
         userId: notifyUserId,
         type: "complaint_comment",
         title: `Neuer Kommentar #${complaint.id.slice(0, 8)}`,
         message: `${commenter?.companyName || commenter?.name || "Jemand"} hat einen Kommentar zur Reklamation #${complaint.id.slice(0, 8)} hinzugefügt: "${validated.content.substring(0, 50)}${validated.content.length > 50 ? '...' : ''}"`,
         referenceId: complaint.id
-      });
+      }, commentRecipientRole);
       
       res.status(201).json(comment);
     } catch (error) {
@@ -2003,7 +2036,8 @@ export async function registerRoutes(
   app.post("/api/notifications", async (req, res) => {
     try {
       const validated = insertNotificationSchema.parse(req.body);
-      const notification = await storage.createNotification(validated);
+      const user = await storage.getUser(validated.userId);
+      const notification = await createNotificationWithPush(validated, user?.role || "restaurant");
       res.status(201).json(notification);
     } catch (error) {
       res.status(500).json({ error: "Failed to create notification" });
@@ -2047,6 +2081,57 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // ===== PUSH NOTIFICATIONS =====
+  app.get("/api/push/vapid-key", (_req, res) => {
+    res.json({ publicKey: VAPID_PUBLIC_KEY });
+  });
+
+  const pushSubscribeSchema = z.object({
+    userId: uuidField,
+    subscription: z.object({
+      endpoint: z.string().url().max(2000),
+      keys: z.object({
+        p256dh: z.string().min(1).max(500),
+        auth: z.string().min(1).max(500),
+      }),
+    }),
+  });
+
+  const pushUnsubscribeSchema = z.object({
+    endpoint: z.string().url().max(2000),
+  });
+
+  app.post("/api/push/subscribe", async (req, res) => {
+    try {
+      const { userId, subscription } = pushSubscribeSchema.parse(req.body);
+      await storage.savePushSubscription({
+        userId,
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+      });
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid subscription data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to save push subscription" });
+    }
+  });
+
+  app.post("/api/push/unsubscribe", async (req, res) => {
+    try {
+      const { endpoint } = pushUnsubscribeSchema.parse(req.body);
+      await storage.deletePushSubscription(endpoint);
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to remove push subscription" });
     }
   });
 

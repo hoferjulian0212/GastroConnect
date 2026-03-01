@@ -19,7 +19,8 @@ import {
   type CustomMinOrderQuantity, type InsertCustomMinOrderQuantity,
   type CustomPrice, type InsertCustomPrice,
   type StockMovement, type InsertStockMovement, type StockMovementWithProduct,
-  type OrderTemplate, type InsertOrderTemplate, type InsertOrderTemplateItem, type OrderTemplateWithItems
+  type OrderTemplate, type InsertOrderTemplate, type InsertOrderTemplateItem, type OrderTemplateWithItems,
+  pushSubscriptions, type InsertPushSubscription, type PushSubscription
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -158,6 +159,11 @@ export interface IStorage {
   createOrderTemplate(template: InsertOrderTemplate, items: InsertOrderTemplateItem[]): Promise<OrderTemplate>;
   updateOrderTemplate(id: string, name: string, items: InsertOrderTemplateItem[]): Promise<OrderTemplate | undefined>;
   deleteOrderTemplate(id: string): Promise<void>;
+
+  // Push Subscriptions
+  getPushSubscriptions(userId: string): Promise<PushSubscription[]>;
+  savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription>;
+  deletePushSubscription(endpoint: string): Promise<void>;
 
   // Seed
   seedData(): Promise<void>;
@@ -1336,6 +1342,28 @@ export class DatabaseStorage implements IStorage {
       p.lowStockThreshold != null && p.lowStockThreshold > 0 && 
       (p.stockQuantity ?? 0) <= p.lowStockThreshold
     );
+  }
+
+  async getPushSubscriptions(userId: string): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  }
+
+  async savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription> {
+    const existing = await db.select().from(pushSubscriptions)
+      .where(eq(pushSubscriptions.endpoint, sub.endpoint));
+    if (existing.length > 0) {
+      const [updated] = await db.update(pushSubscriptions)
+        .set({ userId: sub.userId, p256dh: sub.p256dh, auth: sub.auth })
+        .where(eq(pushSubscriptions.endpoint, sub.endpoint))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(pushSubscriptions).values(sub).returning();
+    return created;
+  }
+
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
   }
 }
 

@@ -40,3 +40,10 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_object_storage:2.0.0"]
+
+[userenv]
+
+[userenv.shared]
+VAPID_PUBLIC_KEY = "BKoMu0foDyVbX6CAFl4PwLF9GJD1ss9ry7tl8pMH4779JUYqrrN7L9F2sf175BvPi5hY2wN41dtbvsXbpuDNyq8"
+VAPID_PRIVATE_KEY = "99pZoToNDzFBTC7xK2Jqi3N9IF_UgWfh5ImGJ7lFaxk"
+VAPID_SUBJECT = "mailto:info@gastroconnect.app"

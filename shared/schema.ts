@@ -248,6 +248,17 @@ export const insertStockMovementSchema = createInsertSchema(stockMovements).omit
 export const insertOrderTemplateSchema = createInsertSchema(orderTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderTemplateItemSchema = createInsertSchema(orderTemplateItems).omit({ id: true });
 
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true, createdAt: true });
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -318,3 +329,5 @@ export type InsertOrderTemplateItem = z.infer<typeof insertOrderTemplateItemSche
 export type OrderTemplateItem = typeof orderTemplateItems.$inferSelect;
 export type OrderTemplateItemWithProduct = OrderTemplateItem & { product: Product & { supplier: User } };
 export type OrderTemplateWithItems = OrderTemplate & { items: OrderTemplateItemWithProduct[] };
+export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;

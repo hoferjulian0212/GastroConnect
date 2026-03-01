@@ -3,12 +3,14 @@ import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, Monitor, Moon, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, Monitor, Moon, LogOut, Smartphone } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 export default function RestaurantSettings() {
   const { currentUser } = useUser();
@@ -16,6 +18,7 @@ export default function RestaurantSettings() {
   const { isDark, setTheme } = useTheme();
   const { lang } = useLanguage();
   const t = useT(lang);
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, permission: pushPermission, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications(currentUser?.id);
 
   const [emailNewOrder, setEmailNewOrder] = useState(true);
   const [emailOrderStatus, setEmailOrderStatus] = useState(true);
@@ -158,6 +161,48 @@ export default function RestaurantSettings() {
             </div>
           </CardContent>
         </Card>
+
+        {pushSupported && (
+          <Card>
+            <CardHeader className="p-3 md:p-6">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <Smartphone className="h-4 w-4 md:h-5 md:w-5" />
+                {t("settings", "pushNotifications")}
+              </CardTitle>
+              <CardDescription className="text-xs md:text-sm">{t("settings", "pushNotificationsDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              {pushPermission === "denied" ? (
+                <p className="text-sm text-muted-foreground">{t("settings", "pushDenied")}</p>
+              ) : (
+                <div className="flex items-center justify-between gap-3 py-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Bell className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Label className="text-sm font-medium">
+                      {pushSubscribed ? t("settings", "pushDisable") : t("settings", "pushEnable")}
+                    </Label>
+                  </div>
+                  <Switch
+                    checked={pushSubscribed}
+                    onCheckedChange={async (checked) => {
+                      if (checked) {
+                        const ok = await pushSubscribe();
+                        toast({
+                          title: ok ? t("settings", "pushEnabled") : t("settings", "pushDenied"),
+                          description: ok ? t("settings", "pushEnabledDesc") : t("settings", "pushDeniedDesc"),
+                        });
+                      } else {
+                        await pushUnsubscribe();
+                        toast({ title: t("settings", "pushDisabled"), description: t("settings", "pushDisabledDesc") });
+                      }
+                    }}
+                    data-testid="switch-push-notifications"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <Card>
