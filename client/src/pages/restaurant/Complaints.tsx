@@ -446,7 +446,7 @@ export default function Complaints() {
                     {supplier.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 max-w-[64px] md:max-w-[80px] ${
+                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
                   isActive ? "text-primary" : "text-muted-foreground"
                 }`}>
                   {supplier.name}
@@ -462,7 +462,7 @@ export default function Complaints() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
         {([
           { key: "all", icon: AlertCircle, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
           { key: "open", icon: Clock, color: "bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400", activeColor: "bg-yellow-500 text-white dark:bg-yellow-600", borderColor: "border-yellow-400 dark:border-yellow-500" },

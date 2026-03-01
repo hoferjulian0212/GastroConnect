@@ -450,7 +450,7 @@ export default function SupplierOrders() {
                     {restaurant.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 max-w-[64px] md:max-w-[80px] ${
+                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
                   isActive ? "text-primary" : "text-muted-foreground"
                 }`}>
                   {restaurant.name}

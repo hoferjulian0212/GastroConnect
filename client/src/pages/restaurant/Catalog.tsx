@@ -217,7 +217,7 @@ export default function RestaurantCatalog() {
                     {supplier.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 max-w-[64px] md:max-w-[80px] ${
+                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
                   isActive ? "text-primary" : "text-muted-foreground"
                 }`}>
                   {supplier.name}
@@ -330,7 +330,7 @@ export default function RestaurantCatalog() {
                           </Badge>
                         )}
                       </div>
-                      <div className="mt-1.5 min-w-0 overflow-hidden flex-1 flex flex-col">
+                      <div className="mt-1.5 min-w-0 flex-1 flex flex-col">
                         {product.inStock ? (
                           <span className="text-[11px] font-medium text-green-700 dark:text-green-400" data-testid={`text-stock-${product.id}`}>
                             {t("common", "available")}

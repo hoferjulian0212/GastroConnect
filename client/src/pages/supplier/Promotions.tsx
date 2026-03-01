@@ -258,7 +258,7 @@ export default function SupplierPromotions() {
         </Button>
       </div>
 
-      <div className="grid gap-3 grid-cols-3 md:gap-4">
+      <div className="grid gap-3 grid-cols-3 md:gap-4 auto-cols-fr">
         <Card>
           <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
             <div className="text-center">
