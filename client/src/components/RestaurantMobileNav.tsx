@@ -59,13 +59,13 @@ export function RestaurantMobileNav() {
 
   const navStyle: React.CSSProperties = {
     position: "fixed",
-    bottom: "calc(8px + env(safe-area-inset-bottom, 0px))",
-    left: 12,
-    right: 12,
+    bottom: 0,
+    left: 8,
+    right: 8,
     zIndex: 50,
-    borderRadius: "9999px",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
-    overflow: "hidden",
+    paddingBottom: "env(safe-area-inset-bottom, 0px)",
+    borderRadius: "24px 24px 0 0",
+    boxShadow: "0 -2px 20px rgba(0,0,0,0.10)",
   };
 
   return (
@@ -122,12 +122,12 @@ export function RestaurantMobileNav() {
               <Link
                 key={item.url}
                 href={item.url}
-                className="flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors py-1.5"
+                className="flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors py-3"
                 style={{ color: isActive ? "#4285F4" : "#8E8E93" }}
                 data-testid={`restaurant-mobile-nav-${item.url.split('/').pop()}`}
               >
                 <div className="relative inline-flex items-center justify-center">
-                  <item.icon className="h-[18px] w-[18px]" />
+                  <item.icon className="h-5 w-5" />
                   {badgeCount > 0 && (
                     <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-medium">
                       {badgeCount > 9 ? "9+" : badgeCount}
@@ -143,12 +143,12 @@ export function RestaurantMobileNav() {
           
           <button
             onClick={() => setIsMoreOpen(!isMoreOpen)}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors py-1.5"
+            className="flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors py-3"
             style={{ color: (isMoreActive || isMoreOpen) ? "#4285F4" : "#8E8E93" }}
             data-testid="restaurant-mobile-nav-more"
           >
             <div className="relative inline-flex items-center justify-center">
-              <MoreHorizontal className="h-[18px] w-[18px]" />
+              <MoreHorizontal className="h-5 w-5" />
             </div>
             <span className="text-[10px] font-medium text-center w-full">
               {t("common", "more")}
