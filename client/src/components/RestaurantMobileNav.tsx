@@ -59,12 +59,10 @@ export function RestaurantMobileNav() {
 
   const navStyle: React.CSSProperties = {
     position: "fixed",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: "calc(8px + env(safe-area-inset-bottom, 0px))",
+    left: 12,
+    right: 12,
     zIndex: 50,
-    margin: "0 12px 8px 12px",
-    paddingBottom: "env(safe-area-inset-bottom, 0px)",
     borderRadius: "9999px",
     boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
     overflow: "hidden",
