@@ -37,8 +37,8 @@ html, body, #root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-1: rgba(0,0,0, .06);
+  --elevate-2: rgba(0,0,0, .12);
   --background: 220 14% 96%;
   --foreground: 220 13% 13%;
   --border: 220 13% 91%;
@@ -121,8 +121,8 @@ html, body, #root {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
   --opaque-button-border-intensity: 9;
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
+  --elevate-1: rgba(255,255,255, .08);
+  --elevate-2: rgba(255,255,255, .14);
   --background: 224 14% 10%;
   --foreground: 220 13% 93%;
   --border: 220 10% 20%;
