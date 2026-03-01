@@ -401,17 +401,17 @@ export default function RestaurantCatalog() {
                           <Button
                             variant={addedProductIds.has(product.id) ? "default" : "outline"}
                             size="sm"
-                            className={`gap-1 text-xs transition-all duration-300 min-w-0 flex-1 overflow-hidden ${
+                            className={`gap-1 text-xs min-w-0 flex-1 overflow-hidden ${
                               addedProductIds.has(product.id) 
-                                ? "bg-primary border-primary text-primary-foreground no-default-hover-elevate no-default-active-elevate" 
-                                : ""
+                                ? "bg-green-500 border-green-500 text-white hover:bg-green-500 no-default-hover-elevate no-default-active-elevate animate-cart-added" 
+                                : "transition-all duration-200"
                             }`}
                             disabled={!product.inStock || addToCartMutation.isPending}
                             onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
                             data-testid={`button-add-to-cart-${product.id}`}
                           >
                             {addedProductIds.has(product.id) ? (
-                              <Check className="h-3.5 w-3.5 shrink-0" />
+                              <Check className="h-3.5 w-3.5 shrink-0 animate-cart-check" />
                             ) : (
                               <>
                                 <ShoppingCart className="h-3.5 w-3.5 shrink-0" />

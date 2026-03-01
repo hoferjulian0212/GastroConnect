@@ -765,17 +765,17 @@ export default function RestaurantHome() {
                               <Button
                                 variant={addedProductIds.has(product.id) ? "default" : "outline"}
                                 size="sm"
-                                className={`gap-0.5 text-[10px] h-6 flex-1 min-w-0 transition-all duration-300 ${
+                                className={`gap-0.5 text-[10px] h-6 flex-1 min-w-0 ${
                                   addedProductIds.has(product.id)
-                                    ? "bg-primary border-primary text-primary-foreground"
-                                    : ""
+                                    ? "bg-green-500 border-green-500 text-white hover:bg-green-500 no-default-hover-elevate no-default-active-elevate animate-cart-added"
+                                    : "transition-all duration-200"
                                 }`}
                                 disabled={!product.inStock || addToCartMutation.isPending}
                                 onClick={() => handleAddToCart(product)}
                                 data-testid={`button-promo-add-to-cart-${product.id}`}
                               >
                                 {addedProductIds.has(product.id) ? (
-                                  <Check className="h-3 w-3 shrink-0" />
+                                  <Check className="h-3 w-3 shrink-0 animate-cart-check" />
                                 ) : (
                                   <ShoppingCart className="h-3 w-3 shrink-0" />
                                 )}
