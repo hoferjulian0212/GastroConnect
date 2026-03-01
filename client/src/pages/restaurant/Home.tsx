@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, Minus, Plus, ShoppingCart, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, Minus, Plus, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send } from "lucide-react";
 import type { OrderWithDetails, ConversationWithUser, ProductWithSupplierAndPromotion } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -164,20 +164,72 @@ export default function RestaurantHome() {
     return format(date, "EEEE, dd.MM.", { locale: dateLocale });
   };
 
+  const getOrderDeliveryState = (order: OrderWithDetails): "delivered_today" | "overdue" | "delayed" | "upcoming" => {
+    if (!order.requestedDeliveryDate) return "upcoming";
+    const dd = new Date(order.requestedDeliveryDate + "T00:00:00");
+    if (isNaN(dd.getTime())) return "upcoming";
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    if (order.status === "delivered" && isToday(dd)) return "delivered_today";
+    if (order.status === "delivered") return "upcoming";
+    if (dd < now) return "overdue";
+    if (order.originalDeliveryDate) return "delayed";
+    return "upcoming";
+  };
+
   const groupedDeliveries = useMemo(() => {
     if (!upcomingDeliveries) return [];
-    const groups = new Map<string, OrderWithDetails[]>();
+    const overdueOrders: OrderWithDetails[] = [];
+    const todayDeliveredOrders: OrderWithDetails[] = [];
+    const regularGroups = new Map<string, OrderWithDetails[]>();
+
     for (const order of upcomingDeliveries) {
-      const dateKey = order.requestedDeliveryDate || "";
-      if (!groups.has(dateKey)) groups.set(dateKey, []);
-      groups.get(dateKey)!.push(order);
+      const state = getOrderDeliveryState(order);
+      if (state === "overdue") {
+        overdueOrders.push(order);
+      } else if (state === "delivered_today") {
+        todayDeliveredOrders.push(order);
+      } else {
+        const dateKey = order.requestedDeliveryDate || "";
+        if (!regularGroups.has(dateKey)) regularGroups.set(dateKey, []);
+        regularGroups.get(dateKey)!.push(order);
+      }
     }
-    return Array.from(groups.entries()).map(([dateKey, orders]) => ({
-      dateKey,
-      label: getDeliveryDateLabel(dateKey),
-      isToday: isToday(new Date(dateKey + "T00:00:00")),
-      orders,
-    }));
+
+    const result: { dateKey: string; label: string; isToday: boolean; type: "overdue" | "delivered" | "regular"; orders: OrderWithDetails[] }[] = [];
+
+    if (overdueOrders.length > 0) {
+      result.push({
+        dateKey: "_overdue",
+        label: lang === "de" ? "Überfällig" : "Scaduto",
+        isToday: false,
+        type: "overdue",
+        orders: overdueOrders,
+      });
+    }
+
+    for (const [dateKey, orders] of regularGroups.entries()) {
+      const dtToday = isToday(new Date(dateKey + "T00:00:00"));
+      result.push({
+        dateKey,
+        label: getDeliveryDateLabel(dateKey),
+        isToday: dtToday,
+        type: "regular",
+        orders: [...orders, ...(dtToday ? todayDeliveredOrders : [])],
+      });
+    }
+
+    if (todayDeliveredOrders.length > 0 && !result.some(g => g.type === "regular" && g.isToday)) {
+      result.push({
+        dateKey: "_delivered_today",
+        label: t("restaurantHome", "today"),
+        isToday: true,
+        type: "delivered",
+        orders: todayDeliveredOrders,
+      });
+    }
+
+    return result;
   }, [upcomingDeliveries, lang]);
 
   const totalUnread = unreadConversations.length;
@@ -224,48 +276,129 @@ export default function RestaurantHome() {
               {groupedDeliveries.map((group) => (
                 <div key={group.dateKey}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className={`text-xs font-semibold uppercase tracking-wide ${group.isToday ? "text-primary" : "text-muted-foreground"}`}>
+                    {group.type === "overdue" ? (
+                      <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                    ) : (
+                      <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-primary" : "text-muted-foreground"}`} />
+                    )}
+                    <span className={`text-xs font-semibold uppercase tracking-wide ${
+                      group.type === "overdue" ? "text-red-500" : group.isToday ? "text-primary" : "text-muted-foreground"
+                    }`}>
                       {group.label}
                     </span>
-                    {group.isToday && (
+                    {group.isToday && group.type !== "overdue" && (
                       <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                     )}
                   </div>
                   <div className="space-y-2">
-                    {group.orders.map((order) => (
-                      <div
-                        key={order.id}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/20"
-                        onClick={() => setDetailOrder(order)}
-                        data-testid={`delivery-item-${order.id}`}
-                      >
-                        <div className={`flex items-center justify-center h-10 w-10 rounded-lg shrink-0 ${
-                          order.status === "in_delivery"
-                            ? "bg-purple-100 dark:bg-purple-900/30"
-                            : "bg-blue-100 dark:bg-blue-900/30"
-                        }`}>
-                          {order.status === "in_delivery"
-                            ? <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                            : <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-sm font-medium truncate">
-                              {order.supplier?.companyName || order.supplier?.name || t("common", "unknown")}
-                            </span>
-                            <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
-                              {getOrderStatus(order.status, lang)}
-                            </Badge>
+                    {group.orders.map((order) => {
+                      const deliveryState = getOrderDeliveryState(order);
+                      const isDelivered = deliveryState === "delivered_today";
+                      const isOverdue = deliveryState === "overdue";
+                      const isDelayed = deliveryState === "delayed";
+                      const supplierName = order.supplier?.companyName || order.supplier?.name || t("common", "unknown");
+
+                      return (
+                        <div
+                          key={order.id}
+                          className={`rounded-xl border transition-all duration-200 ${
+                            isDelivered
+                              ? "border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-950/20"
+                              : isOverdue
+                                ? "border-red-300 dark:border-red-700 bg-red-50/30 dark:bg-red-950/20"
+                                : isDelayed
+                                  ? "border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/20"
+                                  : "border-border bg-card hover:shadow-md hover:border-primary/20"
+                          }`}
+                          data-testid={`delivery-item-${order.id}`}
+                        >
+                          <div
+                            className="flex items-center gap-3 p-3 cursor-pointer"
+                            onClick={() => setDetailOrder(order)}
+                          >
+                            <div className={`flex items-center justify-center h-10 w-10 rounded-lg shrink-0 ${
+                              isDelivered
+                                ? "bg-green-100 dark:bg-green-900/30"
+                                : isOverdue
+                                  ? "bg-red-100 dark:bg-red-900/30"
+                                  : isDelayed
+                                    ? "bg-amber-100 dark:bg-amber-900/30"
+                                    : order.status === "in_delivery"
+                                      ? "bg-purple-100 dark:bg-purple-900/30"
+                                      : "bg-blue-100 dark:bg-blue-900/30"
+                            }`}>
+                              {isDelivered
+                                ? <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                : isOverdue
+                                  ? <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
+                                  : isDelayed
+                                    ? <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                    : order.status === "in_delivery"
+                                      ? <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                      : <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              }
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-sm font-medium truncate ${isOverdue ? "text-red-700 dark:text-red-400" : ""}`}>
+                                  {supplierName}
+                                </span>
+                                {isDelivered ? (
+                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1.5" variant="outline">
+                                    {lang === "de" ? "Geliefert" : "Consegnato"}
+                                  </Badge>
+                                ) : isOverdue ? (
+                                  <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
+                                    {lang === "de" ? "Überfällig" : "Scaduto"}
+                                  </Badge>
+                                ) : isDelayed ? (
+                                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5" variant="outline">
+                                    {lang === "de" ? "In Verspätung" : "In ritardo"}
+                                  </Badge>
+                                ) : (
+                                  <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
+                                    {getOrderStatus(order.status, lang)}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {order.items?.length || 0} {t("common", "items")} — #{order.id.slice(0, 8)}
+                              </p>
+                              {isDelayed && order.originalDeliveryDate && (
+                                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                  {lang === "de" ? "Ursprünglich" : "Originale"}: {new Date(order.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+                                  {" → "}
+                                  {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+                                </p>
+                              )}
+                              {isOverdue && (
+                                <p className="text-[11px] text-red-500 dark:text-red-400 mt-0.5">
+                                  {lang === "de" ? "Erwartet am" : "Previsto per il"} {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "short" })}
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-sm font-bold shrink-0">{order.totalAmount}€</span>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {order.items?.length || 0} {t("common", "items")} — #{order.id.slice(0, 8)}
-                          </p>
+                          {isOverdue && (
+                            <div className="px-3 pb-3">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full text-xs border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/restaurant/inbox?supplierId=${order.supplierId}`);
+                                }}
+                                data-testid={`button-send-overdue-msg-${order.id}`}
+                              >
+                                <Send className="h-3.5 w-3.5 mr-1.5" />
+                                {lang === "de" ? "Nachricht senden" : "Invia messaggio"}
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                        <span className="text-sm font-bold shrink-0">{order.totalAmount}€</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}

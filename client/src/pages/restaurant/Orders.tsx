@@ -490,12 +490,22 @@ export default function RestaurantOrders() {
         {order.status === "in_delivery" && order.requestedDeliveryDate && (
           <div className="mt-2 flex items-center gap-2 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 px-3 py-2" data-testid={`banner-delivery-date-${order.id}`}>
             <Truck className="h-4 w-4 md:h-5 md:w-5 text-purple-600 dark:text-purple-400 shrink-0" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <span className="text-[10px] md:text-xs text-purple-600 dark:text-purple-400 font-medium">{t("orders", "deliveryOn")}</span>
               <p className="text-sm md:text-base font-bold text-purple-700 dark:text-purple-300" data-testid={`text-delivery-date-large-${order.id}`}>
                 {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long" })}
               </p>
+              {order.originalDeliveryDate && (
+                <p className="text-[10px] md:text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                  {lang === "de" ? "Verschoben von" : "Rinviato da"} {new Date(order.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+                </p>
+              )}
             </div>
+            {order.originalDeliveryDate && (
+              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5 shrink-0" variant="outline">
+                {lang === "de" ? "In Verspätung" : "In ritardo"}
+              </Badge>
+            )}
           </div>
         )}
 

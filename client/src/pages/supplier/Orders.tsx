@@ -144,6 +144,25 @@ export default function SupplierOrders() {
     },
   });
 
+  const [rescheduleOrderId, setRescheduleOrderId] = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState<string>("");
+
+  const rescheduleMutation = useMutation({
+    mutationFn: async ({ orderId, requestedDeliveryDate }: { orderId: string; requestedDeliveryDate: string }) => {
+      return apiRequest("PATCH", `/api/orders/${orderId}/reschedule`, { requestedDeliveryDate });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
+      toast({ title: lang === "de" ? "Liefertermin verschoben" : "Data di consegna rinviata" });
+      setRescheduleOrderId(null);
+      setRescheduleDate("");
+      setDetailOrder(null);
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    },
+  });
+
   const sendOrderMessageMutation = useMutation({
     mutationFn: async ({ order, message }: { order: OrderWithDetails; message: string }) => {
       const restaurantName = order.restaurant?.companyName || order.restaurant?.name || "";
@@ -643,9 +662,56 @@ export default function SupplierOrders() {
                   <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateFnsLocale })}</span>
                 </div>
                 {detailOrder.requestedDeliveryDate ? (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{lang === "de" ? "Gewünschter Liefertermin" : "Data consegna richiesta"}</span>
-                    <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
+                  <div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{lang === "de" ? "Gewünschter Liefertermin" : "Data consegna richiesta"}</span>
+                      <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
+                    </div>
+                    {detailOrder.originalDeliveryDate && (
+                      <div className="flex justify-between mt-1">
+                        <span className="text-muted-foreground text-xs">{lang === "de" ? "Ursprünglicher Termin" : "Data originale"}</span>
+                        <span className="text-xs text-amber-600 dark:text-amber-400">{new Date(detailOrder.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "short" })}</span>
+                      </div>
+                    )}
+                    {(detailOrder.status === "in_delivery" || detailOrder.status === "confirmed") && new Date(detailOrder.requestedDeliveryDate + "T00:00:00") < new Date(new Date().toDateString()) && (
+                      <div className="mt-2">
+                        {rescheduleOrderId === detailOrder.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="date"
+                              value={rescheduleDate}
+                              onChange={(e) => setRescheduleDate(e.target.value)}
+                              min={new Date().toISOString().split("T")[0]}
+                              className="text-xs h-8"
+                              data-testid="input-reschedule-date"
+                            />
+                            <Button
+                              size="sm"
+                              className="h-8 text-xs"
+                              disabled={!rescheduleDate || rescheduleMutation.isPending}
+                              onClick={() => rescheduleMutation.mutate({ orderId: detailOrder.id, requestedDeliveryDate: rescheduleDate })}
+                              data-testid="button-confirm-reschedule"
+                            >
+                              {rescheduleMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (lang === "de" ? "OK" : "OK")}
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setRescheduleOrderId(null); setRescheduleDate(""); }}>
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full text-xs border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400"
+                            onClick={() => setRescheduleOrderId(detailOrder.id)}
+                            data-testid="button-reschedule-delivery"
+                          >
+                            <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
+                            {lang === "de" ? "Liefertermin verschieben" : "Rinvia data di consegna"}
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex justify-between">

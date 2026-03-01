@@ -1149,6 +1149,36 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/orders/:id/reschedule", async (req, res) => {
+    try {
+      const { requestedDeliveryDate } = z.object({ requestedDeliveryDate: z.string() }).parse(req.body);
+      const order = await storage.getOrder(req.params.id);
+      if (!order) return res.status(404).json({ error: "Order not found" });
+      if (order.status !== "in_delivery" && order.status !== "confirmed") {
+        return res.status(400).json({ error: "Can only reschedule active orders" });
+      }
+      if (order.requestedDeliveryDate) {
+        const dd = new Date(order.requestedDeliveryDate + "T00:00:00");
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (dd >= today) {
+          return res.status(400).json({ error: "Can only reschedule overdue orders" });
+        }
+      }
+      const setData: any = {
+        requestedDeliveryDate,
+        updatedAt: new Date(),
+      };
+      if (!order.originalDeliveryDate && order.requestedDeliveryDate) {
+        setData.originalDeliveryDate = order.requestedDeliveryDate;
+      }
+      const [updated] = await db.update(orders).set(setData).where(eq(orders.id, req.params.id)).returning();
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reschedule order" });
+    }
+  });
+
   // ===== ORDER EDITING (pending only) =====
   app.patch("/api/orders/:id/items", async (req, res) => {
     try {
@@ -1638,21 +1668,30 @@ export async function registerRoutes(
       const restaurantId = req.query.restaurantId as string;
       if (!restaurantId) return res.json([]);
       const allOrders = await storage.getOrdersByRestaurant(restaurantId);
-      const upcoming = allOrders
-        .filter(o => (o.status === "confirmed" || o.status === "in_delivery") && o.requestedDeliveryDate)
-        .sort((a, b) => {
-          const dateA = new Date(a.requestedDeliveryDate! + "T00:00:00");
-          const dateB = new Date(b.requestedDeliveryDate! + "T00:00:00");
-          return dateA.getTime() - dateB.getTime();
-        })
-        .filter(o => {
-          const deliveryDate = new Date(o.requestedDeliveryDate! + "T00:00:00");
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          return deliveryDate >= today;
-        })
-        .slice(0, 3);
-      res.json(upcoming);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const relevant = allOrders.filter(o => {
+        if (!o.requestedDeliveryDate) return false;
+        const dd = new Date(o.requestedDeliveryDate + "T00:00:00");
+        if (o.status === "delivered") {
+          return dd >= today && dd < tomorrow;
+        }
+        if (o.status === "confirmed" || o.status === "in_delivery") {
+          return true;
+        }
+        return false;
+      });
+
+      relevant.sort((a, b) => {
+        const dateA = new Date(a.requestedDeliveryDate! + "T00:00:00");
+        const dateB = new Date(b.requestedDeliveryDate! + "T00:00:00");
+        return dateA.getTime() - dateB.getTime();
+      });
+
+      res.json(relevant.slice(0, 10));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch upcoming deliveries" });
     }
