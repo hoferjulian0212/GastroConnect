@@ -199,13 +199,16 @@ export default function RestaurantHome() {
   };
 
   const getOrderDeliveryState = (order: OrderWithDetails): "delivered_today" | "overdue" | "delayed" | "upcoming" => {
+    if (order.status === "delivered") {
+      const updatedAt = order.updatedAt ? new Date(order.updatedAt) : null;
+      if (updatedAt && isToday(updatedAt)) return "delivered_today";
+      return "upcoming";
+    }
     if (!order.requestedDeliveryDate) return "upcoming";
     const dd = new Date(order.requestedDeliveryDate + "T00:00:00");
     if (isNaN(dd.getTime())) return "upcoming";
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    if (order.status === "delivered" && isToday(dd)) return "delivered_today";
-    if (order.status === "delivered") return "upcoming";
     if (dd < now) return "overdue";
     if (order.originalDeliveryDate) return "delayed";
     return "upcoming";

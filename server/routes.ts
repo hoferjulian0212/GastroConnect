@@ -1674,21 +1674,24 @@ export async function registerRoutes(
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       const relevant = allOrders.filter(o => {
-        if (!o.requestedDeliveryDate) return false;
-        const dd = new Date(o.requestedDeliveryDate + "T00:00:00");
         if (o.status === "delivered") {
-          return dd >= today && dd < tomorrow;
+          const updatedAt = o.updatedAt ? new Date(o.updatedAt) : null;
+          if (!updatedAt) return false;
+          return updatedAt >= today && updatedAt < tomorrow;
         }
         if (o.status === "confirmed" || o.status === "in_delivery") {
+          if (!o.requestedDeliveryDate) return false;
           return true;
         }
         return false;
       });
 
       relevant.sort((a, b) => {
-        const dateA = new Date(a.requestedDeliveryDate! + "T00:00:00");
-        const dateB = new Date(b.requestedDeliveryDate! + "T00:00:00");
-        return dateA.getTime() - dateB.getTime();
+        if (a.status === "delivered" && b.status !== "delivered") return 1;
+        if (a.status !== "delivered" && b.status === "delivered") return -1;
+        const dateA = a.requestedDeliveryDate ? new Date(a.requestedDeliveryDate + "T00:00:00").getTime() : 0;
+        const dateB = b.requestedDeliveryDate ? new Date(b.requestedDeliveryDate + "T00:00:00").getTime() : 0;
+        return dateA - dateB;
       });
 
       res.json(relevant.slice(0, 10));
