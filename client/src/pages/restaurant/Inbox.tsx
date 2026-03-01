@@ -1178,11 +1178,11 @@ export default function RestaurantInbox() {
                                     const endDate = new Date(promoData.endDate);
                                     const isExpired = endDate < now;
                                     return (
-                                      <div className={`w-[92%] rounded-lg border-2 shadow-sm overflow-hidden ${isExpired ? "border-muted bg-muted/20 opacity-60" : "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"}`} data-testid={`promotion-card-${message.id}`}>
-                                        <div className={`flex items-center justify-between px-4 py-2.5 border-b ${isExpired ? "border-muted bg-muted/30" : "border-green-200 dark:border-green-800 bg-green-100/50 dark:bg-green-900/30"}`}>
+                                      <div className={`w-[75%] max-w-sm rounded-lg border-2 shadow-sm overflow-hidden ${isExpired ? "border-muted bg-muted/20 opacity-60" : "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"}`} data-testid={`promotion-card-${message.id}`}>
+                                        <div className={`flex items-center justify-between px-3 py-1.5 border-b ${isExpired ? "border-muted bg-muted/30" : "border-green-200 dark:border-green-800 bg-green-100/50 dark:bg-green-900/30"}`}>
                                           <div className="flex items-center gap-2">
                                             <Tag className={`h-4 w-4 ${isExpired ? "text-muted-foreground" : "text-green-600 dark:text-green-400"}`} />
-                                            <span className={`text-sm font-semibold ${isExpired ? "text-muted-foreground" : "text-green-700 dark:text-green-300"}`}>{promoData.name}</span>
+                                            <span className={`text-xs font-semibold ${isExpired ? "text-muted-foreground" : "text-green-700 dark:text-green-300"}`}>{promoData.name}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/50 px-1.5 py-0.5 rounded">-{promoData.discountPercent}%</span>
@@ -1254,7 +1254,7 @@ export default function RestaurantInbox() {
                                     const inactive = orderStatus ? isOrderInactive(orderStatus) : false;
                                     if (inactive) {
                                       return (
-                                        <div className="w-[85%] rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-order-${message.id}`}>
+                                        <div className="w-[75%] max-w-sm rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-order-${message.id}`}>
                                           <div className="flex items-center justify-between px-3 py-2 gap-2">
                                             <div className="flex items-center gap-2 min-w-0">
                                               <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1286,11 +1286,11 @@ export default function RestaurantInbox() {
                                     }
                                     const statusStyle = getStatusCardBg(orderStatus || "pending");
                                     return (
-                                      <div className={`w-[92%] rounded-lg border-2 shadow-sm overflow-hidden ${statusStyle.card}`}>
-                                        <div className={`flex items-center justify-between px-4 py-2.5 border-b ${statusStyle.header}`}>
+                                      <div className={`w-[75%] max-w-sm rounded-lg border-2 shadow-sm overflow-hidden ${statusStyle.card}`}>
+                                        <div className={`flex items-center justify-between px-3 py-1.5 border-b ${statusStyle.header}`}>
                                           <div className="flex items-center gap-2">
-                                            <ClipboardList className={`h-4 w-4 ${statusStyle.icon}`} />
-                                            <span className={`text-sm font-semibold ${statusStyle.icon}`}>{t("inbox", "orderMessage")}</span>
+                                            <ClipboardList className={`h-3.5 w-3.5 ${statusStyle.icon}`} />
+                                            <span className={`text-xs font-semibold ${statusStyle.icon}`}>{t("inbox", "orderMessage")}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {orderStatus && (
@@ -1303,17 +1303,17 @@ export default function RestaurantInbox() {
                                             </span>
                                           </div>
                                         </div>
-                                        <div className="px-4 py-3">
+                                        <div className="px-3 py-2">
                                           {orderData ? (
                                             <div className="space-y-2">
                                               {orderData.items.map((item, idx) => (
-                                                <div key={idx} className="flex justify-between items-center text-sm">
+                                                <div key={idx} className="flex justify-between items-center text-xs">
                                                   <span>{item.quantity}x {item.name}</span>
                                                   <span className="text-muted-foreground">{item.price}€</span>
                                                 </div>
                                               ))}
-                                              <Separator className="my-2" />
-                                              <div className="flex justify-between items-center font-semibold">
+                                              <Separator className="my-1" />
+                                              <div className="flex justify-between items-center text-xs font-semibold">
                                                 <span>{t("common", "total")}</span>
                                                 <span>{orderData.total}€</span>
                                               </div>
@@ -1323,7 +1323,7 @@ export default function RestaurantInbox() {
                                           )}
                                         </div>
                                         {message.orderId && (
-                                          <div className="px-4 py-2.5 border-t border-green-500/20 bg-green-500/5 space-y-2">
+                                          <div className="px-3 py-2 border-t border-green-500/20 bg-green-500/5 space-y-2">
                                             {cardWizard?.orderId === message.orderId ? (
                                               <div className="p-3 rounded-lg border bg-card space-y-3" data-testid={`wizard-confirm-${message.orderId}`}>
                                                 {cardWizard.action === "change_request" ? (
@@ -1453,7 +1453,7 @@ export default function RestaurantInbox() {
                                     const inactive = complaintStatus ? isComplaintInactive(complaintStatus) : false;
                                     if (inactive) {
                                       return (
-                                        <div className="w-[85%] rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-complaint-${message.id}`}>
+                                        <div className="w-[75%] max-w-sm rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-complaint-${message.id}`}>
                                           <div className="flex items-center justify-between px-3 py-2 gap-2">
                                             <div className="flex items-center gap-2 min-w-0">
                                               <AlertCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1490,11 +1490,11 @@ export default function RestaurantInbox() {
                                       );
                                     }
                                     return (
-                                      <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-red-500/30 shadow-lg">
-                                        <div className="flex items-center justify-between px-4 py-2.5 border-b bg-red-500/10 border-red-500/20">
+                                      <div className="w-[75%] max-w-sm rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-red-500/30 shadow-lg">
+                                        <div className="flex items-center justify-between px-3 py-1.5 border-b bg-red-500/10 border-red-500/20">
                                           <div className="flex items-center gap-2">
-                                            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                                            <span className="text-sm font-semibold text-red-600 dark:text-red-400">{t("inbox", "complaintMessage")}</span>
+                                            <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                                            <span className="text-xs font-semibold text-red-600 dark:text-red-400">{t("inbox", "complaintMessage")}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {complaintStatus && (
@@ -1507,7 +1507,7 @@ export default function RestaurantInbox() {
                                             </span>
                                           </div>
                                         </div>
-                                        <div className="px-4 py-3">
+                                        <div className="px-3 py-2">
                                           {complaintData ? (
                                             <div className="space-y-2">
                                               <div className="flex items-center justify-between flex-wrap gap-1">
@@ -1523,7 +1523,7 @@ export default function RestaurantInbox() {
                                           )}
                                         </div>
                                         {(complaintData?.complaintId || complaintData?.orderId) && (
-                                          <div className="px-4 py-2.5 border-t border-red-500/20 bg-red-500/5">
+                                          <div className="px-3 py-2 border-t border-red-500/20 bg-red-500/5">
                                             <Button
                                               variant="destructive"
                                               size="sm"
@@ -1550,17 +1550,17 @@ export default function RestaurantInbox() {
                                     let docData: { title?: string; orderId?: string; fileUrl?: string } = {};
                                     try { docData = JSON.parse(message.content); } catch {}
                                     return (
-                                      <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-blue-500/30 shadow-lg">
-                                        <div className="flex items-center justify-between px-4 py-2.5 border-b bg-blue-500/10 border-blue-500/20">
+                                      <div className="w-[75%] max-w-sm rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-blue-500/30 shadow-lg">
+                                        <div className="flex items-center justify-between px-3 py-1.5 border-b bg-blue-500/10 border-blue-500/20">
                                           <div className="flex items-center gap-2">
-                                            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                            <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{t("inbox", "deliveryNote")}</span>
+                                            <FileText className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t("inbox", "deliveryNote")}</span>
                                           </div>
                                           <span className="text-xs text-muted-foreground">
                                             {format(messageDate, "HH:mm")}
                                           </span>
                                         </div>
-                                        <div className="px-4 py-3">
+                                        <div className="px-3 py-2">
                                           <p className="text-sm font-medium">{docData.title || t("inbox", "documentMessage")}</p>
                                           {docData.orderId && (
                                             <p className="text-xs text-muted-foreground mt-1">
@@ -1569,7 +1569,7 @@ export default function RestaurantInbox() {
                                           )}
                                         </div>
                                         {docData.orderId && (
-                                          <div className="px-4 py-2.5 border-t border-blue-500/20 bg-blue-500/5">
+                                          <div className="px-3 py-2 border-t border-blue-500/20 bg-blue-500/5">
                                             <Button
                                               variant="default"
                                               size="sm"
@@ -1598,7 +1598,7 @@ export default function RestaurantInbox() {
                                     const label = isEdited ? t("inbox", "orderEdited") : isResponse ? (changeData.approved ? t("inbox", "changeApproved") : t("inbox", "changeRejected")) : t("inbox", "changeRequest");
                                     if (changeInactive) {
                                       return (
-                                        <div className="w-[85%] rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-change-${message.id}`}>
+                                        <div className="w-[75%] max-w-sm rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-change-${message.id}`}>
                                           <div className="flex items-center justify-between px-3 py-2 gap-2">
                                             <div className="flex items-center gap-2 min-w-0">
                                               <Pencil className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1627,15 +1627,15 @@ export default function RestaurantInbox() {
                                       );
                                     }
                                     return (
-                                      <div className="w-[85%] rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-amber-500/30">
-                                        <div className="flex items-center justify-between px-4 py-2.5 border-b bg-amber-500/10 border-amber-500/20">
+                                      <div className="w-[75%] max-w-sm rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-amber-500/30">
+                                        <div className="flex items-center justify-between px-3 py-1.5 border-b bg-amber-500/10 border-amber-500/20">
                                           <div className="flex items-center gap-2">
-                                            <Pencil className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                                            <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{label}</span>
+                                            <Pencil className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{label}</span>
                                           </div>
                                           <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
                                         </div>
-                                        <div className="px-4 py-3">
+                                        <div className="px-3 py-2">
                                           {changeData.orderId && (
                                             <p className="text-xs text-muted-foreground mb-2">{t("orders", "order")} #{changeData.orderId.slice(0, 8)}</p>
                                           )}
