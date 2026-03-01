@@ -6,7 +6,7 @@ import { useT } from "@/lib/translations";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { OrderTemplateWithItems, Product, User, OrderWithDetails } from "@shared/schema";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +14,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
-  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Minus, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle
+  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Minus, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle, Copy, Store, Pencil, AlertCircle
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 
 type ProductWithSupplier = Product & { supplier: User };
@@ -26,11 +26,15 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
   const { lang } = useLanguage();
   const t = useT(lang);
   const { toast } = useToast();
+  const dateLocale = lang === "it" ? it : de;
 
   const [showCreate, setShowCreate] = useState(false);
   const [editTemplate, setEditTemplate] = useState<OrderTemplateWithItems | null>(null);
   const [useTemplate, setUseTemplate] = useState<OrderTemplateWithItems | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState("");
+
 
   const { data: templates, isLoading } = useQuery<OrderTemplateWithItems[]>({
     queryKey: ['/api/order-templates', currentUser?.id],
@@ -52,6 +56,108 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
       setDeleteId(null);
     },
   });
+
+  const renameMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const tmpl = templates?.find(t => t.id === id);
+      if (!tmpl) return;
+      await apiRequest("PATCH", `/api/order-templates/${id}`, {
+        restaurantId: currentUser?.id,
+        name,
+        items: tmpl.items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/order-templates'] });
+      toast({ title: t("templates", "templateUpdated") });
+      setEditingNameId(null);
+    },
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: async (tmpl: OrderTemplateWithItems) => {
+      const existingNames = templates?.map(t => t.name) || [];
+      let copyName = `${tmpl.name} (2)`;
+      let counter = 2;
+      while (existingNames.includes(copyName)) {
+        counter++;
+        copyName = `${tmpl.name} (${counter})`;
+      }
+      await apiRequest("POST", "/api/order-templates", {
+        restaurantId: currentUser?.id,
+        name: copyName,
+        items: tmpl.items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/order-templates'] });
+      toast({ title: t("templates", "templateDuplicated") });
+    },
+  });
+
+  const removeItemMutation = useMutation({
+    mutationFn: async ({ templateId, productId }: { templateId: string; productId: string }) => {
+      const tmpl = templates?.find(t => t.id === templateId);
+      if (!tmpl) throw new Error("Template not found");
+      const newItems = tmpl.items.filter(i => i.productId !== productId);
+      if (newItems.length === 0) {
+        await apiRequest("DELETE", `/api/order-templates/${templateId}`);
+        return;
+      }
+      await apiRequest("PATCH", `/api/order-templates/${templateId}`, {
+        restaurantId: currentUser?.id,
+        name: tmpl.name,
+        items: newItems.map(i => ({ productId: i.productId, quantity: i.quantity })),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/order-templates'] });
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    },
+  });
+
+  const updateItemQtyMutation = useMutation({
+    mutationFn: async ({ templateId, productId, quantity }: { templateId: string; productId: string; quantity: number }) => {
+      const tmpl = templates?.find(t => t.id === templateId);
+      if (!tmpl) throw new Error("Template not found");
+      const newItems = tmpl.items.map(i =>
+        i.productId === productId ? { productId: i.productId, quantity } : { productId: i.productId, quantity: i.quantity }
+      );
+      await apiRequest("PATCH", `/api/order-templates/${templateId}`, {
+        restaurantId: currentUser?.id,
+        name: tmpl.name,
+        items: newItems,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/order-templates'] });
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    },
+  });
+
+  const getSupplierGroups = (tmpl: OrderTemplateWithItems) => {
+    const groups = new Map<string, { supplier: User; items: OrderTemplateWithItems['items'] }>();
+    tmpl.items.forEach(item => {
+      const suppId = item.product.supplierId;
+      if (!groups.has(suppId)) {
+        groups.set(suppId, { supplier: item.product.supplier, items: [] });
+      }
+      groups.get(suppId)!.items.push(item);
+    });
+    return Array.from(groups.values());
+  };
+
+  const getTotalEstimate = (tmpl: OrderTemplateWithItems) => {
+    return tmpl.items.reduce((sum, item) => sum + item.quantity * parseFloat(item.product.price), 0);
+  };
+
+  const getAvailableCount = (tmpl: OrderTemplateWithItems) => {
+    return tmpl.items.filter(i => i.product.inStock).length;
+  };
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -75,61 +181,278 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
-        </div>
-      ) : templates && templates.length > 0 ? (
-        <div className="space-y-3">
-          {templates.map((tmpl) => (
-            <Card key={tmpl.id} className="overflow-hidden" data-testid={`template-card-${tmpl.id}`}>
-              <div className="flex items-center gap-3 p-3 md:p-4">
-                <div className="flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-lg bg-primary/10 shrink-0">
-                  <ClipboardList className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="overflow-hidden">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-56" />
+                  </div>
+                  <Skeleton className="h-8 w-20" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm md:text-base font-semibold truncate">{tmpl.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {tmpl.items.length} {t("templates", "products")}
-                    {tmpl.items.length > 0 && (
-                      <span className="ml-1.5">
-                        — {tmpl.items.slice(0, 3).map(i => i.product.name).join(", ")}
-                        {tmpl.items.length > 3 && ` +${tmpl.items.length - 3}`}
-                      </span>
-                    )}
-                  </p>
+                <Skeleton className="h-px w-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => setUseTemplate(tmpl)}
-                    data-testid={`button-use-template-${tmpl.id}`}
-                  >
-                    <ShoppingCart className="h-3.5 w-3.5 mr-1" />
-                    <span className="hidden sm:inline">{t("templates", "use")}</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setEditTemplate(tmpl)}
-                    data-testid={`button-edit-template-${tmpl.id}`}
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => setDeleteId(tmpl.id)}
-                    data-testid={`button-delete-template-${tmpl.id}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
+              </CardContent>
             </Card>
           ))}
+        </div>
+      ) : templates && templates.length > 0 ? (
+        <div className="space-y-4">
+          {templates.map((tmpl) => {
+            const supplierGroups = getSupplierGroups(tmpl);
+            const totalEstimate = getTotalEstimate(tmpl);
+            const availableCount = getAvailableCount(tmpl);
+            const unavailableCount = tmpl.items.length - availableCount;
+            const isEditingName = editingNameId === tmpl.id;
+
+            return (
+              <Card key={tmpl.id} className="overflow-hidden" data-testid={`template-card-${tmpl.id}`}>
+                <CardContent className="p-0">
+                  <div className="p-3 md:p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex items-center justify-center h-10 w-10 md:h-11 md:w-11 rounded-lg bg-primary/10 shrink-0 mt-0.5">
+                        <ClipboardList className="h-5 w-5 md:h-5.5 md:w-5.5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {isEditingName ? (
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              value={editNameValue}
+                              onChange={(e) => setEditNameValue(e.target.value)}
+                              className="h-8 text-sm font-semibold"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && editNameValue.trim()) {
+                                  renameMutation.mutate({ id: tmpl.id, name: editNameValue.trim() });
+                                } else if (e.key === "Escape") {
+                                  setEditingNameId(null);
+                                }
+                              }}
+                              data-testid={`input-rename-${tmpl.id}`}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0 text-primary"
+                              onClick={() => editNameValue.trim() && renameMutation.mutate({ id: tmpl.id, name: editNameValue.trim() })}
+                              disabled={renameMutation.isPending}
+                              data-testid={`button-save-name-${tmpl.id}`}
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0"
+                              onClick={() => setEditingNameId(null)}
+                              data-testid={`button-cancel-name-${tmpl.id}`}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <h3
+                              className="text-sm md:text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
+                              onClick={() => { setEditingNameId(tmpl.id); setEditNameValue(tmpl.name); }}
+                              data-testid={`text-template-name-${tmpl.id}`}
+                            >
+                              {tmpl.name}
+                            </h3>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 shrink-0 opacity-50 hover:opacity-100"
+                              onClick={() => { setEditingNameId(tmpl.id); setEditNameValue(tmpl.name); }}
+                              data-testid={`button-rename-${tmpl.id}`}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Package className="h-3 w-3" />
+                            {tmpl.items.length} {t("templates", "products")}
+                          </span>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Store className="h-3 w-3" />
+                            {supplierGroups.length} {t("templates", supplierGroups.length === 1 ? "supplier" : "suppliers")}
+                          </span>
+                          {unavailableCount > 0 && (
+                            <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600 dark:text-amber-400 gap-0.5">
+                              <AlertCircle className="h-2.5 w-2.5" />
+                              {unavailableCount} {t("templates", "outOfStock")}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-base md:text-lg font-bold" data-testid={`text-total-${tmpl.id}`}>
+                          {totalEstimate.toFixed(2)}&euro;
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {t("templates", "estimatedTotal")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-border/30">
+                      {supplierGroups.map((group) => (
+                        <div key={group.supplier.id} className="mb-2 last:mb-0">
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center shrink-0">
+                              <Store className="h-2.5 w-2.5 text-muted-foreground" />
+                            </div>
+                            <span className="text-[11px] md:text-xs font-medium text-muted-foreground">
+                              {group.supplier.companyName || group.supplier.name}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              ({group.items.length})
+                            </span>
+                          </div>
+                          <div className="space-y-1 ml-6">
+                            {group.items.map((item) => {
+                              const isOutOfStock = !item.product.inStock;
+                              const lineTotal = item.quantity * parseFloat(item.product.price);
+                              return (
+                                <div
+                                  key={item.productId}
+                                  className={`flex items-center gap-2 py-1.5 px-2 rounded-md ${isOutOfStock ? "bg-muted/30 opacity-60" : "bg-card"}`}
+                                  data-testid={`template-item-${item.productId}`}
+                                >
+                                  {item.product.imageUrl ? (
+                                    <img src={item.product.imageUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
+                                  ) : (
+                                    <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
+                                      <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-xs md:text-sm font-medium truncate ${isOutOfStock ? "line-through" : ""}`}>
+                                      {item.product.name}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {item.product.price}&euro; {t("templates", "perUnit")} {item.product.unit}
+                                    </p>
+                                  </div>
+                                  {isOutOfStock ? (
+                                    <Badge variant="outline" className="text-[10px] border-red-200 text-red-500 shrink-0">
+                                      {t("templates", "outOfStock")}
+                                    </Badge>
+                                  ) : (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => {
+                                          const min = item.product.minOrderQuantity || 1;
+                                          const newQty = Math.max(min, item.quantity - 1);
+                                          if (newQty !== item.quantity) {
+                                            updateItemQtyMutation.mutate({ templateId: tmpl.id, productId: item.productId, quantity: newQty });
+                                          }
+                                        }}
+                                        disabled={item.quantity <= (item.product.minOrderQuantity || 1) || updateItemQtyMutation.isPending}
+                                        data-testid={`button-qty-minus-${item.productId}`}
+                                      >
+                                        <Minus className="h-3 w-3" />
+                                      </Button>
+                                      <span className="w-7 text-center text-xs font-semibold tabular-nums">{item.quantity}</span>
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => {
+                                          updateItemQtyMutation.mutate({ templateId: tmpl.id, productId: item.productId, quantity: item.quantity + 1 });
+                                        }}
+                                        disabled={updateItemQtyMutation.isPending}
+                                        data-testid={`button-qty-plus-${item.productId}`}
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                  <span className="text-xs md:text-sm font-semibold shrink-0 w-14 text-right tabular-nums">
+                                    {isOutOfStock ? "-" : `${lineTotal.toFixed(2)}\u20AC`}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                                    onClick={() => removeItemMutation.mutate({ templateId: tmpl.id, productId: item.productId })}
+                                    disabled={removeItemMutation.isPending}
+                                    data-testid={`button-remove-item-${item.productId}`}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span>
+                          {t("templates", "lastUpdated")}: {formatDistanceToNow(new Date(tmpl.updatedAt), { addSuffix: true, locale: dateLocale })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs px-2"
+                          onClick={() => setEditTemplate(tmpl)}
+                          data-testid={`button-add-products-${tmpl.id}`}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          {t("templates", "addProducts")}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => duplicateMutation.mutate(tmpl)}
+                          disabled={duplicateMutation.isPending}
+                          data-testid={`button-duplicate-${tmpl.id}`}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteId(tmpl.id)}
+                          data-testid={`button-delete-template-${tmpl.id}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="h-7 text-xs px-3"
+                          onClick={() => setUseTemplate(tmpl)}
+                          data-testid={`button-use-template-${tmpl.id}`}
+                        >
+                          <ShoppingCart className="h-3.5 w-3.5 mr-1" />
+                          {t("templates", "addToCart")}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <Card>
@@ -407,7 +730,7 @@ function CreateEditDialog({
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold">{order.totalAmount ? `${Number(order.totalAmount).toFixed(2)}€` : ""}</p>
+                    <p className="text-sm font-semibold">{order.totalAmount ? `${Number(order.totalAmount).toFixed(2)}\u20AC` : ""}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">{order.items.length} {t("templates", "products")}</p>
                   </div>
                 </button>
@@ -437,15 +760,17 @@ function CreateEditDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-          <div>
-            <label className="text-sm font-medium mb-1.5 block">{t("templates", "templateName")}</label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("templates", "templateNamePlaceholder")}
-              data-testid="input-template-name"
-            />
-          </div>
+          {!template && (
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">{t("templates", "templateName")}</label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t("templates", "templateNamePlaceholder")}
+                data-testid="input-template-name"
+              />
+            </div>
+          )}
 
           {selectedItems.length > 0 && (
             <div>
@@ -464,7 +789,7 @@ function CreateEditDialog({
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{item.product.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{item.product.supplier?.companyName} — {item.product.price}€/{item.product.unit}</p>
+                      <p className="text-[10px] text-muted-foreground">{item.product.supplier?.companyName} — {item.product.price}&euro;/{item.product.unit}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <Button
@@ -565,7 +890,7 @@ function CreateEditDialog({
                       <p className="text-[10px] text-muted-foreground truncate">{product.supplier?.companyName}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xs font-semibold">{product.price}€</p>
+                      <p className="text-xs font-semibold">{product.price}&euro;</p>
                       <p className="text-[10px] text-muted-foreground">/{product.unit}</p>
                     </div>
                     {isSelected(product.id) ? (
@@ -586,8 +911,14 @@ function CreateEditDialog({
           </Button>
           <Button
             className="flex-1"
-            disabled={!name.trim() || selectedItems.length === 0 || createMutation.isPending}
-            onClick={() => createMutation.mutate()}
+            disabled={(!template && !name.trim()) || selectedItems.length === 0 || createMutation.isPending}
+            onClick={() => {
+              if (template) {
+                createMutation.mutate();
+              } else {
+                createMutation.mutate();
+              }
+            }}
             data-testid="button-save-template"
           >
             <Check className="h-4 w-4 mr-1.5" />
@@ -689,7 +1020,7 @@ function UseTemplateDialog({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{item.product.name}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  {item.product.supplier?.companyName} — {item.product.price}€/{item.product.unit}
+                  {item.product.supplier?.companyName} — {item.product.price}&euro;/{item.product.unit}
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -719,7 +1050,7 @@ function UseTemplateDialog({
                 </Button>
               </div>
               <span className="text-sm font-semibold shrink-0 w-16 text-right">
-                {((quantities[item.productId] || item.quantity) * parseFloat(item.product.price)).toFixed(2)}€
+                {((quantities[item.productId] || item.quantity) * parseFloat(item.product.price)).toFixed(2)}&euro;
               </span>
             </div>
           ))}
@@ -746,7 +1077,7 @@ function UseTemplateDialog({
         <div className="border-t pt-3 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">{t("common", "total")} ({availableItems.length} {t("templates", "products")})</span>
-            <span className="text-lg font-bold">{totalEstimate.toFixed(2)}€</span>
+            <span className="text-lg font-bold">{totalEstimate.toFixed(2)}&euro;</span>
           </div>
           <Button
             className="w-full"
