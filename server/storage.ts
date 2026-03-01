@@ -1323,7 +1323,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateProductStock(productId: string, newStock: number): Promise<Product | undefined> {
     const [updated] = await db.update(products)
-      .set({ stockQuantity: newStock })
+      .set({ stockQuantity: newStock, inStock: newStock > 0 })
       .where(eq(products.id, productId))
       .returning();
     return updated;
