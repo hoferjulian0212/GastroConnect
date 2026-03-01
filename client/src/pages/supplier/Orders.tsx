@@ -13,7 +13,7 @@ import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, 
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -588,18 +588,50 @@ export default function SupplierOrders() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filterOrders(tab === "all" ? null : tab).length > 0 ? (
-                  filterOrders(tab === "all" ? null : tab).map((order) => (
-                    <OrderCard key={order.id} order={order} />
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                      <ClipboardList className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                      <p className="text-muted-foreground">{lang === "de" ? "Keine Bestellungen gefunden" : "Nessun ordine trovato"}</p>
-                    </CardContent>
-                  </Card>
-                )}
+                {(() => {
+                  const filtered = filterOrders(tab === "all" ? null : tab);
+                  if (filtered.length === 0) {
+                    return (
+                      <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-12">
+                          <ClipboardList className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                          <p className="text-muted-foreground">{lang === "de" ? "Keine Bestellungen gefunden" : "Nessun ordine trovato"}</p>
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+                  const sorted = [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                  const groups: { label: string; orders: OrderWithDetails[] }[] = [];
+                  const groupMap = new Map<string, OrderWithDetails[]>();
+                  for (const order of sorted) {
+                    const d = new Date(order.createdAt);
+                    const key = format(d, "yyyy-MM-dd");
+                    if (!groupMap.has(key)) groupMap.set(key, []);
+                    groupMap.get(key)!.push(order);
+                  }
+                  for (const [key, ords] of groupMap.entries()) {
+                    const d = new Date(key + "T00:00:00");
+                    let label: string;
+                    if (isToday(d)) label = lang === "de" ? "Heute" : "Oggi";
+                    else if (isYesterday(d)) label = lang === "de" ? "Gestern" : "Ieri";
+                    else label = format(d, "dd. MMMM yyyy", { locale: dateFnsLocale });
+                    groups.push({ label, orders: ords });
+                  }
+                  return groups.map((group) => (
+                    <div key={group.label} data-testid={`order-group-${group.label}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                        <h3 className="text-sm font-semibold text-muted-foreground">{group.label}</h3>
+                        <span className="text-xs text-muted-foreground/60">({group.orders.length})</span>
+                      </div>
+                      <div className="space-y-2 md:space-y-3">
+                        {group.orders.map((order) => (
+                          <OrderCard key={order.id} order={order} />
+                        ))}
+                      </div>
+                    </div>
+                  ));
+                })()}
               </div>
             )}
           </TabsContent>
