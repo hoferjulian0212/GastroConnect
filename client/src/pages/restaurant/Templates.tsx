@@ -21,7 +21,7 @@ import { de, it } from "date-fns/locale";
 
 type ProductWithSupplier = Product & { supplier: User };
 
-export default function RestaurantTemplates() {
+export default function RestaurantTemplates({ embedded = false }: { embedded?: boolean }) {
   const { currentUser } = useUser();
   const { lang } = useLanguage();
   const t = useT(lang);
@@ -56,18 +56,22 @@ export default function RestaurantTemplates() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">
-            {t("templates", "orderTemplates")}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("templates", "orderTemplatesDesc")}
-          </p>
+        {!embedded && (
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">
+              {t("templates", "orderTemplates")}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {t("templates", "orderTemplatesDesc")}
+            </p>
+          </div>
+        )}
+        <div className={embedded ? "ml-auto" : ""}>
+          <Button onClick={() => setShowCreate(true)} data-testid="button-create-template">
+            <Plus className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">{t("templates", "newTemplate")}</span>
+          </Button>
         </div>
-        <Button onClick={() => setShowCreate(true)} data-testid="button-create-template">
-          <Plus className="h-4 w-4 sm:mr-1.5" />
-          <span className="hidden sm:inline">{t("templates", "newTemplate")}</span>
-        </Button>
       </div>
 
       {isLoading ? (

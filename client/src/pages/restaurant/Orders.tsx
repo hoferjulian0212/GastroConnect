@@ -12,15 +12,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare } from "lucide-react";
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList } from "lucide-react";
 import type { OrderWithDetails, Product, DeliverySchedule } from "@shared/schema";
 import { format, addDays, startOfDay, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { Link, useSearch } from "wouter";
+import { Link, useSearch, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
+import RestaurantTemplates from "./Templates";
 
 interface EditableItem {
   id: string;
@@ -37,12 +38,22 @@ export default function RestaurantOrders() {
   const { lang } = useLanguage();
   const t = useT(lang);
   const dateLocale = lang === "it" ? it : de;
+  const [, navigate] = useLocation();
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const highlightOrderId = searchParams.get("orderId");
   const initialSupplierId = searchParams.get("supplierId");
+  const tabParam = searchParams.get("tab");
   const highlightRef = useRef<HTMLDivElement>(null);
 
+  const activeTab = tabParam === "templates" ? "templates" : "orders";
+  const setActiveTab = (tab: "orders" | "templates") => {
+    if (tab === "templates") {
+      navigate("/restaurant/orders?tab=templates");
+    } else {
+      navigate("/restaurant/orders");
+    }
+  };
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSupplier, setFilterSupplier] = useState<string>(initialSupplierId || "all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
@@ -586,11 +597,62 @@ export default function RestaurantOrders() {
     }
   };
 
+  if (activeTab === "templates") {
+    return (
+      <div className="space-y-4 md:space-y-6">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "orders")}</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">{t("orders", "allOrdersOverview")}</p>
+        </div>
+
+        <div className="flex gap-1 p-1 bg-muted/50 rounded-lg w-fit" data-testid="orders-tab-switcher">
+          <button
+            onClick={() => setActiveTab("orders")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all text-muted-foreground hover:text-foreground"
+            data-testid="tab-orders"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            {t("common", "orders")}
+          </button>
+          <button
+            onClick={() => setActiveTab("templates")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all bg-background text-foreground shadow-sm"
+            data-testid="tab-templates"
+          >
+            <ClipboardList className="h-4 w-4" />
+            {t("templates", "orderTemplates")}
+          </button>
+        </div>
+
+        <RestaurantTemplates embedded />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "orders")}</h1>
         <p className="text-xs md:text-sm text-muted-foreground">{t("orders", "allOrdersOverview")}</p>
+      </div>
+
+      <div className="flex gap-1 p-1 bg-muted/50 rounded-lg w-fit" data-testid="orders-tab-switcher">
+        <button
+          onClick={() => setActiveTab("orders")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all bg-background text-foreground shadow-sm"
+          data-testid="tab-orders"
+        >
+          <ShoppingBag className="h-4 w-4" />
+          {t("common", "orders")}
+        </button>
+        <button
+          onClick={() => setActiveTab("templates")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all text-muted-foreground hover:text-foreground"
+          data-testid="tab-templates"
+        >
+          <ClipboardList className="h-4 w-4" />
+          {t("templates", "orderTemplates")}
+        </button>
       </div>
 
       {uniqueSuppliers.length > 0 && (

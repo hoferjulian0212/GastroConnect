@@ -42,7 +42,7 @@ The application uses a clean and modern UI design.
 - **Promotions**: Product discounts with start/end dates.
 - **Documents**: Records for generated PDFs like delivery notes.
 - **Custom MOQ**: Overrides for product MOQs specific to a restaurant.
-- **Order Templates**: Reusable order templates with named product lists and quantities. Restaurants can create, edit, and use templates to quickly add items to cart.
+- **Order Templates**: Reusable order templates with named product lists and quantities. Integrated as a tab within the restaurant Orders page (URL: `/restaurant/orders?tab=templates`). Restaurants can create, edit, and use templates to quickly add items to cart. Old route `/restaurant/templates` redirects to the tab.
 
 ## External Dependencies
 
