@@ -104,16 +104,23 @@ export default function SupplierOrders() {
     mutationFn: async ({ orderId, status, requestedDeliveryDate }: { orderId: string; status: string; requestedDeliveryDate?: string }) => {
       return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status, requestedDeliveryDate: requestedDeliveryDate || undefined });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent', currentUser?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders/recent'] });
-      toast({
-        title: t("supplierComplaints", "statusUpdated"),
-        description: lang === "de" ? "Der Bestellstatus wurde erfolgreich aktualisiert." : "Lo stato dell'ordine è stato aggiornato con successo.",
-      });
+      const statusLabels: Record<string, Record<string, string>> = {
+        confirmed: { de: "Bestellung bestätigt", it: "Ordine confermato" },
+        in_delivery: { de: "Bestellung in Lieferung", it: "Ordine in consegna" },
+        delivered: { de: "Bestellung geliefert", it: "Ordine consegnato" },
+        cancelled: { de: "Bestellung storniert", it: "Ordine annullato" },
+      };
+      const label = statusLabels[variables.status]?.[lang] || (lang === "de" ? "Status aktualisiert" : "Stato aggiornato");
+      toast({ title: label });
+      setDetailOrder(null);
+      setShowMessageInput(false);
+      setOrderMessage("");
     },
     onError: () => {
       toast({
@@ -588,7 +595,7 @@ export default function SupplierOrders() {
                 {detailOrder.status !== "delivered" && detailOrder.status !== "cancelled" && (
                   <div className="flex flex-wrap gap-1.5">
                     {detailOrder.status === "pending" && (
-                      <Button size="sm" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "confirmed" }); setDetailOrder({ ...detailOrder, status: "confirmed" }); }} disabled={updateStatusMutation.isPending} data-testid="button-status-confirmed">
+                      <Button size="sm" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "confirmed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-confirmed">
                         <CheckCircle className="h-3.5 w-3.5 mr-1" />
                         {lang === "de" ? "Bestätigen" : "Confermare"}
                       </Button>
@@ -600,12 +607,12 @@ export default function SupplierOrders() {
                       </Button>
                     )}
                     {detailOrder.status === "in_delivery" && (
-                      <Button size="sm" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "delivered" }); setDetailOrder({ ...detailOrder, status: "delivered" }); }} disabled={updateStatusMutation.isPending} data-testid="button-status-delivered">
+                      <Button size="sm" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid="button-status-delivered">
                         <Package className="h-3.5 w-3.5 mr-1" />
                         {lang === "de" ? "Geliefert" : "Consegnato"}
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "cancelled" }); setDetailOrder({ ...detailOrder, status: "cancelled" }); }} disabled={updateStatusMutation.isPending} data-testid="button-status-cancelled">
+                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid="button-status-cancelled">
                       <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
                       {lang === "de" ? "Stornieren" : "Annullare"}
                     </Button>
@@ -749,9 +756,6 @@ export default function SupplierOrders() {
               {
                 onSuccess: () => {
                   setDeliveryDatePicker(null);
-                  if (detailOrder && detailOrder.id === deliveryDatePicker.orderId) {
-                    setDetailOrder({ ...detailOrder, status: "in_delivery" });
-                  }
                 },
               }
             );
