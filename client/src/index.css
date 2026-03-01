@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes wizard-circle {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes wizard-check {
+  0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+  40% { transform: scale(0) rotate(-45deg); opacity: 0; }
+  70% { transform: scale(1.2) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes wizard-ring {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes wizard-fade-in {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.animate-wizard-circle { animation: wizard-circle 0.6s ease-out forwards; }
+.animate-wizard-check { animation: wizard-check 0.8s ease-out forwards; }
+.animate-wizard-ring { animation: wizard-ring 1.5s ease-out forwards; }
+.animate-wizard-fade-in { animation: wizard-fade-in 0.5s ease-out 0.4s both; }
+.animate-wizard-fade-in-delay { animation: wizard-fade-in 0.5s ease-out 0.7s both; }
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;

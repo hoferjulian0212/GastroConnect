@@ -1,9 +1,9 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, Plus, Sparkles } from "lucide-react";
 import QuantityInput from "@/components/QuantityInput";
 import type { OrderWithDetails, ConversationWithUser, ProductWithSupplierAndPromotion, OrderTemplateWithItems } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,87 @@ export default function RestaurantHome() {
   });
 
   const [orderingTemplateId, setOrderingTemplateId] = useState<string | null>(null);
+  const [wizardTemplate, setWizardTemplate] = useState<OrderTemplateWithItems | null>(null);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
+  const [wizardQuantities, setWizardQuantities] = useState<Record<string, number>>({});
+  const [wizardRecommendedQtys, setWizardRecommendedQtys] = useState<Record<string, number>>({});
+  const [wizardSelectedRecommended, setWizardSelectedRecommended] = useState<Set<string>>(new Set());
+  const [wizardSubmitting, setWizardSubmitting] = useState(false);
+
+  const openTemplateWizard = useCallback((tmpl: OrderTemplateWithItems) => {
+    const qtys: Record<string, number> = {};
+    for (const item of tmpl.items) {
+      if (item.product.inStock !== false) {
+        qtys[item.productId] = item.quantity;
+      }
+    }
+    setWizardQuantities(qtys);
+    setWizardRecommendedQtys({});
+    setWizardSelectedRecommended(new Set());
+    setWizardTemplate(tmpl);
+    setWizardStep(1);
+    setWizardSubmitting(false);
+  }, []);
+
+  const wizardRecommendedProducts = useMemo(() => {
+    if (!wizardTemplate || !products) return [];
+    const templateProductIds = new Set(wizardTemplate.items.map(i => i.productId));
+    const templateSupplierIds = new Set(wizardTemplate.items.map(i => i.product.supplierId));
+    const recommended: ProductWithSupplierAndPromotion[] = [];
+    const promos = products.filter(p => p.activePromotion && !templateProductIds.has(p.id) && p.inStock !== false);
+    for (const p of promos) recommended.push(p);
+    const sameSupplier = products.filter(p => templateSupplierIds.has(p.supplierId) && !templateProductIds.has(p.id) && !promos.some(pr => pr.id === p.id) && p.inStock !== false);
+    for (const p of sameSupplier.slice(0, 6 - recommended.length)) recommended.push(p);
+    return recommended.slice(0, 6);
+  }, [wizardTemplate, products]);
+
+  const wizardAddToCartMutation = useMutation({
+    mutationFn: async () => {
+      for (const [productId, qty] of Object.entries(wizardQuantities)) {
+        if (qty <= 0) continue;
+        const item = wizardTemplate?.items.find(i => i.productId === productId);
+        if (!item) continue;
+        await apiRequest("POST", "/api/cart", {
+          restaurantId: currentUser?.id,
+          productId,
+          supplierId: item.product.supplierId,
+          quantity: qty,
+          mode: "set",
+        });
+      }
+      for (const prodId of wizardSelectedRecommended) {
+        const qty = wizardRecommendedQtys[prodId] || 1;
+        const prod = wizardRecommendedProducts.find(p => p.id === prodId);
+        if (!prod || qty <= 0) continue;
+        await apiRequest("POST", "/api/cart", {
+          restaurantId: currentUser?.id,
+          productId: prodId,
+          supplierId: prod.supplierId,
+          quantity: qty,
+          mode: "set",
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+      setWizardStep(3);
+      setWizardSubmitting(false);
+      setTimeout(() => {
+        setWizardTemplate(null);
+        navigate("/restaurant/cart");
+      }, 3500);
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+      setWizardSubmitting(false);
+    },
+  });
+
+  const handleWizardSubmit = () => {
+    setWizardSubmitting(true);
+    wizardAddToCartMutation.mutate();
+  };
 
   const orderFromTemplateMutation = useMutation({
     mutationFn: async (template: OrderTemplateWithItems) => {
@@ -805,21 +886,12 @@ export default function RestaurantHome() {
                           <Button
                             size="sm"
                             className="text-xs h-7 gap-1"
-                            disabled={inStockItems.length === 0 || isOrdering}
-                            onClick={() => {
-                              setOrderingTemplateId(tmpl.id);
-                              orderFromTemplateMutation.mutate(tmpl);
-                            }}
+                            disabled={inStockItems.length === 0}
+                            onClick={() => openTemplateWizard(tmpl)}
                             data-testid={`button-order-template-${tmpl.id}`}
                           >
-                            {isOrdering ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <>
-                                <ShoppingCart className="h-3 w-3" />
-                                {lang === "de" ? "Bestellen" : "Ordina"}
-                              </>
-                            )}
+                            <ShoppingCart className="h-3 w-3" />
+                            {lang === "de" ? "Bestellen" : "Ordina"}
                           </Button>
                         </div>
                       </div>
@@ -930,6 +1002,222 @@ export default function RestaurantHome() {
                 </Button>
               </div>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!wizardTemplate} onOpenChange={(open) => { if (!open && wizardStep !== 3) setWizardTemplate(null); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0" data-testid="dialog-template-wizard">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{wizardTemplate?.name}</DialogTitle>
+            <DialogDescription>{lang === "de" ? "Bestellung aus Vorlage" : "Ordine da modello"}</DialogDescription>
+          </DialogHeader>
+
+          {wizardStep === 3 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-6" data-testid="wizard-step-3">
+              <div className="relative mb-6">
+                <div className="h-24 w-24 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center animate-wizard-circle">
+                  <Check className="h-12 w-12 text-green-600 dark:text-green-400 animate-wizard-check" />
+                </div>
+                <div className="absolute inset-0 h-24 w-24 rounded-full border-4 border-green-400 animate-wizard-ring" />
+              </div>
+              <h3 className="text-xl font-bold text-center mb-2 animate-wizard-fade-in">
+                {lang === "de" ? "Zum Warenkorb hinzugefuegt!" : "Aggiunto al carrello!"}
+              </h3>
+              <p className="text-sm text-muted-foreground text-center animate-wizard-fade-in-delay">
+                {lang === "de" ? "Sie werden zum Warenkorb weitergeleitet..." : "Verrai reindirizzato al carrello..."}
+              </p>
+              <div className="mt-6 flex gap-1 animate-wizard-fade-in-delay">
+                <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: "200ms" }} />
+                <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: "400ms" }} />
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="px-5 pt-5 pb-3">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-orange-500/10 shrink-0">
+                    <ClipboardList className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-base truncate" data-testid="wizard-template-name">{wizardTemplate?.name}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {lang === "de" ? `Schritt ${wizardStep} von 2` : `Passo ${wizardStep} di 2`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-1.5 mb-2">
+                  <div className={`h-1 flex-1 rounded-full transition-colors ${wizardStep >= 1 ? "bg-primary" : "bg-muted"}`} />
+                  <div className={`h-1 flex-1 rounded-full transition-colors ${wizardStep >= 2 ? "bg-primary" : "bg-muted"}`} />
+                </div>
+              </div>
+
+              {wizardStep === 1 && wizardTemplate && (
+                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-1">
+                  <p className="text-sm font-medium">
+                    {lang === "de" ? "Mengen anpassen" : "Regola le quantita"}
+                  </p>
+                  <div className="space-y-2 max-h-[45vh] overflow-y-auto">
+                    {wizardTemplate.items.filter(i => i.product.inStock !== false).map((item) => (
+                      <div
+                        key={item.productId}
+                        className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-border bg-card"
+                        data-testid={`wizard-item-${item.productId}`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{item.product.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {item.product.supplier?.companyName || item.product.supplier?.name}
+                            <span className="ml-1">{parseFloat(item.product.price).toFixed(2)}€/{item.product.unit}</span>
+                          </p>
+                        </div>
+                        <QuantityInput
+                          value={wizardQuantities[item.productId] || 1}
+                          onChange={(val) => setWizardQuantities(prev => ({ ...prev, [item.productId]: val }))}
+                          min={item.product.minOrderQuantity && item.product.minOrderQuantity > 1 ? item.product.minOrderQuantity : 1}
+                          size="sm"
+                          testIdPrefix={`wizard-qty-${item.productId}`}
+                        />
+                      </div>
+                    ))}
+                    {wizardTemplate.items.filter(i => i.product.inStock === false).length > 0 && (
+                      <div className="pt-1">
+                        <p className="text-xs text-muted-foreground mb-1">{lang === "de" ? "Nicht verfuegbar:" : "Non disponibile:"}</p>
+                        {wizardTemplate.items.filter(i => i.product.inStock === false).map((item) => (
+                          <div key={item.productId} className="flex items-center gap-2 text-xs text-muted-foreground/60 line-through py-0.5">
+                            <span>{item.quantity}x {item.product.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                    <div>
+                      <span className="text-xs text-muted-foreground">{lang === "de" ? "Geschaetzt" : "Stimato"}: </span>
+                      <span className="text-sm font-bold">
+                        {Object.entries(wizardQuantities).reduce((sum, [pid, qty]) => {
+                          const item = wizardTemplate.items.find(i => i.productId === pid);
+                          return sum + (item ? parseFloat(item.product.price) * qty : 0);
+                        }, 0).toFixed(2)}€
+                      </span>
+                    </div>
+                    <Button size="sm" onClick={() => setWizardStep(2)} data-testid="wizard-next-step">
+                      {lang === "de" ? "Weiter" : "Avanti"}
+                      <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 2 && (
+                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-amber-500" />
+                    <p className="text-sm font-medium">
+                      {lang === "de" ? "Empfohlene Produkte" : "Prodotti consigliati"}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "de" ? "Moechten Sie noch etwas hinzufuegen?" : "Vuoi aggiungere qualcos'altro?"}
+                  </p>
+                  {wizardRecommendedProducts.length > 0 ? (
+                    <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                      {wizardRecommendedProducts.map((prod) => {
+                        const isSelected = wizardSelectedRecommended.has(prod.id);
+                        const hasPromo = !!prod.activePromotion;
+                        const price = parseFloat(prod.price);
+                        const discounted = hasPromo ? price * (1 - prod.activePromotion!.discountPercent / 100) : price;
+                        return (
+                          <div
+                            key={prod.id}
+                            className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors cursor-pointer ${
+                              isSelected ? "border-green-400 bg-green-50 dark:bg-green-900/20" : "border-border bg-card"
+                            }`}
+                            onClick={() => {
+                              setWizardSelectedRecommended(prev => {
+                                const next = new Set(prev);
+                                if (next.has(prod.id)) next.delete(prod.id);
+                                else next.add(prod.id);
+                                return next;
+                              });
+                              if (!wizardRecommendedQtys[prod.id]) {
+                                const minQ = prod.minOrderQuantity && prod.minOrderQuantity > 1 ? prod.minOrderQuantity : 1;
+                                setWizardRecommendedQtys(prev => ({ ...prev, [prod.id]: minQ }));
+                              }
+                            }}
+                            data-testid={`wizard-rec-${prod.id}`}
+                          >
+                            <div className={`flex items-center justify-center h-5 w-5 rounded-full border-2 shrink-0 transition-colors ${
+                              isSelected ? "border-green-500 bg-green-500" : "border-muted-foreground/30"
+                            }`}>
+                              {isSelected && <Check className="h-3 w-3 text-white" />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-medium truncate">{prod.name}</p>
+                                {hasPromo && (
+                                  <Badge variant="outline" className="text-[9px] border-green-300 text-green-600 px-1 py-0 shrink-0">
+                                    -{prod.activePromotion!.discountPercent}%
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {prod.supplier?.companyName || prod.supplier?.name}
+                                <span className="ml-1">
+                                  {hasPromo ? (
+                                    <><span className="line-through">{price.toFixed(2)}€</span> <span className="text-green-600 font-medium">{discounted.toFixed(2)}€</span></>
+                                  ) : (
+                                    <>{price.toFixed(2)}€</>
+                                  )}
+                                  /{prod.unit}
+                                </span>
+                              </p>
+                            </div>
+                            {isSelected && (
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <QuantityInput
+                                  value={wizardRecommendedQtys[prod.id] || 1}
+                                  onChange={(val) => setWizardRecommendedQtys(prev => ({ ...prev, [prod.id]: val }))}
+                                  min={prod.minOrderQuantity && prod.minOrderQuantity > 1 ? prod.minOrderQuantity : 1}
+                                  size="sm"
+                                  testIdPrefix={`wizard-rec-qty-${prod.id}`}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center py-6 text-center">
+                      <p className="text-sm text-muted-foreground">{lang === "de" ? "Keine weiteren Empfehlungen" : "Nessun altro consiglio"}</p>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                    <Button variant="outline" size="sm" onClick={() => setWizardStep(1)} data-testid="wizard-back-step">
+                      {lang === "de" ? "Zurueck" : "Indietro"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleWizardSubmit}
+                      disabled={wizardSubmitting}
+                      className="gap-1"
+                      data-testid="wizard-submit"
+                    >
+                      {wizardSubmitting ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <ShoppingCart className="h-3.5 w-3.5" />
+                          {lang === "de" ? "In den Warenkorb" : "Aggiungi al carrello"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </DialogContent>
       </Dialog>
