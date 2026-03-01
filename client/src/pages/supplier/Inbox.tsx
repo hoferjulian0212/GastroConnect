@@ -201,7 +201,7 @@ export default function SupplierInbox() {
     onSuccess: (_, variables) => {
       toast({ title: "Status aktualisiert", description: "Der Bestellstatus wurde erfolgreich geändert." });
       setCardWizard(null);
-      refetchOrderDetail();
+      setOrderDetailId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
@@ -210,8 +210,10 @@ export default function SupplierInbox() {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders", variables.orderId, "status-history"] });
       if (selectedConversation) {
+        queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
       }
+      setTimeout(scrollToBottom, 300);
     },
     onError: () => {
       setCardWizard(null);
@@ -225,6 +227,7 @@ export default function SupplierInbox() {
     },
     onSuccess: (_, variables) => {
       toast({ title: variables.approved ? "Änderung genehmigt" : "Änderung abgelehnt", description: variables.approved ? "Die Bestellung ist wieder offen zur Bearbeitung." : "Die Änderungsanfrage wurde abgelehnt." });
+      setOrderDetailId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
@@ -232,6 +235,7 @@ export default function SupplierInbox() {
         queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversation, "messages"] });
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
       }
+      setTimeout(scrollToBottom, 300);
     },
     onError: () => {
       toast({ title: "Fehler", description: "Die Antwort konnte nicht gesendet werden.", variant: "destructive" });
@@ -263,15 +267,21 @@ export default function SupplierInbox() {
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       return apiRequest("PATCH", `/api/complaints/${id}`, { status, changedBy: currentUser?.id });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast({ title: "Status aktualisiert", description: "Der Reklamationsstatus wurde erfolgreich geändert." });
       queryClient.invalidateQueries({ queryKey: [`/api/complaints?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId] });
       queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId, "status-history"] });
       if (selectedConversation) {
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+        queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       }
       setShowStatusDialog(false);
+      if (variables.status === "resolved" || variables.status === "closed") {
+        setShowComplaintDetail(false);
+        setSelectedComplaintId(null);
+        setTimeout(scrollToBottom, 300);
+      }
     },
     onError: () => {
       toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden.", variant: "destructive" });

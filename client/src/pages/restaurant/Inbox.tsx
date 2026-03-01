@@ -330,7 +330,9 @@ export default function RestaurantInbox() {
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
       }
       setEditingOrderInbox(null);
+      setOrderDetailId(null);
       toast({ title: t("orders", "orderUpdated"), description: t("orders", "orderUpdatedDesc") });
+      setTimeout(scrollToBottom, 300);
     },
     onError: () => {
       toast({ title: t("common", "error"), description: t("orders", "orderUpdateError"), variant: "destructive" });
@@ -613,7 +615,8 @@ export default function RestaurantInbox() {
       });
       setOrderItems({});
       setActionMode("none");
-      setTimeout(scrollToBottom, 200);
+      setOrderDetailId(null);
+      setTimeout(scrollToBottom, 300);
     },
     onError: () => {
       toast({
@@ -641,6 +644,9 @@ export default function RestaurantInbox() {
       setComplaintTitle("");
       setComplaintDescription("");
       setActionMode("none");
+      setShowComplaintDetail(false);
+      setSelectedComplaintId(null);
+      setTimeout(scrollToBottom, 300);
     },
     onError: () => {
       toast({
@@ -679,10 +685,14 @@ export default function RestaurantInbox() {
       queryClient.invalidateQueries({ queryKey: ["/api/orders", orderDetailId, "status-history"] });
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders/recent', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       if (selectedConversation) {
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
       }
       setShowCancelOrderConfirm(false);
+      setOrderDetailId(null);
+      setTimeout(scrollToBottom, 300);
     },
     onError: () => {
       toast({ title: t("common", "error"), description: t("orders", "orderCancelError"), variant: "destructive" });
@@ -696,12 +706,15 @@ export default function RestaurantInbox() {
     onSuccess: () => {
       toast({ title: lang === "it" ? "Richiesta inviata" : "Anfrage gesendet", description: lang === "it" ? "La richiesta di modifica è stata inviata al fornitore." : "Die Änderungsanfrage wurde an den Lieferanten gesendet." });
       setCardWizard(null);
+      setOrderDetailId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       if (selectedConversation) {
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'messages'] });
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
       }
+      setTimeout(scrollToBottom, 300);
     },
     onError: () => {
       toast({ title: t("common", "error"), description: lang === "it" ? "La richiesta non è stata inviata." : "Die Anfrage konnte nicht gesendet werden.", variant: "destructive" });
@@ -717,10 +730,15 @@ export default function RestaurantInbox() {
       queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId] });
       queryClient.invalidateQueries({ queryKey: ["/api/complaints", selectedComplaintId, "status-history"] });
       queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       if (selectedConversation) {
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+        queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       }
       setShowWithdrawComplaintConfirm(false);
+      setShowComplaintDetail(false);
+      setSelectedComplaintId(null);
+      setTimeout(scrollToBottom, 300);
     },
     onError: () => {
       toast({ title: t("common", "error"), description: t("complaints", "withdrawError"), variant: "destructive" });
