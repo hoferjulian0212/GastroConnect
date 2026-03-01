@@ -629,10 +629,20 @@ export default function RestaurantHome() {
                                 {t("common", "unavailable")}
                               </span>
                             )}
-                            <p className="text-[10px] font-semibold text-primary truncate" data-testid={`text-promo-supplier-${product.id}`}>
-                              {product.supplier?.companyName || product.supplier?.name}
-                            </p>
-                            <h3 className="font-medium text-xs truncate" data-testid={`text-promo-name-${product.id}`}>{product.name}</h3>
+                            <div className="flex items-center gap-1.5 mb-1" data-testid={`text-promo-supplier-${product.id}`}>
+                              <Avatar className="h-5 w-5 shrink-0">
+                                {product.supplier?.profileImageUrl ? (
+                                  <AvatarImage src={product.supplier.profileImageUrl} alt={product.supplier?.companyName || product.supplier?.name} />
+                                ) : null}
+                                <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">
+                                  {(product.supplier?.companyName || product.supplier?.name || "?").slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs font-bold text-foreground truncate">
+                                {product.supplier?.companyName || product.supplier?.name}
+                              </span>
+                            </div>
+                            <h3 className="font-medium text-xs text-muted-foreground truncate" data-testid={`text-promo-name-${product.id}`}>{product.name}</h3>
                             <div className="flex items-baseline gap-1 mt-1 flex-wrap">
                               <span className="text-[10px] text-muted-foreground line-through" data-testid={`text-promo-original-price-${product.id}`}>{originalPrice.toFixed(2)}€</span>
                               <span className="font-bold text-sm text-green-600 dark:text-green-400" data-testid={`text-promo-discounted-price-${product.id}`}>{discountedPrice.toFixed(2)}€</span>
