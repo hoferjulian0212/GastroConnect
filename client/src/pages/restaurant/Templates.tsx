@@ -14,8 +14,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
-  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Minus, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle, Copy, Store, Pencil, AlertCircle
+  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle, Copy, Store, Pencil, AlertCircle
 } from "lucide-react";
+import QuantityInput from "@/components/QuantityInput";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 
@@ -347,37 +348,14 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
                                       {t("templates", "outOfStock")}
                                     </Badge>
                                   ) : (
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-6 w-6"
-                                        onClick={() => {
-                                          const min = item.product.minOrderQuantity || 1;
-                                          const newQty = Math.max(min, item.quantity - 1);
-                                          if (newQty !== item.quantity) {
-                                            updateItemQtyMutation.mutate({ templateId: tmpl.id, productId: item.productId, quantity: newQty });
-                                          }
-                                        }}
-                                        disabled={item.quantity <= (item.product.minOrderQuantity || 1) || updateItemQtyMutation.isPending}
-                                        data-testid={`button-qty-minus-${item.productId}`}
-                                      >
-                                        <Minus className="h-3 w-3" />
-                                      </Button>
-                                      <span className="w-7 text-center text-xs font-semibold tabular-nums">{item.quantity}</span>
-                                      <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-6 w-6"
-                                        onClick={() => {
-                                          updateItemQtyMutation.mutate({ templateId: tmpl.id, productId: item.productId, quantity: item.quantity + 1 });
-                                        }}
-                                        disabled={updateItemQtyMutation.isPending}
-                                        data-testid={`button-qty-plus-${item.productId}`}
-                                      >
-                                        <Plus className="h-3 w-3" />
-                                      </Button>
-                                    </div>
+                                    <QuantityInput
+                                      value={item.quantity}
+                                      onChange={(val) => updateItemQtyMutation.mutate({ templateId: tmpl.id, productId: item.productId, quantity: val })}
+                                      min={item.product.minOrderQuantity || 1}
+                                      disabled={updateItemQtyMutation.isPending}
+                                      size="sm"
+                                      testIdPrefix={`tmpl-qty-${item.productId}`}
+                                    />
                                   )}
                                   <span className="text-xs md:text-sm font-semibold shrink-0 w-14 text-right tabular-nums">
                                     {isOutOfStock ? "-" : `${lineTotal.toFixed(2)}\u20AC`}
@@ -791,26 +769,13 @@ function CreateEditDialog({
                       <p className="text-xs font-medium truncate">{item.product.name}</p>
                       <p className="text-[10px] text-muted-foreground">{item.product.supplier?.companyName} — {item.product.price}&euro;/{item.product.unit}</p>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => updateQuantity(item.productId, -1)}
-                        disabled={item.quantity <= (item.product.minOrderQuantity || 1)}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-7 text-center text-xs font-medium">{item.quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => updateQuantity(item.productId, 1)}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <QuantityInput
+                      value={item.quantity}
+                      onChange={(val) => setSelectedItems(prev => prev.map(i => i.productId === item.productId ? { ...i, quantity: val } : i))}
+                      min={item.product.minOrderQuantity || 1}
+                      size="sm"
+                      testIdPrefix={`create-qty-${item.productId}`}
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1023,32 +988,12 @@ function UseTemplateDialog({
                   {item.product.supplier?.companyName} — {item.product.price}&euro;/{item.product.unit}
                 </p>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => updateQty(item.productId, -1)}
-                  disabled={(quantities[item.productId] || item.quantity) <= (item.product.minOrderQuantity || 1)}
-                >
-                  <Minus className="h-3 w-3" />
-                </Button>
-                <input
-                  type="number"
-                  className="w-12 text-center text-sm font-medium border rounded h-7 bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={quantities[item.productId] || item.quantity}
-                  onChange={(e) => setQty(item.productId, parseInt(e.target.value) || 1)}
-                  min={item.product.minOrderQuantity || 1}
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => updateQty(item.productId, 1)}
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
+              <QuantityInput
+                value={quantities[item.productId] || item.quantity}
+                onChange={(val) => setQty(item.productId, val)}
+                min={item.product.minOrderQuantity || 1}
+                testIdPrefix={`use-qty-${item.productId}`}
+              />
               <span className="text-sm font-semibold shrink-0 w-16 text-right">
                 {((quantities[item.productId] || item.quantity) * parseFloat(item.product.price)).toFixed(2)}&euro;
               </span>

@@ -3,8 +3,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, Minus, Plus, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send } from "lucide-react";
-import type { OrderWithDetails, ConversationWithUser, ProductWithSupplierAndPromotion } from "@shared/schema";
+import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight } from "lucide-react";
+import QuantityInput from "@/components/QuantityInput";
+import type { OrderWithDetails, ConversationWithUser, ProductWithSupplierAndPromotion, OrderTemplateWithItems } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -52,6 +53,39 @@ export default function RestaurantHome() {
   const { data: products, isLoading: productsLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
     queryKey: [`/api/products?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
+  });
+
+  const { data: templates, isLoading: templatesLoading } = useQuery<OrderTemplateWithItems[]>({
+    queryKey: [`/api/order-templates?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const [orderingTemplateId, setOrderingTemplateId] = useState<string | null>(null);
+
+  const orderFromTemplateMutation = useMutation({
+    mutationFn: async (template: OrderTemplateWithItems) => {
+      const inStockItems = template.items.filter(i => i.product.inStock !== false);
+      for (const item of inStockItems) {
+        await apiRequest("POST", "/api/cart", {
+          restaurantId: currentUser?.id,
+          productId: item.productId,
+          supplierId: item.product.supplierId,
+          quantity: item.quantity,
+          mode: "set",
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+      toast({ title: lang === "de" ? "Zum Warenkorb hinzugefuegt" : "Aggiunto al carrello" });
+      setOrderingTemplateId(null);
+      navigate("/restaurant/cart");
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+      setOrderingTemplateId(null);
+    },
   });
 
   const addToCartMutation = useMutation({
@@ -626,31 +660,14 @@ export default function RestaurantHome() {
                               );
                             })()}
                             <div className="flex items-center gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-center border border-border rounded-md shrink-0">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => updateQuantity(product.id, -1, minQty)}
-                                  disabled={!product.inStock || (quantities[product.id] || minQty) <= minQty}
-                                  data-testid={`button-promo-decrease-${product.id}`}
-                                >
-                                  <Minus className="h-2.5 w-2.5" />
-                                </Button>
-                                <span className="w-5 text-center text-xs" data-testid={`promo-quantity-${product.id}`}>
-                                  {quantities[product.id] || minQty}
-                                </span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => updateQuantity(product.id, 1, minQty)}
-                                  disabled={!product.inStock}
-                                  data-testid={`button-promo-increase-${product.id}`}
-                                >
-                                  <Plus className="h-2.5 w-2.5" />
-                                </Button>
-                              </div>
+                              <QuantityInput
+                                value={quantities[product.id] || minQty}
+                                onChange={(val) => setQuantities(prev => ({ ...prev, [product.id]: val }))}
+                                min={minQty}
+                                disabled={!product.inStock}
+                                size="sm"
+                                testIdPrefix={`promo-qty-${product.id}`}
+                              />
                               <Button
                                 variant={addedProductIds.has(product.id) ? "default" : "outline"}
                                 size="sm"
@@ -689,7 +706,142 @@ export default function RestaurantHome() {
           </Card>
         </div>
 
-        <div />
+        <div className="space-y-4 md:space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-500/10 shrink-0">
+                  <ClipboardList className="h-5 w-5 text-orange-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base md:text-lg" data-testid="text-templates-title">
+                    {lang === "de" ? "Bestellvorlagen" : "Modelli d'ordine"}
+                  </CardTitle>
+                  <CardDescription className="text-xs md:text-sm">
+                    {lang === "de" ? "Wiederkehrende Bestellungen" : "Ordini ricorrenti"}
+                  </CardDescription>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
+                <Link href="/restaurant/orders?tab=templates" data-testid="link-view-all-templates">{t("common", "all")}</Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              {templatesLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map((i) => (
+                    <Skeleton key={i} className="h-24 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : templates && templates.length > 0 ? (
+                <div className="space-y-3">
+                  {templates.slice(0, 3).map((tmpl) => {
+                    const inStockItems = tmpl.items.filter(i => i.product.inStock !== false);
+                    const outOfStockCount = tmpl.items.length - inStockItems.length;
+                    const total = inStockItems.reduce((sum, i) => sum + parseFloat(i.product.price) * i.quantity, 0);
+                    const supplierGroups = new Map<string, { name: string; items: typeof tmpl.items }>();
+                    for (const item of tmpl.items) {
+                      const sid = item.product.supplierId;
+                      const sname = item.product.supplier?.companyName || item.product.supplier?.name || "";
+                      if (!supplierGroups.has(sid)) supplierGroups.set(sid, { name: sname, items: [] });
+                      supplierGroups.get(sid)!.items.push(item);
+                    }
+                    const isOrdering = orderingTemplateId === tmpl.id && orderFromTemplateMutation.isPending;
+
+                    return (
+                      <div
+                        key={tmpl.id}
+                        className="rounded-xl border border-border bg-card p-3 space-y-2"
+                        data-testid={`template-card-${tmpl.id}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className="text-sm font-semibold truncate" data-testid={`text-template-name-${tmpl.id}`}>{tmpl.name}</h3>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {tmpl.items.length} {t("common", "items")}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {Array.from(supplierGroups.entries()).map(([sid, group]) => (
+                            <div key={sid}>
+                              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{group.name}</p>
+                              <div className="space-y-0.5 mt-0.5">
+                                {group.items.map((item) => {
+                                  const oos = item.product.inStock === false;
+                                  return (
+                                    <div key={item.id} className={`flex items-center justify-between text-xs ${oos ? "text-muted-foreground/50 line-through" : ""}`} data-testid={`template-item-${item.id}`}>
+                                      <span className="truncate">
+                                        <span className="font-medium">{item.quantity}x</span> {item.product.name}
+                                      </span>
+                                      <span className="shrink-0 ml-2 tabular-nums">{(parseFloat(item.product.price) * item.quantity).toFixed(2)}&euro;</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/50">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold tabular-nums">{total.toFixed(2)}&euro;</span>
+                            {outOfStockCount > 0 && (
+                              <Badge variant="outline" className="text-[10px] border-red-200 text-red-500 px-1.5">
+                                {outOfStockCount} {lang === "de" ? "nicht verfuegbar" : "non disponibile"}
+                              </Badge>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            className="text-xs h-7 gap-1"
+                            disabled={inStockItems.length === 0 || isOrdering}
+                            onClick={() => {
+                              setOrderingTemplateId(tmpl.id);
+                              orderFromTemplateMutation.mutate(tmpl);
+                            }}
+                            data-testid={`button-order-template-${tmpl.id}`}
+                          >
+                            {isOrdering ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <>
+                                <ShoppingCart className="h-3 w-3" />
+                                {lang === "de" ? "Bestellen" : "Ordina"}
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {templates.length > 3 && (
+                    <Button variant="outline" className="w-full text-xs h-8" asChild>
+                      <Link href="/restaurant/orders?tab=templates" data-testid="link-more-templates">
+                        {lang === "de" ? `Alle ${templates.length} Vorlagen anzeigen` : `Mostra tutti ${templates.length} i modelli`}
+                        <ArrowRight className="h-3 w-3 ml-1" />
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
+                    <ClipboardList className="h-6 w-6 text-muted-foreground/40" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {lang === "de" ? "Keine Vorlagen" : "Nessun modello"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {lang === "de" ? "Erstellen Sie Vorlagen fuer wiederkehrende Bestellungen" : "Crea modelli per ordini ricorrenti"}
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-3 text-xs" asChild>
+                    <Link href="/restaurant/orders?tab=templates" data-testid="link-create-template">
+                      {lang === "de" ? "Vorlage erstellen" : "Crea modello"}
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>

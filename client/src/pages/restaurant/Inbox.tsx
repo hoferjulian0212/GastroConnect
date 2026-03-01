@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Minus, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +25,7 @@ import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
+import QuantityInput from "@/components/QuantityInput";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus, getComplaintStatus } from "@/lib/translations";
 
@@ -1781,28 +1782,21 @@ export default function RestaurantInbox() {
                               <p className="text-sm font-medium truncate">{product.name}</p>
                               <p className="text-xs text-muted-foreground">{product.price}€/{product.unit}</p>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => updateOrderQuantity(product.id, -1)}
-                                disabled={!orderItems[product.id]}
-                                data-testid={`button-decrease-${product.id}`}
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="w-8 text-center text-sm">{orderItems[product.id] || 0}</span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => updateOrderQuantity(product.id, 1)}
-                                data-testid={`button-increase-${product.id}`}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
+                            <QuantityInput
+                              value={orderItems[product.id] || 0}
+                              onChange={(val) => {
+                                setOrderItems(prev => {
+                                  if (val === 0) {
+                                    const { [product.id]: _, ...rest } = prev;
+                                    return rest;
+                                  }
+                                  return { ...prev, [product.id]: val };
+                                });
+                              }}
+                              min={0}
+                              size="md"
+                              testIdPrefix={`order-qty-${product.id}`}
+                            />
                           </div>
                         ))}
                         {(!supplierProducts || supplierProducts.filter(p => p.inStock).length === 0) && (
@@ -2465,24 +2459,17 @@ export default function RestaurantInbox() {
                       <p className="text-xs text-muted-foreground">{parseFloat(item.unitPrice).toFixed(2)}€ {t("orders", "perUnit")}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => updateEditItemQuantityInbox(index, -1)}
-                        disabled={item.quantity <= 1}
-                        data-testid={`inbox-button-decrease-${item.productId}`}
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </Button>
-                      <span className="w-8 text-center text-sm font-medium" data-testid={`inbox-text-quantity-${item.productId}`}>{item.quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => updateEditItemQuantityInbox(index, 1)}
-                        data-testid={`inbox-button-increase-${item.productId}`}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
+                      <QuantityInput
+                        value={item.quantity}
+                        onChange={(val) => {
+                          const newItems = [...editItemsInbox];
+                          newItems[index] = { ...newItems[index], quantity: val, totalPrice: (val * parseFloat(newItems[index].unitPrice)).toFixed(2) };
+                          setEditItemsInbox(newItems);
+                        }}
+                        min={1}
+                        size="md"
+                        testIdPrefix={`inbox-qty-${item.productId}`}
+                      />
                       <Button
                         variant="ghost"
                         size="icon"

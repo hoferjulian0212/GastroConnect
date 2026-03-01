@@ -6,7 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Plus, Minus, Package, ArrowRight, CalendarDays, Zap, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2 } from "lucide-react";
+import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Zap, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2 } from "lucide-react";
+import QuantityInput from "@/components/QuantityInput";
 import type { CartItemWithProduct, DeliverySchedule, Promotion } from "@shared/schema";
 
 type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion | null };
@@ -388,44 +389,14 @@ export default function RestaurantCart() {
                           </div>
                         </div>
                         <div className="flex items-center justify-between sm:justify-end gap-2 md:gap-3">
-                          <div className="flex items-center border border-border rounded-md">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => {
-                                const minQty = item.product?.minOrderQuantity || 1;
-                                if (item.quantity <= minQty) {
-                                  removeItemMutation.mutate(item.id);
-                                } else {
-                                  updateQuantityMutation.mutate({
-                                    cartItemId: item.id,
-                                    quantity: item.quantity - 1,
-                                  });
-                                }
-                              }}
-                              disabled={updateQuantityMutation.isPending}
-                              data-testid={`button-decrease-${item.id}`}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="w-8 text-center text-sm">{item.quantity}</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() =>
-                                updateQuantityMutation.mutate({
-                                  cartItemId: item.id,
-                                  quantity: item.quantity + 1,
-                                })
-                              }
-                              disabled={updateQuantityMutation.isPending}
-                              data-testid={`button-increase-${item.id}`}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
+                          <QuantityInput
+                            value={item.quantity}
+                            onChange={(val) => updateQuantityMutation.mutate({ cartItemId: item.id, quantity: val })}
+                            min={item.product?.minOrderQuantity || 1}
+                            disabled={updateQuantityMutation.isPending}
+                            size="md"
+                            testIdPrefix={`qty-${item.id}`}
+                          />
                           <span className="font-medium text-sm md:text-base w-16 md:w-20 text-right">
                             {(getEffectivePrice(item) * item.quantity).toFixed(2)}€
                           </span>

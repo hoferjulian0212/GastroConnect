@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Package, ShoppingCart, Plus, Minus, Store, Filter, Eye, Tag, Percent, Clock, Check } from "lucide-react";
+import { Search, Package, ShoppingCart, Store, Filter, Eye, Tag, Percent, Clock, Check } from "lucide-react";
+import QuantityInput from "@/components/QuantityInput";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { differenceInDays, differenceInHours, format } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -385,30 +386,17 @@ export default function RestaurantCatalog() {
                           </p>
                         )}
                         <div className="flex items-center gap-1.5 mt-auto pt-2">
-                          <div className="flex items-center border border-border rounded-md shrink-0" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => updateQuantity(product.id, -1, getMinOrderQty(product), product)}
-                              disabled={!product.inStock || (quantities[product.id] || getMinOrderQty(product)) <= getMinOrderQty(product)}
-                              data-testid={`button-decrease-${product.id}`}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="w-6 text-center text-sm" data-testid={`quantity-${product.id}`}>
-                              {quantities[product.id] || getMinOrderQty(product)}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => updateQuantity(product.id, 1, getMinOrderQty(product), product)}
+                          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <QuantityInput
+                              value={quantities[product.id] || getMinOrderQty(product)}
+                              onChange={(val) => {
+                                setQuantities(prev => ({ ...prev, [product.id]: val }));
+                              }}
+                              min={getMinOrderQty(product)}
                               disabled={!product.inStock}
-                              data-testid={`button-increase-${product.id}`}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
+                              size="md"
+                              testIdPrefix={`qty-${product.id}`}
+                            />
                           </div>
                           <Button
                             variant={addedProductIds.has(product.id) ? "default" : "outline"}
