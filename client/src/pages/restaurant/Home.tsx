@@ -43,8 +43,10 @@ export default function RestaurantHome() {
   });
 
   const { data: conversations, isLoading: convLoading } = useQuery<ConversationWithUser[]>({
-    queryKey: [`/api/conversations?userId=${currentUser?.id}&role=restaurant`],
+    queryKey: [`/api/conversations?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: products, isLoading: productsLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
@@ -446,17 +448,17 @@ export default function RestaurantHome() {
                             <div className="absolute top-1.5 left-1.5 flex items-center justify-center rounded-full bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 shadow-sm">
                               -{promo.discountPercent}%
                             </div>
-                            {product.inStock ? (
-                              <Badge variant="outline" className="absolute top-1.5 right-1.5 bg-green-100/90 text-green-800 dark:bg-green-900/80 dark:text-green-400 text-[9px] px-1 py-0">
-                                {t("common", "available")}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="absolute top-1.5 right-1.5 bg-red-100/90 text-red-800 dark:bg-red-900/80 dark:text-red-400 text-[9px] px-1 py-0">
-                                {t("common", "unavailable")}
-                              </Badge>
-                            )}
                           </div>
                           <div className="p-2.5 flex flex-col">
+                            {product.inStock ? (
+                              <span className="text-[10px] font-medium text-green-700 dark:text-green-400" data-testid={`text-promo-stock-${product.id}`}>
+                                {t("common", "available")}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium text-red-600 dark:text-red-400" data-testid={`text-promo-stock-${product.id}`}>
+                                {t("common", "unavailable")}
+                              </span>
+                            )}
                             <h3 className="font-medium text-xs truncate" data-testid={`text-promo-name-${product.id}`}>{product.name}</h3>
                             <p className="text-[10px] text-muted-foreground truncate" data-testid={`text-promo-supplier-${product.id}`}>
                               {product.supplier?.companyName || product.supplier?.name}

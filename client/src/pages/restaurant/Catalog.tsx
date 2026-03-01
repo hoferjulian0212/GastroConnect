@@ -324,24 +324,22 @@ export default function RestaurantCatalog() {
                             -{promo.discountPercent}%
                           </div>
                         )}
-                        <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
-                          {hasPromo && (
-                            <Badge variant="outline" className="bg-green-50/90 text-green-700 border-green-200 dark:bg-green-900/80 dark:text-green-400 dark:border-green-800 text-[10px] px-1 py-0" data-testid={`badge-promo-${product.id}`}>
-                              {t("common", "action")}
-                            </Badge>
-                          )}
-                          {product.inStock ? (
-                            <Badge variant="outline" className="bg-green-100/90 text-green-800 dark:bg-green-900/80 dark:text-green-400 text-[10px] px-1 py-0">
-                              {t("common", "available")}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-red-100/90 text-red-800 dark:bg-red-900/80 dark:text-red-400 text-[10px] px-1 py-0">
-                              {t("common", "unavailable")}
-                            </Badge>
-                          )}
-                        </div>
+                        {hasPromo && (
+                          <Badge variant="outline" className="absolute top-1.5 right-1.5 bg-green-50/90 text-green-700 border-green-200 dark:bg-green-900/80 dark:text-green-400 dark:border-green-800 text-[10px] px-1 py-0" data-testid={`badge-promo-${product.id}`}>
+                            {t("common", "action")}
+                          </Badge>
+                        )}
                       </div>
-                      <div className="mt-2 min-w-0 overflow-hidden flex-1 flex flex-col">
+                      <div className="mt-1.5 min-w-0 overflow-hidden flex-1 flex flex-col">
+                        {product.inStock ? (
+                          <span className="text-[11px] font-medium text-green-700 dark:text-green-400" data-testid={`text-stock-${product.id}`}>
+                            {t("common", "available")}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-medium text-red-600 dark:text-red-400" data-testid={`text-stock-${product.id}`}>
+                            {t("common", "unavailable")}
+                          </span>
+                        )}
                         <h3 className="font-medium text-sm truncate">{product.name}</h3>
                         <p className="text-xs text-muted-foreground truncate">
                           {product.supplier?.companyName || product.supplier?.name}
