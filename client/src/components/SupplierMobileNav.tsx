@@ -59,13 +59,12 @@ export function SupplierMobileNav() {
 
   const navStyle: React.CSSProperties = {
     position: "fixed",
-    bottom: 0,
-    left: 8,
-    right: 8,
+    bottom: "max(8px, env(safe-area-inset-bottom, 8px))",
+    left: 12,
+    right: 12,
     zIndex: 50,
-    paddingBottom: "env(safe-area-inset-bottom, 0px)",
-    borderRadius: "24px 24px 0 0",
-    boxShadow: "0 -2px 20px rgba(0,0,0,0.10)",
+    borderRadius: "9999px",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
   };
 
   return (
