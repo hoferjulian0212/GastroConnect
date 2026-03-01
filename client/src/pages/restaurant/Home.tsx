@@ -629,10 +629,10 @@ export default function RestaurantHome() {
                                 {t("common", "unavailable")}
                               </span>
                             )}
-                            <h3 className="font-medium text-xs truncate" data-testid={`text-promo-name-${product.id}`}>{product.name}</h3>
-                            <p className="text-[10px] text-muted-foreground truncate" data-testid={`text-promo-supplier-${product.id}`}>
+                            <p className="text-[10px] font-semibold text-primary truncate" data-testid={`text-promo-supplier-${product.id}`}>
                               {product.supplier?.companyName || product.supplier?.name}
                             </p>
+                            <h3 className="font-medium text-xs truncate" data-testid={`text-promo-name-${product.id}`}>{product.name}</h3>
                             <div className="flex items-baseline gap-1 mt-1 flex-wrap">
                               <span className="text-[10px] text-muted-foreground line-through" data-testid={`text-promo-original-price-${product.id}`}>{originalPrice.toFixed(2)}€</span>
                               <span className="font-bold text-sm text-green-600 dark:text-green-400" data-testid={`text-promo-discounted-price-${product.id}`}>{discountedPrice.toFixed(2)}€</span>
