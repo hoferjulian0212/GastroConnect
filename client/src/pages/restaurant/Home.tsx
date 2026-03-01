@@ -1181,6 +1181,13 @@ export default function RestaurantHome() {
                             }`}>
                               {isSelected && <Check className="h-3 w-3 text-white" />}
                             </div>
+                            {prod.imageUrl ? (
+                              <img src={prod.imageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
+                            ) : (
+                              <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
                                 <p className="text-sm font-medium truncate">{prod.name}</p>
