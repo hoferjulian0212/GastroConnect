@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
@@ -25,7 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import type { ConversationWithUser, Message, Order, ComplaintWithDetails, ComplaintCommentWithUser, OrderStatusHistoryWithUser, ComplaintStatusHistoryWithUser } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
-import { de } from "date-fns/locale";
+import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -131,6 +131,7 @@ export default function SupplierInbox() {
   const { toast } = useToast();
   const { lang } = useLanguage();
   const t = useT(lang);
+  const dateFnsLocale = lang === "it" ? it : de;
   const [, setLocation] = useLocation();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
@@ -735,10 +736,28 @@ export default function SupplierInbox() {
                                         <span>{format(new Date(order.createdAt), "dd.MM.yy", { locale: de })}</span>
                                         <span className="font-semibold text-xs text-foreground">{order.totalAmount ? `€${Number(order.totalAmount).toFixed(2)}` : ""}</span>
                                       </div>
-                                      {order.requestedDeliveryDate && (
-                                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                          <Truck className="h-3 w-3" />
-                                          <span>Lieferung: {format(new Date(order.requestedDeliveryDate), "dd.MM.yyyy", { locale: de })}</span>
+                                      {order.status === "in_delivery" && order.requestedDeliveryDate && (
+                                        <div className="flex items-center gap-1.5 rounded bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 px-2 py-1">
+                                          <Truck className="h-3 w-3 text-purple-600 dark:text-purple-400 shrink-0" />
+                                          <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                                            {t("orders", "deliveryOn")} {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long" })}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {order.status === "delivered" && (
+                                        <div className="flex items-center gap-1.5 rounded bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 px-2 py-1">
+                                          <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
+                                          <span className="text-[10px] font-bold text-green-700 dark:text-green-300">
+                                            {t("orders", "deliveredOn")} {format(new Date(order.updatedAt || order.createdAt), "dd.MM.yyyy", { locale: dateFnsLocale })}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {order.status !== "in_delivery" && order.status !== "delivered" && order.requestedDeliveryDate && (
+                                        <div className="flex items-center gap-1 rounded bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5">
+                                          <CalendarDays className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                                          <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300">
+                                            {t("orders", "deliveryOn")} {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "long" })}
+                                          </span>
                                         </div>
                                       )}
                                       <div className="flex items-center gap-1.5 pt-0.5">

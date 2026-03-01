@@ -303,6 +303,39 @@ export default function SupplierOrders() {
           </div>
         </div>
 
+        {order.status === "in_delivery" && order.requestedDeliveryDate && (
+          <div className="mt-2 flex items-center gap-2 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 px-3 py-2" data-testid={`banner-delivery-date-${order.id}`}>
+            <Truck className="h-4 w-4 md:h-5 md:w-5 text-purple-600 dark:text-purple-400 shrink-0" />
+            <div className="min-w-0">
+              <span className="text-[10px] md:text-xs text-purple-600 dark:text-purple-400 font-medium">{t("orders", "deliveryOn")}</span>
+              <p className="text-sm md:text-base font-bold text-purple-700 dark:text-purple-300" data-testid={`text-delivery-date-large-${order.id}`}>
+                {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long" })}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {order.status === "delivered" && (
+          <div className="mt-2 flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 px-3 py-2" data-testid={`banner-delivered-date-${order.id}`}>
+            <CheckCircle className="h-4 w-4 md:h-5 md:w-5 text-green-600 dark:text-green-400 shrink-0" />
+            <div className="min-w-0">
+              <span className="text-[10px] md:text-xs text-green-600 dark:text-green-400 font-medium">{t("orders", "deliveredOn")}</span>
+              <p className="text-sm md:text-base font-bold text-green-700 dark:text-green-300" data-testid={`text-delivered-date-large-${order.id}`}>
+                {format(new Date(lastUpdate), "EEEE, dd. MMMM yyyy", { locale: dateFnsLocale })}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {order.status !== "in_delivery" && order.status !== "delivered" && order.requestedDeliveryDate && (
+          <div className="mt-2 flex items-center gap-2 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 px-2.5 py-1.5" data-testid={`banner-planned-date-${order.id}`}>
+            <CalendarDays className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span className="text-xs md:text-sm font-semibold text-blue-700 dark:text-blue-300">
+              {t("orders", "deliveryOn")} {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long" })}
+            </span>
+          </div>
+        )}
+
         {order.items && order.items.length > 0 && (
           <div className="mt-2 pt-2 border-t border-border/30">
             <div className="space-y-1">
@@ -359,12 +392,6 @@ export default function SupplierOrders() {
               <CalendarDays className="h-3 w-3" />
               {lang === "de" ? "Aktualisiert" : "Aggiornato"}: {formatDistanceToNow(new Date(lastUpdate), { addSuffix: true, locale: dateFnsLocale })}
             </span>
-            {order.requestedDeliveryDate && (
-              <span className="flex items-center gap-1 text-primary font-medium" data-testid={`text-delivery-date-${order.id}`}>
-                <Truck className="h-3 w-3" />
-                {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "2-digit" })}
-              </span>
-            )}
             {order.notes && (
               <span className="text-[10px] md:text-xs italic truncate max-w-[200px]">
                 "{order.notes}"

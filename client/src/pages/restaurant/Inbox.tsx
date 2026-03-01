@@ -1022,10 +1022,28 @@ export default function RestaurantInbox() {
                                           <span>{format(new Date(order.createdAt), "dd.MM.yy", { locale: dateLocale })}</span>
                                           <span className="font-semibold text-xs text-foreground">{order.totalAmount ? `€${Number(order.totalAmount).toFixed(2)}` : ""}</span>
                                         </div>
-                                        {order.requestedDeliveryDate && (
-                                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                            <Truck className="h-3 w-3" />
-                                            <span>{t("cart", "deliveryDate")}: {format(new Date(order.requestedDeliveryDate), "dd.MM.yyyy", { locale: dateLocale })}</span>
+                                        {order.status === "in_delivery" && order.requestedDeliveryDate && (
+                                          <div className="flex items-center gap-1.5 rounded bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 px-2 py-1">
+                                            <Truck className="h-3 w-3 text-purple-600 dark:text-purple-400 shrink-0" />
+                                            <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                                              {t("orders", "deliveryOn")} {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long" })}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {order.status === "delivered" && (
+                                          <div className="flex items-center gap-1.5 rounded bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 px-2 py-1">
+                                            <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
+                                            <span className="text-[10px] font-bold text-green-700 dark:text-green-300">
+                                              {t("orders", "deliveredOn")} {format(new Date(order.updatedAt || order.createdAt), "dd.MM.yyyy", { locale: dateLocale })}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {order.status !== "in_delivery" && order.status !== "delivered" && order.requestedDeliveryDate && (
+                                          <div className="flex items-center gap-1 rounded bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5">
+                                            <CalendarDays className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                                            <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300">
+                                              {t("orders", "deliveryOn")} {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "long" })}
+                                            </span>
                                           </div>
                                         )}
                                       </div>

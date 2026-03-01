@@ -201,6 +201,8 @@ const t = {
     changeRequestReasonPlaceholder: { de: "Beschreiben Sie, welche Änderungen Sie vornehmen möchten...", it: "Descrivi le modifiche che desideri apportare..." },
     sendRequest: { de: "Anfrage senden", it: "Invia richiesta" },
     requestedDeliveryDate: { de: "Gewünschter Liefertermin", it: "Data di consegna desiderata" },
+    deliveryOn: { de: "Lieferung am", it: "Consegna il" },
+    deliveredOn: { de: "Geliefert am", it: "Consegnato il" },
     createdAt: { de: "Erstellt am", it: "Creato il" },
     notes: { de: "Anmerkungen", it: "Note" },
     noNotes: { de: "Keine Anmerkungen", it: "Nessuna nota" },
