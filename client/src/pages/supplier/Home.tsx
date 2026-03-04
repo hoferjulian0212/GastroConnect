@@ -112,6 +112,7 @@ export default function SupplierHome() {
         </h1>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div className="flex items-center gap-2.5">
@@ -354,6 +355,7 @@ export default function SupplierHome() {
           )}
         </CardContent>
       </Card>
+      </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
