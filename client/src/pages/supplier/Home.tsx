@@ -568,71 +568,69 @@ export default function SupplierHome() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {chartData.length > 0 && chartData.some(d => d.revenue > 0) && (
-                  <div className="rounded-xl border border-border bg-white dark:bg-gray-900 p-3 md:p-4">
-                    <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "revenueOverview")}</p>
-                    <div className="h-52 md:h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                          <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                          <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}€`} />
-                          <Tooltip
-                            contentStyle={{
-                              background: "hsl(var(--card))",
-                              border: "1px solid hsl(var(--border))",
-                              borderRadius: "0.75rem",
-                              fontSize: "12px",
-                              boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                            }}
-                            formatter={(value: number) => [`${value.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 2 })}€`, t("supplierHome", "revenue")]}
-                          />
-                          <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+              {chartData.length > 0 && chartData.some(d => d.revenue > 0) && (
+                <div>
+                  <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "revenueOverview")}</p>
+                  <div className="h-44 md:h-52">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}€`} />
+                        <Tooltip
+                          contentStyle={{
+                            background: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "0.75rem",
+                            fontSize: "12px",
+                            boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                          }}
+                          formatter={(value: number) => [`${value.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 2 })}€`, t("supplierHome", "revenue")]}
+                        />
+                        <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
-                )}
+                </div>
+              )}
 
-                {detailedStats.topProducts.length > 0 && (
-                  <div className="rounded-xl border border-border bg-white dark:bg-gray-900 p-3 md:p-4">
-                    <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "topProducts")}</p>
-                    <div className="space-y-3 md:space-y-4">
-                      {detailedStats.topProducts.map((product, idx) => {
-                        const maxQty = detailedStats.topProducts[0]?.quantity || 1;
-                        const pct = Math.round((product.quantity / maxQty) * 100);
-                        return (
-                          <div key={idx} data-testid={`top-product-${idx}`}>
-                            <div className="flex items-center justify-between mb-1.5">
-                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
-                                  {idx + 1}
-                                </span>
-                                <span className="text-sm font-medium truncate">{product.name}</span>
-                              </div>
-                              <div className="flex items-center gap-3 shrink-0 ml-2">
-                                <span className="text-xs text-muted-foreground">
-                                  {product.quantity}x {t("supplierHome", "unitsSold")}
-                                </span>
-                                <span className="text-sm font-semibold min-w-[50px] text-right">
-                                  {product.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
-                                </span>
-                              </div>
+              {detailedStats.topProducts.length > 0 && (
+                <div className="max-w-[50%]">
+                  <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "topProducts")}</p>
+                  <div className="space-y-3 md:space-y-4">
+                    {detailedStats.topProducts.map((product, idx) => {
+                      const maxQty = detailedStats.topProducts[0]?.quantity || 1;
+                      const pct = Math.round((product.quantity / maxQty) * 100);
+                      return (
+                        <div key={idx} data-testid={`top-product-${idx}`}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
+                                {idx + 1}
+                              </span>
+                              <span className="text-sm font-medium truncate">{product.name}</span>
                             </div>
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-primary rounded-full transition-all duration-500"
-                                style={{ width: `${pct}%` }}
-                              />
+                            <div className="flex items-center gap-3 shrink-0 ml-2">
+                              <span className="text-xs text-muted-foreground">
+                                {product.quantity}x {t("supplierHome", "unitsSold")}
+                              </span>
+                              <span className="text-sm font-semibold min-w-[50px] text-right">
+                                {product.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
+                              </span>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full transition-all duration-500"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
