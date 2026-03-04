@@ -401,7 +401,7 @@ export default function RestaurantCatalog() {
                           <Button
                             variant={addedProductIds.has(product.id) ? "default" : "outline"}
                             size="sm"
-                            className={`gap-1 text-xs min-w-0 flex-1 overflow-hidden ${
+                            className={`gap-1.5 text-xs min-w-0 px-2.5 ${
                               addedProductIds.has(product.id) 
                                 ? "bg-green-500 border-green-500 text-white hover:bg-green-500 no-default-hover-elevate no-default-active-elevate animate-cart-added" 
                                 : "transition-all duration-200"
@@ -415,7 +415,7 @@ export default function RestaurantCatalog() {
                             ) : (
                               <>
                                 <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
-                                <span className="hidden sm:inline">{t("common", "add")}</span>
+                                <span className="hidden lg:inline truncate">{t("common", "add")}</span>
                               </>
                             )}
                           </Button>
