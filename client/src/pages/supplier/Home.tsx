@@ -573,21 +573,27 @@ export default function SupplierHome() {
                   <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "revenueOverview")}</p>
                   <div className="h-44 md:h-52">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                      <BarChart data={chartData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                         <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                         <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}€`} />
                         <Tooltip
-                          contentStyle={{
-                            background: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "0.75rem",
-                            fontSize: "12px",
-                            boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                          }}
                           cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
-                          formatter={(value: number) => [`${value.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 2 })}€`, t("supplierHome", "revenue")]}
                           isAnimationActive={false}
+                          position={{ y: 0 }}
+                          offset={0}
+                          allowEscapeViewBox={{ x: false, y: true }}
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const value = payload[0].value as number;
+                            return (
+                              <div className="rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-sm text-center">
+                                <p className="text-xs font-semibold text-foreground">
+                                  {value.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 2 })}€
+                                </p>
+                              </div>
+                            );
+                          }}
                         />
                         <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={40} />
                       </BarChart>
