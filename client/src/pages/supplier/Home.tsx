@@ -2,24 +2,26 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package } from "lucide-react";
-import type { OrderWithDetails, Product } from "@shared/schema";
-import { Link } from "wouter";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare } from "lucide-react";
+import type { OrderWithDetails, Product, ConversationWithUser } from "@shared/schema";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format, formatDistanceToNow, isToday } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
   const { lang } = useLanguage();
   const t = useT(lang);
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const dateLocale = lang === "de" ? de : it;
 
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
@@ -59,6 +61,35 @@ export default function SupplierHome() {
     staleTime: 0,
     refetchOnMount: "always",
   });
+
+  const { data: conversations, isLoading: convLoading } = useQuery<ConversationWithUser[]>({
+    queryKey: [`/api/conversations?userId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
+  const unreadConversations = useMemo(() => {
+    if (!conversations) return [];
+    return conversations.filter(c => c.unreadCount > 0).sort((a, b) => {
+      const aTime = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+      const bTime = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [conversations]);
+
+  const totalUnread = unreadConversations.length;
+
+  const getMessagePreview = (conv: ConversationWithUser) => {
+    if (!conv.lastMessage) return "";
+    const msg = conv.lastMessage;
+    if (msg.messageType === "order") return t("orders", "order");
+    if (msg.messageType === "complaint") return t("common", "complaints");
+    if (msg.messageType === "attachment") return t("common", "attachment");
+    if (msg.messageType === "promotion") return lang === "de" ? "Aktion" : "Promozione";
+    if (msg.messageType === "order_change_request") return t("orders", "order");
+    return msg.content?.slice(0, 80) || "";
+  };
 
   const markDeliveredMutation = useMutation({
     mutationFn: async (orderId: string) => {
@@ -356,6 +387,94 @@ export default function SupplierHome() {
         </CardContent>
       </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-blue-500/10 shrink-0">
+              <MessageSquare className="h-5 w-5 text-blue-500" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base md:text-lg" data-testid="text-unread-messages-title">
+                  {t("supplierHome", "unreadMessages")}
+                </CardTitle>
+                {totalUnread > 0 && (
+                  <Badge className="bg-blue-600 text-white text-[10px] px-1.5 py-0 min-w-[20px] flex items-center justify-center" data-testid="badge-unread-count">
+                    {totalUnread}
+                  </Badge>
+                )}
+              </div>
+              <CardDescription className="text-xs md:text-sm">
+                {t("supplierHome", "unreadMessagesDesc")}
+              </CardDescription>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
+            <Link href="/supplier/inbox" data-testid="link-view-all-messages">{t("supplierHome", "allMessages")}</Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+          {convLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-14 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : unreadConversations.length > 0 ? (
+            <div className="space-y-2">
+              {unreadConversations.slice(0, 3).map((conv) => (
+                <div
+                  key={conv.id}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md hover:border-blue-300/40"
+                  onClick={() => navigate(`/supplier/inbox?chat=${conv.id}`)}
+                  data-testid={`unread-chat-${conv.id}`}
+                >
+                  <Avatar className="h-9 w-9 shrink-0">
+                    {conv.otherUser.profileImageUrl ? (
+                      <AvatarImage src={conv.otherUser.profileImageUrl} alt={conv.otherUser.companyName || conv.otherUser.name} />
+                    ) : null}
+                    <AvatarFallback className="bg-blue-100 text-blue-700 text-xs dark:bg-blue-900/30 dark:text-blue-400">
+                      {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold truncate" data-testid={`text-unread-restaurant-${conv.id}`}>
+                        {conv.otherUser.companyName || conv.otherUser.name}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground shrink-0" data-testid={`text-unread-time-${conv.id}`}>
+                        {conv.lastMessage?.createdAt && format(new Date(conv.lastMessage.createdAt), "HH:mm", { locale: dateLocale })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-muted-foreground truncate flex-1" data-testid={`text-unread-preview-${conv.id}`}>
+                        {getMessagePreview(conv)}
+                      </p>
+                      <Badge className="bg-blue-600 text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0" data-testid={`badge-unread-conv-${conv.id}`}>
+                        {conv.unreadCount}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {totalUnread > 3 && (
+                <p className="text-xs text-muted-foreground text-center pt-1" data-testid="text-more-unread">
+                  +{totalUnread - 3} {t("supplierHome", "moreUnread")}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
+                <MessageSquare className="h-6 w-6 text-muted-foreground/40" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">{t("supplierHome", "noUnreadMessages")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "noUnreadMessagesDesc")}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">

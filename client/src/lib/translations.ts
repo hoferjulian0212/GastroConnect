@@ -156,6 +156,12 @@ const t = {
     cancel: { de: "Abbrechen", it: "Annulla" },
     deliveredToday: { de: "Heute geliefert", it: "Consegnato oggi" },
     noDeliveryDate: { de: "Kein Lieferdatum", it: "Nessuna data di consegna" },
+    unreadMessages: { de: "Ungelesene Nachrichten", it: "Messaggi non letti" },
+    unreadMessagesDesc: { de: "Neue Nachrichten von Restaurants", it: "Nuovi messaggi dai ristoranti" },
+    noUnreadMessages: { de: "Keine ungelesenen Nachrichten", it: "Nessun messaggio non letto" },
+    noUnreadMessagesDesc: { de: "Sie sind auf dem neuesten Stand.", it: "Sei aggiornato." },
+    moreUnread: { de: "weitere ungelesene Chats", it: "altre chat non lette" },
+    allMessages: { de: "Alle Nachrichten", it: "Tutti i messaggi" },
   },
   cart: {
     reviewProducts: { de: "Überprüfen Sie Ihre ausgewählten Produkte", it: "Controlla i prodotti selezionati" },
