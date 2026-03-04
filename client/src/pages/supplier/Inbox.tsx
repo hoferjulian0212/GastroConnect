@@ -663,18 +663,18 @@ export default function SupplierInbox() {
           <div className={`flex-1 min-w-0 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && selectedConv ? (
               <>
-                <div className="border-b border-border px-3 py-2.5 md:p-4 bg-background">
-                  <div className="flex items-center gap-2 md:gap-3">
+                <div className="border-b border-border px-3 py-3.5 md:px-4 md:py-4 bg-background">
+                  <div className="flex items-center gap-2.5 md:gap-3 min-h-[44px]">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="md:hidden h-8 w-8"
+                      className="md:hidden h-9 w-9 shrink-0"
                       onClick={handleBackToList}
                       data-testid="button-back-to-list"
                     >
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
-                    <Avatar className="h-8 w-8 md:h-10 md:w-10">
+                    <Avatar className="h-10 w-10 md:h-10 md:w-10 shrink-0">
                       <AvatarImage src={selectedConv.otherUser.profileImageUrl || undefined} alt={selectedConv.otherUser.name} />
                       <AvatarFallback className="bg-primary/20 text-primary text-sm">
                         {selectedConv.otherUser.companyName?.charAt(0) || selectedConv.otherUser.name.charAt(0)}

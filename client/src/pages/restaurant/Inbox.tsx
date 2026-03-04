@@ -957,29 +957,29 @@ export default function RestaurantInbox() {
           <div className={`flex-1 min-w-0 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && selectedConv ? (
               <>
-                <div className="border-b border-border px-3 py-2.5 md:p-4 bg-background">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 md:gap-3">
+                <div className="border-b border-border px-3 py-3.5 md:px-4 md:py-4 bg-background">
+                  <div className="flex items-center justify-between min-h-[44px]">
+                    <div className="flex items-center gap-2.5 md:gap-3">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="md:hidden h-8 w-8"
+                        className="md:hidden h-9 w-9 shrink-0"
                         onClick={handleBackToList}
                         data-testid="button-back-to-list"
                       >
                         <ArrowLeft className="h-4 w-4" />
                       </Button>
-                      <Avatar className="h-9 w-9 md:h-10 md:w-10">
+                      <Avatar className="h-10 w-10 md:h-10 md:w-10 shrink-0">
                         <AvatarImage src={selectedConv.otherUser.profileImageUrl || undefined} alt={selectedConv.otherUser.name} />
                         <AvatarFallback className="bg-secondary/20 text-secondary">
                           {selectedConv.otherUser.companyName?.charAt(0) || selectedConv.otherUser.name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="font-medium text-sm md:text-base" data-testid="text-conversation-partner">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm md:text-base truncate" data-testid="text-conversation-partner">
                           {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
                         </p>
-                        <p className="text-xs text-muted-foreground hidden sm:block">
+                        <p className="text-xs text-muted-foreground hidden sm:block truncate">
                           {selectedConv.otherUser.email}
                         </p>
                       </div>
