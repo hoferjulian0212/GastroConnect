@@ -1515,7 +1515,7 @@ export default function SupplierInbox() {
                   )}
                 </ScrollArea>
 
-                <div className="border-t border-border p-2 md:p-4 md:rounded-none rounded-2xl md:mb-0 mx-2 md:mx-0 floating-message-bar" style={{ marginBottom: "max(8px, env(safe-area-inset-bottom, 8px))" }}>
+                <div className="border-t border-border p-2 md:p-4 md:rounded-none md:shadow-none md:border-t md:border-x-0 md:mb-0 md:mx-0 floating-message-bar mobile-message-pill">
                   <div className="flex gap-2 items-center">
                     {selectedConversation && currentUser && (
                       <AttachmentPopover
@@ -1535,7 +1535,7 @@ export default function SupplierInbox() {
                           handleSendMessage();
                         }
                       }}
-                      className="text-sm"
+                      className="text-sm rounded-full"
                       data-testid="input-message"
                     />
                     <Button 
@@ -1543,6 +1543,7 @@ export default function SupplierInbox() {
                       size="icon"
                       onClick={handleSendMessage}
                       disabled={!messageText.trim() || sendMessageMutation.isPending}
+                      className="rounded-full shrink-0"
                       data-testid="button-send-message"
                     >
                       <Send className="h-4 w-4" />

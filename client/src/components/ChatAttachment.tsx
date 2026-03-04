@@ -168,6 +168,7 @@ export function AttachmentPopover({
             variant="ghost"
             size="icon"
             disabled={disabled || isUploading}
+            className="rounded-full shrink-0"
             data-testid="button-attachment"
           >
             {isUploading ? (

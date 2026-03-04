@@ -1913,11 +1913,11 @@ export default function RestaurantInbox() {
                   </div>
                 ) : null}
 
-                <div className="border-t border-border p-4 md:rounded-none rounded-2xl md:mb-0 mx-2 md:mx-0 floating-message-bar" style={{ marginBottom: "max(8px, env(safe-area-inset-bottom, 8px))" }}>
-                  <div className="flex gap-2">
+                <div className="border-t border-border p-3 md:p-4 md:rounded-none md:shadow-none md:border-t md:border-x-0 md:mb-0 md:mx-0 floating-message-bar mobile-message-pill">
+                  <div className="flex gap-2 items-center">
                     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" size="icon" data-testid="button-quick-actions">
+                        <Button variant="outline" size="icon" className="rounded-full shrink-0" data-testid="button-quick-actions">
                           <Plus className="h-4 w-4" />
                         </Button>
                       </PopoverTrigger>
@@ -1967,11 +1967,14 @@ export default function RestaurantInbox() {
                           handleSendMessage();
                         }
                       }}
+                      className="rounded-full"
                       data-testid="input-message"
                     />
                     <Button 
                       onClick={handleSendMessage}
                       disabled={!messageText.trim() || sendMessageMutation.isPending}
+                      className="rounded-full shrink-0"
+                      size="icon"
                       data-testid="button-send-message"
                     >
                       <Send className="h-4 w-4" />
