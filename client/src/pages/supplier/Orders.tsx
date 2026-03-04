@@ -32,6 +32,7 @@ export default function SupplierOrders() {
   const searchParams = new URLSearchParams(searchString);
   const highlightOrderId = searchParams.get("orderId");
   const initialRestaurantId = searchParams.get("restaurantId");
+  const initialStatus = searchParams.get("status");
   const highlightRef = useRef<HTMLDivElement>(null);
 
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
@@ -568,7 +569,7 @@ export default function SupplierOrders() {
         )}
       </div>
 
-      <Tabs defaultValue={highlightOrderId ? "all" : "pending"} className="w-full">
+      <Tabs defaultValue={initialStatus || (highlightOrderId ? "all" : "pending")} className="w-full">
         <TabsList className="w-full overflow-x-auto flex md:grid md:grid-cols-6 lg:w-auto lg:inline-flex">
           <TabsTrigger value="pending" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-pending">
             {getOrderStatus("pending", lang, true)}

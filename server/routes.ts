@@ -1453,6 +1453,42 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/supplier/upcoming-deliveries", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) return res.json([]);
+      const allOrders = await storage.getOrdersBySupplier(supplierId);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const relevant = allOrders.filter(o => {
+        if (o.status === "delivered") {
+          const updatedAt = o.updatedAt ? new Date(o.updatedAt) : null;
+          if (!updatedAt) return false;
+          return updatedAt >= today && updatedAt < tomorrow;
+        }
+        if (o.status === "confirmed" || o.status === "in_delivery") {
+          return true;
+        }
+        return false;
+      });
+
+      relevant.sort((a, b) => {
+        if (a.status === "delivered" && b.status !== "delivered") return 1;
+        if (a.status !== "delivered" && b.status === "delivered") return -1;
+        const dateA = a.requestedDeliveryDate ? new Date(a.requestedDeliveryDate + "T00:00:00").getTime() : Infinity;
+        const dateB = b.requestedDeliveryDate ? new Date(b.requestedDeliveryDate + "T00:00:00").getTime() : Infinity;
+        return dateA - dateB;
+      });
+
+      res.json(relevant);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch upcoming deliveries" });
+    }
+  });
+
   app.get("/api/supplier/orders/recent", async (req, res) => {
     try {
       const supplierId = req.query.supplierId as string;
