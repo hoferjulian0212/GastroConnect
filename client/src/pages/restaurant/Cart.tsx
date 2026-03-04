@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock } from "lucide-react";
+import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock, StickyNote } from "lucide-react";
 import QuantityInput from "@/components/QuantityInput";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -25,7 +25,7 @@ import { useT } from "@/lib/translations";
 export default function RestaurantCart() {
   const { currentUser } = useUser();
   const { toast } = useToast();
-  const [orderNotes, setOrderNotes] = useState("");
+  const [orderNotes, setOrderNotes] = useState<Record<string, string>>({});
   const [deliveryOptions, setDeliveryOptions] = useState<Record<string, "asap" | "date">>({});
   const [selectedDeliveryDates, setSelectedDeliveryDates] = useState<Record<string, string>>({});
   const [calendarOpen, setCalendarOpen] = useState<Record<string, boolean>>({});
@@ -80,7 +80,7 @@ export default function RestaurantCart() {
       }
       const res = await apiRequest("POST", "/api/orders", {
         restaurantId: currentUser?.id,
-        notes: orderNotes,
+        perSupplierNotes: orderNotes,
         deliveryDates: perSupplierDates,
       });
       return res.json();
@@ -91,13 +91,14 @@ export default function RestaurantCart() {
       const orders = Array.isArray(data) ? data : [data];
       const orderId = orders.length === 1 ? orders[0]?.id?.slice(0, 8) : orders.map(o => o?.id?.slice(0, 8)).join(", ");
       const firstDeliveryDate = Object.values(selectedDeliveryDates).find(d => d) || null;
+      const allNotes = Object.values(orderNotes).filter(n => n.trim()).join("; ");
       setOrderConfirmation({
         orderId: orderId || "",
         total: grandTotal,
         itemCount,
         suppliers: supplierNames,
         deliveryDate: firstDeliveryDate,
-        notes: orderNotes,
+        notes: allNotes,
         createdAt: new Date().toISOString(),
       });
       setTimeout(() => setConfirmationVisible(true), 50);
@@ -126,7 +127,7 @@ export default function RestaurantCart() {
       const res = await apiRequest("POST", "/api/orders", {
         restaurantId: currentUser?.id,
         supplierId,
-        notes: orderNotes,
+        notes: orderNotes[supplierId] || "",
         requestedDeliveryDate: deliveryDate,
       });
       return res.json();
@@ -548,6 +549,24 @@ export default function RestaurantCart() {
                       </span>
                     </div>
                   )}
+                  <div className="space-y-1.5 mt-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                        <StickyNote className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <Label className="text-xs md:text-sm font-semibold">
+                        {t("cart", "orderNotes")}
+                      </Label>
+                    </div>
+                    <Textarea
+                      placeholder={t("cart", "orderNotesPlaceholder")}
+                      value={orderNotes[supplierId] || ""}
+                      onChange={(e) => setOrderNotes(prev => ({ ...prev, [supplierId]: e.target.value }))}
+                      className="resize-none text-sm"
+                      rows={2}
+                      data-testid={`textarea-order-notes-${supplierId}`}
+                    />
+                  </div>
                 </div>
                 <CardFooter className="border-t border-border pt-3 md:pt-4 p-3 md:p-6">
                   <div className="flex items-center justify-between w-full gap-3">
@@ -596,16 +615,6 @@ export default function RestaurantCart() {
                 <div className="flex justify-between font-bold text-base md:text-lg">
                   <span>{t("common", "total")}</span>
                   <span data-testid="text-total-amount">{grandTotal}€</span>
-                </div>
-                <div className="space-y-1.5 md:space-y-2">
-                  <Label className="text-xs md:text-sm font-medium">{t("cart", "orderNotes")}</Label>
-                  <Textarea
-                    placeholder={t("cart", "orderNotesPlaceholder")}
-                    value={orderNotes}
-                    onChange={(e) => setOrderNotes(e.target.value)}
-                    className="resize-none"
-                    data-testid="textarea-order-notes"
-                  />
                 </div>
               </CardContent>
               <CardFooter className="p-3 md:p-6">
