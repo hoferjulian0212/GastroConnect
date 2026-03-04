@@ -15,7 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
@@ -687,18 +686,21 @@ export default function SupplierInbox() {
                         {selectedConv.otherUser.email}
                       </p>
                     </div>
-                    <Popover open={openActionsPopover} onOpenChange={setOpenActionsPopover}>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" data-testid="button-open-actions">
-                          <ClipboardList className="h-5 w-5" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-96 p-0" align="end">
-                        <div className="p-3 border-b border-border">
-                          <p className="font-medium text-sm">Offene Aktionen</p>
-                          <p className="text-xs text-muted-foreground">{selectedConv.otherUser.companyName || selectedConv.otherUser.name}</p>
-                        </div>
-                        <div className="max-h-[420px] overflow-y-auto p-2 space-y-3">
+                    <Button variant="ghost" size="icon" onClick={() => setOpenActionsPopover(true)} data-testid="button-open-actions">
+                      <ClipboardList className="h-5 w-5" />
+                    </Button>
+                    <Dialog open={openActionsPopover} onOpenChange={setOpenActionsPopover}>
+                      <DialogContent className="max-w-[92vw] md:max-w-md p-0 gap-0 rounded-xl">
+                        <DialogHeader className="p-4 pb-2 border-b border-border">
+                          <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+                            <ClipboardList className="h-4 w-4" />
+                            {t("inbox", "openActions")}
+                          </DialogTitle>
+                          <DialogDescription className="text-xs text-muted-foreground">
+                            {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="max-h-[60vh] overflow-y-auto p-3 space-y-3">
                           {openActionsOrders && openActionsOrders.length > 0 && (
                             <div>
                               <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-orders-header">Offene Bestellungen ({openActionsOrders.length})</p>
@@ -928,8 +930,8 @@ export default function SupplierInbox() {
                             {t("inbox", "viewAllComplaints")}
                           </Button>
                         </div>
-                      </PopoverContent>
-                    </Popover>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
 

@@ -985,18 +985,21 @@ export default function RestaurantInbox() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Popover open={openActionsPopover} onOpenChange={setOpenActionsPopover}>
-                        <PopoverTrigger asChild>
-                          <Button variant="ghost" size="icon" data-testid="button-open-actions">
-                            <ClipboardList className="h-5 w-5" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-96 p-0" align="end">
-                          <div className="p-3 border-b border-border">
-                            <p className="font-medium text-sm">{t("inbox", "openActions")}</p>
-                            <p className="text-xs text-muted-foreground">{selectedConv.otherUser.companyName || selectedConv.otherUser.name}</p>
-                          </div>
-                          <div className="max-h-[420px] overflow-y-auto p-2 space-y-3">
+                      <Button variant="ghost" size="icon" onClick={() => setOpenActionsPopover(true)} data-testid="button-open-actions">
+                        <ClipboardList className="h-5 w-5" />
+                      </Button>
+                      <Dialog open={openActionsPopover} onOpenChange={setOpenActionsPopover}>
+                        <DialogContent className="max-w-[92vw] md:max-w-md p-0 gap-0 rounded-xl">
+                          <DialogHeader className="p-4 pb-2 border-b border-border">
+                            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+                              <ClipboardList className="h-4 w-4" />
+                              {t("inbox", "openActions")}
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-muted-foreground">
+                              {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="max-h-[60vh] overflow-y-auto p-3 space-y-3">
                             {openActionsOrders && openActionsOrders.length > 0 && (
                               <div>
                                 <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-orders-header">{t("inbox", "openOrders")} ({openActionsOrders.length})</p>
@@ -1146,8 +1149,8 @@ export default function RestaurantInbox() {
                               {t("inbox", "viewAllComplaints")}
                             </Button>
                           </div>
-                        </PopoverContent>
-                      </Popover>
+                        </DialogContent>
+                      </Dialog>
                       {selectedConv.otherUser.phone && (
                         <Button
                           variant="ghost"
