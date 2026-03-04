@@ -30,6 +30,7 @@ The application uses a clean and modern UI design.
 - **Order Modification**: Restaurants can edit pending orders. For confirmed orders, they can send a change request to the supplier, who can approve or deny it via the inbox. All changes are logged in the chat.
 - **Inbox Wizard Actions**: Both restaurant and supplier inbox views feature inline wizard-based actions directly on order cards. Restaurants can edit (pending), request changes (confirmed), or cancel orders. Suppliers can confirm, mark in delivery, mark delivered, or cancel orders — all with a confirmation step wizard inline on the card.
 - **Minimum Order Quantity (MOQ)**: Products can have a default MOQ, and suppliers can set custom MOQs for specific restaurants. The system enforces MOQs in the catalog and cart, both client-side and server-side.
+- **Supplier Statistics Card**: Supplier home page features a statistics card with KPIs (total revenue, total orders, average order value), a 6-month revenue bar chart (recharts), and a top 5 products ranking with progress bars. Data from `GET /api/supplier/detailed-stats` endpoint.
 - **Inventory Management**: Products have `stockQuantity` and `lowStockThreshold` fields. Stock is automatically deducted when orders are confirmed, and reversed when orders are cancelled or set back to pending via change requests. Manual stock in/out with full audit trail via `stockMovements` table. Low stock alerts displayed on supplier home page.
 
 ### Core Data Models

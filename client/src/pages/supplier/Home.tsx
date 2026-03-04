@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash } from "lucide-react";
 import type { OrderWithDetails, Product, ConversationWithUser } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { useT, getOrderStatus } from "@/lib/translations";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
@@ -68,6 +69,32 @@ export default function SupplierHome() {
     staleTime: 0,
     refetchOnMount: "always",
   });
+
+  const { data: detailedStats, isLoading: statsLoading } = useQuery<{
+    monthlyRevenue: { month: string; revenue: number }[];
+    topProducts: { name: string; quantity: number; revenue: number }[];
+    ordersByStatus: { status: string; count: number }[];
+    totalRevenue: number;
+    totalOrders: number;
+    avgOrderValue: number;
+  }>({
+    queryKey: [`/api/supplier/detailed-stats?supplierId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+    staleTime: 60000,
+  });
+
+  const monthNames: Record<string, Record<string, string>> = {
+    de: { "01": "Jan", "02": "Feb", "03": "Mär", "04": "Apr", "05": "Mai", "06": "Jun", "07": "Jul", "08": "Aug", "09": "Sep", "10": "Okt", "11": "Nov", "12": "Dez" },
+    it: { "01": "Gen", "02": "Feb", "03": "Mar", "04": "Apr", "05": "Mag", "06": "Giu", "07": "Lug", "08": "Ago", "09": "Set", "10": "Ott", "11": "Nov", "12": "Dic" },
+  };
+
+  const chartData = useMemo(() => {
+    if (!detailedStats?.monthlyRevenue) return [];
+    return detailedStats.monthlyRevenue.map(m => ({
+      name: monthNames[lang]?.[m.month.split("-")[1]] || m.month.split("-")[1],
+      revenue: m.revenue,
+    }));
+  }, [detailedStats, lang]);
 
   const unreadConversations = useMemo(() => {
     if (!conversations) return [];
@@ -480,6 +507,138 @@ export default function SupplierHome() {
               <p className="text-xs text-muted-foreground mt-1">
                 {t("supplierHome", "allProcessed")}
               </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="card-statistics">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 shrink-0">
+              <BarChart3 className="h-5 w-5 text-indigo-600" />
+            </div>
+            <div>
+              <CardTitle className="text-base md:text-lg" data-testid="text-statistics-title">
+                {t("supplierHome", "statistics")}
+              </CardTitle>
+              <CardDescription className="text-xs md:text-sm">
+                {t("supplierHome", "statisticsDesc")}
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+          {statsLoading ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+              </div>
+              <Skeleton className="h-48 w-full rounded-xl" />
+            </div>
+          ) : detailedStats && (detailedStats.totalOrders > 0 || detailedStats.topProducts.length > 0) ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-2 md:gap-3">
+                <div className="rounded-xl border border-border bg-white dark:bg-gray-900 p-3 md:p-4">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Euro className="h-3.5 w-3.5 text-indigo-600" />
+                    <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t("supplierHome", "totalRevenue")}</span>
+                  </div>
+                  <p className="text-lg md:text-xl font-bold text-foreground" data-testid="text-total-revenue">
+                    {detailedStats.totalRevenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border bg-white dark:bg-gray-900 p-3 md:p-4">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Hash className="h-3.5 w-3.5 text-emerald-600" />
+                    <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t("supplierHome", "totalOrders")}</span>
+                  </div>
+                  <p className="text-lg md:text-xl font-bold text-foreground" data-testid="text-total-orders">
+                    {detailedStats.totalOrders}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border bg-white dark:bg-gray-900 p-3 md:p-4">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <TrendingUp className="h-3.5 w-3.5 text-amber-600" />
+                    <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t("supplierHome", "avgOrderValue")}</span>
+                  </div>
+                  <p className="text-lg md:text-xl font-bold text-foreground" data-testid="text-avg-order-value">
+                    {detailedStats.avgOrderValue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
+                  </p>
+                </div>
+              </div>
+
+              {chartData.length > 0 && chartData.some(d => d.revenue > 0) && (
+                <div>
+                  <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "revenueOverview")}</p>
+                  <div className="h-44 md:h-52">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}€`} />
+                        <Tooltip
+                          contentStyle={{
+                            background: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "0.75rem",
+                            fontSize: "12px",
+                            boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                          }}
+                          formatter={(value: number) => [`${value.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 2 })}€`, t("supplierHome", "revenue")]}
+                        />
+                        <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {detailedStats.topProducts.length > 0 && (
+                <div>
+                  <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "topProducts")}</p>
+                  <div className="space-y-2">
+                    {detailedStats.topProducts.map((product, idx) => {
+                      const maxQty = detailedStats.topProducts[0]?.quantity || 1;
+                      const pct = Math.round((product.quantity / maxQty) * 100);
+                      return (
+                        <div key={idx} className="group" data-testid={`top-product-${idx}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">
+                                {idx + 1}
+                              </span>
+                              <span className="text-xs md:text-sm font-medium truncate">{product.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                              <span className="text-[10px] md:text-xs text-muted-foreground">
+                                {product.quantity}x {t("supplierHome", "unitsSold")}
+                              </span>
+                              <span className="text-xs md:text-sm font-semibold">
+                                {product.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
+                              </span>
+                            </div>
+                          </div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full transition-all duration-500"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
+                <BarChart3 className="h-6 w-6 text-muted-foreground/40" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">{t("supplierHome", "noStatsYet")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "noStatsYetDesc")}</p>
             </div>
           )}
         </CardContent>

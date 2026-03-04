@@ -83,6 +83,14 @@ export interface IStorage {
     totalProducts: number;
     monthlyRevenue: number;
   }>;
+  getSupplierDetailedStats(supplierId: string): Promise<{
+    monthlyRevenue: { month: string; revenue: number }[];
+    topProducts: { name: string; quantity: number; revenue: number }[];
+    ordersByStatus: { status: string; count: number }[];
+    totalRevenue: number;
+    totalOrders: number;
+    avgOrderValue: number;
+  }>;
   getPendingOrderCount(supplierId: string): Promise<number>;
   getRestaurantsForSupplier(supplierId: string): Promise<User[]>;
 
@@ -683,6 +691,90 @@ export class DatabaseStorage implements IStorage {
       unreadMessages: Number(unreadMessages) || 0,
       totalProducts: Number(productsResult[0]?.count) || 0,
       monthlyRevenue: Number(revenueResult[0]?.total) || 0
+    };
+  }
+
+  async getSupplierDetailedStats(supplierId: string): Promise<{
+    monthlyRevenue: { month: string; revenue: number }[];
+    topProducts: { name: string; quantity: number; revenue: number }[];
+    ordersByStatus: { status: string; count: number }[];
+    totalRevenue: number;
+    totalOrders: number;
+    avgOrderValue: number;
+  }> {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
+
+    const monthlyRevenueResult = await db.execute(sql`
+      SELECT 
+        TO_CHAR(created_at, 'YYYY-MM') as month,
+        COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as revenue
+      FROM orders
+      WHERE supplier_id = ${supplierId}
+        AND status = 'delivered'
+        AND created_at >= ${sixMonthsAgo}
+      GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+      ORDER BY month ASC
+    `);
+
+    const topProductsResult = await db.execute(sql`
+      SELECT 
+        oi.product_name as name,
+        SUM(oi.quantity) as quantity,
+        COALESCE(SUM(CAST(oi.total_price AS DECIMAL)), 0) as revenue
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      WHERE o.supplier_id = ${supplierId}
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery')
+      GROUP BY oi.product_name
+      ORDER BY quantity DESC
+      LIMIT 5
+    `);
+
+    const ordersByStatusResult = await db.execute(sql`
+      SELECT status, COUNT(*) as count
+      FROM orders
+      WHERE supplier_id = ${supplierId}
+      GROUP BY status
+    `);
+
+    const totalsResult = await db.execute(sql`
+      SELECT 
+        COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total_revenue,
+        COUNT(*) as total_orders
+      FROM orders
+      WHERE supplier_id = ${supplierId}
+        AND status = 'delivered'
+    `);
+
+    const totalRevenue = Number(totalsResult.rows?.[0]?.total_revenue) || 0;
+    const totalOrders = Number(totalsResult.rows?.[0]?.total_orders) || 0;
+
+    const now = new Date();
+    const months: { month: string; revenue: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const found = (monthlyRevenueResult.rows || []).find((r: any) => r.month === key);
+      months.push({ month: key, revenue: Number(found?.revenue) || 0 });
+    }
+
+    return {
+      monthlyRevenue: months,
+      topProducts: (topProductsResult.rows || []).map((r: any) => ({
+        name: r.name,
+        quantity: Number(r.quantity) || 0,
+        revenue: Number(r.revenue) || 0,
+      })),
+      ordersByStatus: (ordersByStatusResult.rows || []).map((r: any) => ({
+        status: r.status,
+        count: Number(r.count) || 0,
+      })),
+      totalRevenue,
+      totalOrders,
+      avgOrderValue: totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0,
     };
   }
 

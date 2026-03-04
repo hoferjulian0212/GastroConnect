@@ -1818,6 +1818,19 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/supplier/detailed-stats", async (req, res) => {
+    try {
+      const supplierId = (req.query.supplierId || req.query.userId) as string;
+      if (!supplierId) {
+        return res.json({ monthlyRevenue: [], topProducts: [], ordersByStatus: [], totalRevenue: 0, totalOrders: 0, avgOrderValue: 0 });
+      }
+      const stats = await storage.getSupplierDetailedStats(supplierId);
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch detailed stats" });
+    }
+  });
+
   app.get("/api/supplier/restaurants", async (req, res) => {
     try {
       const supplierId = req.query.supplierId as string;
