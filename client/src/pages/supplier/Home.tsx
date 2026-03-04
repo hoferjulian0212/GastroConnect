@@ -323,64 +323,73 @@ export default function SupplierHome() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0">
+              <ClipboardList className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base md:text-lg" data-testid="text-low-stock-title">
-                {t("supplierHome", "lowStockAlerts")}
-              </CardTitle>
-              <CardDescription className="text-xs md:text-sm">
-                {t("supplierHome", "lowStockAlertsDesc")}
-              </CardDescription>
+              <CardTitle className="text-base md:text-lg">{t("supplierHome", "newOrders")}</CardTitle>
+              <CardDescription className="text-xs md:text-sm">{t("supplierHome", "waitingForProcessing")}</CardDescription>
             </div>
           </div>
           <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
-            <Link href="/supplier/products" data-testid="link-manage-stock">{t("common", "products")}</Link>
+            <Link href="/supplier/orders" data-testid="link-view-all-orders">{t("common", "all")}</Link>
           </Button>
         </CardHeader>
         <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-          {lowStockLoading ? (
+          {ordersLoading ? (
             <div className="space-y-2 md:space-y-3">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-14 w-full" />
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
-          ) : lowStockProducts && lowStockProducts.length > 0 ? (
+          ) : recentOrders && recentOrders.length > 0 ? (
             <div className="space-y-2 md:space-y-3">
-              {lowStockProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="flex items-center justify-between p-2.5 md:p-3 rounded-xl border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20"
-                  data-testid={`low-stock-item-${product.id}`}
+              {recentOrders.slice(0, 4).map((order) => (
+                <Link
+                  key={order.id}
+                  href={`/supplier/orders?orderId=${order.id}`}
+                  className="flex items-center justify-between p-2.5 md:p-3 rounded-xl border border-border bg-white dark:bg-gray-900 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30"
+                  data-testid={`order-item-${order.id}`}
                 >
                   <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
-                    {product.imageUrl ? (
-                      <img src={product.imageUrl} alt="" className="h-9 w-9 rounded-lg object-cover shrink-0" />
-                    ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0">
-                        <Package className="h-4 w-4 text-orange-600" />
-                      </div>
-                    )}
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                      <ShoppingBag className="h-4 w-4 text-primary" />
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs md:text-sm font-medium truncate">{product.name}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground">
-                        {t("supplierHome", "threshold")}: {product.lowStockThreshold} {product.unit}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
+                        <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5`} variant="outline">
+                          {getOrderStatus(order.status, lang, true)}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <UserIcon className="h-2.5 w-2.5 md:h-3 md:w-3 text-muted-foreground shrink-0" />
+                        <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+                          {order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}
+                        </p>
+                      </div>
+                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
+                        {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}
+                        <span className="text-muted-foreground/70">({formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })})</span>
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-[10px] md:text-xs shrink-0 ml-2">
-                    {product.stockQuantity ?? 0} {product.unit} {t("supplierHome", "stockLeft")}
-                  </Badge>
-                </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                    <span className="text-sm md:text-base font-bold">{order.totalAmount}€</span>
+                    <span className="text-[10px] md:text-xs text-muted-foreground">
+                      {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
+                    </span>
+                  </div>
+                </Link>
               ))}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle className="h-12 w-12 text-green-500/50 mb-3" />
-              <p className="text-sm text-muted-foreground">{t("supplierHome", "noLowStock")}</p>
+              <p className="text-sm text-muted-foreground">{t("supplierHome", "noNewOrders")}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {t("supplierHome", "noLowStockDesc")}
+                {t("supplierHome", "allProcessed")}
               </p>
             </div>
           )}
@@ -479,73 +488,64 @@ export default function SupplierHome() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0">
-              <ClipboardList className="h-5 w-5 text-primary" />
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <CardTitle className="text-base md:text-lg">{t("supplierHome", "newOrders")}</CardTitle>
-              <CardDescription className="text-xs md:text-sm">{t("supplierHome", "waitingForProcessing")}</CardDescription>
+              <CardTitle className="text-base md:text-lg" data-testid="text-low-stock-title">
+                {t("supplierHome", "lowStockAlerts")}
+              </CardTitle>
+              <CardDescription className="text-xs md:text-sm">
+                {t("supplierHome", "lowStockAlertsDesc")}
+              </CardDescription>
             </div>
           </div>
           <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
-            <Link href="/supplier/orders" data-testid="link-view-all-orders">{t("common", "all")}</Link>
+            <Link href="/supplier/products" data-testid="link-manage-stock">{t("common", "products")}</Link>
           </Button>
         </CardHeader>
         <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-          {ordersLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-20 w-full" />
+          {lowStockLoading ? (
+            <div className="space-y-2 md:space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-14 w-full" />
               ))}
             </div>
-          ) : recentOrders && recentOrders.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-              {recentOrders.slice(0, 6).map((order) => (
-                <Link
-                  key={order.id}
-                  href={`/supplier/orders?orderId=${order.id}`}
-                  className="flex items-center justify-between p-2.5 md:p-3 rounded-xl border border-border bg-white dark:bg-gray-900 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30"
-                  data-testid={`order-item-${order.id}`}
+          ) : lowStockProducts && lowStockProducts.length > 0 ? (
+            <div className="space-y-2 md:space-y-3">
+              {lowStockProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="flex items-center justify-between p-2.5 md:p-3 rounded-xl border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20"
+                  data-testid={`low-stock-item-${product.id}`}
                 >
                   <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-                      <ShoppingBag className="h-4 w-4 text-primary" />
-                    </div>
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt="" className="h-9 w-9 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0">
+                        <Package className="h-4 w-4 text-orange-600" />
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                        <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5`} variant="outline">
-                          {getOrderStatus(order.status, lang, true)}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <UserIcon className="h-2.5 w-2.5 md:h-3 md:w-3 text-muted-foreground shrink-0" />
-                        <p className="text-[10px] md:text-xs text-muted-foreground truncate">
-                          {order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}
-                        </p>
-                      </div>
-                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
-                        {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}
-                        <span className="text-muted-foreground/70">({formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })})</span>
+                      <p className="text-xs md:text-sm font-medium truncate">{product.name}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground">
+                        {t("supplierHome", "threshold")}: {product.lowStockThreshold} {product.unit}
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
-                    <span className="text-sm md:text-base font-bold">{order.totalAmount}€</span>
-                    <span className="text-[10px] md:text-xs text-muted-foreground">
-                      {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
-                    </span>
-                  </div>
-                </Link>
+                  <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-[10px] md:text-xs shrink-0 ml-2">
+                    {product.stockQuantity ?? 0} {product.unit} {t("supplierHome", "stockLeft")}
+                  </Badge>
+                </div>
               ))}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle className="h-12 w-12 text-green-500/50 mb-3" />
-              <p className="text-sm text-muted-foreground">{t("supplierHome", "noNewOrders")}</p>
+              <p className="text-sm text-muted-foreground">{t("supplierHome", "noLowStock")}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {t("supplierHome", "allProcessed")}
+                {t("supplierHome", "noLowStockDesc")}
               </p>
             </div>
           )}
