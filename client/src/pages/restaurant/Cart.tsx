@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Zap, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock } from "lucide-react";
+import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock } from "lucide-react";
 import QuantityInput from "@/components/QuantityInput";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -459,7 +459,7 @@ export default function RestaurantCart() {
                           ? "bg-indigo-100 dark:bg-indigo-800/30"
                           : "bg-muted"
                       }`}>
-                        <Zap className={`h-4 w-4 ${
+                        <Clock className={`h-4 w-4 ${
                           (deliveryOptions[supplierId] || "asap") === "asap"
                             ? "text-indigo-600 dark:text-indigo-400"
                             : "text-muted-foreground"
@@ -493,7 +493,7 @@ export default function RestaurantCart() {
                               ? "bg-indigo-100 dark:bg-indigo-800/30"
                               : "bg-muted"
                           }`}>
-                            <CalendarDays className={`h-4 w-4 ${
+                            <Truck className={`h-4 w-4 ${
                               deliveryOptions[supplierId] === "date"
                                 ? "text-indigo-600 dark:text-indigo-400"
                                 : "text-muted-foreground"
