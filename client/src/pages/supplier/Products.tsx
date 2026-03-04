@@ -861,7 +861,8 @@ export default function SupplierProducts() {
 
   const updateProductMutation = useMutation({
     mutationFn: async (data: ProductFormData & { id: string }) => {
-      return apiRequest("PATCH", `/api/products/${data.id}`, data);
+      const { id, ...body } = data;
+      return apiRequest("PATCH", `/api/products/${id}`, body);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/products?supplierId=${currentUser?.id}`] });
