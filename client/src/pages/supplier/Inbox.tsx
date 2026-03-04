@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import OnlineStatus from "@/components/OnlineStatus";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
@@ -689,6 +689,13 @@ export default function SupplierInbox() {
                       </p>
                       <OnlineStatus userId={selectedConv.otherUser.id} size="sm" />
                     </div>
+                    {selectedConv.otherUser.phone && (
+                      <Button variant="ghost" size="icon" asChild data-testid="button-call-restaurant">
+                        <a href={`tel:${selectedConv.otherUser.phone}`}>
+                          <Phone className="h-5 w-5" />
+                        </a>
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => setOpenActionsPopover(true)} data-testid="button-open-actions">
                       <ClipboardList className="h-5 w-5" />
                     </Button>
