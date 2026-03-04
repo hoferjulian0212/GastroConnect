@@ -6,8 +6,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Zap, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2 } from "lucide-react";
+import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Zap, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock } from "lucide-react";
 import QuantityInput from "@/components/QuantityInput";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { CartItemWithProduct, DeliverySchedule, Promotion } from "@shared/schema";
 
 type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion | null };
@@ -15,7 +17,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
-import { format, addDays, startOfDay } from "date-fns";
+import { format, addDays, startOfDay, parse } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -26,6 +28,7 @@ export default function RestaurantCart() {
   const [orderNotes, setOrderNotes] = useState("");
   const [deliveryOptions, setDeliveryOptions] = useState<Record<string, "asap" | "date">>({});
   const [selectedDeliveryDates, setSelectedDeliveryDates] = useState<Record<string, string>>({});
+  const [calendarOpen, setCalendarOpen] = useState<Record<string, boolean>>({});
   const [orderConfirmation, setOrderConfirmation] = useState<{
     orderId: string;
     total: string;
@@ -204,6 +207,16 @@ export default function RestaurantCart() {
     }
     return result;
   }, [allDeliverySchedules, supplierIds, dateLocale]);
+
+  const perSupplierAllowedWeekdays = useMemo(() => {
+    if (!allDeliverySchedules) return {};
+    const result: Record<string, number[]> = {};
+    for (const sid of supplierIds) {
+      const schedules = allDeliverySchedules[sid] || [];
+      result[sid] = schedules.map(s => s.dayOfWeek);
+    }
+    return result;
+  }, [allDeliverySchedules, supplierIds]);
 
   const getEffectivePrice = (item: CartItemWithPromotion) => {
     const originalPrice = parseFloat(item.product.price);
@@ -418,78 +431,121 @@ export default function RestaurantCart() {
                     ))}
                   </div>
                 </CardContent>
-                <div className="border-t border-border px-3 md:px-6 py-3 md:py-4 space-y-2">
-                  <Label className="text-xs md:text-sm font-medium flex items-center gap-1.5">
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    {t("cart", "deliveryDate")}
-                  </Label>
-                  <div className="space-y-2">
-                    <label
-                      className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                        (deliveryOptions[supplierId] || "asap") === "asap" ? "border-primary bg-primary/5" : "border-border"
+                <div className="border-t border-border px-3 md:px-6 py-3 md:py-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
+                      <CalendarDays className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <Label className="text-xs md:text-sm font-semibold">
+                      {t("cart", "deliveryDate")}
+                    </Label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                        (deliveryOptions[supplierId] || "asap") === "asap"
+                          ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-sm"
+                          : "border-border hover:border-muted-foreground/30"
                       }`}
+                      onClick={() => {
+                        setDeliveryOptions(prev => ({ ...prev, [supplierId]: "asap" }));
+                        setSelectedDeliveryDates(prev => ({ ...prev, [supplierId]: "" }));
+                      }}
                       data-testid={`radio-delivery-asap-${supplierId}`}
                     >
-                      <input
-                        type="radio"
-                        name={`deliveryOption-${supplierId}`}
-                        checked={(deliveryOptions[supplierId] || "asap") === "asap"}
-                        onChange={() => {
-                          setDeliveryOptions(prev => ({ ...prev, [supplierId]: "asap" }));
-                          setSelectedDeliveryDates(prev => ({ ...prev, [supplierId]: "" }));
-                        }}
-                        className="accent-primary"
-                      />
-                      <Zap className="h-4 w-4 text-primary shrink-0" />
-                      <span className="text-sm">{t("cart", "asap")}</span>
-                    </label>
-                    <label
-                      className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                        deliveryOptions[supplierId] === "date" ? "border-primary bg-primary/5" : "border-border"
-                      }`}
-                      data-testid={`radio-delivery-date-${supplierId}`}
+                      <div className={`flex items-center justify-center h-8 w-8 rounded-full transition-colors ${
+                        (deliveryOptions[supplierId] || "asap") === "asap"
+                          ? "bg-indigo-100 dark:bg-indigo-800/30"
+                          : "bg-muted"
+                      }`}>
+                        <Zap className={`h-4 w-4 ${
+                          (deliveryOptions[supplierId] || "asap") === "asap"
+                            ? "text-indigo-600 dark:text-indigo-400"
+                            : "text-muted-foreground"
+                        }`} />
+                      </div>
+                      <span className={`text-xs font-medium ${
+                        (deliveryOptions[supplierId] || "asap") === "asap"
+                          ? "text-indigo-700 dark:text-indigo-300"
+                          : "text-muted-foreground"
+                      }`}>{t("cart", "asap")}</span>
+                    </button>
+                    <Popover
+                      open={calendarOpen[supplierId] || false}
+                      onOpenChange={(open) => {
+                        setCalendarOpen(prev => ({ ...prev, [supplierId]: open }));
+                        if (open) setDeliveryOptions(prev => ({ ...prev, [supplierId]: "date" }));
+                      }}
                     >
-                      <input
-                        type="radio"
-                        name={`deliveryOption-${supplierId}`}
-                        checked={deliveryOptions[supplierId] === "date"}
-                        onChange={() => setDeliveryOptions(prev => ({ ...prev, [supplierId]: "date" }))}
-                        className="accent-primary"
-                      />
-                      <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm">{t("cart", "selectDeliveryDay")}</span>
-                    </label>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                            deliveryOptions[supplierId] === "date"
+                              ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-sm"
+                              : "border-border hover:border-muted-foreground/30"
+                          }`}
+                          data-testid={`radio-delivery-date-${supplierId}`}
+                        >
+                          <div className={`flex items-center justify-center h-8 w-8 rounded-full transition-colors ${
+                            deliveryOptions[supplierId] === "date"
+                              ? "bg-indigo-100 dark:bg-indigo-800/30"
+                              : "bg-muted"
+                          }`}>
+                            <CalendarDays className={`h-4 w-4 ${
+                              deliveryOptions[supplierId] === "date"
+                                ? "text-indigo-600 dark:text-indigo-400"
+                                : "text-muted-foreground"
+                            }`} />
+                          </div>
+                          <span className={`text-xs font-medium ${
+                            deliveryOptions[supplierId] === "date"
+                              ? "text-indigo-700 dark:text-indigo-300"
+                              : "text-muted-foreground"
+                          }`}>{t("cart", "selectDeliveryDay")}</span>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="center" sideOffset={8}>
+                        {(perSupplierAllowedWeekdays[supplierId] || []).length > 0 ? (
+                          <Calendar
+                            mode="single"
+                            selected={selectedDeliveryDates[supplierId] ? parse(selectedDeliveryDates[supplierId], "yyyy-MM-dd", new Date()) : undefined}
+                            onSelect={(date) => {
+                              if (date) {
+                                setSelectedDeliveryDates(prev => ({ ...prev, [supplierId]: format(date, "yyyy-MM-dd") }));
+                                setCalendarOpen(prev => ({ ...prev, [supplierId]: false }));
+                              }
+                            }}
+                            disabled={(date) => {
+                              const today = startOfDay(new Date());
+                              if (date <= today) return true;
+                              const maxDate = addDays(today, 28);
+                              if (date > maxDate) return true;
+                              const allowedDays = perSupplierAllowedWeekdays[supplierId] || [];
+                              return !allowedDays.includes(date.getDay());
+                            }}
+                            locale={dateLocale}
+                            fromDate={addDays(new Date(), 1)}
+                            toDate={addDays(new Date(), 28)}
+                            data-testid={`calendar-${supplierId}`}
+                          />
+                        ) : (
+                          <div className="p-4 text-center">
+                            <p className="text-xs text-muted-foreground">
+                              {t("cart", "noDeliveryDays")}
+                            </p>
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
                   </div>
-                  {deliveryOptions[supplierId] === "date" && (
-                    <div className="pt-1">
-                      {(perSupplierDeliveryDates[supplierId] || []).length > 0 ? (
-                        <div className="space-y-1 max-h-40 overflow-y-auto">
-                          {(perSupplierDeliveryDates[supplierId] || []).map(date => (
-                            <label
-                              key={date.value}
-                              className={`flex items-center gap-2.5 p-2 rounded-md border cursor-pointer transition-colors text-sm ${
-                                selectedDeliveryDates[supplierId] === date.value
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border"
-                              }`}
-                              data-testid={`delivery-date-${supplierId}-${date.value}`}
-                            >
-                              <input
-                                type="radio"
-                                name={`deliveryDate-${supplierId}`}
-                                checked={selectedDeliveryDates[supplierId] === date.value}
-                                onChange={() => setSelectedDeliveryDates(prev => ({ ...prev, [supplierId]: date.value }))}
-                                className="accent-primary"
-                              />
-                              <span>{date.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground py-2">
-                          {t("cart", "noDeliveryDays")}
-                        </p>
-                      )}
+                  {deliveryOptions[supplierId] === "date" && selectedDeliveryDates[supplierId] && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800" data-testid={`selected-date-${supplierId}`}>
+                      <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                      <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                        {format(parse(selectedDeliveryDates[supplierId], "yyyy-MM-dd", new Date()), "EEEE, dd. MMMM yyyy", { locale: dateLocale })}
+                      </span>
                     </div>
                   )}
                 </div>
