@@ -954,7 +954,7 @@ export default function RestaurantInbox() {
             </div>
           </div>
 
-          <div className={`flex-1 min-w-0 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
+          <div className={`flex-1 min-w-0 flex flex-col overflow-hidden ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && selectedConv ? (
               <>
                 <div className="border-b border-border px-3 py-3.5 md:px-4 md:py-4 bg-background">
@@ -1165,7 +1165,7 @@ export default function RestaurantInbox() {
                 </div>
 
                 {actionMode === "none" ? (
-                  <ScrollArea className="flex-1 p-4 h-full">
+                  <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 h-full" style={{ minHeight: 0 }}>
                     {messagesLoading ? (
                       <div className="space-y-4">
                         {[1, 2, 3].map((i) => (
@@ -1173,7 +1173,7 @@ export default function RestaurantInbox() {
                         ))}
                       </div>
                     ) : messages && messages.length > 0 ? (
-                      <div className="space-y-3">
+                      <div className="space-y-3 w-full max-w-full overflow-hidden">
                         {messages.map((message, index) => {
                           const isOwn = message.senderId === currentUser?.id;
                           const messageDate = new Date(message.createdAt);
@@ -1755,7 +1755,7 @@ export default function RestaurantInbox() {
                         <p className="text-xs text-muted-foreground mt-1">{t("inbox", "startConversation")}</p>
                       </div>
                     )}
-                  </ScrollArea>
+                  </div>
                 ) : actionMode === "order" ? (
                   <div className="flex-1 flex flex-col overflow-hidden">
                     <div className="p-4 pb-0">

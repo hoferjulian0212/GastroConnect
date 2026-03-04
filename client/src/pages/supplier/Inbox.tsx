@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -660,7 +659,7 @@ export default function SupplierInbox() {
             </div>
           </div>
 
-          <div className={`flex-1 min-w-0 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
+          <div className={`flex-1 min-w-0 flex flex-col overflow-hidden ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && selectedConv ? (
               <>
                 <div className="border-b border-border px-3 py-3.5 md:px-4 md:py-4 bg-background">
@@ -934,7 +933,7 @@ export default function SupplierInbox() {
                   </div>
                 </div>
 
-                <ScrollArea className="flex-1 p-4">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden p-4" style={{ minHeight: 0 }}>
                   {messagesLoading ? (
                     <div className="space-y-4">
                       {[1, 2, 3].map((i) => (
@@ -942,7 +941,7 @@ export default function SupplierInbox() {
                       ))}
                     </div>
                   ) : messages && messages.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-3 w-full overflow-hidden">
                       {messages.map((message, index) => {
                         const isOwn = message.senderId === currentUser?.id;
                         const messageDate = new Date(message.createdAt);
@@ -1513,7 +1512,7 @@ export default function SupplierInbox() {
                       <p className="text-xs text-muted-foreground mt-1">Schreiben Sie eine Nachricht um die Konversation zu starten</p>
                     </div>
                   )}
-                </ScrollArea>
+                </div>
 
                 <div className="border-t border-border p-2 md:p-4 md:rounded-none md:shadow-none md:border-t md:border-x-0 md:mb-0 md:mx-0 floating-message-bar mobile-message-pill">
                   <div className="flex gap-2 items-center">
