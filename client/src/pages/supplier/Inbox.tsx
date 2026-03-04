@@ -1457,55 +1457,63 @@ export default function SupplierInbox() {
                                     const parsed = JSON.parse(message.content);
                                     if (parsed.refType && parsed.refId && parsed.text) refData = parsed;
                                   } catch {}
+                                  const showSenderName = !prevMessage || prevMessage.senderId !== message.senderId || showDateDivider;
                                   return (
-                                    <div
-                                      className={`max-w-[70%] rounded-lg px-3 py-2 shadow-lg ${
-                                        isOwn
-                                          ? "bg-secondary text-secondary-foreground"
-                                          : "bg-muted"
-                                      }`}
-                                    >
-                                      {refData && (
-                                        <div
-                                          className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 cursor-pointer hover:opacity-80 transition-opacity ${
-                                            isOwn
-                                              ? "bg-secondary-foreground/10 border-secondary-foreground/40"
-                                              : "bg-background/60 border-primary/50"
-                                          }`}
-                                          onClick={() => {
-                                            if (refData.refType === "order" && refData.refId) {
-                                              const target = document.querySelector(`[data-order-id="${refData.refId}"]`);
-                                              if (target) {
-                                                target.scrollIntoView({ behavior: "smooth", block: "center" });
-                                                target.classList.add("highlight-message");
-                                                setTimeout(() => target.classList.remove("highlight-message"), 2000);
-                                              }
-                                            }
-                                          }}
-                                          data-testid={`ref-link-${message.id}`}
-                                        >
-                                          <div className="flex items-center gap-1.5">
-                                            {refData.refType === "order" ? (
-                                              <ShoppingBag className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
-                                            ) : (
-                                              <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
-                                            )}
-                                            <span className={`text-[11px] font-medium truncate ${isOwn ? "text-secondary-foreground/80" : "text-foreground/80"}`}>
-                                              {refData.refLabel || (refData.refType === "order" ? (lang === "de" ? "Bestellung" : "Ordine") : (lang === "de" ? "Reklamation" : "Reclamo"))}
-                                            </span>
-                                          </div>
-                                        </div>
+                                    <div className="max-w-[70%]">
+                                      {showSenderName && (
+                                        <p className={`text-[11px] font-semibold mb-0.5 px-1 ${isOwn ? "text-right text-secondary-foreground/70" : "text-indigo-600 dark:text-indigo-400"}`}>
+                                          {isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || "")}
+                                        </p>
                                       )}
-                                      <p className="text-sm">{refData ? refData.text : message.content}</p>
-                                      <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
-                                        <span className={`text-[10px] ${isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
-                                          {format(messageDate, "HH:mm")}
-                                        </span>
-                                        {isOwn && (
-                                          message.isRead 
-                                            ? <CheckCheck className="h-3 w-3 text-secondary-foreground/70" />
-                                            : <Check className="h-3 w-3 text-secondary-foreground/70" />
+                                      <div
+                                        className={`rounded-lg px-3 py-2 shadow-lg ${
+                                          isOwn
+                                            ? "bg-secondary text-secondary-foreground"
+                                            : "bg-muted"
+                                        }`}
+                                      >
+                                        {refData && (
+                                          <div
+                                            className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 cursor-pointer hover:opacity-80 transition-opacity ${
+                                              isOwn
+                                                ? "bg-secondary-foreground/10 border-secondary-foreground/40"
+                                                : "bg-background/60 border-primary/50"
+                                            }`}
+                                            onClick={() => {
+                                              if (refData.refType === "order" && refData.refId) {
+                                                const target = document.querySelector(`[data-order-id="${refData.refId}"]`);
+                                                if (target) {
+                                                  target.scrollIntoView({ behavior: "smooth", block: "center" });
+                                                  target.classList.add("highlight-message");
+                                                  setTimeout(() => target.classList.remove("highlight-message"), 2000);
+                                                }
+                                              }
+                                            }}
+                                            data-testid={`ref-link-${message.id}`}
+                                          >
+                                            <div className="flex items-center gap-1.5">
+                                              {refData.refType === "order" ? (
+                                                <ShoppingBag className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
+                                              ) : (
+                                                <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
+                                              )}
+                                              <span className={`text-[11px] font-medium truncate ${isOwn ? "text-secondary-foreground/80" : "text-foreground/80"}`}>
+                                                {refData.refLabel || (refData.refType === "order" ? (lang === "de" ? "Bestellung" : "Ordine") : (lang === "de" ? "Reklamation" : "Reclamo"))}
+                                              </span>
+                                            </div>
+                                          </div>
                                         )}
+                                        <p className="text-sm">{refData ? refData.text : message.content}</p>
+                                        <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
+                                          <span className={`text-[10px] ${isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
+                                            {format(messageDate, "HH:mm")}
+                                          </span>
+                                          {isOwn && (
+                                            message.isRead 
+                                              ? <CheckCheck className="h-3 w-3 text-secondary-foreground/70" />
+                                              : <Check className="h-3 w-3 text-secondary-foreground/70" />
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                   );
