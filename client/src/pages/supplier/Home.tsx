@@ -2,8 +2,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X } from "lucide-react";
-import type { OrderWithDetails } from "@shared/schema";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package } from "lucide-react";
+import type { OrderWithDetails, Product } from "@shared/schema";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,18 @@ export default function SupplierHome() {
     queryFn: async () => {
       const res = await fetch(`/api/supplier/upcoming-deliveries?supplierId=${currentUser?.id}`);
       if (!res.ok) throw new Error('Failed to fetch upcoming deliveries');
+      return res.json();
+    },
+    enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
+  const { data: lowStockProducts, isLoading: lowStockLoading } = useQuery<Product[]>({
+    queryKey: ['/api/low-stock', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/low-stock?supplierId=${currentUser?.id}`);
+      if (!res.ok) throw new Error('Failed to fetch low stock');
       return res.json();
     },
     enabled: !!currentUser?.id,
@@ -270,6 +282,73 @@ export default function SupplierHome() {
               <p className="text-sm text-muted-foreground">{t("supplierHome", "noUpcomingDeliveries")}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {t("supplierHome", "allDeliveriesProcessed")}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <CardTitle className="text-base md:text-lg" data-testid="text-low-stock-title">
+                {t("supplierHome", "lowStockAlerts")}
+              </CardTitle>
+              <CardDescription className="text-xs md:text-sm">
+                {t("supplierHome", "lowStockAlertsDesc")}
+              </CardDescription>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
+            <Link href="/supplier/products" data-testid="link-manage-stock">{t("common", "products")}</Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+          {lowStockLoading ? (
+            <div className="space-y-2 md:space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : lowStockProducts && lowStockProducts.length > 0 ? (
+            <div className="space-y-2 md:space-y-3">
+              {lowStockProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="flex items-center justify-between p-2.5 md:p-3 rounded-xl border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20"
+                  data-testid={`low-stock-item-${product.id}`}
+                >
+                  <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt="" className="h-9 w-9 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0">
+                        <Package className="h-4 w-4 text-orange-600" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs md:text-sm font-medium truncate">{product.name}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground">
+                        {t("supplierHome", "threshold")}: {product.lowStockThreshold} {product.unit}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-[10px] md:text-xs shrink-0 ml-2">
+                    {product.stockQuantity ?? 0} {product.unit} {t("supplierHome", "stockLeft")}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <CheckCircle className="h-12 w-12 text-green-500/50 mb-3" />
+              <p className="text-sm text-muted-foreground">{t("supplierHome", "noLowStock")}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("supplierHome", "noLowStockDesc")}
               </p>
             </div>
           )}
