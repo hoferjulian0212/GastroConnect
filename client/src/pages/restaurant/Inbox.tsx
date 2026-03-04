@@ -1997,13 +1997,28 @@ export default function RestaurantInbox() {
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center h-full min-h-[calc(100dvh-200px)]">
-                <div className="text-center">
-                  <MessageSquare className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                  <p className="text-lg font-medium">{t("inbox", "selectConversation")}</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t("inbox", "selectConversationDesc")}
-                  </p>
+              <div className="flex-1 flex flex-col h-full min-h-[calc(100dvh-200px)]">
+                {selectedConversation && (
+                  <div className="md:hidden border-b border-border px-3 py-3 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={handleBackToList}
+                      data-testid="button-back-to-list-empty"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <MessageSquare className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
+                    <p className="text-lg font-medium">{t("inbox", "selectConversation")}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t("inbox", "selectConversationDesc")}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

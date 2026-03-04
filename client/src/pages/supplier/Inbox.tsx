@@ -1571,13 +1571,28 @@ export default function SupplierInbox() {
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <MessageSquare className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                  <p className="text-lg font-medium">Wählen Sie eine Konversation</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Wählen Sie ein Restaurant aus der Liste
-                  </p>
+              <div className="flex-1 flex flex-col">
+                {selectedConversation && (
+                  <div className="md:hidden border-b border-border px-3 py-3 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={handleBackToList}
+                      data-testid="button-back-to-list-empty"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <MessageSquare className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
+                    <p className="text-lg font-medium">Wählen Sie eine Konversation</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Wählen Sie ein Restaurant aus der Liste
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
