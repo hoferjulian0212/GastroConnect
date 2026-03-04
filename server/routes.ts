@@ -223,6 +223,27 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/heartbeat", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) return res.status(400).json({ error: "userId required" });
+      await storage.updateLastSeen(userId);
+      res.json({ ok: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update heartbeat" });
+    }
+  });
+
+  app.get("/api/users/:id/status", async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      res.json({ lastSeenAt: user.lastSeenAt || null });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch status" });
+    }
+  });
+
   app.get("/api/users/:id", async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);

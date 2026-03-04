@@ -16,6 +16,8 @@ import { Separator } from "@/components/ui/separator";
 
 import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
+import OnlineStatus from "@/components/OnlineStatus";
+import { useHeartbeat } from "@/hooks/useHeartbeat";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import { Label } from "@/components/ui/label";
@@ -130,6 +132,7 @@ export default function SupplierInbox() {
   const { lang } = useLanguage();
   const t = useT(lang);
   const dateFnsLocale = lang === "it" ? it : de;
+  useHeartbeat(currentUser?.id);
   const [, setLocation] = useLocation();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
@@ -619,9 +622,11 @@ export default function SupplierInbox() {
                                   {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
-                              {hasUnread && (
+                              {hasUnread ? (
                                 <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary border-2 border-background animate-pulse" />
-                              )}
+                              ) : conv.otherUser.lastSeenAt && (Date.now() - new Date(conv.otherUser.lastSeenAt).getTime()) < 120000 ? (
+                                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-background" />
+                              ) : null}
                             </div>
                             <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="flex items-center justify-between gap-2">
@@ -682,9 +687,7 @@ export default function SupplierInbox() {
                       <p className="font-medium text-sm md:text-base truncate" data-testid="text-conversation-partner">
                         {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
                       </p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">
-                        {selectedConv.otherUser.email}
-                      </p>
+                      <OnlineStatus userId={selectedConv.otherUser.id} size="sm" />
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => setOpenActionsPopover(true)} data-testid="button-open-actions">
                       <ClipboardList className="h-5 w-5" />

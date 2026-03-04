@@ -26,6 +26,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
 import QuantityInput from "@/components/QuantityInput";
+import OnlineStatus from "@/components/OnlineStatus";
+import { useHeartbeat } from "@/hooks/useHeartbeat";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus, getComplaintStatus } from "@/lib/translations";
 
@@ -143,6 +145,7 @@ export default function RestaurantInbox() {
   const { lang } = useLanguage();
   const t = useT(lang);
   const dateLocale = lang === "it" ? it : de;
+  useHeartbeat(currentUser?.id);
   const [location, setLocation] = useLocation();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
@@ -915,9 +918,11 @@ export default function RestaurantInbox() {
                                   {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
-                              {hasUnread && (
+                              {hasUnread ? (
                                 <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary border-2 border-background animate-pulse" />
-                              )}
+                              ) : conv.otherUser.lastSeenAt && (Date.now() - new Date(conv.otherUser.lastSeenAt).getTime()) < 120000 ? (
+                                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-background" />
+                              ) : null}
                             </div>
                             <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="flex items-center justify-between gap-2">
@@ -979,9 +984,7 @@ export default function RestaurantInbox() {
                         <p className="font-medium text-sm md:text-base truncate" data-testid="text-conversation-partner">
                           {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
                         </p>
-                        <p className="text-xs text-muted-foreground hidden sm:block truncate">
-                          {selectedConv.otherUser.email}
-                        </p>
+                        <OnlineStatus userId={selectedConv.otherUser.id} size="sm" />
                       </div>
                     </div>
                     <div className="flex items-center gap-1">

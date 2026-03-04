@@ -31,6 +31,7 @@ export interface IStorage {
   getUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
+  updateLastSeen(userId: string): Promise<void>;
 
   // Products
   getProducts(): Promise<ProductWithSupplier[]>;
@@ -192,6 +193,10 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
     const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return updated;
+  }
+
+  async updateLastSeen(userId: string): Promise<void> {
+    await db.update(users).set({ lastSeenAt: new Date() }).where(eq(users.id, userId));
   }
 
   // Products

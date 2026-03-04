@@ -23,6 +23,7 @@ export const users = pgTable("users", {
   companyName: text("company_name"),
   description: text("description"),
   profileImageUrl: text("profile_image_url"),
+  lastSeenAt: timestamp("last_seen_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
