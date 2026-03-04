@@ -585,7 +585,9 @@ export default function SupplierHome() {
                             fontSize: "12px",
                             boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                           }}
+                          cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
                           formatter={(value: number) => [`${value.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 2 })}€`, t("supplierHome", "revenue")]}
+                          isAnimationActive={false}
                         />
                         <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={40} />
                       </BarChart>
