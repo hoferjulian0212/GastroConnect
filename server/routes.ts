@@ -1463,21 +1463,17 @@ export async function registerRoutes(
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
+      const endOfTomorrow = new Date(tomorrow);
+      endOfTomorrow.setDate(endOfTomorrow.getDate() + 1);
+
       const relevant = allOrders.filter(o => {
-        if (o.status === "delivered") {
-          const updatedAt = o.updatedAt ? new Date(o.updatedAt) : null;
-          if (!updatedAt) return false;
-          return updatedAt >= today && updatedAt < tomorrow;
-        }
-        if (o.status === "confirmed" || o.status === "in_delivery") {
-          return true;
-        }
-        return false;
+        if (o.status !== "in_delivery") return false;
+        if (!o.requestedDeliveryDate) return true;
+        const dd = new Date(o.requestedDeliveryDate + "T00:00:00");
+        return dd >= today && dd < endOfTomorrow;
       });
 
       relevant.sort((a, b) => {
-        if (a.status === "delivered" && b.status !== "delivered") return 1;
-        if (a.status !== "delivered" && b.status === "delivered") return -1;
         const dateA = a.requestedDeliveryDate ? new Date(a.requestedDeliveryDate + "T00:00:00").getTime() : Infinity;
         const dateB = b.requestedDeliveryDate ? new Date(b.requestedDeliveryDate + "T00:00:00").getTime() : Infinity;
         return dateA - dateB;

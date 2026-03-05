@@ -8,7 +8,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { format, formatDistanceToNow, isToday } from "date-fns";
+import { format, formatDistanceToNow, isToday, isTomorrow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
@@ -235,17 +235,15 @@ export default function SupplierHome() {
                   ? new Date(order.requestedDeliveryDate + "T00:00:00")
                   : null;
                 const isTodayDelivery = deliveryDate ? isToday(deliveryDate) : false;
-                const isDelivered = order.status === "delivered";
+                const isTomorrowDelivery = deliveryDate ? isTomorrow(deliveryDate) : false;
 
                 return (
                   <div
                     key={order.id}
                     className={`rounded-xl border p-2.5 md:p-3 transition-all ${
-                      isDelivered
-                        ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
-                        : isTodayDelivery
-                          ? "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
-                          : "border-border bg-white dark:bg-gray-900"
+                      isTodayDelivery
+                        ? "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
+                        : "border-border bg-white dark:bg-gray-900"
                     }`}
                     data-testid={`delivery-item-${order.id}`}
                   >
@@ -256,32 +254,28 @@ export default function SupplierHome() {
                         data-testid={`delivery-link-${order.id}`}
                       >
                         <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 ${
-                          isDelivered
-                            ? "bg-green-100 dark:bg-green-900/30"
-                            : isTodayDelivery
-                              ? "bg-amber-100 dark:bg-amber-900/30"
-                              : "bg-primary/10"
+                          isTodayDelivery
+                            ? "bg-amber-100 dark:bg-amber-900/30"
+                            : "bg-primary/10"
                         }`}>
-                          {isDelivered ? (
-                            <Check className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Truck className={`h-4 w-4 ${isTodayDelivery ? "text-amber-600" : "text-primary"}`} />
-                          )}
+                          <Truck className={`h-4 w-4 ${isTodayDelivery ? "text-amber-600" : "text-primary"}`} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                            <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5`} variant="outline">
-                              {getOrderStatus(order.status, lang, true)}
-                            </Badge>
-                            {isTodayDelivery && !isDelivered && (
+                            {isTodayDelivery && (
                               <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] md:text-xs px-1.5" variant="outline">
                                 {t("supplierHome", "today")}
                               </Badge>
                             )}
-                            {isDelivered && (
-                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] md:text-xs px-1.5" variant="outline">
-                                {t("supplierHome", "deliveredToday")}
+                            {isTomorrowDelivery && (
+                              <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] md:text-xs px-1.5" variant="outline">
+                                {format(deliveryDate!, "dd.MM.yyyy", { locale: dateLocale })}
+                              </Badge>
+                            )}
+                            {!deliveryDate && (
+                              <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 text-[10px] md:text-xs px-1.5" variant="outline">
+                                {t("supplierHome", "noDeliveryDate")}
                               </Badge>
                             )}
                           </div>
@@ -291,81 +285,54 @@ export default function SupplierHome() {
                               {order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}
                             </p>
                           </div>
-                          <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
-                            {deliveryDate
-                              ? format(deliveryDate, "dd.MM.yyyy", { locale: dateLocale })
-                              : t("supplierHome", "noDeliveryDate")}
-                          </p>
                         </div>
                       </Link>
 
                       <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <span className="text-sm md:text-base font-bold">{order.totalAmount}€</span>
-                        {!isDelivered && order.status !== "cancelled" && (
-                          cardWizard?.orderId === order.id ? (
-                            <div className="flex flex-col items-end gap-1">
-                              <p className="text-[10px] md:text-xs font-medium text-foreground">
-                                {cardWizard.action === "confirmed" && (lang === "de" ? "Bestellung bestätigen?" : "Confermare l'ordine?")}
-                                {cardWizard.action === "in_delivery" && (lang === "de" ? "In Lieferung markieren?" : "Contrassegnare in consegna?")}
-                                {cardWizard.action === "delivered" && (lang === "de" ? "Als geliefert markieren?" : "Contrassegnare come consegnato?")}
-                                {cardWizard.action === "cancelled" && (lang === "de" ? "Bestellung stornieren?" : "Annullare l'ordine?")}
-                              </p>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 px-2 text-[10px] md:text-xs"
-                                  onClick={() => setCardWizard(null)}
-                                  disabled={updateStatusMutation.isPending}
-                                  data-testid={`cancel-wizard-${order.id}`}
-                                >
-                                  <X className="h-3 w-3 mr-0.5" />
-                                  {t("common", "cancel")}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  className={`h-7 px-2 text-[10px] md:text-xs ${cardWizard.action === "cancelled" ? "bg-red-600 hover:bg-red-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"}`}
-                                  onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: cardWizard.action })}
-                                  disabled={updateStatusMutation.isPending}
-                                  data-testid={`confirm-wizard-${order.id}`}
-                                >
-                                  <Check className="h-3 w-3 mr-0.5" />
-                                  {t("supplierHome", "confirm")}
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex flex-wrap gap-1 justify-end">
-                              {order.status === "pending" && (
-                                <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setCardWizard({ orderId: order.id, action: "confirmed" })} disabled={updateStatusMutation.isPending} data-testid={`home-confirm-${order.id}`}>
-                                  <CheckCircle className="h-3 w-3 mr-0.5" />
-                                  {lang === "de" ? "Bestätigen" : "Confermare"}
-                                </Button>
-                              )}
-                              {order.status === "confirmed" && (
-                                <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`home-in-delivery-${order.id}`}>
-                                  <Truck className="h-3 w-3 mr-0.5" />
-                                  {lang === "de" ? "In Lieferung" : "In consegna"}
-                                </Button>
-                              )}
-                              {order.status === "in_delivery" && (
-                                <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/30" variant="outline" onClick={() => setCardWizard({ orderId: order.id, action: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`home-delivered-${order.id}`}>
-                                  <Package className="h-3 w-3 mr-0.5" />
-                                  {lang === "de" ? "Geliefert" : "Consegnato"}
-                                </Button>
-                              )}
-                              {!order.requestedDeliveryDate && order.status !== "pending" && (
-                                <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950/30" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} data-testid={`home-set-date-${order.id}`}>
-                                  <CalendarDays className="h-3 w-3 mr-0.5" />
-                                  {lang === "de" ? "Datum setzen" : "Imposta data"}
-                                </Button>
-                              )}
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setCardWizard({ orderId: order.id, action: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid={`home-cancel-${order.id}`}>
-                                <XCircle className="h-3 w-3 mr-0.5 text-destructive" />
+                        {cardWizard?.orderId === order.id ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <p className="text-[10px] md:text-xs font-medium text-foreground">
+                              {cardWizard.action === "delivered" && (lang === "de" ? "Als geliefert markieren?" : "Contrassegnare come consegnato?")}
+                              {cardWizard.action === "cancelled" && (lang === "de" ? "Bestellung stornieren?" : "Annullare l'ordine?")}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 text-[10px] md:text-xs"
+                                onClick={() => setCardWizard(null)}
+                                disabled={updateStatusMutation.isPending}
+                                data-testid={`cancel-wizard-${order.id}`}
+                              >
+                                <X className="h-3 w-3 mr-0.5" />
+                                {t("common", "cancel")}
+                              </Button>
+                              <Button
+                                size="sm"
+                                className={`h-7 px-2 text-[10px] md:text-xs ${cardWizard.action === "cancelled" ? "bg-red-600 hover:bg-red-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"}`}
+                                onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: cardWizard.action })}
+                                disabled={updateStatusMutation.isPending}
+                                data-testid={`confirm-wizard-${order.id}`}
+                              >
+                                <Check className="h-3 w-3 mr-0.5" />
+                                {t("supplierHome", "confirm")}
                               </Button>
                             </div>
-                          )
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1 justify-end">
+                            <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/30" variant="outline" onClick={() => setCardWizard({ orderId: order.id, action: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`home-delivered-${order.id}`}>
+                              <Package className="h-3 w-3 mr-0.5" />
+                              {lang === "de" ? "Geliefert" : "Consegnato"}
+                            </Button>
+                            {!order.requestedDeliveryDate && (
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950/30" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} data-testid={`home-set-date-${order.id}`}>
+                                <CalendarDays className="h-3 w-3 mr-0.5" />
+                                {lang === "de" ? "Datum setzen" : "Imposta data"}
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
