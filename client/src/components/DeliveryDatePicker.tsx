@@ -115,6 +115,11 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
               locale={dateLocale}
               fromDate={today}
               toDate={addDays(today, 60)}
+              classNames={{
+                caption: "flex justify-center pt-1 relative items-center w-full",
+                nav_button_previous: "absolute left-0",
+                nav_button_next: "absolute right-0",
+              }}
               data-testid="calendar-delivery-date"
             />
           </div>

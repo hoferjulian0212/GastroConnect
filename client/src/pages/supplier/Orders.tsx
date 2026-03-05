@@ -338,6 +338,12 @@ export default function SupplierOrders() {
                   <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
                   {lang === "de" ? "Stornieren" : "Annullare"}
                 </Button>
+                {!order.requestedDeliveryDate && order.status !== "pending" && (
+                  <Button size="sm" variant="outline" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-set-date-${order.id}`}>
+                    <CalendarDays className="h-3.5 w-3.5 mr-1 text-purple-600" />
+                    {lang === "de" ? "Datum setzen" : "Imposta data"}
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -684,6 +690,12 @@ export default function SupplierOrders() {
                         {lang === "de" ? "Geliefert" : "Consegnato"}
                       </Button>
                     )}
+                    {!detailOrder.requestedDeliveryDate && detailOrder.status !== "pending" && (
+                      <Button size="sm" variant="outline" onClick={() => setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId })} disabled={updateStatusMutation.isPending} data-testid="button-set-date">
+                        <CalendarDays className="h-3.5 w-3.5 mr-1 text-purple-600" />
+                        {lang === "de" ? "Datum setzen" : "Imposta data"}
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid="button-status-cancelled">
                       <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
                       {lang === "de" ? "Stornieren" : "Annullare"}
@@ -887,14 +899,25 @@ export default function SupplierOrders() {
         isPending={updateStatusMutation.isPending}
         onConfirm={(date) => {
           if (deliveryDatePicker) {
-            updateStatusMutation.mutate(
-              { orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date },
-              {
-                onSuccess: () => {
+            const order = orders?.find(o => o.id === deliveryDatePicker.orderId);
+            if (order && order.status === "confirmed") {
+              updateStatusMutation.mutate(
+                { orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date },
+                { onSuccess: () => { setDeliveryDatePicker(null); } }
+              );
+            } else {
+              apiRequest("PATCH", `/api/orders/${deliveryDatePicker.orderId}/reschedule`, { requestedDeliveryDate: date })
+                .then(() => {
+                  queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/supplier/upcoming-deliveries'] });
                   setDeliveryDatePicker(null);
-                },
-              }
-            );
+                  toast({ title: lang === "de" ? "Lieferdatum gesetzt" : "Data di consegna impostata" });
+                })
+                .catch(() => {
+                  setDeliveryDatePicker(null);
+                  toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+                });
+            }
           }
         }}
       />

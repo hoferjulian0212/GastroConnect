@@ -25,6 +25,7 @@ export default function RestaurantHome() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
+  const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null);
   const dateLocale = lang === "it" ? it : de;
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [addedProductIds, setAddedProductIds] = useState<Set<string>>(new Set());
@@ -828,79 +829,92 @@ export default function RestaurantHome() {
                   ))}
                 </div>
               ) : templates && templates.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {templates.slice(0, 3).map((tmpl) => {
                     const inStockItems = tmpl.items.filter(i => i.product.inStock !== false);
                     const outOfStockCount = tmpl.items.length - inStockItems.length;
                     const total = inStockItems.reduce((sum, i) => sum + parseFloat(i.product.price) * i.quantity, 0);
-                    const supplierGroups = new Map<string, { name: string; items: typeof tmpl.items }>();
-                    for (const item of tmpl.items) {
-                      const sid = item.product.supplierId;
-                      const sname = item.product.supplier?.companyName || item.product.supplier?.name || "";
-                      if (!supplierGroups.has(sid)) supplierGroups.set(sid, { name: sname, items: [] });
-                      supplierGroups.get(sid)!.items.push(item);
-                    }
-                    const isOrdering = orderingTemplateId === tmpl.id && orderFromTemplateMutation.isPending;
+                    const isExpanded = expandedTemplateId === tmpl.id;
 
                     return (
                       <div
                         key={tmpl.id}
-                        className="rounded-xl border border-border bg-card p-3 space-y-2"
+                        className="rounded-xl border border-border bg-card overflow-hidden transition-all"
                         data-testid={`template-card-${tmpl.id}`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-sm font-semibold truncate" data-testid={`text-template-name-${tmpl.id}`}>{tmpl.name}</h3>
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {tmpl.items.length} {t("common", "items")}
-                          </span>
-                        </div>
-                        <div className="space-y-1.5">
-                          {Array.from(supplierGroups.entries()).map(([sid, group]) => (
-                            <div key={sid}>
-                              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{group.name}</p>
-                              <div className="space-y-0.5 mt-0.5">
-                                {group.items.map((item) => {
-                                  const oos = item.product.inStock === false;
-                                  return (
-                                    <div key={item.id} className={`flex items-center gap-2 text-xs ${oos ? "text-muted-foreground/50 line-through" : ""}`} data-testid={`template-item-${item.id}`}>
-                                      {item.product.imageUrl ? (
-                                        <img src={item.product.imageUrl} alt="" className="h-6 w-6 rounded object-cover shrink-0" />
-                                      ) : (
-                                        <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0">
-                                          <Package className="h-3 w-3 text-muted-foreground" />
-                                        </div>
-                                      )}
-                                      <span className="truncate flex-1">
-                                        <span className="font-medium">{item.quantity}x</span> {item.product.name}
-                                      </span>
-                                      <span className="shrink-0 ml-2 tabular-nums">{(parseFloat(item.product.price) * item.quantity).toFixed(2)}&euro;</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/50">
-                          <div className="flex items-center gap-2">
+                        <div
+                          className="flex items-center justify-between gap-2 p-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
+                          onClick={() => setExpandedTemplateId(isExpanded ? null : tmpl.id)}
+                          data-testid={`template-header-${tmpl.id}`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <ClipboardList className="h-4 w-4 text-orange-500 shrink-0" />
+                            <h3 className="text-sm font-semibold truncate" data-testid={`text-template-name-${tmpl.id}`}>{tmpl.name}</h3>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs text-muted-foreground">
+                              {tmpl.items.length} {t("common", "items")}
+                            </span>
                             <span className="text-sm font-bold tabular-nums">{total.toFixed(2)}&euro;</span>
                             {outOfStockCount > 0 && (
-                              <Badge variant="outline" className="text-[10px] border-red-200 text-red-500 px-1.5">
-                                {outOfStockCount} {lang === "de" ? "nicht verfuegbar" : "non disponibile"}
+                              <Badge variant="outline" className="text-[10px] border-red-200 text-red-500 px-1">
+                                {outOfStockCount}
                               </Badge>
                             )}
+                            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                           </div>
-                          <Button
-                            size="sm"
-                            className="text-xs h-7 gap-1"
-                            disabled={inStockItems.length === 0}
-                            onClick={() => openTemplateWizard(tmpl)}
-                            data-testid={`button-order-template-${tmpl.id}`}
-                          >
-                            <ShoppingCart className="h-3 w-3" />
-                            {lang === "de" ? "Bestellen" : "Ordina"}
-                          </Button>
                         </div>
+
+                        {isExpanded && (
+                          <div className="px-2.5 pb-2.5 space-y-2 border-t border-border/50 pt-2">
+                            {(() => {
+                              const supplierGroups = new Map<string, { name: string; items: typeof tmpl.items }>();
+                              for (const item of tmpl.items) {
+                                const sid = item.product.supplierId;
+                                const sname = item.product.supplier?.companyName || item.product.supplier?.name || "";
+                                if (!supplierGroups.has(sid)) supplierGroups.set(sid, { name: sname, items: [] });
+                                supplierGroups.get(sid)!.items.push(item);
+                              }
+                              return Array.from(supplierGroups.entries()).map(([sid, group]) => (
+                                <div key={sid}>
+                                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{group.name}</p>
+                                  <div className="space-y-0.5 mt-0.5">
+                                    {group.items.map((item) => {
+                                      const oos = item.product.inStock === false;
+                                      return (
+                                        <div key={item.id} className={`flex items-center gap-2 text-xs ${oos ? "text-muted-foreground/50 line-through" : ""}`} data-testid={`template-item-${item.id}`}>
+                                          {item.product.imageUrl ? (
+                                            <img src={item.product.imageUrl} alt="" className="h-6 w-6 rounded object-cover shrink-0" />
+                                          ) : (
+                                            <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0">
+                                              <Package className="h-3 w-3 text-muted-foreground" />
+                                            </div>
+                                          )}
+                                          <span className="truncate flex-1">
+                                            <span className="font-medium">{item.quantity}x</span> {item.product.name}
+                                          </span>
+                                          <span className="shrink-0 ml-2 tabular-nums">{(parseFloat(item.product.price) * item.quantity).toFixed(2)}&euro;</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ));
+                            })()}
+                            <div className="flex items-center justify-end gap-2 pt-1.5">
+                              <Button
+                                size="sm"
+                                className="text-xs h-7 gap-1"
+                                disabled={inStockItems.length === 0}
+                                onClick={(e) => { e.stopPropagation(); openTemplateWizard(tmpl); }}
+                                data-testid={`button-order-template-${tmpl.id}`}
+                              >
+                                <ShoppingCart className="h-3 w-3" />
+                                {lang === "de" ? "Bestellen" : "Ordina"}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

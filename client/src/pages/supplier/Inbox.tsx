@@ -1192,16 +1192,30 @@ export default function SupplierInbox() {
                                                   </Button>
                                                 )}
                                               </div>
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="w-full text-muted-foreground text-xs"
-                                                onClick={() => setOrderDetailId(message.orderId)}
-                                                data-testid={`button-order-details-${message.id}`}
-                                              >
-                                                <Eye className="h-3.5 w-3.5 mr-1.5" />
-                                                {lang === "it" ? "Dettagli ordine" : "Details anzeigen"}
-                                              </Button>
+                                              <div className="flex gap-2">
+                                                {orderStatus && !["delivered", "cancelled", "pending"].includes(orderStatus) && selectedConv && (
+                                                  <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="flex-1 text-xs px-2"
+                                                    onClick={() => setDeliveryDatePicker({ orderId: message.orderId!, restaurantId: selectedConv.restaurantId })}
+                                                    data-testid={`button-set-date-${message.id}`}
+                                                  >
+                                                    <CalendarDays className="h-3.5 w-3.5 mr-1 shrink-0 text-purple-600" />
+                                                    {lang === "it" ? "Imposta data" : "Datum setzen"}
+                                                  </Button>
+                                                )}
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="flex-1 text-muted-foreground text-xs"
+                                                  onClick={() => setOrderDetailId(message.orderId)}
+                                                  data-testid={`button-order-details-${message.id}`}
+                                                >
+                                                  <Eye className="h-3.5 w-3.5 mr-1.5" />
+                                                  {lang === "it" ? "Dettagli ordine" : "Details anzeigen"}
+                                                </Button>
+                                              </div>
                                             </>
                                           )}
                                         </div>
@@ -2133,10 +2147,26 @@ export default function SupplierInbox() {
         isPending={updateOrderStatusMutation.isPending}
         onConfirm={(date) => {
           if (deliveryDatePicker) {
-            updateOrderStatusMutation.mutate(
-              { orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date },
-              { onSuccess: () => { setDeliveryDatePicker(null); setCardWizard(null); } }
-            );
+            if (cardWizard?.action === "in_delivery") {
+              updateOrderStatusMutation.mutate(
+                { orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date },
+                { onSuccess: () => { setDeliveryDatePicker(null); setCardWizard(null); } }
+              );
+            } else {
+              apiRequest("PATCH", `/api/orders/${deliveryDatePicker.orderId}/reschedule`, { requestedDeliveryDate: date })
+                .then(() => {
+                  queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/supplier/upcoming-deliveries'] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+                  setDeliveryDatePicker(null);
+                  setCardWizard(null);
+                  toast({ title: lang === "de" ? "Lieferdatum gesetzt" : "Data di consegna impostata" });
+                })
+                .catch(() => {
+                  setDeliveryDatePicker(null);
+                  toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+                });
+            }
           }
         }}
       />

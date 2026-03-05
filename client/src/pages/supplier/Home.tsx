@@ -702,34 +702,32 @@ export default function SupplierHome() {
 
               {detailedStats.topProducts.length > 0 && (
                 <div>
-                  <p className="text-xs md:text-sm font-medium text-foreground mb-4">{t("supplierHome", "topProducts")}</p>
-                  <div className="space-y-4 md:space-y-5">
-                    {detailedStats.topProducts.map((product, idx) => {
+                  <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "topProducts")}</p>
+                  <div className="grid grid-cols-2 gap-2 md:gap-3">
+                    {detailedStats.topProducts.slice(0, 6).map((product, idx) => {
                       const maxQty = detailedStats.topProducts[0]?.quantity || 1;
                       const pct = Math.round((product.quantity / maxQty) * 100);
                       return (
-                        <div key={idx} data-testid={`top-product-${idx}`}>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <span className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-primary text-sm font-bold shrink-0">
-                                {idx + 1}
-                              </span>
-                              <span className="text-sm md:text-base font-medium truncate">{product.name}</span>
-                            </div>
-                            <div className="flex items-center gap-3 shrink-0 ml-3">
-                              <span className="text-xs md:text-sm text-muted-foreground">
-                                {product.quantity}x {t("supplierHome", "unitsSold")}
-                              </span>
-                              <span className="text-sm md:text-base font-semibold min-w-[56px] text-right">
-                                {product.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
-                              </span>
-                            </div>
+                        <div key={idx} className="rounded-lg border border-border bg-white dark:bg-gray-900 p-2.5 md:p-3" data-testid={`top-product-${idx}`}>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">
+                              {idx + 1}
+                            </span>
+                            <span className="text-xs md:text-sm font-medium truncate flex-1">{product.name}</span>
                           </div>
-                          <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
                             <div
                               className="h-full bg-primary rounded-full transition-all duration-500"
                               style={{ width: `${pct}%` }}
                             />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] md:text-xs text-muted-foreground">
+                              {product.quantity}x
+                            </span>
+                            <span className="text-xs md:text-sm font-semibold">
+                              {product.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
+                            </span>
                           </div>
                         </div>
                       );
