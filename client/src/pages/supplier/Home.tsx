@@ -2,7 +2,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays, FileText, Loader2, Send } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, Product, ConversationWithUser } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,9 @@ export default function SupplierHome() {
 
   const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string } | null>(null);
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
+  const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
+  const [showMessageInput, setShowMessageInput] = useState(false);
+  const [orderMessage, setOrderMessage] = useState("");
 
   const { data: recentOrders, isLoading: ordersLoading } = useQuery<OrderWithDetails[]>({
     queryKey: ['/api/supplier/orders/recent', currentUser?.id],
@@ -134,8 +139,11 @@ export default function SupplierHome() {
         ...(requestedDeliveryDate ? { requestedDeliveryDate } : {}),
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       setCardWizard(null);
+      if (detailOrder && detailOrder.id === variables.orderId) {
+        setDetailOrder({ ...detailOrder, status: variables.status });
+      }
       invalidateOrderQueries();
       toast({
         title: lang === "de" ? "Status aktualisiert" : "Stato aggiornato",
@@ -171,6 +179,45 @@ export default function SupplierHome() {
         description: lang === "de" ? "Lieferdatum konnte nicht gesetzt werden." : "Impossibile impostare la data di consegna.",
         variant: "destructive",
       });
+    },
+  });
+
+  const deliveryNoteMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const res = await apiRequest("POST", `/api/orders/${orderId}/delivery-note`);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      invalidateOrderQueries();
+      toast({ title: lang === "de" ? "Lieferschein erstellt" : "Bolla di consegna creata" });
+      if (data?.documentUrl) window.open(data.documentUrl, "_blank");
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+    },
+  });
+
+  const sendOrderMessageMutation = useMutation({
+    mutationFn: async ({ order, message }: { order: OrderWithDetails; message: string }) => {
+      const convRes = await apiRequest("POST", "/api/conversations", {
+        restaurantId: order.restaurantId,
+        supplierId: order.supplierId,
+      });
+      const conv = await convRes.json();
+      await apiRequest("POST", `/api/conversations/${conv.id}/messages`, {
+        senderId: currentUser?.id,
+        content: message,
+        messageType: "text",
+        orderId: order.id,
+      });
+    },
+    onSuccess: () => {
+      setShowMessageInput(false);
+      setOrderMessage("");
+      toast({ title: lang === "de" ? "Nachricht gesendet" : "Messaggio inviato" });
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
     },
   });
 
@@ -248,9 +295,9 @@ export default function SupplierHome() {
                     data-testid={`delivery-item-${order.id}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <Link
-                        href={`/supplier/orders?orderId=${order.id}`}
+                      <div
                         className="flex items-start gap-2.5 min-w-0 flex-1 cursor-pointer"
+                        onClick={() => setDetailOrder(order)}
                         data-testid={`delivery-link-${order.id}`}
                       >
                         <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 ${
@@ -286,7 +333,7 @@ export default function SupplierHome() {
                             </p>
                           </div>
                         </div>
-                      </Link>
+                      </div>
 
                       <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <span className="text-sm md:text-base font-bold">{order.totalAmount}€</span>
@@ -481,9 +528,9 @@ export default function SupplierHome() {
                   className="p-2.5 md:p-3 rounded-xl border border-border bg-white dark:bg-gray-900 transition-all duration-200 hover:shadow-md hover:border-primary/30"
                   data-testid={`order-item-${order.id}`}
                 >
-                  <Link
-                    href={`/supplier/orders?orderId=${order.id}`}
+                  <div
                     className="flex items-center justify-between cursor-pointer"
+                    onClick={() => setDetailOrder(order)}
                   >
                     <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
@@ -515,7 +562,7 @@ export default function SupplierHome() {
                         {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
                       </span>
                     </div>
-                  </Link>
+                  </div>
                   {order.status !== "delivered" && order.status !== "cancelled" && (
                     <div className="mt-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
                       {cardWizard?.orderId === order.id ? (
@@ -781,6 +828,186 @@ export default function SupplierHome() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!detailOrder} onOpenChange={(open) => { if (!open) { setDetailOrder(null); setShowMessageInput(false); setOrderMessage(""); } }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5 text-primary" />
+              {lang === "de" ? "Auftrag" : "Ordine"} #{detailOrder?.id.slice(0, 8)}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === "de" ? "Auftragsdetails und Artikelübersicht" : "Dettagli ordine e panoramica articoli"}
+            </DialogDescription>
+          </DialogHeader>
+          {detailOrder && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
+                  {getOrderStatus(detailOrder.status, lang, true)}
+                </Badge>
+                {detailOrder.status !== "delivered" && detailOrder.status !== "cancelled" && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {detailOrder.status === "pending" && (
+                      <Button size="sm" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "confirmed" }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-confirm">
+                        <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                        {lang === "de" ? "Bestätigen" : "Confermare"}
+                      </Button>
+                    )}
+                    {detailOrder.status === "confirmed" && (
+                      <Button size="sm" onClick={() => { setDetailOrder(null); setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-in-delivery">
+                        <Truck className="h-3.5 w-3.5 mr-1" />
+                        {lang === "de" ? "In Lieferung" : "In consegna"}
+                      </Button>
+                    )}
+                    {detailOrder.status === "in_delivery" && (
+                      <Button size="sm" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid="home-detail-delivered">
+                        <Package className="h-3.5 w-3.5 mr-1" />
+                        {lang === "de" ? "Geliefert" : "Consegnato"}
+                      </Button>
+                    )}
+                    {!detailOrder.requestedDeliveryDate && detailOrder.status !== "pending" && (
+                      <Button size="sm" variant="outline" onClick={() => { setDetailOrder(null); setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-set-date">
+                        <CalendarDays className="h-3.5 w-3.5 mr-1 text-purple-600" />
+                        {lang === "de" ? "Datum setzen" : "Imposta data"}
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid="home-detail-cancel">
+                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                      {lang === "de" ? "Stornieren" : "Annullare"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t("common", "restaurant")}</span>
+                  <span className="font-medium">{detailOrder.restaurant?.companyName || detailOrder.restaurant?.name || t("common", "unknown")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{lang === "de" ? "Bestellt am" : "Ordinato il"}</span>
+                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{lang === "de" ? "Gewünschter Liefertermin" : "Data consegna richiesta"}</span>
+                  <span>
+                    {detailOrder.requestedDeliveryDate
+                      ? new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })
+                      : (lang === "de" ? "Sobald wie möglich" : "Il prima possibile")}
+                  </span>
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-3">
+                <p className="text-sm font-medium mb-2">{t("common", "items")} ({detailOrder.items?.length || 0})</p>
+                <div className="space-y-2">
+                  {detailOrder.items?.map((item) => (
+                    <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50" data-testid={`home-detail-item-${item.id}`}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        {item.productImageUrl ? (
+                          <img src={item.productImageUrl} alt={item.productName} className="h-8 w-8 rounded object-cover shrink-0" />
+                        ) : (
+                          <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
+                            <Package className="h-4 w-4 text-muted-foreground/40" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <span className="font-medium">{item.quantity}x</span>{" "}
+                          <span>{item.productName}</span>
+                          <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
+                        </div>
+                      </div>
+                      <span className="font-medium shrink-0 ml-2">{item.totalPrice}€</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {detailOrder.notes && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-sm font-medium mb-1">{lang === "de" ? "Anmerkungen" : "Note"}</p>
+                  <p className="text-sm text-muted-foreground">{detailOrder.notes}</p>
+                </div>
+              )}
+
+              <div className="border-t border-border pt-3 flex items-center justify-between">
+                <span className="text-sm font-medium">{t("common", "total")}</span>
+                <span className="text-lg font-bold" data-testid="text-home-detail-total">{detailOrder.totalAmount}€</span>
+              </div>
+
+              {detailOrder.status === "in_delivery" && (
+                <div className="border-t border-border pt-3">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => deliveryNoteMutation.mutate(detailOrder.id)}
+                    disabled={deliveryNoteMutation.isPending}
+                    data-testid="home-detail-delivery-note"
+                  >
+                    {deliveryNoteMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4 mr-2" />
+                    )}
+                    {deliveryNoteMutation.isPending ? (lang === "de" ? "Wird erstellt..." : "Creazione...") : (lang === "de" ? "Lieferschein erstellen" : "Crea bolla di consegna")}
+                  </Button>
+                </div>
+              )}
+
+              <div className="border-t border-border pt-3">
+                {!showMessageInput ? (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowMessageInput(true)}
+                    data-testid="home-detail-write-message"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    {lang === "de" ? "Nachricht schreiben" : "Scrivi messaggio"}
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/50 border-l-3 border-primary/50">
+                      <ShoppingBag className="h-3 w-3 text-primary shrink-0" />
+                      <span className="text-[11px] text-muted-foreground truncate">
+                        {lang === "de" ? "Bestellung" : "Ordine"} #{detailOrder.id.substring(0, 8)} - {detailOrder.restaurant?.companyName || detailOrder.restaurant?.name}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Textarea
+                        value={orderMessage}
+                        onChange={(e) => setOrderMessage(e.target.value)}
+                        placeholder={lang === "de" ? "Ihre Nachricht..." : "Il tuo messaggio..."}
+                        rows={2}
+                        className="flex-1"
+                        data-testid="home-detail-message-input"
+                      />
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          size="icon"
+                          onClick={() => sendOrderMessageMutation.mutate({ order: detailOrder, message: orderMessage.trim() })}
+                          disabled={!orderMessage.trim() || sendOrderMessageMutation.isPending}
+                          data-testid="home-detail-send-message"
+                        >
+                          {sendOrderMessageMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => { setShowMessageInput(false); setOrderMessage(""); }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {deliveryDatePicker && (
         <DeliveryDatePicker
