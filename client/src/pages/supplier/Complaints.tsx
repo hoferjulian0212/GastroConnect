@@ -616,17 +616,6 @@ export default function SupplierComplaints() {
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => { setShowDetailDialog(false); setTimeout(() => openStatusWizard(selectedComplaint), 100); }}
-                    data-testid="button-detail-change-status"
-                  >
-                    <Settings className="h-3.5 w-3.5 mr-1.5" />
-                    {t("supplierComplaints", "updateStatus")}
-                  </Button>
-                </div>
               </div>
 
               <div className="border-t border-border pt-3 flex-1 overflow-auto min-h-0">
@@ -665,7 +654,22 @@ export default function SupplierComplaints() {
                 </div>
               </div>
 
-              <div className="border-t border-border pt-3 shrink-0 space-y-2">
+              <div className="border-t border-border pt-3 shrink-0 space-y-2.5">
+                <div className="rounded-lg bg-muted/40 p-3 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {lang === "de" ? "Aktionen" : "Azioni"}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setShowDetailDialog(false); setTimeout(() => openStatusWizard(selectedComplaint), 100); }}
+                    data-testid="button-detail-change-status"
+                  >
+                    <Settings className="h-3.5 w-3.5 mr-1.5" />
+                    {t("supplierComplaints", "updateStatus")}
+                  </Button>
+                </div>
+
                 <div className="flex gap-2">
                   <Textarea
                     value={newComment}
@@ -756,63 +760,68 @@ export default function SupplierComplaints() {
                   {selectedComplaint.restaurant?.companyName} • {formatShortDate(selectedComplaint.createdAt)}
                 </div>
               </div>
+            </div>
+          )}
 
-              <div className="flex flex-wrap gap-1.5">
-                {selectedComplaint.status === "open" && (
+          <div className="border-t border-border pt-4 space-y-3">
+            <div className="rounded-lg bg-muted/40 p-3 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {lang === "de" ? "Aktionen" : "Azioni"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {selectedComplaint?.status === "open" && (
                   <>
-                    <Button size="sm" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "in_progress" })} disabled={updateStatusMutation.isPending} data-testid="button-status-in_progress">
-                      <Loader2 className="h-3.5 w-3.5 mr-1" />
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "in_progress" })} disabled={updateStatusMutation.isPending} data-testid="button-status-in_progress">
+                      <Loader2 className="h-3.5 w-3.5 mr-1.5" />
                       {lang === "de" ? "In Bearbeitung" : "In lavorazione"}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
-                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                    <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
+                      <XCircle className="h-3.5 w-3.5 mr-1.5" />
                       {lang === "de" ? "Schließen" : "Chiudere"}
                     </Button>
                   </>
                 )}
-                {selectedComplaint.status === "in_progress" && (
+                {selectedComplaint?.status === "in_progress" && (
                   <>
-                    <Button size="sm" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "resolved" })} disabled={updateStatusMutation.isPending} data-testid="button-status-resolved">
-                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "resolved" })} disabled={updateStatusMutation.isPending} data-testid="button-status-resolved">
+                      <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
                       {lang === "de" ? "Gelöst" : "Risolto"}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
-                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                    <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
+                      <XCircle className="h-3.5 w-3.5 mr-1.5" />
                       {lang === "de" ? "Schließen" : "Chiudere"}
                     </Button>
                   </>
                 )}
-                {selectedComplaint.status === "resolved" && (
+                {selectedComplaint?.status === "resolved" && (
                   <>
-                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
-                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                    <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
+                      <XCircle className="h-3.5 w-3.5 mr-1.5" />
                       {lang === "de" ? "Schließen" : "Chiudere"}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
-                      <Clock className="h-3.5 w-3.5 mr-1" />
+                      <Clock className="h-3.5 w-3.5 mr-1.5" />
                       {lang === "de" ? "Wieder öffnen" : "Riaprire"}
                     </Button>
                   </>
                 )}
-                {selectedComplaint.status === "closed" && (
+                {selectedComplaint?.status === "closed" && (
                   <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
-                    <Clock className="h-3.5 w-3.5 mr-1" />
+                    <Clock className="h-3.5 w-3.5 mr-1.5" />
                     {lang === "de" ? "Wieder öffnen" : "Riaprire"}
                   </Button>
                 )}
               </div>
             </div>
-          )}
-
-          <DialogFooter className="gap-2">
             <Button
               variant="outline"
+              className="w-full"
               onClick={() => setShowStatusDialog(false)}
               data-testid="button-cancel-status"
             >
               {t("common", "cancel")}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

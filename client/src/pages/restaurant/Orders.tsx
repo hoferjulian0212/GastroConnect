@@ -1012,47 +1012,52 @@ export default function RestaurantOrders() {
                 <span className="text-lg font-bold" data-testid="text-detail-total">{detailOrder.totalAmount}€</span>
               </div>
 
-              {(canEditOrder(detailOrder) || canRequestChange(detailOrder)) && (
-                <div className="border-t border-border pt-3 flex flex-wrap gap-2">
-                  {canEditOrder(detailOrder) && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => { const o = detailOrder; setDetailOrder(null); openEditDialog(o); }}
-                        data-testid="button-detail-edit-order"
-                      >
-                        <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                        {t("orders", "editOrder")}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                        onClick={() => cancelOrderMutation.mutate(detailOrder.id)}
-                        disabled={cancelOrderMutation.isPending}
-                        data-testid="button-detail-cancel-order"
-                      >
-                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                        {lang === "de" ? "Stornieren" : "Annullare"}
-                      </Button>
-                    </>
-                  )}
-                  {canRequestChange(detailOrder) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { const o = detailOrder; setDetailOrder(null); setChangeRequestOrder(o); }}
-                      data-testid="button-detail-change-request"
-                    >
-                      <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
-                      {t("orders", "requestChange")}
-                    </Button>
-                  )}
-                </div>
-              )}
+              <div className="border-t border-border pt-4 space-y-2.5">
+                {(canEditOrder(detailOrder) || canRequestChange(detailOrder)) && (
+                  <div className="rounded-lg bg-muted/40 p-3 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {lang === "de" ? "Aktionen" : "Azioni"}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {canEditOrder(detailOrder) && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { const o = detailOrder; setDetailOrder(null); openEditDialog(o); }}
+                            data-testid="button-detail-edit-order"
+                          >
+                            <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                            {t("orders", "editOrder")}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                            onClick={() => cancelOrderMutation.mutate(detailOrder.id)}
+                            disabled={cancelOrderMutation.isPending}
+                            data-testid="button-detail-cancel-order"
+                          >
+                            <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                            {lang === "de" ? "Stornieren" : "Annullare"}
+                          </Button>
+                        </>
+                      )}
+                      {canRequestChange(detailOrder) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => { const o = detailOrder; setDetailOrder(null); setChangeRequestOrder(o); }}
+                          data-testid="button-detail-change-request"
+                        >
+                          <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
+                          {t("orders", "requestChange")}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-              <div className="border-t border-border pt-3">
                 {!showMessageInput ? (
                   <Button
                     variant="outline"

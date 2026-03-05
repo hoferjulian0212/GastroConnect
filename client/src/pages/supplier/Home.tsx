@@ -842,42 +842,10 @@ export default function SupplierHome() {
           </DialogHeader>
           {detailOrder && (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
                   {getOrderStatus(detailOrder.status, lang, true)}
                 </Badge>
-                {detailOrder.status !== "delivered" && detailOrder.status !== "cancelled" && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {detailOrder.status === "pending" && (
-                      <Button size="sm" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "confirmed" }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-confirm">
-                        <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                        {lang === "de" ? "Bestätigen" : "Confermare"}
-                      </Button>
-                    )}
-                    {detailOrder.status === "confirmed" && (
-                      <Button size="sm" onClick={() => { setDetailOrder(null); setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-in-delivery">
-                        <Truck className="h-3.5 w-3.5 mr-1" />
-                        {lang === "de" ? "In Lieferung" : "In consegna"}
-                      </Button>
-                    )}
-                    {detailOrder.status === "in_delivery" && (
-                      <Button size="sm" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid="home-detail-delivered">
-                        <Package className="h-3.5 w-3.5 mr-1" />
-                        {lang === "de" ? "Geliefert" : "Consegnato"}
-                      </Button>
-                    )}
-                    {!detailOrder.requestedDeliveryDate && detailOrder.status !== "pending" && (
-                      <Button size="sm" variant="outline" onClick={() => { setDetailOrder(null); setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-set-date">
-                        <CalendarDays className="h-3.5 w-3.5 mr-1 text-purple-600" />
-                        {lang === "de" ? "Datum setzen" : "Imposta data"}
-                      </Button>
-                    )}
-                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid="home-detail-cancel">
-                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
-                      {lang === "de" ? "Stornieren" : "Annullare"}
-                    </Button>
-                  </div>
-                )}
               </div>
 
               <div className="space-y-2 text-sm">
@@ -936,8 +904,46 @@ export default function SupplierHome() {
                 <span className="text-lg font-bold" data-testid="text-home-detail-total">{detailOrder.totalAmount}€</span>
               </div>
 
-              {detailOrder.status === "in_delivery" && (
-                <div className="border-t border-border pt-3">
+              <div className="border-t border-border pt-4 space-y-2.5">
+                {detailOrder.status !== "delivered" && detailOrder.status !== "cancelled" && (
+                  <div className="rounded-lg bg-muted/40 p-3 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {lang === "de" ? "Aktionen" : "Azioni"}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {detailOrder.status === "pending" && (
+                        <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "confirmed" }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-confirm">
+                          <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                          {lang === "de" ? "Bestätigen" : "Confermare"}
+                        </Button>
+                      )}
+                      {detailOrder.status === "confirmed" && (
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setDetailOrder(null); setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-in-delivery">
+                          <Truck className="h-3.5 w-3.5 mr-1.5" />
+                          {lang === "de" ? "In Lieferung" : "In consegna"}
+                        </Button>
+                      )}
+                      {detailOrder.status === "in_delivery" && (
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid="home-detail-delivered">
+                          <Package className="h-3.5 w-3.5 mr-1.5" />
+                          {lang === "de" ? "Geliefert" : "Consegnato"}
+                        </Button>
+                      )}
+                      {!detailOrder.requestedDeliveryDate && detailOrder.status !== "pending" && (
+                        <Button size="sm" variant="outline" onClick={() => { setDetailOrder(null); setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-set-date">
+                          <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-purple-600" />
+                          {lang === "de" ? "Datum setzen" : "Imposta data"}
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid="home-detail-cancel">
+                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                        {lang === "de" ? "Stornieren" : "Annullare"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {detailOrder.status === "in_delivery" && (
                   <Button
                     variant="outline"
                     className="w-full"
@@ -952,10 +958,8 @@ export default function SupplierHome() {
                     )}
                     {deliveryNoteMutation.isPending ? (lang === "de" ? "Wird erstellt..." : "Creazione...") : (lang === "de" ? "Lieferschein erstellen" : "Crea bolla di consegna")}
                   </Button>
-                </div>
-              )}
+                )}
 
-              <div className="border-t border-border pt-3">
                 {!showMessageInput ? (
                   <Button
                     variant="outline"
