@@ -4,13 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, Monitor, Moon, LogOut, Smartphone } from "lucide-react";
+import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, Monitor, Moon, LogOut, Smartphone, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function RestaurantSettings() {
   const { currentUser } = useUser();
@@ -44,6 +45,27 @@ export default function RestaurantSettings() {
         <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "settings")}</h1>
         <p className="text-xs md:text-sm text-muted-foreground">{t("settings", "manageSettings")}</p>
       </div>
+
+      <Link href="/restaurant/profile" data-testid="link-profile-card">
+        <Card className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30">
+          <CardContent className="flex items-center gap-4 p-4 md:p-5">
+            <Avatar className="h-12 w-12 md:h-14 md:w-14 shrink-0">
+              {currentUser?.profileImageUrl ? (
+                <AvatarImage src={currentUser.profileImageUrl} alt={currentUser.name} />
+              ) : null}
+              <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                {(currentUser?.companyName || currentUser?.name || "?").slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm md:text-base font-semibold truncate">{currentUser?.companyName || currentUser?.name}</p>
+              <p className="text-xs md:text-sm text-muted-foreground truncate">{currentUser?.email}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("profile", "profileDesc")}</p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+          </CardContent>
+        </Card>
+      </Link>
 
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <Card>
