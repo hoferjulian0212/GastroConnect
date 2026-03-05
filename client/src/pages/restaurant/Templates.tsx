@@ -737,7 +737,7 @@ function CreateEditDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-4 px-1 -mx-1">
           {!template && (
             <div>
               <label className="text-sm font-medium mb-1.5 block">{t("templates", "templateName")}</label>
