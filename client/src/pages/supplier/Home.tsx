@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays } from "lucide-react";
 import type { OrderWithDetails, Product, ConversationWithUser } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
@@ -25,7 +26,8 @@ export default function SupplierHome() {
   const [, navigate] = useLocation();
   const dateLocale = lang === "de" ? de : it;
 
-  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
+  const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string } | null>(null);
+  const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
 
   const { data: recentOrders, isLoading: ordersLoading } = useQuery<OrderWithDetails[]>({
     queryKey: ['/api/supplier/orders/recent', currentUser?.id],
@@ -118,28 +120,55 @@ export default function SupplierHome() {
     return msg.content?.slice(0, 80) || "";
   };
 
-  const markDeliveredMutation = useMutation({
-    mutationFn: async (orderId: string) => {
+  const invalidateOrderQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/supplier/upcoming-deliveries'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders'] });
+  };
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ orderId, status, requestedDeliveryDate }: { orderId: string; status: string; requestedDeliveryDate?: string }) => {
       await apiRequest("PATCH", `/api/orders/${orderId}/status`, {
-        status: "delivered",
+        status,
         changedBy: currentUser?.id,
+        ...(requestedDeliveryDate ? { requestedDeliveryDate } : {}),
       });
     },
     onSuccess: () => {
-      setConfirmingOrderId(null);
-      queryClient.invalidateQueries({ queryKey: ['/api/supplier/upcoming-deliveries'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders'] });
+      setCardWizard(null);
+      invalidateOrderQueries();
       toast({
-        title: lang === "de" ? "Lieferung bestätigt" : "Consegna confermata",
-        description: lang === "de" ? "Die Bestellung wurde als geliefert markiert." : "L'ordine è stato contrassegnato come consegnato.",
+        title: lang === "de" ? "Status aktualisiert" : "Stato aggiornato",
+        description: lang === "de" ? "Der Bestellstatus wurde geändert." : "Lo stato dell'ordine è stato modificato.",
       });
     },
     onError: () => {
-      setConfirmingOrderId(null);
+      setCardWizard(null);
       toast({
         title: lang === "de" ? "Fehler" : "Errore",
         description: lang === "de" ? "Status konnte nicht geändert werden." : "Impossibile modificare lo stato.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const setDeliveryDateMutation = useMutation({
+    mutationFn: async ({ orderId, requestedDeliveryDate }: { orderId: string; requestedDeliveryDate: string }) => {
+      await apiRequest("PATCH", `/api/orders/${orderId}/reschedule`, { requestedDeliveryDate });
+    },
+    onSuccess: () => {
+      setDeliveryDatePicker(null);
+      invalidateOrderQueries();
+      toast({
+        title: lang === "de" ? "Lieferdatum gesetzt" : "Data di consegna impostata",
+        description: lang === "de" ? "Das Lieferdatum wurde erfolgreich gesetzt." : "La data di consegna è stata impostata con successo.",
+      });
+    },
+    onError: () => {
+      setDeliveryDatePicker(null);
+      toast({
+        title: lang === "de" ? "Fehler" : "Errore",
+        description: lang === "de" ? "Lieferdatum konnte nicht gesetzt werden." : "Impossibile impostare la data di consegna.",
         variant: "destructive",
       });
     },
@@ -207,7 +236,6 @@ export default function SupplierHome() {
                   : null;
                 const isTodayDelivery = deliveryDate ? isToday(deliveryDate) : false;
                 const isDelivered = order.status === "delivered";
-                const isConfirming = confirmingOrderId === order.id;
 
                 return (
                   <div
@@ -272,52 +300,72 @@ export default function SupplierHome() {
                         </div>
                       </Link>
 
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <span className="text-sm md:text-base font-bold">{order.totalAmount}€</span>
-                        {!isDelivered && (order.status === "in_delivery" || (order.status === "confirmed" && isTodayDelivery)) && (
-                          <>
-                            {isConfirming ? (
-                              <div className="flex flex-col items-end gap-1">
-                                <p className="text-[10px] md:text-xs font-medium text-foreground">
-                                  {t("supplierHome", "confirmDelivery")}
-                                </p>
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 px-2 text-[10px] md:text-xs"
-                                    onClick={() => setConfirmingOrderId(null)}
-                                    disabled={markDeliveredMutation.isPending}
-                                    data-testid={`cancel-delivery-${order.id}`}
-                                  >
-                                    <X className="h-3 w-3 mr-0.5" />
-                                    {t("supplierHome", "cancel")}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    className="h-7 px-2 text-[10px] md:text-xs bg-green-600 hover:bg-green-700 text-white"
-                                    onClick={() => markDeliveredMutation.mutate(order.id)}
-                                    disabled={markDeliveredMutation.isPending}
-                                    data-testid={`confirm-delivery-${order.id}`}
-                                  >
-                                    <Check className="h-3 w-3 mr-0.5" />
-                                    {t("supplierHome", "confirm")}
-                                  </Button>
-                                </div>
+                        {!isDelivered && order.status !== "cancelled" && (
+                          cardWizard?.orderId === order.id ? (
+                            <div className="flex flex-col items-end gap-1">
+                              <p className="text-[10px] md:text-xs font-medium text-foreground">
+                                {cardWizard.action === "confirmed" && (lang === "de" ? "Bestellung bestätigen?" : "Confermare l'ordine?")}
+                                {cardWizard.action === "in_delivery" && (lang === "de" ? "In Lieferung markieren?" : "Contrassegnare in consegna?")}
+                                {cardWizard.action === "delivered" && (lang === "de" ? "Als geliefert markieren?" : "Contrassegnare come consegnato?")}
+                                {cardWizard.action === "cancelled" && (lang === "de" ? "Bestellung stornieren?" : "Annullare l'ordine?")}
+                              </p>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-[10px] md:text-xs"
+                                  onClick={() => setCardWizard(null)}
+                                  disabled={updateStatusMutation.isPending}
+                                  data-testid={`cancel-wizard-${order.id}`}
+                                >
+                                  <X className="h-3 w-3 mr-0.5" />
+                                  {t("common", "cancel")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className={`h-7 px-2 text-[10px] md:text-xs ${cardWizard.action === "cancelled" ? "bg-red-600 hover:bg-red-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"}`}
+                                  onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: cardWizard.action })}
+                                  disabled={updateStatusMutation.isPending}
+                                  data-testid={`confirm-wizard-${order.id}`}
+                                >
+                                  <Check className="h-3 w-3 mr-0.5" />
+                                  {t("supplierHome", "confirm")}
+                                </Button>
                               </div>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 px-2 text-[10px] md:text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/30"
-                                onClick={() => setConfirmingOrderId(order.id)}
-                                data-testid={`mark-delivered-${order.id}`}
-                              >
-                                <Check className="h-3 w-3 mr-1" />
-                                {t("supplierHome", "markDelivered")}
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {order.status === "pending" && (
+                                <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setCardWizard({ orderId: order.id, action: "confirmed" })} disabled={updateStatusMutation.isPending} data-testid={`home-confirm-${order.id}`}>
+                                  <CheckCircle className="h-3 w-3 mr-0.5" />
+                                  {lang === "de" ? "Bestätigen" : "Confermare"}
+                                </Button>
+                              )}
+                              {order.status === "confirmed" && (
+                                <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`home-in-delivery-${order.id}`}>
+                                  <Truck className="h-3 w-3 mr-0.5" />
+                                  {lang === "de" ? "In Lieferung" : "In consegna"}
+                                </Button>
+                              )}
+                              {order.status === "in_delivery" && (
+                                <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/30" variant="outline" onClick={() => setCardWizard({ orderId: order.id, action: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`home-delivered-${order.id}`}>
+                                  <Package className="h-3 w-3 mr-0.5" />
+                                  {lang === "de" ? "Geliefert" : "Consegnato"}
+                                </Button>
+                              )}
+                              {!order.requestedDeliveryDate && order.status !== "pending" && (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950/30" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} data-testid={`home-set-date-${order.id}`}>
+                                  <CalendarDays className="h-3 w-3 mr-0.5" />
+                                  {lang === "de" ? "Datum setzen" : "Imposta data"}
+                                </Button>
+                              )}
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setCardWizard({ orderId: order.id, action: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid={`home-cancel-${order.id}`}>
+                                <XCircle className="h-3 w-3 mr-0.5 text-destructive" />
                               </Button>
-                            )}
-                          </>
+                            </div>
+                          )
                         )}
                       </div>
                     </div>
@@ -461,43 +509,93 @@ export default function SupplierHome() {
           ) : recentOrders && recentOrders.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
               {recentOrders.slice(0, 6).map((order) => (
-                <Link
+                <div
                   key={order.id}
-                  href={`/supplier/orders?orderId=${order.id}`}
-                  className="flex items-center justify-between p-2.5 md:p-3 rounded-xl border border-border bg-white dark:bg-gray-900 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30"
+                  className="p-2.5 md:p-3 rounded-xl border border-border bg-white dark:bg-gray-900 transition-all duration-200 hover:shadow-md hover:border-primary/30"
                   data-testid={`order-item-${order.id}`}
                 >
-                  <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-                      <ShoppingBag className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                        <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5`} variant="outline">
-                          {getOrderStatus(order.status, lang, true)}
-                        </Badge>
+                  <Link
+                    href={`/supplier/orders?orderId=${order.id}`}
+                    className="flex items-center justify-between cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                        <ShoppingBag className="h-4 w-4 text-primary" />
                       </div>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <UserIcon className="h-2.5 w-2.5 md:h-3 md:w-3 text-muted-foreground shrink-0" />
-                        <p className="text-[10px] md:text-xs text-muted-foreground truncate">
-                          {order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
+                          <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs px-1.5`} variant="outline">
+                            {getOrderStatus(order.status, lang, true)}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <UserIcon className="h-2.5 w-2.5 md:h-3 md:w-3 text-muted-foreground shrink-0" />
+                          <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+                            {order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}
+                          </p>
+                        </div>
+                        <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
+                          {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}
+                          <span className="text-muted-foreground/70">({formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })})</span>
                         </p>
                       </div>
-                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
-                        {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}
-                        <span className="text-muted-foreground/70">({formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })})</span>
-                      </p>
                     </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
-                    <span className="text-sm md:text-base font-bold">{order.totalAmount}€</span>
-                    <span className="text-[10px] md:text-xs text-muted-foreground">
-                      {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
-                    </span>
-                  </div>
-                </Link>
+                    <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                      <span className="text-sm md:text-base font-bold">{order.totalAmount}€</span>
+                      <span className="text-[10px] md:text-xs text-muted-foreground">
+                        {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
+                      </span>
+                    </div>
+                  </Link>
+                  {order.status !== "delivered" && order.status !== "cancelled" && (
+                    <div className="mt-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
+                      {cardWizard?.orderId === order.id ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <p className="text-[10px] md:text-xs font-medium text-foreground mr-auto">
+                            {cardWizard.action === "confirmed" && (lang === "de" ? "Bestätigen?" : "Confermare?")}
+                            {cardWizard.action === "in_delivery" && (lang === "de" ? "In Lieferung?" : "In consegna?")}
+                            {cardWizard.action === "delivered" && (lang === "de" ? "Geliefert?" : "Consegnato?")}
+                            {cardWizard.action === "cancelled" && (lang === "de" ? "Stornieren?" : "Annullare?")}
+                          </p>
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setCardWizard(null)} disabled={updateStatusMutation.isPending} data-testid={`cancel-wizard-order-${order.id}`}>
+                            <X className="h-3 w-3 mr-0.5" />
+                            {t("common", "cancel")}
+                          </Button>
+                          <Button size="sm" className={`h-7 px-2 text-[10px] md:text-xs ${cardWizard.action === "cancelled" ? "bg-red-600 hover:bg-red-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"}`} onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: cardWizard.action })} disabled={updateStatusMutation.isPending} data-testid={`confirm-wizard-order-${order.id}`}>
+                            <Check className="h-3 w-3 mr-0.5" />
+                            {t("supplierHome", "confirm")}
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {order.status === "pending" && (
+                            <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setCardWizard({ orderId: order.id, action: "confirmed" })} disabled={updateStatusMutation.isPending} data-testid={`new-confirm-${order.id}`}>
+                              <CheckCircle className="h-3 w-3 mr-0.5" />
+                              {lang === "de" ? "Bestätigen" : "Confermare"}
+                            </Button>
+                          )}
+                          {order.status === "confirmed" && (
+                            <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`new-in-delivery-${order.id}`}>
+                              <Truck className="h-3 w-3 mr-0.5" />
+                              {lang === "de" ? "In Lieferung" : "In consegna"}
+                            </Button>
+                          )}
+                          {order.status === "in_delivery" && (
+                            <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/30" onClick={() => setCardWizard({ orderId: order.id, action: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`new-delivered-${order.id}`}>
+                              <Package className="h-3 w-3 mr-0.5" />
+                              {lang === "de" ? "Geliefert" : "Consegnato"}
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setCardWizard({ orderId: order.id, action: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid={`new-cancel-${order.id}`}>
+                            <XCircle className="h-3 w-3 mr-0.5 text-destructive" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           ) : (
@@ -718,6 +816,24 @@ export default function SupplierHome() {
           )}
         </CardContent>
       </Card>
+
+      {deliveryDatePicker && (
+        <DeliveryDatePicker
+          open={true}
+          onOpenChange={(open) => { if (!open) setDeliveryDatePicker(null); }}
+          supplierId={currentUser?.id || ""}
+          restaurantId={deliveryDatePicker.restaurantId}
+          onConfirm={(date) => {
+            const order = [...(upcomingDeliveries || []), ...(recentOrders || [])].find(o => o.id === deliveryDatePicker.orderId);
+            if (order && order.status === "confirmed") {
+              updateStatusMutation.mutate({ orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date });
+            } else {
+              setDeliveryDateMutation.mutate({ orderId: deliveryDatePicker.orderId, requestedDeliveryDate: date });
+            }
+          }}
+          isPending={updateStatusMutation.isPending || setDeliveryDateMutation.isPending}
+        />
+      )}
     </div>
   );
 }

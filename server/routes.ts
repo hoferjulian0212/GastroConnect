@@ -1208,8 +1208,8 @@ export async function registerRoutes(
       const { requestedDeliveryDate } = z.object({ requestedDeliveryDate: z.string() }).parse(req.body);
       const order = await storage.getOrder(req.params.id);
       if (!order) return res.status(404).json({ error: "Order not found" });
-      if (order.status !== "in_delivery" && order.status !== "confirmed") {
-        return res.status(400).json({ error: "Can only reschedule active orders" });
+      if (order.status === "delivered" || order.status === "cancelled") {
+        return res.status(400).json({ error: "Can only set delivery date for active orders" });
       }
       if (order.requestedDeliveryDate) {
         const dd = new Date(order.requestedDeliveryDate + "T00:00:00");
