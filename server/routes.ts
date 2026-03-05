@@ -432,6 +432,10 @@ export async function registerRoutes(
       const groupId = randomUUID();
       const created = [];
       for (const productId of productIds) {
+        const existingPromo = await storage.getActivePromotionForProduct(productId);
+        if (existingPromo) {
+          await storage.updatePromotion(existingPromo.id, { isActive: false });
+        }
         const promo = await storage.createPromotion({
           productId,
           supplierId,

@@ -20,7 +20,17 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Tag, Plus, Trash2, Package, Calendar, Percent, Loader2, Send, Check, ChevronRight, ChevronLeft, Users, MessageSquare, Search, X } from "lucide-react";
+import { Tag, Plus, Trash2, Package, Calendar, Percent, Loader2, Send, Check, ChevronRight, ChevronLeft, Users, MessageSquare, Search, X, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import type { Product, PromotionWithProduct, User } from "@shared/schema";
 import { format } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -59,6 +69,7 @@ export default function SupplierPromotions() {
   const [notifyChat, setNotifyChat] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [restaurantSearch, setRestaurantSearch] = useState("");
+  const [overwriteProduct, setOverwriteProduct] = useState<Product | null>(null);
 
   const { data: promotions, isLoading } = useQuery<PromotionWithProduct[]>({
     queryKey: [`/api/promotions?supplierId=${currentUser?.id}`],
@@ -74,6 +85,18 @@ export default function SupplierPromotions() {
     queryKey: [`/api/supplier/restaurants?supplierId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
+
+  const activePromoByProductId = useMemo(() => {
+    const map = new Map<string, PromotionWithProduct>();
+    if (!promotions) return map;
+    const now = new Date();
+    for (const promo of promotions) {
+      if (promo.isActive && new Date(promo.startDate as any) <= now && new Date(promo.endDate as any) >= now) {
+        map.set(promo.productId, promo);
+      }
+    }
+    return map;
+  }, [promotions]);
 
   const bulkCreateMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -184,9 +207,26 @@ export default function SupplierPromotions() {
   };
 
   const toggleProduct = (productId: string) => {
-    setSelectedProductIds(prev =>
-      prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
-    );
+    if (selectedProductIds.includes(productId)) {
+      setSelectedProductIds(prev => prev.filter(id => id !== productId));
+      return;
+    }
+    const existingPromo = activePromoByProductId.get(productId);
+    if (existingPromo) {
+      const product = products?.find(p => p.id === productId);
+      if (product) {
+        setOverwriteProduct(product);
+        return;
+      }
+    }
+    setSelectedProductIds(prev => [...prev, productId]);
+  };
+
+  const confirmOverwrite = () => {
+    if (overwriteProduct) {
+      setSelectedProductIds(prev => [...prev, overwriteProduct.id]);
+      setOverwriteProduct(null);
+    }
   };
 
   const toggleRestaurant = (restaurantId: string) => {
@@ -498,13 +538,17 @@ export default function SupplierPromotions() {
                     const orig = parseFloat(product.price);
                     const disc = orig * (1 - (parseInt(discountPercent) || 0) / 100);
                     const outOfStock = product.inStock === false;
+                    const existingPromo = activePromoByProductId.get(product.id);
+                    const hasActivePromo = !!existingPromo && !isSelected;
                     return (
                       <div
                         key={product.id}
                         onClick={() => !outOfStock && toggleProduct(product.id)}
                         className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors ${
                           outOfStock ? "opacity-60 cursor-not-allowed bg-muted/30" :
-                          isSelected ? "border-primary bg-primary/5 cursor-pointer" : "border-border hover:bg-muted/50 cursor-pointer"
+                          isSelected ? "border-primary bg-primary/5 cursor-pointer" :
+                          hasActivePromo ? "border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20 cursor-pointer" :
+                          "border-border hover:bg-muted/50 cursor-pointer"
                         }`}
                         data-testid={`product-option-${product.id}`}
                       >
@@ -519,9 +563,22 @@ export default function SupplierPromotions() {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{product.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium truncate">{product.name}</p>
+                            {existingPromo && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-400 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 shrink-0 whitespace-nowrap">
+                                <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                                {lang === "de" ? "Bereits aktive Aktion" : "Promozione già attiva"}
+                              </Badge>
+                            )}
+                          </div>
                           {outOfStock ? (
                             <p className="text-[11px] text-red-500 font-medium">{t("promotionsPage", "noStockAvailable")}</p>
+                          ) : existingPromo && !isSelected ? (
+                            <div className="flex items-center gap-1.5 text-[11px]">
+                              <span className="text-amber-600 dark:text-amber-400 font-medium">-{existingPromo.discountPercent}%</span>
+                              <span className="text-muted-foreground">{existingPromo.name || (lang === "de" ? "Aktive Aktion" : "Promozione attiva")}</span>
+                            </div>
                           ) : (
                             <div className="flex items-center gap-1.5 text-[11px]">
                               <span className="text-muted-foreground line-through">{orig.toFixed(2)}€</span>
@@ -693,6 +750,36 @@ export default function SupplierPromotions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={!!overwriteProduct} onOpenChange={(open) => { if (!open) setOverwriteProduct(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {lang === "de" ? "Bereits aktive Aktion" : "Promozione già attiva"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {overwriteProduct && (() => {
+                const existingPromo = activePromoByProductId.get(overwriteProduct.id);
+                return lang === "de"
+                  ? `"${overwriteProduct.name}" hat bereits eine aktive Aktion${existingPromo?.name ? ` ("${existingPromo.name}", -${existingPromo.discountPercent}%)` : ` (-${existingPromo?.discountPercent}%)`}. Wenn Sie fortfahren, wird die bestehende Aktion durch die neue ersetzt.`
+                  : `"${overwriteProduct.name}" ha già una promozione attiva${existingPromo?.name ? ` ("${existingPromo.name}", -${existingPromo.discountPercent}%)` : ` (-${existingPromo?.discountPercent}%)`}. Se continui, la promozione esistente verrà sostituita dalla nuova.`;
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-overwrite">
+              {t("common", "cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmOverwrite}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              data-testid="button-confirm-overwrite"
+            >
+              {lang === "de" ? "Überschreiben" : "Sovrascrivi"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
