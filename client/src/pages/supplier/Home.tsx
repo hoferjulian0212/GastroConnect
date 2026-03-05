@@ -603,31 +603,31 @@ export default function SupplierHome() {
               )}
 
               {detailedStats.topProducts.length > 0 && (
-                <div className="max-w-[50%]">
-                  <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "topProducts")}</p>
-                  <div className="space-y-3 md:space-y-4">
+                <div>
+                  <p className="text-xs md:text-sm font-medium text-foreground mb-4">{t("supplierHome", "topProducts")}</p>
+                  <div className="space-y-4 md:space-y-5">
                     {detailedStats.topProducts.map((product, idx) => {
                       const maxQty = detailedStats.topProducts[0]?.quantity || 1;
                       const pct = Math.round((product.quantity / maxQty) * 100);
                       return (
                         <div key={idx} data-testid={`top-product-${idx}`}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                              <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <span className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-primary text-sm font-bold shrink-0">
                                 {idx + 1}
                               </span>
-                              <span className="text-sm font-medium truncate">{product.name}</span>
+                              <span className="text-sm md:text-base font-medium truncate">{product.name}</span>
                             </div>
-                            <div className="flex items-center gap-3 shrink-0 ml-2">
-                              <span className="text-xs text-muted-foreground">
+                            <div className="flex items-center gap-3 shrink-0 ml-3">
+                              <span className="text-xs md:text-sm text-muted-foreground">
                                 {product.quantity}x {t("supplierHome", "unitsSold")}
                               </span>
-                              <span className="text-sm font-semibold min-w-[50px] text-right">
+                              <span className="text-sm md:text-base font-semibold min-w-[56px] text-right">
                                 {product.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
                               </span>
                             </div>
                           </div>
-                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-2.5 bg-muted rounded-full overflow-hidden">
                             <div
                               className="h-full bg-primary rounded-full transition-all duration-500"
                               style={{ width: `${pct}%` }}
