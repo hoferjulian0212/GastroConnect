@@ -21,6 +21,8 @@ const t = {
     piece: { de: "Stück", it: "pezzo" },
     profile: { de: "Profil", it: "Profilo" },
     logout: { de: "Abmelden", it: "Disconnetti" },
+    switchAccount: { de: "Konto wechseln", it: "Cambia account" },
+    currentAccount: { de: "Aktuelles Konto", it: "Account attuale" },
     more: { de: "Mehr", it: "Altro" },
     moreOptions: { de: "Weitere Optionen", it: "Altre opzioni" },
     save: { de: "Speichern", it: "Salva" },

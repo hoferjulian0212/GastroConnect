@@ -16,6 +16,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
+import { AccountSwitcher } from "@/components/AccountSwitcher";
 
 export function SupplierSidebar() {
   const [location] = useLocation();
@@ -89,7 +90,7 @@ export function SupplierSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      <SidebarHeader className="pt-5 pb-5 px-4">
+      <SidebarHeader className="pt-5 pb-3 px-4 space-y-3">
         {currentUser && (
           <Link href="/supplier/profile" className="flex flex-col items-center gap-2 px-2 py-3 rounded-xl hover-elevate cursor-pointer" data-testid="link-profile">
             <Avatar className="h-12 w-12 rounded-full">
@@ -101,6 +102,7 @@ export function SupplierSidebar() {
             <span className="text-base font-semibold text-center leading-snug w-full break-words">{currentUser.companyName || currentUser.name}</span>
           </Link>
         )}
+        <AccountSwitcher compact />
       </SidebarHeader>
       
       <SidebarContent className="px-4">

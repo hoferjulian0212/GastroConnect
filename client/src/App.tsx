@@ -89,7 +89,7 @@ function SupplierRouter() {
 }
 
 function UserLoader() {
-  const { currentRole, setCurrentUser, setIsLoading } = useUser();
+  const { currentRole, setCurrentUser, setIsLoading, selectedUserId } = useUser();
   const [location, setLocation] = useLocation();
 
   const { data: users, isLoading } = useQuery<User[]>({
@@ -98,7 +98,10 @@ function UserLoader() {
 
   useEffect(() => {
     if (!isLoading && users && users.length > 0) {
-      const userOfRole = users.find(u => u.role === currentRole);
+      const preferred = selectedUserId
+        ? users.find(u => u.id === selectedUserId && u.role === currentRole)
+        : null;
+      const userOfRole = preferred || users.find(u => u.role === currentRole);
       if (userOfRole) {
         setCurrentUser(userOfRole);
       }
@@ -106,7 +109,7 @@ function UserLoader() {
     } else if (!isLoading) {
       setIsLoading(false);
     }
-  }, [users, isLoading, currentRole, setCurrentUser, setIsLoading]);
+  }, [users, isLoading, currentRole, setCurrentUser, setIsLoading, selectedUserId]);
 
   useEffect(() => {
     if (location !== "/" && location !== "/about" && !location.startsWith(`/${currentRole}`)) {

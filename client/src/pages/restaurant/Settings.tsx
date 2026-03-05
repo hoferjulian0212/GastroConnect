@@ -12,6 +12,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AccountSwitcher } from "@/components/AccountSwitcher";
 
 export default function RestaurantSettings() {
   const { currentUser } = useUser();
@@ -66,6 +67,8 @@ export default function RestaurantSettings() {
           </CardContent>
         </Card>
       </Link>
+
+      <AccountSwitcher />
 
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <Card>
