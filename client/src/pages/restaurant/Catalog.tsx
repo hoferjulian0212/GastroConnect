@@ -291,7 +291,7 @@ export default function RestaurantCatalog() {
               ))}
             </div>
           ) : filteredProducts && filteredProducts.length > 0 ? (
-            <div className="grid gap-3 md:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6">
+            <div className="grid gap-3 md:gap-3 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {filteredProducts.map((product) => {
                 const promo = product.activePromotion;
                 const hasPromo = !!promo;
@@ -308,7 +308,7 @@ export default function RestaurantCatalog() {
                     <CardContent className="p-2.5 md:p-3 flex flex-col overflow-hidden">
                       <div className="relative">
                         {product.imageUrl ? (
-                          <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted">
+                          <div className="w-full aspect-square md:aspect-[4/3] rounded-lg overflow-hidden bg-muted">
                             <img 
                               src={product.imageUrl} 
                               alt={product.name}
@@ -316,8 +316,8 @@ export default function RestaurantCatalog() {
                             />
                           </div>
                         ) : (
-                          <div className="w-full aspect-square rounded-lg bg-muted flex items-center justify-center">
-                            <Package className="h-10 w-10 text-muted-foreground/30" />
+                          <div className="w-full aspect-square md:aspect-[4/3] rounded-lg bg-muted flex items-center justify-center">
+                            <Package className="h-8 w-8 text-muted-foreground/30" />
                           </div>
                         )}
                         {hasPromo && (

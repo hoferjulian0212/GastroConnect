@@ -684,16 +684,16 @@ export default function RestaurantHome() {
                       return (
                         <div
                           key={product.id}
-                          className="min-w-[180px] w-[180px] shrink-0 snap-start rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:shadow-md hover:border-green-300/40 ring-1 ring-green-400/30"
+                          className="min-w-[160px] w-[160px] md:min-w-[150px] md:w-[150px] shrink-0 snap-start rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:shadow-md hover:border-green-300/40 ring-1 ring-green-400/30"
                           data-testid={`promo-card-${product.id}`}
                         >
                           <div className="relative">
                             {product.imageUrl ? (
-                              <div className="w-full aspect-square bg-muted">
+                              <div className="w-full aspect-[4/3] bg-muted">
                                 <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
                               </div>
                             ) : (
-                              <div className="w-full aspect-square bg-muted flex items-center justify-center">
+                              <div className="w-full aspect-[4/3] bg-muted flex items-center justify-center">
                                 <Package className="h-8 w-8 text-muted-foreground/30" />
                               </div>
                             )}
