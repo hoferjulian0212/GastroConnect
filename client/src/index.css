@@ -62,6 +62,12 @@ html, body, #root {
   height: 100vh;
 }
 
+@media (min-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
 @supports (height: 100dvh) {
   html, body, #root {
     height: 100dvh;
