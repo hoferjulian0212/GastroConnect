@@ -608,7 +608,7 @@ export default function SupplierHome() {
                   </Badge>
                 </div>
                 <CardDescription className="text-xs md:text-sm">
-                  {lang === "de" ? "Unbearbeitete Bestellungen und offene Reklamationen" : "Ordini non elaborati e reclami aperti"}
+                  {lang === "de" ? "Unbearbeitete Bestellungen und Reklamationen" : "Ordini non elaborati e reclami"}
                 </CardDescription>
               </div>
             </div>
@@ -670,7 +670,7 @@ export default function SupplierHome() {
             {(actionRequired?.openComplaints?.length || 0) > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {lang === "de" ? "Offene Reklamationen" : "Reclami aperti"} ({actionRequired!.openComplaints.length})
+                  {lang === "de" ? "Reklamationen" : "Reclami"} ({actionRequired!.openComplaints.length})
                 </p>
                 {actionRequired!.openComplaints.map((complaint) => {
                   const statusColors: Record<string, string> = {
