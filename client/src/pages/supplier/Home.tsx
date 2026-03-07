@@ -655,7 +655,7 @@ export default function SupplierHome() {
                           size="sm"
                           variant="outline"
                           className="h-6 px-2 text-[10px]"
-                          onClick={() => navigate(`/supplier/orders?highlight=${order.id}`)}
+                          onClick={() => navigate(`/supplier/orders?orderId=${order.id}`)}
                           data-testid={`stale-goto-order-${order.id}`}
                         >
                           <ArrowRight className="h-3 w-3" />
@@ -717,7 +717,7 @@ export default function SupplierHome() {
                           size="sm"
                           variant="outline"
                           className="h-6 px-2 text-[10px] shrink-0 ml-2"
-                          onClick={() => navigate(`/supplier/complaints?highlight=${complaint.id}`)}
+                          onClick={() => navigate(`/supplier/complaints?complaintId=${complaint.id}`)}
                           data-testid={`action-goto-complaint-${complaint.id}`}
                         >
                           <ArrowRight className="h-3 w-3" />
@@ -1016,7 +1016,7 @@ export default function SupplierHome() {
               <div className="border-t border-border pt-4 space-y-2.5">
                 <Button
                   className="w-full"
-                  onClick={() => { setDetailOrder(null); navigate(`/supplier/orders?highlight=${detailOrder.id}`); }}
+                  onClick={() => { setDetailOrder(null); navigate(`/supplier/orders?orderId=${detailOrder.id}`); }}
                   data-testid="home-detail-goto-order"
                 >
                   <ArrowRight className="h-4 w-4 mr-2" />
