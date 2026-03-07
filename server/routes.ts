@@ -1531,7 +1531,10 @@ export async function registerRoutes(
 
         const hasMessages = await db.select({ id: messages.id })
           .from(messages)
-          .where(eq(messages.orderId, order.id))
+          .where(and(
+            eq(messages.orderId, order.id),
+            sql`${messages.messageType} != 'order'`
+          ))
           .limit(1);
 
         const hasComplaint = await db.select({ id: complaints.id })
