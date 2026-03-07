@@ -2,10 +2,10 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays, FileText, Loader2, Send } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays, FileText, Loader2, Send, ArrowRight, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import type { OrderWithDetails, Product, ConversationWithUser } from "@shared/schema";
+import type { OrderWithDetails, Product, ConversationWithUser, ComplaintWithDetails } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +77,21 @@ export default function SupplierHome() {
     refetchOnMount: "always",
   });
 
+  const { data: actionRequired, isLoading: actionRequiredLoading } = useQuery<{
+    staleOrders: OrderWithDetails[];
+    openComplaints: ComplaintWithDetails[];
+  }>({
+    queryKey: ['/api/supplier/action-required', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/supplier/action-required?supplierId=${currentUser?.id}`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+    enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
   const { data: detailedStats, isLoading: statsLoading } = useQuery<{
     monthlyRevenue: { month: string; revenue: number }[];
     topProducts: { name: string; quantity: number; revenue: number }[];
@@ -129,6 +144,7 @@ export default function SupplierHome() {
     queryClient.invalidateQueries({ queryKey: ['/api/supplier/upcoming-deliveries'] });
     queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
     queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/supplier/action-required'] });
   };
 
   const updateStatusMutation = useMutation({
@@ -506,7 +522,7 @@ export default function SupplierHome() {
             </div>
             <div>
               <CardTitle className="text-base md:text-lg">{t("supplierHome", "newOrders")}</CardTitle>
-              <CardDescription className="text-xs md:text-sm">{t("supplierHome", "waitingForProcessing")}</CardDescription>
+              <CardDescription className="text-xs md:text-sm">{lang === "de" ? "Bestellungen der letzten 24 Stunden" : "Ordini delle ultime 24 ore"}</CardDescription>
             </div>
           </div>
           <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
@@ -525,13 +541,11 @@ export default function SupplierHome() {
               {recentOrders.slice(0, 6).map((order) => (
                 <div
                   key={order.id}
-                  className="p-2.5 md:p-3 rounded-xl border border-border bg-white dark:bg-gray-900 transition-all duration-200 hover:shadow-md hover:border-primary/30"
+                  className="p-2.5 md:p-3 rounded-xl border border-border bg-white dark:bg-gray-900 transition-all duration-200 hover:shadow-md hover:border-primary/30 cursor-pointer"
+                  onClick={() => setDetailOrder(order)}
                   data-testid={`order-item-${order.id}`}
                 >
-                  <div
-                    className="flex items-center justify-between cursor-pointer"
-                    onClick={() => setDetailOrder(order)}
-                  >
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
                         <ShoppingBag className="h-4 w-4 text-primary" />
@@ -551,8 +565,7 @@ export default function SupplierHome() {
                         </div>
                         <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                           <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
-                          {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}
-                          <span className="text-muted-foreground/70">({formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })})</span>
+                          {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
                         </p>
                       </div>
                     </div>
@@ -563,52 +576,6 @@ export default function SupplierHome() {
                       </span>
                     </div>
                   </div>
-                  {order.status !== "delivered" && order.status !== "cancelled" && (
-                    <div className="mt-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
-                      {cardWizard?.orderId === order.id ? (
-                        <div className="flex items-center justify-end gap-1">
-                          <p className="text-[10px] md:text-xs font-medium text-foreground mr-auto">
-                            {cardWizard.action === "confirmed" && (lang === "de" ? "Bestätigen?" : "Confermare?")}
-                            {cardWizard.action === "in_delivery" && (lang === "de" ? "In Lieferung?" : "In consegna?")}
-                            {cardWizard.action === "delivered" && (lang === "de" ? "Geliefert?" : "Consegnato?")}
-                            {cardWizard.action === "cancelled" && (lang === "de" ? "Stornieren?" : "Annullare?")}
-                          </p>
-                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setCardWizard(null)} disabled={updateStatusMutation.isPending} data-testid={`cancel-wizard-order-${order.id}`}>
-                            <X className="h-3 w-3 mr-0.5" />
-                            {t("common", "cancel")}
-                          </Button>
-                          <Button size="sm" className={`h-7 px-2 text-[10px] md:text-xs ${cardWizard.action === "cancelled" ? "bg-red-600 hover:bg-red-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"}`} onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: cardWizard.action })} disabled={updateStatusMutation.isPending} data-testid={`confirm-wizard-order-${order.id}`}>
-                            <Check className="h-3 w-3 mr-0.5" />
-                            {t("supplierHome", "confirm")}
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap gap-1 justify-end">
-                          {order.status === "pending" && (
-                            <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setCardWizard({ orderId: order.id, action: "confirmed" })} disabled={updateStatusMutation.isPending} data-testid={`new-confirm-${order.id}`}>
-                              <CheckCircle className="h-3 w-3 mr-0.5" />
-                              {lang === "de" ? "Bestätigen" : "Confermare"}
-                            </Button>
-                          )}
-                          {order.status === "confirmed" && (
-                            <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`new-in-delivery-${order.id}`}>
-                              <Truck className="h-3 w-3 mr-0.5" />
-                              {lang === "de" ? "In Lieferung" : "In consegna"}
-                            </Button>
-                          )}
-                          {order.status === "in_delivery" && (
-                            <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/30" onClick={() => setCardWizard({ orderId: order.id, action: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`new-delivered-${order.id}`}>
-                              <Package className="h-3 w-3 mr-0.5" />
-                              {lang === "de" ? "Geliefert" : "Consegnato"}
-                            </Button>
-                          )}
-                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs" onClick={() => setCardWizard({ orderId: order.id, action: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid={`new-cancel-${order.id}`}>
-                            <XCircle className="h-3 w-3 mr-0.5 text-destructive" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -623,6 +590,146 @@ export default function SupplierHome() {
           )}
         </CardContent>
       </Card>
+
+      {((actionRequired?.staleOrders?.length || 0) > 0 || (actionRequired?.openComplaints?.length || 0) > 0) && (
+        <Card className="border-red-200 dark:border-red-900/50">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base md:text-lg" data-testid="text-action-required-title">
+                    {lang === "de" ? "Erforderliche Aktionen" : "Azioni richieste"}
+                  </CardTitle>
+                  <Badge className="bg-red-600 text-white text-[10px] px-1.5 py-0 min-w-[20px] flex items-center justify-center">
+                    {(actionRequired?.staleOrders?.length || 0) + (actionRequired?.openComplaints?.length || 0)}
+                  </Badge>
+                </div>
+                <CardDescription className="text-xs md:text-sm">
+                  {lang === "de" ? "Unbearbeitete Bestellungen und offene Reklamationen" : "Ordini non elaborati e reclami aperti"}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-3">
+            {(actionRequired?.staleOrders?.length || 0) > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {lang === "de" ? "Unbearbeitete Bestellungen" : "Ordini non elaborati"} ({actionRequired!.staleOrders.length})
+                </p>
+                {actionRequired!.staleOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="p-2.5 md:p-3 rounded-xl border border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10 transition-all duration-200 hover:shadow-md"
+                    data-testid={`stale-order-${order.id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div
+                        className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+                        onClick={() => setDetailOrder(order)}
+                      >
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
+                          <Clock className="h-4 w-4 text-red-600" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
+                            <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
+                              {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <UserIcon className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
+                            <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+                              {order.restaurant?.companyName || order.restaurant?.name}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <span className="text-sm font-bold">{order.totalAmount}€</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2.5 text-[10px] md:text-xs"
+                          onClick={() => navigate(`/supplier/orders?highlight=${order.id}`)}
+                          data-testid={`stale-goto-order-${order.id}`}
+                        >
+                          <ArrowRight className="h-3 w-3 mr-0.5" />
+                          {lang === "de" ? "zur Bestellung" : "vai all'ordine"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(actionRequired?.openComplaints?.length || 0) > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {lang === "de" ? "Offene Reklamationen" : "Reclami aperti"} ({actionRequired!.openComplaints.length})
+                </p>
+                {actionRequired!.openComplaints.map((complaint) => {
+                  const statusColors: Record<string, string> = {
+                    open: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+                    in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+                    resolved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+                  };
+                  const statusLabels: Record<string, Record<string, string>> = {
+                    de: { open: "Offen", in_progress: "In Bearbeitung", resolved: "Gelöst" },
+                    it: { open: "Aperto", in_progress: "In lavorazione", resolved: "Risolto" },
+                  };
+                  return (
+                    <div
+                      key={complaint.id}
+                      className="p-2.5 md:p-3 rounded-xl border border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/10 transition-all duration-200 hover:shadow-md"
+                      data-testid={`action-complaint-${complaint.id}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 shrink-0">
+                            <AlertTriangle className="h-4 w-4 text-amber-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-xs md:text-sm font-medium truncate">{complaint.title}</p>
+                              <Badge className={`${statusColors[complaint.status] || ""} text-[10px] px-1.5`} variant="outline">
+                                {statusLabels[lang]?.[complaint.status] || complaint.status}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <UserIcon className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
+                              <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+                                {complaint.restaurant?.companyName || complaint.restaurant?.name}
+                              </p>
+                              <span className="text-[10px] text-muted-foreground/70 ml-1">
+                                {formatDistanceToNow(new Date(complaint.createdAt), { addSuffix: true, locale: dateLocale })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2.5 text-[10px] md:text-xs shrink-0 ml-2"
+                          onClick={() => navigate(`/supplier/complaints?highlight=${complaint.id}`)}
+                          data-testid={`action-goto-complaint-${complaint.id}`}
+                        >
+                          <ArrowRight className="h-3 w-3 mr-0.5" />
+                          {lang === "de" ? "zur Reklamation" : "vai al reclamo"}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card data-testid="card-statistics">
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
@@ -905,60 +1012,14 @@ export default function SupplierHome() {
               </div>
 
               <div className="border-t border-border pt-4 space-y-2.5">
-                {detailOrder.status !== "delivered" && detailOrder.status !== "cancelled" && (
-                  <div className="rounded-lg bg-muted/40 p-3 space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {lang === "de" ? "Aktionen" : "Azioni"}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {detailOrder.status === "pending" && (
-                        <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => { updateStatusMutation.mutate({ orderId: detailOrder.id, status: "confirmed" }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-confirm">
-                          <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                          {lang === "de" ? "Bestätigen" : "Confermare"}
-                        </Button>
-                      )}
-                      {detailOrder.status === "confirmed" && (
-                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setDetailOrder(null); setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-in-delivery">
-                          <Truck className="h-3.5 w-3.5 mr-1.5" />
-                          {lang === "de" ? "In Lieferung" : "In consegna"}
-                        </Button>
-                      )}
-                      {detailOrder.status === "in_delivery" && (
-                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid="home-detail-delivered">
-                          <Package className="h-3.5 w-3.5 mr-1.5" />
-                          {lang === "de" ? "Geliefert" : "Consegnato"}
-                        </Button>
-                      )}
-                      {!detailOrder.requestedDeliveryDate && detailOrder.status !== "pending" && (
-                        <Button size="sm" variant="outline" onClick={() => { setDetailOrder(null); setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId }); }} disabled={updateStatusMutation.isPending} data-testid="home-detail-set-date">
-                          <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-purple-600" />
-                          {lang === "de" ? "Datum setzen" : "Imposta data"}
-                        </Button>
-                      )}
-                      <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid="home-detail-cancel">
-                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                        {lang === "de" ? "Stornieren" : "Annullare"}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {detailOrder.status === "in_delivery" && (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => deliveryNoteMutation.mutate(detailOrder.id)}
-                    disabled={deliveryNoteMutation.isPending}
-                    data-testid="home-detail-delivery-note"
-                  >
-                    {deliveryNoteMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <FileText className="h-4 w-4 mr-2" />
-                    )}
-                    {deliveryNoteMutation.isPending ? (lang === "de" ? "Wird erstellt..." : "Creazione...") : (lang === "de" ? "Lieferschein erstellen" : "Crea bolla di consegna")}
-                  </Button>
-                )}
+                <Button
+                  className="w-full"
+                  onClick={() => { setDetailOrder(null); navigate(`/supplier/orders?highlight=${detailOrder.id}`); }}
+                  data-testid="home-detail-goto-order"
+                >
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  {lang === "de" ? "zur Bestellung" : "vai all'ordine"}
+                </Button>
 
                 {!showMessageInput ? (
                   <Button

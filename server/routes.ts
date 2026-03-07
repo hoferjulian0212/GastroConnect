@@ -4,8 +4,8 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
-import { orders, messages } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users } from "@shared/schema";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 
@@ -1499,6 +1499,72 @@ export async function registerRoutes(
       res.json(orders);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch recent orders" });
+    }
+  });
+
+  app.get("/api/supplier/action-required", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) return res.json({ staleOrders: [], openComplaints: [] });
+
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      const staleOrders = await db
+        .select()
+        .from(orders)
+        .where(and(
+          eq(orders.supplierId, supplierId),
+          eq(orders.status, "pending"),
+          sql`${orders.createdAt} < ${twentyFourHoursAgo}`
+        ))
+        .orderBy(asc(orders.createdAt));
+
+      const staleOrdersWithDetails: any[] = [];
+      for (const order of staleOrders) {
+        const hasStatusChange = await db.select({ id: orderStatusHistory.id })
+          .from(orderStatusHistory)
+          .where(and(
+            eq(orderStatusHistory.orderId, order.id),
+            sql`${orderStatusHistory.fromStatus} IS NOT NULL`
+          ))
+          .limit(1);
+
+        const hasMessages = await db.select({ id: messages.id })
+          .from(messages)
+          .where(eq(messages.orderId, order.id))
+          .limit(1);
+
+        const hasComplaint = await db.select({ id: complaints.id })
+          .from(complaints)
+          .where(eq(complaints.orderId, order.id))
+          .limit(1);
+
+        if (hasStatusChange.length === 0 && hasMessages.length === 0 && hasComplaint.length === 0) {
+          const fullOrder = await storage.getOrder(order.id);
+          if (fullOrder) staleOrdersWithDetails.push(fullOrder);
+        }
+      }
+
+      const openComplaints = await db
+        .select()
+        .from(complaints)
+        .where(and(
+          eq(complaints.supplierId, supplierId),
+          sql`${complaints.status} != 'closed'`
+        ))
+        .orderBy(desc(complaints.createdAt));
+
+      const complaintsWithDetails = [];
+      for (const complaint of openComplaints) {
+        const [order] = await db.select().from(orders).where(eq(orders.id, complaint.orderId));
+        const [restaurant] = await db.select().from(users).where(eq(users.id, complaint.restaurantId));
+        const [supplier] = await db.select().from(users).where(eq(users.id, complaint.supplierId));
+        complaintsWithDetails.push({ ...complaint, order, restaurant, supplier });
+      }
+
+      res.json({ staleOrders: staleOrdersWithDetails, openComplaints: complaintsWithDetails });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch action required data" });
     }
   });
 
