@@ -537,8 +537,8 @@ export default function SupplierHome() {
               ))}
             </div>
           ) : recentOrders && recentOrders.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-              {recentOrders.slice(0, 6).map((order) => (
+            <div className="grid grid-cols-2 gap-2 md:gap-3 max-h-[320px] overflow-y-auto">
+              {recentOrders.map((order) => (
                 <div
                   key={order.id}
                   className="p-2.5 md:p-3 rounded-xl border border-border bg-white dark:bg-gray-900 transition-all duration-200 hover:shadow-md hover:border-primary/30 cursor-pointer"
@@ -613,12 +613,13 @@ export default function SupplierHome() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-3">
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0 space-y-3 max-h-[380px] overflow-y-auto">
             {(actionRequired?.staleOrders?.length || 0) > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {lang === "de" ? "Unbearbeitete Bestellungen" : "Ordini non elaborati"} ({actionRequired!.staleOrders.length})
                 </p>
+                <div className="grid grid-cols-2 gap-2">
                 {actionRequired!.staleOrders.map((order) => (
                   <div
                     key={order.id}
@@ -648,22 +649,22 @@ export default function SupplierHome() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
                         <span className="text-sm font-bold">{order.totalAmount}€</span>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 px-2.5 text-[10px] md:text-xs"
+                          className="h-6 px-2 text-[10px]"
                           onClick={() => navigate(`/supplier/orders?highlight=${order.id}`)}
                           data-testid={`stale-goto-order-${order.id}`}
                         >
-                          <ArrowRight className="h-3 w-3 mr-0.5" />
-                          {lang === "de" ? "zur Bestellung" : "vai all'ordine"}
+                          <ArrowRight className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
             )}
 
@@ -672,6 +673,7 @@ export default function SupplierHome() {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {lang === "de" ? "Reklamationen" : "Reclami"} ({actionRequired!.openComplaints.length})
                 </p>
+                <div className="grid grid-cols-2 gap-2">
                 {actionRequired!.openComplaints.map((complaint) => {
                   const statusColors: Record<string, string> = {
                     open: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
@@ -714,17 +716,17 @@ export default function SupplierHome() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 px-2.5 text-[10px] md:text-xs shrink-0 ml-2"
+                          className="h-6 px-2 text-[10px] shrink-0 ml-2"
                           onClick={() => navigate(`/supplier/complaints?highlight=${complaint.id}`)}
                           data-testid={`action-goto-complaint-${complaint.id}`}
                         >
-                          <ArrowRight className="h-3 w-3 mr-0.5" />
-                          {lang === "de" ? "zur Reklamation" : "vai al reclamo"}
+                          <ArrowRight className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
                   );
                 })}
+                </div>
               </div>
             )}
           </CardContent>
