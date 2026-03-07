@@ -67,10 +67,10 @@ export function SupplierSidebar() {
         <Link 
           href={item.url} 
           data-testid={`link-${item.url.split('/').pop()}`}
-          className={`flex items-center h-11 rounded-xl px-2 gap-3 transition-all duration-200 text-left text-[13px] hover-elevate ${
+          className={`flex items-center h-11 rounded-xl px-2 gap-3 transition-all duration-200 text-left text-[13px] ${
             isActive
               ? "text-primary font-semibold"
-              : "text-foreground font-normal"
+              : "text-foreground font-normal hover-elevate"
           }`}
         >
           <item.icon className="h-5 w-5" />

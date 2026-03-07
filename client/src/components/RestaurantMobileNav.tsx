@@ -98,8 +98,8 @@ export function RestaurantMobileNav() {
                 onClick={() => handleMoreItemClick(item.url)}
                 className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors ${
                   isActive 
-                    ? "bg-primary/10 text-primary" 
-                    : "hover-elevate"
+                    ? "text-primary font-semibold" 
+                    : "text-foreground hover-elevate"
                 }`}
                 data-testid={`restaurant-mobile-nav-more-${item.url.split('/').pop()}`}
               >
