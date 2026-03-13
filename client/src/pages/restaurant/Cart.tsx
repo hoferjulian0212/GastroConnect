@@ -549,18 +549,13 @@ export default function RestaurantCart() {
                       </span>
                     </div>
                   )}
-                  <div className="space-y-1 mt-4 pt-3 border-t border-border/50">
-                    <div className="flex items-center gap-1.5">
-                      <StickyNote className="h-3 w-3 text-amber-500 dark:text-amber-400" />
-                      <Label className="text-[11px] md:text-xs font-medium text-muted-foreground">
-                        {t("cart", "orderNotes")}
-                      </Label>
-                    </div>
+                  <div className="relative mt-4 pt-3 border-t border-border/50">
+                    <StickyNote className="absolute left-2.5 top-[calc(0.75rem+10px)] h-3.5 w-3.5 text-amber-500/60 dark:text-amber-400/60 pointer-events-none" />
                     <Textarea
                       placeholder={t("cart", "orderNotesPlaceholder")}
                       value={orderNotes[supplierId] || ""}
                       onChange={(e) => setOrderNotes(prev => ({ ...prev, [supplierId]: e.target.value }))}
-                      className="resize-none text-xs min-h-0"
+                      className="resize-none text-xs min-h-0 pl-8"
                       rows={2}
                       data-testid={`textarea-order-notes-${supplierId}`}
                     />
