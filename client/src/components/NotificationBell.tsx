@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Bell, MessageSquare, ShoppingBag, AlertCircle, CheckCheck, ExternalLink, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ export function NotificationBell() {
   const { currentUser, currentRole } = useUser();
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
+  const markedReadRef = useRef(false);
 
   const { data: notifications } = useQuery<Notification[]>({
     queryKey: [`/api/notifications?userId=${currentUser?.id}`],
@@ -28,15 +29,7 @@ export function NotificationBell() {
     enabled: !!currentUser?.id,
   });
 
-  const markAsReadMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("PATCH", `/api/notifications/${id}/read`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/notifications?userId=${currentUser?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/notifications/count?userId=${currentUser?.id}`] });
-    },
-  });
+  const unreadCount = countData?.count || 0;
 
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
@@ -45,8 +38,20 @@ export function NotificationBell() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/notifications?userId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/notifications/count?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`] });
     },
   });
+
+  useEffect(() => {
+    if (open && unreadCount > 0 && !markedReadRef.current) {
+      markedReadRef.current = true;
+      markAllAsReadMutation.mutate();
+    }
+    if (!open) {
+      markedReadRef.current = false;
+    }
+  }, [open, unreadCount]);
 
   const getNotificationRoute = (notification: Notification): string | null => {
     if (!notification.referenceId) return null;
@@ -69,9 +74,6 @@ export function NotificationBell() {
   };
 
   const handleNotificationClick = (notification: Notification) => {
-    if (!notification.isRead) {
-      markAsReadMutation.mutate(notification.id);
-    }
     const route = getNotificationRoute(notification);
     if (route) {
       setOpen(false);
@@ -129,8 +131,8 @@ export function NotificationBell() {
     return date.toLocaleDateString("de-DE", { day: "numeric", month: "short" });
   };
 
-  const unreadCount = countData?.count || 0;
-  const hasNotifications = notifications && notifications.length > 0;
+  const unreadNotifications = notifications?.filter(n => !n.isRead) || [];
+  const hasUnread = unreadNotifications.length > 0;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -152,32 +154,18 @@ export function NotificationBell() {
       <PopoverContent className="w-80 p-0" align="end" sideOffset={8}>
         <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-muted/30">
           <span className="font-medium text-sm">Benachrichtigungen</span>
-          {unreadCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 px-2 text-xs text-muted-foreground"
-              onClick={() => markAllAsReadMutation.mutate()}
-              data-testid="button-mark-all-read"
-            >
-              <CheckCheck className="h-3 w-3 mr-1" />
-              Alle lesen
-            </Button>
-          )}
         </div>
         
-        {hasNotifications ? (
+        {hasUnread ? (
           <ScrollArea className="max-h-[320px]">
             <div className="py-1">
-              {notifications.map((notification) => {
+              {unreadNotifications.map((notification) => {
                 const style = getNotificationStyle(notification.type);
                 const hasRoute = !!getNotificationRoute(notification);
                 return (
                   <div
                     key={notification.id}
-                    className={`group relative flex items-start gap-2.5 px-3 py-2.5 cursor-pointer transition-colors hover-elevate ${
-                      !notification.isRead ? "bg-primary/5" : ""
-                    }`}
+                    className="group relative flex items-start gap-2.5 px-3 py-2.5 cursor-pointer transition-colors hover-elevate bg-primary/5"
                     onClick={() => handleNotificationClick(notification)}
                     data-testid={`notification-${notification.id}`}
                   >
@@ -186,7 +174,7 @@ export function NotificationBell() {
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <div className="flex items-center gap-2">
-                        <span className={`text-sm leading-tight ${!notification.isRead ? "font-medium" : ""}`}>
+                        <span className="text-sm leading-tight font-medium">
                           {notification.title}
                         </span>
                         <span className="flex-shrink-0 text-[10px] text-muted-foreground">
@@ -203,9 +191,7 @@ export function NotificationBell() {
                         </div>
                       )}
                     </div>
-                    {!notification.isRead && (
-                      <div className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-primary mt-2" />
-                    )}
+                    <div className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-primary mt-2" />
                   </div>
                 );
               })}
@@ -216,7 +202,7 @@ export function NotificationBell() {
             <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-2">
               <Bell className="h-5 w-5 text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground">Keine Benachrichtigungen</p>
+            <p className="text-sm text-muted-foreground">Keine neuen Benachrichtigungen</p>
           </div>
         )}
       </PopoverContent>
