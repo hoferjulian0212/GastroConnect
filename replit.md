@@ -32,6 +32,8 @@ The application uses a clean and modern UI design.
 - **Minimum Order Quantity (MOQ)**: Products can have a default MOQ, and suppliers can set custom MOQs for specific restaurants. The system enforces MOQs in the catalog and cart, both client-side and server-side.
 - **Supplier Statistics Card**: Supplier home page features a statistics card with KPIs (total revenue, total orders, average order value), a 6-month revenue bar chart (recharts), and a top 5 products ranking with progress bars. Data from `GET /api/supplier/detailed-stats` endpoint.
 - **Inventory Management**: Products have `stockQuantity` and `lowStockThreshold` fields. Stock is automatically deducted when orders are confirmed, and reversed when orders are cancelled or set back to pending via change requests. Manual stock in/out with full audit trail via `stockMovements` table. Low stock alerts displayed on supplier home page.
+- **Partial Confirmation (Soft-Inventory)**: Suppliers can confirm orders with adjusted quantities per item via `POST /api/orders/:id/confirm`. Order items have `confirmedQuantity` and `rejectedQuantity` fields. Status `partially_confirmed` (orange theme) is used when any item quantity is reduced. Stock is deducted based on confirmed quantities only. Chat auto-message of type `order_change_request` with `content.type: "partial_confirmation"` shows item-by-item breakdown in both inboxes.
+- **Supplier Cancel Restriction**: Suppliers cannot cancel orders once they are `in_delivery`. Only restaurants can cancel at that stage. Suppliers have a "Status korrigieren" (Correct status) dropdown in order detail views to change to any status for corrections.
 
 ### Core Data Models
 - **Users**: Role-based (restaurant/supplier) with company information and profile pictures.

@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import OnlineStatus from "@/components/OnlineStatus";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
@@ -1218,7 +1219,7 @@ export default function SupplierInbox() {
                                                     {lang === "it" ? "Consegnato" : "Geliefert"}
                                                   </Button>
                                                 )}
-                                                {orderStatus && !["delivered", "cancelled"].includes(orderStatus) && (
+                                                {orderStatus && !["delivered", "cancelled", "in_delivery"].includes(orderStatus) && (
                                                   <Button size="sm" variant="outline" className="flex-1 text-xs px-2" onClick={() => setCardWizard({ orderId: message.orderId!, action: "cancelled" })} data-testid={`button-card-cancel-${message.id}`}>
                                                     <XCircle className="h-3.5 w-3.5 mr-1 shrink-0 text-destructive" />
                                                     {lang === "it" ? "Annulla" : "Stornieren"}
@@ -1736,14 +1737,50 @@ export default function SupplierInbox() {
                           Geliefert
                         </Button>
                       )}
-                      <Button size="sm" variant="outline" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "cancelled" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-cancelled">
-                        <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
-                        Stornieren
-                      </Button>
+                      {orderDetail.status !== "in_delivery" && (
+                        <Button size="sm" variant="outline" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "cancelled" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-cancelled">
+                          <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                          {lang === "it" ? "Annulla" : "Stornieren"}
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
               </div>
+
+              {orderDetail.status !== "cancelled" && (
+                <div className="border rounded-lg p-3 bg-muted/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {lang === "it" ? "Correggi stato" : "Status korrigieren"}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Select
+                      onValueChange={(value) => {
+                        if (value && value !== orderDetail.status) {
+                          updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: value });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs flex-1" data-testid="select-status-correction">
+                        <SelectValue placeholder={lang === "it" ? "Seleziona stato..." : "Status wählen..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]
+                          .filter(s => s !== orderDetail.status)
+                          .map(s => (
+                            <SelectItem key={s} value={s} data-testid={`select-correction-${s}`}>
+                              {getStatusLabel(s)}
+                            </SelectItem>
+                          ))
+                        }
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
 
               {orderDetail.restaurant && (
                 <div className="flex items-center gap-3 p-3 rounded-lg border">

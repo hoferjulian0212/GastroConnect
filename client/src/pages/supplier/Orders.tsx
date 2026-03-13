@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
@@ -339,10 +340,12 @@ export default function SupplierOrders() {
                     {lang === "de" ? "Geliefert" : "Consegnato"}
                   </Button>
                 )}
-                <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-cancelled-${order.id}`}>
-                  <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
-                  {lang === "de" ? "Stornieren" : "Annullare"}
-                </Button>
+                {order.status !== "in_delivery" && (
+                  <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-cancelled-${order.id}`}>
+                    <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                    {lang === "de" ? "Stornieren" : "Annullare"}
+                  </Button>
+                )}
                 {!order.requestedDeliveryDate && order.status !== "pending" && (
                   <Button size="sm" variant="outline" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-set-date-${order.id}`}>
                     <CalendarDays className="h-3.5 w-3.5 mr-1 text-purple-600" />
@@ -824,10 +827,12 @@ export default function SupplierOrders() {
                           {lang === "de" ? "Datum setzen" : "Imposta data"}
                         </Button>
                       )}
-                      <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid="button-status-cancelled">
-                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                        {lang === "de" ? "Stornieren" : "Annullare"}
-                      </Button>
+                      {detailOrder.status !== "in_delivery" && (
+                        <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid="button-status-cancelled">
+                          <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                          {lang === "de" ? "Stornieren" : "Annullare"}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -847,6 +852,40 @@ export default function SupplierOrders() {
                     )}
                     {deliveryNoteMutation.isPending ? (lang === "de" ? "Wird erstellt..." : "Creazione...") : t("supplierOrders", "createDeliveryNote")}
                   </Button>
+                )}
+
+                {detailOrder.status !== "cancelled" && (
+                  <div className="border rounded-lg p-3 bg-muted/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {lang === "de" ? "Status korrigieren" : "Correggi stato"}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Select
+                        onValueChange={(value) => {
+                          if (value && value !== detailOrder.status) {
+                            updateStatusMutation.mutate({ orderId: detailOrder.id, status: value });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs flex-1" data-testid="select-status-correction">
+                          <SelectValue placeholder={lang === "de" ? "Status wählen..." : "Seleziona stato..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]
+                            .filter(s => s !== detailOrder.status)
+                            .map(s => (
+                              <SelectItem key={s} value={s} data-testid={`select-correction-${s}`}>
+                                {getOrderStatus(s, lang, false)}
+                              </SelectItem>
+                            ))
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 )}
 
                 {!showMessageInput ? (
