@@ -422,6 +422,9 @@ export default function RestaurantInbox() {
     }
   };
 
+  const prevConvTimestamps = useRef<Record<string, string>>({});
+  const [flashingConvIds, setFlashingConvIds] = useState<Set<string>>(new Set());
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -441,6 +444,24 @@ export default function RestaurantInbox() {
     refetchInterval: 3000,
     refetchIntervalInBackground: false,
   });
+
+  useEffect(() => {
+    if (conversations && conversations.length > 0) {
+      const newFlash = new Set<string>();
+      const hasExistingData = Object.keys(prevConvTimestamps.current).length > 0;
+      conversations.forEach(conv => {
+        const prevTs = prevConvTimestamps.current[conv.id];
+        if (hasExistingData && conv.lastMessageAt && prevTs && conv.lastMessageAt !== prevTs && conv.id !== selectedConversation) {
+          newFlash.add(conv.id);
+        }
+        prevConvTimestamps.current[conv.id] = conv.lastMessageAt || "";
+      });
+      if (newFlash.size > 0) {
+        setFlashingConvIds(newFlash);
+        setTimeout(() => setFlashingConvIds(new Set()), 1500);
+      }
+    }
+  }, [conversations, selectedConversation]);
 
   const prevMessageCountRef = useRef<number>(0);
   const [newMessageIds, setNewMessageIds] = useState<Set<string>>(new Set());
@@ -907,7 +928,7 @@ export default function RestaurantInbox() {
                               : hasUnread
                               ? "bg-primary/5"
                               : ""
-                          }`}
+                          } ${flashingConvIds.has(conv.id) ? "animate-flash-new" : ""}`}
                           data-testid={`conversation-${conv.id}`}
                         >
                           <div className="flex items-center gap-2.5">

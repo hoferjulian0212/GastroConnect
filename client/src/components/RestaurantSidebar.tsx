@@ -17,12 +17,15 @@ import { useT } from "@/lib/translations";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
+import { useRef, useState, useEffect } from "react";
 
 export function RestaurantSidebar() {
   const [location] = useLocation();
   const { currentUser } = useUser();
   const { lang } = useLanguage();
   const t = useT(lang);
+  const [pulsingBadge, setPulsingBadge] = useState<string | null>(null);
+  const prevCounts = useRef<Record<string, number>>({});
 
   const mainMenuItems = [
     { title: t("common", "home"), url: "/restaurant", icon: Home },
@@ -56,10 +59,21 @@ export function RestaurantSidebar() {
     return 0;
   };
 
+  useEffect(() => {
+    const currentUnread = unreadCount?.count || 0;
+    const prevUnread = prevCounts.current["inbox"] ?? 0;
+    if (currentUnread > prevUnread && prevCounts.current["inbox"] !== undefined) {
+      setPulsingBadge("inbox");
+      setTimeout(() => setPulsingBadge(null), 500);
+    }
+    prevCounts.current["inbox"] = currentUnread;
+  }, [unreadCount?.count]);
+
   const renderMenuItem = (item: typeof mainMenuItems[0], hasBadge?: boolean) => {
     const isActive = location === item.url || 
       (item.url !== "/restaurant" && location.startsWith(item.url));
     const badgeCount = hasBadge ? getBadgeCount(item.url) : 0;
+    const isPulsing = item.url === "/restaurant/inbox" && pulsingBadge === "inbox";
     
     return (
       <SidebarMenuItem key={item.url}>
@@ -77,7 +91,7 @@ export function RestaurantSidebar() {
           {badgeCount > 0 && (
             <Badge 
               variant="default" 
-              className="ml-auto text-xs px-2 py-0.5 rounded-full"
+              className={`ml-auto text-xs px-2 py-0.5 rounded-full ${isPulsing ? "animate-badge-pulse" : ""}`}
             >
               {badgeCount}
             </Badge>

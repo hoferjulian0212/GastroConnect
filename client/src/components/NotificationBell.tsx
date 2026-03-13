@@ -21,13 +21,11 @@ export function NotificationBell() {
   const { data: notifications } = useQuery<Notification[]>({
     queryKey: [`/api/notifications?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
-    refetchInterval: 30000,
   });
 
   const { data: countData } = useQuery<{ count: number }>({
     queryKey: [`/api/notifications/count?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
-    refetchInterval: 10000,
   });
 
   const markAsReadMutation = useMutation({
