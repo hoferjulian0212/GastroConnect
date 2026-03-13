@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Utensils, Truck, MessageSquare, ShoppingCart, Shield, Zap } from "lucide-react";
-import logoImage from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-Photoroom_1771091510099.png";
+import logoImage from "@assets/logo_no_bg.png";
 
 export default function About() {
   return (

@@ -14,7 +14,7 @@ import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ShoppingCart } from "lucide-react";
-import logoImg from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-Photoroom_1772219389604.png";
+import logoImg from "@assets/logo_no_bg.png";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { RestaurantSidebar } from "@/components/RestaurantSidebar";

@@ -3,7 +3,7 @@ import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import logoImg from "@assets/Gemini_Generated_Image_lqyjgblqyjgblqyj-Photoroom_1772219389604.png";
+import logoImg from "@assets/logo_no_bg.png";
 import {
   ShoppingCart,
   MessageSquare,
