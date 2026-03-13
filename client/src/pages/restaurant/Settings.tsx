@@ -49,21 +49,20 @@ export default function RestaurantSettings() {
 
       <Link href="/restaurant/profile" data-testid="link-profile-card">
         <Card className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30">
-          <CardContent className="flex items-center gap-4 p-4 md:p-5">
-            <Avatar className="h-12 w-12 md:h-14 md:w-14 shrink-0">
+          <CardContent className="flex items-center gap-3 p-3">
+            <Avatar className="h-9 w-9 shrink-0">
               {currentUser?.profileImageUrl ? (
                 <AvatarImage src={currentUser.profileImageUrl} alt={currentUser.name} />
               ) : null}
-              <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                 {(currentUser?.companyName || currentUser?.name || "?").slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm md:text-base font-semibold truncate">{currentUser?.companyName || currentUser?.name}</p>
-              <p className="text-xs md:text-sm text-muted-foreground truncate">{currentUser?.email}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("profile", "profileDesc")}</p>
+              <p className="text-sm font-semibold truncate">{currentUser?.companyName || currentUser?.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{currentUser?.email}</p>
             </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
           </CardContent>
         </Card>
       </Link>
@@ -230,10 +229,10 @@ export default function RestaurantSettings() {
         )}
       </div>
 
-      <Card>
-        <CardContent className="p-3 md:p-6">
-          <div className="flex items-center justify-between gap-3 py-2">
-            <div className="flex items-center gap-3 min-w-0">
+      <div className="flex gap-3 justify-center max-w-md mx-auto w-full">
+        <Card className="flex-1">
+          <CardContent className="p-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
               <Moon className="h-4 w-4 text-muted-foreground shrink-0" />
               <Label className="text-sm font-medium">{t("settings", "darkMode")}</Label>
             </div>
@@ -245,22 +244,22 @@ export default function RestaurantSettings() {
               }}
               data-testid="switch-dark-mode"
             />
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card className="border-destructive/30">
-        <CardContent className="p-3 md:p-6">
-          <Link
-            href="/"
-            className="flex items-center gap-3 py-2 text-destructive font-medium transition-colors rounded-lg"
-            data-testid="button-logout"
-          >
-            <LogOut className="h-5 w-5" />
-            <span className="text-sm font-semibold">{t("common", "logout")}</span>
-          </Link>
-        </CardContent>
-      </Card>
+        <Card className="flex-1 border-destructive/30">
+          <CardContent className="p-3 flex items-center justify-center">
+            <Link
+              href="/"
+              className="flex items-center gap-2 text-destructive font-medium transition-colors"
+              data-testid="button-logout"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm font-semibold">{t("common", "logout")}</span>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
