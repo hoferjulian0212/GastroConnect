@@ -25,7 +25,7 @@ export default function About() {
           />
           <h1 className="text-2xl md:text-3xl font-bold mb-3">Über GastroConnect</h1>
           <p className="text-base text-muted-foreground max-w-2xl mx-auto">
-            Die moderne B2B-Plattform, die Restaurants und Lieferanten in der Gastronomiebranche verbindet.
+            Die moderne B2B-Plattform, die Betriebe und Händler in der Gastronomiebranche verbindet.
           </p>
         </div>
 
@@ -35,9 +35,9 @@ export default function About() {
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                 <Utensils className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-semibold text-sm mb-1">Für Restaurants</h3>
+              <h3 className="font-semibold text-sm mb-1">Für Betriebe</h3>
               <p className="text-xs text-muted-foreground">
-                Entdecken Sie Lieferanten, durchsuchen Sie Produktkataloge und bestellen Sie direkt über die Plattform.
+                Entdecken Sie Händler, durchsuchen Sie Produktkataloge und bestellen Sie direkt über die Plattform.
               </p>
             </CardContent>
           </Card>
@@ -47,7 +47,7 @@ export default function About() {
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                 <Truck className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-semibold text-sm mb-1">Für Lieferanten</h3>
+              <h3 className="font-semibold text-sm mb-1">Für Händler</h3>
               <p className="text-xs text-muted-foreground">
                 Verwalten Sie Ihre Produkte, bearbeiten Sie Bestellungen und pflegen Sie Kundenbeziehungen.
               </p>
@@ -110,12 +110,12 @@ export default function About() {
           <div className="flex justify-center gap-3">
             <Link href="/restaurant">
               <Button variant="outline" size="sm" data-testid="button-goto-restaurant">
-                Als Restaurant starten
+                Als Betrieb starten
               </Button>
             </Link>
             <Link href="/supplier">
               <Button size="sm" data-testid="button-goto-supplier">
-                Als Lieferant starten
+                Als Händler starten
               </Button>
             </Link>
           </div>

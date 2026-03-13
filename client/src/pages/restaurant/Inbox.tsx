@@ -729,7 +729,7 @@ export default function RestaurantInbox() {
       return apiRequest("POST", `/api/orders/${orderId}/change-request`, { restaurantId: currentUser?.id, reason });
     },
     onSuccess: () => {
-      toast({ title: lang === "it" ? "Richiesta inviata" : "Anfrage gesendet", description: lang === "it" ? "La richiesta di modifica è stata inviata al fornitore." : "Die Änderungsanfrage wurde an den Lieferanten gesendet." });
+      toast({ title: lang === "it" ? "Richiesta inviata" : "Anfrage gesendet", description: lang === "it" ? "La richiesta di modifica è stata inviata al commerciante." : "Die Änderungsanfrage wurde an den Händler gesendet." });
       setCardWizard(null);
       setOrderDetailId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
@@ -1385,7 +1385,7 @@ export default function RestaurantInbox() {
                                                       <Pencil className="h-4 w-4 text-amber-600" />
                                                       <span className="text-sm font-medium">{lang === "it" ? "Richiedi modifica ordine" : "Änderung anfragen"}</span>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground">{lang === "it" ? "Descrivi le modifiche desiderate. Il fornitore dovrà approvare la richiesta." : "Beschreiben Sie die gewünschten Änderungen. Der Lieferant muss die Anfrage genehmigen."}</p>
+                                                    <p className="text-xs text-muted-foreground">{lang === "it" ? "Descrivi le modifiche desiderate. Il commerciante dovrà approvare la richiesta." : "Beschreiben Sie die gewünschten Änderungen. Der Händler muss die Anfrage genehmigen."}</p>
                                                     <Textarea
                                                       placeholder={lang === "it" ? "Motivo della modifica..." : "Grund der Änderung..."}
                                                       value={cardWizard.reason || ""}
@@ -2395,7 +2395,7 @@ export default function RestaurantInbox() {
                             </Avatar>
                             <span className="text-sm font-medium">{comment.user?.companyName || comment.user?.name || t("common", "unknown")}</span>
                             <Badge variant="outline" className="text-xs">
-                              {comment.user?.role === "supplier" ? t("common", "supplier") : "Restaurant"}
+                              {comment.user?.role === "supplier" ? t("common", "supplier") : t("common", "restaurant")}
                             </Badge>
                           </div>
                           <span className="text-xs text-muted-foreground">

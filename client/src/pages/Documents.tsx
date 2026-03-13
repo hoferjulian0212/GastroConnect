@@ -150,7 +150,7 @@ export default function Documents() {
 
   const labelDe = (key: string) => {
     const labels: Record<string, string> = {
-      supplier: "Lieferant", restaurant: "Empfänger", address: "Adresse", city: "PLZ / Ort",
+      supplier: "Händler", restaurant: "Empfänger", address: "Adresse", city: "PLZ / Ort",
       phone: "Telefon", email: "E-Mail", orderDate: "Bestelldatum", deliveryDate: "Lieferdatum",
       items: "Positionen", product: "Produkt", quantity: "Menge", unitPrice: "Einzelpreis",
       total: "Gesamt", notes: "Anmerkungen", preview: "Vorschau", edit: "Bearbeiten",
@@ -161,7 +161,7 @@ export default function Documents() {
 
   const labelIt = (key: string) => {
     const labels: Record<string, string> = {
-      supplier: "Fornitore", restaurant: "Destinatario", address: "Indirizzo", city: "CAP / Città",
+      supplier: "Commerciante", restaurant: "Destinatario", address: "Indirizzo", city: "CAP / Città",
       phone: "Telefono", email: "E-Mail", orderDate: "Data ordine", deliveryDate: "Data consegna",
       items: "Posizioni", product: "Prodotto", quantity: "Quantità", unitPrice: "Prezzo unitario",
       total: "Totale", notes: "Note", preview: "Anteprima", edit: "Modifica",

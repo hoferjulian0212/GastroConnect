@@ -1013,7 +1013,7 @@ export default function Complaints() {
                       <Textarea
                         value={complaintMessage}
                         onChange={(e) => setComplaintMessage(e.target.value)}
-                        placeholder={lang === "de" ? "Nachricht an Lieferant..." : "Messaggio al fornitore..."}
+                        placeholder={lang === "de" ? "Nachricht an Händler..." : "Messaggio al commerciante..."}
                         rows={2}
                         className="flex-1"
                         data-testid="input-complaint-message"

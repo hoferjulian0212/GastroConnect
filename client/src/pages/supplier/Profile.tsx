@@ -201,7 +201,7 @@ export default function SupplierProfile() {
                             {t("profile", "email")}
                           </FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder={lang === "de" ? "email@lieferant.de" : "email@fornitore.it"} {...field} data-testid="input-email" />
+                            <Input type="email" placeholder={lang === "de" ? "email@haendler.de" : "email@commerciante.it"} {...field} data-testid="input-email" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -341,7 +341,7 @@ export default function SupplierProfile() {
                 </button>
               </div>
               <h3 className="font-medium text-base md:text-lg">
-                {currentUser?.companyName || currentUser?.name || (lang === "de" ? "Mein Lieferant" : "Il mio fornitore")}
+                {currentUser?.companyName || currentUser?.name || (lang === "de" ? "Mein Händler" : "Il mio commerciante")}
               </h3>
               <p className="text-xs md:text-sm text-muted-foreground">{currentUser?.email}</p>
               <div className="mt-3 md:mt-4 w-full space-y-2">

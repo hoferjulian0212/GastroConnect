@@ -15,7 +15,7 @@ export function RoleSwitcher() {
         data-testid="button-switch-restaurant"
       >
         <Store className="h-4 w-4" />
-        <span className="hidden sm:inline">Restaurant</span>
+        <span className="hidden sm:inline">Betrieb</span>
       </Button>
       <Button
         variant={currentRole === "supplier" ? "default" : "ghost"}
@@ -25,7 +25,7 @@ export function RoleSwitcher() {
         data-testid="button-switch-supplier"
       >
         <Truck className="h-4 w-4" />
-        <span className="hidden sm:inline">Lieferant</span>
+        <span className="hidden sm:inline">Händler</span>
       </Button>
     </div>
   );

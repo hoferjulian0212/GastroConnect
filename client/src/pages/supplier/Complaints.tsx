@@ -712,7 +712,7 @@ export default function SupplierComplaints() {
                       <Textarea
                         value={complaintMessage}
                         onChange={(e) => setComplaintMessage(e.target.value)}
-                        placeholder={lang === "de" ? "Nachricht an Restaurant..." : "Messaggio al ristorante..."}
+                        placeholder={lang === "de" ? "Nachricht an Betrieb..." : "Messaggio all'azienda..."}
                         rows={2}
                         className="flex-1"
                         data-testid="input-complaint-message"

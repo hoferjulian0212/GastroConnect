@@ -1018,7 +1018,7 @@ export async function registerRoutes(
           userId: supplierId,
           type: "new_order",
           title: `Neue Bestellung #${order.id.slice(0, 8)}`,
-          message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat eine neue Bestellung aufgegeben #${order.id.slice(0, 8)} (€${totalAmount})`,
+          message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat eine neue Bestellung aufgegeben #${order.id.slice(0, 8)} (€${totalAmount})`,
           referenceId: order.id
         }, "supplier");
       }
@@ -1287,7 +1287,7 @@ export async function registerRoutes(
         userId: order.supplierId,
         type: "order_status",
         title: `Bestellung angepasst #${order.id.slice(0, 8)}`,
-        message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat Bestellung #${order.id.slice(0, 8)} angepasst`,
+        message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat Bestellung #${order.id.slice(0, 8)} angepasst`,
         referenceId: order.id
       }, "supplier");
 
@@ -1334,7 +1334,7 @@ export async function registerRoutes(
         userId: order.supplierId,
         type: "order_status",
         title: `Änderungsanfrage #${order.id.slice(0, 8)}`,
-        message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} möchte Bestellung #${order.id.slice(0, 8)} ändern`,
+        message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} möchte Bestellung #${order.id.slice(0, 8)} ändern`,
         referenceId: order.id
       }, "supplier");
 
@@ -1410,7 +1410,7 @@ export async function registerRoutes(
           userId: order.restaurantId,
           type: "order_status",
           title: `Änderung genehmigt #${order.id.slice(0, 8)}`,
-          message: `${supplier?.companyName || supplier?.name || "Lieferant"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} genehmigt`,
+          message: `${supplier?.companyName || supplier?.name || "Händler"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} genehmigt`,
           referenceId: order.id
         }, "restaurant");
       } else {
@@ -1431,7 +1431,7 @@ export async function registerRoutes(
           userId: order.restaurantId,
           type: "order_status",
           title: `Änderung abgelehnt #${order.id.slice(0, 8)}`,
-          message: `${supplier?.companyName || supplier?.name || "Lieferant"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} abgelehnt`,
+          message: `${supplier?.companyName || supplier?.name || "Händler"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} abgelehnt`,
           referenceId: order.id
         }, "restaurant");
       }
@@ -1960,7 +1960,7 @@ export async function registerRoutes(
         userId: validated.supplierId,
         type: "new_complaint",
         title: `Neue Reklamation #${complaint.id.slice(0, 8)}`,
-        message: `${restaurant?.companyName || restaurant?.name || "Ein Restaurant"} hat eine Reklamation eingereicht #${complaint.id.slice(0, 8)}: ${validated.title}`,
+        message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat eine Reklamation eingereicht #${complaint.id.slice(0, 8)}: ${validated.title}`,
         referenceId: complaint.id
       }, "supplier");
       
@@ -2632,7 +2632,7 @@ async function generateDeliveryNotePDF(order: {
     doc.moveDown(1);
 
     const topY = doc.y;
-    doc.fontSize(10).font("Helvetica-Bold").fillColor("#333333").text("Lieferant:", 50, topY);
+    doc.fontSize(10).font("Helvetica-Bold").fillColor("#333333").text("Händler:", 50, topY);
     doc.font("Helvetica").fontSize(10).fillColor("#333333");
     doc.text(supplierName, 50, topY + 16);
     if (order.supplier.address) doc.text(order.supplier.address);
@@ -2711,7 +2711,7 @@ async function generateDeliveryNotePDF(order: {
       doc.moveTo(320, doc.y).lineTo(500, doc.y).stroke();
       doc.moveDown(0.3);
       doc.fontSize(9).fillColor("#666666").font("Helvetica");
-      doc.text("Unterschrift Lieferant", 50, doc.y, { width: 180, align: "center" });
+      doc.text("Unterschrift Händler", 50, doc.y, { width: 180, align: "center" });
       doc.text("Unterschrift Empfänger", 320, doc.y - doc.currentLineHeight(), { width: 180, align: "center" });
     }
 

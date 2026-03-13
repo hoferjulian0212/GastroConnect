@@ -1624,7 +1624,7 @@ export default function SupplierInbox() {
                     <MessageSquare className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
                     <p className="text-lg font-medium">Wählen Sie eine Konversation</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Wählen Sie ein Restaurant aus der Liste
+                      Wählen Sie einen Betrieb aus der Liste
                     </p>
                   </div>
                 </div>
@@ -1691,8 +1691,8 @@ export default function SupplierInbox() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-medium text-sm">{orderDetail.restaurant.companyName || "Restaurant"}</div>
-                    <div className="text-xs text-muted-foreground">Restaurant</div>
+                    <div className="font-medium text-sm">{orderDetail.restaurant.companyName || t("common", "restaurant")}</div>
+                    <div className="text-xs text-muted-foreground">{t("common", "restaurant")}</div>
                   </div>
                 </div>
               )}
@@ -1940,7 +1940,7 @@ export default function SupplierInbox() {
                             </Avatar>
                             <span className="text-sm font-medium">{comment.user?.companyName || comment.user?.name || "Unbekannt"}</span>
                             <Badge variant="outline" className="text-xs">
-                              {comment.user?.role === "supplier" ? "Lieferant" : "Restaurant"}
+                              {comment.user?.role === "supplier" ? t("common", "supplier") : t("common", "restaurant")}
                             </Badge>
                           </div>
                           <span className="text-xs text-muted-foreground">
