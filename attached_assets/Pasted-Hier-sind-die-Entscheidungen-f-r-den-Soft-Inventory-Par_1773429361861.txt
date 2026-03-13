@@ -1,0 +1,101 @@
+Hier sind die Entscheidungen für den Soft-Inventory / Partial Confirmation Workflow:
+
+1. Bedeutung von "Partial Confirmation"
+Partial Confirmation bedeutet:
+- Der Händler soll bei der Bestätigung die Menge pro Position anpassen können
+- Er soll also weniger bestätigen können als ursprünglich bestellt
+- Einzelne Positionen dürfen auch komplett abgelehnt werden
+
+Beispiel:
+- bestellt 10
+- bestätigt 7
+- abgelehnt 3
+
+Oder:
+- bestellt 10
+- bestätigt 0
+- abgelehnt 10
+
+Also bitte beides unterstützen:
+- Teilbestätigung
+- vollständige Ablehnung einzelner Positionen
+
+2. Lagerbestand
+Ja, der Lagerbestand soll nur für die tatsächlich bestätigte Menge abgezogen werden, NICHT für die ursprünglich bestellte Menge.
+
+Beispiel:
+- bestellt 100
+- bestätigt 90
+- nur 90 werden vom stockQuantity abgezogen
+
+Wichtig:
+- Die bisherige automatische Lagerabzugs-Logik bei pending → confirmed muss entsprechend angepasst werden
+- Stock Movements sollen weiterhin sauber protokolliert werden, aber nur für confirmedQuantity
+
+3. Information an den Betrieb
+Bei Teilbestätigung soll der Betrieb klar informiert werden.
+
+Gewünscht:
+- eine normale order_status / order update Benachrichtigung
+- zusätzlich soll im UI der Bestellung klar sichtbar sein:
+  - bestellt
+  - bestätigt
+  - nicht verfügbar
+
+Optional, aber sinnvoll:
+- eine automatische Chat-Nachricht / Systemnachricht in der Inbox, dass die Bestellung angepasst wurde
+
+Textlich z. B.:
+"Deine Bestellung wurde vom Händler bearbeitet. Einige Mengen wurden angepasst."
+
+Es ist wichtig, dass der Betrieb nicht nur sieht, DASS sich etwas geändert hat, sondern auch WELCHE Positionen betroffen sind.
+
+4. Status
+Bitte einen neuen Status einführen:
+- partially_confirmed
+
+Regeln:
+- confirmed = alle Positionen vollständig bestätigt
+- partially_confirmed = mindestens eine Position wurde nicht vollständig bestätigt, aber mindestens eine Menge wurde bestätigt
+- cancelled = nur wenn die gesamte Bestellung storniert wird
+- falls wirklich alle Positionen auf 0 bestätigt werden, behandle das sinnvoll entweder als cancelled oder als vollständig abgelehnte Bestellung innerhalb der bestehenden Logik; falls technisch einfacher, darf das zunächst als cancelled behandelt werden
+
+Status-Flow:
+- pending → confirmed
+- pending → partially_confirmed
+- confirmed / partially_confirmed → in_delivery
+- in_delivery → delivered
+
+Bitte prüfen, wo in UI, Filtern, Timeline und Statusdarstellung der neue Status ergänzt werden muss.
+
+5. Bedeutung von "Soft-Inventory"
+"Soft-Inventory" bedeutet hier:
+- Der Buyer / Betrieb sieht den echten Lagerbestand NICHT
+- Der Betrieb darf trotzdem jede Menge bestellen
+- Der Händler sieht beim Bearbeiten der Bestellung den aktuellen Bestand und entscheidet manuell, welche Menge bestätigt wird
+- Es soll KEINE automatische Begrenzung im Buyer-Frontend geben
+- Es soll auch KEINE automatische harte Blockierung der Bestellung geben
+
+Optional darf dem Händler beim Bearbeiten der Bestellung der aktuelle Bestand angezeigt werden, damit er leichter entscheiden kann.
+Aber:
+- die finale Entscheidung bleibt immer manuell beim Händler
+- keine automatische Bestätigung nur anhand des Bestands
+
+Zusätzliche Umsetzungsregeln:
+- Die ursprünglich bestellte Menge muss unverändert erhalten bleiben
+- Bitte OrderItem um Felder wie confirmedQuantity und rejectedQuantity erweitern
+- rejectedQuantity soll idealerweise automatisch berechnet werden als orderedQuantity - confirmedQuantity
+- Bestehende Flows möglichst nicht brechen
+- Buyer-Frontend darf weiterhin keinen echten Bestand sehen
+- Supplier-Frontend soll pro Position eine bestätigte Menge eingeben können
+- Bitte auch prüfen, ob PATCH /api/orders/:id/items erweitert werden sollte oder ob ein eigener Partial-Confirmation-Flow sinnvoller ist
+
+Bitte jetzt auf Basis dieser Entscheidungen einen konkreten Implementierungsplan für diese bestehende App erstellen:
+- welche Schema-Änderungen nötig sind
+- welche Status-/Enum-Anpassungen nötig sind
+- welche Backend-Routen angepasst werden müssen
+- welche Frontend-Komponenten betroffen sind
+- wie die Lagerabzugslogik geändert werden muss
+- welche Notifications / Inbox-Systemnachrichten ergänzt werden sollten
+
+Noch nichts final umsetzen, sondern zuerst einen präzisen technischen Plan für diese Codebase ausgeben.
