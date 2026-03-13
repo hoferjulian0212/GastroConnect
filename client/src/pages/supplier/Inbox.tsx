@@ -14,12 +14,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import OnlineStatus from "@/components/OnlineStatus";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
+import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -67,6 +68,7 @@ const getStatusColor = (status: string) => {
   switch (status) {
     case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
     case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+    case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
     case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
     case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
     case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
@@ -78,6 +80,7 @@ const getStatusCardBg = (status: string) => {
   switch (status) {
     case "pending": return { card: "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40", header: "bg-yellow-500/10 border-yellow-500/20", icon: "text-yellow-600 dark:text-yellow-400" };
     case "confirmed": return { card: "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40", header: "bg-blue-500/10 border-blue-500/20", icon: "text-blue-600 dark:text-blue-400" };
+    case "partially_confirmed": return { card: "bg-orange-50/60 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40", header: "bg-orange-500/10 border-orange-500/20", icon: "text-orange-600 dark:text-orange-400" };
     case "in_delivery": return { card: "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40", header: "bg-purple-500/10 border-purple-500/20", icon: "text-purple-600 dark:text-purple-400" };
     case "delivered": return { card: "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40", header: "bg-green-500/10 border-green-500/20", icon: "text-green-600 dark:text-green-400" };
     case "cancelled": return { card: "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40", header: "bg-red-500/10 border-red-500/20", icon: "text-red-600 dark:text-red-400" };
@@ -89,6 +92,7 @@ const getStatusLabel = (status: string) => {
   switch (status) {
     case "pending": return "Neu";
     case "confirmed": return "Bestätigt";
+    case "partially_confirmed": return "Teilbestätigt";
     case "in_delivery": return "In Lieferung";
     case "delivered": return "Geliefert";
     case "cancelled": return "Storniert";
@@ -139,6 +143,7 @@ export default function SupplierInbox() {
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
   const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string } | null>(null);
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
+  const [confirmOrderForDialog, setConfirmOrderForDialog] = useState<any | null>(null);
 
   // Complaint management state
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
@@ -544,7 +549,7 @@ export default function SupplierInbox() {
   });
 
   const openActionsOrders = allOrdersForActions?.filter(
-    (o: any) => o.restaurantId === restaurantIdForActions && ["pending", "confirmed", "in_delivery"].includes(o.status)
+    (o: any) => o.restaurantId === restaurantIdForActions && ["pending", "confirmed", "partially_confirmed", "in_delivery"].includes(o.status)
   );
   const openActionsComplaints = allComplaintsForActions?.filter(
     (c: any) => c.restaurantId === restaurantIdForActions && ["open", "in_progress"].includes(c.status)
@@ -738,13 +743,13 @@ export default function SupplierInbox() {
                                 {openActionsOrders.map((order: any) => {
                                   const cardBg = order.status === "pending"
                                     ? "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40"
-                                    : order.status === "confirmed"
-                                    ? "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40"
+                                    : order.status === "confirmed" || order.status === "partially_confirmed"
+                                    ? (order.status === "partially_confirmed" ? "bg-orange-50/60 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40" : "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40")
                                     : "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40";
-                                  const StatusIcon = order.status === "pending" ? Clock : order.status === "confirmed" ? CheckCircle : Package;
-                                  const nextStatus = order.status === "pending" ? "confirmed" : order.status === "confirmed" ? "in_delivery" : "delivered";
-                                  const nextLabel = order.status === "pending" ? "Bestätigen" : order.status === "confirmed" ? "In Lieferung" : "Geliefert";
-                                  const NextIcon = order.status === "pending" ? CheckCircle : order.status === "confirmed" ? Truck : Check;
+                                  const StatusIcon = order.status === "pending" ? Clock : order.status === "partially_confirmed" ? AlertTriangle : order.status === "confirmed" ? CheckCircle : Package;
+                                  const nextStatus = order.status === "pending" ? "confirmed" : (order.status === "confirmed" || order.status === "partially_confirmed") ? "in_delivery" : "delivered";
+                                  const nextLabel = order.status === "pending" ? "Bestätigen" : (order.status === "confirmed" || order.status === "partially_confirmed") ? "In Lieferung" : "Geliefert";
+                                  const NextIcon = order.status === "pending" ? CheckCircle : (order.status === "confirmed" || order.status === "partially_confirmed") ? Truck : Check;
                                   return (
                                     <div
                                       key={order.id}
@@ -1188,12 +1193,20 @@ export default function SupplierInbox() {
                                             <>
                                               <div className="flex gap-2">
                                                 {orderStatus === "pending" && (
-                                                  <Button size="sm" className="flex-1 text-xs px-2" onClick={() => setCardWizard({ orderId: message.orderId!, action: "confirmed" })} data-testid={`button-card-confirm-${message.id}`}>
+                                                  <Button size="sm" className="flex-1 text-xs px-2" onClick={async () => {
+                                                    try {
+                                                      const res = await fetch(`/api/orders/${message.orderId}`);
+                                                      if (res.ok) {
+                                                        const orderData = await res.json();
+                                                        setConfirmOrderForDialog(orderData);
+                                                      }
+                                                    } catch {}
+                                                  }} data-testid={`button-card-confirm-${message.id}`}>
                                                     <CheckCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
                                                     {lang === "it" ? "Conferma" : "Bestätigen"}
                                                   </Button>
                                                 )}
-                                                {orderStatus === "confirmed" && (
+                                                {(orderStatus === "confirmed" || orderStatus === "partially_confirmed") && (
                                                   <Button size="sm" className="flex-1 text-xs px-2" onClick={() => setCardWizard({ orderId: message.orderId!, action: "in_delivery" })} data-testid={`button-card-in_delivery-${message.id}`}>
                                                     <Truck className="h-3.5 w-3.5 mr-1 shrink-0" />
                                                     {lang === "it" ? "Consegna" : "Lieferung"}
@@ -1386,8 +1399,58 @@ export default function SupplierInbox() {
                                 })()
                               ) : message.messageType === "order_change_request" ? (
                                 (() => {
-                                  let changeData: { type?: string; orderId?: string; message?: string; reason?: string; approved?: boolean; items?: { name: string; quantity: number; price: string }[]; total?: string; status?: string } = {};
+                                  let changeData: { type?: string; orderId?: string; message?: string; reason?: string; approved?: boolean; items?: any[]; total?: string; status?: string; originalTotal?: string } = {};
                                   try { changeData = JSON.parse(message.content); } catch {}
+                                  if (changeData.type === "partial_confirmation") {
+                                    const pcData = changeData as { type?: string; orderId?: string; status?: string; message?: string; items?: { name: string; ordered: number; confirmed: number; rejected: number; price: string }[]; total?: string; originalTotal?: string };
+                                    return (
+                                      <div className="w-[75%] max-w-sm rounded-lg border bg-card shadow-sm overflow-hidden border-orange-300" data-testid={`partial-confirmation-${message.id}`}>
+                                        <div className="flex items-center justify-between px-3 py-1.5 border-b bg-orange-500/10 border-orange-500/20">
+                                          <div className="flex items-center gap-2">
+                                            <AlertTriangle className="h-3.5 w-3.5 text-orange-600" />
+                                            <span className="text-xs font-semibold text-orange-600">
+                                              {pcData.status === "partially_confirmed"
+                                                ? (lang === "it" ? "Parzialmente confermato" : "Teilbestatigt")
+                                                : (lang === "it" ? "Confermato" : "Bestatigt")}
+                                            </span>
+                                          </div>
+                                          <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                        </div>
+                                        <div className="px-3 py-2 space-y-1.5">
+                                          {pcData.orderId && (
+                                            <p className="text-xs text-muted-foreground">
+                                              {lang === "it" ? "Ordine" : "Bestellung"} #{pcData.orderId.slice(0, 8)}
+                                            </p>
+                                          )}
+                                          {pcData.items?.map((item, idx) => (
+                                            <div key={idx} className={`flex items-center justify-between text-xs ${item.rejected > 0 ? "text-orange-700" : "text-foreground"}`}>
+                                              <span className="truncate flex-1">{item.name}</span>
+                                              <span className="shrink-0 ml-2">
+                                                {item.confirmed}/{item.ordered}
+                                                {item.rejected > 0 && (
+                                                  <span className="text-red-500 ml-1">(-{item.rejected})</span>
+                                                )}
+                                              </span>
+                                            </div>
+                                          ))}
+                                          {pcData.total && (
+                                            <div className="flex items-center justify-between text-xs font-semibold pt-1 border-t">
+                                              <span>{lang === "it" ? "Totale" : "Gesamt"}</span>
+                                              <span>{pcData.total}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                        {pcData.orderId && (
+                                          <div className="px-3 py-1.5 border-t bg-muted/30">
+                                            <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] w-full" onClick={() => setOrderDetailId(pcData.orderId!)} data-testid={`button-pc-details-${message.id}`}>
+                                              <Eye className="h-3 w-3 mr-1" />
+                                              {lang === "it" ? "Dettagli" : "Details"}
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
                                   const isRequest = changeData.type === "change_request";
                                   const isResponse = changeData.type === "change_request_response";
                                   const isEdited = changeData.type === "order_edited";
@@ -1656,15 +1719,15 @@ export default function SupplierInbox() {
                   {orderDetail.status !== "delivered" && orderDetail.status !== "cancelled" && (
                     <>
                       {orderDetail.status === "pending" && (
-                        <Button size="sm" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "confirmed" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-confirmed">
+                        <Button size="sm" onClick={() => { setOrderDetailId(null); setConfirmOrderForDialog(orderDetail); }} data-testid="button-status-confirmed">
                           <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                          Bestätigen
+                          {lang === "it" ? "Conferma" : "Bestätigen"}
                         </Button>
                       )}
-                      {orderDetail.status === "confirmed" && (
+                      {(orderDetail.status === "confirmed" || orderDetail.status === "partially_confirmed") && (
                         <Button size="sm" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "in_delivery" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-in_delivery">
                           <Truck className="h-3.5 w-3.5 mr-1" />
-                          In Lieferung
+                          {lang === "it" ? "In consegna" : "In Lieferung"}
                         </Button>
                       )}
                       {orderDetail.status === "in_delivery" && (
@@ -1749,12 +1812,23 @@ export default function SupplierInbox() {
                         <p className="text-xs text-muted-foreground">
                           {item.quantity} x {parseFloat(item.unitPrice).toFixed(2)}€
                         </p>
+                        {item.confirmedQuantity != null && item.confirmedQuantity < item.quantity && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <AlertTriangle className="h-3 w-3 text-orange-500" />
+                            <span className="text-[10px] text-orange-600">
+                              {lang === "it" ? "Confermato" : "Bestätigt"}: {item.confirmedQuantity}/{item.quantity}
+                              {item.rejectedQuantity > 0 && (
+                                <span className="text-red-500 ml-1">(-{item.rejectedQuantity})</span>
+                              )}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <span className="text-sm font-semibold whitespace-nowrap">{parseFloat(item.totalPrice).toFixed(2)}€</span>
                     </div>
                   ))}
                   <div className="flex justify-between items-center gap-2 px-3 py-3 bg-green-500/10 border-t">
-                    <span className="text-sm font-bold">Gesamtbetrag</span>
+                    <span className="text-sm font-bold">{lang === "it" ? "Totale" : "Gesamtbetrag"}</span>
                     <span className="text-base font-bold text-green-700 dark:text-green-400">{parseFloat(orderDetail.totalAmount).toFixed(2)}€</span>
                   </div>
                 </div>
@@ -2190,6 +2264,22 @@ export default function SupplierInbox() {
           }
         }}
       />
+
+      {confirmOrderForDialog && (
+        <PartialConfirmationDialog
+          order={confirmOrderForDialog}
+          open={!!confirmOrderForDialog}
+          onOpenChange={(open) => { if (!open) setConfirmOrderForDialog(null); }}
+          lang={lang}
+          currentUserId={currentUser?.id}
+          onSuccess={() => {
+            setConfirmOrderForDialog(null);
+            if (selectedConversation) {
+              queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList } from "lucide-react";
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList, AlertTriangle } from "lucide-react";
 import type { OrderWithDetails, Product, DeliverySchedule, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { format, addDays, startOfDay, formatDistanceToNow, isToday, isYesterday } from "date-fns";
@@ -280,7 +280,7 @@ export default function RestaurantOrders() {
   const hasSecondaryFilters = filterDateFrom || filterDateTo;
 
   const statusCounts = useMemo(() => {
-    if (!orders) return { all: 0, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0 };
+    if (!orders) return { all: 0, pending: 0, confirmed: 0, partially_confirmed: 0, in_delivery: 0, delivered: 0 };
     const filtered = orders.filter(o => {
       if (filterSupplier !== "all" && o.supplier?.id !== filterSupplier) return false;
       if (filterDateFrom) {
@@ -295,7 +295,7 @@ export default function RestaurantOrders() {
       }
       return true;
     });
-    const counts = { all: filtered.length, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
+    const counts = { all: filtered.length, pending: 0, confirmed: 0, partially_confirmed: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
     filtered.forEach(o => {
       if (o.status in counts) (counts as any)[o.status]++;
     });
@@ -312,6 +312,7 @@ export default function RestaurantOrders() {
     switch (status) {
       case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
       case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+      case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
       case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
       case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
       case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
@@ -323,6 +324,7 @@ export default function RestaurantOrders() {
     switch (status) {
       case "pending": return "bg-yellow-400 dark:bg-yellow-500";
       case "confirmed": return "bg-blue-400 dark:bg-blue-500";
+      case "partially_confirmed": return "bg-orange-400 dark:bg-orange-500";
       case "in_delivery": return "bg-purple-400 dark:bg-purple-500";
       case "delivered": return "bg-green-400 dark:bg-green-500";
       case "cancelled": return "bg-red-400 dark:bg-red-500";
@@ -334,6 +336,7 @@ export default function RestaurantOrders() {
     switch (status) {
       case "pending": return "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40";
       case "confirmed": return "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40";
+      case "partially_confirmed": return "bg-orange-50/60 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40";
       case "in_delivery": return "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40";
       case "delivered": return "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40";
       case "cancelled": return "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40";
@@ -347,6 +350,7 @@ export default function RestaurantOrders() {
     switch (status) {
       case "pending": return <Clock className="h-4 w-4" />;
       case "confirmed": return <Package className="h-4 w-4" />;
+      case "partially_confirmed": return <AlertTriangle className="h-4 w-4" />;
       case "in_delivery": return <Truck className="h-4 w-4" />;
       case "delivered": return <CheckCircle className="h-4 w-4" />;
       case "cancelled": return <XCircle className="h-4 w-4" />;
@@ -425,9 +429,9 @@ export default function RestaurantOrders() {
   }, [editItems]);
 
   const canEditOrder = (order: OrderWithDetails) => order.status === "pending";
-  const canRequestChange = (order: OrderWithDetails) => order.status === "confirmed";
+  const canRequestChange = (order: OrderWithDetails) => order.status === "confirmed" || order.status === "partially_confirmed";
 
-  const statusSteps = ["pending", "confirmed", "in_delivery", "delivered"];
+  const statusSteps = ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered"];
 
   const getStepIndex = (status: string) => {
     if (status === "cancelled") return -1;
@@ -570,8 +574,9 @@ export default function RestaurantOrders() {
                       }`}>
                         {i === 0 && <Clock className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
                         {i === 1 && <Package className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
-                        {i === 2 && <Truck className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
-                        {i === 3 && <CheckCircle className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 2 && <AlertTriangle className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 3 && <Truck className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 4 && <CheckCircle className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
                       </div>
                       <span className={`text-[9px] md:text-[10px] mt-0.5 text-center leading-tight ${isCurrent ? "font-semibold text-foreground" : isActive ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
                         {getStatusLabel(step)}
@@ -780,11 +785,12 @@ export default function RestaurantOrders() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2 md:gap-3">
         {([
           { key: "all", icon: ShoppingBag, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
           { key: "pending", icon: Clock, color: "bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400", activeColor: "bg-yellow-500 text-white dark:bg-yellow-600", borderColor: "border-yellow-400 dark:border-yellow-500" },
           { key: "confirmed", icon: Package, color: "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400", activeColor: "bg-blue-500 text-white dark:bg-blue-600", borderColor: "border-blue-400 dark:border-blue-500" },
+          { key: "partially_confirmed", icon: AlertTriangle, color: "bg-orange-50 text-orange-800 dark:bg-orange-950/40 dark:text-orange-400", activeColor: "bg-orange-500 text-white dark:bg-orange-600", borderColor: "border-orange-400 dark:border-orange-500" },
           { key: "in_delivery", icon: Truck, color: "bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-400", activeColor: "bg-purple-500 text-white dark:bg-purple-600", borderColor: "border-purple-400 dark:border-purple-500" },
           { key: "delivered", icon: CheckCircle, color: "bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-400", activeColor: "bg-green-500 text-white dark:bg-green-600", borderColor: "border-green-400 dark:border-green-500" },
           { key: "cancelled", icon: XCircle, color: "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-400", activeColor: "bg-red-500 text-white dark:bg-red-600", borderColor: "border-red-400 dark:border-red-500" },
@@ -991,6 +997,17 @@ export default function RestaurantOrders() {
                             <span className="font-medium">{item.quantity}x</span>{" "}
                             <span className={product ? "underline decoration-dotted underline-offset-2" : ""}>{item.productName}</span>
                             <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
+                            {(item as any).confirmedQuantity != null && (item as any).confirmedQuantity < item.quantity && (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <AlertTriangle className="h-3 w-3 text-orange-500" />
+                                <span className="text-[10px] text-orange-600">
+                                  {lang === "it" ? "Confermato" : "Bestätigt"}: {(item as any).confirmedQuantity}/{item.quantity}
+                                  {(item as any).rejectedQuantity > 0 && (
+                                    <span className="text-red-500 ml-1">(-{(item as any).rejectedQuantity})</span>
+                                  )}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <span className="font-medium shrink-0 ml-2">{item.totalPrice}€</span>

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
@@ -21,6 +21,7 @@ import { useSearch } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
+import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialog";
 
 export default function SupplierOrders() {
   const { currentUser } = useUser();
@@ -43,6 +44,7 @@ export default function SupplierOrders() {
   const [orderMessage, setOrderMessage] = useState("");
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ProductWithSupplierAndPromotion | null>(null);
+  const [confirmOrder, setConfirmOrder] = useState<OrderWithDetails | null>(null);
 
   const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`],
@@ -194,6 +196,7 @@ export default function SupplierOrders() {
     switch (status) {
       case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
       case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+      case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
       case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
       case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
       case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
@@ -205,6 +208,7 @@ export default function SupplierOrders() {
     switch (status) {
       case "pending": return "bg-yellow-400 dark:bg-yellow-500";
       case "confirmed": return "bg-blue-400 dark:bg-blue-500";
+      case "partially_confirmed": return "bg-orange-400 dark:bg-orange-500";
       case "in_delivery": return "bg-purple-400 dark:bg-purple-500";
       case "delivered": return "bg-green-400 dark:bg-green-500";
       case "cancelled": return "bg-red-400 dark:bg-red-500";
@@ -227,6 +231,7 @@ export default function SupplierOrders() {
     switch (status) {
       case "pending": return <Clock className="h-4 w-4" />;
       case "confirmed": return <Package className="h-4 w-4" />;
+      case "partially_confirmed": return <AlertTriangle className="h-4 w-4" />;
       case "in_delivery": return <Truck className="h-4 w-4" />;
       case "delivered": return <CheckCircle className="h-4 w-4" />;
       case "cancelled": return <XCircle className="h-4 w-4" />;
@@ -268,7 +273,7 @@ export default function SupplierOrders() {
     });
   };
 
-  const statusSteps = ["pending", "confirmed", "in_delivery", "delivered"];
+  const statusSteps = ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered"];
 
   const getStepIndex = (status: string) => {
     if (status === "cancelled") return -1;
@@ -317,12 +322,12 @@ export default function SupplierOrders() {
             {order.status !== "delivered" && order.status !== "cancelled" && (
               <div className="flex flex-wrap gap-1.5">
                 {order.status === "pending" && (
-                  <Button size="sm" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "confirmed" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-confirmed-${order.id}`}>
+                  <Button size="sm" onClick={() => setConfirmOrder(order)} data-testid={`button-status-confirmed-${order.id}`}>
                     <CheckCircle className="h-3.5 w-3.5 mr-1" />
                     {lang === "de" ? "Bestätigen" : "Confermare"}
                   </Button>
                 )}
-                {order.status === "confirmed" && (
+                {(order.status === "confirmed" || order.status === "partially_confirmed") && (
                   <Button size="sm" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-status-in_delivery-${order.id}`}>
                     <Truck className="h-3.5 w-3.5 mr-1" />
                     {lang === "de" ? "In Lieferung" : "In consegna"}
@@ -422,8 +427,9 @@ export default function SupplierOrders() {
                       }`}>
                         {i === 0 && <Clock className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
                         {i === 1 && <Package className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
-                        {i === 2 && <Truck className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
-                        {i === 3 && <CheckCircle className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 2 && <AlertTriangle className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 3 && <Truck className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
+                        {i === 4 && <CheckCircle className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
                       </div>
                       <span className={`text-[9px] md:text-[10px] mt-0.5 text-center leading-tight ${isCurrent ? "font-semibold text-foreground" : isActive ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
                         {getOrderStatus(step, lang, true)}
@@ -586,13 +592,14 @@ export default function SupplierOrders() {
             )}
           </TabsTrigger>
           <TabsTrigger value="confirmed" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-confirmed">{getOrderStatus("confirmed", lang, true)}</TabsTrigger>
+          <TabsTrigger value="partially_confirmed" className="text-xs md:text-sm px-2 md:px-3 whitespace-nowrap" data-testid="tab-partially-confirmed">{getOrderStatus("partially_confirmed", lang, true)}</TabsTrigger>
           <TabsTrigger value="in_delivery" className="text-xs md:text-sm px-2 md:px-3 whitespace-nowrap" data-testid="tab-delivery">{lang === "de" ? "Lieferung" : "Consegna"}</TabsTrigger>
           <TabsTrigger value="delivered" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-delivered">{getOrderStatus("delivered", lang, true)}</TabsTrigger>
           <TabsTrigger value="cancelled" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-cancelled">{getOrderStatus("cancelled", lang, true)}</TabsTrigger>
           <TabsTrigger value="all" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-all">{t("common", "all")}</TabsTrigger>
         </TabsList>
 
-        {["pending", "confirmed", "in_delivery", "delivered", "cancelled", "all"].map((tab) => (
+        {["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled", "all"].map((tab) => (
           <TabsContent key={tab} value={tab} className="mt-4 md:mt-6">
             {isLoading ? (
               <div className="space-y-4">
@@ -794,12 +801,12 @@ export default function SupplierOrders() {
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {detailOrder.status === "pending" && (
-                        <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "confirmed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-confirmed">
+                        <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => { setDetailOrder(null); setConfirmOrder(detailOrder); }} data-testid="button-status-confirmed">
                           <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
                           {lang === "de" ? "Bestätigen" : "Confermare"}
                         </Button>
                       )}
-                      {detailOrder.status === "confirmed" && (
+                      {(detailOrder.status === "confirmed" || detailOrder.status === "partially_confirmed") && (
                         <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId })} disabled={updateStatusMutation.isPending} data-testid="button-status-in_delivery">
                           <Truck className="h-3.5 w-3.5 mr-1.5" />
                           {lang === "de" ? "In Lieferung" : "In consegna"}
@@ -904,7 +911,7 @@ export default function SupplierOrders() {
         onConfirm={(date) => {
           if (deliveryDatePicker) {
             const order = orders?.find(o => o.id === deliveryDatePicker.orderId);
-            if (order && order.status === "confirmed") {
+            if (order && (order.status === "confirmed" || order.status === "partially_confirmed")) {
               updateStatusMutation.mutate(
                 { orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date },
                 { onSuccess: () => { setDeliveryDatePicker(null); } }
@@ -931,6 +938,18 @@ export default function SupplierOrders() {
         open={!!selectedProduct}
         onOpenChange={(open) => { if (!open) setSelectedProduct(null); }}
       />
+
+      {confirmOrder && (
+        <PartialConfirmationDialog
+          order={confirmOrder}
+          open={!!confirmOrder}
+          onOpenChange={(open) => { if (!open) setConfirmOrder(null); }}
+          lang={lang}
+          currentUserId={currentUser?.id}
+          productsWithStock={allProducts as any}
+          onSuccess={() => setConfirmOrder(null)}
+        />
+      )}
     </div>
   );
 }

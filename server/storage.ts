@@ -50,6 +50,7 @@ export interface IStorage {
   createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
   updateOrderStatus(id: string, status: string, requestedDeliveryDate?: string): Promise<Order | undefined>;
   updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string, requestedDeliveryDate?: string | null): Promise<Order | undefined>;
+  updateOrderItemConfirmation(orderItemId: string, confirmedQuantity: number, rejectedQuantity: number): Promise<OrderItem | undefined>;
 
   // Cart
   getCartItems(restaurantId: string): Promise<CartItemWithProduct[]>;
@@ -370,6 +371,15 @@ export class DatabaseStorage implements IStorage {
       .update(orders)
       .set(setData)
       .where(eq(orders.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateOrderItemConfirmation(orderItemId: string, confirmedQuantity: number, rejectedQuantity: number): Promise<OrderItem | undefined> {
+    const [updated] = await db
+      .update(orderItems)
+      .set({ confirmedQuantity, rejectedQuantity })
+      .where(eq(orderItems.id, orderItemId))
       .returning();
     return updated;
   }

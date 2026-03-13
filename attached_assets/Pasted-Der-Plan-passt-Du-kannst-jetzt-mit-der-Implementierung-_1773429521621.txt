@@ -1,0 +1,64 @@
+Der Plan passt. Du kannst jetzt mit der Implementierung beginnen.
+
+WICHTIG:
+Bitte setze das Schritt für Schritt um und achte darauf, bestehende Flictionalität nicht zu brechen. Arbeite präzise entlang des Plans.
+
+Zusätzliche Vorgaben für die Implementierung:
+
+1. Abwärtskompatibilität
+- Bestehende Bestellungen dürfen weiterhin korrekt funktionieren
+- confirmedQuantity und rejectedQuantity müssen nullable bleiben
+- Altdaten ohne diese Felder dürfen keine Fehler im Frontend oder Backend verursachen
+
+2. Bestätigungslogik
+- Der alte direkte Confirm-Flow über PATCH /api/orders/:id/status soll für pending → confirmed NICHT mehr der primäre Weg sein
+- Für die eigentliche Bestätigung von pending Orders bitte den neuen POST /api/orders/:id/confirm verwenden
+- PATCH /api/orders/:id/status soll danach nur noch für spätere Statuswechsel und Stornierungen verwendet werden
+
+3. Validierung
+- confirmedQuantity darf nie negativ sein
+- confirmedQuantity darf nie größer als quantity sein
+- orderItemId muss zur Bestellung gehören
+- nur pending Bestellungen dürfen über den neuen Confirm-Endpoint bestätigt werden
+- wenn alle confirmedQuantity = 0 sind, sinnvoll als cancelled behandeln
+- serverseitig strikt validieren, nicht nur im Frontend
+
+4. UX
+- Im Supplier-Dialog soll standardmäßig jede confirmedQuantity zuerst auf die ursprünglich bestellte Menge gesetzt sein, damit "Alles bestätigen" der Default ist
+- Der Händler kann diese Mengen dann manuell reduzieren
+- Zeige die ursprüngliche quantity immer sichtbar daneben
+- Zeige unten alte Gesamtsumme vs. neue bestätigte Gesamtsumme
+
+5. Lagerlogik
+- Lagerbestand nur für confirmedQuantity reduzieren
+- Bei Stornierung nur bestätigte Mengen zurückbuchen
+- Für alte Bestellungen ohne confirmedQuantity bitte Fallback-Logik sauber behandeln
+
+6. Chat / Inbox
+- Bitte die automatische Systemnachricht zur Teilbestätigung so implementieren, dass sie robust renderbar ist
+- Falls es für messageType aktuell keine saubere Struktur gibt, erweitere das bestehende Nachrichtenformat vorsichtig statt bestehende Nachrichtenlogik zu brechen
+
+7. UI-Konsistenz
+- partially_confirmed überall ergänzen:
+  - Statusfarben
+  - Filter
+  - Labels
+  - Timeline
+  - Supplier-Ansichten
+  - Restaurant-Ansichten
+  - Home / Übersichtskarten, falls dort Status angezeigt wird
+
+8. Codequalität
+- Bestehende Komponenten wiederverwenden, wenn möglich
+- Keine unnötige Duplikation zwischen supplier/Orders.tsx und supplier/Inbox.tsx
+- Wenn sinnvoll, einen wiederverwendbaren PartialConfirmationDialog oder ähnliches extrahieren
+
+9. Ergebnis-Dokumentation
+Wenn die Implementierung fertig ist, gib mir bitte eine strukturierte Zusammenfassung mit:
+- allen geänderten Dateien
+- allen neuen Feldern / Typen / Endpoints
+- kurzer Erklärung des neuen Flows
+- Hinweisen auf mögliche Edge Cases
+- was du bewusst NICHT geändert hast
+
+Bitte jetzt direkt implementieren.

@@ -93,6 +93,7 @@ const t = {
   orderStatus: {
     pending: { de: "Ausstehend", it: "In attesa" },
     confirmed: { de: "Bestätigt", it: "Confermato" },
+    partially_confirmed: { de: "Teilbestätigt", it: "Parzialmente confermato" },
     in_delivery: { de: "In Lieferung", it: "In consegna" },
     delivered: { de: "Geliefert", it: "Consegnato" },
     cancelled: { de: "Storniert", it: "Annullato" },
@@ -100,6 +101,7 @@ const t = {
   orderStatusSupplier: {
     pending: { de: "Neu", it: "Nuovo" },
     confirmed: { de: "Bestätigt", it: "Confermato" },
+    partially_confirmed: { de: "Teilbestätigt", it: "Parzialmente confermato" },
     in_delivery: { de: "In Lieferung", it: "In consegna" },
     delivered: { de: "Geliefert", it: "Consegnato" },
     cancelled: { de: "Storniert", it: "Annullato" },

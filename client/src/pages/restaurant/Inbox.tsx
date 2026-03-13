@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,6 +65,7 @@ const getStatusColor = (status: string) => {
   switch (status) {
     case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
     case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+    case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
     case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
     case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
     case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
@@ -76,6 +77,7 @@ const getStatusCardBg = (status: string) => {
   switch (status) {
     case "pending": return { card: "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40", header: "bg-yellow-500/10 border-yellow-500/20", icon: "text-yellow-600 dark:text-yellow-400" };
     case "confirmed": return { card: "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40", header: "bg-blue-500/10 border-blue-500/20", icon: "text-blue-600 dark:text-blue-400" };
+    case "partially_confirmed": return { card: "bg-orange-50/60 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40", header: "bg-orange-500/10 border-orange-500/20", icon: "text-orange-600 dark:text-orange-400" };
     case "in_delivery": return { card: "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40", header: "bg-purple-500/10 border-purple-500/20", icon: "text-purple-600 dark:text-purple-400" };
     case "delivered": return { card: "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40", header: "bg-green-500/10 border-green-500/20", icon: "text-green-600 dark:text-green-400" };
     case "cancelled": return { card: "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40", header: "bg-red-500/10 border-red-500/20", icon: "text-red-600 dark:text-red-400" };
@@ -87,6 +89,7 @@ const getStatusLabel = (status: string) => {
   switch (status) {
     case "pending": return "Neu";
     case "confirmed": return "Bestätigt";
+    case "partially_confirmed": return "Teilbestätigt";
     case "in_delivery": return "In Lieferung";
     case "delivered": return "Geliefert";
     case "cancelled": return "Storniert";
@@ -547,7 +550,7 @@ export default function RestaurantInbox() {
   });
 
   const openActionsOrders = allOrdersForActions?.filter(
-    (o: any) => o.supplierId === supplierId && ["pending", "confirmed", "in_delivery"].includes(o.status)
+    (o: any) => o.supplierId === supplierId && ["pending", "confirmed", "partially_confirmed", "in_delivery"].includes(o.status)
   );
   const openActionsComplaints = allComplaintsForActions?.filter(
     (c: any) => c.supplierId === supplierId && ["open", "in_progress"].includes(c.status)
@@ -1033,8 +1036,10 @@ export default function RestaurantInbox() {
                                       ? "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40"
                                       : order.status === "confirmed"
                                       ? "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40"
+                                      : order.status === "partially_confirmed"
+                                      ? "bg-orange-50/60 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40"
                                       : "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40";
-                                    const StatusIcon = order.status === "pending" ? Clock : order.status === "confirmed" ? CheckCircle : Package;
+                                    const StatusIcon = order.status === "pending" ? Clock : order.status === "partially_confirmed" ? AlertTriangle : order.status === "confirmed" ? CheckCircle : Package;
                                     return (
                                       <div
                                         key={order.id}
@@ -1469,7 +1474,7 @@ export default function RestaurantInbox() {
                                                       {lang === "it" ? "Modifica" : "Bearbeiten"}
                                                     </Button>
                                                   )}
-                                                  {orderStatus === "confirmed" && (
+                                                  {(orderStatus === "confirmed" || orderStatus === "partially_confirmed") && (
                                                     <Button size="sm" variant="outline" className="flex-1 text-xs px-2" onClick={() => setCardWizard({ orderId: message.orderId!, action: "change_request", reason: "" })} data-testid={`button-card-change-request-${message.id}`}>
                                                       <Pencil className="h-3.5 w-3.5 mr-1 shrink-0" />
                                                       {lang === "it" ? "Modifica" : "Ändern"}
@@ -1642,8 +1647,58 @@ export default function RestaurantInbox() {
                                   })()
                                 ) : message.messageType === "order_change_request" ? (
                                   (() => {
-                                    let changeData: { type?: string; orderId?: string; message?: string; reason?: string; approved?: boolean; items?: { name: string; quantity: number; price: string }[]; total?: string; status?: string } = {};
+                                    let changeData: { type?: string; orderId?: string; message?: string; reason?: string; approved?: boolean; items?: any[]; total?: string; status?: string; originalTotal?: string } = {};
                                     try { changeData = JSON.parse(message.content); } catch {}
+                                    if (changeData.type === "partial_confirmation") {
+                                      const pcData = changeData as { type?: string; orderId?: string; status?: string; message?: string; items?: { name: string; ordered: number; confirmed: number; rejected: number; price: string }[]; total?: string; originalTotal?: string };
+                                      return (
+                                        <div className="w-[75%] max-w-sm rounded-lg border bg-card shadow-sm overflow-hidden border-orange-300" data-testid={`partial-confirmation-${message.id}`}>
+                                          <div className="flex items-center justify-between px-3 py-1.5 border-b bg-orange-500/10 border-orange-500/20">
+                                            <div className="flex items-center gap-2">
+                                              <AlertTriangle className="h-3.5 w-3.5 text-orange-600" />
+                                              <span className="text-xs font-semibold text-orange-600">
+                                                {pcData.status === "partially_confirmed"
+                                                  ? (lang === "it" ? "Parzialmente confermato" : "Teilbestatigt")
+                                                  : (lang === "it" ? "Confermato" : "Bestatigt")}
+                                              </span>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                          </div>
+                                          <div className="px-3 py-2 space-y-1.5">
+                                            {pcData.orderId && (
+                                              <p className="text-xs text-muted-foreground">
+                                                {lang === "it" ? "Ordine" : "Bestellung"} #{pcData.orderId.slice(0, 8)}
+                                              </p>
+                                            )}
+                                            {pcData.items?.map((item, idx) => (
+                                              <div key={idx} className={`flex items-center justify-between text-xs ${item.rejected > 0 ? "text-orange-700" : "text-foreground"}`}>
+                                                <span className="truncate flex-1">{item.name}</span>
+                                                <span className="shrink-0 ml-2">
+                                                  {item.confirmed}/{item.ordered}
+                                                  {item.rejected > 0 && (
+                                                    <span className="text-red-500 ml-1">(-{item.rejected})</span>
+                                                  )}
+                                                </span>
+                                              </div>
+                                            ))}
+                                            {pcData.total && (
+                                              <div className="flex items-center justify-between text-xs font-semibold pt-1 border-t">
+                                                <span>{lang === "it" ? "Totale" : "Gesamt"}</span>
+                                                <span>{pcData.total}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                          {pcData.orderId && (
+                                            <div className="px-3 py-1.5 border-t bg-muted/30">
+                                              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] w-full" onClick={() => setOrderDetailId(pcData.orderId!)} data-testid={`button-pc-details-${message.id}`}>
+                                                <Eye className="h-3 w-3 mr-1" />
+                                                {lang === "it" ? "Dettagli" : "Details"}
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    }
                                     const isResponse = changeData.type === "change_request_response";
                                     const isEdited = changeData.type === "order_edited";
                                     const isChangeRequest = changeData.type === "change_request";
@@ -2134,6 +2189,17 @@ export default function RestaurantInbox() {
                         <p className="text-xs text-muted-foreground">
                           {item.quantity} x {parseFloat(item.unitPrice).toFixed(2)}€
                         </p>
+                        {(item as any).confirmedQuantity != null && (item as any).confirmedQuantity < item.quantity && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <AlertTriangle className="h-3 w-3 text-orange-500" />
+                            <span className="text-[10px] text-orange-600">
+                              {lang === "it" ? "Confermato" : "Bestätigt"}: {(item as any).confirmedQuantity}/{item.quantity}
+                              {(item as any).rejectedQuantity > 0 && (
+                                <span className="text-red-500 ml-1">(-{(item as any).rejectedQuantity})</span>
+                              )}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <span className="text-sm font-semibold whitespace-nowrap">{parseFloat(item.totalPrice).toFixed(2)}€</span>
                     </div>
@@ -2186,7 +2252,7 @@ export default function RestaurantInbox() {
                 </>
               )}
 
-              {(orderDetail.status === "pending" || orderDetail.status === "confirmed") && (
+              {(orderDetail.status === "pending" || orderDetail.status === "confirmed" || orderDetail.status === "partially_confirmed") && (
                 <>
                   <Separator />
                   {!showCancelOrderConfirm ? (

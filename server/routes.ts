@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users } from "@shared/schema";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
-import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema } from "@shared/schema";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 
 const insertProductSchema = _insertProductSchema.strict();
@@ -138,7 +138,7 @@ const reorderSchema = z.object({
 }).strict();
 
 const updateOrderStatusSchema = z.object({
-  status: z.enum(["pending", "confirmed", "in_delivery", "delivered", "cancelled"]),
+  status: z.enum(["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]),
   changedBy: uuidField.optional(),
   requestedDeliveryDate: safeShortString.optional().nullable(),
 }).strict();
@@ -1148,7 +1148,7 @@ export async function registerRoutes(
       }
       await storage.addOrderStatusHistory(req.params.id, previousStatus, status, changedBy || undefined);
 
-      // Stock management: deduct stock when order is confirmed (idempotent - check for existing movements)
+      // Stock management: deduct stock when order is confirmed via legacy flow (idempotent)
       if (status === "confirmed" && previousStatus === "pending") {
         const existingMovements = await storage.getStockMovementsByOrder(order.id);
         const alreadyConfirmed = existingMovements.some(m => m.type === "order_confirmed");
@@ -1156,15 +1156,16 @@ export async function registerRoutes(
           for (const item of order.items) {
             const product = await storage.getProduct(item.productId);
             if (product) {
+              const qty = item.confirmedQuantity ?? item.quantity;
               const currentStock = product.stockQuantity ?? 0;
-              const newStock = Math.max(0, currentStock - item.quantity);
+              const newStock = Math.max(0, currentStock - qty);
               await storage.updateProductStock(item.productId, newStock);
               await storage.addStockMovement({
                 productId: item.productId,
                 supplierId: order.supplierId,
                 orderId: order.id,
                 type: "order_confirmed",
-                quantity: item.quantity,
+                quantity: qty,
                 previousStock: currentStock,
                 newStock,
                 note: `Bestellung #${order.id.slice(0, 8)} bestätigt`,
@@ -1175,23 +1176,24 @@ export async function registerRoutes(
         }
       }
 
-      // Stock management: reverse stock when order is cancelled (idempotent - check for existing movements)
-      if (status === "cancelled" && (previousStatus === "confirmed" || previousStatus === "in_delivery")) {
+      // Stock management: reverse stock when order is cancelled (idempotent)
+      if (status === "cancelled" && (previousStatus === "confirmed" || previousStatus === "partially_confirmed" || previousStatus === "in_delivery")) {
         const existingMovements = await storage.getStockMovementsByOrder(order.id);
         const alreadyCancelled = existingMovements.some(m => m.type === "order_cancelled");
         if (!alreadyCancelled) {
           for (const item of order.items) {
             const product = await storage.getProduct(item.productId);
             if (product) {
+              const qty = item.confirmedQuantity ?? item.quantity;
               const currentStock = product.stockQuantity ?? 0;
-              const newStock = currentStock + item.quantity;
+              const newStock = currentStock + qty;
               await storage.updateProductStock(item.productId, newStock);
               await storage.addStockMovement({
                 productId: item.productId,
                 supplierId: order.supplierId,
                 orderId: order.id,
                 type: "order_cancelled",
-                quantity: item.quantity,
+                quantity: qty,
                 previousStock: currentStock,
                 newStock,
                 note: `Bestellung #${order.id.slice(0, 8)} storniert`,
@@ -1204,6 +1206,160 @@ export async function registerRoutes(
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update order status" });
+    }
+  });
+
+  // ===== PARTIAL CONFIRMATION =====
+  app.post("/api/orders/:id/confirm", async (req, res) => {
+    try {
+      const validated = confirmOrderSchema.parse(req.body);
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      if (order.status !== "pending") {
+        return res.status(400).json({ error: "Only pending orders can be confirmed" });
+      }
+
+      const orderItemIds = new Set(order.items.map(i => i.id));
+      const submittedIds = new Set(validated.items.map(i => i.orderItemId));
+      if (submittedIds.size !== validated.items.length) {
+        return res.status(400).json({ error: "Duplicate order item IDs in confirmation" });
+      }
+      if (submittedIds.size !== orderItemIds.size || [...submittedIds].some(id => !orderItemIds.has(id))) {
+        return res.status(400).json({ error: "All order items must be included in confirmation, and no extra items" });
+      }
+      for (const item of validated.items) {
+        const orderItem = order.items.find(i => i.id === item.orderItemId);
+        if (orderItem && item.confirmedQuantity > orderItem.quantity) {
+          return res.status(400).json({ error: `Confirmed quantity cannot exceed ordered quantity for ${orderItem.productName}` });
+        }
+      }
+
+      let totalConfirmedAmount = 0;
+      let allFullyConfirmed = true;
+      let allRejected = true;
+      const confirmationDetails: { name: string; ordered: number; confirmed: number; rejected: number; price: string }[] = [];
+
+      for (const confirmItem of validated.items) {
+        const orderItem = order.items.find(i => i.id === confirmItem.orderItemId)!;
+        const rejectedQty = orderItem.quantity - confirmItem.confirmedQuantity;
+        await storage.updateOrderItemConfirmation(confirmItem.orderItemId, confirmItem.confirmedQuantity, rejectedQty);
+
+        const itemTotal = confirmItem.confirmedQuantity * Number(orderItem.unitPrice);
+        totalConfirmedAmount += itemTotal;
+
+        if (confirmItem.confirmedQuantity < orderItem.quantity) allFullyConfirmed = false;
+        if (confirmItem.confirmedQuantity > 0) allRejected = false;
+
+        confirmationDetails.push({
+          name: orderItem.productName,
+          ordered: orderItem.quantity,
+          confirmed: confirmItem.confirmedQuantity,
+          rejected: rejectedQty,
+          price: itemTotal.toFixed(2),
+        });
+      }
+
+      let newStatus: string;
+      if (allRejected) {
+        newStatus = "cancelled";
+      } else if (allFullyConfirmed) {
+        newStatus = "confirmed";
+      } else {
+        newStatus = "partially_confirmed";
+      }
+
+      const updated = await storage.updateOrderStatus(req.params.id, newStatus);
+      if (!updated) {
+        return res.status(500).json({ error: "Failed to update order status" });
+      }
+
+      await db.update(orders).set({ totalAmount: totalConfirmedAmount.toFixed(2), updatedAt: new Date() }).where(eq(orders.id, req.params.id));
+
+      await storage.addOrderStatusHistory(req.params.id, "pending", newStatus, validated.changedBy || undefined);
+
+      // Stock management: deduct confirmed quantities
+      const existingMovements = await storage.getStockMovementsByOrder(order.id);
+      const alreadyConfirmed = existingMovements.some(m => m.type === "order_confirmed");
+      if (!alreadyConfirmed) {
+        for (const confirmItem of validated.items) {
+          if (confirmItem.confirmedQuantity > 0) {
+            const orderItem = order.items.find(i => i.id === confirmItem.orderItemId)!;
+            const product = await storage.getProduct(orderItem.productId);
+            if (product) {
+              const currentStock = product.stockQuantity ?? 0;
+              const newStock = Math.max(0, currentStock - confirmItem.confirmedQuantity);
+              await storage.updateProductStock(orderItem.productId, newStock);
+              await storage.addStockMovement({
+                productId: orderItem.productId,
+                supplierId: order.supplierId,
+                orderId: order.id,
+                type: "order_confirmed",
+                quantity: confirmItem.confirmedQuantity,
+                previousStock: currentStock,
+                newStock,
+                note: newStatus === "partially_confirmed"
+                  ? `Bestellung #${order.id.slice(0, 8)} teilbestätigt (${confirmItem.confirmedQuantity} von ${order.items.find(i => i.id === confirmItem.orderItemId)!.quantity})`
+                  : `Bestellung #${order.id.slice(0, 8)} bestätigt`,
+              });
+              await checkAndNotifyLowStock(orderItem.productId, order.supplierId);
+            }
+          }
+        }
+      }
+
+      // Send notification to restaurant
+      const supplier = await storage.getUser(order.supplierId);
+      const isPartial = newStatus === "partially_confirmed";
+      await createNotificationWithPush({
+        userId: order.restaurantId,
+        type: "order_status",
+        title: isPartial
+          ? `Bestellung teilbestätigt #${order.id.slice(0, 8)}`
+          : allRejected
+            ? `Bestellung storniert #${order.id.slice(0, 8)}`
+            : `Bestellung bestätigt #${order.id.slice(0, 8)}`,
+        message: isPartial
+          ? `${supplier?.companyName || supplier?.name || "Händler"} hat deine Bestellung bearbeitet. Einige Mengen wurden angepasst.`
+          : allRejected
+            ? `${supplier?.companyName || supplier?.name || "Händler"} hat die Bestellung storniert.`
+            : `${supplier?.companyName || supplier?.name || "Händler"} hat deine Bestellung bestätigt.`,
+        referenceId: order.id,
+      }, "restaurant");
+
+      // Send auto chat message
+      const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+      const chatContent = JSON.stringify({
+        type: "partial_confirmation",
+        orderId: order.id,
+        status: newStatus,
+        message: isPartial
+          ? `Bestellung #${order.id.slice(0, 8)} wurde bearbeitet. Einige Mengen wurden angepasst.`
+          : allRejected
+            ? `Bestellung #${order.id.slice(0, 8)} wurde vollständig abgelehnt.`
+            : `Bestellung #${order.id.slice(0, 8)} wurde bestätigt.`,
+        items: confirmationDetails,
+        total: totalConfirmedAmount.toFixed(2),
+        originalTotal: order.totalAmount,
+      });
+
+      await storage.sendMessage({
+        conversationId: conversation.id,
+        senderId: order.supplierId,
+        messageType: "order_change_request",
+        content: chatContent,
+        orderId: order.id,
+        dismissed: false,
+      });
+
+      const updatedOrder = await storage.getOrder(req.params.id);
+      res.json(updatedOrder);
+    } catch (error: any) {
+      if (error?.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to confirm order" });
     }
   });
 
@@ -1368,22 +1524,23 @@ export async function registerRoutes(
         await storage.addOrderStatusHistory(req.params.id, previousStatus, "pending", supplierId);
 
         // Reverse stock deductions since order goes back to pending (idempotent)
-        if (previousStatus === "confirmed" || previousStatus === "in_delivery") {
+        if (previousStatus === "confirmed" || previousStatus === "partially_confirmed" || previousStatus === "in_delivery") {
           const existingMovements = await storage.getStockMovementsByOrder(order.id);
           const alreadyReversed = existingMovements.some(m => m.type === "order_reversed");
           if (!alreadyReversed) {
             for (const item of order.items) {
               const product = await storage.getProduct(item.productId);
               if (product) {
+                const qty = item.confirmedQuantity ?? item.quantity;
                 const currentStock = product.stockQuantity ?? 0;
-                const newStock = currentStock + item.quantity;
+                const newStock = currentStock + qty;
                 await storage.updateProductStock(item.productId, newStock);
                 await storage.addStockMovement({
                   productId: item.productId,
                   supplierId: order.supplierId,
                   orderId: order.id,
                   type: "order_reversed",
-                  quantity: item.quantity,
+                  quantity: qty,
                   previousStock: currentStock,
                   newStock,
                   note: `Bestellung #${order.id.slice(0, 8)} zurück auf ausstehend (Änderungsanfrage genehmigt)`,

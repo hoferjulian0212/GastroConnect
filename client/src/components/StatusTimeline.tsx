@@ -2,13 +2,14 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import {
   Clock, CheckCircle, Truck, Package, XCircle, Loader2, ShieldCheck, Lock,
-  CircleDot
+  CircleDot, AlertTriangle
 } from "lucide-react";
 import type { OrderStatusHistoryWithUser, ComplaintStatusHistoryWithUser } from "@shared/schema";
 
 const orderStatusConfig: Record<string, { label: string; icon: typeof Clock; color: string }> = {
   pending: { label: "Neu", icon: Clock, color: "text-amber-500" },
   confirmed: { label: "Bestätigt", icon: CheckCircle, color: "text-blue-500" },
+  partially_confirmed: { label: "Teilbestätigt", icon: AlertTriangle, color: "text-orange-500" },
   in_delivery: { label: "In Lieferung", icon: Truck, color: "text-indigo-500" },
   delivered: { label: "Geliefert", icon: Package, color: "text-green-500" },
   cancelled: { label: "Storniert", icon: XCircle, color: "text-red-500" },

@@ -4,7 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
-export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "in_delivery", "delivered", "cancelled"]);
+export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]);
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion"]);
 export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);
@@ -80,6 +80,8 @@ export const orderItems = pgTable("order_items", {
   productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
   productName: text("product_name").notNull(),
   quantity: integer("quantity").notNull(),
+  confirmedQuantity: integer("confirmed_quantity"),
+  rejectedQuantity: integer("rejected_quantity"),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
 });
@@ -259,6 +261,15 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
 });
 
 export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true, createdAt: true });
+
+export const confirmOrderItemSchema = z.object({
+  orderItemId: z.string(),
+  confirmedQuantity: z.number().int().min(0),
+});
+export const confirmOrderSchema = z.object({
+  items: z.array(confirmOrderItemSchema).min(1),
+  changedBy: z.string().optional(),
+});
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
