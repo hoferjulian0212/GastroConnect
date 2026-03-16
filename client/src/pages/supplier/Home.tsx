@@ -102,7 +102,7 @@ export default function SupplierHome() {
   }>({
     queryKey: [`/api/supplier/detailed-stats?supplierId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
-    staleTime: 60000,
+    staleTime: 5000,
   });
 
   const monthNames: Record<string, Record<string, string>> = {
@@ -145,6 +145,7 @@ export default function SupplierHome() {
     queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
     queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders'] });
     queryClient.invalidateQueries({ queryKey: ['/api/supplier/action-required'] });
+    queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.includes?.("/api/supplier/detailed-stats") });
   };
 
   const updateStatusMutation = useMutation({

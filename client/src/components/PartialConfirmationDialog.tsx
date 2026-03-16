@@ -58,6 +58,7 @@ export function PartialConfirmationDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.includes?.("/api/supplier/detailed-stats") });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/orders/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/action-required"] });

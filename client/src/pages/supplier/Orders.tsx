@@ -124,6 +124,7 @@ export default function SupplierOrders() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.includes?.("/api/supplier/detailed-stats") });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent', currentUser?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders/recent'] });

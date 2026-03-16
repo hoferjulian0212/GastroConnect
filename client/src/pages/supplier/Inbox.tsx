@@ -223,6 +223,7 @@ export default function SupplierInbox() {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.includes?.("/api/supplier/detailed-stats") });
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent', currentUser?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders/recent'] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
@@ -249,6 +250,7 @@ export default function SupplierInbox() {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.includes?.("/api/supplier/detailed-stats") });
       if (selectedConversation) {
         queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversation, "messages"] });
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
@@ -859,6 +861,7 @@ export default function SupplierInbox() {
                                                 queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
                                                 queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
                                                 queryClient.invalidateQueries({ queryKey: ["/api/supplier/stats"] });
+                                                queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.includes?.("/api/supplier/detailed-stats") });
                                                 queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent', currentUser?.id] });
                                                 queryClient.invalidateQueries({ queryKey: ['/api/orders/recent'] });
                                                 queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
