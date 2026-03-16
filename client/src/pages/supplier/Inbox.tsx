@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import OnlineStatus from "@/components/OnlineStatus";
@@ -801,7 +801,12 @@ export default function SupplierInbox() {
                                         </div>
                                       )}
                                       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                                        <span>{format(new Date(order.createdAt), "dd.MM.yy", { locale: de })}</span>
+                                        <span>
+                                          {format(new Date(order.createdAt), "dd.MM.yy", { locale: de })}
+                                          {order.createdByUser && (
+                                            <span className="ml-1" data-testid={`text-created-by-${order.id}`}>· {order.createdByUser.name}</span>
+                                          )}
+                                        </span>
                                         <span className="font-semibold text-xs text-foreground">{order.totalAmount ? `€${Number(order.totalAmount).toFixed(2)}` : ""}</span>
                                       </div>
                                       {order.status === "in_delivery" && order.requestedDeliveryDate && (
@@ -1888,6 +1893,15 @@ export default function SupplierInbox() {
                   <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.updatedAt), "HH:mm", { locale: de })} Uhr</div>
                 </div>
               </div>
+              {orderDetail.createdByUser && (
+                <div className="flex items-center gap-2 p-3 rounded-lg border" data-testid="detail-created-by">
+                  <UserIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">{t("orders", "createdBy")}</div>
+                    <div className="text-sm font-medium">{orderDetail.createdByUser.name}</div>
+                  </div>
+                </div>
+              )}
               
               <Separator />
 

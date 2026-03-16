@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
@@ -642,6 +642,7 @@ export default function RestaurantInbox() {
         restaurantId: currentUser?.id,
         supplierId,
         items,
+        createdByUserId: currentUser?.id,
       });
     },
     onSuccess: () => {
@@ -1116,7 +1117,12 @@ export default function RestaurantInbox() {
                                           </div>
                                         )}
                                         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                                          <span>{format(new Date(order.createdAt), "dd.MM.yy", { locale: dateLocale })}</span>
+                                          <span>
+                                            {format(new Date(order.createdAt), "dd.MM.yy", { locale: dateLocale })}
+                                            {order.createdByUser && (
+                                              <span className="ml-1" data-testid={`text-created-by-${order.id}`}>· {order.createdByUser.name}</span>
+                                            )}
+                                          </span>
                                           <span className="font-semibold text-xs text-foreground">{order.totalAmount ? `€${Number(order.totalAmount).toFixed(2)}` : ""}</span>
                                         </div>
                                         {order.status === "in_delivery" && order.requestedDeliveryDate && (
@@ -2279,6 +2285,15 @@ export default function RestaurantInbox() {
                   <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.updatedAt), "HH:mm", { locale: dateLocale })}</div>
                 </div>
               </div>
+              {orderDetail.createdByUser && (
+                <div className="flex items-center gap-2 p-3 rounded-lg border" data-testid="detail-created-by">
+                  <UserIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">{t("orders", "createdBy")}</div>
+                    <div className="text-sm font-medium">{orderDetail.createdByUser.name}</div>
+                  </div>
+                </div>
+              )}
               
               <Separator />
 

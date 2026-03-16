@@ -65,6 +65,7 @@ export const orders = pgTable("orders", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  createdByUserId: varchar("created_by_user_id", { length: 36 }).references(() => users.id),
   status: orderStatusEnum("status").default("pending").notNull(),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   notes: text("notes"),
@@ -320,6 +321,7 @@ export type OrderWithDetails = Order & {
   items: OrderItemWithProduct[];
   restaurant: User;
   supplier: User;
+  createdByUser?: User | null;
 };
 export type ConversationWithUser = Conversation & {
   otherUser: User;

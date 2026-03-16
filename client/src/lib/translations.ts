@@ -202,6 +202,7 @@ const t = {
     orderSentDesc: { de: "Ihre Bestellung wurde erfolgreich an den Händler gesendet.", it: "Il tuo ordine è stato inviato con successo al commerciante." },
     orderNumber: { de: "Bestellnummer", it: "Numero ordine" },
     orderDate: { de: "Bestelldatum", it: "Data ordine" },
+    createdBy: { de: "Bestellt von", it: "Ordinato da" },
     deliveryDateLabel: { de: "Gewünschter Liefertermin", it: "Data di consegna desiderata" },
     asapDelivery: { de: "Sobald wie möglich", it: "Il prima possibile" },
     notesLabel: { de: "Anmerkungen", it: "Note" },

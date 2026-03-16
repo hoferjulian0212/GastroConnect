@@ -254,6 +254,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Orders
+  private async enrichOrderWithDetails(order: Order): Promise<OrderWithDetails> {
+    const items = await this.enrichOrderItemsWithImages(await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)));
+    const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
+    const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
+    let createdByUser: User | null = null;
+    if (order.createdByUserId) {
+      const [creator] = await db.select().from(users).where(eq(users.id, order.createdByUserId));
+      createdByUser = creator || null;
+    }
+    return { ...order, items, restaurant, supplier, createdByUser };
+  }
+
   async getOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]> {
     const ordersResult = await db
       .select()
@@ -261,14 +273,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(orders.restaurantId, restaurantId))
       .orderBy(desc(orders.createdAt));
 
-    const ordersWithDetails: OrderWithDetails[] = [];
-    for (const order of ordersResult) {
-      const items = await this.enrichOrderItemsWithImages(await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)));
-      const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
-      const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
-      ordersWithDetails.push({ ...order, items, restaurant, supplier });
-    }
-    return ordersWithDetails;
+    return Promise.all(ordersResult.map(order => this.enrichOrderWithDetails(order)));
   }
 
   async getOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]> {
@@ -278,14 +283,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(orders.supplierId, supplierId))
       .orderBy(desc(orders.createdAt));
 
-    const ordersWithDetails: OrderWithDetails[] = [];
-    for (const order of ordersResult) {
-      const items = await this.enrichOrderItemsWithImages(await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)));
-      const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
-      const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
-      ordersWithDetails.push({ ...order, items, restaurant, supplier });
-    }
-    return ordersWithDetails;
+    return Promise.all(ordersResult.map(order => this.enrichOrderWithDetails(order)));
   }
 
   async getRecentOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]> {
@@ -296,14 +294,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(orders.createdAt))
       .limit(5);
 
-    const ordersWithDetails: OrderWithDetails[] = [];
-    for (const order of recentOrders) {
-      const items = await this.enrichOrderItemsWithImages(await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)));
-      const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
-      const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
-      ordersWithDetails.push({ ...order, items, restaurant, supplier });
-    }
-    return ordersWithDetails;
+    return Promise.all(recentOrders.map(order => this.enrichOrderWithDetails(order)));
   }
 
   async getRecentOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]> {
@@ -314,25 +305,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(orders.createdAt))
       .limit(5);
 
-    const ordersWithDetails: OrderWithDetails[] = [];
-    for (const order of recentOrders) {
-      const items = await this.enrichOrderItemsWithImages(await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)));
-      const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
-      const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
-      ordersWithDetails.push({ ...order, items, restaurant, supplier });
-    }
-    return ordersWithDetails;
+    return Promise.all(recentOrders.map(order => this.enrichOrderWithDetails(order)));
   }
 
   async getOrder(id: string): Promise<OrderWithDetails | undefined> {
     const [order] = await db.select().from(orders).where(eq(orders.id, id));
     if (!order) return undefined;
     
-    const items = await this.enrichOrderItemsWithImages(await db.select().from(orderItems).where(eq(orderItems.orderId, id)));
-    const [restaurant] = await db.select().from(users).where(eq(users.id, order.restaurantId));
-    const [supplier] = await db.select().from(users).where(eq(users.id, order.supplierId));
-    
-    return { ...order, items, restaurant, supplier };
+    return this.enrichOrderWithDetails(order);
   }
 
   async createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order> {

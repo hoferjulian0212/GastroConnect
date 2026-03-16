@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw, User as UserIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
@@ -316,6 +316,12 @@ export default function SupplierOrders() {
               <span>
                 {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
               </span>
+              {order.createdByUser && (
+                <span className="flex items-center gap-1" data-testid={`text-created-by-${order.id}`}>
+                  <UserIcon className="h-3 w-3" />
+                  {order.createdByUser.name}
+                </span>
+              )}
             </div>
           </div>
           <div className="text-right shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -691,6 +697,12 @@ export default function SupplierOrders() {
                   <span className="text-muted-foreground">{lang === "de" ? "Bestellt am" : "Ordinato il"}</span>
                   <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateFnsLocale })}</span>
                 </div>
+                {detailOrder.createdByUser && (
+                  <div className="flex justify-between" data-testid="detail-created-by">
+                    <span className="text-muted-foreground">{t("orders", "createdBy")}</span>
+                    <span className="font-medium">{detailOrder.createdByUser.name}</span>
+                  </div>
+                )}
                 {detailOrder.requestedDeliveryDate ? (
                   <div>
                     <div className="flex justify-between">

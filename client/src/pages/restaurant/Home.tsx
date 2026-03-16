@@ -567,6 +567,9 @@ export default function RestaurantHome() {
                               </div>
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 {order.items?.length || 0} {t("common", "items")} — #{order.id.slice(0, 8)}
+                                {order.createdByUser && (
+                                  <span className="ml-1.5" data-testid={`text-created-by-${order.id}`}>— {order.createdByUser.name}</span>
+                                )}
                               </p>
                               {isDelayed && order.originalDeliveryDate && (
                                 <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">

@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList, AlertTriangle } from "lucide-react";
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList, AlertTriangle, User as UserIcon } from "lucide-react";
 import type { OrderWithDetails, Product, DeliverySchedule, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { format, addDays, startOfDay, formatDistanceToNow, isToday, isYesterday } from "date-fns";
@@ -484,6 +484,12 @@ export default function RestaurantOrders() {
               <span>
                 {order.items?.length || 0} {t("common", "items")}
               </span>
+              {order.createdByUser && (
+                <span className="flex items-center gap-1" data-testid={`text-created-by-${order.id}`}>
+                  <UserIcon className="h-3 w-3" />
+                  {order.createdByUser.name}
+                </span>
+              )}
             </div>
           </div>
           <div className="text-right shrink-0">
@@ -965,6 +971,12 @@ export default function RestaurantOrders() {
                   <span className="text-muted-foreground">{t("orders", "createdAt")}</span>
                   <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</span>
                 </div>
+                {detailOrder.createdByUser && (
+                  <div className="flex justify-between" data-testid="detail-created-by">
+                    <span className="text-muted-foreground">{t("orders", "createdBy")}</span>
+                    <span className="font-medium">{detailOrder.createdByUser.name}</span>
+                  </div>
+                )}
                 {detailOrder.requestedDeliveryDate && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t("orders", "requestedDeliveryDate")}</span>

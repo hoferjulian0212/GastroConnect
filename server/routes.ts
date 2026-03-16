@@ -119,6 +119,7 @@ const createOrderSchema = z.object({
   requestedDeliveryDate: safeShortString.optional().nullable(),
   deliveryDates: z.record(z.string(), z.string().nullable()).optional().nullable(),
   perSupplierNotes: z.record(z.string(), safeString).optional().nullable(),
+  createdByUserId: uuidField.optional().nullable(),
 }).strict();
 
 const directOrderItemSchema = z.object({
@@ -131,6 +132,7 @@ const directOrderSchema = z.object({
   supplierId: uuidField,
   items: z.array(directOrderItemSchema).min(1).max(200),
   notes: safeString.optional().nullable(),
+  createdByUserId: uuidField.optional().nullable(),
 }).strict();
 
 const reorderSchema = z.object({
@@ -926,7 +928,7 @@ export async function registerRoutes(
   app.post("/api/orders", async (req, res) => {
     try {
       const validated = createOrderSchema.parse(req.body);
-      const { restaurantId, supplierId: targetSupplierId, notes, requestedDeliveryDate, deliveryDates, perSupplierNotes } = validated;
+      const { restaurantId, supplierId: targetSupplierId, notes, requestedDeliveryDate, deliveryDates, perSupplierNotes, createdByUserId } = validated;
 
       // Get cart items
       const allCartItems = await storage.getCartItems(restaurantId);
@@ -988,12 +990,12 @@ export async function registerRoutes(
         const supplierDeliveryDate = deliveryDates?.[supplierId] || requestedDeliveryDate || null;
         const supplierNotes = perSupplierNotes?.[supplierId] || notes || null;
         const order = await storage.createOrder(
-          { restaurantId, supplierId, totalAmount, status: "pending", notes: supplierNotes, requestedDeliveryDate: supplierDeliveryDate },
+          { restaurantId, supplierId, totalAmount, status: "pending", notes: supplierNotes, requestedDeliveryDate: supplierDeliveryDate, createdByUserId: createdByUserId || restaurantId },
           orderItems as any
         );
         createdOrders.push(order);
         
-        await storage.addOrderStatusHistory(order.id, null, "pending", restaurantId);
+        await storage.addOrderStatusHistory(order.id, null, "pending", createdByUserId || restaurantId);
 
         // Create order message in chat
         const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
@@ -1040,7 +1042,7 @@ export async function registerRoutes(
   app.post("/api/orders/direct", async (req, res) => {
     try {
       const validated = directOrderSchema.parse(req.body);
-      const { restaurantId, supplierId, items, notes } = validated;
+      const { restaurantId, supplierId, items, notes, createdByUserId } = validated;
 
       const products = await storage.getProductsBySupplier(supplierId);
       const productMap = new Map(products.map(p => [p.id, p]));
@@ -1079,11 +1081,11 @@ export async function registerRoutes(
         .toFixed(2);
 
       const order = await storage.createOrder(
-        { restaurantId, supplierId, totalAmount, status: "pending", notes: notes || "" },
+        { restaurantId, supplierId, totalAmount, status: "pending", notes: notes || "", createdByUserId: createdByUserId || restaurantId },
         orderItems as any
       );
       
-      await storage.addOrderStatusHistory(order.id, null, "pending", restaurantId);
+      await storage.addOrderStatusHistory(order.id, null, "pending", createdByUserId || restaurantId);
 
       // Create order message in chat
       const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);

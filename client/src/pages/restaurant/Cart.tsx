@@ -82,6 +82,7 @@ export default function RestaurantCart() {
         restaurantId: currentUser?.id,
         perSupplierNotes: orderNotes,
         deliveryDates: perSupplierDates,
+        createdByUserId: currentUser?.id,
       });
       return res.json();
     },
@@ -129,6 +130,7 @@ export default function RestaurantCart() {
         supplierId,
         notes: orderNotes[supplierId] || "",
         requestedDeliveryDate: deliveryDate,
+        createdByUserId: currentUser?.id,
       });
       return res.json();
     },

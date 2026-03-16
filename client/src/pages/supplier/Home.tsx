@@ -398,10 +398,16 @@ export default function SupplierHome() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium truncate">{restaurantName}</p>
-                              <div className="flex items-center gap-1.5 mt-0.5">
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                                 <span className="text-xs text-muted-foreground">#{order.id.slice(0, 8)}</span>
                                 <span className="text-xs text-muted-foreground">·</span>
                                 <span className="text-xs font-medium">{order.totalAmount}€</span>
+                                {order.createdByUser && (
+                                  <>
+                                    <span className="text-xs text-muted-foreground">·</span>
+                                    <span className="text-xs text-muted-foreground" data-testid={`text-created-by-${order.id}`}>{order.createdByUser.name}</span>
+                                  </>
+                                )}
                               </div>
                             </div>
                             <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
