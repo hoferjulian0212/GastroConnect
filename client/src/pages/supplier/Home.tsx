@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays, FileText, Loader2, Send, ArrowRight, AlertCircle } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, Product, ConversationWithUser, ComplaintWithDetails } from "@shared/schema";
@@ -249,8 +249,68 @@ export default function SupplierHome() {
     }
   };
 
-  const displayedDeliveries = upcomingDeliveries?.slice(0, 5) || [];
-  const hasMoreDeliveries = (upcomingDeliveries?.length || 0) > 5;
+  const getDeliveryDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr + "T00:00:00");
+    if (isToday(date)) return t("supplierHome", "today");
+    if (isTomorrow(date)) return lang === "de" ? "Morgen" : "Domani";
+    return format(date, "EEEE, dd.MM.", { locale: dateLocale });
+  };
+
+  const groupedDeliveries = useMemo(() => {
+    if (!upcomingDeliveries) return [];
+
+    const groups = new Map<string, OrderWithDetails[]>();
+    const noDateOrders: OrderWithDetails[] = [];
+
+    for (const order of upcomingDeliveries) {
+      if (!order.requestedDeliveryDate) {
+        noDateOrders.push(order);
+      } else {
+        const dateKey = order.requestedDeliveryDate;
+        if (!groups.has(dateKey)) groups.set(dateKey, []);
+        groups.get(dateKey)!.push(order);
+      }
+    }
+
+    const result: { dateKey: string; label: string; isToday: boolean; orders: OrderWithDetails[] }[] = [];
+
+    const sortedEntries = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+    for (const [dateKey, orders] of sortedEntries) {
+      const dtToday = isToday(new Date(dateKey + "T00:00:00"));
+      result.push({
+        dateKey,
+        label: getDeliveryDateLabel(dateKey),
+        isToday: dtToday,
+        orders,
+      });
+    }
+
+    if (!result.some(g => g.isToday)) {
+      const insertIdx = result.findIndex(g => {
+        const d = new Date(g.dateKey + "T00:00:00");
+        return d > new Date(new Date().toDateString());
+      });
+      const todayEntry = {
+        dateKey: "_today_empty",
+        label: t("supplierHome", "today"),
+        isToday: true,
+        orders: [] as OrderWithDetails[],
+      };
+      if (insertIdx === -1) result.push(todayEntry);
+      else result.splice(insertIdx, 0, todayEntry);
+    }
+
+    if (noDateOrders.length > 0) {
+      result.push({
+        dateKey: "_no_date",
+        label: lang === "de" ? "Ohne Lieferdatum" : "Senza data di consegna",
+        isToday: false,
+        orders: noDateOrders,
+      });
+    }
+
+    return result;
+  }, [upcomingDeliveries, lang]);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -287,132 +347,116 @@ export default function SupplierHome() {
         </CardHeader>
         <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
           {deliveriesLoading ? (
-            <div className="space-y-2 md:space-y-3">
+            <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-20 w-full" />
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
               ))}
             </div>
-          ) : displayedDeliveries.length > 0 ? (
-            <div className="space-y-2 md:space-y-3">
-              {displayedDeliveries.map((order) => {
-                const deliveryDate = order.requestedDeliveryDate
-                  ? new Date(order.requestedDeliveryDate + "T00:00:00")
-                  : null;
-                const isTodayDelivery = deliveryDate ? isToday(deliveryDate) : false;
-                const isTomorrowDelivery = deliveryDate ? isTomorrow(deliveryDate) : false;
-
-                return (
-                  <div
-                    key={order.id}
-                    className={`rounded-xl border p-2.5 md:p-3 transition-all ${
-                      isTodayDelivery
-                        ? "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
-                        : "border-border bg-white dark:bg-gray-900"
-                    }`}
-                    data-testid={`delivery-item-${order.id}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div
-                        className="flex items-start gap-2.5 min-w-0 flex-1 cursor-pointer"
-                        onClick={() => setDetailOrder(order)}
-                        data-testid={`delivery-link-${order.id}`}
-                      >
-                        <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 ${
-                          isTodayDelivery
-                            ? "bg-amber-100 dark:bg-amber-900/30"
-                            : "bg-primary/10"
-                        }`}>
-                          <Truck className={`h-4 w-4 ${isTodayDelivery ? "text-amber-600" : "text-primary"}`} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="text-xs md:text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                            {isTodayDelivery && (
-                              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] md:text-xs px-1.5" variant="outline">
-                                {t("supplierHome", "today")}
-                              </Badge>
-                            )}
-                            {isTomorrowDelivery && (
-                              <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] md:text-xs px-1.5" variant="outline">
-                                {format(deliveryDate!, "dd.MM.yyyy", { locale: dateLocale })}
-                              </Badge>
-                            )}
-                            {!deliveryDate && (
-                              <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 text-[10px] md:text-xs px-1.5" variant="outline">
-                                {t("supplierHome", "noDeliveryDate")}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <UserIcon className="h-2.5 w-2.5 md:h-3 md:w-3 text-muted-foreground shrink-0" />
-                            <p className="text-[10px] md:text-xs text-muted-foreground truncate">
-                              {order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}
-                            </p>
-                          </div>
-                        </div>
+          ) : groupedDeliveries.length > 0 ? (
+            <div className="space-y-4">
+              {groupedDeliveries.map((group) => (
+                <div key={group.dateKey}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className={`text-xs font-semibold uppercase tracking-wide ${
+                      group.isToday ? "text-primary" : "text-muted-foreground"
+                    }`}>
+                      {group.label}
+                    </span>
+                    {group.isToday && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {group.orders.length === 0 && group.isToday && (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center" data-testid="today-no-deliveries">
+                        <p className="text-sm text-muted-foreground">
+                          {lang === "de" ? "Keine Lieferungen geplant f\u00FCr heute" : "Nessuna consegna prevista per oggi"}
+                        </p>
                       </div>
+                    )}
+                    {group.orders.map((order) => {
+                      const restaurantName = order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown");
 
-                      <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <span className="text-sm md:text-base font-bold">{order.totalAmount}€</span>
-                        {cardWizard?.orderId === order.id ? (
-                          <div className="flex flex-col items-end gap-1">
-                            <p className="text-[10px] md:text-xs font-medium text-foreground">
-                              {cardWizard.action === "delivered" && (lang === "de" ? "Als geliefert markieren?" : "Contrassegnare come consegnato?")}
-                              {cardWizard.action === "cancelled" && (lang === "de" ? "Bestellung stornieren?" : "Annullare l'ordine?")}
-                            </p>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 px-2 text-[10px] md:text-xs"
-                                onClick={() => setCardWizard(null)}
-                                disabled={updateStatusMutation.isPending}
-                                data-testid={`cancel-wizard-${order.id}`}
-                              >
-                                <X className="h-3 w-3 mr-0.5" />
-                                {t("common", "cancel")}
-                              </Button>
-                              <Button
-                                size="sm"
-                                className={`h-7 px-2 text-[10px] md:text-xs ${cardWizard.action === "cancelled" ? "bg-red-600 hover:bg-red-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"}`}
-                                onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: cardWizard.action })}
-                                disabled={updateStatusMutation.isPending}
-                                data-testid={`confirm-wizard-${order.id}`}
-                              >
-                                <Check className="h-3 w-3 mr-0.5" />
-                                {t("supplierHome", "confirm")}
-                              </Button>
+                      return (
+                        <div
+                          key={order.id}
+                          className="rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all duration-200"
+                          data-testid={`delivery-item-${order.id}`}
+                        >
+                          <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => setDetailOrder(order)}>
+                            <div className={`flex items-center justify-center h-10 w-10 rounded-lg shrink-0 ${
+                              order.status === "in_delivery"
+                                ? "bg-purple-100 dark:bg-purple-900/30"
+                                : "bg-blue-100 dark:bg-blue-900/30"
+                            }`}>
+                              {order.status === "in_delivery" ? (
+                                <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                              ) : (
+                                <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">{restaurantName}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-xs text-muted-foreground">#{order.id.slice(0, 8)}</span>
+                                <span className="text-xs text-muted-foreground">·</span>
+                                <span className="text-xs font-medium">{order.totalAmount}€</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              {cardWizard?.orderId === order.id ? (
+                                <div className="flex flex-col items-end gap-1">
+                                  <p className="text-[10px] md:text-xs font-medium text-foreground">
+                                    {cardWizard.action === "delivered" && (lang === "de" ? "Als geliefert markieren?" : "Contrassegnare come consegnato?")}
+                                    {cardWizard.action === "cancelled" && (lang === "de" ? "Bestellung stornieren?" : "Annullare l'ordine?")}
+                                  </p>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 px-2 text-[10px] md:text-xs"
+                                      onClick={() => setCardWizard(null)}
+                                      disabled={updateStatusMutation.isPending}
+                                      data-testid={`cancel-wizard-${order.id}`}
+                                    >
+                                      <X className="h-3 w-3 mr-0.5" />
+                                      {t("common", "cancel")}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      className={`h-7 px-2 text-[10px] md:text-xs ${cardWizard.action === "cancelled" ? "bg-red-600 hover:bg-red-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"}`}
+                                      onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: cardWizard.action })}
+                                      disabled={updateStatusMutation.isPending}
+                                      data-testid={`confirm-wizard-${order.id}`}
+                                    >
+                                      <Check className="h-3 w-3 mr-0.5" />
+                                      {t("supplierHome", "confirm")}
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap gap-1 justify-end">
+                                  <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/30" variant="outline" onClick={() => setCardWizard({ orderId: order.id, action: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`home-delivered-${order.id}`}>
+                                    <Package className="h-3 w-3 mr-0.5" />
+                                    {lang === "de" ? "Geliefert" : "Consegnato"}
+                                  </Button>
+                                  {!order.requestedDeliveryDate && (
+                                    <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950/30" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} data-testid={`home-set-date-${order.id}`}>
+                                      <CalendarDays className="h-3 w-3 mr-0.5" />
+                                      {lang === "de" ? "Datum setzen" : "Imposta data"}
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
-                        ) : (
-                          <div className="flex flex-wrap gap-1 justify-end">
-                            <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/30" variant="outline" onClick={() => setCardWizard({ orderId: order.id, action: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`home-delivered-${order.id}`}>
-                              <Package className="h-3 w-3 mr-0.5" />
-                              {lang === "de" ? "Geliefert" : "Consegnato"}
-                            </Button>
-                            {!order.requestedDeliveryDate && (
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950/30" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} data-testid={`home-set-date-${order.id}`}>
-                                <CalendarDays className="h-3 w-3 mr-0.5" />
-                                {lang === "de" ? "Datum setzen" : "Imposta data"}
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-
-              {hasMoreDeliveries && (
-                <Link
-                  href="/supplier/orders?status=in_delivery"
-                  className="block text-center text-sm text-primary hover:underline py-2"
-                  data-testid="link-more-deliveries"
-                >
-                  {t("supplierHome", "allUpcomingDeliveries")}
-                </Link>
-              )}
+                </div>
+              ))}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
