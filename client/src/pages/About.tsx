@@ -32,8 +32,8 @@ export default function About() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <Utensils className="h-5 w-5 text-primary" />
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <Utensils className="h-5 w-5 text-foreground" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Für Betriebe</h3>
               <p className="text-xs text-muted-foreground">
@@ -44,8 +44,8 @@ export default function About() {
 
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <Truck className="h-5 w-5 text-primary" />
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <Truck className="h-5 w-5 text-foreground" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Für Händler</h3>
               <p className="text-xs text-muted-foreground">
@@ -56,8 +56,8 @@ export default function About() {
 
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <MessageSquare className="h-5 w-5 text-primary" />
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <MessageSquare className="h-5 w-5 text-foreground" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Direkte Kommunikation</h3>
               <p className="text-xs text-muted-foreground">
@@ -68,8 +68,8 @@ export default function About() {
 
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <ShoppingCart className="h-5 w-5 text-primary" />
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <ShoppingCart className="h-5 w-5 text-foreground" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Einfache Bestellungen</h3>
               <p className="text-xs text-muted-foreground">
@@ -80,8 +80,8 @@ export default function About() {
 
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <Shield className="h-5 w-5 text-primary" />
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <Shield className="h-5 w-5 text-foreground" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Reklamationsmanagement</h3>
               <p className="text-xs text-muted-foreground">
@@ -92,8 +92,8 @@ export default function About() {
 
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <Zap className="h-5 w-5 text-primary" />
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <Zap className="h-5 w-5 text-foreground" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Schnell & Modern</h3>
               <p className="text-xs text-muted-foreground">

@@ -649,7 +649,7 @@ export default function SupplierInbox() {
                             selectedConversation === conv.id
                               ? "bg-secondary/10"
                               : hasUnread
-                              ? "bg-primary/5"
+                              ? "bg-muted/50"
                               : ""
                           } ${flashingConvIds.has(conv.id) ? "animate-flash-new" : ""}`}
                           data-testid={`conversation-${conv.id}`}
@@ -658,12 +658,12 @@ export default function SupplierInbox() {
                             <div className="relative shrink-0">
                               <Avatar className="h-9 w-9">
                                 <AvatarImage src={conv.otherUser.profileImageUrl || undefined} alt={conv.otherUser.name} />
-                                <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                                <AvatarFallback className="bg-muted text-foreground text-sm">
                                   {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
                               {hasUnread ? (
-                                <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary border-2 border-background animate-pulse" />
+                                <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-foreground border-2 border-background animate-pulse" />
                               ) : conv.otherUser.lastSeenAt && (Date.now() - new Date(conv.otherUser.lastSeenAt).getTime()) < 120000 ? (
                                 <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-background" />
                               ) : null}
@@ -675,10 +675,10 @@ export default function SupplierInbox() {
                                 </p>
                                 <div className="flex items-center gap-1.5 shrink-0">
                                   {lastMessageTime && (
-                                    <span className={`text-[10px] ${hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
+                                    <span className={`text-[10px] ${hasUnread ? "text-foreground font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
                                   )}
                                   {hasUnread && (
-                                    <span className="flex h-5 min-w-5 px-1 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
+                                    <span className="flex h-5 min-w-5 px-1 items-center justify-center rounded-full bg-foreground text-[10px] text-background font-bold">
                                       {conv.unreadCount}
                                     </span>
                                   )}
@@ -719,7 +719,7 @@ export default function SupplierInbox() {
                     </Button>
                     <Avatar className="h-10 w-10 md:h-10 md:w-10 shrink-0">
                       <AvatarImage src={selectedConv.otherUser.profileImageUrl || undefined} alt={selectedConv.otherUser.name} />
-                      <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                      <AvatarFallback className="bg-muted text-foreground text-sm">
                         {selectedConv.otherUser.companyName?.charAt(0) || selectedConv.otherUser.name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
@@ -1592,7 +1592,7 @@ export default function SupplierInbox() {
                                               className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 cursor-pointer hover:opacity-80 transition-opacity ${
                                                 isOwn
                                                   ? "bg-secondary-foreground/10 border-secondary-foreground/40"
-                                                  : "bg-background/60 border-primary/50"
+                                                  : "bg-background/60 border-foreground/30"
                                               }`}
                                               onClick={() => {
                                                 if (refData.refId) {
@@ -1619,7 +1619,7 @@ export default function SupplierInbox() {
                                               className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 cursor-pointer hover:opacity-80 transition-opacity ${
                                                 isOwn
                                                   ? "bg-secondary-foreground/10 border-secondary-foreground/40"
-                                                  : "bg-background/60 border-primary/50"
+                                                  : "bg-background/60 border-foreground/30"
                                               }`}
                                               onClick={() => {
                                                 if (refData.refType === "order" && refData.refId) {
@@ -1635,9 +1635,9 @@ export default function SupplierInbox() {
                                             >
                                               <div className="flex items-center gap-1.5">
                                                 {refData.refType === "order" ? (
-                                                  <ShoppingBag className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
+                                                  <ShoppingBag className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-foreground"}`} />
                                                 ) : (
-                                                  <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
+                                                  <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-foreground"}`} />
                                                 )}
                                                 <span className={`text-[11px] font-medium truncate ${isOwn ? "text-secondary-foreground/80" : "text-foreground/80"}`}>
                                                   {refData.refLabel || (refData.refType === "order" ? (lang === "de" ? "Bestellung" : "Ordine") : (lang === "de" ? "Reklamation" : "Reclamo"))}
@@ -1865,7 +1865,7 @@ export default function SupplierInbox() {
                 <div className="flex items-center gap-3 p-3 rounded-lg border">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={orderDetail.restaurant.profileImageUrl || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                    <AvatarFallback className="bg-muted text-foreground text-sm font-semibold">
                       {orderDetail.restaurant.companyName?.substring(0, 2).toUpperCase() || "?"}
                     </AvatarFallback>
                   </Avatar>
@@ -2017,7 +2017,7 @@ export default function SupplierInbox() {
               <div className="flex items-center gap-3 p-3 rounded-lg border">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={complaintDetail.restaurant?.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                  <AvatarFallback className="bg-muted text-foreground text-sm font-semibold">
                     {complaintDetail.restaurant?.companyName?.substring(0, 2).toUpperCase() || "??"}
                   </AvatarFallback>
                 </Avatar>
@@ -2124,7 +2124,7 @@ export default function SupplierInbox() {
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6">
                               <AvatarImage src={comment.user?.profileImageUrl || undefined} />
-                              <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                              <AvatarFallback className="text-xs bg-muted text-foreground">
                                 {comment.user?.companyName?.substring(0, 2).toUpperCase() || comment.user?.name?.substring(0, 2).toUpperCase() || "?"}
                               </AvatarFallback>
                             </Avatar>

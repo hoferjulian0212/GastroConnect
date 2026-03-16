@@ -287,7 +287,7 @@ export default function SupplierComplaints() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex items-center gap-2 md:gap-3">
-        <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+        <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-foreground" />
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">{t("common", "complaints")}</h1>
           <p className="text-sm md:text-base text-muted-foreground">{t("supplierComplaints", "manageComplaints")}</p>
@@ -300,25 +300,25 @@ export default function SupplierComplaints() {
             onClick={() => setFilterRestaurant("all")}
             className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
               filterRestaurant === "all"
-                ? "border-primary bg-primary/10 dark:bg-primary/20"
+                ? "border-foreground/30 bg-foreground/5 dark:bg-foreground/10"
                 : "border-transparent bg-muted/50 dark:bg-muted/30"
             }`}
             data-testid="filter-complaint-restaurant-all"
           >
             <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
               filterRestaurant === "all"
-                ? "bg-primary text-primary-foreground"
+                ? "bg-foreground text-background"
                 : "bg-muted text-muted-foreground"
             }`}>
               <Store className="h-5 w-5 md:h-6 md:w-6" />
             </div>
             <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
-              filterRestaurant === "all" ? "text-primary" : "text-muted-foreground"
+              filterRestaurant === "all" ? "text-foreground" : "text-muted-foreground"
             }`}>
               {t("common", "all")}
             </span>
             <span className={`text-xs md:text-sm font-bold leading-none ${
-              filterRestaurant === "all" ? "text-primary" : "text-foreground"
+              filterRestaurant === "all" ? "text-foreground" : "text-foreground"
             }`}>
               {complaints?.length || 0}
             </span>
@@ -331,24 +331,24 @@ export default function SupplierComplaints() {
                 onClick={() => setFilterRestaurant(restaurant.id)}
                 className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
                   isActive
-                    ? "border-primary bg-primary/10 dark:bg-primary/20"
+                    ? "border-foreground/30 bg-foreground/5 dark:bg-foreground/10"
                     : "border-transparent bg-muted/50 dark:bg-muted/30"
                 }`}
                 data-testid={`filter-complaint-restaurant-${restaurant.id}`}
               >
-                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-foreground/30 ring-offset-2 ring-offset-background" : ""}`}>
                   <AvatarImage src={restaurant.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                  <AvatarFallback className="bg-muted text-foreground text-sm md:text-base font-semibold">
                     {restaurant.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  isActive ? "text-foreground" : "text-muted-foreground"
                 }`}>
                   {restaurant.name}
                 </span>
                 <span className={`text-xs md:text-sm font-bold leading-none ${
-                  isActive ? "text-primary" : "text-foreground"
+                  isActive ? "text-foreground" : "text-foreground"
                 }`}>
                   {restaurant.complaintCount}
                 </span>
@@ -360,7 +360,7 @@ export default function SupplierComplaints() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
         {([
-          { key: "all", icon: AlertCircle, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
+          { key: "all", icon: AlertCircle, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-foreground text-background", borderColor: "border-foreground" },
           { key: "open", icon: Clock, color: "bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400", activeColor: "bg-yellow-500 text-white dark:bg-yellow-600", borderColor: "border-yellow-400 dark:border-yellow-500" },
           { key: "in_progress", icon: Loader2, color: "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400", activeColor: "bg-blue-500 text-white dark:bg-blue-600", borderColor: "border-blue-400 dark:border-blue-500" },
           { key: "resolved", icon: CheckCircle, color: "bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-400", activeColor: "bg-green-500 text-white dark:bg-green-600", borderColor: "border-green-400 dark:border-green-500" },
@@ -400,7 +400,7 @@ export default function SupplierComplaints() {
           <SlidersHorizontal className="h-3.5 w-3.5" />
           <span>{lang === "de" ? "Filter" : "Filtri"}</span>
           {hasSecondaryFilters && (
-            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-foreground text-[9px] text-background font-bold">
               {(filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
             </span>
           )}
@@ -460,7 +460,7 @@ export default function SupplierComplaints() {
                       <div className="flex items-center gap-2 md:gap-3">
                         <Avatar className="h-8 w-8 md:h-10 md:w-10">
                           <AvatarImage src={complaint.restaurant?.profileImageUrl || undefined} alt={complaint.restaurant?.name} />
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs md:text-sm">
+                          <AvatarFallback className="bg-muted text-foreground text-xs md:text-sm">
                             {complaint.restaurant?.companyName?.substring(0, 2).toUpperCase() || "??"}
                           </AvatarFallback>
                         </Avatar>
@@ -551,7 +551,7 @@ export default function SupplierComplaints() {
         <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-primary" />
+              <AlertCircle className="h-5 w-5 text-foreground" />
               {lang === "de" ? "Reklamation" : "Reclamo"}
             </DialogTitle>
             <DialogDescription>

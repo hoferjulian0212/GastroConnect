@@ -247,7 +247,7 @@ export function PartialConfirmationDialog({
               <span className="font-medium">
                 {lang === "it" ? "Nuovo totale" : "Neuer Betrag"}
               </span>
-              <span className="font-semibold text-primary">
+              <span className="font-semibold text-foreground">
                 {confirmedTotal.toFixed(2)}€
               </span>
             </div>

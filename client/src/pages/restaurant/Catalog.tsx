@@ -176,25 +176,25 @@ export default function RestaurantCatalog() {
             onClick={() => setSelectedSupplier("all")}
             className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
               selectedSupplier === "all"
-                ? "border-primary bg-primary/10 dark:bg-primary/20"
+                ? "border-foreground/30 bg-foreground/5 dark:bg-foreground/10"
                 : "border-transparent bg-muted/50 dark:bg-muted/30"
             }`}
             data-testid="filter-supplier-all"
           >
             <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
               selectedSupplier === "all"
-                ? "bg-primary text-primary-foreground"
+                ? "bg-foreground text-background"
                 : "bg-muted text-muted-foreground"
             }`}>
               <Store className="h-5 w-5 md:h-6 md:w-6" />
             </div>
             <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
-              selectedSupplier === "all" ? "text-primary" : "text-muted-foreground"
+              selectedSupplier === "all" ? "text-foreground" : "text-muted-foreground"
             }`}>
               {t("common", "all")}
             </span>
             <span className={`text-xs md:text-sm font-bold leading-none ${
-              selectedSupplier === "all" ? "text-primary" : "text-foreground"
+              selectedSupplier === "all" ? "text-foreground" : "text-foreground"
             }`}>
               {products?.length || 0}
             </span>
@@ -207,24 +207,24 @@ export default function RestaurantCatalog() {
                 onClick={() => setSelectedSupplier(supplier.id)}
                 className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
                   isActive
-                    ? "border-primary bg-primary/10 dark:bg-primary/20"
+                    ? "border-foreground/30 bg-foreground/5 dark:bg-foreground/10"
                     : "border-transparent bg-muted/50 dark:bg-muted/30"
                 }`}
                 data-testid={`filter-supplier-${supplier.id}`}
               >
-                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-foreground/30 ring-offset-2 ring-offset-background" : ""}`}>
                   <AvatarImage src={supplier.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                  <AvatarFallback className="bg-muted text-foreground text-sm md:text-base font-semibold">
                     {supplier.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  isActive ? "text-foreground" : "text-muted-foreground"
                 }`}>
                   {supplier.name}
                 </span>
                 <span className={`text-xs md:text-sm font-bold leading-none ${
-                  isActive ? "text-primary" : "text-foreground"
+                  isActive ? "text-foreground" : "text-foreground"
                 }`}>
                   {supplier.productCount}
                 </span>

@@ -955,9 +955,9 @@ export default function RestaurantInbox() {
                           }}
                           className={`w-full p-2.5 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
                             selectedConversation === conv.id
-                              ? "bg-primary/10"
+                              ? "bg-muted"
                               : hasUnread
-                              ? "bg-primary/5"
+                              ? "bg-muted/50"
                               : ""
                           } ${flashingConvIds.has(conv.id) ? "animate-flash-new" : ""}`}
                           data-testid={`conversation-${conv.id}`}
@@ -971,7 +971,7 @@ export default function RestaurantInbox() {
                                 </AvatarFallback>
                               </Avatar>
                               {hasUnread ? (
-                                <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary border-2 border-background animate-pulse" />
+                                <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-foreground border-2 border-background animate-pulse" />
                               ) : conv.otherUser.lastSeenAt && (Date.now() - new Date(conv.otherUser.lastSeenAt).getTime()) < 120000 ? (
                                 <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-background" />
                               ) : null}
@@ -983,10 +983,10 @@ export default function RestaurantInbox() {
                                 </p>
                                 <div className="flex items-center gap-1.5 shrink-0">
                                   {lastMessageTime && (
-                                    <span className={`text-[10px] ${hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
+                                    <span className={`text-[10px] ${hasUnread ? "text-foreground font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
                                   )}
                                   {hasUnread && (
-                                    <span className="flex h-5 min-w-5 px-1 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
+                                    <span className="flex h-5 min-w-5 px-1 items-center justify-center rounded-full bg-foreground text-[10px] text-background font-bold">
                                       {conv.unreadCount}
                                     </span>
                                   )}
@@ -1469,7 +1469,7 @@ export default function RestaurantInbox() {
                                                 ) : cardWizard.action === "edit" ? (
                                                   <>
                                                     <div className="flex items-center gap-2">
-                                                      <Pencil className="h-4 w-4 text-primary" />
+                                                      <Pencil className="h-4 w-4 text-foreground" />
                                                       <span className="text-sm font-medium">{lang === "it" ? "Modificare l'ordine?" : "Bestellung bearbeiten?"}</span>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">{lang === "it" ? "Apri l'editor per modificare prodotti e quantità." : "Öffne den Editor um Produkte und Mengen zu ändern."}</p>
@@ -1805,14 +1805,14 @@ export default function RestaurantInbox() {
                                       <div className={`max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
                                         <div className="flex-1 min-w-0">
                                           {showSenderName && (
-                                            <p className={`text-[11px] font-semibold mb-0.5 px-1 ${isOwn ? "text-right text-primary/70" : "text-indigo-600 dark:text-indigo-400"}`}>
+                                            <p className={`text-[11px] font-semibold mb-0.5 px-1 ${isOwn ? "text-right text-foreground/70" : "text-muted-foreground"}`}>
                                               {senderName}
                                             </p>
                                           )}
                                           <div
                                             className={`rounded-lg px-3 py-2 shadow-lg ${
                                               isOwn
-                                                ? "bg-primary text-primary-foreground"
+                                                ? "bg-foreground text-background"
                                                 : "bg-muted"
                                             }`}
                                           >
@@ -1820,8 +1820,8 @@ export default function RestaurantInbox() {
                                               <div
                                                 className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 cursor-pointer hover:opacity-80 transition-opacity ${
                                                   isOwn
-                                                    ? "bg-primary-foreground/15 border-primary-foreground/50"
-                                                    : "bg-background/60 border-primary/50"
+                                                    ? "bg-background/15 border-background/50"
+                                                    : "bg-background/60 border-foreground/30"
                                                 }`}
                                                 onClick={() => {
                                                   if (refData.refId) {
@@ -1835,10 +1835,10 @@ export default function RestaurantInbox() {
                                                 }}
                                                 data-testid={`ref-link-${message.id}`}
                                               >
-                                                <p className={`text-[11px] font-semibold ${isOwn ? "text-primary-foreground/80" : "text-indigo-600 dark:text-indigo-400"}`}>
+                                                <p className={`text-[11px] font-semibold ${isOwn ? "text-background/80" : "text-muted-foreground"}`}>
                                                   {refData.refLabel}
                                                 </p>
-                                                <p className={`text-[11px] truncate ${isOwn ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                                                <p className={`text-[11px] truncate ${isOwn ? "text-background/60" : "text-muted-foreground"}`}>
                                                   {refData.refPreview}
                                                 </p>
                                               </div>
@@ -1847,8 +1847,8 @@ export default function RestaurantInbox() {
                                               <div
                                                 className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 cursor-pointer hover:opacity-80 transition-opacity ${
                                                   isOwn
-                                                    ? "bg-primary-foreground/15 border-primary-foreground/50"
-                                                    : "bg-background/60 border-primary/50"
+                                                    ? "bg-background/15 border-background/50"
+                                                    : "bg-background/60 border-foreground/30"
                                                 }`}
                                                 onClick={() => {
                                                   if (refData.refType === "order" && refData.refId) {
@@ -1864,11 +1864,11 @@ export default function RestaurantInbox() {
                                               >
                                                 <div className="flex items-center gap-1.5">
                                                   {refData.refType === "order" ? (
-                                                    <ShoppingBag className={`h-3 w-3 shrink-0 ${isOwn ? "text-primary-foreground/70" : "text-primary"}`} />
+                                                    <ShoppingBag className={`h-3 w-3 shrink-0 ${isOwn ? "text-background/70" : "text-foreground"}`} />
                                                   ) : (
-                                                    <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-primary-foreground/70" : "text-primary"}`} />
+                                                    <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-background/70" : "text-foreground"}`} />
                                                   )}
-                                                  <span className={`text-[11px] font-medium truncate ${isOwn ? "text-primary-foreground/80" : "text-foreground/80"}`}>
+                                                  <span className={`text-[11px] font-medium truncate ${isOwn ? "text-background/80" : "text-foreground/80"}`}>
                                                     {refData.refLabel || (refData.refType === "order" ? t("inbox", "orderMessage") : t("inbox", "complaintMessage"))}
                                                   </span>
                                                 </div>
@@ -1876,13 +1876,13 @@ export default function RestaurantInbox() {
                                             )}
                                             <p className="text-sm">{refData ? refData.text : message.content}</p>
                                             <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
-                                              <span className={`text-[10px] ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                                              <span className={`text-[10px] ${isOwn ? "text-background/70" : "text-muted-foreground"}`}>
                                                 {format(messageDate, "HH:mm")}
                                               </span>
                                               {isOwn && (
                                                 message.isRead 
-                                                  ? <CheckCheck className="h-3 w-3 text-primary-foreground/70" />
-                                                  : <Check className="h-3 w-3 text-primary-foreground/70" />
+                                                  ? <CheckCheck className="h-3 w-3 text-background/70" />
+                                                  : <Check className="h-3 w-3 text-background/70" />
                                               )}
                                             </div>
                                           </div>
@@ -2080,10 +2080,10 @@ export default function RestaurantInbox() {
                 <div className="border-t border-border p-3 md:p-4 md:rounded-none md:shadow-none md:border-t md:border-x-0 md:mb-0 md:mx-0 floating-message-bar mobile-message-pill">
                   {replyToMessage && (
                     <div className="flex items-center gap-2 mb-2 px-1" data-testid="attached-reply-ref">
-                      <div className="flex-1 min-w-0 bg-muted/60 border-l-3 border-primary rounded-md px-3 py-1.5">
+                      <div className="flex-1 min-w-0 bg-muted/60 border-l-3 border-foreground rounded-md px-3 py-1.5">
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-primary truncate">{replyToMessage.senderName}</p>
+                            <p className="text-xs font-semibold text-foreground truncate">{replyToMessage.senderName}</p>
                             <p className="text-xs text-muted-foreground truncate">{replyToMessage.preview}</p>
                           </div>
                           <button
@@ -2099,7 +2099,7 @@ export default function RestaurantInbox() {
                   )}
                   {attachedOrderRef && (
                     <div className="flex items-center gap-2 mb-2 px-1" data-testid="attached-order-ref">
-                      <div className="flex items-center gap-1.5 bg-primary/10 text-primary rounded-full px-3 py-1 text-xs font-medium">
+                      <div className="flex items-center gap-1.5 bg-muted text-foreground rounded-full px-3 py-1 text-xs font-medium">
                         <ShoppingBag className="h-3 w-3" />
                         <span className="truncate max-w-[200px]">{attachedOrderRef.label}</span>
                         <button
@@ -2234,7 +2234,7 @@ export default function RestaurantInbox() {
                 <div className="flex items-center gap-3 p-3 rounded-lg border">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={orderDetail.supplier.profileImageUrl || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                    <AvatarFallback className="bg-muted text-foreground text-sm font-semibold">
                       {orderDetail.supplier.companyName?.substring(0, 2).toUpperCase() || "?"}
                     </AvatarFallback>
                   </Avatar>
@@ -2459,7 +2459,7 @@ export default function RestaurantInbox() {
               <div className="flex items-center gap-3 p-3 rounded-lg border">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={complaintDetail.supplier?.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                  <AvatarFallback className="bg-muted text-foreground text-sm font-semibold">
                     {complaintDetail.supplier?.companyName?.substring(0, 2).toUpperCase() || "?"}
                   </AvatarFallback>
                 </Avatar>
@@ -2563,7 +2563,7 @@ export default function RestaurantInbox() {
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6">
                               <AvatarImage src={comment.user?.profileImageUrl || undefined} />
-                              <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                              <AvatarFallback className="text-xs bg-muted text-foreground">
                                 {comment.user?.companyName?.substring(0, 2).toUpperCase() || comment.user?.name?.substring(0, 2).toUpperCase() || "?"}
                               </AvatarFallback>
                             </Avatar>
@@ -2681,7 +2681,7 @@ export default function RestaurantInbox() {
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5 text-primary" />
+              <Pencil className="h-5 w-5 text-foreground" />
               {t("orders", "editOrder")}
             </DialogTitle>
             <DialogDescription>
@@ -2764,7 +2764,7 @@ export default function RestaurantInbox() {
                           <p className="text-xs text-muted-foreground">{parseFloat(product.price).toFixed(2)}€ / {product.unit || t("common", "piece")}</p>
                         </div>
                         <Button variant="ghost" size="icon" data-testid={`inbox-button-add-product-${product.id}`}>
-                          <Plus className="h-4 w-4 text-primary" />
+                          <Plus className="h-4 w-4 text-foreground" />
                         </Button>
                       </div>
                     ))}
@@ -2790,7 +2790,7 @@ export default function RestaurantInbox() {
               <div className="space-y-2">
                 <label
                   className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                    editDeliveryOptionInbox === "asap" ? "border-primary bg-primary/5" : "border-border"
+                    editDeliveryOptionInbox === "asap" ? "border-foreground/30 bg-foreground/5" : "border-border"
                   }`}
                   data-testid="inbox-edit-radio-delivery-asap"
                 >
@@ -2801,12 +2801,12 @@ export default function RestaurantInbox() {
                     onChange={() => { setEditDeliveryOptionInbox("asap"); setEditSelectedDeliveryDateInbox(""); }}
                     className="accent-primary"
                   />
-                  <Zap className="h-4 w-4 text-primary shrink-0" />
+                  <Zap className="h-4 w-4 text-foreground shrink-0" />
                   <span className="text-sm">{t("cart", "asap")}</span>
                 </label>
                 <label
                   className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                    editDeliveryOptionInbox === "date" ? "border-primary bg-primary/5" : "border-border"
+                    editDeliveryOptionInbox === "date" ? "border-foreground/30 bg-foreground/5" : "border-border"
                   }`}
                   data-testid="inbox-edit-radio-delivery-date"
                 >
@@ -2830,7 +2830,7 @@ export default function RestaurantInbox() {
                           key={date.value}
                           className={`flex items-center gap-2.5 p-2 rounded-md border cursor-pointer transition-colors text-sm ${
                             editSelectedDeliveryDateInbox === date.value
-                              ? "border-primary bg-primary/5"
+                              ? "border-foreground/30 bg-foreground/5"
                               : "border-border"
                           }`}
                           data-testid={`inbox-edit-delivery-date-${date.value}`}

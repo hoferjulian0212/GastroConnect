@@ -289,7 +289,7 @@ export default function SupplierPromotions() {
     <div className="space-y-4 md:space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 md:gap-3">
-          <Tag className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+          <Tag className="h-6 w-6 md:h-8 md:w-8 text-foreground" />
           <div>
             <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "promotions")}</h1>
             <p className="text-xs md:text-sm text-muted-foreground">{lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti"}</p>
@@ -305,7 +305,7 @@ export default function SupplierPromotions() {
         <Card>
           <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
             <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-primary" data-testid="text-total-promotions">{promotionGroups.length}</div>
+              <div className="text-2xl md:text-3xl font-bold text-foreground" data-testid="text-total-promotions">{promotionGroups.length}</div>
               <p className="text-xs md:text-sm text-muted-foreground">{t("common", "total")}</p>
             </div>
           </CardContent>
@@ -434,7 +434,7 @@ export default function SupplierPromotions() {
                 {[1, 2, 3].map(step => (
                   <div key={step} className="flex items-center gap-1.5">
                     <div className={`flex items-center justify-center h-6 w-6 rounded-full text-[11px] font-bold ${
-                      wizardStep === step ? "bg-primary text-primary-foreground" :
+                      wizardStep === step ? "bg-foreground text-background" :
                       wizardStep > step ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
                       "bg-muted text-muted-foreground"
                     }`}>
@@ -546,7 +546,7 @@ export default function SupplierPromotions() {
                         onClick={() => !outOfStock && toggleProduct(product.id)}
                         className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors ${
                           outOfStock ? "opacity-60 cursor-not-allowed bg-muted/30" :
-                          isSelected ? "border-primary bg-primary/5 cursor-pointer" :
+                          isSelected ? "border-foreground/30 bg-foreground/5 cursor-pointer" :
                           hasActivePromo ? "border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20 cursor-pointer" :
                           "border-border hover:bg-muted/50 cursor-pointer"
                         }`}
@@ -608,7 +608,7 @@ export default function SupplierPromotions() {
                     <button
                       onClick={() => { setTargetMode("all"); setSelectedRestaurantIds([]); }}
                       className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-colors ${
-                        targetMode === "all" ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                        targetMode === "all" ? "border-foreground/30 bg-foreground/5" : "border-border hover:bg-muted/50"
                       }`}
                       data-testid="button-target-all"
                     >
@@ -618,7 +618,7 @@ export default function SupplierPromotions() {
                     <button
                       onClick={() => setTargetMode("specific")}
                       className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-colors ${
-                        targetMode === "specific" ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                        targetMode === "specific" ? "border-foreground/30 bg-foreground/5" : "border-border hover:bg-muted/50"
                       }`}
                       data-testid="button-target-specific"
                     >
@@ -652,14 +652,14 @@ export default function SupplierPromotions() {
                             key={restaurant.id}
                             onClick={() => toggleRestaurant(restaurant.id)}
                             className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
-                              isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                              isSelected ? "border-foreground/30 bg-foreground/5" : "border-border hover:bg-muted/50"
                             }`}
                             data-testid={`restaurant-option-${restaurant.id}`}
                           >
                             <Checkbox checked={isSelected} className="pointer-events-none" />
                             <Avatar className="h-7 w-7">
                               <AvatarImage src={restaurant.profileImageUrl || undefined} />
-                              <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                              <AvatarFallback className="text-[10px] bg-muted text-foreground">
                                 {(restaurant.companyName || restaurant.name).substring(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
@@ -677,7 +677,7 @@ export default function SupplierPromotions() {
                 <div className="border-t pt-4">
                   <div
                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      notifyChat ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                      notifyChat ? "border-foreground/30 bg-foreground/5" : "border-border hover:bg-muted/50"
                     }`}
                     onClick={() => setNotifyChat(!notifyChat)}
                     data-testid="checkbox-notify-chat"

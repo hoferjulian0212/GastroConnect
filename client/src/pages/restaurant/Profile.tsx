@@ -314,7 +314,7 @@ export default function RestaurantProfile() {
               <div className="relative group mb-4">
                 <Avatar className="h-24 w-24">
                   <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                  <AvatarFallback className="bg-muted text-foreground text-2xl">
                     {currentUser?.companyName?.charAt(0) || currentUser?.name.charAt(0) || "R"}
                   </AvatarFallback>
                 </Avatar>

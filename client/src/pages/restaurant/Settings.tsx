@@ -48,13 +48,13 @@ export default function RestaurantSettings() {
       </div>
 
       <Link href="/restaurant/profile" data-testid="link-profile-card" className="block max-w-md mx-auto">
-        <Card className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30">
+        <Card className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-foreground/15">
           <CardContent className="flex items-center gap-3 p-2.5">
             <Avatar className="h-8 w-8 shrink-0">
               {currentUser?.profileImageUrl ? (
                 <AvatarImage src={currentUser.profileImageUrl} alt={currentUser.name} />
               ) : null}
-              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+              <AvatarFallback className="bg-muted text-foreground text-xs font-semibold">
                 {(currentUser?.companyName || currentUser?.name || "?").slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>

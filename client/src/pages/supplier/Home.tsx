@@ -327,8 +327,8 @@ export default function SupplierHome() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0">
-              <Truck className="h-5 w-5 text-primary" />
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted shrink-0">
+              <Truck className="h-5 w-5 text-foreground" />
             </div>
             <div>
               <CardTitle className="text-base md:text-lg" data-testid="text-upcoming-deliveries-title">
@@ -357,14 +357,14 @@ export default function SupplierHome() {
               {groupedDeliveries.map((group) => (
                 <div key={group.dateKey}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-primary" : "text-muted-foreground"}`} />
+                    <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-foreground font-semibold" : "text-muted-foreground"}`} />
                     <span className={`text-xs font-semibold uppercase tracking-wide ${
-                      group.isToday ? "text-primary" : "text-muted-foreground"
+                      group.isToday ? "text-foreground font-semibold" : "text-muted-foreground"
                     }`}>
                       {group.label}
                     </span>
                     {group.isToday && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-foreground animate-pulse" />
                     )}
                   </div>
                   <div className="space-y-2">
@@ -381,7 +381,7 @@ export default function SupplierHome() {
                       return (
                         <div
                           key={order.id}
-                          className="rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all duration-200"
+                          className="rounded-xl border border-border bg-card hover:shadow-md hover:border-foreground/10 transition-all duration-200"
                           data-testid={`delivery-item-${order.id}`}
                         >
                           <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => setDetailOrder(order)}>
@@ -562,8 +562,8 @@ export default function SupplierHome() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0">
-              <ClipboardList className="h-5 w-5 text-primary" />
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted shrink-0">
+              <ClipboardList className="h-5 w-5 text-foreground" />
             </div>
             <div>
               <CardTitle className="text-base md:text-lg">{t("supplierHome", "newOrders")}</CardTitle>
@@ -586,14 +586,14 @@ export default function SupplierHome() {
               {recentOrders.map((order) => (
                 <div
                   key={order.id}
-                  className="p-2.5 md:p-3 rounded-xl border border-border bg-white dark:bg-gray-900 transition-all duration-200 hover:shadow-md hover:border-primary/30 cursor-pointer"
+                  className="p-2.5 md:p-3 rounded-xl border border-border bg-white dark:bg-gray-900 transition-all duration-200 hover:shadow-md hover:border-foreground/15 cursor-pointer"
                   onClick={() => setDetailOrder(order)}
                   data-testid={`order-item-${order.id}`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-                        <ShoppingBag className="h-4 w-4 text-primary" />
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted shrink-0">
+                        <ShoppingBag className="h-4 w-4 text-foreground" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -878,14 +878,14 @@ export default function SupplierHome() {
                       return (
                         <div key={idx} className="rounded-lg border border-border bg-white dark:bg-gray-900 p-2.5 md:p-3" data-testid={`top-product-${idx}`}>
                           <div className="flex items-center gap-2 mb-1.5">
-                            <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">
+                            <span className="flex items-center justify-center h-5 w-5 rounded-full bg-muted text-foreground text-[10px] font-bold shrink-0">
                               {idx + 1}
                             </span>
                             <span className="text-xs md:text-sm font-medium truncate flex-1">{product.name}</span>
                           </div>
                           <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
                             <div
-                              className="h-full bg-primary rounded-full transition-all duration-500"
+                              className="h-full bg-foreground rounded-full transition-all duration-500"
                               style={{ width: `${pct}%` }}
                             />
                           </div>
@@ -987,7 +987,7 @@ export default function SupplierHome() {
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ShoppingBag className="h-5 w-5 text-primary" />
+              <ShoppingBag className="h-5 w-5 text-foreground" />
               {lang === "de" ? "Auftrag" : "Ordine"} #{detailOrder?.id.slice(0, 8)}
             </DialogTitle>
             <DialogDescription>
@@ -1080,8 +1080,8 @@ export default function SupplierHome() {
                   </Button>
                 ) : (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/50 border-l-3 border-primary/50">
-                      <ShoppingBag className="h-3 w-3 text-primary shrink-0" />
+                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/50 border-l-3 border-foreground/30">
+                      <ShoppingBag className="h-3 w-3 text-foreground shrink-0" />
                       <span className="text-[11px] text-muted-foreground truncate">
                         {lang === "de" ? "Bestellung" : "Ordine"} #{detailOrder.id.substring(0, 8)} - {detailOrder.restaurant?.companyName || detailOrder.restaurant?.name}
                       </span>

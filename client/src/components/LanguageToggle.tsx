@@ -9,7 +9,7 @@ export function LanguageToggle() {
       title={lang === "de" ? "Lingua italiana" : "Deutsche Sprache"}
       className="relative flex h-8 w-[72px] items-center rounded-full bg-muted border border-border p-0.5 transition-colors cursor-pointer"
     >
-      <span className={`absolute left-0.5 flex h-7 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold shadow-sm transition-transform duration-300 ease-in-out ${lang === "it" ? "translate-x-[30px]" : "translate-x-0"}`}>
+      <span className={`absolute left-0.5 flex h-7 w-9 items-center justify-center rounded-full bg-foreground text-background text-[11px] font-bold shadow-sm transition-transform duration-300 ease-in-out ${lang === "it" ? "translate-x-[30px]" : "translate-x-0"}`}>
         {lang === "de" ? "DE" : "IT"}
       </span>
       <span className={`absolute left-1.5 text-[11px] font-semibold text-muted-foreground transition-opacity duration-200 ${lang === "de" ? "opacity-0" : "opacity-100"}`}>DE</span>
