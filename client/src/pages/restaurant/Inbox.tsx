@@ -168,6 +168,7 @@ export default function RestaurantInbox() {
   const [complaintOrderId, setComplaintOrderId] = useState<string>("");
   const [complaintTitle, setComplaintTitle] = useState("");
   const [pendingSupplierRedirect, setPendingSupplierRedirect] = useState<string | null>(null);
+  const [attachedOrderRef, setAttachedOrderRef] = useState<{ id: string; label: string } | null>(null);
   const [complaintDescription, setComplaintDescription] = useState("");
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
   const [showComplaintDetail, setShowComplaintDetail] = useState(false);
@@ -186,6 +187,11 @@ export default function RestaurantInbox() {
     const toSupplierId = params.get("to");
     if (toSupplierId && currentUser?.id) {
       setPendingSupplierRedirect(toSupplierId);
+    }
+    const orderRefIdParam = params.get("orderRefId");
+    if (orderRefIdParam) {
+      const label = `${lang === "de" ? "Bestellung" : "Ordine"} #${orderRefIdParam.slice(0, 8)}`;
+      setAttachedOrderRef({ id: orderRefIdParam, label });
     }
     const conversationIdParam = params.get("conversationId");
     if (conversationIdParam) {
@@ -824,7 +830,17 @@ export default function RestaurantInbox() {
 
   const handleSendMessage = () => {
     if (messageText.trim() && selectedConversation) {
-      sendMessageMutation.mutate({ content: messageText.trim(), messageType: "text" });
+      let content = messageText.trim();
+      if (attachedOrderRef) {
+        content = JSON.stringify({
+          refType: "order",
+          refId: attachedOrderRef.id,
+          refLabel: attachedOrderRef.label,
+          text: messageText.trim(),
+        });
+        setAttachedOrderRef(null);
+      }
+      sendMessageMutation.mutate({ content, messageType: "text" });
     }
   };
 
@@ -2004,6 +2020,21 @@ export default function RestaurantInbox() {
                 ) : null}
 
                 <div className="border-t border-border p-3 md:p-4 md:rounded-none md:shadow-none md:border-t md:border-x-0 md:mb-0 md:mx-0 floating-message-bar mobile-message-pill">
+                  {attachedOrderRef && (
+                    <div className="flex items-center gap-2 mb-2 px-1" data-testid="attached-order-ref">
+                      <div className="flex items-center gap-1.5 bg-primary/10 text-primary rounded-full px-3 py-1 text-xs font-medium">
+                        <ShoppingBag className="h-3 w-3" />
+                        <span className="truncate max-w-[200px]">{attachedOrderRef.label}</span>
+                        <button
+                          onClick={() => setAttachedOrderRef(null)}
+                          className="ml-1 hover:text-destructive transition-colors"
+                          data-testid="button-remove-order-ref"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex gap-2 items-center">
                     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                       <PopoverTrigger asChild>

@@ -498,7 +498,21 @@ export default function RestaurantHome() {
                                 </p>
                               )}
                             </div>
-                            <span className="text-sm font-bold shrink-0">{order.totalAmount}€</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/restaurant/inbox?to=${order.supplierId}&orderRefId=${order.id}`);
+                                }}
+                                data-testid={`button-msg-order-${order.id}`}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </Button>
+                              <span className="text-sm font-bold">{order.totalAmount}€</span>
+                            </div>
                           </div>
                           {isOverdue && (
                             <div className="px-3 pb-3">
