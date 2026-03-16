@@ -47,10 +47,10 @@ export default function RestaurantSettings() {
         <p className="text-xs md:text-sm text-muted-foreground">{t("settings", "manageSettings")}</p>
       </div>
 
-      <Link href="/restaurant/profile" data-testid="link-profile-card">
+      <Link href="/restaurant/profile" data-testid="link-profile-card" className="block max-w-md mx-auto">
         <Card className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30">
-          <CardContent className="flex items-center gap-3 p-3">
-            <Avatar className="h-9 w-9 shrink-0">
+          <CardContent className="flex items-center gap-3 p-2.5">
+            <Avatar className="h-8 w-8 shrink-0">
               {currentUser?.profileImageUrl ? (
                 <AvatarImage src={currentUser.profileImageUrl} alt={currentUser.name} />
               ) : null}
