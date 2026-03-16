@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Bell, MessageSquare, ShoppingBag, AlertCircle, CheckCheck, ExternalLink, MessageCircle } from "lucide-react";
+import { Bell, MessageSquare, ShoppingBag, AlertCircle, ExternalLink, MessageCircle, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -17,7 +17,6 @@ export function NotificationBell() {
   const { currentUser, currentRole } = useUser();
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
-  const markedReadRef = useRef(false);
 
   const { data: notifications } = useQuery<Notification[]>({
     queryKey: [`/api/notifications?userId=${currentUser?.id}`],
@@ -31,27 +30,35 @@ export function NotificationBell() {
 
   const unreadCount = countData?.count || 0;
 
+  const invalidateNotifications = () => {
+    queryClient.invalidateQueries({ queryKey: [`/api/notifications?userId=${currentUser?.id}`] });
+    queryClient.invalidateQueries({ queryKey: [`/api/notifications/count?userId=${currentUser?.id}`] });
+    queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+    queryClient.invalidateQueries({ queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`] });
+  };
+
+  const markByReferenceMutation = useMutation({
+    mutationFn: async ({ referenceId, type }: { referenceId: string; type?: string }) => {
+      const params = new URLSearchParams({ userId: currentUser?.id || "", referenceId });
+      if (type) params.set("type", type);
+      await apiRequest("PATCH", `/api/notifications/read-by-reference?${params.toString()}`);
+    },
+    onSuccess: invalidateNotifications,
+  });
+
+  const markSingleReadMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      await apiRequest("PATCH", `/api/notifications/${notificationId}/read`);
+    },
+    onSuccess: invalidateNotifications,
+  });
+
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("PATCH", `/api/notifications/read-all?userId=${currentUser?.id}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/notifications?userId=${currentUser?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/notifications/count?userId=${currentUser?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/conversations/unread?userId=${currentUser?.id}`] });
-    },
+    onSuccess: invalidateNotifications,
   });
-
-  useEffect(() => {
-    if (open && unreadCount > 0 && !markedReadRef.current) {
-      markedReadRef.current = true;
-      markAllAsReadMutation.mutate();
-    }
-    if (!open) {
-      markedReadRef.current = false;
-    }
-  }, [open, unreadCount]);
 
   const getNotificationRoute = (notification: Notification): string | null => {
     if (!notification.referenceId) return null;
@@ -68,15 +75,26 @@ export function NotificationBell() {
         return `/${role}/complaints?complaintId=${notification.referenceId}`;
       case "complaint_comment":
         return `/${role}/complaints?complaintId=${notification.referenceId}`;
+      case "low_stock":
+        return `/${role}/products`;
       default:
         return null;
     }
   };
 
   const handleNotificationClick = (notification: Notification) => {
+    if (notification.referenceId) {
+      markByReferenceMutation.mutate({
+        referenceId: notification.referenceId,
+        type: undefined,
+      });
+    } else {
+      markSingleReadMutation.mutate(notification.id);
+    }
+
     const route = getNotificationRoute(notification);
+    setOpen(false);
     if (route) {
-      setOpen(false);
       setLocation(route);
     }
   };
@@ -107,6 +125,11 @@ export function NotificationBell() {
         return { 
           icon: <MessageCircle className="h-3.5 w-3.5" />,
           bg: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+        };
+      case "low_stock":
+        return { 
+          icon: <AlertCircle className="h-3.5 w-3.5" />,
+          bg: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
         };
       default:
         return { 
@@ -154,6 +177,19 @@ export function NotificationBell() {
       <PopoverContent className="w-80 p-0" align="end" sideOffset={8}>
         <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-muted/30">
           <span className="font-medium text-sm">Benachrichtigungen</span>
+          {hasUnread && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1 px-2"
+              onClick={() => markAllAsReadMutation.mutate()}
+              disabled={markAllAsReadMutation.isPending}
+              data-testid="button-mark-all-read"
+            >
+              <CheckCheck className="h-3.5 w-3.5" />
+              Alle gelesen
+            </Button>
+          )}
         </div>
         
         {hasUnread ? (
