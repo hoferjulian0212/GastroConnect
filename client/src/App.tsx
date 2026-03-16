@@ -21,7 +21,6 @@ import { RestaurantSidebar } from "@/components/RestaurantSidebar";
 import { SupplierSidebar } from "@/components/SupplierSidebar";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useCallback } from "react";
 import { navigate } from "wouter/use-browser-location";
 import type { User } from "@shared/schema";
@@ -215,13 +214,13 @@ function AppLayout() {
       <UserLoader />
       {isLoading ? (
         <div className="flex h-dvh items-center justify-center">
-          <div className="space-y-4 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-xl mx-auto">
-              G
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-32 mx-auto" />
-              <Skeleton className="h-3 w-24 mx-auto" />
+          <div className="flex flex-col items-center gap-4 text-center">
+            <img src={logoImg} alt="GastroConnect Logo" className="h-28 w-28 object-contain dark:invert" />
+            <span className="text-2xl font-bold text-foreground tracking-tight">GastroConnect</span>
+            <div className="flex items-center gap-2 mt-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
             </div>
           </div>
         </div>
