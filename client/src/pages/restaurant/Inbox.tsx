@@ -205,6 +205,16 @@ export default function RestaurantInbox() {
     const conversationIdParam = params.get("conversationId");
     if (conversationIdParam) {
       setSelectedConversation(conversationIdParam);
+      if (currentUser?.id) {
+        apiRequest("POST", `/api/conversations/${conversationIdParam}/read`, { userId: currentUser.id }).then(() => {
+          queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser.id}`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/conversations/unread?userId=${currentUser.id}`] });
+        }).catch(() => {});
+        apiRequest("PATCH", `/api/notifications/read-by-reference?userId=${currentUser.id}&referenceId=${conversationIdParam}&type=new_message`).then(() => {
+          queryClient.invalidateQueries({ queryKey: [`/api/notifications?userId=${currentUser.id}`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/notifications/count?userId=${currentUser.id}`] });
+        }).catch(() => {});
+      }
     }
     const complaintIdParam = params.get("complaintId");
     if (complaintIdParam) {
