@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import OnlineStatus from "@/components/OnlineStatus";
@@ -145,6 +145,7 @@ export default function SupplierInbox() {
   const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string } | null>(null);
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
   const [confirmOrderForDialog, setConfirmOrderForDialog] = useState<any | null>(null);
+  const [replyToMessage, setReplyToMessage] = useState<{ id: string; senderName: string; preview: string } | null>(null);
 
   // Complaint management state
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
@@ -414,6 +415,7 @@ export default function SupplierInbox() {
 
   const handleSelectConversation = (conversationId: string) => {
     setSelectedConversation(conversationId);
+    setReplyToMessage(null);
     if (currentUser?.id) {
       markAsReadMutation.mutate(conversationId);
       apiRequest("PATCH", `/api/notifications/read-by-reference?userId=${currentUser.id}&referenceId=${conversationId}&type=new_message`).then(() => {
@@ -558,7 +560,18 @@ export default function SupplierInbox() {
 
   const handleSendMessage = () => {
     if (messageText.trim() && selectedConversation) {
-      sendMessageMutation.mutate({ content: messageText.trim(), messageType: "text" });
+      let content = messageText.trim();
+      if (replyToMessage) {
+        content = JSON.stringify({
+          refType: "reply",
+          refId: replyToMessage.id,
+          refLabel: replyToMessage.senderName,
+          refPreview: replyToMessage.preview,
+          text: messageText.trim(),
+        });
+        setReplyToMessage(null);
+      }
+      sendMessageMutation.mutate({ content, messageType: "text" });
     }
   };
 
@@ -570,6 +583,7 @@ export default function SupplierInbox() {
 
   const handleBackToList = () => {
     setSelectedConversation(null);
+    setReplyToMessage(null);
   };
 
   return (
@@ -1550,69 +1564,115 @@ export default function SupplierInbox() {
                                 />
                               ) : (
                                 (() => {
-                                  let refData: { refType?: string; refId?: string; refLabel?: string; text?: string } | null = null;
+                                  let refData: { refType?: string; refId?: string; refLabel?: string; refPreview?: string; text?: string } | null = null;
                                   try {
                                     const parsed = JSON.parse(message.content);
-                                    if (parsed.refType && parsed.refId && parsed.text) refData = parsed;
+                                    if (parsed.refType && parsed.text) refData = parsed;
                                   } catch {}
                                   const showSenderName = !prevMessage || prevMessage.senderId !== message.senderId || showDateDivider;
+                                  const messagePreviewText = refData ? refData.text! : message.content;
+                                  const senderName = isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || "");
                                   return (
-                                    <div className="max-w-[70%]">
-                                      {showSenderName && (
-                                        <p className={`text-[11px] font-semibold mb-0.5 px-1 ${isOwn ? "text-right text-secondary-foreground/70" : "text-indigo-600 dark:text-indigo-400"}`}>
-                                          {isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || "")}
-                                        </p>
-                                      )}
-                                      <div
-                                        className={`rounded-lg px-3 py-2 shadow-lg ${
-                                          isOwn
-                                            ? "bg-secondary text-secondary-foreground"
-                                            : "bg-muted"
-                                        }`}
-                                      >
-                                        {refData && (
-                                          <div
-                                            className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 cursor-pointer hover:opacity-80 transition-opacity ${
-                                              isOwn
-                                                ? "bg-secondary-foreground/10 border-secondary-foreground/40"
-                                                : "bg-background/60 border-primary/50"
-                                            }`}
-                                            onClick={() => {
-                                              if (refData.refType === "order" && refData.refId) {
-                                                const target = document.querySelector(`[data-order-id="${refData.refId}"]`);
-                                                if (target) {
-                                                  target.scrollIntoView({ behavior: "smooth", block: "center" });
-                                                  target.classList.add("highlight-message");
-                                                  setTimeout(() => target.classList.remove("highlight-message"), 2000);
-                                                }
-                                              }
-                                            }}
-                                            data-testid={`ref-link-${message.id}`}
-                                          >
-                                            <div className="flex items-center gap-1.5">
-                                              {refData.refType === "order" ? (
-                                                <ShoppingBag className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
-                                              ) : (
-                                                <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
-                                              )}
-                                              <span className={`text-[11px] font-medium truncate ${isOwn ? "text-secondary-foreground/80" : "text-foreground/80"}`}>
-                                                {refData.refLabel || (refData.refType === "order" ? (lang === "de" ? "Bestellung" : "Ordine") : (lang === "de" ? "Reklamation" : "Reclamo"))}
-                                              </span>
-                                            </div>
-                                          </div>
+                                    <div className={`max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
+                                      <div className="flex-1 min-w-0">
+                                        {showSenderName && (
+                                          <p className={`text-[11px] font-semibold mb-0.5 px-1 ${isOwn ? "text-right text-secondary-foreground/70" : "text-indigo-600 dark:text-indigo-400"}`}>
+                                            {senderName}
+                                          </p>
                                         )}
-                                        <p className="text-sm">{refData ? refData.text : message.content}</p>
-                                        <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
-                                          <span className={`text-[10px] ${isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
-                                            {format(messageDate, "HH:mm")}
-                                          </span>
-                                          {isOwn && (
-                                            message.isRead 
-                                              ? <CheckCheck className="h-3 w-3 text-secondary-foreground/70" />
-                                              : <Check className="h-3 w-3 text-secondary-foreground/70" />
+                                        <div
+                                          className={`rounded-lg px-3 py-2 shadow-lg ${
+                                            isOwn
+                                              ? "bg-secondary text-secondary-foreground"
+                                              : "bg-muted"
+                                          }`}
+                                        >
+                                          {refData && refData.refType === "reply" && (
+                                            <div
+                                              className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 cursor-pointer hover:opacity-80 transition-opacity ${
+                                                isOwn
+                                                  ? "bg-secondary-foreground/10 border-secondary-foreground/40"
+                                                  : "bg-background/60 border-primary/50"
+                                              }`}
+                                              onClick={() => {
+                                                if (refData.refId) {
+                                                  const target = document.querySelector(`[data-testid="message-${refData.refId}"]`);
+                                                  if (target) {
+                                                    target.scrollIntoView({ behavior: "smooth", block: "center" });
+                                                    target.classList.add("highlight-message");
+                                                    setTimeout(() => target.classList.remove("highlight-message"), 2000);
+                                                  }
+                                                }
+                                              }}
+                                              data-testid={`ref-link-${message.id}`}
+                                            >
+                                              <p className={`text-[11px] font-semibold ${isOwn ? "text-secondary-foreground/80" : "text-indigo-600 dark:text-indigo-400"}`}>
+                                                {refData.refLabel}
+                                              </p>
+                                              <p className={`text-[11px] truncate ${isOwn ? "text-secondary-foreground/60" : "text-muted-foreground"}`}>
+                                                {refData.refPreview}
+                                              </p>
+                                            </div>
                                           )}
+                                          {refData && refData.refType !== "reply" && (
+                                            <div
+                                              className={`mb-1.5 rounded-md px-2.5 py-1.5 border-l-3 cursor-pointer hover:opacity-80 transition-opacity ${
+                                                isOwn
+                                                  ? "bg-secondary-foreground/10 border-secondary-foreground/40"
+                                                  : "bg-background/60 border-primary/50"
+                                              }`}
+                                              onClick={() => {
+                                                if (refData.refType === "order" && refData.refId) {
+                                                  const target = document.querySelector(`[data-order-id="${refData.refId}"]`);
+                                                  if (target) {
+                                                    target.scrollIntoView({ behavior: "smooth", block: "center" });
+                                                    target.classList.add("highlight-message");
+                                                    setTimeout(() => target.classList.remove("highlight-message"), 2000);
+                                                  }
+                                                }
+                                              }}
+                                              data-testid={`ref-link-${message.id}`}
+                                            >
+                                              <div className="flex items-center gap-1.5">
+                                                {refData.refType === "order" ? (
+                                                  <ShoppingBag className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
+                                                ) : (
+                                                  <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
+                                                )}
+                                                <span className={`text-[11px] font-medium truncate ${isOwn ? "text-secondary-foreground/80" : "text-foreground/80"}`}>
+                                                  {refData.refLabel || (refData.refType === "order" ? (lang === "de" ? "Bestellung" : "Ordine") : (lang === "de" ? "Reklamation" : "Reclamo"))}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          )}
+                                          <p className="text-sm">{refData ? refData.text : message.content}</p>
+                                          <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
+                                            <span className={`text-[10px] ${isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
+                                              {format(messageDate, "HH:mm")}
+                                            </span>
+                                            {isOwn && (
+                                              message.isRead 
+                                                ? <CheckCheck className="h-3 w-3 text-secondary-foreground/70" />
+                                                : <Check className="h-3 w-3 text-secondary-foreground/70" />
+                                            )}
+                                          </div>
                                         </div>
                                       </div>
+                                      <button
+                                        className="shrink-0 opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 rounded-full hover:bg-muted/80 text-muted-foreground"
+                                        onClick={() => {
+                                          setReplyToMessage({
+                                            id: message.id,
+                                            senderName: senderName,
+                                            preview: messagePreviewText.length > 80 ? messagePreviewText.slice(0, 80) + "..." : messagePreviewText,
+                                          });
+                                          const input = document.querySelector('[data-testid="input-message"]') as HTMLInputElement;
+                                          input?.focus();
+                                        }}
+                                        data-testid={`button-reply-${message.id}`}
+                                      >
+                                        <Reply className="h-4 w-4" />
+                                      </button>
                                     </div>
                                   );
                                 })()
@@ -1633,6 +1693,25 @@ export default function SupplierInbox() {
                 </div>
 
                 <div className="border-t border-border p-2 md:p-4 md:rounded-none md:shadow-none md:border-t md:border-x-0 md:mb-0 md:mx-0 floating-message-bar mobile-message-pill">
+                  {replyToMessage && (
+                    <div className="flex items-center gap-2 mb-2 px-1" data-testid="attached-reply-ref">
+                      <div className="flex-1 min-w-0 bg-muted/60 border-l-3 border-secondary rounded-md px-3 py-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-secondary-foreground truncate">{replyToMessage.senderName}</p>
+                            <p className="text-xs text-muted-foreground truncate">{replyToMessage.preview}</p>
+                          </div>
+                          <button
+                            onClick={() => setReplyToMessage(null)}
+                            className="shrink-0 hover:text-destructive transition-colors text-muted-foreground"
+                            data-testid="button-remove-reply-ref"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex gap-2 items-center">
                     {selectedConversation && currentUser && (
                       <AttachmentPopover
