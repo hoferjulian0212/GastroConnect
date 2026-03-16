@@ -32,9 +32,9 @@ const productSchema = z.object({
   unit: z.string().min(1, "Einheit ist erforderlich"),
   category: z.string().optional(),
   inStock: z.boolean().default(true),
-  stockQuantity: z.number().optional(),
-  lowStockThreshold: z.number().int().min(0).optional(),
-  minOrderQuantity: z.number().int().min(1).default(1),
+  stockQuantity: z.preprocess((v) => (v === undefined || v === null || v === "" ? 0 : v), z.number().int().min(0)).optional(),
+  lowStockThreshold: z.preprocess((v) => (v === undefined || v === null || v === "" ? 0 : v), z.number().int().min(0)).optional(),
+  minOrderQuantity: z.preprocess((v) => (v === undefined || v === null || v === "" ? undefined : v), z.number().int().min(1, "Min. 1")).default(1),
   imageUrl: z.string().optional(),
 });
 
@@ -1228,7 +1228,18 @@ export default function SupplierProducts() {
                             placeholder="1"
                             data-testid="input-product-moq"
                             {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === "") { field.onChange(undefined as any); return; }
+                              const parsed = parseInt(raw);
+                              if (!isNaN(parsed)) field.onChange(parsed);
+                            }}
+                            onBlur={() => {
+                              if (field.value === undefined || field.value === null || (field.value as any) === "" || field.value < 1) {
+                                field.onChange(1);
+                              }
+                            }}
                           />
                         </FormControl>
                         <p className="text-xs text-muted-foreground">{t("supplierProducts", "minOrderQuantityDesc")}</p>
@@ -1251,7 +1262,18 @@ export default function SupplierProducts() {
                               placeholder="0"
                               data-testid="input-product-stock"
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              value={field.value ?? ""}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === "") { field.onChange(undefined as any); return; }
+                                const parsed = parseInt(raw);
+                                if (!isNaN(parsed)) field.onChange(parsed);
+                              }}
+                              onBlur={() => {
+                                if (field.value === undefined || field.value === null || (field.value as any) === "") {
+                                  field.onChange(0);
+                                }
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1271,7 +1293,18 @@ export default function SupplierProducts() {
                               placeholder="0"
                               data-testid="input-product-threshold"
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              value={field.value ?? ""}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === "") { field.onChange(undefined as any); return; }
+                                const parsed = parseInt(raw);
+                                if (!isNaN(parsed)) field.onChange(parsed);
+                              }}
+                              onBlur={() => {
+                                if (field.value === undefined || field.value === null || (field.value as any) === "") {
+                                  field.onChange(0);
+                                }
+                              }}
                             />
                           </FormControl>
                           <p className="text-xs text-muted-foreground">{t("supplierProducts", "lowStockThresholdDesc")}</p>
