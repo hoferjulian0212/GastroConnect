@@ -413,6 +413,19 @@ export default function RestaurantHome() {
       });
     }
 
+    if (!result.some(g => g.isToday)) {
+      const insertIdx = result.findIndex(g => g.type !== "overdue");
+      const todayEntry = {
+        dateKey: "_today_empty",
+        label: t("restaurantHome", "today"),
+        isToday: true,
+        type: "regular" as const,
+        orders: [] as OrderWithDetails[],
+      };
+      if (insertIdx === -1) result.push(todayEntry);
+      else result.splice(insertIdx, 0, todayEntry);
+    }
+
     return result;
   }, [upcomingDeliveries, lang]);
 
@@ -475,6 +488,13 @@ export default function RestaurantHome() {
                     )}
                   </div>
                   <div className="space-y-2">
+                    {group.orders.length === 0 && group.isToday && (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center" data-testid="today-no-deliveries">
+                        <p className="text-sm text-muted-foreground">
+                          {lang === "de" ? "Keine Lieferungen geplant f\u00FCr heute" : "Nessuna consegna prevista per oggi"}
+                        </p>
+                      </div>
+                    )}
                     {group.orders.map((order) => {
                       const deliveryState = getOrderDeliveryState(order);
                       const isDelivered = deliveryState === "delivered_today";
