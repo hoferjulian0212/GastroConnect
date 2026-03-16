@@ -697,13 +697,15 @@ export class DatabaseStorage implements IStorage {
     sixMonthsAgo.setDate(1);
     sixMonthsAgo.setHours(0, 0, 0, 0);
 
+    const validStatuses = ['delivered', 'confirmed', 'in_delivery', 'partially_confirmed'];
+
     const monthlyRevenueResult = await db.execute(sql`
       SELECT 
         TO_CHAR(created_at, 'YYYY-MM') as month,
         COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as revenue
       FROM orders
       WHERE supplier_id = ${supplierId}
-        AND status = 'delivered'
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
         AND created_at >= ${sixMonthsAgo}
       GROUP BY TO_CHAR(created_at, 'YYYY-MM')
       ORDER BY month ASC
@@ -717,7 +719,7 @@ export class DatabaseStorage implements IStorage {
       FROM order_items oi
       JOIN orders o ON o.id = oi.order_id
       WHERE o.supplier_id = ${supplierId}
-        AND o.status IN ('delivered', 'confirmed', 'in_delivery')
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
       GROUP BY oi.product_name
       ORDER BY quantity DESC
       LIMIT 5
@@ -736,7 +738,7 @@ export class DatabaseStorage implements IStorage {
         COUNT(*) as total_orders
       FROM orders
       WHERE supplier_id = ${supplierId}
-        AND status = 'delivered'
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
     `);
 
     const totalRevenue = Number(totalsResult.rows?.[0]?.total_revenue) || 0;
