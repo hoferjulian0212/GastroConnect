@@ -158,6 +158,8 @@ export default function RestaurantInbox() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [openActionsPopover, setOpenActionsPopover] = useState(false);
   const [orderItems, setOrderItems] = useState<Record<string, number>>({});
+  const [orderSubmitted, setOrderSubmitted] = useState(false);
+  const orderCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
   const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string; reason?: string } | null>(null);
   const [editingOrderInbox, setEditingOrderInbox] = useState<OrderWithDetails | null>(null);
@@ -176,6 +178,12 @@ export default function RestaurantInbox() {
   const [loadingComplaintDetail, setLoadingComplaintDetail] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchString = useSearch();
+
+  useEffect(() => {
+    return () => {
+      if (orderCloseTimerRef.current) clearTimeout(orderCloseTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const isMobile = window.innerWidth < 768;
@@ -645,14 +653,16 @@ export default function RestaurantInbox() {
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
-      toast({
-        title: t("orders", "orderPlaced"),
-        description: t("orders", "orderPlacedDesc"),
-      });
-      setOrderItems({});
-      setActionMode("none");
-      setOrderDetailId(null);
-      setTimeout(scrollToBottom, 300);
+      setOrderSubmitted(true);
+      if (orderCloseTimerRef.current) clearTimeout(orderCloseTimerRef.current);
+      orderCloseTimerRef.current = setTimeout(() => {
+        setOrderItems({});
+        setActionMode("none");
+        setOrderDetailId(null);
+        setOrderSubmitted(false);
+        orderCloseTimerRef.current = null;
+        setTimeout(scrollToBottom, 300);
+      }, 1500);
     },
     onError: () => {
       toast({
@@ -874,6 +884,7 @@ export default function RestaurantInbox() {
   };
 
   const handleSubmitOrder = () => {
+    if (createOrderMutation.isPending || orderSubmitted) return;
     const items = Object.entries(orderItems).map(([productId, quantity]) => ({
       productId,
       quantity,
@@ -1928,7 +1939,7 @@ export default function RestaurantInbox() {
                           <ShoppingCart className="h-5 w-5" />
                           {t("inbox", "orderMessage")}
                         </h3>
-                        <Button variant="ghost" size="icon" onClick={() => { setActionMode("none"); setTimeout(scrollToBottom, 100); }} data-testid="button-close-order">
+                        <Button variant="ghost" size="icon" onClick={() => { setActionMode("none"); setOrderSubmitted(false); setTimeout(scrollToBottom, 100); }} data-testid="button-close-order">
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -1978,15 +1989,26 @@ export default function RestaurantInbox() {
                       </div>
                     </ScrollArea>
                     <div className="p-4 border-t border-border bg-background shrink-0">
-                      <Button
-                        className="w-full gap-2"
-                        disabled={totalOrderItems === 0 || createOrderMutation.isPending}
-                        onClick={handleSubmitOrder}
-                        data-testid="button-submit-order"
-                      >
-                        <ShoppingCart className="h-4 w-4" />
-                        {t("inbox", "placeOrderItems")} ({totalOrderItems} {t("common", "items")})
-                      </Button>
+                      {orderSubmitted ? (
+                        <div className="flex items-center justify-center gap-2 py-2 text-green-600 font-medium animate-in fade-in duration-300" data-testid="text-order-success">
+                          <CheckCircle className="h-5 w-5" />
+                          {t("orders", "orderPlaced")}
+                        </div>
+                      ) : (
+                        <Button
+                          className="w-full gap-2"
+                          disabled={totalOrderItems === 0 || createOrderMutation.isPending}
+                          onClick={handleSubmitOrder}
+                          data-testid="button-submit-order"
+                        >
+                          {createOrderMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <ShoppingCart className="h-4 w-4" />
+                          )}
+                          {t("inbox", "placeOrderItems")} ({totalOrderItems} {t("common", "items")})
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ) : actionMode === "complaint" ? (
