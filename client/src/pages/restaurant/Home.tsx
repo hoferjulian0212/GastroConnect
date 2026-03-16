@@ -1419,15 +1419,19 @@ export default function RestaurantHome() {
                           <span className="text-xs font-semibold">{group.supplierName}</span>
                         </div>
                         <div className="divide-y divide-border">
-                          {group.items.map(({ productId, product: prod, qty }) => (
-                            <div key={productId} className="flex items-center gap-2 px-3 py-2">
-                              <span className="text-xs font-medium text-primary w-7 shrink-0">{qty}x</span>
-                              <span className="text-xs truncate flex-1">{prod.name}</span>
-                              <span className="text-xs font-medium shrink-0">
-                                {(parseFloat(prod.price) * qty).toFixed(2)}€
-                              </span>
-                            </div>
-                          ))}
+                          {group.items.map(({ productId, product: prod, qty }) => {
+                            const itemPrice = parseFloat(prod.price);
+                            const itemFinal = prod.activePromotion ? itemPrice * (1 - prod.activePromotion.discountPercent / 100) : itemPrice;
+                            return (
+                              <div key={productId} className="flex items-center gap-2 px-3 py-2">
+                                <span className="text-xs font-medium text-primary w-7 shrink-0">{qty}x</span>
+                                <span className="text-xs truncate flex-1">{prod.name}</span>
+                                <span className="text-xs font-medium shrink-0">
+                                  {(itemFinal * qty).toFixed(2)}€
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
