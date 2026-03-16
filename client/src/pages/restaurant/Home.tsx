@@ -3,7 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, Plus, Sparkles } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Search, Save } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
 import type { OrderWithDetails, ConversationWithUser, ProductWithSupplierAndPromotion, OrderTemplateWithItems } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -63,60 +64,92 @@ export default function RestaurantHome() {
 
   const [orderingTemplateId, setOrderingTemplateId] = useState<string | null>(null);
   const [wizardTemplate, setWizardTemplate] = useState<OrderTemplateWithItems | null>(null);
-  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
+  const [wizardStep, setWizardStep] = useState<"items" | "browse_supplier" | "browse_products" | "review" | "done">("items");
   const [wizardQuantities, setWizardQuantities] = useState<Record<string, number>>({});
-  const [wizardRecommendedQtys, setWizardRecommendedQtys] = useState<Record<string, number>>({});
-  const [wizardSelectedRecommended, setWizardSelectedRecommended] = useState<Set<string>>(new Set());
+  const [wizardProducts, setWizardProducts] = useState<Record<string, ProductWithSupplierAndPromotion>>({});
   const [wizardSubmitting, setWizardSubmitting] = useState(false);
+  const [wizardBrowseSupplierId, setWizardBrowseSupplierId] = useState<string | null>(null);
+  const [wizardBrowseSearch, setWizardBrowseSearch] = useState("");
+  const [wizardTemplateChanged, setWizardTemplateChanged] = useState(false);
+  const [wizardSavingTemplate, setWizardSavingTemplate] = useState(false);
 
   const openTemplateWizard = useCallback((tmpl: OrderTemplateWithItems) => {
     const qtys: Record<string, number> = {};
+    const prods: Record<string, ProductWithSupplierAndPromotion> = {};
     for (const item of tmpl.items) {
       if (item.product.inStock !== false) {
         qtys[item.productId] = item.quantity;
+        prods[item.productId] = item.product as ProductWithSupplierAndPromotion;
       }
     }
     setWizardQuantities(qtys);
-    setWizardRecommendedQtys({});
-    setWizardSelectedRecommended(new Set());
+    setWizardProducts(prods);
     setWizardTemplate(tmpl);
-    setWizardStep(1);
+    setWizardStep("items");
     setWizardSubmitting(false);
+    setWizardBrowseSupplierId(null);
+    setWizardBrowseSearch("");
+    setWizardTemplateChanged(false);
+    setWizardSavingTemplate(false);
   }, []);
 
-  const wizardRecommendedProducts = useMemo(() => {
-    if (!wizardTemplate || !products) return [];
-    const templateProductIds = new Set(wizardTemplate.items.map(i => i.productId));
-    const templateSupplierIds = new Set(wizardTemplate.items.map(i => i.product.supplierId));
-    const recommended: ProductWithSupplierAndPromotion[] = [];
-    const promos = products.filter(p => p.activePromotion && !templateProductIds.has(p.id) && p.inStock !== false);
-    for (const p of promos) recommended.push(p);
-    const sameSupplier = products.filter(p => templateSupplierIds.has(p.supplierId) && !templateProductIds.has(p.id) && !promos.some(pr => pr.id === p.id) && p.inStock !== false);
-    for (const p of sameSupplier.slice(0, 6 - recommended.length)) recommended.push(p);
-    return recommended.slice(0, 6);
-  }, [wizardTemplate, products]);
+  const wizardSuppliers = useMemo(() => {
+    if (!products) return [];
+    const supplierMap = new Map<string, { id: string; name: string }>();
+    for (const p of products) {
+      if (p.inStock === false) continue;
+      const sId = p.supplierId;
+      if (!supplierMap.has(sId)) {
+        supplierMap.set(sId, { id: sId, name: p.supplier?.companyName || p.supplier?.name || sId });
+      }
+    }
+    return Array.from(supplierMap.values());
+  }, [products]);
+
+  const wizardBrowseProducts = useMemo(() => {
+    if (!products || !wizardBrowseSupplierId) return [];
+    return products.filter(p =>
+      p.supplierId === wizardBrowseSupplierId &&
+      p.inStock !== false &&
+      (wizardBrowseSearch === "" || p.name.toLowerCase().includes(wizardBrowseSearch.toLowerCase()))
+    );
+  }, [products, wizardBrowseSupplierId, wizardBrowseSearch]);
+
+  const wizardTotalEstimate = useMemo(() => {
+    return Object.entries(wizardQuantities).reduce((sum, [pid, qty]) => {
+      const prod = wizardProducts[pid];
+      if (!prod) return sum;
+      const price = parseFloat(prod.price);
+      const hasPromo = prod.activePromotion;
+      const finalPrice = hasPromo ? price * (1 - hasPromo.discountPercent / 100) : price;
+      return sum + finalPrice * qty;
+    }, 0);
+  }, [wizardQuantities, wizardProducts]);
+
+  const wizardItemsBySupplier = useMemo(() => {
+    const groups: Record<string, { supplierName: string; items: { productId: string; product: ProductWithSupplierAndPromotion; qty: number }[] }> = {};
+    for (const [pid, qty] of Object.entries(wizardQuantities)) {
+      if (qty <= 0) continue;
+      const prod = wizardProducts[pid];
+      if (!prod) continue;
+      const sId = prod.supplierId;
+      if (!groups[sId]) {
+        groups[sId] = { supplierName: prod.supplier?.companyName || prod.supplier?.name || "", items: [] };
+      }
+      groups[sId].items.push({ productId: pid, product: prod, qty });
+    }
+    return groups;
+  }, [wizardQuantities, wizardProducts]);
 
   const wizardAddToCartMutation = useMutation({
     mutationFn: async () => {
       for (const [productId, qty] of Object.entries(wizardQuantities)) {
         if (qty <= 0) continue;
-        const item = wizardTemplate?.items.find(i => i.productId === productId);
-        if (!item) continue;
+        const prod = wizardProducts[productId];
+        if (!prod) continue;
         await apiRequest("POST", "/api/cart", {
           restaurantId: currentUser?.id,
           productId,
-          supplierId: item.product.supplierId,
-          quantity: qty,
-          mode: "set",
-        });
-      }
-      for (const prodId of wizardSelectedRecommended) {
-        const qty = wizardRecommendedQtys[prodId] || 1;
-        const prod = wizardRecommendedProducts.find(p => p.id === prodId);
-        if (!prod || qty <= 0) continue;
-        await apiRequest("POST", "/api/cart", {
-          restaurantId: currentUser?.id,
-          productId: prodId,
           supplierId: prod.supplierId,
           quantity: qty,
           mode: "set",
@@ -126,7 +159,7 @@ export default function RestaurantHome() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
-      setWizardStep(3);
+      setWizardStep("done");
       setWizardSubmitting(false);
       setTimeout(() => {
         setWizardTemplate(null);
@@ -142,6 +175,36 @@ export default function RestaurantHome() {
   const handleWizardSubmit = () => {
     setWizardSubmitting(true);
     wizardAddToCartMutation.mutate();
+  };
+
+  const handleWizardSaveTemplate = async (mode: "overwrite" | "new") => {
+    if (!wizardTemplate || !currentUser?.id) return;
+    setWizardSavingTemplate(true);
+    const items = Object.entries(wizardQuantities)
+      .filter(([, qty]) => qty > 0)
+      .map(([productId, quantity]) => ({ productId, quantity }));
+    try {
+      if (mode === "overwrite") {
+        await apiRequest("PATCH", `/api/order-templates/${wizardTemplate.id}`, {
+          name: wizardTemplate.name,
+          items,
+        });
+        toast({ title: lang === "de" ? "Vorlage aktualisiert" : "Modello aggiornato" });
+      } else {
+        await apiRequest("POST", "/api/order-templates", {
+          restaurantId: currentUser.id,
+          name: `${wizardTemplate.name} (2)`,
+          items,
+        });
+        toast({ title: lang === "de" ? "Neue Vorlage gespeichert" : "Nuovo modello salvato" });
+      }
+      queryClient.invalidateQueries({ queryKey: [`/api/order-templates?restaurantId=${currentUser.id}`] });
+      setWizardTemplateChanged(false);
+    } catch {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    } finally {
+      setWizardSavingTemplate(false);
+    }
   };
 
   const orderFromTemplateMutation = useMutation({
@@ -1050,15 +1113,15 @@ export default function RestaurantHome() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!wizardTemplate} onOpenChange={(open) => { if (!open && wizardStep !== 3) setWizardTemplate(null); }}>
+      <Dialog open={!!wizardTemplate} onOpenChange={(open) => { if (!open && wizardStep !== "done") setWizardTemplate(null); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0" data-testid="dialog-template-wizard">
           <DialogHeader className="sr-only">
             <DialogTitle>{wizardTemplate?.name}</DialogTitle>
             <DialogDescription>{lang === "de" ? "Bestellung aus Vorlage" : "Ordine da modello"}</DialogDescription>
           </DialogHeader>
 
-          {wizardStep === 3 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-6" data-testid="wizard-step-3">
+          {wizardStep === "done" ? (
+            <div className="flex flex-col items-center justify-center py-16 px-6" data-testid="wizard-step-done">
               <div className="relative mb-6">
                 <div className="h-24 w-24 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center animate-wizard-circle">
                   <Check className="h-12 w-12 text-green-600 dark:text-green-400 animate-wizard-check" />
@@ -1087,80 +1150,103 @@ export default function RestaurantHome() {
                   <div className="min-w-0">
                     <h3 className="font-bold text-base truncate" data-testid="wizard-template-name">{wizardTemplate?.name}</h3>
                     <p className="text-xs text-muted-foreground">
-                      {lang === "de" ? `Schritt ${wizardStep} von 2` : `Passo ${wizardStep} di 2`}
+                      {wizardStep === "items" && (lang === "de" ? "Schritt 1 von 2 — Produkte" : "Passo 1 di 2 — Prodotti")}
+                      {wizardStep === "browse_supplier" && (lang === "de" ? "Haendler waehlen" : "Scegli commerciante")}
+                      {wizardStep === "browse_products" && (lang === "de" ? "Produkte hinzufuegen" : "Aggiungi prodotti")}
+                      {wizardStep === "review" && (lang === "de" ? "Schritt 2 von 2 — Warenkorb" : "Passo 2 di 2 — Carrello")}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-1.5 mb-2">
-                  <div className={`h-1 flex-1 rounded-full transition-colors ${wizardStep >= 1 ? "bg-primary" : "bg-muted"}`} />
-                  <div className={`h-1 flex-1 rounded-full transition-colors ${wizardStep >= 2 ? "bg-primary" : "bg-muted"}`} />
+                  <div className={`h-1 flex-1 rounded-full transition-colors ${["items", "browse_supplier", "browse_products", "review"].includes(wizardStep) ? "bg-primary" : "bg-muted"}`} />
+                  <div className={`h-1 flex-1 rounded-full transition-colors ${wizardStep === "review" ? "bg-primary" : "bg-muted"}`} />
                 </div>
               </div>
 
-              {wizardStep === 1 && wizardTemplate && (
-                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-1">
+              {wizardStep === "items" && wizardTemplate && (
+                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-items">
                   <p className="text-sm font-medium">
-                    {lang === "de" ? "Mengen anpassen" : "Regola le quantita"}
+                    {lang === "de" ? "Produkte & Mengen" : "Prodotti e quantita"}
                   </p>
-                  <div className="space-y-2 max-h-[45vh] overflow-y-auto">
-                    {wizardTemplate.items.filter(i => i.product.inStock !== false).map((item) => (
-                      <div
-                        key={item.productId}
-                        className="flex items-center gap-2.5 p-2.5 rounded-lg border border-border bg-card"
-                        data-testid={`wizard-item-${item.productId}`}
-                      >
-                        {item.product.imageUrl ? (
-                          <img src={item.product.imageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
-                        ) : (
-                          <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
-                            <Package className="h-4 w-4 text-muted-foreground" />
+                  <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                    {Object.entries(wizardQuantities).map(([pid, qty]) => {
+                      const prod = wizardProducts[pid];
+                      if (!prod || qty <= 0) return null;
+                      return (
+                        <div
+                          key={pid}
+                          className="flex items-center gap-2.5 p-2.5 rounded-lg border border-border bg-card"
+                          data-testid={`wizard-item-${pid}`}
+                        >
+                          {prod.imageUrl ? (
+                            <img src={prod.imageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
+                          ) : (
+                            <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{prod.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {prod.supplier?.companyName || prod.supplier?.name}
+                              <span className="ml-1">{parseFloat(prod.price).toFixed(2)}€/{prod.unit}</span>
+                            </p>
                           </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{item.product.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {item.product.supplier?.companyName || item.product.supplier?.name}
-                            <span className="ml-1">{parseFloat(item.product.price).toFixed(2)}€/{item.product.unit}</span>
-                          </p>
+                          <QuantityInput
+                            value={qty}
+                            onChange={(val) => {
+                              setWizardQuantities(prev => ({ ...prev, [pid]: val }));
+                              setWizardTemplateChanged(true);
+                            }}
+                            min={prod.minOrderQuantity && prod.minOrderQuantity > 1 ? prod.minOrderQuantity : 1}
+                            size="sm"
+                            testIdPrefix={`wizard-qty-${pid}`}
+                          />
+                          <button
+                            onClick={() => {
+                              setWizardQuantities(prev => { const n = { ...prev }; delete n[pid]; return n; });
+                              setWizardProducts(prev => { const n = { ...prev }; delete n[pid]; return n; });
+                              setWizardTemplateChanged(true);
+                            }}
+                            className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                            data-testid={`wizard-remove-${pid}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                        <QuantityInput
-                          value={wizardQuantities[item.productId] || 1}
-                          onChange={(val) => setWizardQuantities(prev => ({ ...prev, [item.productId]: val }))}
-                          min={item.product.minOrderQuantity && item.product.minOrderQuantity > 1 ? item.product.minOrderQuantity : 1}
-                          size="sm"
-                          testIdPrefix={`wizard-qty-${item.productId}`}
-                        />
-                      </div>
-                    ))}
-                    {wizardTemplate.items.filter(i => i.product.inStock === false).length > 0 && (
-                      <div className="pt-1">
-                        <p className="text-xs text-muted-foreground mb-1">{lang === "de" ? "Nicht verfuegbar:" : "Non disponibile:"}</p>
-                        {wizardTemplate.items.filter(i => i.product.inStock === false).map((item) => (
-                          <div key={item.productId} className="flex items-center gap-2 text-xs text-muted-foreground/60 line-through py-0.5">
-                            {item.product.imageUrl ? (
-                              <img src={item.product.imageUrl} alt="" className="h-5 w-5 rounded object-cover shrink-0 opacity-50" />
-                            ) : (
-                              <div className="h-5 w-5 rounded bg-muted flex items-center justify-center shrink-0">
-                                <Package className="h-2.5 w-2.5 text-muted-foreground" />
-                              </div>
-                            )}
-                            <span>{item.quantity}x {item.product.name}</span>
-                          </div>
-                        ))}
-                      </div>
+                      );
+                    })}
+                    {Object.keys(wizardQuantities).length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        {lang === "de" ? "Keine Produkte. Fuegen Sie welche hinzu." : "Nessun prodotto. Aggiungine alcuni."}
+                      </p>
                     )}
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-1.5"
+                    onClick={() => {
+                      setWizardBrowseSupplierId(null);
+                      setWizardBrowseSearch("");
+                      setWizardStep("browse_supplier");
+                    }}
+                    data-testid="wizard-add-products"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    {lang === "de" ? "Produkte hinzufuegen" : "Aggiungi prodotti"}
+                  </Button>
                   <div className="flex items-center justify-between pt-2 border-t border-border">
                     <div>
                       <span className="text-xs text-muted-foreground">{lang === "de" ? "Geschaetzt" : "Stimato"}: </span>
-                      <span className="text-sm font-bold">
-                        {Object.entries(wizardQuantities).reduce((sum, [pid, qty]) => {
-                          const item = wizardTemplate.items.find(i => i.productId === pid);
-                          return sum + (item ? parseFloat(item.product.price) * qty : 0);
-                        }, 0).toFixed(2)}€
-                      </span>
+                      <span className="text-sm font-bold">{wizardTotalEstimate.toFixed(2)}€</span>
                     </div>
-                    <Button size="sm" onClick={() => setWizardStep(2)} data-testid="wizard-next-step">
+                    <Button
+                      size="sm"
+                      onClick={() => setWizardStep("review")}
+                      disabled={Object.keys(wizardQuantities).length === 0}
+                      data-testid="wizard-next-step"
+                    >
                       {lang === "de" ? "Weiter" : "Avanti"}
                       <ArrowRight className="h-3.5 w-3.5 ml-1" />
                     </Button>
@@ -1168,117 +1254,240 @@ export default function RestaurantHome() {
                 </div>
               )}
 
-              {wizardStep === 2 && (
-                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-2">
+              {wizardStep === "browse_supplier" && (
+                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-browse-supplier">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-amber-500" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setWizardStep("items")} data-testid="wizard-back-from-supplier">
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
                     <p className="text-sm font-medium">
-                      {lang === "de" ? "Empfohlene Produkte" : "Prodotti consigliati"}
+                      {lang === "de" ? "Haendler waehlen" : "Scegli commerciante"}
                     </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {lang === "de" ? "Moechten Sie noch etwas hinzufuegen?" : "Vuoi aggiungere qualcos'altro?"}
-                  </p>
-                  {wizardRecommendedProducts.length > 0 ? (
-                    <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-                      {wizardRecommendedProducts.map((prod) => {
-                        const isSelected = wizardSelectedRecommended.has(prod.id);
-                        const hasPromo = !!prod.activePromotion;
-                        const price = parseFloat(prod.price);
-                        const discounted = hasPromo ? price * (1 - prod.activePromotion!.discountPercent / 100) : price;
-                        return (
-                          <div
-                            key={prod.id}
-                            className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors cursor-pointer ${
-                              isSelected ? "border-green-400 bg-green-50 dark:bg-green-900/20" : "border-border bg-card"
-                            }`}
-                            onClick={() => {
-                              setWizardSelectedRecommended(prev => {
-                                const next = new Set(prev);
-                                if (next.has(prod.id)) next.delete(prod.id);
-                                else next.add(prod.id);
-                                return next;
-                              });
-                              if (!wizardRecommendedQtys[prod.id]) {
-                                const minQ = prod.minOrderQuantity && prod.minOrderQuantity > 1 ? prod.minOrderQuantity : 1;
-                                setWizardRecommendedQtys(prev => ({ ...prev, [prod.id]: minQ }));
-                              }
-                            }}
-                            data-testid={`wizard-rec-${prod.id}`}
-                          >
-                            <div className={`flex items-center justify-center h-5 w-5 rounded-full border-2 shrink-0 transition-colors ${
-                              isSelected ? "border-green-500 bg-green-500" : "border-muted-foreground/30"
-                            }`}>
-                              {isSelected && <Check className="h-3 w-3 text-white" />}
+                  <div className="space-y-2 max-h-[45vh] overflow-y-auto">
+                    {wizardSuppliers.map((s) => (
+                      <button
+                        key={s.id}
+                        className="w-full flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:border-primary/30 hover:shadow-sm transition-all text-left"
+                        onClick={() => {
+                          setWizardBrowseSupplierId(s.id);
+                          setWizardBrowseSearch("");
+                          setWizardStep("browse_products");
+                        }}
+                        data-testid={`wizard-supplier-${s.id}`}
+                      >
+                        <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0">
+                          <ShoppingBag className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{s.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {products?.filter(p => p.supplierId === s.id && p.inStock !== false).length || 0} {lang === "de" ? "Produkte" : "prodotti"}
+                          </p>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                      </button>
+                    ))}
+                    {wizardSuppliers.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        {lang === "de" ? "Keine Haendler verfuegbar" : "Nessun commerciante disponibile"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === "browse_products" && (
+                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-browse-products">
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setWizardStep("browse_supplier")} data-testid="wizard-back-from-products">
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <p className="text-sm font-medium truncate">
+                      {wizardSuppliers.find(s => s.id === wizardBrowseSupplierId)?.name}
+                    </p>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder={lang === "de" ? "Produkt suchen..." : "Cerca prodotto..."}
+                      value={wizardBrowseSearch}
+                      onChange={(e) => setWizardBrowseSearch(e.target.value)}
+                      className="pl-8 h-9 text-sm"
+                      data-testid="wizard-browse-search"
+                    />
+                  </div>
+                  <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                    {wizardBrowseProducts.map((prod) => {
+                      const alreadyAdded = wizardQuantities[prod.id] !== undefined && wizardQuantities[prod.id] > 0;
+                      const hasPromo = !!prod.activePromotion;
+                      const price = parseFloat(prod.price);
+                      const discounted = hasPromo ? price * (1 - prod.activePromotion!.discountPercent / 100) : price;
+                      return (
+                        <div
+                          key={prod.id}
+                          className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-colors ${
+                            alreadyAdded ? "border-green-400 bg-green-50/50 dark:bg-green-900/20" : "border-border bg-card"
+                          }`}
+                          data-testid={`wizard-browse-item-${prod.id}`}
+                        >
+                          {prod.imageUrl ? (
+                            <img src={prod.imageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
+                          ) : (
+                            <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
+                              <Package className="h-4 w-4 text-muted-foreground" />
                             </div>
-                            {prod.imageUrl ? (
-                              <img src={prod.imageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
-                            ) : (
-                              <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
-                                <Package className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-sm font-medium truncate">{prod.name}</p>
-                                {hasPromo && (
-                                  <Badge variant="outline" className="text-[9px] border-green-300 text-green-600 px-1 py-0 shrink-0">
-                                    -{prod.activePromotion!.discountPercent}%
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {prod.supplier?.companyName || prod.supplier?.name}
-                                <span className="ml-1">
-                                  {hasPromo ? (
-                                    <><span className="line-through">{price.toFixed(2)}€</span> <span className="text-green-600 font-medium">{discounted.toFixed(2)}€</span></>
-                                  ) : (
-                                    <>{price.toFixed(2)}€</>
-                                  )}
-                                  /{prod.unit}
-                                </span>
-                              </p>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-medium truncate">{prod.name}</p>
+                              {hasPromo && (
+                                <Badge variant="outline" className="text-[9px] border-green-300 text-green-600 px-1 py-0 shrink-0">
+                                  -{prod.activePromotion!.discountPercent}%
+                                </Badge>
+                              )}
                             </div>
-                            {isSelected && (
-                              <div onClick={(e) => e.stopPropagation()}>
-                                <QuantityInput
-                                  value={wizardRecommendedQtys[prod.id] || 1}
-                                  onChange={(val) => setWizardRecommendedQtys(prev => ({ ...prev, [prod.id]: val }))}
-                                  min={prod.minOrderQuantity && prod.minOrderQuantity > 1 ? prod.minOrderQuantity : 1}
-                                  size="sm"
-                                  testIdPrefix={`wizard-rec-qty-${prod.id}`}
-                                />
-                              </div>
-                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {hasPromo ? (
+                                <><span className="line-through">{price.toFixed(2)}€</span> <span className="text-green-600 font-medium">{discounted.toFixed(2)}€</span></>
+                              ) : (
+                                <>{price.toFixed(2)}€</>
+                              )}
+                              /{prod.unit}
+                            </p>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center py-6 text-center">
-                      <p className="text-sm text-muted-foreground">{lang === "de" ? "Keine weiteren Empfehlungen" : "Nessun altro consiglio"}</p>
+                          {alreadyAdded ? (
+                            <QuantityInput
+                              value={wizardQuantities[prod.id]}
+                              onChange={(val) => {
+                                if (val <= 0) {
+                                  setWizardQuantities(prev => { const n = { ...prev }; delete n[prod.id]; return n; });
+                                  setWizardProducts(prev => { const n = { ...prev }; delete n[prod.id]; return n; });
+                                } else {
+                                  setWizardQuantities(prev => ({ ...prev, [prod.id]: val }));
+                                }
+                                setWizardTemplateChanged(true);
+                              }}
+                              min={0}
+                              size="sm"
+                              testIdPrefix={`wizard-browse-qty-${prod.id}`}
+                            />
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 gap-1 text-xs shrink-0"
+                              onClick={() => {
+                                const minQ = prod.minOrderQuantity && prod.minOrderQuantity > 1 ? prod.minOrderQuantity : 1;
+                                setWizardQuantities(prev => ({ ...prev, [prod.id]: minQ }));
+                                setWizardProducts(prev => ({ ...prev, [prod.id]: prod }));
+                                setWizardTemplateChanged(true);
+                              }}
+                              data-testid={`wizard-browse-add-${prod.id}`}
+                            >
+                              <Plus className="h-3 w-3" />
+                              {lang === "de" ? "Hinzufuegen" : "Aggiungi"}
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {wizardBrowseProducts.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        {lang === "de" ? "Keine Produkte gefunden" : "Nessun prodotto trovato"}
+                      </p>
+                    )}
+                  </div>
+                  <div className="pt-2 border-t border-border">
+                    <Button size="sm" className="w-full" onClick={() => setWizardStep("items")} data-testid="wizard-done-adding">
+                      {lang === "de" ? "Fertig" : "Fatto"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === "review" && (
+                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-review">
+                  <p className="text-sm font-medium">
+                    {lang === "de" ? "Bestelluebersicht" : "Riepilogo ordine"}
+                  </p>
+                  <div className="space-y-3 max-h-[35vh] overflow-y-auto">
+                    {Object.entries(wizardItemsBySupplier).map(([sId, group]) => (
+                      <div key={sId} className="rounded-lg border border-border overflow-hidden">
+                        <div className="bg-muted/50 px-3 py-2 flex items-center gap-2">
+                          <ShoppingBag className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-xs font-semibold">{group.supplierName}</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                          {group.items.map(({ productId, product: prod, qty }) => (
+                            <div key={productId} className="flex items-center gap-2 px-3 py-2">
+                              <span className="text-xs font-medium text-primary w-7 shrink-0">{qty}x</span>
+                              <span className="text-xs truncate flex-1">{prod.name}</span>
+                              <span className="text-xs font-medium shrink-0">
+                                {(parseFloat(prod.price) * qty).toFixed(2)}€
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {wizardTemplateChanged && (
+                    <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-2" data-testid="wizard-save-template-section">
+                      <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                        {lang === "de" ? "Die Bestellung wurde geaendert. Vorlage aktualisieren?" : "L'ordine e stato modificato. Aggiornare il modello?"}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 text-xs h-8 gap-1"
+                          onClick={() => handleWizardSaveTemplate("overwrite")}
+                          disabled={wizardSavingTemplate}
+                          data-testid="wizard-save-overwrite"
+                        >
+                          {wizardSavingTemplate ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                          {lang === "de" ? "Ueberschreiben" : "Sovrascrivi"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 text-xs h-8 gap-1"
+                          onClick={() => handleWizardSaveTemplate("new")}
+                          disabled={wizardSavingTemplate}
+                          data-testid="wizard-save-new"
+                        >
+                          {wizardSavingTemplate ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                          {lang === "de" ? "Neue Vorlage" : "Nuovo modello"}
+                        </Button>
+                      </div>
                     </div>
                   )}
+
                   <div className="flex items-center justify-between pt-2 border-t border-border">
-                    <Button variant="outline" size="sm" onClick={() => setWizardStep(1)} data-testid="wizard-back-step">
+                    <Button variant="outline" size="sm" onClick={() => setWizardStep("items")} data-testid="wizard-back-step">
                       {lang === "de" ? "Zurueck" : "Indietro"}
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleWizardSubmit}
-                      disabled={wizardSubmitting}
-                      className="gap-1"
-                      data-testid="wizard-submit"
-                    >
-                      {wizardSubmitting ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <>
-                          <ShoppingCart className="h-3.5 w-3.5" />
-                          {lang === "de" ? "In den Warenkorb" : "Aggiungi al carrello"}
-                        </>
-                      )}
-                    </Button>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold">{wizardTotalEstimate.toFixed(2)}€</span>
+                      <Button
+                        size="sm"
+                        onClick={handleWizardSubmit}
+                        disabled={wizardSubmitting || Object.keys(wizardQuantities).length === 0}
+                        className="gap-1"
+                        data-testid="wizard-submit"
+                      >
+                        {wizardSubmitting ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <>
+                            <ShoppingCart className="h-3.5 w-3.5" />
+                            {lang === "de" ? "In den Warenkorb" : "Aggiungi al carrello"}
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
