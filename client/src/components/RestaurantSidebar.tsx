@@ -82,7 +82,7 @@ export function RestaurantSidebar() {
           data-testid={`link-${item.url.split('/').pop()}`}
           className={`flex items-center h-11 rounded-xl px-2 gap-3 transition-all duration-200 text-left text-[13px] ${
             isActive
-              ? "text-foreground font-semibold"
+              ? "text-primary font-semibold"
               : "text-foreground font-normal hover-elevate"
           }`}
         >
@@ -108,7 +108,7 @@ export function RestaurantSidebar() {
           <Link href="/restaurant/profile" className="flex flex-col items-center gap-2 px-2 py-3 rounded-xl hover-elevate cursor-pointer" data-testid="link-profile">
             <Avatar className="h-12 w-12 rounded-full">
               <AvatarImage src={currentUser.profileImageUrl || undefined} alt={currentUser.name} />
-              <AvatarFallback className="bg-muted text-foreground font-semibold text-base">
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-base">
                 {currentUser.companyName?.substring(0, 2).toUpperCase() || currentUser.name.substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>

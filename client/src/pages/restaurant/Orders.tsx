@@ -458,7 +458,7 @@ export default function RestaurantOrders() {
 
     return (
     <div ref={isHighlighted ? highlightRef : undefined}>
-    <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-foreground/30 shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
+    <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
       <Card className={`hover-elevate ${getStatusCardBg(order.status)}`}>
       <CardContent className="p-3 md:p-4">
         <div className="flex items-start justify-between gap-3">
@@ -727,25 +727,25 @@ export default function RestaurantOrders() {
             onClick={() => setFilterSupplier("all")}
             className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
               filterSupplier === "all"
-                ? "border-foreground/30 bg-foreground/5 dark:bg-foreground/10"
+                ? "border-primary bg-primary/10 dark:bg-primary/20"
                 : "border-transparent bg-muted/50 dark:bg-muted/30"
             }`}
             data-testid="filter-supplier-all"
           >
             <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
               filterSupplier === "all"
-                ? "bg-foreground text-background"
+                ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground"
             }`}>
               <Store className="h-5 w-5 md:h-6 md:w-6" />
             </div>
             <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
-              filterSupplier === "all" ? "text-foreground" : "text-muted-foreground"
+              filterSupplier === "all" ? "text-primary" : "text-muted-foreground"
             }`}>
               {t("common", "all")}
             </span>
             <span className={`text-xs md:text-sm font-bold leading-none ${
-              filterSupplier === "all" ? "text-foreground" : "text-foreground"
+              filterSupplier === "all" ? "text-primary" : "text-foreground"
             }`}>
               {orders?.length || 0}
             </span>
@@ -758,24 +758,24 @@ export default function RestaurantOrders() {
                 onClick={() => setFilterSupplier(supplier.id)}
                 className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
                   isActive
-                    ? "border-foreground/30 bg-foreground/5 dark:bg-foreground/10"
+                    ? "border-primary bg-primary/10 dark:bg-primary/20"
                     : "border-transparent bg-muted/50 dark:bg-muted/30"
                 }`}
                 data-testid={`filter-supplier-${supplier.id}`}
               >
-                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-foreground/30 ring-offset-2 ring-offset-background" : ""}`}>
+                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
                   <AvatarImage src={supplier.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-muted text-foreground text-sm md:text-base font-semibold">
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
                     {supplier.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
-                  isActive ? "text-foreground" : "text-muted-foreground"
+                  isActive ? "text-primary" : "text-muted-foreground"
                 }`}>
                   {supplier.name}
                 </span>
                 <span className={`text-xs md:text-sm font-bold leading-none ${
-                  isActive ? "text-foreground" : "text-foreground"
+                  isActive ? "text-primary" : "text-foreground"
                 }`}>
                   {supplier.orderCount}
                 </span>
@@ -787,7 +787,7 @@ export default function RestaurantOrders() {
 
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2 md:gap-3">
         {([
-          { key: "all", icon: ShoppingBag, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-foreground text-background", borderColor: "border-foreground" },
+          { key: "all", icon: ShoppingBag, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
           { key: "pending", icon: Clock, color: "bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400", activeColor: "bg-yellow-500 text-white dark:bg-yellow-600", borderColor: "border-yellow-400 dark:border-yellow-500" },
           { key: "confirmed", icon: Package, color: "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400", activeColor: "bg-blue-500 text-white dark:bg-blue-600", borderColor: "border-blue-400 dark:border-blue-500" },
           { key: "partially_confirmed", icon: AlertTriangle, color: "bg-orange-50 text-orange-800 dark:bg-orange-950/40 dark:text-orange-400", activeColor: "bg-orange-500 text-white dark:bg-orange-600", borderColor: "border-orange-400 dark:border-orange-500" },
@@ -829,7 +829,7 @@ export default function RestaurantOrders() {
           <SlidersHorizontal className="h-3.5 w-3.5" />
           <span>{lang === "de" ? "Filter" : "Filtri"}</span>
           {hasSecondaryFilters && (
-            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-foreground text-[9px] text-background font-bold">
+            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
               {(filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
             </span>
           )}
@@ -1087,8 +1087,8 @@ export default function RestaurantOrders() {
                   </Button>
                 ) : (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/50 border-l-3 border-foreground/30">
-                      <ShoppingBag className="h-3 w-3 text-foreground shrink-0" />
+                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/50 border-l-3 border-primary/50">
+                      <ShoppingBag className="h-3 w-3 text-primary shrink-0" />
                       <span className="text-[11px] text-muted-foreground truncate">
                         {lang === "de" ? "Bestellung" : "Ordine"} #{detailOrder.id.substring(0, 8)} - {detailOrder.supplier?.companyName || detailOrder.supplier?.name}
                       </span>
@@ -1132,7 +1132,7 @@ export default function RestaurantOrders() {
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5 text-foreground" />
+              <Pencil className="h-5 w-5 text-primary" />
               {t("orders", "editOrder")}
             </DialogTitle>
             <DialogDescription>
@@ -1222,7 +1222,7 @@ export default function RestaurantOrders() {
                           <p className="text-xs text-muted-foreground">{parseFloat(product.price).toFixed(2)}€ / {product.unit || t("common", "piece")}</p>
                         </div>
                         <Button variant="ghost" size="icon" data-testid={`button-add-product-${product.id}`}>
-                          <Plus className="h-4 w-4 text-foreground" />
+                          <Plus className="h-4 w-4 text-primary" />
                         </Button>
                       </div>
                     ))}
@@ -1248,7 +1248,7 @@ export default function RestaurantOrders() {
               <div className="space-y-2">
                 <label
                   className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                    editDeliveryOption === "asap" ? "border-foreground/30 bg-foreground/5" : "border-border"
+                    editDeliveryOption === "asap" ? "border-primary bg-primary/5" : "border-border"
                   }`}
                   data-testid="edit-radio-delivery-asap"
                 >
@@ -1259,12 +1259,12 @@ export default function RestaurantOrders() {
                     onChange={() => { setEditDeliveryOption("asap"); setEditSelectedDeliveryDate(""); }}
                     className="accent-primary"
                   />
-                  <Zap className="h-4 w-4 text-foreground shrink-0" />
+                  <Zap className="h-4 w-4 text-primary shrink-0" />
                   <span className="text-sm">{t("cart", "asap")}</span>
                 </label>
                 <label
                   className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                    editDeliveryOption === "date" ? "border-foreground/30 bg-foreground/5" : "border-border"
+                    editDeliveryOption === "date" ? "border-primary bg-primary/5" : "border-border"
                   }`}
                   data-testid="edit-radio-delivery-date"
                 >
@@ -1288,7 +1288,7 @@ export default function RestaurantOrders() {
                           key={date.value}
                           className={`flex items-center gap-2.5 p-2 rounded-md border cursor-pointer transition-colors text-sm ${
                             editSelectedDeliveryDate === date.value
-                              ? "border-foreground/30 bg-foreground/5"
+                              ? "border-primary bg-primary/5"
                               : "border-border"
                           }`}
                           data-testid={`edit-delivery-date-${date.value}`}
@@ -1345,7 +1345,7 @@ export default function RestaurantOrders() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <MessageSquareText className="h-5 w-5 text-foreground" />
+              <MessageSquareText className="h-5 w-5 text-primary" />
               {t("orders", "requestChange")}
             </DialogTitle>
             <DialogDescription>

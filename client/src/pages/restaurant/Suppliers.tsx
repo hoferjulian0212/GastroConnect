@@ -78,7 +78,7 @@ export default function RestaurantSuppliers() {
                 <div className="flex items-start justify-between gap-2 mb-4">
                   <Avatar className="h-12 w-12 shrink-0">
                     <AvatarImage src={supplier.profileImageUrl || undefined} alt={supplier.companyName || supplier.name} />
-                    <AvatarFallback className="bg-muted text-foreground font-bold text-lg">
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
                       {(supplier.companyName || supplier.name).charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -92,7 +92,7 @@ export default function RestaurantSuppliers() {
                       <Button 
                         size="icon" 
                         variant="ghost" 
-                        className="h-9 w-9 rounded-full bg-muted text-foreground"
+                        className="h-9 w-9 rounded-full bg-primary/10 text-primary"
                       >
                         <Phone className="h-4 w-4" />
                       </Button>

@@ -445,8 +445,8 @@ export default function RestaurantHome() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted shrink-0">
-              <Truck className="h-5 w-5 text-foreground" />
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0">
+              <Truck className="h-5 w-5 text-primary" />
             </div>
             <div>
               <CardTitle className="text-base md:text-lg" data-testid="text-upcoming-deliveries-title">
@@ -476,15 +476,15 @@ export default function RestaurantHome() {
                     {group.type === "overdue" ? (
                       <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
                     ) : (
-                      <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-foreground font-semibold" : "text-muted-foreground"}`} />
+                      <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-primary" : "text-muted-foreground"}`} />
                     )}
                     <span className={`text-xs font-semibold uppercase tracking-wide ${
-                      group.type === "overdue" ? "text-red-500" : group.isToday ? "text-foreground font-semibold" : "text-muted-foreground"
+                      group.type === "overdue" ? "text-red-500" : group.isToday ? "text-primary" : "text-muted-foreground"
                     }`}>
                       {group.label}
                     </span>
                     {group.isToday && group.type !== "overdue" && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-foreground animate-pulse" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                     )}
                   </div>
                   <div className="space-y-2">
@@ -512,7 +512,7 @@ export default function RestaurantHome() {
                                 ? "border-red-300 dark:border-red-700 bg-red-50/30 dark:bg-red-950/20"
                                 : isDelayed
                                   ? "border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/20"
-                                  : "border-border bg-card hover:shadow-md hover:border-foreground/10"
+                                  : "border-border bg-card hover:shadow-md hover:border-primary/20"
                           }`}
                           data-testid={`delivery-item-${order.id}`}
                         >
@@ -585,7 +585,7 @@ export default function RestaurantHome() {
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                className="h-8 w-8 text-muted-foreground hover:text-primary"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate(`/restaurant/inbox?to=${order.supplierId}&orderRefId=${order.id}`);
@@ -815,7 +815,7 @@ export default function RestaurantHome() {
                                 {product.supplier?.profileImageUrl ? (
                                   <AvatarImage src={product.supplier.profileImageUrl} alt={product.supplier?.companyName || product.supplier?.name} />
                                 ) : null}
-                                <AvatarFallback className="text-[8px] font-bold bg-muted text-foreground">
+                                <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">
                                   {(product.supplier?.companyName || product.supplier?.name || "?").slice(0, 2).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
@@ -1178,8 +1178,8 @@ export default function RestaurantHome() {
                   </div>
                 </div>
                 <div className="flex gap-1.5 mb-2">
-                  <div className={`h-1 flex-1 rounded-full transition-colors ${["items", "browse_supplier", "browse_products", "review"].includes(wizardStep) ? "bg-foreground" : "bg-muted"}`} />
-                  <div className={`h-1 flex-1 rounded-full transition-colors ${wizardStep === "review" ? "bg-foreground" : "bg-muted"}`} />
+                  <div className={`h-1 flex-1 rounded-full transition-colors ${["items", "browse_supplier", "browse_products", "review"].includes(wizardStep) ? "bg-primary" : "bg-muted"}`} />
+                  <div className={`h-1 flex-1 rounded-full transition-colors ${wizardStep === "review" ? "bg-primary" : "bg-muted"}`} />
                 </div>
               </div>
 
@@ -1288,7 +1288,7 @@ export default function RestaurantHome() {
                     {wizardSuppliers.map((s) => (
                       <button
                         key={s.id}
-                        className="w-full flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:border-foreground/15 hover:shadow-sm transition-all text-left"
+                        className="w-full flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:border-primary/30 hover:shadow-sm transition-all text-left"
                         onClick={() => {
                           setWizardBrowseSupplierId(s.id);
                           setWizardBrowseSearch("");
@@ -1296,8 +1296,8 @@ export default function RestaurantHome() {
                         }}
                         data-testid={`wizard-supplier-${s.id}`}
                       >
-                        <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted shrink-0">
-                          <ShoppingBag className="h-4 w-4 text-foreground" />
+                        <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0">
+                          <ShoppingBag className="h-4 w-4 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{s.name}</p>
@@ -1444,7 +1444,7 @@ export default function RestaurantHome() {
                             const itemFinal = prod.activePromotion ? itemPrice * (1 - prod.activePromotion.discountPercent / 100) : itemPrice;
                             return (
                               <div key={productId} className="flex items-center gap-2 px-3 py-2">
-                                <span className="text-xs font-medium text-foreground w-7 shrink-0">{qty}x</span>
+                                <span className="text-xs font-medium text-primary w-7 shrink-0">{qty}x</span>
                                 <span className="text-xs truncate flex-1">{prod.name}</span>
                                 <span className="text-xs font-medium shrink-0">
                                   {(itemFinal * qty).toFixed(2)}€

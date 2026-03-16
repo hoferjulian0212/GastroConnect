@@ -583,7 +583,7 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
             <Card>
               <CardContent className="pt-3 p-2.5 md:pt-4 md:p-3">
                 <div className="text-center">
-                  <div className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-total-promotions">{promotions?.length || 0}</div>
+                  <div className="text-xl md:text-2xl font-bold text-primary" data-testid="text-total-promotions">{promotions?.length || 0}</div>
                   <p className="text-[10px] md:text-xs text-muted-foreground">{t("common", "total")}</p>
                 </div>
               </CardContent>
@@ -638,8 +638,8 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
                 <CardContent className="p-3 md:p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0 flex-1">
-                      <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-muted shrink-0">
-                        <Percent className="h-5 w-5 text-foreground" />
+                      <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 shrink-0">
+                        <Percent className="h-5 w-5 text-primary" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -651,7 +651,7 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
                           </Badge>
                         </div>
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
-                          <span className="text-sm font-bold text-foreground" data-testid={`text-promo-discount-${promo.id}`}>
+                          <span className="text-sm font-bold text-primary" data-testid={`text-promo-discount-${promo.id}`}>
                             -{promo.discountPercent}%
                           </span>
                           <span className="text-xs text-muted-foreground line-through">
@@ -1085,7 +1085,7 @@ export default function SupplierProducts() {
                         </div>
                       ) : (
                         <div 
-                          className="w-full h-40 rounded-lg border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-foreground/30 transition-colors"
+                          className="w-full h-40 rounded-lg border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary/50 transition-colors"
                           onClick={() => fileInputRef.current?.click()}
                         >
                           <ImageIcon className="h-10 w-10 text-muted-foreground/50" />

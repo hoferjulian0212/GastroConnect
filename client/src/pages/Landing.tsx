@@ -179,7 +179,7 @@ export default function Landing() {
               title={lang === "de" ? "Lingua italiana" : "Deutsche Sprache"}
               className="relative flex h-8 w-[72px] items-center rounded-full bg-muted border border-border p-0.5 transition-colors cursor-pointer"
             >
-              <span className={`absolute left-0.5 flex h-7 w-9 items-center justify-center rounded-full bg-foreground text-background text-[11px] font-bold shadow-sm transition-transform duration-300 ease-in-out ${lang === "it" ? "translate-x-[30px]" : "translate-x-0"}`}>
+              <span className={`absolute left-0.5 flex h-7 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold shadow-sm transition-transform duration-300 ease-in-out ${lang === "it" ? "translate-x-[30px]" : "translate-x-0"}`}>
                 {lang === "de" ? "DE" : "IT"}
               </span>
               <span className={`absolute left-1.5 text-[11px] font-semibold text-muted-foreground transition-opacity duration-200 ${lang === "de" ? "opacity-0" : "opacity-100"}`}>DE</span>
@@ -205,16 +205,16 @@ export default function Landing() {
       </nav>
 
       <section className="relative overflow-hidden py-20 md:py-32">
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-foreground/5 to-transparent" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/5 to-transparent" />
         <div className="mx-auto max-w-6xl px-4 md:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
-              <Zap className="h-3 w-3 text-foreground" />
+              <Zap className="h-3 w-3 text-primary" />
               {t.heroBadge}
             </div>
             <h1 className="text-4xl font-bold tracking-tight md:text-6xl" data-testid="text-hero-headline">
               {t.heroH1Part1}{" "}
-              <span className="text-foreground font-extrabold">{t.heroH1Part2}</span>{" "}
+              <span className="text-primary">{t.heroH1Part2}</span>{" "}
               {t.heroH1Part3}
             </h1>
             <p className="mt-6 text-lg text-muted-foreground md:text-xl leading-relaxed max-w-2xl mx-auto">
@@ -292,7 +292,7 @@ export default function Landing() {
               return (
                 <Card key={idx} className="hover-elevate transition-all duration-200 overflow-visible" data-testid={`card-feature-${idx}`}>
                   <CardContent className="pt-6 pb-6">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-foreground mb-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary mb-4">
                       <Icon className="h-5 w-5" />
                     </div>
                     <h3 className="font-semibold text-base mb-2" data-testid={`text-feature-title-${idx}`}>{feature.title}</h3>
@@ -309,7 +309,7 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl px-4 md:px-8">
           <div className="grid gap-12 md:grid-cols-2">
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-foreground/20 bg-foreground/5 px-3 py-1 text-xs font-medium text-foreground mb-4">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary mb-4">
                 <Store className="h-3 w-3" />
                 {t.supplierBadge}
               </div>
@@ -319,7 +319,7 @@ export default function Landing() {
               <ul className="space-y-4">
                 {t.supplierPoints.map((point, idx) => (
                   <li key={idx} className="flex items-start gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-foreground mt-0.5 shrink-0" />
+                    <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                     <span className="text-sm leading-relaxed">{point}</span>
                   </li>
                 ))}
@@ -335,7 +335,7 @@ export default function Landing() {
             </div>
 
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-foreground/20 bg-foreground/5 px-3 py-1 text-xs font-medium text-foreground mb-4">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary mb-4">
                 <Utensils className="h-3 w-3" />
                 {t.restaurantBadge}
               </div>
@@ -345,7 +345,7 @@ export default function Landing() {
               <ul className="space-y-4">
                 {t.restaurantPoints.map((point, idx) => (
                   <li key={idx} className="flex items-start gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-foreground mt-0.5 shrink-0" />
+                    <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                     <span className="text-sm leading-relaxed">{point}</span>
                   </li>
                 ))}
@@ -376,7 +376,7 @@ export default function Landing() {
           <div className="grid gap-8 md:grid-cols-4">
             {t.steps.map((item, idx) => (
               <div key={idx} className="text-center" data-testid={`card-step-${idx + 1}`}>
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background font-bold text-lg mb-4">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-lg mb-4">
                   {idx + 1}
                 </div>
                 <h3 className="font-semibold text-base mb-2" data-testid={`text-step-title-${idx + 1}`}>{item.title}</h3>
@@ -387,7 +387,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="py-16 md:py-20 bg-foreground/5 border-t border-border/50">
+      <section className="py-16 md:py-20 bg-primary/5 border-t border-border/50">
         <div className="mx-auto max-w-6xl px-4 md:px-8 text-center">
           <h2 className="text-2xl font-bold tracking-tight md:text-3xl mb-4" data-testid="text-cta-headline">
             {t.ctaHeadline}

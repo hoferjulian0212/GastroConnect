@@ -97,7 +97,7 @@ export default function SupplierRestaurants() {
                 <div className="flex items-start justify-between mb-4">
                   <Avatar className="h-12 w-12">
                     <AvatarImage src={restaurant.profileImageUrl || undefined} alt={restaurant.companyName || restaurant.name} />
-                    <AvatarFallback className="bg-muted text-foreground font-bold text-lg">
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
                       {(restaurant.companyName || restaurant.name).charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -107,7 +107,7 @@ export default function SupplierRestaurants() {
                       onClick={(e) => e.stopPropagation()}
                       data-testid={`button-call-${restaurant.id}`}
                     >
-                      <Button size="icon" variant="ghost" className="rounded-full bg-muted text-foreground">
+                      <Button size="icon" variant="ghost" className="rounded-full bg-primary/10 text-primary">
                         <Phone className="h-4 w-4" />
                       </Button>
                     </a>
@@ -334,7 +334,7 @@ function RestaurantDetail({
           <div className="flex items-start gap-4 flex-wrap">
             <Avatar className="h-14 w-14">
               <AvatarImage src={restaurant.profileImageUrl || undefined} alt={restaurant.companyName || restaurant.name} />
-              <AvatarFallback className="bg-muted text-foreground font-bold text-xl">
+              <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">
                 {(restaurant.companyName || restaurant.name).charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -372,7 +372,7 @@ function RestaurantDetail({
                 key={day.value}
                 className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
                   selectedDays.includes(day.value)
-                    ? "border-foreground/30 bg-foreground/5"
+                    ? "border-primary bg-primary/5"
                     : "border-border"
                 }`}
                 data-testid={`checkbox-day-${day.value}`}

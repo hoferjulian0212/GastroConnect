@@ -217,8 +217,8 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
                 <CardContent className="p-0">
                   <div className="p-3 md:p-4">
                     <div className="flex items-start gap-3">
-                      <div className="flex items-center justify-center h-10 w-10 md:h-11 md:w-11 rounded-lg bg-muted shrink-0 mt-0.5">
-                        <ClipboardList className="h-5 w-5 md:h-5.5 md:w-5.5 text-foreground" />
+                      <div className="flex items-center justify-center h-10 w-10 md:h-11 md:w-11 rounded-lg bg-primary/10 shrink-0 mt-0.5">
+                        <ClipboardList className="h-5 w-5 md:h-5.5 md:w-5.5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
                         {isEditingName ? (
@@ -240,7 +240,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 shrink-0 text-foreground"
+                              className="h-7 w-7 shrink-0 text-primary"
                               onClick={() => editNameValue.trim() && renameMutation.mutate({ id: tmpl.id, name: editNameValue.trim() })}
                               disabled={renameMutation.isPending}
                               data-testid={`button-save-name-${tmpl.id}`}
@@ -260,7 +260,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
                         ) : (
                           <div className="flex items-center gap-1.5">
                             <h3
-                              className="text-sm md:text-base font-semibold truncate cursor-pointer hover:text-foreground/70 transition-colors"
+                              className="text-sm md:text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
                               onClick={() => { setEditingNameId(tmpl.id); setEditNameValue(tmpl.name); }}
                               data-testid={`text-template-name-${tmpl.id}`}
                             >
@@ -617,12 +617,12 @@ function CreateEditDialog({
           <div className="space-y-3 pt-1">
             <button
               type="button"
-              className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-transparent hover:border-foreground/15 bg-muted/30 hover:bg-foreground/5 transition-all text-left"
+              className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-transparent hover:border-primary/30 bg-muted/30 hover:bg-primary/5 transition-all text-left"
               onClick={() => setMode("scratch")}
               data-testid="button-mode-scratch"
             >
-              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-muted shrink-0">
-                <Plus className="h-5 w-5 text-foreground" />
+              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 shrink-0">
+                <Plus className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">{t("templates", "createFromScratch")}</p>
@@ -632,7 +632,7 @@ function CreateEditDialog({
             </button>
             <button
               type="button"
-              className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-transparent hover:border-foreground/15 bg-muted/30 hover:bg-foreground/5 transition-all text-left"
+              className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-transparent hover:border-primary/30 bg-muted/30 hover:bg-primary/5 transition-all text-left"
               onClick={() => setMode("from_order")}
               data-testid="button-mode-from-order"
             >
@@ -689,7 +689,7 @@ function CreateEditDialog({
                 <button
                   key={order.id}
                   type="button"
-                  className="w-full flex items-start gap-3 p-3 rounded-lg border hover:border-foreground/15 hover:bg-muted/30 transition-all text-left"
+                  className="w-full flex items-start gap-3 p-3 rounded-lg border hover:border-primary/30 hover:bg-muted/30 transition-all text-left"
                   onClick={() => loadFromOrder(order)}
                   data-testid={`button-select-order-${order.id}`}
                 >
@@ -859,7 +859,7 @@ function CreateEditDialog({
                       <p className="text-[10px] text-muted-foreground">/{product.unit}</p>
                     </div>
                     {isSelected(product.id) ? (
-                      <CheckCircle className="h-4 w-4 text-foreground shrink-0" />
+                      <CheckCircle className="h-4 w-4 text-primary shrink-0" />
                     ) : (
                       <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
                     )}
@@ -964,7 +964,7 @@ function UseTemplateDialog({
       <DialogContent className="max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-use-template">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-foreground" />
+            <ClipboardList className="h-5 w-5 text-primary" />
             {template.name}
           </DialogTitle>
           <DialogDescription>

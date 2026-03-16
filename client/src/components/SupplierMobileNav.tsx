@@ -98,7 +98,7 @@ export function SupplierMobileNav() {
                 onClick={() => handleMoreItemClick(item.url)}
                 className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors ${
                   isActive 
-                    ? "text-foreground font-semibold" 
+                    ? "text-primary font-semibold" 
                     : "text-foreground hover-elevate"
                 }`}
                 data-testid={`mobile-nav-more-${item.url.split('/').pop()}`}
@@ -129,7 +129,7 @@ export function SupplierMobileNav() {
                 <div className="relative inline-flex items-center justify-center">
                   <item.icon className="h-5 w-5" />
                   {badgeCount > 0 && (
-                    <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-foreground text-[9px] text-background font-medium">
+                    <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-medium">
                       {badgeCount > 9 ? "9+" : badgeCount}
                     </span>
                   )}

@@ -290,7 +290,7 @@ export default function SupplierOrders() {
 
     return (
     <div ref={isHighlighted ? highlightRef : undefined}>
-    <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-foreground/30 shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
+    <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
       <Card className={`hover-elevate ${getStatusCardBg(order.status)}`}>
       <CardContent className="p-3 md:p-4">
         <div className="flex items-start justify-between gap-3">
@@ -497,25 +497,25 @@ export default function SupplierOrders() {
             onClick={() => setFilterRestaurant("all")}
             className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
               filterRestaurant === "all"
-                ? "border-foreground/30 bg-foreground/5 dark:bg-foreground/10"
+                ? "border-primary bg-primary/10 dark:bg-primary/20"
                 : "border-transparent bg-muted/50 dark:bg-muted/30"
             }`}
             data-testid="filter-restaurant-all"
           >
             <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
               filterRestaurant === "all"
-                ? "bg-foreground text-background"
+                ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground"
             }`}>
               <Store className="h-5 w-5 md:h-6 md:w-6" />
             </div>
             <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
-              filterRestaurant === "all" ? "text-foreground" : "text-muted-foreground"
+              filterRestaurant === "all" ? "text-primary" : "text-muted-foreground"
             }`}>
               {t("common", "all")}
             </span>
             <span className={`text-xs md:text-sm font-bold leading-none ${
-              filterRestaurant === "all" ? "text-foreground" : "text-foreground"
+              filterRestaurant === "all" ? "text-primary" : "text-foreground"
             }`}>
               {orders?.length || 0}
             </span>
@@ -528,24 +528,24 @@ export default function SupplierOrders() {
                 onClick={() => setFilterRestaurant(restaurant.id)}
                 className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
                   isActive
-                    ? "border-foreground/30 bg-foreground/5 dark:bg-foreground/10"
+                    ? "border-primary bg-primary/10 dark:bg-primary/20"
                     : "border-transparent bg-muted/50 dark:bg-muted/30"
                 }`}
                 data-testid={`filter-restaurant-${restaurant.id}`}
               >
-                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-foreground/30 ring-offset-2 ring-offset-background" : ""}`}>
+                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
                   <AvatarImage src={restaurant.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-muted text-foreground text-sm md:text-base font-semibold">
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
                     {restaurant.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
-                  isActive ? "text-foreground" : "text-muted-foreground"
+                  isActive ? "text-primary" : "text-muted-foreground"
                 }`}>
                   {restaurant.name}
                 </span>
                 <span className={`text-xs md:text-sm font-bold leading-none ${
-                  isActive ? "text-foreground" : "text-foreground"
+                  isActive ? "text-primary" : "text-foreground"
                 }`}>
                   {restaurant.orderCount}
                 </span>
@@ -804,19 +804,19 @@ export default function SupplierOrders() {
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {detailOrder.status === "pending" && (
-                        <Button size="sm" onClick={() => { setDetailOrder(null); setConfirmOrder(detailOrder); }} data-testid="button-status-confirmed">
+                        <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => { setDetailOrder(null); setConfirmOrder(detailOrder); }} data-testid="button-status-confirmed">
                           <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
                           {lang === "de" ? "Bestätigen" : "Confermare"}
                         </Button>
                       )}
                       {(detailOrder.status === "confirmed" || detailOrder.status === "partially_confirmed") && (
-                        <Button size="sm" onClick={() => setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId })} disabled={updateStatusMutation.isPending} data-testid="button-status-in_delivery">
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId })} disabled={updateStatusMutation.isPending} data-testid="button-status-in_delivery">
                           <Truck className="h-3.5 w-3.5 mr-1.5" />
                           {lang === "de" ? "In Lieferung" : "In consegna"}
                         </Button>
                       )}
                       {detailOrder.status === "in_delivery" && (
-                        <Button size="sm" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid="button-status-delivered">
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid="button-status-delivered">
                           <Package className="h-3.5 w-3.5 mr-1.5" />
                           {lang === "de" ? "Geliefert" : "Consegnato"}
                         </Button>
@@ -900,8 +900,8 @@ export default function SupplierOrders() {
                   </Button>
                 ) : (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/50 border-l-3 border-foreground/30">
-                      <ShoppingBag className="h-3 w-3 text-foreground shrink-0" />
+                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/50 border-l-3 border-primary/50">
+                      <ShoppingBag className="h-3 w-3 text-primary shrink-0" />
                       <span className="text-[11px] text-muted-foreground truncate">
                         {lang === "de" ? "Bestellung" : "Ordine"} #{detailOrder.id.substring(0, 8)} - {detailOrder.restaurant?.companyName || detailOrder.restaurant?.name}
                       </span>

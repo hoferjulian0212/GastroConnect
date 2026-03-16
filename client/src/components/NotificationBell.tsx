@@ -86,7 +86,7 @@ export function NotificationBell() {
       case "new_message":
         return { 
           icon: <MessageSquare className="h-3.5 w-3.5" />,
-          bg: "bg-muted text-foreground"
+          bg: "bg-primary/10 text-primary"
         };
       case "new_order":
         return { 
@@ -145,7 +145,7 @@ export function NotificationBell() {
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-foreground text-background rounded-full">
+            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-primary text-primary-foreground rounded-full">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
@@ -165,7 +165,7 @@ export function NotificationBell() {
                 return (
                   <div
                     key={notification.id}
-                    className="group relative flex items-start gap-2.5 px-3 py-2.5 cursor-pointer transition-colors hover-elevate bg-muted/50"
+                    className="group relative flex items-start gap-2.5 px-3 py-2.5 cursor-pointer transition-colors hover-elevate bg-primary/5"
                     onClick={() => handleNotificationClick(notification)}
                     data-testid={`notification-${notification.id}`}
                   >
@@ -185,13 +185,13 @@ export function NotificationBell() {
                         {notification.message}
                       </p>
                       {hasRoute && (
-                        <div className="flex items-center gap-1 mt-1 text-[11px] text-foreground">
+                        <div className="flex items-center gap-1 mt-1 text-[11px] text-primary">
                           <ExternalLink className="h-3 w-3" />
                           <span>Anzeigen</span>
                         </div>
                       )}
                     </div>
-                    <div className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-foreground mt-2" />
+                    <div className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-primary mt-2" />
                   </div>
                 );
               })}

@@ -386,7 +386,7 @@ export default function Complaints() {
     <div className="space-y-4 md:space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 md:gap-3">
-          <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-foreground" />
+          <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-primary" />
           <div>
             <h1 className="text-xl md:text-2xl font-semibold">{t("common", "complaints")}</h1>
             <p className="text-xs md:text-sm text-muted-foreground">{t("complaints", "writeComplaint")}</p>
@@ -404,25 +404,25 @@ export default function Complaints() {
             onClick={() => setFilterComplaintSupplier("all")}
             className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
               filterComplaintSupplier === "all"
-                ? "border-foreground/30 bg-foreground/5 dark:bg-foreground/10"
+                ? "border-primary bg-primary/10 dark:bg-primary/20"
                 : "border-transparent bg-muted/50 dark:bg-muted/30"
             }`}
             data-testid="filter-complaint-supplier-all"
           >
             <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
               filterComplaintSupplier === "all"
-                ? "bg-foreground text-background"
+                ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground"
             }`}>
               <Store className="h-5 w-5 md:h-6 md:w-6" />
             </div>
             <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
-              filterComplaintSupplier === "all" ? "text-foreground" : "text-muted-foreground"
+              filterComplaintSupplier === "all" ? "text-primary" : "text-muted-foreground"
             }`}>
               {t("common", "all")}
             </span>
             <span className={`text-xs md:text-sm font-bold leading-none ${
-              filterComplaintSupplier === "all" ? "text-foreground" : "text-foreground"
+              filterComplaintSupplier === "all" ? "text-primary" : "text-foreground"
             }`}>
               {existingComplaints?.length || 0}
             </span>
@@ -435,24 +435,24 @@ export default function Complaints() {
                 onClick={() => setFilterComplaintSupplier(supplier.id)}
                 className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
                   isActive
-                    ? "border-foreground/30 bg-foreground/5 dark:bg-foreground/10"
+                    ? "border-primary bg-primary/10 dark:bg-primary/20"
                     : "border-transparent bg-muted/50 dark:bg-muted/30"
                 }`}
                 data-testid={`filter-complaint-supplier-${supplier.id}`}
               >
-                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-foreground/30 ring-offset-2 ring-offset-background" : ""}`}>
+                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
                   <AvatarImage src={supplier.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-muted text-foreground text-sm md:text-base font-semibold">
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
                     {supplier.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
-                  isActive ? "text-foreground" : "text-muted-foreground"
+                  isActive ? "text-primary" : "text-muted-foreground"
                 }`}>
                   {supplier.name}
                 </span>
                 <span className={`text-xs md:text-sm font-bold leading-none ${
-                  isActive ? "text-foreground" : "text-foreground"
+                  isActive ? "text-primary" : "text-foreground"
                 }`}>
                   {supplier.complaintCount}
                 </span>
@@ -464,7 +464,7 @@ export default function Complaints() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
         {([
-          { key: "all", icon: AlertCircle, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-foreground text-background", borderColor: "border-foreground" },
+          { key: "all", icon: AlertCircle, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
           { key: "open", icon: Clock, color: "bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400", activeColor: "bg-yellow-500 text-white dark:bg-yellow-600", borderColor: "border-yellow-400 dark:border-yellow-500" },
           { key: "in_progress", icon: Loader2, color: "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400", activeColor: "bg-blue-500 text-white dark:bg-blue-600", borderColor: "border-blue-400 dark:border-blue-500" },
           { key: "resolved", icon: CheckCircle, color: "bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-400", activeColor: "bg-green-500 text-white dark:bg-green-600", borderColor: "border-green-400 dark:border-green-500" },
@@ -504,7 +504,7 @@ export default function Complaints() {
           <SlidersHorizontal className="h-3.5 w-3.5" />
           <span>{lang === "de" ? "Filter" : "Filtri"}</span>
           {hasSecondaryFilters && (
-            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-foreground text-[9px] text-background font-bold">
+            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
               {(filterComplaintDateFrom ? 1 : 0) + (filterComplaintDateTo ? 1 : 0)}
             </span>
           )}
@@ -668,7 +668,7 @@ export default function Complaints() {
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-create-complaint">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-foreground" />
+              <AlertCircle className="h-5 w-5 text-primary" />
               {t("complaints", "newComplaint")}
             </DialogTitle>
             <DialogDescription>
@@ -832,7 +832,7 @@ export default function Complaints() {
                       };
                     }}
                     onComplete={handleUploadComplete}
-                    buttonClassName="h-20 w-20 border-2 border-dashed border-muted-foreground/30 bg-muted/30 rounded-lg hover:border-foreground/30 hover:bg-foreground/5 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+                    buttonClassName="h-20 w-20 border-2 border-dashed border-muted-foreground/30 bg-muted/30 rounded-lg hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
                   >
                     <ImagePlus className="h-5 w-5" />
                     <span className="text-[10px]">{t("common", "add")}</span>
@@ -868,7 +868,7 @@ export default function Complaints() {
         <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-foreground" />
+              <AlertCircle className="h-5 w-5 text-primary" />
               {t("common", "complaints")}
             </DialogTitle>
             <DialogDescription>
@@ -1125,7 +1125,7 @@ export default function Complaints() {
                       };
                     }}
                     onComplete={handleEditUploadComplete}
-                    buttonClassName="h-16 w-16 border-2 border-dashed border-muted-foreground/30 bg-muted/30 rounded-lg hover:border-foreground/30 hover:bg-foreground/5 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+                    buttonClassName="h-16 w-16 border-2 border-dashed border-muted-foreground/30 bg-muted/30 rounded-lg hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
                   >
                     <ImagePlus className="h-4 w-4" />
                     <span className="text-[9px]">{t("common", "add")}</span>

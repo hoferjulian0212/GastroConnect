@@ -141,7 +141,7 @@ function CartButton() {
     >
       <ShoppingCart className="h-5 w-5" />
       {count > 0 && (
-        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[10px] text-background font-medium">
+        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-medium">
           {count}
         </span>
       )}
@@ -165,7 +165,7 @@ function MobileProfileButton() {
     >
       <Avatar className="h-8 w-8">
         <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name || ""} />
-        <AvatarFallback className="bg-muted text-foreground font-semibold text-xs">
+        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
           {initials}
         </AvatarFallback>
       </Avatar>
@@ -216,7 +216,7 @@ function AppLayout() {
       {isLoading ? (
         <div className="flex h-dvh items-center justify-center">
           <div className="space-y-4 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-foreground text-background font-bold text-xl mx-auto">
+            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-xl mx-auto">
               G
             </div>
             <div className="space-y-2">

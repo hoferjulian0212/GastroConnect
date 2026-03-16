@@ -56,7 +56,7 @@ export function AccountSwitcher({ compact = false }: { compact?: boolean }) {
             {currentUser.profileImageUrl ? (
               <AvatarImage src={currentUser.profileImageUrl} alt={currentUser.name} />
             ) : null}
-            <AvatarFallback className="bg-muted text-foreground text-[10px] font-semibold">
+            <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
               {getInitials(currentUser)}
             </AvatarFallback>
           </Avatar>
@@ -82,7 +82,7 @@ export function AccountSwitcher({ compact = false }: { compact?: boolean }) {
               {user.profileImageUrl ? (
                 <AvatarImage src={user.profileImageUrl} alt={user.name} />
               ) : null}
-              <AvatarFallback className="bg-muted text-foreground text-[10px] font-semibold">
+              <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
                 {getInitials(user)}
               </AvatarFallback>
             </Avatar>
@@ -91,7 +91,7 @@ export function AccountSwitcher({ compact = false }: { compact?: boolean }) {
               <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
             {user.id === currentUser.id && (
-              <Check className="h-4 w-4 text-foreground shrink-0" />
+              <Check className="h-4 w-4 text-primary shrink-0" />
             )}
           </DropdownMenuItem>
         ))}
