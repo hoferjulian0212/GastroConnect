@@ -163,6 +163,15 @@ export default function SupplierInbox() {
   }, [selectedConversation, setIsInChat]);
 
   useEffect(() => {
+    if (selectedConversation) {
+      const timer = setTimeout(() => {
+        messageInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedConversation]);
+
+  useEffect(() => {
     const params = new URLSearchParams(searchString);
     const conversationIdParam = params.get("conversationId") || params.get("chat");
     if (conversationIdParam) {
@@ -330,6 +339,7 @@ export default function SupplierInbox() {
   const [openActionsPopover, setOpenActionsPopover] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
   const prevConvTimestamps = useRef<Record<string, string>>({});
   const [flashingConvIds, setFlashingConvIds] = useState<Set<string>>(new Set());
 
@@ -1740,6 +1750,7 @@ export default function SupplierInbox() {
                       />
                     )}
                     <Input
+                      ref={messageInputRef}
                       placeholder="Nachricht schreiben..."
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}

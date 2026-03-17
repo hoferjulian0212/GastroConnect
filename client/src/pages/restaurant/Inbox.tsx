@@ -177,6 +177,7 @@ export default function RestaurantInbox() {
   const [showComplaintDetail, setShowComplaintDetail] = useState(false);
   const [loadingComplaintDetail, setLoadingComplaintDetail] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
   const searchString = useSearch();
 
   useEffect(() => {
@@ -190,6 +191,15 @@ export default function RestaurantInbox() {
     setIsInChat(isMobile && selectedConversation !== null);
     return () => setIsInChat(false);
   }, [selectedConversation, setIsInChat]);
+
+  useEffect(() => {
+    if (selectedConversation) {
+      const timer = setTimeout(() => {
+        messageInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedConversation]);
 
   useEffect(() => {
     const params = new URLSearchParams(searchString);
@@ -2194,6 +2204,7 @@ export default function RestaurantInbox() {
                       />
                     )}
                     <Input
+                      ref={messageInputRef}
                       placeholder={t("inbox", "typeMessage")}
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
