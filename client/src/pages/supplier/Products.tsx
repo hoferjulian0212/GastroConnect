@@ -138,7 +138,7 @@ function InventoryView({ products, lang, t }: { products: Product[]; lang: strin
   const lowStockCount = products.filter(p => p.lowStockThreshold && p.lowStockThreshold > 0 && (p.stockQuantity ?? 0) <= p.lowStockThreshold).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -146,7 +146,7 @@ function InventoryView({ products, lang, t }: { products: Product[]; lang: strin
             placeholder={t("common", "search") + "..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 text-sm"
+            className="pl-9 text-sm h-9"
             data-testid="input-search-inventory"
           />
         </div>
@@ -165,229 +165,210 @@ function InventoryView({ products, lang, t }: { products: Product[]; lang: strin
         </Button>
       </div>
 
-      <div className="space-y-3">
-        {filtered.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Warehouse className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">
-                {showLowStockOnly
-                  ? t("supplierProducts", "noLowStockProducts")
-                  : t("supplierProducts", "noProducts")}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          filtered.map((product) => {
+      {filtered.length === 0 ? (
+        <div className="text-center py-8">
+          <Warehouse className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">
+            {showLowStockOnly
+              ? t("supplierProducts", "noLowStockProducts")
+              : t("supplierProducts", "noProducts")}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {filtered.map((product) => {
             const isLowStock = product.lowStockThreshold && product.lowStockThreshold > 0 && (product.stockQuantity ?? 0) <= product.lowStockThreshold;
             const currentStock = product.stockQuantity ?? 0;
             const isActive = activeAction?.productId === product.id;
             const currentMode = isActive ? activeAction.mode : null;
 
             return (
-              <Card
+              <div
                 key={product.id}
-                className={`overflow-hidden ${isLowStock ? "border-orange-300 dark:border-orange-700" : ""}`}
+                className={`rounded-lg border overflow-hidden ${isLowStock ? "border-orange-300 dark:border-orange-700" : "border-border"}`}
                 data-testid={`inventory-card-${product.id}`}
               >
-                <CardContent className="p-0">
-                  <div className="p-3 md:p-4">
-                    <div className="flex items-start gap-3">
-                      {product.imageUrl ? (
-                        <div className="w-12 h-12 shrink-0 rounded-lg overflow-hidden bg-muted">
-                          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="w-12 h-12 shrink-0 rounded-lg bg-muted flex items-center justify-center">
-                          <Package className="h-5 w-5 text-muted-foreground/30" />
-                        </div>
-                      )}
+                <div className="p-2.5 md:p-3">
+                  <div className="flex items-center gap-2.5">
+                    {product.imageUrl ? (
+                      <div className="w-9 h-9 shrink-0 rounded-md overflow-hidden bg-muted">
+                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-9 h-9 shrink-0 rounded-md bg-muted flex items-center justify-center">
+                        <Package className="h-4 w-4 text-muted-foreground/30" />
+                      </div>
+                    )}
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-sm">{product.name}</h3>
-                          {product.category && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{product.category}</Badge>
-                          )}
-                          {isLowStock && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-orange-300 text-orange-600 dark:border-orange-600 dark:text-orange-400">
-                              <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
-                              {t("supplierProducts", "lowStockLabel")}
-                            </Badge>
-                          )}
-                        </div>
-                        {product.lowStockThreshold != null && product.lowStockThreshold > 0 && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5">
-                            {t("supplierProducts", "threshold")}: {product.lowStockThreshold} {product.unit}
-                          </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="font-semibold text-sm truncate">{product.name}</h3>
+                        {product.category && (
+                          <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">{product.category}</Badge>
+                        )}
+                        {isLowStock && (
+                          <AlertTriangle className="h-3 w-3 text-orange-500 shrink-0" />
                         )}
                       </div>
+                      {product.lowStockThreshold != null && product.lowStockThreshold > 0 && (
+                        <p className="text-[10px] text-muted-foreground">
+                          {t("supplierProducts", "threshold")}: {product.lowStockThreshold} {product.unit}
+                        </p>
+                      )}
+                    </div>
 
-                      <div className="flex flex-col items-center shrink-0">
-                        <span className={`text-2xl font-bold tabular-nums leading-tight ${isLowStock ? "text-orange-600 dark:text-orange-400" : ""}`}>
-                          {currentStock}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground leading-tight">{product.unit}</span>
+                    <div className="flex flex-col items-center shrink-0 min-w-[48px]">
+                      <span className={`text-xl font-bold tabular-nums leading-tight ${isLowStock ? "text-orange-600 dark:text-orange-400" : ""}`}>
+                        {currentStock}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground leading-tight">{product.unit}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 mt-2">
+                    <Button
+                      variant={currentMode === "manual_in" ? "default" : "outline"}
+                      size="sm"
+                      className={`flex-1 gap-1 text-[11px] h-7 px-2 ${currentMode !== "manual_in" ? "border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/30" : "bg-green-600 hover:bg-green-700 text-white"}`}
+                      onClick={() => openAction(product.id, "manual_in")}
+                      data-testid={`button-stock-in-${product.id}`}
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                      {t("supplierProducts", "stockIn")}
+                    </Button>
+                    <Button
+                      variant={currentMode === "manual_out" ? "default" : "outline"}
+                      size="sm"
+                      className={`flex-1 gap-1 text-[11px] h-7 px-2 ${currentMode !== "manual_out" ? "border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30" : "bg-red-600 hover:bg-red-700 text-white"}`}
+                      onClick={() => openAction(product.id, "manual_out")}
+                      disabled={currentStock <= 0}
+                      data-testid={`button-stock-out-${product.id}`}
+                    >
+                      <ArrowUp className="h-3 w-3" />
+                      {t("supplierProducts", "stockOut")}
+                    </Button>
+                    <Button
+                      variant={currentMode === "manual_set" ? "default" : "outline"}
+                      size="sm"
+                      className={`flex-1 gap-1 text-[11px] h-7 px-2 ${currentMode !== "manual_set" ? "border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
+                      onClick={() => openAction(product.id, "manual_set")}
+                      data-testid={`button-stock-set-${product.id}`}
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      {t("supplierProducts", "manualSet")}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 h-7 w-7"
+                      onClick={() => setHistoryProduct(product)}
+                      data-testid={`button-history-${product.id}`}
+                    >
+                      <History className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                {isActive && (
+                  <div className={`border-t p-2.5 md:p-3 space-y-2 ${
+                    currentMode === "manual_in" ? "bg-green-50/50 dark:bg-green-950/10 border-green-200 dark:border-green-800/40" :
+                    currentMode === "manual_out" ? "bg-red-50/50 dark:bg-red-950/10 border-red-200 dark:border-red-800/40" :
+                    "bg-blue-50/50 dark:bg-blue-950/10 border-blue-200 dark:border-blue-800/40"
+                  }`}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setAdjustQty(Math.max(currentMode === "manual_set" ? 0 : 1, adjustQty - 1))}
+                          disabled={adjustQty <= (currentMode === "manual_set" ? 0 : 1)}
+                          data-testid="button-adjust-qty-minus"
+                        >
+                          <span className="text-sm font-medium leading-none">−</span>
+                        </Button>
+                        <Input
+                          type="number"
+                          min={currentMode === "manual_set" ? 0 : 1}
+                          max={currentMode === "manual_out" ? getMaxOutQty(product) : undefined}
+                          value={adjustQty}
+                          onChange={(e) => {
+                            const min = currentMode === "manual_set" ? 0 : 1;
+                            const max = currentMode === "manual_out" ? getMaxOutQty(product) : Infinity;
+                            setAdjustQty(Math.min(max, Math.max(min, parseInt(e.target.value) || 0)));
+                          }}
+                          className="text-center text-sm font-bold w-16 h-7"
+                          data-testid="input-adjust-qty"
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            const max = currentMode === "manual_out" ? getMaxOutQty(product) : Infinity;
+                            setAdjustQty(Math.min(max, adjustQty + 1));
+                          }}
+                          data-testid="button-adjust-qty-plus"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                        <span className="text-[10px] text-muted-foreground">{product.unit}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-background/80 border text-[11px]">
+                        <span className="text-muted-foreground">{currentStock}</span>
+                        <span className="text-muted-foreground">→</span>
+                        <span className={`font-bold ${
+                          currentMode === "manual_in" ? "text-green-600 dark:text-green-400" :
+                          currentMode === "manual_out" ? "text-red-600 dark:text-red-400" :
+                          "text-blue-600 dark:text-blue-400"
+                        }`}>{getPreviewStock(product)}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-3">
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        value={adjustNote}
+                        onChange={(e) => setAdjustNote(e.target.value)}
+                        placeholder={t("supplierProducts", "notePlaceholder")}
+                        className="text-xs h-7 flex-1"
+                        data-testid="input-adjust-note"
+                      />
                       <Button
-                        variant={currentMode === "manual_in" ? "default" : "outline"}
                         size="sm"
-                        className={`flex-1 gap-1.5 text-xs ${currentMode !== "manual_in" ? "border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/30" : "bg-green-600 hover:bg-green-700 text-white"}`}
-                        onClick={() => openAction(product.id, "manual_in")}
-                        data-testid={`button-stock-in-${product.id}`}
+                        className={`gap-1 shrink-0 h-7 text-[11px] ${
+                          currentMode === "manual_in" ? "bg-green-600 hover:bg-green-700" :
+                          currentMode === "manual_out" ? "bg-red-600 hover:bg-red-700" :
+                          "bg-blue-600 hover:bg-blue-700"
+                        } text-white`}
+                        onClick={() => handleSubmit(product)}
+                        disabled={stockMovementMutation.isPending || (currentMode !== "manual_set" && adjustQty < 1)}
+                        data-testid="button-adjust-confirm"
                       >
-                        <ArrowDown className="h-3.5 w-3.5" />
-                        {t("supplierProducts", "stockIn")}
-                      </Button>
-                      <Button
-                        variant={currentMode === "manual_out" ? "default" : "outline"}
-                        size="sm"
-                        className={`flex-1 gap-1.5 text-xs ${currentMode !== "manual_out" ? "border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30" : "bg-red-600 hover:bg-red-700 text-white"}`}
-                        onClick={() => openAction(product.id, "manual_out")}
-                        disabled={currentStock <= 0}
-                        data-testid={`button-stock-out-${product.id}`}
-                      >
-                        <ArrowUp className="h-3.5 w-3.5" />
-                        {t("supplierProducts", "stockOut")}
-                      </Button>
-                      <Button
-                        variant={currentMode === "manual_set" ? "default" : "outline"}
-                        size="sm"
-                        className={`flex-1 gap-1.5 text-xs ${currentMode !== "manual_set" ? "border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
-                        onClick={() => openAction(product.id, "manual_set")}
-                        data-testid={`button-stock-set-${product.id}`}
-                      >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        {t("supplierProducts", "manualSet")}
+                        {stockMovementMutation.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Package className="h-3 w-3" />
+                        )}
+                        {t("supplierProducts", "confirmAdjustment")}
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="shrink-0"
-                        onClick={() => setHistoryProduct(product)}
-                        data-testid={`button-history-${product.id}`}
+                        className="shrink-0 h-7 w-7"
+                        onClick={() => { setActiveAction(null); setAdjustQty(1); setAdjustNote(""); }}
+                        data-testid="button-adjust-cancel"
                       >
-                        <History className="h-4 w-4" />
+                        <X className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
-
-                  {isActive && (
-                    <div className={`border-t p-3 md:p-4 space-y-3 ${
-                      currentMode === "manual_in" ? "bg-green-50/50 dark:bg-green-950/10 border-green-200 dark:border-green-800/40" :
-                      currentMode === "manual_out" ? "bg-red-50/50 dark:bg-red-950/10 border-red-200 dark:border-red-800/40" :
-                      "bg-blue-50/50 dark:bg-blue-950/10 border-blue-200 dark:border-blue-800/40"
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          {currentMode === "manual_in" && t("supplierProducts", "stockInDesc")}
-                          {currentMode === "manual_out" && t("supplierProducts", "stockOutDesc")}
-                          {currentMode === "manual_set" && t("supplierProducts", "manualSetDesc")}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          <label className="text-xs text-muted-foreground shrink-0">
-                            {currentMode === "manual_set" ? t("supplierProducts", "newStockValue") : t("supplierProducts", "quantity")}:
-                          </label>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => setAdjustQty(Math.max(currentMode === "manual_set" ? 0 : 1, adjustQty - 1))}
-                            disabled={adjustQty <= (currentMode === "manual_set" ? 0 : 1)}
-                            data-testid="button-adjust-qty-minus"
-                          >
-                            <span className="text-sm font-medium leading-none">−</span>
-                          </Button>
-                          <Input
-                            type="number"
-                            min={currentMode === "manual_set" ? 0 : 1}
-                            max={currentMode === "manual_out" ? getMaxOutQty(product) : undefined}
-                            value={adjustQty}
-                            onChange={(e) => {
-                              const min = currentMode === "manual_set" ? 0 : 1;
-                              const max = currentMode === "manual_out" ? getMaxOutQty(product) : Infinity;
-                              setAdjustQty(Math.min(max, Math.max(min, parseInt(e.target.value) || 0)));
-                            }}
-                            className="text-center text-sm font-bold w-20 h-8"
-                            data-testid="input-adjust-qty"
-                          />
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => {
-                              const max = currentMode === "manual_out" ? getMaxOutQty(product) : Infinity;
-                              setAdjustQty(Math.min(max, adjustQty + 1));
-                            }}
-                            data-testid="button-adjust-qty-plus"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </Button>
-                          <span className="text-xs text-muted-foreground">{product.unit}</span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-background/80 border text-xs">
-                          <span className="text-muted-foreground">{currentStock}</span>
-                          <span className="text-muted-foreground">→</span>
-                          <span className={`font-bold ${
-                            currentMode === "manual_in" ? "text-green-600 dark:text-green-400" :
-                            currentMode === "manual_out" ? "text-red-600 dark:text-red-400" :
-                            "text-blue-600 dark:text-blue-400"
-                          }`}>{getPreviewStock(product)}</span>
-                          <span className="text-muted-foreground">{product.unit}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={adjustNote}
-                          onChange={(e) => setAdjustNote(e.target.value)}
-                          placeholder={t("supplierProducts", "notePlaceholder")}
-                          className="text-xs h-8 flex-1"
-                          data-testid="input-adjust-note"
-                        />
-                        <Button
-                          size="sm"
-                          className={`gap-1.5 shrink-0 ${
-                            currentMode === "manual_in" ? "bg-green-600 hover:bg-green-700" :
-                            currentMode === "manual_out" ? "bg-red-600 hover:bg-red-700" :
-                            "bg-blue-600 hover:bg-blue-700"
-                          } text-white`}
-                          onClick={() => handleSubmit(product)}
-                          disabled={stockMovementMutation.isPending || (currentMode !== "manual_set" && adjustQty < 1)}
-                          data-testid="button-adjust-confirm"
-                        >
-                          {stockMovementMutation.isPending ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Package className="h-3.5 w-3.5" />
-                          )}
-                          {t("supplierProducts", "confirmAdjustment")}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="shrink-0 text-xs"
-                          onClick={() => { setActiveAction(null); setAdjustQty(1); setAdjustNote(""); }}
-                          data-testid="button-adjust-cancel"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                )}
+              </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
       <Dialog open={!!historyProduct} onOpenChange={(open) => { if (!open) setHistoryProduct(null); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -401,7 +382,7 @@ function InventoryView({ products, lang, t }: { products: Product[]; lang: strin
             </DialogDescription>
           </DialogHeader>
           {stockMovements && stockMovements.length > 0 ? (
-            <div className="space-y-2 max-h-80 overflow-y-auto">
+            <div className="space-y-1.5 max-h-80 overflow-y-auto">
               {stockMovements.slice(0, 30).map((movement) => (
                 <div key={movement.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-xs" data-testid={`stock-movement-${movement.id}`}>
                   <div className="flex items-center gap-2">
