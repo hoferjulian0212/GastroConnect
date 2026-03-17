@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
@@ -176,6 +176,7 @@ export default function RestaurantInbox() {
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
   const [showComplaintDetail, setShowComplaintDetail] = useState(false);
   const [loadingComplaintDetail, setLoadingComplaintDetail] = useState(false);
+  const [showDeliveryNotes, setShowDeliveryNotes] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const searchString = useSearch();
@@ -481,6 +482,17 @@ export default function RestaurantInbox() {
     enabled: !!selectedConversation,
     refetchInterval: 3000,
     refetchIntervalInBackground: false,
+  });
+
+  const { data: conversationDocs } = useQuery<any[]>({
+    queryKey: ['/api/conversations', selectedConversation, 'documents', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/conversations/${selectedConversation}/documents?userId=${currentUser?.id}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!selectedConversation && !!currentUser?.id,
+    staleTime: 10000,
   });
 
   useEffect(() => {
@@ -1260,6 +1272,55 @@ export default function RestaurantInbox() {
                     </div>
                   </div>
                 </div>
+
+                {conversationDocs && conversationDocs.filter(d => d.type === "delivery_note").length > 0 && (
+                  <div className="border-b border-border shrink-0" data-testid="delivery-notes-panel">
+                    <button
+                      className="w-full flex items-center justify-between px-4 py-2 text-xs hover:bg-muted/50 transition-colors"
+                      onClick={() => setShowDeliveryNotes(!showDeliveryNotes)}
+                      data-testid="button-toggle-delivery-notes"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        <span className="font-medium">{lang === "de" ? "Lieferscheine" : "Bolle di consegna"}</span>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{conversationDocs.filter(d => d.type === "delivery_note").length}</Badge>
+                      </div>
+                      {showDeliveryNotes ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </button>
+                    {showDeliveryNotes && (
+                      <div className="px-3 pb-2 space-y-1 max-h-40 overflow-y-auto">
+                        {conversationDocs.filter(d => d.type === "delivery_note").map((doc: any) => (
+                          <div
+                            key={doc.id}
+                            className="flex items-center justify-between rounded-md bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/30 px-3 py-1.5"
+                            data-testid={`delivery-note-item-${doc.id}`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium truncate">{doc.title}</p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  {new Date(doc.createdAt).toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0"
+                              onClick={() => {
+                                const a = document.createElement("a"); a.href = `/api/orders/${doc.orderId}/delivery-note/download`; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                              }}
+                              data-testid={`button-download-note-${doc.id}`}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {actionMode === "none" ? (
                   <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 h-full" style={{ minHeight: 0 }}>

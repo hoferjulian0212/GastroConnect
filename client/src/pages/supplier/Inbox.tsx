@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import OnlineStatus from "@/components/OnlineStatus";
@@ -338,6 +338,7 @@ export default function SupplierInbox() {
 
   const [openActionsPopover, setOpenActionsPopover] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showDeliveryNotes, setShowDeliveryNotes] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const prevConvTimestamps = useRef<Record<string, string>>({});
@@ -361,6 +362,17 @@ export default function SupplierInbox() {
     enabled: !!selectedConversation,
     refetchInterval: 3000,
     refetchIntervalInBackground: false,
+  });
+
+  const { data: conversationDocs } = useQuery<any[]>({
+    queryKey: ['/api/conversations', selectedConversation, 'documents', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/conversations/${selectedConversation}/documents?userId=${currentUser?.id}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!selectedConversation && !!currentUser?.id,
+    staleTime: 10000,
   });
 
   useEffect(() => {
@@ -1012,6 +1024,55 @@ export default function SupplierInbox() {
                     </Dialog>
                   </div>
                 </div>
+
+                {conversationDocs && conversationDocs.filter(d => d.type === "delivery_note").length > 0 && (
+                  <div className="border-b border-border shrink-0" data-testid="delivery-notes-panel">
+                    <button
+                      className="w-full flex items-center justify-between px-4 py-2 text-xs hover:bg-muted/50 transition-colors"
+                      onClick={() => setShowDeliveryNotes(!showDeliveryNotes)}
+                      data-testid="button-toggle-delivery-notes"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        <span className="font-medium">{lang === "de" ? "Lieferscheine" : "Bolle di consegna"}</span>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{conversationDocs.filter(d => d.type === "delivery_note").length}</Badge>
+                      </div>
+                      {showDeliveryNotes ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </button>
+                    {showDeliveryNotes && (
+                      <div className="px-3 pb-2 space-y-1 max-h-40 overflow-y-auto">
+                        {conversationDocs.filter(d => d.type === "delivery_note").map((doc: any) => (
+                          <div
+                            key={doc.id}
+                            className="flex items-center justify-between rounded-md bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/30 px-3 py-1.5"
+                            data-testid={`delivery-note-item-${doc.id}`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium truncate">{doc.title}</p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  {new Date(doc.createdAt).toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0"
+                              onClick={() => {
+                                const a = document.createElement("a"); a.href = `/api/orders/${doc.orderId}/delivery-note/download`; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                              }}
+                              data-testid={`button-download-note-${doc.id}`}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto overflow-x-hidden p-4" style={{ minHeight: 0 }}>
                   {messagesLoading ? (

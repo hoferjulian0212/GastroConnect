@@ -1203,7 +1203,7 @@ export async function registerRoutes(
             const document = await storage.createDocument({
               orderId: order.id,
               type: "delivery_note",
-              title: `Lieferschein #${order.id.slice(0, 8)}`,
+              title: `Lieferschein (${order.id.slice(0, 8)})`,
               fileUrl: objectPath,
               restaurantId: order.restaurantId,
               supplierId: order.supplierId,
@@ -2585,7 +2585,7 @@ export async function registerRoutes(
       const document = await storage.createDocument({
         orderId: order.id,
         type: "delivery_note",
-        title: `Lieferschein #${order.id.slice(0, 8)}`,
+        title: `Lieferschein (${order.id.slice(0, 8)})`,
         fileUrl: objectPath,
         restaurantId: order.restaurantId,
         supplierId: order.supplierId,
@@ -2775,9 +2775,8 @@ export async function registerRoutes(
       if (userId !== conversation.restaurantId && userId !== conversation.supplierId) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      const role = userId === conversation.restaurantId ? "restaurant" : "supplier";
-      const docs = await storage.getDocumentsByUser(userId, role);
-      const filteredDocs = docs.filter(
+      const supplierDocs = await storage.getDocumentsByUser(conversation.supplierId, "supplier");
+      const filteredDocs = supplierDocs.filter(
         d => d.restaurantId === conversation.restaurantId && d.supplierId === conversation.supplierId
       );
       res.json(filteredDocs);
