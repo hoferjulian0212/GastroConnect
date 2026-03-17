@@ -383,49 +383,32 @@ export default function Complaints() {
   const canSubmit = selectedOrderId && selectedSupplierId && title.trim() && description.trim();
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2 md:gap-3">
-          <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-primary" />
-          <div>
-            <h1 className="text-xl md:text-2xl font-semibold">{t("common", "complaints")}</h1>
-            <p className="text-xs md:text-sm text-muted-foreground">{t("complaints", "writeComplaint")}</p>
-          </div>
+    <div className="space-y-3 md:space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+          <h1 className="text-lg md:text-xl font-semibold">{t("common", "complaints")}</h1>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} data-testid="button-new-complaint">
-          <AlertCircle className="h-4 w-4 mr-2" />
+        <Button size="sm" onClick={() => setShowCreateDialog(true)} data-testid="button-new-complaint">
+          <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
           {t("complaints", "newComplaint")}
         </Button>
       </div>
 
       {uniqueSuppliers.length > 0 && (
-        <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
           <button
             onClick={() => setFilterComplaintSupplier("all")}
-            className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border transition-all shrink-0 text-xs ${
               filterComplaintSupplier === "all"
-                ? "border-primary bg-primary/10 dark:bg-primary/20"
-                : "border-transparent bg-muted/50 dark:bg-muted/30"
+                ? "border-primary bg-primary/10 text-primary font-semibold dark:bg-primary/20"
+                : "border-transparent bg-muted/50 text-muted-foreground dark:bg-muted/30"
             }`}
             data-testid="filter-complaint-supplier-all"
           >
-            <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
-              filterComplaintSupplier === "all"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}>
-              <Store className="h-5 w-5 md:h-6 md:w-6" />
-            </div>
-            <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
-              filterComplaintSupplier === "all" ? "text-primary" : "text-muted-foreground"
-            }`}>
-              {t("common", "all")}
-            </span>
-            <span className={`text-xs md:text-sm font-bold leading-none ${
-              filterComplaintSupplier === "all" ? "text-primary" : "text-foreground"
-            }`}>
-              {existingComplaints?.length || 0}
-            </span>
+            <Store className="h-3.5 w-3.5" />
+            <span>{t("common", "all")}</span>
+            <span className="font-bold">{existingComplaints?.length || 0}</span>
           </button>
           {uniqueSuppliers.map(supplier => {
             const isActive = filterComplaintSupplier === supplier.id;
@@ -433,63 +416,51 @@ export default function Complaints() {
               <button
                 key={supplier.id}
                 onClick={() => setFilterComplaintSupplier(supplier.id)}
-                className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border transition-all shrink-0 text-xs ${
                   isActive
-                    ? "border-primary bg-primary/10 dark:bg-primary/20"
-                    : "border-transparent bg-muted/50 dark:bg-muted/30"
+                    ? "border-primary bg-primary/10 text-primary font-semibold dark:bg-primary/20"
+                    : "border-transparent bg-muted/50 text-muted-foreground dark:bg-muted/30"
                 }`}
                 data-testid={`filter-complaint-supplier-${supplier.id}`}
               >
-                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+                <Avatar className={`h-5 w-5 ${isActive ? "ring-1 ring-primary" : ""}`}>
                   <AvatarImage src={supplier.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                  <AvatarFallback className="bg-primary/10 text-primary text-[8px] font-semibold">
                     {supplier.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`}>
-                  {supplier.name}
-                </span>
-                <span className={`text-xs md:text-sm font-bold leading-none ${
-                  isActive ? "text-primary" : "text-foreground"
-                }`}>
-                  {supplier.complaintCount}
-                </span>
+                <span className="max-w-[80px] truncate">{supplier.name}</span>
+                <span className="font-bold">{supplier.complaintCount}</span>
               </button>
             );
           })}
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
         {([
-          { key: "all", icon: AlertCircle, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
-          { key: "open", icon: Clock, color: "bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400", activeColor: "bg-yellow-500 text-white dark:bg-yellow-600", borderColor: "border-yellow-400 dark:border-yellow-500" },
-          { key: "in_progress", icon: Loader2, color: "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400", activeColor: "bg-blue-500 text-white dark:bg-blue-600", borderColor: "border-blue-400 dark:border-blue-500" },
-          { key: "resolved", icon: CheckCircle, color: "bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-400", activeColor: "bg-green-500 text-white dark:bg-green-600", borderColor: "border-green-400 dark:border-green-500" },
-          { key: "closed", icon: XCircle, color: "bg-muted/60 text-muted-foreground", activeColor: "bg-muted-foreground text-background", borderColor: "border-muted-foreground" },
-        ] as const).map(({ key, icon: Icon, color, activeColor, borderColor }) => {
+          { key: "all", icon: AlertCircle, activeClass: "bg-primary text-primary-foreground border-primary" },
+          { key: "open", icon: Clock, activeClass: "bg-yellow-500 text-white border-yellow-400 dark:bg-yellow-600 dark:border-yellow-500" },
+          { key: "in_progress", icon: Loader2, activeClass: "bg-blue-500 text-white border-blue-400 dark:bg-blue-600 dark:border-blue-500" },
+          { key: "resolved", icon: CheckCircle, activeClass: "bg-green-500 text-white border-green-400 dark:bg-green-600 dark:border-green-500" },
+          { key: "closed", icon: XCircle, activeClass: "bg-muted-foreground text-background border-muted-foreground" },
+        ] as const).map(({ key, icon: Icon, activeClass }) => {
           const isActive = filterComplaintStatus === key;
           const count = (statusCounts as any)[key] || 0;
           return (
             <button
               key={key}
               onClick={() => setFilterComplaintStatus(key)}
-              className={`relative flex flex-col items-center gap-1 p-2.5 md:p-3 rounded-md border-2 transition-all ${
-                isActive
-                  ? `${activeColor} ${borderColor} shadow-sm`
-                  : `${color} border-transparent`
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-xs transition-all shrink-0 ${
+                isActive ? activeClass : "border-transparent bg-muted/60 text-muted-foreground"
               }`}
               data-testid={`filter-complaint-status-${key}`}
             >
-              <Icon className="h-4 w-4 md:h-5 md:w-5" />
-              <span className="text-[10px] md:text-xs font-medium leading-tight text-center">
+              <Icon className="h-3 w-3" />
+              <span className="font-medium">
                 {key === "all" ? t("common", "all") : getComplaintStatus(key, lang)}
               </span>
-              <span className={`text-sm md:text-base font-bold leading-none ${isActive ? "" : "text-foreground"}`}>
-                {count}
-              </span>
+              <span className="font-bold">{count}</span>
             </button>
           );
         })}
@@ -498,10 +469,10 @@ export default function Complaints() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => setShowSecondaryFilters(!showSecondaryFilters)}
-          className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground hover-elevate rounded-md px-2 py-1.5"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover-elevate rounded-md px-2 py-1"
           data-testid="button-toggle-complaint-filters"
         >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <SlidersHorizontal className="h-3 w-3" />
           <span>{lang === "de" ? "Filter" : "Filtri"}</span>
           {hasSecondaryFilters && (
             <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
@@ -513,7 +484,7 @@ export default function Complaints() {
         {hasActiveFilters && (
           <button
             onClick={clearFilters}
-            className="text-xs text-muted-foreground hover-elevate rounded-md px-2 py-1.5 flex items-center gap-1"
+            className="text-xs text-muted-foreground hover-elevate rounded-md px-2 py-1 flex items-center gap-1"
             data-testid="button-clear-complaint-filters"
           >
             <X className="h-3 w-3" />
@@ -523,143 +494,104 @@ export default function Complaints() {
       </div>
 
       {showSecondaryFilters && (
-        <Card>
-          <CardContent className="p-3 md:p-4">
-            <div className="flex gap-2">
-              <div className="flex-1 min-w-0">
-                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
-                <Input type="date" value={filterComplaintDateFrom} onChange={e => setFilterComplaintDateFrom(e.target.value)} className="h-9 text-xs md:text-sm" data-testid="filter-complaint-date-from" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
-                <Input type="date" value={filterComplaintDateTo} onChange={e => setFilterComplaintDateTo(e.target.value)} className="h-9 text-xs md:text-sm" data-testid="filter-complaint-date-to" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex gap-2 px-1">
+          <div className="flex-1 min-w-0">
+            <label className="text-[10px] text-muted-foreground mb-0.5 block">{t("common", "from")}</label>
+            <Input type="date" value={filterComplaintDateFrom} onChange={e => setFilterComplaintDateFrom(e.target.value)} className="h-8 text-xs" data-testid="filter-complaint-date-from" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <label className="text-[10px] text-muted-foreground mb-0.5 block">{t("common", "to")}</label>
+            <Input type="date" value={filterComplaintDateTo} onChange={e => setFilterComplaintDateTo(e.target.value)} className="h-8 text-xs" data-testid="filter-complaint-date-to" />
+          </div>
+        </div>
       )}
 
-      <div className="space-y-2 md:space-y-3">
+      <div className="space-y-1.5 md:space-y-2">
             {loadingComplaints ? (
-              <div className="space-y-2 md:space-y-3">
+              <div className="space-y-1.5 md:space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 md:h-20 w-full" />
+                  <Skeleton key={i} className="h-14 md:h-16 w-full rounded-lg" />
                 ))}
               </div>
             ) : filteredComplaints.length > 0 ? (
-              <div className="space-y-2 md:space-y-3">
+              <div className="space-y-1.5 md:space-y-2">
                 {filteredComplaints.map((complaint) => {
                   const statusInfo = formatComplaintStatus(complaint.status);
                   const StatusIcon = statusInfo.icon;
                   const canEdit = complaint.status === "open";
                   
                   return (
-                    <Card
+                    <div
                       key={complaint.id}
-                      className={`overflow-hidden rounded-md cursor-pointer hover-elevate ${getComplaintCardBg(complaint.status)}`}
+                      className={`flex items-center gap-2.5 md:gap-3 p-2.5 md:p-3 rounded-lg border cursor-pointer hover-elevate transition-all ${getComplaintCardBg(complaint.status)}`}
                       onClick={() => setDetailComplaint(complaint)}
                       data-testid={`complaint-${complaint.id}`}
                     >
-                      <CardContent className="p-3 md:p-4 space-y-1.5 md:space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-sm md:text-base">{complaint.title}</div>
-                          <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 mt-0.5">{complaint.description}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Badge variant={statusInfo.variant} className="text-[10px] md:text-xs shrink-0">
-                            <StatusIcon className="h-3 w-3 mr-1" />
+                      <div className={`w-1 self-stretch rounded-full shrink-0 ${getComplaintAccent(complaint.status)}`} />
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-medium text-sm truncate">{complaint.title}</span>
+                          <Badge variant={statusInfo.variant} className="text-[9px] px-1.5 py-0 h-4 shrink-0">
+                            <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
                             {statusInfo.label}
                           </Badge>
-                          {canEdit && (
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{complaint.description}</p>
+                        <div className="flex items-center gap-2 mt-1 text-[10px] md:text-[11px] text-muted-foreground">
+                          <span className="font-mono font-semibold" data-testid={`text-complaint-order-${complaint.id}`}>#{complaint.orderId.substring(0, 8)}</span>
+                          <span>·</span>
+                          <span>{complaint.supplier?.companyName || t("orders", "unknownSupplier")}</span>
+                          <span>·</span>
+                          <span>{formatDate(complaint.createdAt)}</span>
+                          {complaint.order && (
                             <>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={(e) => { e.stopPropagation(); openEditDialog(complaint); }}
-                                data-testid={`button-edit-complaint-${complaint.id}`}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={(e) => { e.stopPropagation(); setWithdrawComplaintId(complaint.id); }}
-                                data-testid={`button-withdraw-complaint-${complaint.id}`}
-                              >
-                                <XCircle className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
+                              <span>·</span>
+                              <span>{parseFloat(complaint.order.totalAmount).toFixed(2)}€</span>
+                            </>
+                          )}
+                          {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
+                            <>
+                              <span>·</span>
+                              <span className="flex items-center gap-0.5">
+                                <FileImage className="h-2.5 w-2.5" />
+                                {complaint.mediaUrls.length}
+                              </span>
                             </>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 p-2 rounded-md bg-muted/40 border border-border/50 text-xs md:text-sm flex-wrap">
-                        <span className="flex items-center gap-1 font-mono font-semibold text-foreground" data-testid={`text-complaint-order-${complaint.id}`}>
-                          <ShoppingBag className="h-3 w-3 text-muted-foreground" />
-                          #{complaint.orderId.substring(0, 8)}
-                        </span>
-                        {complaint.order && (
-                          <>
-                            <span className="flex items-center gap-1 text-muted-foreground">
-                              <CalendarDays className="h-3 w-3" />
-                              {formatDate(complaint.order.createdAt)}
-                            </span>
-                            <span className="text-muted-foreground">
-                              {parseFloat(complaint.order.totalAmount).toFixed(2)}€
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      
-                      {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
-                        <div className="flex gap-1.5 mt-1">
-                          {complaint.mediaUrls.slice(0, 4).map((url, idx) => (
-                            <div key={idx} className="h-12 w-12 rounded overflow-hidden border">
-                              {isVideoFile(url) ? (
-                                <div className="h-full w-full flex items-center justify-center bg-muted">
-                                  <FileVideo className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                              ) : (
-                                <img 
-                                  src={getMediaSrc(url)} 
-                                  alt={`${t("complaints", "attachment")} ${idx + 1}`}
-                                  className="h-full w-full object-cover"
-                                />
-                              )}
-                            </div>
-                          ))}
-                          {complaint.mediaUrls.length > 4 && (
-                            <div className="h-12 w-12 rounded border flex items-center justify-center bg-muted text-xs text-muted-foreground">
-                              +{complaint.mediaUrls.length - 4}
-                            </div>
-                          )}
+                      {canEdit && (
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={(e) => { e.stopPropagation(); openEditDialog(complaint); }}
+                            data-testid={`button-edit-complaint-${complaint.id}`}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={(e) => { e.stopPropagation(); setWithdrawComplaintId(complaint.id); }}
+                            data-testid={`button-withdraw-complaint-${complaint.id}`}
+                          >
+                            <XCircle className="h-3 w-3 text-destructive" />
+                          </Button>
                         </div>
                       )}
-                      
-                      <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
-                        <span>{complaint.supplier?.companyName || t("orders", "unknownSupplier")}</span>
-                        <span>•</span>
-                        <span>{formatDate(complaint.createdAt)}</span>
-                        {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
-                          <>
-                            <span>•</span>
-                            <span className="flex items-center gap-0.5">
-                              <FileImage className="h-3 w-3" />
-                              {complaint.mediaUrls.length}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      </CardContent>
-                    </Card>
+                    </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="text-center py-6 md:py-8 text-muted-foreground">
-                <AlertCircle className="mx-auto h-10 w-10 md:h-12 md:w-12 mb-2 md:mb-3 opacity-50" />
-                <p className="text-sm md:text-base">{t("complaints", "noComplaints")}</p>
+              <div className="text-center py-8 text-muted-foreground">
+                <AlertCircle className="mx-auto h-10 w-10 mb-2 opacity-50" />
+                <p className="text-sm">{t("complaints", "noComplaints")}</p>
               </div>
             )}
       </div>
