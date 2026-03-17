@@ -1178,6 +1178,74 @@ export async function registerRoutes(
         }
       }
 
+      // Auto-generate delivery note and send chat message when order is delivered
+      if (status === "delivered" && (previousStatus === "in_delivery" || previousStatus === "confirmed" || previousStatus === "partially_confirmed")) {
+        try {
+          const existingDocs = await storage.getDocumentsByOrder(order.id);
+          const hasDeliveryNote = existingDocs.some(d => d.type === "delivery_note");
+          if (!hasDeliveryNote) {
+            const pdfBuffer = await generateDeliveryNotePDF(order);
+            const objectService = new ObjectStorageService();
+            const privateDir = objectService.getPrivateObjectDir();
+            const fileId = randomUUID();
+            const fullPath = `${privateDir}/documents/${fileId}.pdf`;
+            const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+            const bucketName = pathParts[0];
+            const objectName = pathParts.slice(1).join("/");
+            const bucket = objectStorageClient.bucket(bucketName);
+            const file = bucket.file(objectName);
+            await file.save(pdfBuffer, {
+              contentType: "application/pdf",
+              metadata: { contentType: "application/pdf" },
+            });
+            const relativePath = `documents/${fileId}.pdf`;
+            const objectPath = `/objects/${relativePath}`;
+            const document = await storage.createDocument({
+              orderId: order.id,
+              type: "delivery_note",
+              title: `Lieferschein #${order.id.slice(0, 8)}`,
+              fileUrl: objectPath,
+              restaurantId: order.restaurantId,
+              supplierId: order.supplierId,
+            });
+            const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+            await storage.sendMessage({
+              conversationId: conversation.id,
+              senderId: order.supplierId,
+              messageType: "document",
+              content: JSON.stringify({
+                documentId: document.id,
+                title: document.title,
+                type: "delivery_note",
+                orderId: order.id,
+                fileUrl: objectPath,
+              }),
+              orderId: order.id,
+              documentUrl: objectPath,
+            });
+          } else {
+            const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+            const existingNote = existingDocs.find(d => d.type === "delivery_note")!;
+            await storage.sendMessage({
+              conversationId: conversation.id,
+              senderId: order.supplierId,
+              messageType: "document",
+              content: JSON.stringify({
+                documentId: existingNote.id,
+                title: existingNote.title,
+                type: "delivery_note",
+                orderId: order.id,
+                fileUrl: existingNote.fileUrl,
+              }),
+              orderId: order.id,
+              documentUrl: existingNote.fileUrl,
+            });
+          }
+        } catch (err) {
+          console.error("Failed to auto-generate delivery note on delivered:", err);
+        }
+      }
+
       // Stock management: reverse stock when order is cancelled (idempotent)
       if (status === "cancelled" && (previousStatus === "confirmed" || previousStatus === "partially_confirmed" || previousStatus === "in_delivery")) {
         const existingMovements = await storage.getStockMovementsByOrder(order.id);
