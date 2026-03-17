@@ -164,7 +164,7 @@ export default function SupplierInbox() {
 
   useEffect(() => {
     const params = new URLSearchParams(searchString);
-    const conversationIdParam = params.get("conversationId");
+    const conversationIdParam = params.get("conversationId") || params.get("chat");
     if (conversationIdParam) {
       setSelectedConversation(conversationIdParam);
       if (currentUser?.id) {

@@ -202,7 +202,7 @@ export default function RestaurantInbox() {
       const label = `${lang === "de" ? "Bestellung" : "Ordine"} #${orderRefIdParam.slice(0, 8)}`;
       setAttachedOrderRef({ id: orderRefIdParam, label });
     }
-    const conversationIdParam = params.get("conversationId");
+    const conversationIdParam = params.get("conversationId") || params.get("chat");
     if (conversationIdParam) {
       setSelectedConversation(conversationIdParam);
       if (currentUser?.id) {

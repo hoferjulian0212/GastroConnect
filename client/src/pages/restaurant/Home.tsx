@@ -608,7 +608,7 @@ export default function RestaurantHome() {
                                 className="w-full text-xs border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/restaurant/inbox?supplierId=${order.supplierId}`);
+                                  navigate(`/restaurant/inbox?to=${order.supplierId}`);
                                 }}
                                 data-testid={`button-send-overdue-msg-${order.id}`}
                               >
