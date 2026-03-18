@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users } from "@shared/schema";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings } from "@shared/schema";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
@@ -2815,6 +2815,201 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error downloading attachment:", error);
       res.status(500).json({ error: "Failed to download attachment" });
+    }
+  });
+
+  // ===== COST ANALYSIS / OVERNIGHT STAYS =====
+
+  const costSettingsBodySchema = z.object({
+    restaurantId: z.string().min(1),
+    targetCostPerGuest: z.number().min(0),
+  });
+
+  const overnightStaysBodySchema = z.object({
+    restaurantId: z.string().min(1),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    overnightStays: z.number().int().min(0),
+  });
+
+  const monthParamSchema = z.string().regex(/^\d{4}-\d{2}$/);
+
+  function getOrderMonth(createdAt: Date | string): string {
+    const d = typeof createdAt === "string" ? new Date(createdAt) : createdAt;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  app.get("/api/restaurant/cost-settings", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      const [settings] = await db.select().from(costSettings).where(eq(costSettings.restaurantId, restaurantId));
+      res.json(settings || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cost settings" });
+    }
+  });
+
+  app.post("/api/restaurant/cost-settings", async (req, res) => {
+    try {
+      const parsed = costSettingsBodySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+      const { restaurantId, targetCostPerGuest } = parsed.data;
+      const [existing] = await db.select().from(costSettings).where(eq(costSettings.restaurantId, restaurantId));
+      if (existing) {
+        const [updated] = await db.update(costSettings)
+          .set({ targetCostPerGuest: String(targetCostPerGuest), updatedAt: new Date() })
+          .where(eq(costSettings.id, existing.id))
+          .returning();
+        return res.json(updated);
+      }
+      const [created] = await db.insert(costSettings).values({
+        restaurantId,
+        targetCostPerGuest: String(targetCostPerGuest),
+      }).returning();
+      res.json(created);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save cost settings" });
+    }
+  });
+
+  app.get("/api/restaurant/overnight-stays", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      const month = req.query.month as string;
+      if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      if (month && !monthParamSchema.safeParse(month).success) return res.status(400).json({ error: "Invalid month format" });
+      const results = await db.select().from(overnightStays)
+        .where(eq(overnightStays.restaurantId, restaurantId))
+        .orderBy(desc(overnightStays.date));
+      if (month) {
+        return res.json(results.filter(r => r.date.startsWith(month)));
+      }
+      res.json(results);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch overnight stays" });
+    }
+  });
+
+  app.post("/api/restaurant/overnight-stays", async (req, res) => {
+    try {
+      const parsed = overnightStaysBodySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+      const { restaurantId, date, overnightStays: stays } = parsed.data;
+      const [existing] = await db.select().from(overnightStays)
+        .where(and(eq(overnightStays.restaurantId, restaurantId), eq(overnightStays.date, date)));
+      if (existing) {
+        const [updated] = await db.update(overnightStays)
+          .set({ overnightStays: stays, updatedAt: new Date() })
+          .where(eq(overnightStays.id, existing.id))
+          .returning();
+        return res.json(updated);
+      }
+      const [created] = await db.insert(overnightStays).values({
+        restaurantId,
+        date,
+        overnightStays: stays,
+      }).returning();
+      res.json(created);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save overnight stays" });
+    }
+  });
+
+  app.delete("/api/restaurant/overnight-stays/:id", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      const [record] = await db.select().from(overnightStays).where(eq(overnightStays.id, req.params.id));
+      if (!record) return res.status(404).json({ error: "Not found" });
+      if (record.restaurantId !== restaurantId) return res.status(403).json({ error: "Forbidden" });
+      await db.delete(overnightStays).where(eq(overnightStays.id, req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete overnight stay" });
+    }
+  });
+
+  app.get("/api/restaurant/cost-analysis", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      const month = req.query.month as string;
+      if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      if (!month || !monthParamSchema.safeParse(month).success) return res.status(400).json({ error: "Valid month (YYYY-MM) required" });
+
+      const staysData = await db.select().from(overnightStays)
+        .where(eq(overnightStays.restaurantId, restaurantId));
+      const monthStays = staysData.filter(s => s.date.startsWith(month));
+      const totalOvernights = monthStays.reduce((sum, s) => sum + s.overnightStays, 0);
+
+      const deliveredOrders = await db.select().from(orders)
+        .where(and(
+          eq(orders.restaurantId, restaurantId),
+          eq(orders.status, "delivered"),
+        ));
+      const monthOrders = deliveredOrders.filter(o => getOrderMonth(o.createdAt) === month);
+      const totalCosts = monthOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+
+      const costPerGuest = totalOvernights > 0 ? totalCosts / totalOvernights : 0;
+
+      const [settings] = await db.select().from(costSettings).where(eq(costSettings.restaurantId, restaurantId));
+      const targetCost = settings ? Number(settings.targetCostPerGuest) : 0;
+      const difference = costPerGuest - targetCost;
+      const percentageDeviation = targetCost > 0 ? ((costPerGuest - targetCost) / targetCost) * 100 : 0;
+
+      res.json({
+        month,
+        totalOvernights,
+        totalCosts: totalCosts.toFixed(2),
+        costPerGuest: costPerGuest.toFixed(2),
+        targetCost: targetCost.toFixed(2),
+        difference: difference.toFixed(2),
+        percentageDeviation: percentageDeviation.toFixed(1),
+        orderCount: monthOrders.length,
+        daysWithData: monthStays.length,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to calculate cost analysis" });
+    }
+  });
+
+  app.get("/api/restaurant/cost-analysis/history", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+
+      const allStays = await db.select().from(overnightStays)
+        .where(eq(overnightStays.restaurantId, restaurantId));
+      const allOrders = await db.select().from(orders)
+        .where(and(eq(orders.restaurantId, restaurantId), eq(orders.status, "delivered")));
+      const [settings] = await db.select().from(costSettings).where(eq(costSettings.restaurantId, restaurantId));
+      const targetCost = settings ? Number(settings.targetCostPerGuest) : 0;
+
+      const months: Record<string, { overnights: number; costs: number }> = {};
+      for (const stay of allStays) {
+        const m = stay.date.slice(0, 7);
+        if (!months[m]) months[m] = { overnights: 0, costs: 0 };
+        months[m].overnights += stay.overnightStays;
+      }
+      for (const order of allOrders) {
+        const m = getOrderMonth(order.createdAt);
+        if (!months[m]) months[m] = { overnights: 0, costs: 0 };
+        months[m].costs += Number(order.totalAmount || 0);
+      }
+
+      const history = Object.entries(months)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-12)
+        .map(([month, data]) => ({
+          month,
+          costPerGuest: data.overnights > 0 ? Number((data.costs / data.overnights).toFixed(2)) : 0,
+          totalOvernights: data.overnights,
+          totalCosts: Number(data.costs.toFixed(2)),
+          targetCost,
+        }));
+
+      res.json(history);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cost analysis history" });
     }
   });
 

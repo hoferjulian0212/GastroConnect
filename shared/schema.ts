@@ -263,6 +263,27 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
 
 export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true, createdAt: true });
 
+export const overnightStays = pgTable("overnight_stays", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  date: varchar("date", { length: 10 }).notNull(),
+  overnightStays: integer("overnight_stays").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOvernightStaysSchema = createInsertSchema(overnightStays).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const costSettings = pgTable("cost_settings", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  targetCostPerGuest: decimal("target_cost_per_guest", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCostSettingsSchema = createInsertSchema(costSettings).omit({ id: true, createdAt: true, updatedAt: true });
+
 export const confirmOrderItemSchema = z.object({
   orderItemId: z.string(),
   confirmedQuantity: z.number().int().min(0),
@@ -345,3 +366,7 @@ export type OrderTemplateItemWithProduct = OrderTemplateItem & { product: Produc
 export type OrderTemplateWithItems = OrderTemplate & { items: OrderTemplateItemWithProduct[] };
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type InsertOvernightStays = z.infer<typeof insertOvernightStaysSchema>;
+export type OvernightStays = typeof overnightStays.$inferSelect;
+export type InsertCostSettings = z.infer<typeof insertCostSettingsSchema>;
+export type CostSettings = typeof costSettings.$inferSelect;

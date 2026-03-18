@@ -37,6 +37,7 @@ import RestaurantSettings from "@/pages/restaurant/Settings";
 import RestaurantProfile from "@/pages/restaurant/Profile";
 import RestaurantComplaints from "@/pages/restaurant/Complaints";
 import RestaurantSuppliers from "@/pages/restaurant/Suppliers";
+import RestaurantCostAnalysis from "@/pages/restaurant/CostAnalysis";
 import SupplierHome from "@/pages/supplier/Home";
 import SupplierInbox from "@/pages/supplier/Inbox";
 import SupplierProducts from "@/pages/supplier/Products";
@@ -64,6 +65,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/settings" component={RestaurantSettings} />
       <Route path="/restaurant/profile" component={RestaurantProfile} />
       <Route path="/restaurant/documents" component={Documents} />
+      <Route path="/restaurant/cost-analysis" component={RestaurantCostAnalysis} />
       <Route component={NotFound} />
     </Switch>
   );

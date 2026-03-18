@@ -1,0 +1,102 @@
+Build a full-featured dashboard widget for a hotel management web app that calculates and tracks "Cost per Guest per Day".
+
+The widget must be clean, minimal, and optimized for daily use by hotel operators.
+
+CORE FUNCTIONALITY:
+
+1. SETTINGS (PERSISTENT):
+- Create a settings section where the user defines:
+  "Target Cost per Guest per Day (€)"
+- Example: 17€
+- Store this value persistently (database or local storage)
+- Allow editing anytime
+
+2. DAILY INPUT SYSTEM:
+- Input field: "Number of Overnight Stays"
+- Date selector (default = today)
+- Save button
+- Store entries with:
+  - date
+  - overnight_stays
+- Prevent duplicate entries for the same date (allow overwrite)
+
+3. DATA INTEGRATION:
+- Assume there is an existing dataset or API:
+  "monthly_order_value"
+- This represents total cost of delivered goods per month
+- Either mock this data or simulate it if no backend exists
+
+4. CALCULATIONS:
+- Aggregate per selected month:
+  total_overnights = sum of all overnight_stays
+  total_costs = monthly_order_value
+
+- Calculate:
+  cost_per_guest = total_costs / total_overnights
+
+- Also calculate:
+  difference = cost_per_guest - target_cost
+  percentage_deviation = ((cost_per_guest - target_cost) / target_cost) * 100
+
+5. DASHBOARD UI:
+
+Create a clear KPI section with:
+- Target Cost (fixed value)
+- Actual Cost per Guest (calculated)
+- Difference (€)
+- Deviation (%)
+
+6. VISUAL COMPONENTS:
+
+- Monthly summary card:
+  - Total Overnight Stays
+  - Total Costs
+  - Cost per Guest
+
+- Chart:
+  - Line chart showing cost per guest over time (monthly)
+  - Optional: overlay target line
+
+- Color logic:
+  - Green → below target
+  - Red → above target
+
+7. UX REQUIREMENTS:
+
+- Very fast daily input (max 2 clicks)
+- Clean dashboard layout
+- Mobile responsive
+- Prioritize clarity over complexity
+
+8. DATA STORAGE:
+
+Use a simple structure like:
+{
+  date: string,
+  overnight_stays: number
+}
+
+Persist data using:
+- Preferred: lightweight backend (Express or similar)
+- Fallback: localStorage
+
+9. TECH STACK:
+
+- Frontend: React (functional components + hooks)
+- Styling: Tailwind CSS
+- Charts: Chart.js or Recharts
+- Backend (optional): Node.js / Express
+
+10. OPTIONAL FEATURES (if time permits):
+
+- CSV export of monthly data
+- Month selector dropdown
+- Comparison between months
+- Simple forecast based on current month trend
+
+GOAL:
+
+The user should instantly see:
+"Am I above or below my target cost per guest?"
+
+The widget must feel like a core business control tool, not a complex analytics system.

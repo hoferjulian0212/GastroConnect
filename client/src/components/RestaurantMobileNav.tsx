@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, Package, ShoppingCart, MoreHorizontal, ShoppingBag, AlertCircle, Settings, X, Truck, FileText, User } from "lucide-react";
+import { Home, MessageSquare, Package, ShoppingCart, MoreHorizontal, ShoppingBag, AlertCircle, Settings, X, Truck, FileText, User, Calculator } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useChat } from "@/context/ChatContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -27,6 +27,7 @@ export function RestaurantMobileNav() {
     { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag },
     { title: t("common", "complaints"), url: "/restaurant/complaints", icon: AlertCircle },
     { title: t("common", "documents"), url: "/restaurant/documents", icon: FileText },
+    { title: t("common", "costAnalysis"), url: "/restaurant/cost-analysis", icon: Calculator },
     { title: t("common", "profile"), url: "/restaurant/profile", icon: User },
     { title: t("common", "settings"), url: "/restaurant/settings", icon: Settings },
   ];
