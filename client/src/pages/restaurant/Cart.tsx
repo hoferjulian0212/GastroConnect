@@ -200,15 +200,23 @@ export default function RestaurantCart() {
         result[sid] = [];
         continue;
       }
+      const timeByDay: Record<number, { from: string; to: string }> = {};
+      for (const s of schedules) {
+        if (s.deliveryTimeFrom && s.deliveryTimeTo) {
+          timeByDay[s.dayOfWeek] = { from: s.deliveryTimeFrom, to: s.deliveryTimeTo };
+        }
+      }
       const dates: { value: string; label: string }[] = [];
       const today = startOfDay(new Date());
       for (let i = 1; i <= 28; i++) {
         const date = addDays(today, i);
         if (weekdays.includes(date.getDay())) {
-          dates.push({
-            value: format(date, "yyyy-MM-dd"),
-            label: format(date, "EEEE, dd. MMMM yyyy", { locale: dateLocale }),
-          });
+          let label = format(date, "EEEE, dd. MMMM yyyy", { locale: dateLocale });
+          const tw = timeByDay[date.getDay()];
+          if (tw) {
+            label += ` (${tw.from} - ${tw.to})`;
+          }
+          dates.push({ value: format(date, "yyyy-MM-dd"), label });
         }
       }
       result[sid] = dates;

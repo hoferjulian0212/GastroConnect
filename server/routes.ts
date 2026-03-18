@@ -102,10 +102,15 @@ const updatePromotionSchema = z.object({
   targetRestaurantIds: z.array(z.string()).optional(),
 });
 
+const timeField = z.string().regex(/^\d{2}:\d{2}$/).optional().nullable();
 const deliveryScheduleSchema = z.object({
   supplierId: uuidField,
   restaurantId: uuidField,
-  days: z.array(z.number().int().min(0).max(6)).max(7),
+  days: z.array(z.object({
+    day: z.number().int().min(0).max(6),
+    timeFrom: timeField,
+    timeTo: timeField,
+  })).max(7),
 }).strict();
 
 const updateCartQuantitySchema = z.object({

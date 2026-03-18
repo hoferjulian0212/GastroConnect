@@ -131,7 +131,7 @@ export interface IStorage {
   // Delivery Schedules
   getDeliverySchedules(supplierId: string): Promise<(DeliverySchedule & { restaurant: User })[]>;
   getDeliverySchedulesForRestaurant(supplierId: string, restaurantId: string): Promise<DeliverySchedule[]>;
-  setDeliverySchedules(supplierId: string, restaurantId: string, days: number[]): Promise<void>;
+  setDeliverySchedules(supplierId: string, restaurantId: string, days: { day: number; timeFrom?: string | null; timeTo?: string | null }[]): Promise<void>;
 
   // Promotions
   getPromotionsBySupplier(supplierId: string): Promise<PromotionWithProduct[]>;
@@ -1308,13 +1308,13 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async setDeliverySchedules(supplierId: string, restaurantId: string, days: number[]): Promise<void> {
+  async setDeliverySchedules(supplierId: string, restaurantId: string, days: { day: number; timeFrom?: string | null; timeTo?: string | null }[]): Promise<void> {
     await db.delete(deliverySchedules).where(
       and(eq(deliverySchedules.supplierId, supplierId), eq(deliverySchedules.restaurantId, restaurantId))
     );
     if (days.length > 0) {
       await db.insert(deliverySchedules).values(
-        days.map(day => ({ supplierId, restaurantId, dayOfWeek: day }))
+        days.map(d => ({ supplierId, restaurantId, dayOfWeek: d.day, deliveryTimeFrom: d.timeFrom || null, deliveryTimeTo: d.timeTo || null }))
       );
     }
   }

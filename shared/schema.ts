@@ -183,6 +183,8 @@ export const deliverySchedules = pgTable("delivery_schedules", {
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   dayOfWeek: integer("day_of_week").notNull(),
+  deliveryTimeFrom: varchar("delivery_time_from", { length: 5 }),
+  deliveryTimeTo: varchar("delivery_time_to", { length: 5 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

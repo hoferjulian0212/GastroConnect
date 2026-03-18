@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, ArrowLeft, MessageSquare, Phone, ClipboardList, CalendarDays, Tag, Package, Save, Loader2, Trash2, MapPin, Mail, Euro, Plus, Minus } from "lucide-react";
+import { Search, ArrowLeft, MessageSquare, Phone, ClipboardList, CalendarDays, Tag, Package, Save, Loader2, Trash2, MapPin, Mail, Euro, Plus, Minus, Clock } from "lucide-react";
 import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -194,6 +194,7 @@ function RestaurantDetail({
 }) {
   const WEEKDAYS = getWeekdays(lang);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [dayTimeWindows, setDayTimeWindows] = useState<Record<number, { from: string; to: string }>>({});
   const [daysLoaded, setDaysLoaded] = useState(false);
 
   const [priceProduct, setPriceProduct] = useState("");
@@ -214,9 +215,17 @@ function RestaurantDetail({
     enabled: !!supplierId,
   });
 
-  const existingDays = deliverySchedules?.filter(s => s.restaurantId === restaurant.id).map(s => s.dayOfWeek) || [];
+  const restaurantSchedules = deliverySchedules?.filter(s => s.restaurantId === restaurant.id) || [];
+  const existingDays = restaurantSchedules.map(s => s.dayOfWeek);
   if (!daysLoaded && deliverySchedules) {
     setSelectedDays(existingDays);
+    const windows: Record<number, { from: string; to: string }> = {};
+    for (const s of restaurantSchedules) {
+      if (s.deliveryTimeFrom && s.deliveryTimeTo) {
+        windows[s.dayOfWeek] = { from: s.deliveryTimeFrom, to: s.deliveryTimeTo };
+      }
+    }
+    setDayTimeWindows(windows);
     setDaysLoaded(true);
   }
 
@@ -239,7 +248,13 @@ function RestaurantDetail({
   const restaurantMoqs = customMoqs?.filter(m => m.restaurantId === restaurant.id) || [];
 
   const toggleDay = (day: number) => {
-    setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+    setSelectedDays(prev => {
+      if (prev.includes(day)) {
+        setDayTimeWindows(w => { const next = { ...w }; delete next[day]; return next; });
+        return prev.filter(d => d !== day);
+      }
+      return [...prev, day];
+    });
   };
 
   const saveScheduleMutation = useMutation({
@@ -247,7 +262,11 @@ function RestaurantDetail({
       return apiRequest("PUT", "/api/delivery-schedules", {
         supplierId,
         restaurantId: restaurant.id,
-        days: selectedDays,
+        days: selectedDays.map(day => ({
+          day,
+          timeFrom: dayTimeWindows[day]?.from || null,
+          timeTo: dayTimeWindows[day]?.to || null,
+        })),
       });
     },
     onSuccess: () => {
@@ -404,23 +423,50 @@ function RestaurantDetail({
           </CardDescription>
         </CardHeader>
         <CardContent className="p-3 md:p-6 pt-0 md:pt-0 space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {WEEKDAYS.map(day => (
-              <label
-                key={day.value}
-                className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                  selectedDays.includes(day.value)
-                    ? "border-primary bg-primary/5"
-                    : "border-border"
-                }`}
-                data-testid={`checkbox-day-${day.value}`}
-              >
-                <Checkbox
-                  checked={selectedDays.includes(day.value)}
-                  onCheckedChange={() => toggleDay(day.value)}
-                />
-                <span className="text-sm">{day.label}</span>
-              </label>
+              <div key={day.value} className="space-y-1.5">
+                <label
+                  className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                    selectedDays.includes(day.value)
+                      ? "border-primary bg-primary/5"
+                      : "border-border"
+                  }`}
+                  data-testid={`checkbox-day-${day.value}`}
+                >
+                  <Checkbox
+                    checked={selectedDays.includes(day.value)}
+                    onCheckedChange={() => toggleDay(day.value)}
+                  />
+                  <span className="text-sm">{day.label}</span>
+                </label>
+                {selectedDays.includes(day.value) && (
+                  <div className="flex items-center gap-1.5 pl-2">
+                    <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <input
+                      type="time"
+                      value={dayTimeWindows[day.value]?.from || ""}
+                      onChange={(e) => setDayTimeWindows(prev => ({
+                        ...prev,
+                        [day.value]: { from: e.target.value, to: prev[day.value]?.to || "" }
+                      }))}
+                      className="text-xs border border-border rounded px-1.5 py-1 bg-background w-[80px]"
+                      data-testid={`input-time-from-${day.value}`}
+                    />
+                    <span className="text-xs text-muted-foreground">-</span>
+                    <input
+                      type="time"
+                      value={dayTimeWindows[day.value]?.to || ""}
+                      onChange={(e) => setDayTimeWindows(prev => ({
+                        ...prev,
+                        [day.value]: { from: prev[day.value]?.from || "", to: e.target.value }
+                      }))}
+                      className="text-xs border border-border rounded px-1.5 py-1 bg-background w-[80px]"
+                      data-testid={`input-time-to-${day.value}`}
+                    />
+                  </div>
+                )}
+              </div>
             ))}
           </div>
           <Button
