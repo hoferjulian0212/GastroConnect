@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Search, Package, MessageSquare, Phone } from "lucide-react";
+import { Search, Package, MessageSquare, Phone, Euro } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import type { User } from "@shared/schema";
@@ -21,6 +21,11 @@ export default function RestaurantSuppliers() {
 
   const { data: suppliers, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users?role=supplier"],
+    enabled: !!currentUser?.id,
+  });
+
+  const { data: movData } = useQuery<Record<string, { minimumValue: string; zone: string | null }>>({
+    queryKey: [`/api/minimum-order-values/for-restaurant?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
 
@@ -117,6 +122,13 @@ export default function RestaurantSuppliers() {
                     <span className="font-medium truncate">{supplier.phone || "-"}</span>
                   </div>
                 </div>
+
+                {movData && movData[supplier.id] && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4 px-2 py-1.5 rounded-md bg-muted/50" data-testid={`mov-info-${supplier.id}`}>
+                    <Euro className="h-3 w-3 shrink-0" />
+                    <span>{t("cart", "minimumOrderValue")}: {parseFloat(movData[supplier.id].minimumValue).toFixed(2)} EUR</span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2">
                   <Button 

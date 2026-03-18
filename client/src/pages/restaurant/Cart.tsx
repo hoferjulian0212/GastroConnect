@@ -48,6 +48,11 @@ export default function RestaurantCart() {
     enabled: !!currentUser?.id,
   });
 
+  const { data: movData } = useQuery<Record<string, { minimumValue: string; zone: string | null }>>({
+    queryKey: [`/api/minimum-order-values/for-restaurant?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
   const updateQuantityMutation = useMutation({
     mutationFn: async ({ cartItemId, quantity }: { cartItemId: string; quantity: number }) => {
       return apiRequest("PATCH", `/api/cart/${cartItemId}`, { quantity });
@@ -244,6 +249,18 @@ export default function RestaurantCart() {
 
   const calculateTotal = (items: CartItemWithPromotion[]) => {
     return items.reduce((total, item) => total + getEffectivePrice(item) * item.quantity, 0).toFixed(2);
+  };
+
+  const getSupplierMov = (supplierId: string): number => {
+    if (!movData || !movData[supplierId]) return 0;
+    return parseFloat(movData[supplierId].minimumValue) || 0;
+  };
+
+  const isBelowMov = (supplierId: string, items: CartItemWithPromotion[]): boolean => {
+    const mov = getSupplierMov(supplierId);
+    if (mov <= 0) return false;
+    const total = items.reduce((sum, item) => sum + getEffectivePrice(item) * item.quantity, 0);
+    return total < mov;
   };
 
   const grandTotal = cartItems?.reduce(
@@ -563,6 +580,20 @@ export default function RestaurantCart() {
                     />
                   </div>
                 </div>
+                {isBelowMov(supplierId, items) && (
+                  <div className="border-t border-red-200 bg-red-50 dark:bg-red-900/10 px-3 md:px-6 py-2">
+                    <p className="text-xs text-red-600 dark:text-red-400 font-medium" data-testid={`mov-warning-${supplierId}`}>
+                      {t("cart", "belowMinOrderValue").replace("{min}", getSupplierMov(supplierId).toFixed(2))}
+                    </p>
+                  </div>
+                )}
+                {getSupplierMov(supplierId) > 0 && !isBelowMov(supplierId, items) && (
+                  <div className="border-t border-border px-3 md:px-6 py-1.5">
+                    <p className="text-[10px] text-muted-foreground">
+                      {t("cart", "minimumOrderValue")}: {getSupplierMov(supplierId).toFixed(2)} EUR
+                    </p>
+                  </div>
+                )}
                 <CardFooter className="border-t border-border pt-3 md:pt-4 p-3 md:p-6">
                   <div className="flex items-center justify-between w-full gap-3">
                     <div className="flex items-center gap-2 text-sm md:text-base">
@@ -575,7 +606,7 @@ export default function RestaurantCart() {
                         variant="outline"
                         className="gap-1.5 text-xs md:text-sm shrink-0"
                         onClick={() => createSupplierOrderMutation.mutate(supplierId)}
-                        disabled={createSupplierOrderMutation.isPending || createOrderMutation.isPending || (deliveryOptions[supplierId] === "date" && !selectedDeliveryDates[supplierId] && (perSupplierDeliveryDates[supplierId] || []).length > 0)}
+                        disabled={createSupplierOrderMutation.isPending || createOrderMutation.isPending || isBelowMov(supplierId, items) || (deliveryOptions[supplierId] === "date" && !selectedDeliveryDates[supplierId] && (perSupplierDeliveryDates[supplierId] || []).length > 0)}
                         data-testid={`button-send-supplier-${supplierId}`}
                       >
                         {sendingSupplier === supplierId ? (
@@ -617,7 +648,7 @@ export default function RestaurantCart() {
                   className="w-full gap-2 text-sm md:text-base"
                   size="default"
                   onClick={() => createOrderMutation.mutate()}
-                  disabled={createOrderMutation.isPending || createSupplierOrderMutation.isPending || supplierIds.some(sid => deliveryOptions[sid] === "date" && !selectedDeliveryDates[sid] && (perSupplierDeliveryDates[sid] || []).length > 0)}
+                  disabled={createOrderMutation.isPending || createSupplierOrderMutation.isPending || supplierIds.some(sid => isBelowMov(sid, (groupedBySupplier || {})[sid]?.items || [])) || supplierIds.some(sid => deliveryOptions[sid] === "date" && !selectedDeliveryDates[sid] && (perSupplierDeliveryDates[sid] || []).length > 0)}
                   data-testid="button-checkout"
                 >
                   {Object.keys(groupedBySupplier || {}).length > 1 ? t("cart", "placeAllOrders") : t("cart", "placeOrder")}

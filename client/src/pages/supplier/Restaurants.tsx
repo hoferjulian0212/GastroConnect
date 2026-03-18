@@ -11,11 +11,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, ArrowLeft, MessageSquare, Phone, ClipboardList, CalendarDays, Tag, Package, Save, Loader2, Trash2, MapPin, Mail } from "lucide-react";
+import { Search, ArrowLeft, MessageSquare, Phone, ClipboardList, CalendarDays, Tag, Package, Save, Loader2, Trash2, MapPin, Mail, Euro, Plus, Minus } from "lucide-react";
 import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User, Product, CustomMinOrderQuantity, DeliverySchedule, CustomPrice } from "@shared/schema";
+import type { User, Product, CustomMinOrderQuantity, DeliverySchedule, CustomPrice, MinimumOrderValue } from "@shared/schema";
 
 type CustomPriceWithJoins = CustomPrice & { product: Product; restaurant: User };
 
@@ -200,6 +200,9 @@ function RestaurantDetail({
   const [priceValue, setPriceValue] = useState("");
   const [moqProduct, setMoqProduct] = useState("");
   const [moqValue, setMoqValue] = useState<number>(1);
+  const [movZone, setMovZone] = useState("");
+  const [movValue, setMovValue] = useState("");
+  const [showMovForm, setShowMovForm] = useState(false);
 
   const { data: supplierProducts } = useQuery<Product[]>({
     queryKey: [`/api/supplier/products?supplierId=${supplierId}`],
@@ -224,6 +227,11 @@ function RestaurantDetail({
 
   const { data: customMoqs } = useQuery<(CustomMinOrderQuantity & { product: Product; restaurant: User })[]>({
     queryKey: [`/api/custom-moq?supplierId=${supplierId}`],
+    enabled: !!supplierId,
+  });
+
+  const { data: movEntries } = useQuery<MinimumOrderValue[]>({
+    queryKey: [`/api/minimum-order-values?supplierId=${supplierId}`],
     enabled: !!supplierId,
   });
 
@@ -308,6 +316,36 @@ function RestaurantDetail({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/custom-moq?supplierId=${supplierId}`] });
       toast({ title: t("supplierRestaurants", "moqDeleted") });
+    },
+  });
+
+  const saveMovMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/minimum-order-values", {
+        supplierId,
+        zone: movZone || null,
+        minimumValue: parseFloat(movValue),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/minimum-order-values?supplierId=${supplierId}`] });
+      toast({ title: t("supplierRestaurants", "movSaved") });
+      setMovZone("");
+      setMovValue("");
+      setShowMovForm(false);
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    },
+  });
+
+  const deleteMovMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/minimum-order-values/${id}?supplierId=${supplierId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/minimum-order-values?supplierId=${supplierId}`] });
+      toast({ title: t("supplierRestaurants", "movDeleted") });
     },
   });
 
@@ -551,6 +589,95 @@ function RestaurantDetail({
           ) : (
             <div className="text-center py-3">
               <p className="text-sm text-muted-foreground">{t("supplierRestaurants", "noCustomMoq")}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="p-3 md:p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <Euro className="h-4 w-4 md:h-5 md:w-5" />
+                {t("supplierRestaurants", "minimumOrderValue")}
+              </CardTitle>
+              <CardDescription className="text-xs md:text-sm">
+                {t("supplierRestaurants", "minimumOrderValueDesc")}
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMovForm(!showMovForm)}
+              data-testid="button-toggle-mov-form"
+            >
+              {showMovForm ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4 mr-1" />}
+              {!showMovForm && t("supplierRestaurants", "addMov")}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-3 md:p-6 pt-0 md:pt-0 space-y-4">
+          {showMovForm && (
+            <div className="grid gap-3 sm:grid-cols-3 pb-3 border-b">
+              <Input
+                value={movZone}
+                onChange={(e) => setMovZone(e.target.value)}
+                placeholder={t("supplierRestaurants", "zone")}
+                data-testid="input-mov-zone"
+              />
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                value={movValue}
+                onChange={(e) => setMovValue(e.target.value)}
+                placeholder={t("supplierRestaurants", "amount")}
+                data-testid="input-mov-value"
+              />
+              <Button
+                onClick={() => saveMovMutation.mutate()}
+                disabled={!movValue || parseFloat(movValue) <= 0 || saveMovMutation.isPending}
+                className="gap-2"
+                data-testid="button-save-mov"
+              >
+                {saveMovMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                {t("common", "save")}
+              </Button>
+            </div>
+          )}
+
+          {movEntries && movEntries.length > 0 ? (
+            <div className="space-y-2">
+              {movEntries.map(mov => (
+                <div key={mov.id} className="flex items-center justify-between gap-3 p-2.5 rounded-md bg-muted/50" data-testid={`mov-entry-${mov.id}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">
+                      {mov.zone || t("supplierRestaurants", "allZones")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("supplierRestaurants", "minimumOrderValue")}: {parseFloat(mov.minimumValue).toFixed(2)} EUR
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteMovMutation.mutate(mov.id)}
+                    disabled={deleteMovMutation.isPending}
+                    data-testid={`button-delete-mov-${mov.id}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-3">
+              <p className="text-sm text-muted-foreground">{t("supplierRestaurants", "noMov")}</p>
             </div>
           )}
         </CardContent>

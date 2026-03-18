@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings } from "@shared/schema";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues } from "@shared/schema";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
@@ -961,6 +961,36 @@ export async function registerRoutes(
         const existing = promoMap.get(promo.productId);
         if (!existing || promo.discountPercent > existing.discountPercent) {
           promoMap.set(promo.productId, promo);
+        }
+      }
+
+      // Enforce minimum order values
+      const [restaurant] = await db.select().from(users).where(eq(users.id, restaurantId));
+      const restaurantPostalCode = restaurant?.postalCode || "";
+      const allMovs = await db.select().from(minimumOrderValues);
+      const movMap: Record<string, number> = {};
+      for (const mov of allMovs) {
+        if (mov.zone && restaurantPostalCode && restaurantPostalCode.startsWith(mov.zone)) {
+          movMap[mov.supplierId] = parseFloat(mov.minimumValue);
+        } else if (!mov.zone && !(mov.supplierId in movMap)) {
+          movMap[mov.supplierId] = parseFloat(mov.minimumValue);
+        }
+      }
+
+      for (const [supplierId, items] of Object.entries(bySupplier)) {
+        const movLimit = movMap[supplierId] || 0;
+        if (movLimit > 0) {
+          const supplierTotal = items.reduce((sum, item) => {
+            const promo = promoMap.get(item.productId);
+            const originalPrice = parseFloat(item.product.price);
+            const effectivePrice = promo
+              ? originalPrice * (1 - promo.discountPercent / 100)
+              : originalPrice;
+            return sum + effectivePrice * item.quantity;
+          }, 0);
+          if (supplierTotal < movLimit) {
+            return res.status(400).json({ error: `Minimum order value of ${movLimit.toFixed(2)} EUR not reached for supplier` });
+          }
         }
       }
 
@@ -2815,6 +2845,94 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error downloading attachment:", error);
       res.status(500).json({ error: "Failed to download attachment" });
+    }
+  });
+
+  // ===== MINIMUM ORDER VALUES =====
+
+  const movBodySchema = z.object({
+    supplierId: z.string().min(1),
+    zone: z.string().nullable().optional(),
+    minimumValue: z.number().min(0),
+  });
+
+  app.get("/api/minimum-order-values", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) return res.status(400).json({ error: "supplierId required" });
+      const results = await db.select().from(minimumOrderValues)
+        .where(eq(minimumOrderValues.supplierId, supplierId))
+        .orderBy(asc(minimumOrderValues.zone));
+      res.json(results);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch minimum order values" });
+    }
+  });
+
+  app.post("/api/minimum-order-values", async (req, res) => {
+    try {
+      const parsed = movBodySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+      const { supplierId, zone, minimumValue } = parsed.data;
+      const zoneVal = zone || null;
+      const [existing] = await db.select().from(minimumOrderValues)
+        .where(and(
+          eq(minimumOrderValues.supplierId, supplierId),
+          zoneVal ? eq(minimumOrderValues.zone, zoneVal) : sql`${minimumOrderValues.zone} IS NULL`
+        ));
+      if (existing) {
+        const [updated] = await db.update(minimumOrderValues)
+          .set({ minimumValue: String(minimumValue), updatedAt: new Date() })
+          .where(eq(minimumOrderValues.id, existing.id))
+          .returning();
+        return res.json(updated);
+      }
+      const [created] = await db.insert(minimumOrderValues).values({
+        supplierId,
+        zone: zoneVal,
+        minimumValue: String(minimumValue),
+      }).returning();
+      res.json(created);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save minimum order value" });
+    }
+  });
+
+  app.delete("/api/minimum-order-values/:id", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) return res.status(400).json({ error: "supplierId required" });
+      const [record] = await db.select().from(minimumOrderValues).where(eq(minimumOrderValues.id, req.params.id));
+      if (!record) return res.status(404).json({ error: "Not found" });
+      if (record.supplierId !== supplierId) return res.status(403).json({ error: "Forbidden" });
+      await db.delete(minimumOrderValues).where(eq(minimumOrderValues.id, req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete minimum order value" });
+    }
+  });
+
+  app.get("/api/minimum-order-values/for-restaurant", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      const [restaurant] = await db.select().from(users).where(eq(users.id, restaurantId));
+      if (!restaurant) return res.status(404).json({ error: "Restaurant not found" });
+      const restaurantPostalCode = restaurant.postalCode || "";
+
+      const allMovs = await db.select().from(minimumOrderValues);
+      const result: Record<string, { minimumValue: string; zone: string | null }> = {};
+      for (const mov of allMovs) {
+        const existing = result[mov.supplierId];
+        if (mov.zone && restaurantPostalCode && restaurantPostalCode.startsWith(mov.zone)) {
+          result[mov.supplierId] = { minimumValue: mov.minimumValue, zone: mov.zone };
+        } else if (!mov.zone && !existing) {
+          result[mov.supplierId] = { minimumValue: mov.minimumValue, zone: null };
+        }
+      }
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch minimum order values" });
     }
   });
 

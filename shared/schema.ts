@@ -284,6 +284,17 @@ export const costSettings = pgTable("cost_settings", {
 
 export const insertCostSettingsSchema = createInsertSchema(costSettings).omit({ id: true, createdAt: true, updatedAt: true });
 
+export const minimumOrderValues = pgTable("minimum_order_values", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  zone: text("zone"),
+  minimumValue: decimal("minimum_value", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertMinimumOrderValueSchema = createInsertSchema(minimumOrderValues).omit({ id: true, createdAt: true, updatedAt: true });
+
 export const confirmOrderItemSchema = z.object({
   orderItemId: z.string(),
   confirmedQuantity: z.number().int().min(0),
@@ -370,3 +381,5 @@ export type InsertOvernightStays = z.infer<typeof insertOvernightStaysSchema>;
 export type OvernightStays = typeof overnightStays.$inferSelect;
 export type InsertCostSettings = z.infer<typeof insertCostSettingsSchema>;
 export type CostSettings = typeof costSettings.$inferSelect;
+export type InsertMinimumOrderValue = z.infer<typeof insertMinimumOrderValueSchema>;
+export type MinimumOrderValue = typeof minimumOrderValues.$inferSelect;
