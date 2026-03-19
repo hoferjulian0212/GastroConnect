@@ -1012,7 +1012,7 @@ export default function SupplierProducts() {
     }
   };
 
-  const categories = ["Gemuese", "Obst", "Fleisch", "Fisch", "Milchprodukte", "Getraenke", "Trockenwaren", "Gewuerze", "Sonstiges"];
+  const categories = ["Gemuese", "Obst", "Fleisch", "Fisch", "Milchprodukte", "Getraenke", "Trockenwaren", "Gewuerze", "Brot", "Sonstiges"];
 
   const categoryConfig: Record<string, { de: string; it: string; icon: typeof Package; color: string }> = {
     "Gemuese": { de: "Gemuese", it: "Verdura", icon: Carrot, color: "bg-green-600" },
