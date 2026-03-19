@@ -783,8 +783,13 @@ export default function SupplierProducts() {
   const { toast } = useToast();
   const { lang } = useLanguage();
   const t = useT(lang);
-  const urlParams = new URLSearchParams(window.location.search);
-  const tabParam = urlParams.get("tab");
+  const [searchStr, setSearchStr] = useState(window.location.search);
+  useEffect(() => {
+    const onPop = () => setSearchStr(window.location.search);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  const tabParam = new URLSearchParams(searchStr).get("tab");
   const activeTab: "products" | "inventory" | "promotions" = 
     tabParam === "inventory" ? "inventory" : tabParam === "promotions" ? "promotions" : "products";
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);

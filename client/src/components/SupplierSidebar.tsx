@@ -34,9 +34,9 @@ export function SupplierSidebar() {
   }, [isProductsSection]);
 
   const productSubItems = [
-    { title: lang === "de" ? "Katalog" : "Catalogo", url: "/supplier/products", icon: Package },
-    { title: lang === "de" ? "Lagerbestand" : "Inventario", url: "/supplier/products?tab=inventory", icon: Warehouse },
-    { title: lang === "de" ? "Aktionen" : "Promozioni", url: "/supplier/products?tab=promotions", icon: Tag },
+    { title: lang === "de" ? "Katalog" : "Catalogo", url: "/supplier/products", tab: undefined as string | undefined, icon: Package },
+    { title: lang === "de" ? "Lagerbestand" : "Inventario", url: "/supplier/products?tab=inventory", tab: "inventory", icon: Warehouse },
+    { title: lang === "de" ? "Aktionen" : "Promozioni", url: "/supplier/products?tab=promotions", tab: "promotions", icon: Tag },
   ];
 
   const mainMenuItems = [
@@ -169,14 +169,19 @@ export function SupplierSidebar() {
                 <div className="ml-4 space-y-0.5">
                   {productSubItems.map((sub) => {
                     const currentTab = new URLSearchParams(window.location.search).get("tab");
-                    const subTab = new URL(sub.url, "http://x").searchParams.get("tab");
-                    const isSubActive = location === "/supplier/products" && (subTab === currentTab || (!subTab && !currentTab));
+                    const subTab = sub.tab;
+                    const isSubActive = location === "/supplier/products" && (subTab === (currentTab || undefined));
                     return (
-                      <SidebarMenuItem key={sub.url}>
-                        <Link
+                      <SidebarMenuItem key={sub.tab || "catalog"}>
+                        <a
                           href={sub.url}
-                          data-testid={`link-products-${subTab || "catalog"}`}
-                          className={`flex items-center h-9 rounded-lg px-2 gap-2.5 transition-all duration-200 text-left text-[12px] ${
+                          onClick={(e) => {
+                            e.preventDefault();
+                            window.history.pushState({}, "", sub.url);
+                            window.dispatchEvent(new PopStateEvent("popstate"));
+                          }}
+                          data-testid={`link-products-${sub.tab || "catalog"}`}
+                          className={`flex items-center h-9 rounded-lg px-2 gap-2.5 transition-all duration-200 text-left text-[12px] cursor-pointer ${
                             isSubActive
                               ? "text-primary font-semibold bg-primary/5"
                               : "text-muted-foreground font-normal hover:text-foreground hover:bg-muted/50"
@@ -184,7 +189,7 @@ export function SupplierSidebar() {
                         >
                           <sub.icon className="h-4 w-4" />
                           <span>{sub.title}</span>
-                        </Link>
+                        </a>
                       </SidebarMenuItem>
                     );
                   })}
