@@ -288,39 +288,6 @@ export default function RestaurantCatalog() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-              <Input
-                placeholder={t("common", "searchProducts")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 md:pl-9 h-9 md:h-10 text-sm"
-                data-testid="input-search-products"
-              />
-            </div>
-            <div className="flex flex-row gap-2 flex-wrap">
-              <Button
-                variant={onlyAvailable ? "default" : "outline"}
-                onClick={() => setOnlyAvailable(!onlyAvailable)}
-                className="text-xs md:text-sm toggle-elevate"
-                data-testid="toggle-available-only"
-              >
-                <Package className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
-                {t("common", "onlyAvailable")}
-              </Button>
-              <Button
-                variant={onlyPromotions ? "default" : "outline"}
-                onClick={() => setOnlyPromotions(!onlyPromotions)}
-                className="text-xs md:text-sm toggle-elevate"
-                data-testid="toggle-promotions-only"
-              >
-                <Tag className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
-                {t("common", "promotions")}
-              </Button>
-            </div>
-          </div>
-
           {supplierCards.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
               <button
@@ -360,6 +327,39 @@ export default function RestaurantCatalog() {
               })}
             </div>
           )}
+
+          <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
+              <Input
+                placeholder={t("common", "searchProducts")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 md:pl-9 h-9 md:h-10 text-sm"
+                data-testid="input-search-products"
+              />
+            </div>
+            <div className="flex flex-row gap-2 flex-wrap">
+              <Button
+                variant={onlyAvailable ? "default" : "outline"}
+                onClick={() => setOnlyAvailable(!onlyAvailable)}
+                className="text-xs md:text-sm toggle-elevate"
+                data-testid="toggle-available-only"
+              >
+                <Package className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+                {t("common", "onlyAvailable")}
+              </Button>
+              <Button
+                variant={onlyPromotions ? "default" : "outline"}
+                onClick={() => setOnlyPromotions(!onlyPromotions)}
+                className="text-xs md:text-sm toggle-elevate"
+                data-testid="toggle-promotions-only"
+              >
+                <Tag className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+                {t("common", "promotions")}
+              </Button>
+            </div>
+          </div>
 
           {categoryFilteredProducts.length > 0 ? (
             <div className="flex flex-col gap-1.5">
