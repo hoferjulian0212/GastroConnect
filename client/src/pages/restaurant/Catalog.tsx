@@ -33,19 +33,32 @@ export default function RestaurantCatalog() {
   const [location, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [onlyPromotions, setOnlyPromotions] = useState(false);
   const { lang } = useLanguage();
   const t = useT(lang);
 
+  const params = new URLSearchParams(window.location.search);
+  const selectedCategory = params.get("category") || null;
+
+  const setSelectedCategory = (cat: string | null) => {
+    const p = new URLSearchParams(window.location.search);
+    if (cat) {
+      p.set("category", cat);
+    } else {
+      p.delete("category");
+    }
+    const qs = p.toString();
+    setLocation(`/restaurant/catalog${qs ? `?${qs}` : ""}`);
+  };
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const supplierParam = params.get("supplier");
+    const p = new URLSearchParams(window.location.search);
+    const supplierParam = p.get("supplier");
     if (supplierParam) {
       setSelectedSupplier(supplierParam);
     }
-    const promotionsParam = params.get("promotions");
+    const promotionsParam = p.get("promotions");
     setOnlyPromotions(promotionsParam === "true");
   }, [location]);
 
