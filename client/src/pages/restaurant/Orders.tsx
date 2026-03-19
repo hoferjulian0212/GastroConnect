@@ -280,7 +280,7 @@ export default function RestaurantOrders() {
   const hasSecondaryFilters = filterDateFrom || filterDateTo;
 
   const statusCounts = useMemo(() => {
-    if (!orders) return { all: 0, pending: 0, confirmed: 0, partially_confirmed: 0, in_delivery: 0, delivered: 0 };
+    if (!orders) return { all: 0, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
     const filtered = orders.filter(o => {
       if (filterSupplier !== "all" && o.supplier?.id !== filterSupplier) return false;
       if (filterDateFrom) {
@@ -295,9 +295,10 @@ export default function RestaurantOrders() {
       }
       return true;
     });
-    const counts = { all: filtered.length, pending: 0, confirmed: 0, partially_confirmed: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
+    const counts = { all: filtered.length, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
     filtered.forEach(o => {
-      if (o.status in counts) (counts as any)[o.status]++;
+      const s = o.status === "partially_confirmed" ? "confirmed" : o.status;
+      if (s in counts) (counts as any)[s]++;
     });
     return counts;
   }, [orders, filterSupplier, filterDateFrom, filterDateTo]);
@@ -376,7 +377,13 @@ export default function RestaurantOrders() {
   const filterOrders = (status: string | null) => {
     if (!orders) return [];
     return orders.filter(order => {
-      if (status && order.status !== status) return false;
+      if (status) {
+        if (status === "confirmed") {
+          if (order.status !== "confirmed" && order.status !== "partially_confirmed") return false;
+        } else {
+          if (order.status !== status) return false;
+        }
+      }
       if (filterSupplier !== "all" && order.supplier?.id !== filterSupplier) return false;
       if (filterDateFrom) {
         const from = new Date(filterDateFrom);
@@ -778,7 +785,6 @@ export default function RestaurantOrders() {
           { key: "all", icon: ShoppingBag, dotColor: "bg-gray-400" },
           { key: "pending", icon: Clock, dotColor: "bg-yellow-500" },
           { key: "confirmed", icon: Package, dotColor: "bg-blue-500" },
-          { key: "partially_confirmed", icon: AlertTriangle, dotColor: "bg-orange-500" },
           { key: "in_delivery", icon: Truck, dotColor: "bg-purple-500" },
           { key: "delivered", icon: CheckCircle, dotColor: "bg-green-500" },
           { key: "cancelled", icon: XCircle, dotColor: "bg-red-500" },
