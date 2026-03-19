@@ -1383,15 +1383,22 @@ export default function SupplierProducts() {
                 />
               </div>
 
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold">
-                  {lang === "de" ? "Unser Sortiment" : "Il nostro assortimento"}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {lang === "de"
-                    ? "Frische Vielfalt - waehlen Sie eine Kategorie um die Produkte zu sehen."
-                    : "Varieta fresca - seleziona una categoria per vedere i prodotti."}
-                </p>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl md:text-2xl font-bold">
+                    {lang === "de" ? "Unser Sortiment" : "Il nostro assortimento"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {lang === "de"
+                      ? "Frische Vielfalt - waehlen Sie eine Kategorie um die Produkte zu sehen."
+                      : "Varieta fresca - seleziona una categoria per vedere i prodotti."}
+                  </p>
+                </div>
+                <Button className="gap-1.5 md:gap-2 text-sm shrink-0" size="sm" onClick={openCreateDialog} data-testid="button-add-product-landing">
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufuegen" : "Aggiungi prodotto"}</span>
+                  <span className="sm:hidden">{t("common", "add")}</span>
+                </Button>
               </div>
 
               {isLoading ? (
@@ -1402,7 +1409,7 @@ export default function SupplierProducts() {
                 </div>
               ) : (
                 <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {categories.map(cat => {
+                  {categories.filter(cat => categoryProductCount(cat) > 0).map(cat => {
                     const conf = categoryConfig[cat];
                     const CatIcon = conf.icon;
                     const count = categoryProductCount(cat);
