@@ -1393,7 +1393,7 @@ export default function SupplierProducts() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl md:text-2xl font-bold">
-                    {lang === "de" ? "Unser Sortiment" : "Il nostro assortimento"}
+                    {lang === "de" ? "Unser Katalog" : "Il nostro catalogo"}
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     {lang === "de"
