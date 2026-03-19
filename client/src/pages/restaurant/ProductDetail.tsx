@@ -216,7 +216,7 @@ export default function ProductDetail() {
     <div className="space-y-6">
       <button
         onClick={() => window.history.back()}
-        className="sticky top-0 z-20 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors bg-gray-50 dark:bg-gray-950 py-2"
+        className="sticky top-0 z-20 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
         data-testid="button-back"
       >
         <ArrowLeft className="h-4 w-4" />
