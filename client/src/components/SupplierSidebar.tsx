@@ -20,7 +20,7 @@ import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { useRef, useState, useEffect } from "react";
 
 export function SupplierSidebar() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { currentUser } = useUser();
   const { lang } = useLanguage();
   const t = useT(lang);
@@ -155,7 +155,14 @@ export function SupplierSidebar() {
               
               <SidebarMenuItem>
                 <button
-                  onClick={() => setProductsOpen(!productsOpen)}
+                  onClick={() => {
+                    if (isProductsSection) {
+                      setProductsOpen(!productsOpen);
+                    } else {
+                      setProductsOpen(true);
+                      setLocation("/supplier/products");
+                    }
+                  }}
                   className={`flex items-center w-full h-11 rounded-xl px-2 gap-3 transition-all duration-200 text-left text-[13px] ${
                     isProductsSection
                       ? "text-primary font-semibold"
