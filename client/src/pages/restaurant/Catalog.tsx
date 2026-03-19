@@ -146,22 +146,22 @@ export default function RestaurantCatalog() {
             </Badge>
           )}
         </div>
-        <div className="p-3 flex flex-col gap-1 flex-1">
-          <span className="text-sm font-semibold truncate">{product.name}</span>
-          <span className="text-xs text-muted-foreground truncate">
+        <div className="p-2 flex flex-col gap-0.5 flex-1">
+          <span className="text-xs font-semibold truncate">{product.name}</span>
+          <span className="text-[10px] text-muted-foreground truncate">
             {product.supplier?.companyName || product.supplier?.name}
           </span>
-          <div className="mt-auto pt-1">
+          <div className="mt-auto pt-0.5">
             {hasPromo ? (
-              <div className="flex items-baseline gap-1">
-                <span className="text-[11px] text-muted-foreground line-through">{originalPrice.toFixed(2)}€</span>
-                <span className="text-sm font-bold text-green-600 dark:text-green-400">{discountedPrice.toFixed(2)}€</span>
-                <span className="text-[11px] text-muted-foreground">/{product.unit}</span>
+              <div className="flex items-baseline gap-1 flex-wrap">
+                <span className="text-[10px] text-muted-foreground line-through">{originalPrice.toFixed(2)}€</span>
+                <span className="text-xs font-bold text-green-600 dark:text-green-400">{discountedPrice.toFixed(2)}€</span>
+                <span className="text-[10px] text-muted-foreground">/{product.unit}</span>
               </div>
             ) : (
               <div className="flex items-baseline gap-1">
-                <span className="text-sm font-bold">{originalPrice.toFixed(2)}€</span>
-                <span className="text-[11px] text-muted-foreground">/{product.unit}</span>
+                <span className="text-xs font-bold">{originalPrice.toFixed(2)}€</span>
+                <span className="text-[10px] text-muted-foreground">/{product.unit}</span>
               </div>
             )}
           </div>
@@ -380,7 +380,7 @@ export default function RestaurantCatalog() {
           </div>
 
           {categoryFilteredProducts.length > 0 ? (
-            <div className="grid gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid gap-2 md:gap-3 grid-cols-3 sm:grid-cols-4 lg:grid-cols-6">
               {categoryFilteredProducts.map(renderProductCard)}
             </div>
           ) : (
