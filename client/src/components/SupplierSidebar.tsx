@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, MessageSquare, Package, ClipboardList, Settings, AlertCircle, FileText, ChevronRight, Store, Tag } from "lucide-react";
+import { Home, MessageSquare, Package, ClipboardList, Settings, AlertCircle, FileText, ChevronRight, ChevronDown, Store, Tag, Warehouse } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -26,14 +26,24 @@ export function SupplierSidebar() {
   const t = useT(lang);
   const [pulsingBadge, setPulsingBadge] = useState<string | null>(null);
   const prevCounts = useRef<Record<string, number>>({});
+  const isProductsSection = location.startsWith("/supplier/products");
+  const [productsOpen, setProductsOpen] = useState(isProductsSection);
+
+  useEffect(() => {
+    if (isProductsSection) setProductsOpen(true);
+  }, [isProductsSection]);
+
+  const productSubItems = [
+    { title: lang === "de" ? "Katalog" : "Catalogo", url: "/supplier/products", icon: Package },
+    { title: lang === "de" ? "Lagerbestand" : "Inventario", url: "/supplier/products?tab=inventory", icon: Warehouse },
+    { title: lang === "de" ? "Aktionen" : "Promozioni", url: "/supplier/products?tab=promotions", icon: Tag },
+  ];
 
   const mainMenuItems = [
     { title: t("common", "home"), url: "/supplier", icon: Home },
     { title: t("common", "messages"), url: "/supplier/inbox", icon: MessageSquare, hasBadge: true },
-    { title: t("common", "products"), url: "/supplier/products", icon: Package },
     { title: t("common", "restaurants"), url: "/supplier/restaurants", icon: Store },
     { title: t("common", "orders"), url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
-    { title: t("common", "promotions"), url: "/supplier/promotions", icon: Tag },
     { title: t("common", "complaints"), url: "/supplier/complaints", icon: AlertCircle },
     { title: t("common", "documents"), url: "/supplier/documents", icon: FileText },
   ];
@@ -134,7 +144,54 @@ export function SupplierSidebar() {
         <SidebarGroup className="space-y-1">
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {mainMenuItems.map((item) => renderMenuItem(item, item.hasBadge))}
+              {mainMenuItems.slice(0, 2).map((item) => renderMenuItem(item, item.hasBadge))}
+              
+              <SidebarMenuItem>
+                <button
+                  onClick={() => setProductsOpen(!productsOpen)}
+                  className={`flex items-center w-full h-11 rounded-xl px-2 gap-3 transition-all duration-200 text-left text-[13px] ${
+                    isProductsSection
+                      ? "text-primary font-semibold"
+                      : "text-foreground font-normal hover-elevate"
+                  }`}
+                  data-testid="link-products"
+                >
+                  <Package className="h-5 w-5" />
+                  <span className="flex-1">{t("common", "products")}</span>
+                  {productsOpen ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform" />
+                  )}
+                </button>
+              </SidebarMenuItem>
+              {productsOpen && (
+                <div className="ml-4 space-y-0.5">
+                  {productSubItems.map((sub) => {
+                    const currentTab = new URLSearchParams(window.location.search).get("tab");
+                    const subTab = new URL(sub.url, "http://x").searchParams.get("tab");
+                    const isSubActive = location === "/supplier/products" && (subTab === currentTab || (!subTab && !currentTab));
+                    return (
+                      <SidebarMenuItem key={sub.url}>
+                        <Link
+                          href={sub.url}
+                          data-testid={`link-products-${subTab || "catalog"}`}
+                          className={`flex items-center h-9 rounded-lg px-2 gap-2.5 transition-all duration-200 text-left text-[12px] ${
+                            isSubActive
+                              ? "text-primary font-semibold bg-primary/5"
+                              : "text-muted-foreground font-normal hover:text-foreground hover:bg-muted/50"
+                          }`}
+                        >
+                          <sub.icon className="h-4 w-4" />
+                          <span>{sub.title}</span>
+                        </Link>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </div>
+              )}
+
+              {mainMenuItems.slice(2).map((item) => renderMenuItem(item, item.hasBadge))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

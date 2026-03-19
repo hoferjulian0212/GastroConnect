@@ -783,7 +783,10 @@ export default function SupplierProducts() {
   const { toast } = useToast();
   const { lang } = useLanguage();
   const t = useT(lang);
-  const [activeTab, setActiveTab] = useState<"products" | "inventory" | "promotions">("products");
+  const urlParams = new URLSearchParams(window.location.search);
+  const tabParam = urlParams.get("tab");
+  const activeTab: "products" | "inventory" | "promotions" = 
+    tabParam === "inventory" ? "inventory" : tabParam === "promotions" ? "promotions" : "products";
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -1365,39 +1368,6 @@ export default function SupplierProducts() {
               </Form>
             </DialogContent>
       </Dialog>
-
-      <div className="flex gap-1 p-1 bg-muted rounded-md w-fit" data-testid="tab-switcher-products">
-        <Button
-          variant={activeTab === "products" ? "default" : "ghost"}
-          size="sm"
-          className="gap-2"
-          onClick={() => setActiveTab("products")}
-          data-testid="tab-products"
-        >
-          <Package className="h-4 w-4" />
-          {t("supplierProducts", "productsTab")}
-        </Button>
-        <Button
-          variant={activeTab === "inventory" ? "default" : "ghost"}
-          size="sm"
-          className="gap-2"
-          onClick={() => setActiveTab("inventory")}
-          data-testid="tab-inventory"
-        >
-          <Warehouse className="h-4 w-4" />
-          {t("supplierProducts", "inventoryTab")}
-        </Button>
-        <Button
-          variant={activeTab === "promotions" ? "default" : "ghost"}
-          size="sm"
-          className="gap-2"
-          onClick={() => setActiveTab("promotions")}
-          data-testid="tab-promotions"
-        >
-          <Tag className="h-4 w-4" />
-          {t("common", "promotions")}
-        </Button>
-      </div>
 
       {activeTab === "promotions" ? (
         <PromotionsView lang={lang} t={t} />
