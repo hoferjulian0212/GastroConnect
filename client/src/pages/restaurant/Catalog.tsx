@@ -127,7 +127,7 @@ export default function RestaurantCatalog() {
         onClick={() => setLocation(`/restaurant/product/${product.id}`)}
         data-testid={`product-card-${product.id}`}
       >
-        <div className="relative w-full aspect-square bg-muted overflow-hidden">
+        <div className="relative w-full aspect-[4/3] bg-muted overflow-hidden">
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
           ) : (
@@ -148,9 +148,9 @@ export default function RestaurantCatalog() {
             </div>
           )}
         </div>
-        <div className="p-1.5 flex flex-col gap-0 flex-1 overflow-hidden min-w-0">
-          <span className="text-[11px] font-semibold truncate block">{product.name}</span>
-          <span className="text-[9px] text-muted-foreground truncate block leading-tight">
+        <div className="p-2 flex flex-col gap-0.5 flex-1 overflow-hidden min-w-0">
+          <span className="text-xs font-semibold truncate block">{product.name}</span>
+          <span className="text-[10px] text-muted-foreground truncate block">
             {product.supplier?.companyName || product.supplier?.name}
           </span>
           <div className="mt-auto pt-0.5 overflow-hidden">
