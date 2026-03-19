@@ -26,8 +26,15 @@ export function SupplierSidebar() {
   const t = useT(lang);
   const [pulsingBadge, setPulsingBadge] = useState<string | null>(null);
   const prevCounts = useRef<Record<string, number>>({});
+  const [currentSearch, setCurrentSearch] = useState(window.location.search);
   const isProductsSection = location.startsWith("/supplier/products");
   const [productsOpen, setProductsOpen] = useState(isProductsSection);
+
+  useEffect(() => {
+    const onPop = () => setCurrentSearch(window.location.search);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   useEffect(() => {
     if (isProductsSection) setProductsOpen(true);
@@ -168,7 +175,7 @@ export function SupplierSidebar() {
               {productsOpen && (
                 <div className="ml-4 space-y-0.5">
                   {productSubItems.map((sub) => {
-                    const currentTab = new URLSearchParams(window.location.search).get("tab");
+                    const currentTab = new URLSearchParams(currentSearch).get("tab");
                     const subTab = sub.tab;
                     const isSubActive = location === "/supplier/products" && (subTab === (currentTab || undefined));
                     return (
