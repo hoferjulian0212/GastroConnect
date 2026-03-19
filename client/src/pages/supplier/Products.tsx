@@ -1404,21 +1404,23 @@ export default function SupplierProducts() {
         <>
           {!selectedCategory ? (
             <>
-              <div className="relative w-full h-32 md:h-40 rounded-xl overflow-hidden -mt-1">
+              <div className="w-full h-28 md:h-36 rounded-xl overflow-hidden">
                 <img
                   src={heroBannerImg}
                   alt=""
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover object-center"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                <div className="absolute bottom-3 left-4 md:bottom-4 md:left-5">
-                  <h2 className="text-white text-lg md:text-xl font-bold drop-shadow-md">
-                    {lang === "de" ? "Produktkategorien" : "Categorie prodotti"}
-                  </h2>
-                  <p className="text-white/80 text-xs md:text-sm drop-shadow-md">
-                    {lang === "de" ? "Waehlen Sie eine Kategorie" : "Seleziona una categoria"}
-                  </p>
-                </div>
+              </div>
+
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold">
+                  {lang === "de" ? "Unser Sortiment" : "Il nostro assortimento"}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {lang === "de"
+                    ? "Frische Vielfalt - waehlen Sie eine Kategorie um die Produkte zu sehen."
+                    : "Varieta fresca - seleziona una categoria per vedere i prodotti."}
+                </p>
               </div>
 
               {isLoading ? (
