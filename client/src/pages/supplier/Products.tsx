@@ -1405,15 +1405,12 @@ export default function SupplierProducts() {
         <>
           {!selectedCategory ? (
             <>
-              <div className="relative w-full h-44 md:h-56 overflow-hidden rounded-xl -mt-2">
+              <div className="relative w-full h-44 md:h-56 overflow-hidden -mt-2" style={{ maskImage: "linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)" }}>
                 <img
                   src={heroBannerImg}
                   alt=""
                   className="w-full h-full object-cover object-center"
                 />
-                <div className="absolute inset-y-0 left-0 w-20 md:w-28 bg-gradient-to-r from-background to-transparent" />
-                <div className="absolute inset-y-0 right-0 w-20 md:w-28 bg-gradient-to-l from-background to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent" />
               </div>
 
               <div>
