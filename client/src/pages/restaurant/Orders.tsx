@@ -728,33 +728,21 @@ export default function RestaurantOrders() {
       </div>
 
       {uniqueSuppliers.length > 0 && (
-        <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
           <button
             onClick={() => setFilterSupplier("all")}
-            className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
               filterSupplier === "all"
-                ? "border-primary bg-primary/10 dark:bg-primary/20"
-                : "border-transparent bg-muted/50 dark:bg-muted/30"
+                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                : "border-border bg-background text-muted-foreground hover:bg-muted/50"
             }`}
             data-testid="filter-supplier-all"
           >
-            <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
-              filterSupplier === "all"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}>
-              <Store className="h-5 w-5 md:h-6 md:w-6" />
-            </div>
-            <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
-              filterSupplier === "all" ? "text-primary" : "text-muted-foreground"
-            }`}>
-              {t("common", "all")}
-            </span>
-            <span className={`text-xs md:text-sm font-bold leading-none ${
-              filterSupplier === "all" ? "text-primary" : "text-foreground"
-            }`}>
-              {orders?.length || 0}
-            </span>
+            <Store className="h-3 w-3" />
+            <span>{t("common", "all")}</span>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              filterSupplier === "all" ? "bg-white/20" : "bg-muted"
+            }`}>{orders?.length || 0}</span>
           </button>
           {uniqueSuppliers.map(supplier => {
             const isActive = filterSupplier === supplier.id;
@@ -762,65 +750,59 @@ export default function RestaurantOrders() {
               <button
                 key={supplier.id}
                 onClick={() => setFilterSupplier(supplier.id)}
-                className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
                   isActive
-                    ? "border-primary bg-primary/10 dark:bg-primary/20"
-                    : "border-transparent bg-muted/50 dark:bg-muted/30"
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted/50"
                 }`}
                 data-testid={`filter-supplier-${supplier.id}`}
               >
-                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+                <Avatar className="h-4 w-4">
                   <AvatarImage src={supplier.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                  <AvatarFallback className="text-[7px] font-semibold bg-primary/10 text-primary">
                     {supplier.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`}>
-                  {supplier.name}
-                </span>
-                <span className={`text-xs md:text-sm font-bold leading-none ${
-                  isActive ? "text-primary" : "text-foreground"
-                }`}>
-                  {supplier.orderCount}
-                </span>
+                <span className="max-w-[80px] truncate">{supplier.name}</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  isActive ? "bg-white/20" : "bg-muted"
+                }`}>{supplier.orderCount}</span>
               </button>
             );
           })}
         </div>
       )}
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2 md:gap-3">
+      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {([
-          { key: "all", icon: ShoppingBag, color: "bg-muted/80 dark:bg-muted/40", activeColor: "bg-primary text-primary-foreground", borderColor: "border-primary" },
-          { key: "pending", icon: Clock, color: "bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400", activeColor: "bg-yellow-500 text-white dark:bg-yellow-600", borderColor: "border-yellow-400 dark:border-yellow-500" },
-          { key: "confirmed", icon: Package, color: "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400", activeColor: "bg-blue-500 text-white dark:bg-blue-600", borderColor: "border-blue-400 dark:border-blue-500" },
-          { key: "partially_confirmed", icon: AlertTriangle, color: "bg-orange-50 text-orange-800 dark:bg-orange-950/40 dark:text-orange-400", activeColor: "bg-orange-500 text-white dark:bg-orange-600", borderColor: "border-orange-400 dark:border-orange-500" },
-          { key: "in_delivery", icon: Truck, color: "bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-400", activeColor: "bg-purple-500 text-white dark:bg-purple-600", borderColor: "border-purple-400 dark:border-purple-500" },
-          { key: "delivered", icon: CheckCircle, color: "bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-400", activeColor: "bg-green-500 text-white dark:bg-green-600", borderColor: "border-green-400 dark:border-green-500" },
-          { key: "cancelled", icon: XCircle, color: "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-400", activeColor: "bg-red-500 text-white dark:bg-red-600", borderColor: "border-red-400 dark:border-red-500" },
-        ] as const).map(({ key, icon: Icon, color, activeColor, borderColor }) => {
+          { key: "all", icon: ShoppingBag, dotColor: "bg-gray-400" },
+          { key: "pending", icon: Clock, dotColor: "bg-yellow-500" },
+          { key: "confirmed", icon: Package, dotColor: "bg-blue-500" },
+          { key: "partially_confirmed", icon: AlertTriangle, dotColor: "bg-orange-500" },
+          { key: "in_delivery", icon: Truck, dotColor: "bg-purple-500" },
+          { key: "delivered", icon: CheckCircle, dotColor: "bg-green-500" },
+          { key: "cancelled", icon: XCircle, dotColor: "bg-red-500" },
+        ] as const).map(({ key, icon: Icon, dotColor }) => {
           const isActive = filterStatus === key;
           const count = (statusCounts as any)[key] || 0;
           return (
             <button
               key={key}
               onClick={() => setFilterStatus(key)}
-              className={`relative flex flex-col items-center gap-1 p-2.5 md:p-3 rounded-md border-2 transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
                 isActive
-                  ? `${activeColor} ${borderColor} shadow-sm`
-                  : `${color} border-transparent`
+                  ? "border-primary bg-primary/10 dark:bg-primary/20 text-primary shadow-sm"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted/50"
               }`}
               data-testid={`filter-status-${key}`}
             >
-              <Icon className="h-4 w-4 md:h-5 md:w-5" />
-              <span className="text-[10px] md:text-xs font-medium leading-tight text-center">
+              <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
+              <span className="whitespace-nowrap">
                 {key === "all" ? t("common", "all") : getOrderStatus(key, lang)}
               </span>
-              <span className={`text-sm md:text-base font-bold leading-none ${isActive ? "" : "text-foreground"}`}>
-                {count}
-              </span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                isActive ? "bg-primary/20 dark:bg-primary/30" : "bg-muted"
+              }`}>{count}</span>
             </button>
           );
         })}
