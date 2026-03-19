@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee } from "lucide-react";
+import heroBannerImg from "@assets/6fefa2793fd6b494e2f8aabea0385afc_1773947302051.jpg";
 import type { Product, StockMovement, PromotionWithProduct } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1403,6 +1404,23 @@ export default function SupplierProducts() {
         <>
           {!selectedCategory ? (
             <>
+              <div className="relative w-full h-32 md:h-40 rounded-xl overflow-hidden -mt-1">
+                <img
+                  src={heroBannerImg}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                <div className="absolute bottom-3 left-4 md:bottom-4 md:left-5">
+                  <h2 className="text-white text-lg md:text-xl font-bold drop-shadow-md">
+                    {lang === "de" ? "Produktkategorien" : "Categorie prodotti"}
+                  </h2>
+                  <p className="text-white/80 text-xs md:text-sm drop-shadow-md">
+                    {lang === "de" ? "Waehlen Sie eine Kategorie" : "Seleziona una categoria"}
+                  </p>
+                </div>
+              </div>
+
               {isLoading ? (
                 <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
