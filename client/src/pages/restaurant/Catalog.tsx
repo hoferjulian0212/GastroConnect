@@ -38,10 +38,10 @@ export default function RestaurantCatalog() {
   const { lang } = useLanguage();
   const t = useT(lang);
 
-  const params = new URLSearchParams(window.location.search);
-  const selectedCategory = params.get("category") || null;
+  const [selectedCategory, setSelectedCategoryState] = useState<string | null>(null);
 
   const setSelectedCategory = (cat: string | null) => {
+    setSelectedCategoryState(cat);
     const p = new URLSearchParams(window.location.search);
     if (cat) {
       p.set("category", cat);
@@ -49,17 +49,24 @@ export default function RestaurantCatalog() {
       p.delete("category");
     }
     const qs = p.toString();
-    setLocation(`/restaurant/catalog${qs ? `?${qs}` : ""}`);
+    const newUrl = `/restaurant/catalog${qs ? `?${qs}` : ""}`;
+    window.history.pushState(null, "", newUrl);
   };
 
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search);
-    const supplierParam = p.get("supplier");
-    if (supplierParam) {
-      setSelectedSupplier(supplierParam);
-    }
-    const promotionsParam = p.get("promotions");
-    setOnlyPromotions(promotionsParam === "true");
+    const syncFromUrl = () => {
+      const p = new URLSearchParams(window.location.search);
+      setSelectedCategoryState(p.get("category") || null);
+      const supplierParam = p.get("supplier");
+      if (supplierParam) {
+        setSelectedSupplier(supplierParam);
+      }
+      const promotionsParam = p.get("promotions");
+      setOnlyPromotions(promotionsParam === "true");
+    };
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
   }, [location]);
 
   const { data: suppliers, isLoading: suppliersLoading } = useQuery<User[]>({
