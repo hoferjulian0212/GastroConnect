@@ -140,12 +140,19 @@ export default function SupplierOrders() {
       setShowMessageInput(false);
       setOrderMessage("");
     },
-    onError: () => {
-      toast({
-        title: t("common", "error"),
-        description: t("supplierOrders", "statusUpdateError"),
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      let title = t("common", "error");
+      let description = t("supplierOrders", "statusUpdateError");
+      try {
+        const msg = error?.message || "";
+        const jsonStr = msg.includes(": ") ? msg.substring(msg.indexOf(": ") + 2) : msg;
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.error === "insufficient_stock" && parsed.details) {
+          title = lang === "it" ? "Scorte insufficienti" : "Nicht genug Lagerbestand";
+          description = parsed.details.join("; ");
+        }
+      } catch {}
+      toast({ title, description, variant: "destructive" });
     },
   });
 

@@ -66,12 +66,19 @@ export function PartialConfirmationDialog({
       onOpenChange(false);
       onSuccess?.();
     },
-    onError: () => {
-      toast({
-        title: lang === "it" ? "Errore" : "Fehler",
-        description: lang === "it" ? "Impossibile confermare l'ordine" : "Bestellung konnte nicht bestätigt werden",
-        variant: "destructive",
-      });
+    onError: async (error: any) => {
+      let title = lang === "it" ? "Errore" : "Fehler";
+      let description = lang === "it" ? "Impossibile confermare l'ordine" : "Bestellung konnte nicht bestätigt werden";
+      try {
+        const msg = error?.message || "";
+        const jsonStr = msg.includes(": ") ? msg.substring(msg.indexOf(": ") + 2) : msg;
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.error === "insufficient_stock" && parsed.details) {
+          title = lang === "it" ? "Scorte insufficienti" : "Nicht genug Lagerbestand";
+          description = parsed.details.join("; ");
+        }
+      } catch {}
+      toast({ title, description, variant: "destructive" });
     },
   });
 

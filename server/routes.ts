@@ -1179,6 +1179,24 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Order not found" });
       }
       const previousStatus = order.status;
+
+      // Stock check before confirming via legacy flow
+      if (status === "confirmed" && previousStatus === "pending") {
+        const stockErrors: string[] = [];
+        for (const item of order.items) {
+          const product = await storage.getProduct(item.productId);
+          if (product && product.stockQuantity !== null && product.stockQuantity !== undefined) {
+            const qty = item.confirmedQuantity ?? item.quantity;
+            if (qty > product.stockQuantity) {
+              stockErrors.push(`${item.productName}: ${qty} bestätigt, aber nur ${product.stockQuantity} auf Lager`);
+            }
+          }
+        }
+        if (stockErrors.length > 0) {
+          return res.status(400).json({ error: "insufficient_stock", details: stockErrors });
+        }
+      }
+
       const updated = await storage.updateOrderStatus(req.params.id, status, requestedDeliveryDate ?? undefined);
       if (!updated) {
         return res.status(404).json({ error: "Order not found" });
@@ -1339,6 +1357,24 @@ export async function registerRoutes(
         if (orderItem && item.confirmedQuantity > orderItem.quantity) {
           return res.status(400).json({ error: `Confirmed quantity cannot exceed ordered quantity for ${orderItem.productName}` });
         }
+      }
+
+      // Check stock availability before confirming
+      const stockErrors: string[] = [];
+      for (const confirmItem of validated.items) {
+        if (confirmItem.confirmedQuantity > 0) {
+          const orderItem = order.items.find(i => i.id === confirmItem.orderItemId)!;
+          const product = await storage.getProduct(orderItem.productId);
+          if (product && product.stockQuantity !== null && product.stockQuantity !== undefined) {
+            const available = product.stockQuantity;
+            if (confirmItem.confirmedQuantity > available) {
+              stockErrors.push(`${orderItem.productName}: ${confirmItem.confirmedQuantity} bestätigt, aber nur ${available} auf Lager`);
+            }
+          }
+        }
+      }
+      if (stockErrors.length > 0) {
+        return res.status(400).json({ error: "insufficient_stock", details: stockErrors });
       }
 
       let totalConfirmedAmount = 0;
