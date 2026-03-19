@@ -213,7 +213,7 @@ export default function ProductDetail() {
   const discountedPrice = hasPromo ? originalPrice * (1 - promo.discountPercent / 100) : originalPrice;
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6">
       <button
         onClick={() => window.history.back()}
         className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -223,7 +223,7 @@ export default function ProductDetail() {
         {lang === "de" ? "Zurueck" : "Indietro"}
       </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
         <div>
           {product.imageUrl ? (
             <div className="w-full aspect-square rounded-xl overflow-hidden bg-muted">
