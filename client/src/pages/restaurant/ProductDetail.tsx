@@ -213,7 +213,7 @@ export default function ProductDetail() {
   const discountedPrice = hasPromo ? originalPrice * (1 - promo.discountPercent / 100) : originalPrice;
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6">
       <button
         onClick={() => window.history.back()}
         className="sticky top-0 z-20 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors bg-gray-50 dark:bg-gray-950 py-2"
@@ -223,7 +223,7 @@ export default function ProductDetail() {
         {lang === "de" ? "Zurueck" : "Indietro"}
       </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
         <div>
           {product.imageUrl ? (
             <div className="w-full aspect-square rounded-xl overflow-hidden bg-muted">
@@ -343,73 +343,75 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {product.description && (
-        <div>
-          <h3 className="text-base font-semibold mb-2 flex items-center gap-2">
-            <Info className="h-4 w-4" />
-            {lang === "de" ? "Beschreibung" : "Descrizione"}
-          </h3>
-          <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-product-description">
-            {product.description}
-          </p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <div className="p-3 rounded-lg bg-muted/50">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-            <Euro className="h-3.5 w-3.5" />
-            {hasPromo ? (lang === "de" ? "Originalpreis" : "Prezzo originale") : (lang === "de" ? "Preis" : "Prezzo")}
-          </div>
-          <p className="font-semibold text-lg">{product.price}€/{product.unit}</p>
-        </div>
-        <div className="p-3 rounded-lg bg-muted/50">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-            <Layers className="h-3.5 w-3.5" />
-            {lang === "de" ? "Einheit" : "Unita"}
-          </div>
-          <p className="font-semibold text-lg">{product.unit}</p>
-        </div>
-        {product.category && (
-          <div className="p-3 rounded-lg bg-muted/50">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-              <Tag className="h-3.5 w-3.5" />
-              {lang === "de" ? "Kategorie" : "Categoria"}
-            </div>
-            <p className="font-medium">{product.category}</p>
+      <div className="max-w-3xl mx-auto space-y-6">
+        {product.description && (
+          <div>
+            <h3 className="text-base font-semibold mb-2 flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              {lang === "de" ? "Beschreibung" : "Descrizione"}
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-product-description">
+              {product.description}
+            </p>
           </div>
         )}
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+              <Euro className="h-3.5 w-3.5" />
+              {hasPromo ? (lang === "de" ? "Originalpreis" : "Prezzo originale") : (lang === "de" ? "Preis" : "Prezzo")}
+            </div>
+            <p className="font-semibold text-lg">{product.price}€/{product.unit}</p>
+          </div>
+          <div className="p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+              <Layers className="h-3.5 w-3.5" />
+              {lang === "de" ? "Einheit" : "Unita"}
+            </div>
+            <p className="font-semibold text-lg">{product.unit}</p>
+          </div>
+          {product.category && (
+            <div className="p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                <Tag className="h-3.5 w-3.5" />
+                {lang === "de" ? "Kategorie" : "Categoria"}
+              </div>
+              <p className="font-medium">{product.category}</p>
+            </div>
+          )}
+        </div>
+
+        {similarProducts.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-lg font-semibold mb-3">
+                {lang === "de" ? "Aehnliche Produkte" : "Prodotti simili"}
+              </h3>
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
+                {similarProducts.map(renderRelatedCard)}
+              </div>
+            </div>
+          </>
+        )}
+
+        {alsoFromSupplier.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-lg font-semibold mb-3">
+                {lang === "de"
+                  ? `Mehr von ${product.supplier?.companyName || product.supplier?.name}`
+                  : `Altro da ${product.supplier?.companyName || product.supplier?.name}`}
+              </h3>
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
+                {alsoFromSupplier.map(renderRelatedCard)}
+              </div>
+            </div>
+          </>
+        )}
       </div>
-
-      {similarProducts.length > 0 && (
-        <>
-          <Separator />
-          <div>
-            <h3 className="text-lg font-semibold mb-3">
-              {lang === "de" ? "Aehnliche Produkte" : "Prodotti simili"}
-            </h3>
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
-              {similarProducts.map(renderRelatedCard)}
-            </div>
-          </div>
-        </>
-      )}
-
-      {alsoFromSupplier.length > 0 && (
-        <>
-          <Separator />
-          <div>
-            <h3 className="text-lg font-semibold mb-3">
-              {lang === "de"
-                ? `Mehr von ${product.supplier?.companyName || product.supplier?.name}`
-                : `Altro da ${product.supplier?.companyName || product.supplier?.name}`}
-            </h3>
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
-              {alsoFromSupplier.map(renderRelatedCard)}
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }
