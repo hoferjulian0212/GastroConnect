@@ -334,33 +334,21 @@ export default function RestaurantCatalog() {
           </div>
 
           {supplierCards.length > 1 && (
-            <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
               <button
                 onClick={() => setSelectedSupplier("all")}
-                className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all shrink-0 ${
                   selectedSupplier === "all"
-                    ? "border-primary bg-primary/10 dark:bg-primary/20"
-                    : "border-transparent bg-muted/50 dark:bg-muted/30"
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-background text-foreground hover:bg-muted"
                 }`}
                 data-testid="filter-supplier-all"
               >
-                <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
-                  selectedSupplier === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                }`}>
-                  <Store className="h-5 w-5 md:h-6 md:w-6" />
-                </div>
-                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
-                  selectedSupplier === "all" ? "text-primary" : "text-muted-foreground"
-                }`}>
-                  {t("common", "all")}
-                </span>
-                <span className={`text-xs md:text-sm font-bold leading-none ${
-                  selectedSupplier === "all" ? "text-primary" : "text-foreground"
-                }`}>
+                <Store className="h-4 w-4 shrink-0" />
+                <span className="text-xs font-medium whitespace-nowrap">{t("common", "all")}</span>
+                <Badge variant={selectedSupplier === "all" ? "secondary" : "outline"} className={`text-[10px] px-1.5 py-0 h-5 ${selectedSupplier === "all" ? "bg-white/20 text-primary-foreground border-0" : ""}`}>
                   {products?.length || 0}
-                </span>
+                </Badge>
               </button>
               {supplierCards.map(supplier => {
                 const isActive = selectedSupplier === supplier.id;
@@ -368,29 +356,23 @@ export default function RestaurantCatalog() {
                   <button
                     key={supplier.id}
                     onClick={() => setSelectedSupplier(supplier.id)}
-                    className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all shrink-0 ${
                       isActive
-                        ? "border-primary bg-primary/10 dark:bg-primary/20"
-                        : "border-transparent bg-muted/50 dark:bg-muted/30"
+                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                        : "border-border bg-background text-foreground hover:bg-muted"
                     }`}
                     data-testid={`filter-supplier-${supplier.id}`}
                   >
-                    <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+                    <Avatar className="h-5 w-5 shrink-0">
                       <AvatarImage src={supplier.profileImageUrl || undefined} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                      <AvatarFallback className={`text-[9px] font-semibold ${isActive ? "bg-white/20 text-primary-foreground" : "bg-primary/10 text-primary"}`}>
                         {supplier.name.substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
-                      isActive ? "text-primary" : "text-muted-foreground"
-                    }`}>
-                      {supplier.name}
-                    </span>
-                    <span className={`text-xs md:text-sm font-bold leading-none ${
-                      isActive ? "text-primary" : "text-foreground"
-                    }`}>
+                    <span className="text-xs font-medium whitespace-nowrap max-w-[100px] truncate">{supplier.name}</span>
+                    <Badge variant={isActive ? "secondary" : "outline"} className={`text-[10px] px-1.5 py-0 h-5 ${isActive ? "bg-white/20 text-primary-foreground border-0" : ""}`}>
                       {supplier.productCount}
-                    </span>
+                    </Badge>
                   </button>
                 );
               })}
@@ -498,24 +480,18 @@ export default function RestaurantCatalog() {
           </div>
 
           {supplierCards.length > 1 && (
-            <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
               <button
                 onClick={() => { setSelectedSupplier("all"); }}
-                className={`flex flex-col items-center gap-1 p-2 rounded-md border-2 transition-all shrink-0 min-w-[64px] ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all shrink-0 ${
                   selectedSupplier === "all"
-                    ? "border-primary bg-primary/10"
-                    : "border-transparent bg-muted/50"
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-background text-foreground hover:bg-muted"
                 }`}
                 data-testid="filter-supplier-all-inner"
               >
-                <div className={`flex items-center justify-center h-8 w-8 rounded-full ${
-                  selectedSupplier === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                }`}>
-                  <Store className="h-4 w-4" />
-                </div>
-                <span className={`text-[10px] font-medium ${selectedSupplier === "all" ? "text-primary" : "text-muted-foreground"}`}>
-                  {t("common", "all")}
-                </span>
+                <Store className="h-3.5 w-3.5 shrink-0" />
+                <span className="text-xs font-medium">{t("common", "all")}</span>
               </button>
               {supplierCards.map(supplier => {
                 const isActive = selectedSupplier === supplier.id;
@@ -523,22 +499,20 @@ export default function RestaurantCatalog() {
                   <button
                     key={supplier.id}
                     onClick={() => setSelectedSupplier(supplier.id)}
-                    className={`flex flex-col items-center gap-1 p-2 rounded-md border-2 transition-all shrink-0 min-w-[64px] ${
-                      isActive ? "border-primary bg-primary/10" : "border-transparent bg-muted/50"
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all shrink-0 ${
+                      isActive
+                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                        : "border-border bg-background text-foreground hover:bg-muted"
                     }`}
                     data-testid={`filter-supplier-inner-${supplier.id}`}
                   >
-                    <Avatar className={`h-8 w-8 ${isActive ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}>
+                    <Avatar className="h-4 w-4 shrink-0">
                       <AvatarImage src={supplier.profileImageUrl || undefined} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                      <AvatarFallback className={`text-[8px] font-semibold ${isActive ? "bg-white/20 text-primary-foreground" : "bg-primary/10 text-primary"}`}>
                         {supplier.name.substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className={`text-[10px] font-medium leading-tight text-center line-clamp-1 w-full ${
-                      isActive ? "text-primary" : "text-muted-foreground"
-                    }`}>
-                      {supplier.name}
-                    </span>
+                    <span className="text-xs font-medium whitespace-nowrap max-w-[90px] truncate">{supplier.name}</span>
                   </button>
                 );
               })}
