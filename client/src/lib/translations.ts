@@ -253,6 +253,7 @@ const t = {
     cancelOrder: { de: "Bestellung stornieren", it: "Annulla ordine" },
     confirmCancel: { de: "Bestellung wirklich stornieren?", it: "Annullare davvero l'ordine?" },
     cancelWarning: { de: "Diese Aktion kann nicht rückgängig gemacht werden.", it: "Questa azione non può essere annullata." },
+    createdBy: { de: "Bestellt von", it: "Ordinato da" },
     moreProductsAvailable: { de: "weitere Produkte verfügbar - Suchfeld nutzen", it: "altri prodotti disponibili - usa il campo di ricerca" },
     noMatchingProducts: { de: "Keine passenden Produkte gefunden.", it: "Nessun prodotto corrispondente trovato." },
   },
