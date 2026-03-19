@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2 } from "lucide-react";
+import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee } from "lucide-react";
 import type { Product, StockMovement, PromotionWithProduct } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -783,6 +783,7 @@ export default function SupplierProducts() {
   const { lang } = useLanguage();
   const t = useT(lang);
   const [activeTab, setActiveTab] = useState<"products" | "inventory" | "promotions">("products");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -1002,7 +1003,36 @@ export default function SupplierProducts() {
     }
   };
 
-  const categories = ["Gemüse", "Obst", "Fleisch", "Fisch", "Milchprodukte", "Getränke", "Trockenwaren", "Gewürze", "Sonstiges"];
+  const categories = ["Gemuese", "Obst", "Fleisch", "Fisch", "Milchprodukte", "Getraenke", "Trockenwaren", "Gewuerze", "Sonstiges"];
+
+  const categoryConfig: Record<string, { de: string; it: string; icon: typeof Package; color: string }> = {
+    "Gemuese": { de: "Gemuese", it: "Verdura", icon: Carrot, color: "bg-green-600" },
+    "Obst": { de: "Obst", it: "Frutta", icon: Apple, color: "bg-red-500" },
+    "Fleisch": { de: "Fleisch", it: "Carne", icon: Beef, color: "bg-rose-700" },
+    "Fisch": { de: "Fisch", it: "Pesce", icon: Fish, color: "bg-cyan-600" },
+    "Milchprodukte": { de: "Milchprodukte", it: "Latticini", icon: Milk, color: "bg-blue-400" },
+    "Getraenke": { de: "Getraenke", it: "Bevande", icon: Wine, color: "bg-purple-600" },
+    "Trockenwaren": { de: "Trockenwaren", it: "Prodotti secchi", icon: Wheat, color: "bg-amber-600" },
+    "Gewuerze": { de: "Gewuerze", it: "Spezie", icon: Flame, color: "bg-orange-500" },
+    "Sonstiges": { de: "Sonstiges", it: "Altro", icon: MoreHorizontal, color: "bg-gray-500" },
+  };
+
+  const productsByCategory = (cat: string) => {
+    if (!products) return [];
+    if (cat === "Sonstiges") {
+      return products.filter(p => !p.category || !categories.includes(p.category));
+    }
+    return products.filter(p => p.category === cat);
+  };
+
+  const categoryProductCount = (cat: string) => productsByCategory(cat).length;
+
+  const categoryFilteredProducts = selectedCategory
+    ? productsByCategory(selectedCategory).filter(p =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -1187,7 +1217,7 @@ export default function SupplierProducts() {
                           </FormControl>
                           <SelectContent>
                             {categories.map((cat) => (
-                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                              <SelectItem key={cat} value={cat}>{lang === "it" ? categoryConfig[cat]?.it : categoryConfig[cat]?.de}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -1371,125 +1401,170 @@ export default function SupplierProducts() {
         <PromotionsView lang={lang} t={t} />
       ) : activeTab === "products" ? (
         <>
-          <Card>
-            <div className="p-3 md:p-4 pb-2 md:pb-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={t("common", "search") + "..."}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 text-sm"
-                  data-testid="input-search-products"
-                />
-              </div>
-            </div>
-            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+          {!selectedCategory ? (
+            <>
               {isLoading ? (
-                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <Skeleton key={i} className="h-24 md:h-32" />
-                  ))}
-                </div>
-              ) : filteredProducts && filteredProducts.length > 0 ? (
-                <div className="grid gap-2 md:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredProducts.map((product) => (
-                    <Card key={product.id} className="cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-px hover:scale-[1.003]" data-testid={`product-card-${product.id}`} onClick={() => setDetailProduct(product)}>
-                      <CardContent className="p-2 md:p-3 flex gap-2 md:gap-3">
-                        {product.imageUrl ? (
-                          <div className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-lg overflow-hidden bg-muted">
-                            <img 
-                              src={product.imageUrl} 
-                              alt={product.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-lg bg-muted flex items-center justify-center">
-                            <Package className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground/30" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-1 md:gap-2">
-                            <h3 className="font-medium text-sm md:text-base line-clamp-1">{product.name}</h3>
-                            <div className="flex shrink-0">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={(e) => { e.stopPropagation(); openEditDialog(product); }}
-                                data-testid={`button-edit-${product.id}`}
-                              >
-                                <Pencil className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={(e) => { e.stopPropagation(); deleteProductMutation.mutate(product.id); }}
-                                disabled={deleteProductMutation.isPending}
-                                data-testid={`button-delete-${product.id}`}
-                              >
-                                <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5 text-destructive" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1 mt-0.5 md:mt-1">
-                            <span className="font-bold text-xs md:text-sm">{product.price}€</span>
-                            <span className="text-[10px] md:text-xs text-muted-foreground">/{product.unit}</span>
-                          </div>
-                          <div className="flex items-center gap-1 md:gap-1.5 mt-1 md:mt-1.5 flex-wrap">
-                            {product.category && (
-                              <Badge variant="secondary" className="text-[10px] md:text-xs px-1 md:px-1.5 py-0">
-                                {product.category}
-                              </Badge>
-                            )}
-                            {product.inStock ? (
-                              <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
-                                {t("common", "available")}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
-                                {t("common", "unavailable")}
-                              </Badge>
-                            )}
-                            {product.minOrderQuantity && product.minOrderQuantity > 1 && (
-                              <Badge variant="outline" className="text-[10px] md:text-xs px-1 md:px-1.5 py-0">
-                                {t("supplierProducts", "minOrderQuantityShort")} {product.minOrderQuantity}
-                              </Badge>
-                            )}
-                            {product.stockQuantity != null && (
-                              <Badge 
-                                variant="outline" 
-                                className={`text-[10px] md:text-xs px-1 md:px-1.5 py-0 ${
-                                  product.lowStockThreshold && product.lowStockThreshold > 0 && product.stockQuantity <= product.lowStockThreshold
-                                    ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
-                                    : ""
-                                }`}
-                                data-testid={`badge-stock-${product.id}`}
-                              >
-                                {product.lowStockThreshold && product.lowStockThreshold > 0 && product.stockQuantity <= product.lowStockThreshold && (
-                                  <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
-                                )}
-                                {product.stockQuantity} {product.unit}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <Skeleton key={i} className="h-36 rounded-xl" />
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-8 md:py-12">
-                  <Package className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground/50 mb-2 md:mb-3" />
-                  <p className="text-sm md:text-base text-muted-foreground">{t("supplierProducts", "noProducts")}</p>
-                  <Button className="mt-3 md:mt-4 gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-first-product">
-                    <Plus className="h-4 w-4" />
-                    {lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}
-                  </Button>
+                <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {categories.map(cat => {
+                    const conf = categoryConfig[cat];
+                    const CatIcon = conf.icon;
+                    const count = categoryProductCount(cat);
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => { setSelectedCategory(cat); setSearchQuery(""); }}
+                        className="flex flex-col items-center gap-3 p-5 md:p-6 rounded-xl border border-border bg-background hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
+                        data-testid={`category-button-${cat}`}
+                      >
+                        <div className={`flex items-center justify-center h-16 w-16 md:h-20 md:w-20 rounded-full ${conf.color} text-white shadow-lg group-hover:scale-105 transition-transform`}>
+                          <CatIcon className="h-8 w-8 md:h-10 md:w-10" />
+                        </div>
+                        <span className="text-sm md:text-base font-semibold text-center leading-tight">
+                          {lang === "it" ? conf.it : conf.de}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {count} {count === 1 ? (lang === "de" ? "Produkt" : "prodotto") : (lang === "de" ? "Produkte" : "prodotti")}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
+                  className="flex items-center justify-center h-8 w-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors shrink-0"
+                  data-testid="button-back-to-categories"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  {(() => {
+                    const conf = categoryConfig[selectedCategory];
+                    const CatIcon = conf?.icon || Package;
+                    return (
+                      <>
+                        <div className={`flex items-center justify-center h-8 w-8 rounded-full ${conf?.color || "bg-gray-500"} text-white shrink-0`}>
+                          <CatIcon className="h-4 w-4" />
+                        </div>
+                        <h2 className="text-lg font-bold truncate">
+                          {lang === "it" ? conf?.it : conf?.de}
+                        </h2>
+                      </>
+                    );
+                  })()}
+                  <Badge variant="secondary" className="shrink-0">{categoryFilteredProducts.length}</Badge>
+                </div>
+              </div>
+
+              <Card>
+                <div className="p-3 md:p-4 pb-2 md:pb-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={t("common", "search") + "..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 text-sm"
+                      data-testid="input-search-products"
+                    />
+                  </div>
+                </div>
+                <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+                  {categoryFilteredProducts.length > 0 ? (
+                    <div className="grid gap-2 md:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {categoryFilteredProducts.map((product) => (
+                        <Card key={product.id} className="cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-px hover:scale-[1.003]" data-testid={`product-card-${product.id}`} onClick={() => setDetailProduct(product)}>
+                          <CardContent className="p-2 md:p-3 flex gap-2 md:gap-3">
+                            {product.imageUrl ? (
+                              <div className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-lg overflow-hidden bg-muted">
+                                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-lg bg-muted flex items-center justify-center">
+                                <Package className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground/30" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-1 md:gap-2">
+                                <h3 className="font-medium text-sm md:text-base line-clamp-1">{product.name}</h3>
+                                <div className="flex shrink-0">
+                                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEditDialog(product); }} data-testid={`button-edit-${product.id}`}>
+                                    <Pencil className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteProductMutation.mutate(product.id); }} disabled={deleteProductMutation.isPending} data-testid={`button-delete-${product.id}`}>
+                                    <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5 text-destructive" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 mt-0.5 md:mt-1">
+                                <span className="font-bold text-xs md:text-sm">{product.price} EUR</span>
+                                <span className="text-[10px] md:text-xs text-muted-foreground">/{product.unit}</span>
+                              </div>
+                              <div className="flex items-center gap-1 md:gap-1.5 mt-1 md:mt-1.5 flex-wrap">
+                                {product.inStock ? (
+                                  <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
+                                    {t("common", "available")}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
+                                    {t("common", "unavailable")}
+                                  </Badge>
+                                )}
+                                {product.minOrderQuantity && product.minOrderQuantity > 1 && (
+                                  <Badge variant="outline" className="text-[10px] md:text-xs px-1 md:px-1.5 py-0">
+                                    {t("supplierProducts", "minOrderQuantityShort")} {product.minOrderQuantity}
+                                  </Badge>
+                                )}
+                                {product.stockQuantity != null && (
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] md:text-xs px-1 md:px-1.5 py-0 ${
+                                      product.lowStockThreshold && product.lowStockThreshold > 0 && product.stockQuantity <= product.lowStockThreshold
+                                        ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
+                                        : ""
+                                    }`}
+                                    data-testid={`badge-stock-${product.id}`}
+                                  >
+                                    {product.lowStockThreshold && product.lowStockThreshold > 0 && product.stockQuantity <= product.lowStockThreshold && (
+                                      <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                                    )}
+                                    {product.stockQuantity} {product.unit}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 md:py-12">
+                      <Package className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground/50 mb-2 md:mb-3" />
+                      <p className="text-sm md:text-base text-muted-foreground">
+                        {searchQuery
+                          ? (lang === "de" ? "Keine Treffer" : "Nessun risultato")
+                          : (lang === "de" ? "Keine Produkte in dieser Kategorie" : "Nessun prodotto in questa categoria")}
+                      </p>
+                      <Button className="mt-3 md:mt-4 gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-first-product">
+                        <Plus className="h-4 w-4" />
+                        {lang === "de" ? "Produkt hinzufuegen" : "Aggiungi prodotto"}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
 
           <ProductDetailDialog
             product={detailProduct}
