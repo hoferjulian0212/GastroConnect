@@ -1405,7 +1405,7 @@ export default function SupplierProducts() {
         <>
           {!selectedCategory ? (
             <>
-              <div className="relative w-full h-44 md:h-56 overflow-hidden -mt-2" style={{ maskImage: "linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)" }}>
+              <div className="relative w-full h-44 md:h-56 overflow-hidden -mt-2" style={{ maskImage: "linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)" }}>
                 <img
                   src={heroBannerImg}
                   alt=""
