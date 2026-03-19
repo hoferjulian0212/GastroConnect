@@ -506,33 +506,21 @@ export default function SupplierOrders() {
       </div>
 
       {uniqueRestaurants.length > 0 && (
-        <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
           <button
             onClick={() => setFilterRestaurant("all")}
-            className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all shrink-0 ${
               filterRestaurant === "all"
-                ? "border-primary bg-primary/10 dark:bg-primary/20"
-                : "border-transparent bg-muted/50 dark:bg-muted/30"
+                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                : "border-border bg-background text-foreground hover:bg-muted"
             }`}
             data-testid="filter-restaurant-all"
           >
-            <div className={`flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full ${
-              filterRestaurant === "all"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}>
-              <Store className="h-5 w-5 md:h-6 md:w-6" />
-            </div>
-            <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 ${
-              filterRestaurant === "all" ? "text-primary" : "text-muted-foreground"
-            }`}>
-              {t("common", "all")}
-            </span>
-            <span className={`text-xs md:text-sm font-bold leading-none ${
-              filterRestaurant === "all" ? "text-primary" : "text-foreground"
-            }`}>
+            <Store className="h-4 w-4 shrink-0" />
+            <span className="text-xs font-medium whitespace-nowrap">{t("common", "all")}</span>
+            <Badge variant={filterRestaurant === "all" ? "secondary" : "outline"} className={`text-[10px] px-1.5 py-0 h-5 ${filterRestaurant === "all" ? "bg-white/20 text-primary-foreground border-0" : ""}`}>
               {orders?.length || 0}
-            </span>
+            </Badge>
           </button>
           {uniqueRestaurants.map(restaurant => {
             const isActive = filterRestaurant === restaurant.id;
@@ -540,29 +528,23 @@ export default function SupplierOrders() {
               <button
                 key={restaurant.id}
                 onClick={() => setFilterRestaurant(restaurant.id)}
-                className={`flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-md border-2 transition-all shrink-0 min-w-[72px] md:min-w-[88px] ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all shrink-0 ${
                   isActive
-                    ? "border-primary bg-primary/10 dark:bg-primary/20"
-                    : "border-transparent bg-muted/50 dark:bg-muted/30"
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-background text-foreground hover:bg-muted"
                 }`}
                 data-testid={`filter-restaurant-${restaurant.id}`}
               >
-                <Avatar className={`h-10 w-10 md:h-12 md:w-12 ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+                <Avatar className="h-5 w-5 shrink-0">
                   <AvatarImage src={restaurant.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base font-semibold">
+                  <AvatarFallback className={`text-[9px] font-semibold ${isActive ? "bg-white/20 text-primary-foreground" : "bg-primary/10 text-primary"}`}>
                     {restaurant.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className={`text-[10px] md:text-xs font-medium leading-tight text-center line-clamp-1 w-full ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`}>
-                  {restaurant.name}
-                </span>
-                <span className={`text-xs md:text-sm font-bold leading-none ${
-                  isActive ? "text-primary" : "text-foreground"
-                }`}>
+                <span className="text-xs font-medium whitespace-nowrap max-w-[100px] truncate">{restaurant.name}</span>
+                <Badge variant={isActive ? "secondary" : "outline"} className={`text-[10px] px-1.5 py-0 h-5 ${isActive ? "bg-white/20 text-primary-foreground border-0" : ""}`}>
                   {restaurant.orderCount}
-                </span>
+                </Badge>
               </button>
             );
           })}
