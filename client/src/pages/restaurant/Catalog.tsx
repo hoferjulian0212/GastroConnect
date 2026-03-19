@@ -282,30 +282,28 @@ export default function RestaurantCatalog() {
         </>
       ) : (
         <>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
-              className="flex items-center justify-center h-8 w-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors shrink-0"
-              data-testid="button-back-to-categories"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              {(() => {
-                const conf = categoryConfig[selectedCategory];
-                const CatIcon = conf?.icon || Package;
-                return (
-                  <>
-                    <div className={`flex items-center justify-center h-8 w-8 rounded-full ${conf?.color || "bg-gray-500"} text-white shrink-0`}>
-                      <CatIcon className="h-4 w-4" />
-                    </div>
-                    <h2 className="text-lg md:text-xl font-bold truncate">
-                      {lang === "it" ? conf?.it : conf?.de}
-                    </h2>
-                  </>
-                );
-              })()}
-            </div>
+          <button
+            onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
+            className="fixed left-4 md:left-[calc(theme(spacing.64)+1.5rem)] top-1/2 -translate-y-1/2 z-30 flex items-center justify-center h-10 w-10 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-md hover:bg-muted transition-colors"
+            data-testid="button-back-to-categories"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            {(() => {
+              const conf = categoryConfig[selectedCategory];
+              const CatIcon = conf?.icon || Package;
+              return (
+                <>
+                  <div className={`flex items-center justify-center h-8 w-8 rounded-full ${conf?.color || "bg-gray-500"} text-white shrink-0`}>
+                    <CatIcon className="h-4 w-4" />
+                  </div>
+                  <h2 className="text-lg md:text-xl font-bold truncate">
+                    {lang === "it" ? conf?.it : conf?.de}
+                  </h2>
+                </>
+              );
+            })()}
           </div>
 
           {supplierCards.length > 1 && (

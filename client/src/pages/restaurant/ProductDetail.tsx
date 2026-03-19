@@ -216,11 +216,10 @@ export default function ProductDetail() {
     <div className="space-y-6 max-w-3xl mx-auto">
       <button
         onClick={() => window.history.back()}
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="fixed left-4 md:left-[calc(theme(spacing.64)+1.5rem)] top-1/2 -translate-y-1/2 z-30 flex items-center justify-center h-10 w-10 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-md hover:bg-muted transition-colors"
         data-testid="button-back"
       >
-        <ArrowLeft className="h-4 w-4" />
-        {lang === "de" ? "Zurueck" : "Indietro"}
+        <ArrowLeft className="h-5 w-5" />
       </button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
