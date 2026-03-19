@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Package, ShoppingCart, Store, Filter, Tag, Clock, Check, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal } from "lucide-react";
+import { Search, Package, ShoppingCart, Store, Filter, Tag, Clock, Check, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich } from "lucide-react";
 import QuantityInput from "@/components/QuantityInput";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { differenceInDays, differenceInHours, format } from "date-fns";
@@ -30,6 +30,7 @@ const categoryConfig: Record<string, { de: string; it: string; icon: typeof Pack
   "Getraenke": { de: "Getraenke", it: "Bevande", icon: Wine, color: "bg-purple-600" },
   "Trockenwaren": { de: "Trockenwaren", it: "Prodotti secchi", icon: Wheat, color: "bg-amber-600" },
   "Gewuerze": { de: "Gewuerze", it: "Spezie", icon: Flame, color: "bg-orange-500" },
+  "Brot": { de: "Brot", it: "Pane", icon: Sandwich, color: "bg-yellow-700" },
   "Sonstiges": { de: "Sonstiges", it: "Altro", icon: MoreHorizontal, color: "bg-gray-500" },
 };
 
