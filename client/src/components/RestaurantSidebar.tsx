@@ -107,13 +107,13 @@ export function RestaurantSidebar() {
       <SidebarHeader className="pt-5 pb-3 px-4 space-y-3">
         {currentUser && (
           <Link href="/restaurant/profile" className="flex flex-col items-center gap-2 px-2 py-3 rounded-xl hover-elevate cursor-pointer" data-testid="link-profile">
-            <Avatar className="h-12 w-12 rounded-full">
+            <Avatar className="h-16 w-16 rounded-full">
               <AvatarImage src={currentUser.profileImageUrl || undefined} alt={currentUser.name} />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-base">
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xl">
                 {currentUser.companyName?.substring(0, 2).toUpperCase() || currentUser.name.substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-base font-semibold text-center leading-snug w-full break-words">{currentUser.companyName || currentUser.name}</span>
+            <span className="text-lg font-semibold text-center leading-snug w-full break-words">{currentUser.companyName || currentUser.name}</span>
           </Link>
         )}
         <AccountSwitcher compact />
