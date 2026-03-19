@@ -1,22 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Package, ShoppingCart, Store, Filter, Tag, Clock, Check, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich } from "lucide-react";
-import QuantityInput from "@/components/QuantityInput";
+import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, ChevronRight } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { differenceInDays, differenceInHours, format } from "date-fns";
-import { de, it } from "date-fns/locale";
-import type { User, ProductWithSupplierAndPromotion, CartItemWithProduct } from "@shared/schema";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import ProductDetailDialog from "@/components/ProductDetailDialog";
+import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import heroBannerImg from "@assets/6fefa2793fd6b494e2f8aabea0385afc_1773947302051.jpg";
@@ -38,17 +30,12 @@ const allCategories = Object.keys(categoryConfig);
 
 export default function RestaurantCatalog() {
   const { currentUser } = useUser();
-  const { toast } = useToast();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [onlyPromotions, setOnlyPromotions] = useState(false);
-  const [detailProduct, setDetailProduct] = useState<ProductWithSupplierAndPromotion | null>(null);
-  const [addedProductIds, setAddedProductIds] = useState<Set<string>>(new Set());
-  const [addedTimers, setAddedTimers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
   const { lang } = useLanguage();
   const t = useT(lang);
 
@@ -69,58 +56,6 @@ export default function RestaurantCatalog() {
   const { data: products, isLoading: productsLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
     queryKey: [`/api/products?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
-  });
-
-  const { data: cartItems } = useQuery<CartItemWithProduct[]>({
-    queryKey: [`/api/cart?restaurantId=${currentUser?.id}`],
-    enabled: !!currentUser?.id,
-  });
-
-  useEffect(() => {
-    if (cartItems && cartItems.length > 0) {
-      setQuantities(prev => {
-        const next = { ...prev };
-        cartItems.forEach(ci => {
-          if (!(ci.productId in next)) {
-            next[ci.productId] = ci.quantity;
-          }
-        });
-        return next;
-      });
-    }
-  }, [cartItems]);
-
-  const addToCartMutation = useMutation({
-    mutationFn: async ({ productId, supplierId, quantity, mode }: { productId: string; supplierId: string; quantity: number; mode?: "set" }) => {
-      return apiRequest("POST", "/api/cart", {
-        restaurantId: currentUser?.id,
-        productId,
-        supplierId,
-        quantity,
-        mode: mode || undefined,
-      });
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
-      setAddedProductIds(prev => new Set(prev).add(variables.productId));
-      if (addedTimers[variables.productId]) clearTimeout(addedTimers[variables.productId]);
-      const timer = setTimeout(() => {
-        setAddedProductIds(prev => {
-          const next = new Set(prev);
-          next.delete(variables.productId);
-          return next;
-        });
-      }, 2000);
-      setAddedTimers(prev => ({ ...prev, [variables.productId]: timer }));
-    },
-    onError: () => {
-      toast({
-        title: t("common", "error"),
-        description: t("common", "productAddError"),
-        variant: "destructive",
-      });
-    },
   });
 
   const knownCategories = allCategories.filter(c => c !== "Sonstiges");
@@ -159,154 +94,61 @@ export default function RestaurantCatalog() {
     })).filter(s => s.productCount > 0);
   }, [suppliers, products]);
 
-  const getMinOrderQty = (product: ProductWithSupplierAndPromotion) => {
-    return product.minOrderQuantity && product.minOrderQuantity > 1 ? product.minOrderQuantity : 1;
-  };
-
-  const handleAddToCart = (product: ProductWithSupplierAndPromotion) => {
-    const minQty = getMinOrderQty(product);
-    const quantity = quantities[product.id] || minQty;
-    addToCartMutation.mutate({
-      productId: product.id,
-      supplierId: product.supplierId,
-      quantity,
-      mode: "set",
-    });
-  };
-
-  const dateLocale = lang === "it" ? it : de;
-
-  const renderProductCard = (product: ProductWithSupplierAndPromotion) => {
+  const renderProductRow = (product: ProductWithSupplierAndPromotion) => {
     const promo = product.activePromotion;
     const hasPromo = !!promo;
     const originalPrice = parseFloat(product.price);
     const discountedPrice = hasPromo ? originalPrice * (1 - promo.discountPercent / 100) : originalPrice;
 
     return (
-      <Card
+      <button
         key={product.id}
-        className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-px hover:scale-[1.003] ${hasPromo ? "ring-1 ring-green-400/50 dark:ring-green-500/30" : ""}`}
-        data-testid={`product-card-${product.id}`}
-        onClick={() => setDetailProduct(product)}
+        className={`flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-lg border border-border bg-background hover:bg-muted/50 transition-all ${!product.inStock ? "opacity-60" : ""} ${hasPromo ? "ring-1 ring-green-400/30" : ""}`}
+        onClick={() => setLocation(`/restaurant/product/${product.id}`)}
+        data-testid={`product-row-${product.id}`}
       >
-        <CardContent className="p-2.5 md:p-3 flex flex-col overflow-hidden">
-          <div className="relative">
-            {product.imageUrl ? (
-              <div className="w-full aspect-square md:aspect-[4/3] rounded-lg overflow-hidden bg-muted">
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-full aspect-square md:aspect-[4/3] rounded-lg bg-muted flex items-center justify-center">
-                <Package className="h-8 w-8 text-muted-foreground/30" />
-              </div>
-            )}
+        {product.imageUrl ? (
+          <div className="h-10 w-10 rounded-lg overflow-hidden bg-muted shrink-0">
+            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+          </div>
+        ) : (
+          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            <Package className="h-4 w-4 text-muted-foreground/30" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium truncate">{product.name}</span>
             {hasPromo && (
-              <div className="absolute top-1.5 left-1.5 flex items-center justify-center rounded-full bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 shadow-sm" data-testid={`badge-discount-${product.id}`}>
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1 py-0 shrink-0">
                 -{promo.discountPercent}%
-              </div>
+              </Badge>
             )}
-            {hasPromo && (
-              <Badge variant="outline" className="absolute top-1.5 right-1.5 bg-green-50/90 text-green-700 border-green-200 dark:bg-green-900/80 dark:text-green-400 dark:border-green-800 text-[10px] px-1 py-0" data-testid={`badge-promo-${product.id}`}>
-                {t("common", "action")}
+            {!product.inStock && (
+              <Badge variant="outline" className="text-[10px] px-1 py-0 text-red-600 border-red-200 shrink-0">
+                {lang === "de" ? "Nicht verfuegbar" : "Non disponibile"}
               </Badge>
             )}
           </div>
-          <div className="mt-1.5 min-w-0 flex-1 flex flex-col">
-            {product.inStock ? (
-              <span className="text-[11px] font-medium text-green-700 dark:text-green-400" data-testid={`text-stock-${product.id}`}>
-                {t("common", "available")}
-              </span>
-            ) : (
-              <span className="text-[11px] font-medium text-red-600 dark:text-red-400" data-testid={`text-stock-${product.id}`}>
-                {t("common", "unavailable")}
-              </span>
-            )}
-            <h3 className="font-medium text-sm truncate">{product.name}</h3>
-            <p className="text-xs text-muted-foreground truncate">
-              {product.supplier?.companyName || product.supplier?.name}
-            </p>
-            <div className="flex items-baseline gap-1 mt-1 flex-wrap">
-              {hasPromo ? (
-                <>
-                  <span className="text-[11px] text-muted-foreground line-through" data-testid={`text-original-price-${product.id}`}>{originalPrice.toFixed(2)}€</span>
-                  <span className="font-bold text-base text-green-600 dark:text-green-400" data-testid={`text-discounted-price-${product.id}`}>{discountedPrice.toFixed(2)}€</span>
-                </>
-              ) : (
-                <span className="font-bold text-base">{originalPrice.toFixed(2)}€</span>
-              )}
-              <span className="text-xs text-muted-foreground">/{product.unit}</span>
-            </div>
-            {hasPromo && promo.endDate && (() => {
-              const now = new Date();
-              const end = new Date(promo.endDate);
-              const daysLeft = differenceInDays(end, now);
-              const hoursLeft = differenceInHours(end, now);
-              let remainingText = "";
-              if (daysLeft <= 0 && hoursLeft > 0) {
-                remainingText = t("common", "endsToday");
-              } else if (daysLeft === 1) {
-                remainingText = t("common", "oneDay");
-              } else if (daysLeft > 1) {
-                remainingText = `${t("common", "still")} ${daysLeft} ${t("common", "daysLeft")}`;
-              } else {
-                remainingText = t("common", "endsSoon");
-              }
-              return (
-                <div className="flex items-center gap-1 mt-0.5" data-testid={`text-promo-remaining-${product.id}`}>
-                  <Clock className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
-                  <span className="text-[10px] text-green-600 dark:text-green-400 font-medium truncate">
-                    {remainingText} — {format(end, "dd.MM.yyyy", { locale: dateLocale })}
-                  </span>
-                </div>
-              );
-            })()}
-            {product.minOrderQuantity && product.minOrderQuantity > 1 && (
-              <p className="text-[10px] text-muted-foreground mt-0.5 truncate" data-testid={`text-moq-${product.id}`}>
-                {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
-              </p>
-            )}
-            <div className="flex items-center gap-1.5 mt-auto pt-2">
-              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                <QuantityInput
-                  value={quantities[product.id] || getMinOrderQty(product)}
-                  onChange={(val) => {
-                    setQuantities(prev => ({ ...prev, [product.id]: val }));
-                  }}
-                  min={getMinOrderQty(product)}
-                  disabled={!product.inStock}
-                  size="md"
-                  testIdPrefix={`qty-${product.id}`}
-                />
+          <span className="text-xs text-muted-foreground truncate block">
+            {product.supplier?.companyName || product.supplier?.name}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="text-right">
+            {hasPromo ? (
+              <div className="flex items-baseline gap-1">
+                <span className="text-[11px] text-muted-foreground line-through">{originalPrice.toFixed(2)}</span>
+                <span className="text-sm font-semibold text-green-600 dark:text-green-400">{discountedPrice.toFixed(2)}€</span>
               </div>
-              <Button
-                variant={addedProductIds.has(product.id) ? "default" : "outline"}
-                size="sm"
-                className={`gap-1.5 text-xs min-w-0 px-2.5 ${
-                  addedProductIds.has(product.id)
-                    ? "bg-green-500 border-green-500 text-white hover:bg-green-500 no-default-hover-elevate no-default-active-elevate animate-cart-added"
-                    : "transition-all duration-200"
-                }`}
-                disabled={!product.inStock || addToCartMutation.isPending}
-                onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
-                data-testid={`button-add-to-cart-${product.id}`}
-              >
-                {addedProductIds.has(product.id) ? (
-                  <Check className="h-3.5 w-3.5 shrink-0 animate-cart-check" />
-                ) : (
-                  <>
-                    <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
-                    <span className="hidden lg:inline truncate">{t("common", "add")}</span>
-                  </>
-                )}
-              </Button>
-            </div>
+            ) : (
+              <span className="text-sm font-semibold">{originalPrice.toFixed(2)}€</span>
+            )}
+            <span className="text-[11px] text-muted-foreground">/{product.unit}</span>
           </div>
-        </CardContent>
-      </Card>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </button>
     );
   };
 
@@ -520,8 +362,8 @@ export default function RestaurantCatalog() {
           )}
 
           {categoryFilteredProducts.length > 0 ? (
-            <div className="grid gap-3 md:gap-3 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-              {categoryFilteredProducts.map(renderProductCard)}
+            <div className="flex flex-col gap-1.5">
+              {categoryFilteredProducts.map(renderProductRow)}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
@@ -535,12 +377,6 @@ export default function RestaurantCatalog() {
         </>
       )}
 
-      <ProductDetailDialog
-        product={detailProduct}
-        open={!!detailProduct}
-        onOpenChange={(open) => !open && setDetailProduct(null)}
-        supplierName={detailProduct?.supplier?.companyName || detailProduct?.supplier?.name}
-      />
     </div>
   );
 }

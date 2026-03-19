@@ -31,6 +31,7 @@ import RestaurantHome from "@/pages/restaurant/Home";
 import RestaurantInbox from "@/pages/restaurant/Inbox";
 import RestaurantOrders from "@/pages/restaurant/Orders";
 import RestaurantCatalog from "@/pages/restaurant/Catalog";
+import RestaurantProductDetail from "@/pages/restaurant/ProductDetail";
 import RestaurantCart from "@/pages/restaurant/Cart";
 
 import RestaurantSettings from "@/pages/restaurant/Settings";
@@ -57,6 +58,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/inbox" component={RestaurantInbox} />
       <Route path="/restaurant/orders" component={RestaurantOrders} />
       <Route path="/restaurant/catalog" component={RestaurantCatalog} />
+      <Route path="/restaurant/product/:id" component={RestaurantProductDetail} />
       <Route path="/restaurant/cart" component={RestaurantCart} />
 
       <Route path="/restaurant/templates"><Redirect to="/restaurant/orders?tab=templates" /></Route>
