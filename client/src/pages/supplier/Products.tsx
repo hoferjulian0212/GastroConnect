@@ -1037,6 +1037,7 @@ export default function SupplierProducts() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {(activeTab !== "products" || selectedCategory) && (
       <div className="flex items-center justify-between gap-3 md:gap-4 flex-wrap">
         <div>
           <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">
@@ -1055,14 +1056,16 @@ export default function SupplierProducts() {
           </p>
         </div>
         {activeTab === "products" && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}</span>
-                <span className="sm:hidden">{t("common", "add")}</span>
-              </Button>
-            </DialogTrigger>
+          <Button className="gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}</span>
+            <span className="sm:hidden">{t("common", "add")}</span>
+          </Button>
+        )}
+      </div>
+      )}
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingProduct ? t("supplierProducts", "editProduct") : t("supplierProducts", "addProduct")}</DialogTitle>
@@ -1361,9 +1364,7 @@ export default function SupplierProducts() {
                 </form>
               </Form>
             </DialogContent>
-          </Dialog>
-        )}
-      </div>
+      </Dialog>
 
       <div className="flex gap-1 p-1 bg-muted rounded-md w-fit" data-testid="tab-switcher-products">
         <Button
@@ -1404,14 +1405,15 @@ export default function SupplierProducts() {
         <>
           {!selectedCategory ? (
             <>
-              <div className="relative w-full h-40 md:h-52 overflow-hidden rounded-xl">
+              <div className="relative w-full h-44 md:h-56 overflow-hidden rounded-xl -mt-2">
                 <img
                   src={heroBannerImg}
                   alt=""
                   className="w-full h-full object-cover object-center"
                 />
-                <div className="absolute inset-y-0 left-0 w-16 md:w-24 bg-gradient-to-r from-background to-transparent" />
-                <div className="absolute inset-y-0 right-0 w-16 md:w-24 bg-gradient-to-l from-background to-transparent" />
+                <div className="absolute inset-y-0 left-0 w-20 md:w-28 bg-gradient-to-r from-background to-transparent" />
+                <div className="absolute inset-y-0 right-0 w-20 md:w-28 bg-gradient-to-l from-background to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent" />
               </div>
 
               <div>
