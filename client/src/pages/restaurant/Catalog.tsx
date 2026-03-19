@@ -123,13 +123,14 @@ export default function RestaurantCatalog() {
     },
   });
 
+  const knownCategories = allCategories.filter(c => c !== "Sonstiges");
   const productsByCategory = (cat: string) => {
     if (!products) return [];
     const supplierFiltered = selectedSupplier === "all"
       ? products
       : products.filter(p => p.supplierId === selectedSupplier);
     if (cat === "Sonstiges") {
-      return supplierFiltered.filter(p => !p.category || !allCategories.includes(p.category));
+      return supplierFiltered.filter(p => !p.category || p.category === "Sonstiges" || !knownCategories.includes(p.category));
     }
     return supplierFiltered.filter(p => p.category === cat);
   };

@@ -1027,10 +1027,11 @@ export default function SupplierProducts() {
     "Sonstiges": { de: "Sonstiges", it: "Altro", icon: MoreHorizontal, color: "bg-gray-500" },
   };
 
+  const knownCategories = Object.keys(categoryConfig).filter(c => c !== "Sonstiges");
   const productsByCategory = (cat: string) => {
     if (!products) return [];
     if (cat === "Sonstiges") {
-      return products.filter(p => !p.category || !categories.includes(p.category));
+      return products.filter(p => !p.category || p.category === "Sonstiges" || !knownCategories.includes(p.category));
     }
     return products.filter(p => p.category === cat);
   };
