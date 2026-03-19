@@ -127,41 +127,43 @@ export default function RestaurantCatalog() {
         onClick={() => setLocation(`/restaurant/product/${product.id}`)}
         data-testid={`product-card-${product.id}`}
       >
-        <div className="relative w-full aspect-[4/3] bg-muted">
+        <div className="relative w-full aspect-square bg-muted overflow-hidden">
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Package className="h-10 w-10 text-muted-foreground/20" />
+              <Package className="h-8 w-8 text-muted-foreground/20" />
             </div>
           )}
           {hasPromo && (
-            <Badge className="absolute top-2 left-2 bg-green-600 text-white border-0 text-[10px] px-1.5 py-0.5">
+            <Badge className="absolute top-1 left-1 bg-green-600 text-white border-0 text-[9px] leading-tight px-1 py-0.5 max-w-[calc(100%-8px)] truncate">
               -{promo.discountPercent}%
             </Badge>
           )}
           {!product.inStock && (
-            <Badge className="absolute top-2 right-2 bg-red-600 text-white border-0 text-[10px] px-1.5 py-0.5">
-              {lang === "de" ? "Nicht verfuegbar" : "Non disponibile"}
-            </Badge>
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+              <span className="text-[9px] font-medium text-white bg-red-600 px-1.5 py-0.5 rounded">
+                {lang === "de" ? "Nicht verfuegbar" : "Non disponibile"}
+              </span>
+            </div>
           )}
         </div>
-        <div className="p-2 flex flex-col gap-0.5 flex-1">
-          <span className="text-xs font-semibold truncate">{product.name}</span>
-          <span className="text-[10px] text-muted-foreground truncate">
+        <div className="p-1.5 flex flex-col gap-0 flex-1 overflow-hidden min-w-0">
+          <span className="text-[11px] font-semibold truncate block">{product.name}</span>
+          <span className="text-[9px] text-muted-foreground truncate block leading-tight">
             {product.supplier?.companyName || product.supplier?.name}
           </span>
-          <div className="mt-auto pt-0.5">
+          <div className="mt-auto pt-0.5 overflow-hidden">
             {hasPromo ? (
-              <div className="flex items-baseline gap-1 flex-wrap">
-                <span className="text-[10px] text-muted-foreground line-through">{originalPrice.toFixed(2)}€</span>
-                <span className="text-xs font-bold text-green-600 dark:text-green-400">{discountedPrice.toFixed(2)}€</span>
-                <span className="text-[10px] text-muted-foreground">/{product.unit}</span>
+              <div className="flex items-baseline gap-0.5 overflow-hidden">
+                <span className="text-[9px] text-muted-foreground line-through shrink-0">{originalPrice.toFixed(2)}</span>
+                <span className="text-[11px] font-bold text-green-600 dark:text-green-400 shrink-0">{discountedPrice.toFixed(2)}€</span>
+                <span className="text-[9px] text-muted-foreground truncate">/{product.unit}</span>
               </div>
             ) : (
-              <div className="flex items-baseline gap-1">
-                <span className="text-xs font-bold">{originalPrice.toFixed(2)}€</span>
-                <span className="text-[10px] text-muted-foreground">/{product.unit}</span>
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-[11px] font-bold shrink-0">{originalPrice.toFixed(2)}€</span>
+                <span className="text-[9px] text-muted-foreground truncate">/{product.unit}</span>
               </div>
             )}
           </div>
