@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, ChevronRight } from "lucide-react";
+import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
@@ -107,7 +107,7 @@ export default function RestaurantCatalog() {
     })).filter(s => s.productCount > 0);
   }, [suppliers, products]);
 
-  const renderProductRow = (product: ProductWithSupplierAndPromotion) => {
+  const renderProductCard = (product: ProductWithSupplierAndPromotion) => {
     const promo = product.activePromotion;
     const hasPromo = !!promo;
     const originalPrice = parseFloat(product.price);
@@ -116,50 +116,48 @@ export default function RestaurantCatalog() {
     return (
       <button
         key={product.id}
-        className={`flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-lg border border-border bg-background hover:bg-muted/50 transition-all ${!product.inStock ? "opacity-60" : ""} ${hasPromo ? "ring-1 ring-green-400/30" : ""}`}
+        className={`flex flex-col text-left rounded-xl border border-border bg-background hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden ${!product.inStock ? "opacity-60" : ""}`}
         onClick={() => setLocation(`/restaurant/product/${product.id}`)}
-        data-testid={`product-row-${product.id}`}
+        data-testid={`product-card-${product.id}`}
       >
-        {product.imageUrl ? (
-          <div className="h-10 w-10 rounded-lg overflow-hidden bg-muted shrink-0">
+        <div className="relative w-full aspect-[4/3] bg-muted">
+          {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-          </div>
-        ) : (
-          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-            <Package className="h-4 w-4 text-muted-foreground/30" />
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium truncate">{product.name}</span>
-            {hasPromo && (
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1 py-0 shrink-0">
-                -{promo.discountPercent}%
-              </Badge>
-            )}
-            {!product.inStock && (
-              <Badge variant="outline" className="text-[10px] px-1 py-0 text-red-600 border-red-200 shrink-0">
-                {lang === "de" ? "Nicht verfuegbar" : "Non disponibile"}
-              </Badge>
-            )}
-          </div>
-          <span className="text-xs text-muted-foreground truncate block">
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Package className="h-10 w-10 text-muted-foreground/20" />
+            </div>
+          )}
+          {hasPromo && (
+            <Badge className="absolute top-2 left-2 bg-green-600 text-white border-0 text-[10px] px-1.5 py-0.5">
+              -{promo.discountPercent}%
+            </Badge>
+          )}
+          {!product.inStock && (
+            <Badge className="absolute top-2 right-2 bg-red-600 text-white border-0 text-[10px] px-1.5 py-0.5">
+              {lang === "de" ? "Nicht verfuegbar" : "Non disponibile"}
+            </Badge>
+          )}
+        </div>
+        <div className="p-3 flex flex-col gap-1 flex-1">
+          <span className="text-sm font-semibold truncate">{product.name}</span>
+          <span className="text-xs text-muted-foreground truncate">
             {product.supplier?.companyName || product.supplier?.name}
           </span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="text-right">
+          <div className="mt-auto pt-1">
             {hasPromo ? (
               <div className="flex items-baseline gap-1">
-                <span className="text-[11px] text-muted-foreground line-through">{originalPrice.toFixed(2)}</span>
-                <span className="text-sm font-semibold text-green-600 dark:text-green-400">{discountedPrice.toFixed(2)}€</span>
+                <span className="text-[11px] text-muted-foreground line-through">{originalPrice.toFixed(2)}€</span>
+                <span className="text-sm font-bold text-green-600 dark:text-green-400">{discountedPrice.toFixed(2)}€</span>
+                <span className="text-[11px] text-muted-foreground">/{product.unit}</span>
               </div>
             ) : (
-              <span className="text-sm font-semibold">{originalPrice.toFixed(2)}€</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm font-bold">{originalPrice.toFixed(2)}€</span>
+                <span className="text-[11px] text-muted-foreground">/{product.unit}</span>
+              </div>
             )}
-            <span className="text-[11px] text-muted-foreground">/{product.unit}</span>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </div>
       </button>
     );
@@ -375,8 +373,8 @@ export default function RestaurantCatalog() {
           </div>
 
           {categoryFilteredProducts.length > 0 ? (
-            <div className="flex flex-col gap-1.5">
-              {categoryFilteredProducts.map(renderProductRow)}
+            <div className="grid gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+              {categoryFilteredProducts.map(renderProductCard)}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
