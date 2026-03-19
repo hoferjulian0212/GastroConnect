@@ -1404,12 +1404,14 @@ export default function SupplierProducts() {
         <>
           {!selectedCategory ? (
             <>
-              <div className="w-full h-28 md:h-36 rounded-xl overflow-hidden">
+              <div className="relative w-full h-40 md:h-52 overflow-hidden rounded-xl">
                 <img
                   src={heroBannerImg}
                   alt=""
                   className="w-full h-full object-cover object-center"
                 />
+                <div className="absolute inset-y-0 left-0 w-16 md:w-24 bg-gradient-to-r from-background to-transparent" />
+                <div className="absolute inset-y-0 right-0 w-16 md:w-24 bg-gradient-to-l from-background to-transparent" />
               </div>
 
               <div>
