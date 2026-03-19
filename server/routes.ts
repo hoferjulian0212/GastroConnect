@@ -2574,6 +2574,111 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/restaurant/supplier-order-stats", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      const supplierId = req.query.supplierId as string;
+      if (!restaurantId || !supplierId) {
+        return res.status(400).json({ error: "restaurantId and supplierId required" });
+      }
+      const allOrders = await db.select().from(orders)
+        .where(and(eq(orders.restaurantId, restaurantId), eq(orders.supplierId, supplierId)));
+
+      const deliveredOrders = allOrders.filter(o => o.status === "delivered" || o.status === "confirmed" || o.status === "in_delivery" || o.status === "partially_confirmed");
+      const totalOrders = deliveredOrders.length;
+      const totalSpent = deliveredOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+      const avgOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0;
+
+      const now = new Date();
+      const monthlyBreakdown: Record<string, { month: string; total: number; count: number }> = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const monthLabel = d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
+        monthlyBreakdown[key] = { month: monthLabel, total: 0, count: 0 };
+      }
+      for (const o of deliveredOrders) {
+        const d = new Date(o.createdAt);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        if (monthlyBreakdown[key]) {
+          monthlyBreakdown[key].total += Number(o.totalAmount || 0);
+          monthlyBreakdown[key].count += 1;
+        }
+      }
+
+      res.json({
+        totalOrders,
+        totalSpent: totalSpent.toFixed(2),
+        avgOrderValue: avgOrderValue.toFixed(2),
+        monthlyBreakdown: Object.values(monthlyBreakdown),
+      });
+    } catch (error) {
+      console.error("Error fetching supplier order stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  app.get("/api/restaurant/monthly-invoice", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      const supplierId = req.query.supplierId as string;
+      const month = req.query.month as string;
+      if (!restaurantId || !supplierId || !month) {
+        return res.status(400).json({ error: "restaurantId, supplierId and month required" });
+      }
+      const [year, mon] = month.split("-").map(Number);
+      const startDate = new Date(year, mon - 1, 1);
+      const endDate = new Date(year, mon, 1);
+
+      const monthOrders = await db.select().from(orders)
+        .where(and(eq(orders.restaurantId, restaurantId), eq(orders.supplierId, supplierId)));
+      const filteredOrders = monthOrders.filter(o => {
+        const d = new Date(o.createdAt);
+        return d >= startDate && d < endDate && (o.status === "delivered" || o.status === "confirmed" || o.status === "in_delivery" || o.status === "partially_confirmed");
+      });
+
+      if (filteredOrders.length === 0) {
+        return res.status(404).json({ error: "No orders for this month" });
+      }
+
+      const [restaurant] = await db.select().from(users).where(eq(users.id, restaurantId));
+      const [supplier] = await db.select().from(users).where(eq(users.id, supplierId));
+      if (!restaurant || !supplier) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const invoiceItems: Array<{ date: string; orderId: string; amount: string }> = [];
+      let grandTotal = 0;
+      for (const o of filteredOrders) {
+        const amount = Number(o.totalAmount || 0);
+        grandTotal += amount;
+        invoiceItems.push({
+          date: new Date(o.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }),
+          orderId: o.id.slice(0, 8).toUpperCase(),
+          amount: amount.toFixed(2),
+        });
+      }
+
+      const monthLabel = startDate.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+      const supplierName = supplier.companyName || supplier.name;
+      const restaurantName = restaurant.companyName || restaurant.name;
+      const invoiceNr = `RE-${month.replace("-", "")}-${supplierId.slice(0, 6).toUpperCase()}`;
+
+      const pdfBuffer = await generateMonthlyInvoicePDF({
+        invoiceNr, monthLabel, supplierName, restaurantName,
+        supplier, restaurant,
+        items: invoiceItems, grandTotal: grandTotal.toFixed(2),
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="Rechnung_${month}_${supplierName.replace(/\s/g, "_")}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating monthly invoice:", error);
+      res.status(500).json({ error: "Failed to generate invoice" });
+    }
+  });
+
   // ===== DOCUMENTS =====
   app.get("/api/documents", async (req, res) => {
     try {
@@ -3298,6 +3403,102 @@ async function generateDeliveryNotePDF(order: {
     doc.fontSize(8).fillColor("#999999").font("Helvetica");
     doc.text(
       `Erstellt am ${deliveryDate} | ${supplierName} | GastroConnect`,
+      50, 780, { width: 495, align: "center" }
+    );
+
+    doc.end();
+  });
+}
+
+async function generateMonthlyInvoicePDF(data: {
+  invoiceNr: string;
+  monthLabel: string;
+  supplierName: string;
+  restaurantName: string;
+  supplier: { address: string | null; city: string | null; postalCode: string | null; phone: string | null; email: string };
+  restaurant: { address: string | null; city: string | null; postalCode: string | null };
+  items: Array<{ date: string; orderId: string; amount: string }>;
+  grandTotal: string;
+}): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const today = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    doc.fontSize(22).font("Helvetica-Bold").text("MONATSRECHNUNG", { align: "center" });
+    doc.moveDown(0.5);
+    doc.fontSize(10).font("Helvetica").fillColor("#666666")
+      .text(`Rechnungs-Nr: ${data.invoiceNr}`, { align: "center" });
+    doc.text(`Zeitraum: ${data.monthLabel}`, { align: "center" });
+    doc.text(`Datum: ${today}`, { align: "center" });
+
+    doc.moveDown(1.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#cccccc").stroke();
+    doc.moveDown(1);
+
+    const topY = doc.y;
+    doc.fontSize(10).font("Helvetica-Bold").fillColor("#333333").text("Von:", 50, topY);
+    doc.font("Helvetica").fontSize(10);
+    doc.text(data.supplierName, 50, topY + 16);
+    if (data.supplier.address) doc.text(data.supplier.address);
+    if (data.supplier.postalCode || data.supplier.city)
+      doc.text(`${data.supplier.postalCode || ""} ${data.supplier.city || ""}`.trim());
+    if (data.supplier.phone) doc.text(`Tel: ${data.supplier.phone}`);
+    doc.text(data.supplier.email);
+
+    doc.fontSize(10).font("Helvetica-Bold").text("An:", 300, topY);
+    doc.font("Helvetica").fontSize(10);
+    doc.text(data.restaurantName, 300, topY + 16);
+    if (data.restaurant.address) doc.text(data.restaurant.address, 300);
+    if (data.restaurant.postalCode || data.restaurant.city)
+      doc.text(`${data.restaurant.postalCode || ""} ${data.restaurant.city || ""}`.trim(), 300);
+
+    const afterAddresses = Math.max(doc.y, topY + 80);
+    doc.y = afterAddresses;
+    doc.moveDown(1.5);
+
+    const tableTop = doc.y;
+    doc.fillColor("#f5f5f5").rect(50, tableTop, 495, 22).fill();
+    doc.fillColor("#333333").font("Helvetica-Bold").fontSize(10);
+    doc.text("Nr.", 55, tableTop + 6, { width: 35 });
+    doc.text("Datum", 95, tableTop + 6, { width: 120 });
+    doc.text("Bestell-Nr.", 220, tableTop + 6, { width: 150 });
+    doc.text("Betrag", 420, tableTop + 6, { width: 120, align: "right" });
+
+    let rowY = tableTop + 28;
+    doc.font("Helvetica").fontSize(10).fillColor("#333333");
+
+    data.items.forEach((item, index) => {
+      if (rowY > 700) { doc.addPage(); rowY = 50; }
+      if (index % 2 === 1) {
+        doc.fillColor("#fafafa").rect(50, rowY - 4, 495, 20).fill();
+        doc.fillColor("#333333");
+      }
+      doc.text(`${index + 1}`, 55, rowY, { width: 35 });
+      doc.text(item.date, 95, rowY, { width: 120 });
+      doc.text(`#${item.orderId}`, 220, rowY, { width: 150 });
+      doc.text(`${item.amount} EUR`, 420, rowY, { width: 120, align: "right" });
+      rowY += 22;
+    });
+
+    doc.y = rowY + 5;
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#cccccc").stroke();
+    doc.moveDown(0.5);
+
+    doc.font("Helvetica-Bold").fontSize(12).fillColor("#333333");
+    doc.text(`Gesamtbetrag: ${data.grandTotal} EUR`, 300, doc.y, { width: 245, align: "right" });
+
+    doc.moveDown(2);
+    doc.font("Helvetica").fontSize(9).fillColor("#666666");
+    doc.text("Diese Rechnung wurde automatisch erstellt und ist ohne Unterschrift gueltig.", 50);
+
+    doc.fontSize(8).fillColor("#999999").font("Helvetica");
+    doc.text(
+      `Erstellt am ${today} | ${data.supplierName} | GastroConnect`,
       50, 780, { width: 495, align: "center" }
     );
 
