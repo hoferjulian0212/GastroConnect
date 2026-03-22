@@ -783,25 +783,28 @@ export default function Complaints() {
                 {t("complaints", "maxFilesInfo")}
               </p>
             </div>
-          </div>
-          <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30">
-            <input
-              type="checkbox"
-              id="dialog-complaint-priority-immediate"
-              checked={priorityImmediate}
-              onChange={(e) => setPriorityImmediate(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-red-300 text-red-500 focus:ring-red-500"
-              data-testid="checkbox-priority-immediate"
-            />
-            <label htmlFor="dialog-complaint-priority-immediate" className="flex-1 cursor-pointer">
-              <div className="flex items-center gap-1.5">
-                <CircleAlert className="h-4 w-4 text-red-500" />
-                <span className="text-sm font-semibold text-red-600 dark:text-red-400">Priority Immediate</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {lang === "de" ? "Dringend - Lieferant wird sofort benachrichtigt" : "Urgente - Il fornitore verra avvisato immediatamente"}
-              </p>
-            </label>
+
+            <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30">
+              <input
+                type="checkbox"
+                id="dialog-complaint-priority-immediate"
+                checked={priorityImmediate}
+                onChange={(e) => setPriorityImmediate(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-red-300 text-red-500 focus:ring-red-500"
+                data-testid="checkbox-priority-immediate"
+              />
+              <label htmlFor="dialog-complaint-priority-immediate" className="flex-1 cursor-pointer">
+                <div className="flex items-center gap-1.5">
+                  <CircleAlert className="h-4 w-4 text-red-500" />
+                  <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+                    {lang === "de" ? "Als Prioritaet setzen" : "Imposta come priorita"}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "de" ? "Dringend - Lieferant wird sofort benachrichtigt" : "Urgente - Il fornitore verra avvisato immediatamente"}
+                </p>
+              </label>
+            </div>
           </div>
 
           <DialogFooter className="gap-2">

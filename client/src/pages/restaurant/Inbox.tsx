@@ -2216,7 +2216,9 @@ export default function RestaurantInbox() {
                           <label htmlFor="complaint-priority-immediate" className="flex-1 cursor-pointer">
                             <div className="flex items-center gap-1.5">
                               <CircleAlert className="h-4 w-4 text-red-500" />
-                              <span className="text-sm font-semibold text-red-600 dark:text-red-400">Priority Immediate</span>
+                              <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+                                {lang === "de" ? "Als Prioritaet setzen" : "Imposta come priorita"}
+                              </span>
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               {lang === "de" ? "Dringend - Lieferant wird sofort benachrichtigt" : "Urgente - Il fornitore verra avvisato immediatamente"}
