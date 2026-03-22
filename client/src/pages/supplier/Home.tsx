@@ -739,7 +739,7 @@ export default function SupplierHome() {
                   return (
                     <div
                       key={complaint.id}
-                      className="p-2.5 md:p-3 rounded-xl border border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/10 transition-all duration-200 hover:shadow-md"
+                      className={`p-2.5 md:p-3 rounded-xl border transition-all duration-200 hover:shadow-md ${complaint.priority === "urgent" ? "border-red-300 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10" : "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/10"}`}
                       data-testid={`action-complaint-${complaint.id}`}
                     >
                       <div className="flex items-center justify-between">
@@ -749,6 +749,11 @@ export default function SupplierHome() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
+                              {complaint.priority === "urgent" && (
+                                <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
+                                  PRIORIT&Auml;T
+                                </Badge>
+                              )}
                               <p className="text-xs md:text-sm font-medium truncate">{complaint.title}</p>
                               <Badge className={`${statusColors[complaint.status] || ""} text-[10px] px-1.5`} variant="outline">
                                 {statusLabels[lang]?.[complaint.status] || complaint.status}

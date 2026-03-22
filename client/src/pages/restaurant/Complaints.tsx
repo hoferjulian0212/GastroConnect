@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
+import { AlertCircle, CircleAlert, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +51,7 @@ export default function Complaints() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [priorityImmediate, setPriorityImmediate] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   
   const [filterComplaintSupplier, setFilterComplaintSupplier] = useState<string>(initialSupplierId || "all");
@@ -138,7 +139,7 @@ export default function Complaints() {
   }, [highlightComplaintId, existingComplaints]);
 
   const createComplaintMutation = useMutation({
-    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; mediaUrls: string[] }) => {
+    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; mediaUrls: string[]; priorityImmediate?: boolean }) => {
       return apiRequest("POST", "/api/complaints", data);
     },
     onSuccess: () => {
@@ -192,6 +193,7 @@ export default function Complaints() {
     setTitle("");
     setDescription("");
     setMediaUrls([]);
+    setPriorityImmediate(false);
     setShowCreateDialog(false);
   };
 
@@ -205,9 +207,10 @@ export default function Complaints() {
       orderId: selectedOrderId,
       restaurantId: currentUser!.id,
       supplierId: selectedSupplierId,
-      title: title.trim(),
+      title: priorityImmediate ? `[PRIORITY IMMEDIATE] ${title.trim()}` : title.trim(),
       description: description.trim(),
       mediaUrls,
+      priorityImmediate,
     });
   };
 
@@ -531,6 +534,11 @@ export default function Complaints() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-0.5">
+                          {(complaint as any).priority === "urgent" && (
+                            <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
+                              PRIORIT&Auml;T
+                            </Badge>
+                          )}
                           <span className="font-medium text-sm truncate">{complaint.title}</span>
                           <Badge variant={statusInfo.variant} className="text-[9px] px-1.5 py-0 h-4 shrink-0">
                             <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
@@ -776,6 +784,26 @@ export default function Complaints() {
               </p>
             </div>
           </div>
+          <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30">
+            <input
+              type="checkbox"
+              id="dialog-complaint-priority-immediate"
+              checked={priorityImmediate}
+              onChange={(e) => setPriorityImmediate(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-red-300 text-red-500 focus:ring-red-500"
+              data-testid="checkbox-priority-immediate"
+            />
+            <label htmlFor="dialog-complaint-priority-immediate" className="flex-1 cursor-pointer">
+              <div className="flex items-center gap-1.5">
+                <CircleAlert className="h-4 w-4 text-red-500" />
+                <span className="text-sm font-semibold text-red-600 dark:text-red-400">Priority Immediate</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {lang === "de" ? "Dringend - Lieferant wird sofort benachrichtigt" : "Urgente - Il fornitore verra avvisato immediatamente"}
+              </p>
+            </label>
+          </div>
+
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
@@ -811,7 +839,14 @@ export default function Complaints() {
             <div className="flex flex-col flex-1 min-h-0 space-y-4">
               <div className="space-y-3 shrink-0">
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-medium text-sm md:text-base">{detailComplaint.title}</h3>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {(detailComplaint as any).priority === "urgent" && (
+                      <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
+                        PRIORIT&Auml;T
+                      </Badge>
+                    )}
+                    <h3 className="font-medium text-sm md:text-base">{detailComplaint.title}</h3>
+                  </div>
                   {(() => {
                     const si = formatComplaintStatus(detailComplaint.status);
                     const SI = si.icon;

@@ -2235,7 +2235,10 @@ export async function registerRoutes(
   app.post("/api/complaints", async (req, res) => {
     try {
       const { priorityImmediate, ...complaintData } = req.body;
-      const validated = insertComplaintSchema.parse(complaintData);
+      const validated = insertComplaintSchema.parse({
+        ...complaintData,
+        priority: priorityImmediate ? "urgent" : "standard",
+      });
       const complaint = await storage.createComplaint(validated);
       
       await storage.addComplaintStatusHistory(complaint.id, null, "open", validated.restaurantId);

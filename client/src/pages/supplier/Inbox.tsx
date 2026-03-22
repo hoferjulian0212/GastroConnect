@@ -1441,7 +1441,14 @@ export default function SupplierInbox() {
                                         {complaintData ? (
                                           <div className="space-y-2">
                                             <div className="flex items-center justify-between flex-wrap gap-1">
-                                              <span className="font-medium">{complaintData.title}</span>
+                                              <div className="flex items-center gap-1.5">
+                                                {message.priority === "important" && (
+                                                  <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
+                                                    PRIORIT&Auml;T
+                                                  </Badge>
+                                                )}
+                                                <span className="font-medium">{complaintData.title}</span>
+                                              </div>
                                               <Badge variant="outline" className="text-xs">
                                                 Bestellung #{complaintData.orderId?.substring(0, 8)}
                                               </Badge>
@@ -2231,7 +2238,14 @@ export default function SupplierInbox() {
               <Separator />
 
               <div>
-                <h4 className="font-semibold text-base mb-2" data-testid="text-complaint-title">{complaintDetail.title}</h4>
+                <div className="flex items-center gap-1.5 mb-2">
+                  {(complaintDetail as any).priority === "urgent" && (
+                    <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
+                      PRIORIT&Auml;T
+                    </Badge>
+                  )}
+                  <h4 className="font-semibold text-base" data-testid="text-complaint-title">{complaintDetail.title}</h4>
+                </div>
                 <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap p-3 rounded-lg bg-muted/30 border" data-testid="text-complaint-description">{complaintDetail.description}</p>
               </div>
 

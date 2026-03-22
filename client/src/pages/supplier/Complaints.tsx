@@ -433,6 +433,11 @@ export default function SupplierComplaints() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5">
+                        {(complaint as any).priority === "urgent" && (
+                          <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
+                            PRIORIT&Auml;T
+                          </Badge>
+                        )}
                         <span className="font-medium text-sm truncate">{complaint.title}</span>
                         <Badge variant={statusInfo.variant} className="text-[9px] px-1.5 py-0 h-4 shrink-0">
                           <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
@@ -506,7 +511,14 @@ export default function SupplierComplaints() {
             <div className="flex flex-col flex-1 min-h-0 space-y-4">
               <div className="space-y-3 shrink-0">
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-medium text-sm md:text-base">{selectedComplaint.title}</h3>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {(selectedComplaint as any).priority === "urgent" && (
+                      <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
+                        PRIORIT&Auml;T
+                      </Badge>
+                    )}
+                    <h3 className="font-medium text-sm md:text-base">{selectedComplaint.title}</h3>
+                  </div>
                   {(() => {
                     const si = formatComplaintStatusInfo(selectedComplaint.status);
                     const SI = si.icon;
