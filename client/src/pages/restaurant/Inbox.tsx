@@ -1028,6 +1028,7 @@ export default function RestaurantInbox() {
                         ? t("inbox", "file")
                         : msgPreviewText;
                       const hasUnread = conv.unreadCount > 0;
+                      const isPriorityMsg = conv.lastMessage?.priority === "important";
                       return (
                         <button
                           key={conv.id}
@@ -1039,6 +1040,8 @@ export default function RestaurantInbox() {
                           className={`w-full p-2.5 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
                             selectedConversation === conv.id
                               ? "bg-muted"
+                              : hasUnread && isPriorityMsg
+                              ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
                               : hasUnread
                               ? "bg-primary/5"
                               : ""
@@ -1053,7 +1056,9 @@ export default function RestaurantInbox() {
                                   {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
-                              {hasUnread ? (
+                              {hasUnread && isPriorityMsg ? (
+                                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 border-2 border-background flex items-center justify-center text-[8px] font-bold text-white">!</span>
+                              ) : hasUnread ? (
                                 <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary border-2 border-background animate-pulse" />
                               ) : conv.otherUser.lastSeenAt && (Date.now() - new Date(conv.otherUser.lastSeenAt).getTime()) < 120000 ? (
                                 <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-background" />
@@ -1061,22 +1066,22 @@ export default function RestaurantInbox() {
                             </div>
                             <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="flex items-center justify-between gap-2">
-                                <p className={`text-sm truncate flex-1 min-w-0 ${hasUnread ? "font-bold text-foreground" : "font-medium"}`}>
+                                <p className={`text-sm truncate flex-1 min-w-0 ${hasUnread && isPriorityMsg ? "font-bold text-red-600 dark:text-red-400" : hasUnread ? "font-bold text-foreground" : "font-medium"}`}>
                                   {conv.otherUser.companyName || conv.otherUser.name}
                                 </p>
                                 <div className="flex items-center gap-1.5 shrink-0">
                                   {lastMessageTime && (
-                                    <span className={`text-[10px] ${hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
+                                    <span className={`text-[10px] ${hasUnread && isPriorityMsg ? "text-red-500 font-semibold" : hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
                                   )}
                                   {hasUnread && (
-                                    <span className="flex h-5 min-w-5 px-1 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
+                                    <span className={`flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold ${isPriorityMsg ? "bg-red-500 text-white" : "bg-primary text-primary-foreground"}`}>
                                       {conv.unreadCount}
                                     </span>
                                   )}
                                 </div>
                               </div>
-                              <p className={`text-xs truncate max-w-full ${hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                                {messagePreview}
+                              <p className={`text-xs truncate max-w-full ${hasUnread && isPriorityMsg ? "text-red-500 font-semibold" : hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                                {isPriorityMsg && hasUnread ? "! " : ""}{messagePreview}
                               </p>
                             </div>
                           </div>
