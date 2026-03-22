@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Search, Save, CircleAlert } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Search, Save, CircleAlert, Calculator, Target, TrendingUp, TrendingDown, Users, Euro } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
 import type { OrderWithDetails, ConversationWithUser, ProductWithSupplierAndPromotion, OrderTemplateWithItems } from "@shared/schema";
@@ -61,6 +61,80 @@ export default function RestaurantHome() {
     queryKey: [`/api/order-templates?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
+
+  const costCurrentMonth = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
+
+  type CostAnalysisData = {
+    month: string; totalOvernights: number; totalCosts: string;
+    costPerGuest: string; targetCost: string; difference: string;
+    percentageDeviation: string; orderCount: number; daysWithData: number;
+  };
+  type OvernightStayEntry = { id: string; restaurantId: string; date: string; overnightStays: number };
+
+  const { data: costAnalysis, isLoading: costLoading } = useQuery<CostAnalysisData>({
+    queryKey: [`/api/restaurant/cost-analysis?restaurantId=${currentUser?.id}&month=${costCurrentMonth}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const { data: overnightEntries } = useQuery<OvernightStayEntry[]>({
+    queryKey: [`/api/restaurant/overnight-stays?restaurantId=${currentUser?.id}&month=${costCurrentMonth}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const [costStayDate, setCostStayDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  });
+  const [costStayGuests, setCostStayGuests] = useState("");
+
+  const saveCostStayMutation = useMutation({
+    mutationFn: (data: { restaurantId: string; date: string; overnightStays: number }) =>
+      apiRequest("POST", "/api/restaurant/overnight-stays", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (q) => {
+          const key = q.queryKey[0] as string;
+          return typeof key === "string" && (key.startsWith("/api/restaurant/overnight-stays") || key.startsWith("/api/restaurant/cost-analysis"));
+        },
+      });
+      setCostStayGuests("");
+      toast({ title: lang === "de" ? "Gespeichert" : "Salvato" });
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler beim Speichern" : "Errore nel salvataggio", variant: "destructive" });
+    },
+  });
+
+  const deleteCostStayMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest("DELETE", `/api/restaurant/overnight-stays/${id}?restaurantId=${currentUser?.id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (q) => {
+          const key = q.queryKey[0] as string;
+          return typeof key === "string" && (key.startsWith("/api/restaurant/overnight-stays") || key.startsWith("/api/restaurant/cost-analysis"));
+        },
+      });
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler beim Loschen" : "Errore nell'eliminazione", variant: "destructive" });
+    },
+  });
+
+  const todayEntry = useMemo(() => {
+    if (!overnightEntries) return null;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    return overnightEntries.find(e => e.date === todayStr) || null;
+  }, [overnightEntries]);
+
+  const recentEntries = useMemo(() => {
+    if (!overnightEntries) return [];
+    return [...overnightEntries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+  }, [overnightEntries]);
 
   const [orderingTemplateId, setOrderingTemplateId] = useState<string | null>(null);
   const [wizardTemplate, setWizardTemplate] = useState<OrderTemplateWithItems | null>(null);
@@ -1088,6 +1162,176 @@ export default function RestaurantHome() {
                       {lang === "de" ? "Vorlage erstellen" : "Crea modello"}
                     </Link>
                   </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-cost-analysis-home">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-purple-500/10 shrink-0">
+                  <Calculator className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base md:text-lg" data-testid="text-cost-analysis-title">
+                    {t("costAnalysis", "title")}
+                  </CardTitle>
+                  <CardDescription className="text-xs md:text-sm">
+                    {(() => {
+                      const monthNames = lang === "de"
+                        ? ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+                        : ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+                      const [y, m] = costCurrentMonth.split("-");
+                      return `${monthNames[parseInt(m) - 1]} ${y}`;
+                    })()}
+                  </CardDescription>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
+                <Link href="/restaurant/cost-analysis" data-testid="link-cost-analysis-page">
+                  {t("common", "all")}
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              {costLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {costAnalysis && costAnalysis.totalOvernights > 0 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/30" data-testid="kpi-cost-per-guest">
+                        <div className="flex items-center gap-1.5 text-[10px] text-purple-600 dark:text-purple-400 font-medium mb-0.5">
+                          <Calculator className="h-3 w-3" />
+                          {t("costAnalysis", "costPerGuest")}
+                        </div>
+                        <div className="text-lg font-bold">{Number(costAnalysis.costPerGuest).toFixed(2)} EUR</div>
+                        {parseFloat(costAnalysis.targetCost) > 0 && (() => {
+                          const dev = parseFloat(costAnalysis.percentageDeviation);
+                          const diff = parseFloat(costAnalysis.difference);
+                          const isOk = Math.abs(dev) <= 5;
+                          const isOver = diff > 0;
+                          return (
+                            <div className={`flex items-center gap-1 text-[10px] mt-0.5 ${isOk ? "text-green-600" : isOver ? "text-red-600" : "text-green-600"}`}>
+                              {isOver ? <TrendingUp className="h-3 w-3" /> : diff < 0 ? <TrendingDown className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+                              {isOk ? t("costAnalysis", "onTarget") : isOver ? t("costAnalysis", "aboveTarget") : t("costAnalysis", "belowTarget")} ({dev > 0 ? "+" : ""}{dev.toFixed(1)}%)
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-muted/50 border" data-testid="kpi-target-cost">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium mb-0.5">
+                          <Target className="h-3 w-3" />
+                          {t("costAnalysis", "targetCost")}
+                        </div>
+                        <div className="text-lg font-bold">{parseFloat(costAnalysis.targetCost) > 0 ? `${parseFloat(costAnalysis.targetCost).toFixed(2)} EUR` : "--"}</div>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-muted/50 border" data-testid="kpi-total-costs">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium mb-0.5">
+                          <Euro className="h-3 w-3" />
+                          {t("costAnalysis", "totalCosts")}
+                        </div>
+                        <div className="text-lg font-bold">{Number(costAnalysis.totalCosts).toFixed(2)}</div>
+                        <div className="text-[10px] text-muted-foreground">{costAnalysis.orderCount} {t("costAnalysis", "orderCount")}</div>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-muted/50 border" data-testid="kpi-overnights">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium mb-0.5">
+                          <Users className="h-3 w-3" />
+                          {t("costAnalysis", "totalOvernights")}
+                        </div>
+                        <div className="text-lg font-bold">{costAnalysis.totalOvernights}</div>
+                        <div className="text-[10px] text-muted-foreground">{costAnalysis.daysWithData} {t("costAnalysis", "daysRecorded")}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-lg bg-muted/30 border text-center">
+                      <Users className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
+                      <p className="text-xs text-muted-foreground">{t("costAnalysis", "noDataDesc")}</p>
+                    </div>
+                  )}
+
+                  <div className="border-t pt-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium">{t("costAnalysis", "enterOvernights")}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={costStayDate}
+                        onChange={(e) => setCostStayDate(e.target.value)}
+                        className="flex-1 h-8 text-xs"
+                        data-testid="input-home-stay-date"
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder={t("costAnalysis", "guests")}
+                        value={costStayGuests}
+                        onChange={(e) => setCostStayGuests(e.target.value)}
+                        className="w-20 h-8 text-xs"
+                        data-testid="input-home-stay-guests"
+                      />
+                      <Button
+                        size="sm"
+                        className="h-8 px-2.5"
+                        disabled={!costStayGuests || !costStayDate || saveCostStayMutation.isPending || isNaN(parseInt(costStayGuests)) || parseInt(costStayGuests) < 1}
+                        onClick={() => {
+                          const guests = Math.max(1, Math.floor(Number(costStayGuests)));
+                          if (!isNaN(guests) && guests > 0 && costStayDate && currentUser?.id) {
+                            saveCostStayMutation.mutate({
+                              restaurantId: currentUser.id,
+                              date: costStayDate,
+                              overnightStays: guests,
+                            });
+                          }
+                        }}
+                        data-testid="button-home-save-stay"
+                      >
+                        {saveCostStayMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+
+                    {todayEntry && (
+                      <div className="mt-2 flex items-center justify-between p-2 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/30 text-xs">
+                        <span className="text-green-700 dark:text-green-400 font-medium">
+                          {lang === "de" ? "Heute" : "Oggi"}: {todayEntry.overnightStays} {t("costAnalysis", "guests")}
+                        </span>
+                        <Check className="h-3.5 w-3.5 text-green-600" />
+                      </div>
+                    )}
+                  </div>
+
+                  {recentEntries.length > 0 && (
+                    <div className="border-t pt-2">
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
+                        {lang === "de" ? "Letzte Einträge" : "Ultime voci"}
+                      </span>
+                      <div className="mt-1.5 space-y-1">
+                        {recentEntries.map((entry) => (
+                          <div key={entry.id} className="flex items-center justify-between py-1 px-2 rounded text-xs hover:bg-muted/50 group" data-testid={`stay-entry-${entry.id}`}>
+                            <span className="text-muted-foreground">
+                              {entry.date.split("-").reverse().join(".")}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{entry.overnightStays} {t("costAnalysis", "guests")}</span>
+                              <button
+                                onClick={() => deleteCostStayMutation.mutate(entry.id)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                data-testid={`button-delete-stay-${entry.id}`}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
