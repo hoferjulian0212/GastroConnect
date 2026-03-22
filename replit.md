@@ -35,6 +35,7 @@ The application features a clean, modern UI with a consistent design language. I
 - **Per-Supplier Order Notes**: Cart notes are specific to each supplier, allowing separate remarks for different parts of a bulk order.
 - **Account Switcher**: A component for selecting active restaurant or supplier accounts, useful for testing and multi-account users, with selection persistence.
 - **Priority Messaging**: Messages can be marked as "important", visually distinguished with a red background and special indicators, used for urgent communications like complaint forms.
+- **Complaint Product Selection**: When creating a complaint, users can select a specific order and then choose individual affected products from that order. Selected products trigger an automatic re-delivery request with high priority. Affected items are stored as JSON in the `affectedItems` column of the `complaints` table and displayed in complaint chat cards, complaint detail views, and both restaurant and supplier pages.
 - **Document Center**: A dedicated section that groups documents (delivery notes, invoices) by supplier with expandable accordions. Each supplier section includes a statistics card displaying order and spending data, along with a 6-month mini bar chart. Monthly invoice PDFs can be generated.
 
 ### Core Data Models

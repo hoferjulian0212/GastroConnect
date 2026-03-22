@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, X, Store, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
+import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, X, Store, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw } from "lucide-react";
 import type { ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getComplaintStatus } from "@/lib/translations";
@@ -532,6 +532,33 @@ export default function SupplierComplaints() {
                 </div>
 
                 <p className="text-sm text-muted-foreground">{selectedComplaint.description}</p>
+
+                {selectedComplaint.affectedItems && (() => {
+                  try {
+                    const items = JSON.parse(selectedComplaint.affectedItems);
+                    if (Array.isArray(items) && items.length > 0) {
+                      return (
+                        <div className="p-3 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                            <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
+                              {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {items.map((ai: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between text-sm">
+                                <span className="text-foreground">{ai.productName}</span>
+                                <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  } catch { return null; }
+                })()}
 
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">

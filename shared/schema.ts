@@ -135,6 +135,7 @@ export const complaints = pgTable("complaints", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   mediaUrls: text("media_urls").array().default([]),
+  affectedItems: text("affected_items"),
   status: complaintStatusEnum("status").default("open").notNull(),
   priority: text("priority").default("standard").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

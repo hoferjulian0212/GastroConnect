@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, CircleAlert, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
+import { AlertCircle, CircleAlert, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +52,7 @@ export default function Complaints() {
   const [description, setDescription] = useState("");
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [priorityImmediate, setPriorityImmediate] = useState(false);
+  const [affectedItems, setAffectedItems] = useState<{ productId: string; productName: string; quantity: number; unitPrice: string }[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   
   const [filterComplaintSupplier, setFilterComplaintSupplier] = useState<string>(initialSupplierId || "all");
@@ -76,6 +77,15 @@ export default function Complaints() {
   const { data: orders, isLoading: loadingOrders } = useQuery<Order[]>({
     queryKey: [`/api/orders-by-supplier?restaurantId=${currentUser?.id}&supplierId=${selectedSupplierId}`],
     enabled: !!currentUser?.id && !!selectedSupplierId,
+  });
+
+  const { data: selectedOrderDetails } = useQuery<any>({
+    queryKey: ['/api/orders', selectedOrderId],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders/${selectedOrderId}`);
+      return res.json();
+    },
+    enabled: !!selectedOrderId,
   });
 
   const { data: existingComplaints, isLoading: loadingComplaints } = useQuery<ComplaintWithDetails[]>({
@@ -139,7 +149,7 @@ export default function Complaints() {
   }, [highlightComplaintId, existingComplaints]);
 
   const createComplaintMutation = useMutation({
-    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; mediaUrls: string[]; priorityImmediate?: boolean }) => {
+    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; mediaUrls: string[]; priorityImmediate?: boolean; affectedItems?: { productId: string; productName: string; quantity: number; unitPrice: string }[] }) => {
       return apiRequest("POST", "/api/complaints", data);
     },
     onSuccess: () => {
@@ -194,7 +204,18 @@ export default function Complaints() {
     setDescription("");
     setMediaUrls([]);
     setPriorityImmediate(false);
+    setAffectedItems([]);
     setShowCreateDialog(false);
+  };
+
+  const toggleAffectedItem = (item: { productId: string; productName: string; quantity: number; unitPrice: string }) => {
+    setAffectedItems(prev => {
+      const existing = prev.find(i => i.productId === item.productId);
+      if (existing) {
+        return prev.filter(i => i.productId !== item.productId);
+      }
+      return [...prev, item];
+    });
   };
 
   const handleSubmit = () => {
@@ -203,14 +224,16 @@ export default function Complaints() {
       return;
     }
 
+    const hasAffected = affectedItems.length > 0;
     createComplaintMutation.mutate({
       orderId: selectedOrderId,
       restaurantId: currentUser!.id,
       supplierId: selectedSupplierId,
-      title: priorityImmediate ? `[PRIORITY IMMEDIATE] ${title.trim()}` : title.trim(),
+      title: (priorityImmediate || hasAffected) ? `[PRIORITY IMMEDIATE] ${title.trim()}` : title.trim(),
       description: description.trim(),
       mediaUrls,
-      priorityImmediate,
+      priorityImmediate: priorityImmediate || hasAffected,
+      affectedItems: hasAffected ? affectedItems : undefined,
     });
   };
 
@@ -666,7 +689,7 @@ export default function Complaints() {
               ) : (
                 <Select
                   value={selectedOrderId}
-                  onValueChange={setSelectedOrderId}
+                  onValueChange={(val) => { setSelectedOrderId(val); setAffectedItems([]); }}
                   data-testid="select-order"
                 >
                   <SelectTrigger data-testid="trigger-order">
@@ -694,6 +717,56 @@ export default function Complaints() {
                 </Select>
               )}
             </div>
+
+            {selectedOrderId && selectedOrderDetails?.items && selectedOrderDetails.items.length > 0 && (
+              <div className="space-y-2">
+                <Label>{lang === "de" ? "Betroffene Produkte" : "Prodotti interessati"}</Label>
+                <p className="text-xs text-muted-foreground">
+                  {lang === "de" ? "Waehlen Sie die Produkte aus, die betroffen sind" : "Seleziona i prodotti interessati"}
+                </p>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-md border p-2">
+                  {selectedOrderDetails.items.map((item: any) => {
+                    const pid = item.productId || item.id;
+                    const isSelected = affectedItems.some(a => a.productId === pid);
+                    return (
+                      <label
+                        key={item.id}
+                        className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors ${isSelected ? "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800" : "hover:bg-muted/50"}`}
+                        data-testid={`affected-item-${pid}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleAffectedItem({
+                            productId: pid,
+                            productName: item.productName,
+                            quantity: item.quantity,
+                            unitPrice: item.unitPrice,
+                          })}
+                          className="h-4 w-4 rounded border-gray-300 text-red-500 focus:ring-red-500"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium truncate">{item.productName}</span>
+                            <span className="text-xs text-muted-foreground shrink-0">{item.quantity}x {parseFloat(item.unitPrice).toFixed(2)} €</span>
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                {affectedItems.length > 0 && (
+                  <div className="flex items-center gap-2 p-2 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                    <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
+                    <span className="text-xs text-orange-700 dark:text-orange-300">
+                      {lang === "de"
+                        ? `Nachlieferung fuer ${affectedItems.length} Produkt(e) wird angefragt`
+                        : `Riconsegna per ${affectedItems.length} prodotto/i verra richiesta`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="title">{t("complaints", "subject")}</Label>
@@ -863,6 +936,33 @@ export default function Complaints() {
                 </div>
 
                 <p className="text-sm text-muted-foreground">{detailComplaint.description}</p>
+
+                {detailComplaint.affectedItems && (() => {
+                  try {
+                    const items = JSON.parse(detailComplaint.affectedItems);
+                    if (Array.isArray(items) && items.length > 0) {
+                      return (
+                        <div className="p-3 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                            <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
+                              {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {items.map((ai: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between text-sm">
+                                <span className="text-foreground">{ai.productName}</span>
+                                <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  } catch { return null; }
+                })()}
 
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">

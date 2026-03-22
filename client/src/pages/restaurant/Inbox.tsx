@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, RefreshCw } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,11 +38,19 @@ interface OrderContent {
   total: string;
 }
 
+interface AffectedItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+}
+
 interface ComplaintContent {
   title: string;
   description: string;
   orderId: string;
   complaintId?: string;
+  affectedItems?: AffectedItem[];
 }
 
 const parseOrderContent = (content: string): OrderContent | null => {
@@ -176,6 +184,7 @@ export default function RestaurantInbox() {
   const [messagePriority, setMessagePriority] = useState<"standard" | "important">("standard");
   const [priorityPopoverOpen, setPriorityPopoverOpen] = useState(false);
   const [complaintPriorityImmediate, setComplaintPriorityImmediate] = useState(false);
+  const [complaintAffectedItems, setComplaintAffectedItems] = useState<AffectedItem[]>([]);
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
   const [showComplaintDetail, setShowComplaintDetail] = useState(false);
   const [loadingComplaintDetail, setLoadingComplaintDetail] = useState(false);
@@ -624,6 +633,15 @@ export default function RestaurantInbox() {
     enabled: !!supplierId && !!currentUser?.id && actionMode === "complaint",
   });
 
+  const { data: complaintOrderDetails } = useQuery<OrderWithDetails>({
+    queryKey: ['/api/orders', complaintOrderId],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders/${complaintOrderId}`);
+      return res.json();
+    },
+    enabled: !!complaintOrderId && actionMode === "complaint",
+  });
+
   const markAsReadMutation = useMutation({
     mutationFn: async (conversationId: string) => {
       return apiRequest("POST", `/api/conversations/${conversationId}/read`, {
@@ -713,7 +731,7 @@ export default function RestaurantInbox() {
   });
 
   const createComplaintMutation = useMutation({
-    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; priorityImmediate?: boolean }) => {
+    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; priorityImmediate?: boolean; affectedItems?: AffectedItem[] }) => {
       return apiRequest("POST", "/api/complaints", data);
     },
     onSuccess: () => {
@@ -729,6 +747,7 @@ export default function RestaurantInbox() {
       setComplaintTitle("");
       setComplaintDescription("");
       setComplaintPriorityImmediate(false);
+      setComplaintAffectedItems([]);
       setActionMode("none");
       setShowComplaintDetail(false);
       setSelectedComplaintId(null);
@@ -745,13 +764,25 @@ export default function RestaurantInbox() {
 
   const handleSubmitComplaint = () => {
     if (!complaintOrderId || !complaintTitle.trim() || !complaintDescription.trim() || !supplierId) return;
+    const hasAffected = complaintAffectedItems.length > 0;
     createComplaintMutation.mutate({
       orderId: complaintOrderId,
       restaurantId: currentUser!.id,
       supplierId,
-      title: complaintPriorityImmediate ? `[PRIORITY IMMEDIATE] ${complaintTitle.trim()}` : complaintTitle.trim(),
+      title: (complaintPriorityImmediate || hasAffected) ? `[PRIORITY IMMEDIATE] ${complaintTitle.trim()}` : complaintTitle.trim(),
       description: complaintDescription.trim(),
-      priorityImmediate: complaintPriorityImmediate,
+      priorityImmediate: complaintPriorityImmediate || hasAffected,
+      affectedItems: hasAffected ? complaintAffectedItems : undefined,
+    });
+  };
+
+  const toggleAffectedItem = (item: { productId: string; productName: string; quantity: number; unitPrice: string }) => {
+    setComplaintAffectedItems(prev => {
+      const existing = prev.find(i => i.productId === item.productId);
+      if (existing) {
+        return prev.filter(i => i.productId !== item.productId);
+      }
+      return [...prev, item];
     });
   };
 
@@ -1716,6 +1747,24 @@ export default function RestaurantInbox() {
                                                 </Badge>
                                               </div>
                                               <p className="text-sm text-muted-foreground">{complaintData.description}</p>
+                                              {complaintData.affectedItems && complaintData.affectedItems.length > 0 && (
+                                                <div className="mt-2 p-2 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                                                  <div className="flex items-center gap-1.5 mb-1.5">
+                                                    <RefreshCw className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                                                    <span className="text-[10px] font-semibold text-orange-700 dark:text-orange-300 uppercase">
+                                                      {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
+                                                    </span>
+                                                  </div>
+                                                  <div className="space-y-0.5">
+                                                    {complaintData.affectedItems.map((ai, idx) => (
+                                                      <div key={idx} className="flex items-center justify-between text-xs">
+                                                        <span className="text-foreground">{ai.productName}</span>
+                                                        <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              )}
                                             </div>
                                           ) : (
                                             <p className="text-sm">{message.content}</p>
@@ -2155,7 +2204,7 @@ export default function RestaurantInbox() {
                           <Label>{t("complaints", "selectOrder")}</Label>
                           <Select
                             value={complaintOrderId}
-                            onValueChange={setComplaintOrderId}
+                            onValueChange={(val) => { setComplaintOrderId(val); setComplaintAffectedItems([]); }}
                             data-testid="select-complaint-order"
                           >
                             <SelectTrigger data-testid="trigger-complaint-order">
@@ -2179,6 +2228,55 @@ export default function RestaurantInbox() {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {complaintOrderId && complaintOrderDetails?.items && complaintOrderDetails.items.length > 0 && (
+                          <div className="space-y-2">
+                            <Label>{lang === "de" ? "Betroffene Produkte" : "Prodotti interessati"}</Label>
+                            <p className="text-xs text-muted-foreground">
+                              {lang === "de" ? "Waehlen Sie die Produkte aus, die betroffen sind" : "Seleziona i prodotti interessati"}
+                            </p>
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-md border p-2">
+                              {complaintOrderDetails.items.map((item) => {
+                                const isSelected = complaintAffectedItems.some(a => a.productId === (item.productId || item.id));
+                                return (
+                                  <label
+                                    key={item.id}
+                                    className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors ${isSelected ? "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800" : "hover:bg-muted/50"}`}
+                                    data-testid={`affected-item-${item.productId || item.id}`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => toggleAffectedItem({
+                                        productId: item.productId || item.id,
+                                        productName: item.productName,
+                                        quantity: item.quantity,
+                                        unitPrice: item.unitPrice,
+                                      })}
+                                      className="h-4 w-4 rounded border-gray-300 text-red-500 focus:ring-red-500"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="text-sm font-medium truncate">{item.productName}</span>
+                                        <span className="text-xs text-muted-foreground shrink-0">{item.quantity}x {parseFloat(item.unitPrice).toFixed(2)} €</span>
+                                      </div>
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            {complaintAffectedItems.length > 0 && (
+                              <div className="flex items-center gap-2 p-2 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                                <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
+                                <span className="text-xs text-orange-700 dark:text-orange-300">
+                                  {lang === "de"
+                                    ? `Nachlieferung fuer ${complaintAffectedItems.length} Produkt(e) wird angefragt`
+                                    : `Riconsegna per ${complaintAffectedItems.length} prodotto/i verra richiesta`}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         <div className="space-y-2">
                           <Label htmlFor="complaint-title">{t("complaints", "subject")}</Label>
@@ -2729,6 +2827,33 @@ export default function RestaurantInbox() {
                   <h4 className="font-semibold text-base" data-testid="text-complaint-title">{complaintDetail.title}</h4>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed p-3 rounded-lg bg-muted/30 border" data-testid="text-complaint-description">{complaintDetail.description}</p>
+
+                {complaintDetail.affectedItems && (() => {
+                  try {
+                    const items = JSON.parse(complaintDetail.affectedItems);
+                    if (Array.isArray(items) && items.length > 0) {
+                      return (
+                        <div className="p-3 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                            <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
+                              {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {items.map((ai: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between text-sm">
+                                <span className="text-foreground">{ai.productName}</span>
+                                <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  } catch { return null; }
+                })()}
               </div>
 
               {complaintDetail.mediaUrls && complaintDetail.mediaUrls.length > 0 && (

@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, Plus } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, Plus, RefreshCw } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
@@ -37,11 +37,19 @@ interface OrderContent {
   total: string;
 }
 
+interface AffectedItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+}
+
 interface ComplaintContent {
   title: string;
   description: string;
   orderId: string;
   complaintId?: string;
+  affectedItems?: AffectedItem[];
 }
 
 interface OrderWithDetails extends Order {
@@ -1454,6 +1462,24 @@ export default function SupplierInbox() {
                                               </Badge>
                                             </div>
                                             <p className="text-sm text-muted-foreground line-clamp-2">{complaintData.description}</p>
+                                            {complaintData.affectedItems && complaintData.affectedItems.length > 0 && (
+                                              <div className="mt-2 p-2 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                                                <div className="flex items-center gap-1.5 mb-1.5">
+                                                  <RefreshCw className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                                                  <span className="text-[10px] font-semibold text-orange-700 dark:text-orange-300 uppercase">
+                                                    {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
+                                                  </span>
+                                                </div>
+                                                <div className="space-y-0.5">
+                                                  {complaintData.affectedItems.map((ai, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between text-xs">
+                                                      <span className="text-foreground">{ai.productName}</span>
+                                                      <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
                                           </div>
                                         ) : (
                                           <p className="text-sm">{message.content}</p>
@@ -2247,6 +2273,33 @@ export default function SupplierInbox() {
                   <h4 className="font-semibold text-base" data-testid="text-complaint-title">{complaintDetail.title}</h4>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap p-3 rounded-lg bg-muted/30 border" data-testid="text-complaint-description">{complaintDetail.description}</p>
+
+                {complaintDetail.affectedItems && (() => {
+                  try {
+                    const items = JSON.parse(complaintDetail.affectedItems);
+                    if (Array.isArray(items) && items.length > 0) {
+                      return (
+                        <div className="p-3 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                            <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
+                              {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {items.map((ai: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between text-sm">
+                                <span className="text-foreground">{ai.productName}</span>
+                                <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  } catch { return null; }
+                })()}
               </div>
 
               {complaintDetail.mediaUrls && complaintDetail.mediaUrls.length > 0 && (

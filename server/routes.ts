@@ -2234,10 +2234,12 @@ export async function registerRoutes(
 
   app.post("/api/complaints", async (req, res) => {
     try {
-      const { priorityImmediate, ...complaintData } = req.body;
+      const { priorityImmediate, affectedItems, ...complaintData } = req.body;
+      const hasAffectedItems = Array.isArray(affectedItems) && affectedItems.length > 0;
       const validated = insertComplaintSchema.parse({
         ...complaintData,
-        priority: priorityImmediate ? "urgent" : "standard",
+        priority: (priorityImmediate || hasAffectedItems) ? "urgent" : "standard",
+        affectedItems: hasAffectedItems ? JSON.stringify(affectedItems) : null,
       });
       const complaint = await storage.createComplaint(validated);
       
@@ -2249,7 +2251,8 @@ export async function registerRoutes(
         title: validated.title,
         description: validated.description,
         orderId: validated.orderId,
-        complaintId: complaint.id
+        complaintId: complaint.id,
+        affectedItems: hasAffectedItems ? affectedItems : undefined,
       });
       await storage.sendMessage({
         conversationId: conversation.id,
