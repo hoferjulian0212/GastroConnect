@@ -2394,6 +2394,112 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/complaints/:id/follow-up-order", async (req, res) => {
+    try {
+      const complaint = await storage.getComplaint(req.params.id);
+      if (!complaint) {
+        return res.status(404).json({ error: "Complaint not found" });
+      }
+
+      const { items, deliveryDate, notes, supplierId } = req.body;
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Items are required" });
+      }
+      if (!deliveryDate) {
+        return res.status(400).json({ error: "Delivery date is required" });
+      }
+
+      const effectiveSupplierId = complaint.supplierId;
+      if (supplierId && supplierId !== effectiveSupplierId) {
+        return res.status(403).json({ error: "Unauthorized: supplier does not match complaint" });
+      }
+
+      if (complaint.status === "closed" || complaint.status === "resolved") {
+        return res.status(400).json({ error: "Cannot create follow-up for closed/resolved complaints" });
+      }
+      const products = await storage.getProductsBySupplier(effectiveSupplierId);
+      const productMap = new Map(products.map(p => [p.id, p]));
+
+      const orderItems = [];
+      for (const item of items) {
+        const product = productMap.get(item.productId);
+        if (!product) continue;
+        const unitPrice = parseFloat(item.unitPrice || product.price);
+        orderItems.push({
+          productId: item.productId,
+          productName: item.productName || product.name,
+          quantity: Math.max(1, Math.round(Number(item.quantity))),
+          unitPrice: unitPrice.toFixed(2),
+          totalPrice: (unitPrice * Math.max(1, Math.round(Number(item.quantity)))).toFixed(2)
+        });
+      }
+
+      if (orderItems.length === 0) {
+        return res.status(400).json({ error: "No valid items found" });
+      }
+
+      const totalAmount = orderItems
+        .reduce((sum: number, item) => sum + parseFloat(item.totalPrice), 0)
+        .toFixed(2);
+
+      const orderNotes = notes || `Nachlieferung zu Reklamation #${complaint.id.slice(0, 8)}`;
+      const order = await storage.createOrder(
+        {
+          restaurantId: complaint.restaurantId,
+          supplierId: effectiveSupplierId,
+          totalAmount,
+          status: "confirmed",
+          notes: orderNotes,
+          requestedDeliveryDate: deliveryDate,
+          createdByUserId: effectiveSupplierId
+        },
+        orderItems as any
+      );
+
+      await storage.addOrderStatusHistory(order.id, null, "pending", effectiveSupplierId);
+      await storage.addOrderStatusHistory(order.id, "pending", "confirmed", effectiveSupplierId);
+
+      const conversation = await storage.getOrCreateConversation(complaint.restaurantId, effectiveSupplierId);
+      const orderContent = JSON.stringify({
+        items: orderItems.map(item => ({
+          name: item.productName,
+          quantity: item.quantity,
+          price: item.totalPrice
+        })),
+        total: totalAmount,
+        isFollowUp: true,
+        complaintId: complaint.id
+      });
+      await storage.sendMessage({
+        conversationId: conversation.id,
+        senderId: effectiveSupplierId,
+        messageType: "order",
+        content: orderContent,
+        orderId: order.id,
+      });
+
+      await storage.updateComplaint(req.params.id, { status: "in_progress" });
+      const previousStatus = complaint.status;
+      if (previousStatus !== "in_progress") {
+        await storage.addComplaintStatusHistory(req.params.id, previousStatus, "in_progress", effectiveSupplierId);
+      }
+
+      const supplier = await storage.getUser(effectiveSupplierId);
+      await createNotificationWithPush({
+        userId: complaint.restaurantId,
+        type: "new_order",
+        title: `Nachlieferung #${order.id.slice(0, 8)}`,
+        message: `${supplier?.companyName || supplier?.name || "Ihr Händler"} hat eine Nachlieferung zu Ihrer Reklamation #${complaint.id.slice(0, 8)} erstellt (€${totalAmount})`,
+        referenceId: order.id
+      }, "restaurant");
+
+      res.status(201).json(order);
+    } catch (error) {
+      console.error("Follow-up order error:", error);
+      res.status(500).json({ error: "Failed to create follow-up order" });
+    }
+  });
+
   app.post("/api/complaints/:id/comments", async (req, res) => {
     try {
       const complaint = await storage.getComplaint(req.params.id);

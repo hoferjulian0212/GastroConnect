@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, X, Store, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw } from "lucide-react";
+import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, X, Store, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw, Truck, Plus } from "lucide-react";
 import type { ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getComplaintStatus } from "@/lib/translations";
@@ -56,6 +56,10 @@ export default function SupplierComplaints() {
   const [showSecondaryFilters, setShowSecondaryFilters] = useState(false);
   const [showComplaintMessageInput, setShowComplaintMessageInput] = useState(false);
   const [complaintMessage, setComplaintMessage] = useState("");
+  const [showFollowUpDialog, setShowFollowUpDialog] = useState(false);
+  const [followUpItems, setFollowUpItems] = useState<{ productId: string; productName: string; quantity: number; unitPrice: string }[]>([]);
+  const [followUpDeliveryDate, setFollowUpDeliveryDate] = useState("");
+  const [followUpNotes, setFollowUpNotes] = useState("");
 
   const { data: complaints, isLoading } = useQuery<ComplaintWithDetails[]>({
     queryKey: [`/api/complaints?supplierId=${currentUser?.id}`],
@@ -98,6 +102,47 @@ export default function SupplierComplaints() {
       toast({ title: t("common", "error"), description: lang === "de" ? "Kommentar konnte nicht gespeichert werden." : "Impossibile salvare il commento.", variant: "destructive" });
     },
   });
+
+  const followUpOrderMutation = useMutation({
+    mutationFn: async (data: { complaintId: string; items: typeof followUpItems; deliveryDate: string; notes: string }) => {
+      return apiRequest("POST", `/api/complaints/${data.complaintId}/follow-up-order`, {
+        items: data.items,
+        deliveryDate: data.deliveryDate,
+        notes: data.notes,
+        supplierId: currentUser?.id,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: lang === "de" ? "Nachlieferung erstellt" : "Riconsegna creata", description: lang === "de" ? "Die Folgebestellung wurde erstellt und bestätigt." : "L'ordine successivo è stato creato e confermato." });
+      queryClient.invalidateQueries({ predicate: (q) => {
+        const key = q.queryKey[0] as string;
+        return key?.includes("/api/complaints") || key?.includes("/api/orders") || key?.includes("/api/conversations");
+      }});
+      setShowFollowUpDialog(false);
+      setShowDetailDialog(false);
+      setFollowUpItems([]);
+      setFollowUpDeliveryDate("");
+      setFollowUpNotes("");
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", description: lang === "de" ? "Nachlieferung konnte nicht erstellt werden." : "Impossibile creare la riconsegna.", variant: "destructive" });
+    },
+  });
+
+  const openFollowUpDialog = (complaint: ComplaintWithDetails) => {
+    if (!complaint.affectedItems) return;
+    try {
+      const items = JSON.parse(complaint.affectedItems);
+      if (Array.isArray(items) && items.length > 0) {
+        setFollowUpItems(items.map((ai: any) => ({ ...ai })));
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        setFollowUpDeliveryDate(tomorrow.toISOString().split("T")[0]);
+        setFollowUpNotes(`Nachlieferung zu Reklamation #${complaint.id.slice(0, 8)}`);
+        setShowFollowUpDialog(true);
+      }
+    } catch {}
+  };
 
   const sendComplaintMessageMutation = useMutation({
     mutationFn: async ({ complaint, message }: { complaint: ComplaintWithDetails; message: string }) => {
@@ -538,21 +583,34 @@ export default function SupplierComplaints() {
                     const items = JSON.parse(selectedComplaint.affectedItems);
                     if (Array.isArray(items) && items.length > 0) {
                       return (
-                        <div className="p-3 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
-                            <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
-                              {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
-                            </span>
+                        <div className="space-y-2">
+                          <div className="p-3 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                              <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
+                                {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
+                              </span>
+                            </div>
+                            <div className="space-y-1">
+                              {items.map((ai: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between text-sm">
+                                  <span className="text-foreground">{ai.productName}</span>
+                                  <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} EUR</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            {items.map((ai: any, idx: number) => (
-                              <div key={idx} className="flex items-center justify-between text-sm">
-                                <span className="text-foreground">{ai.productName}</span>
-                                <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
-                              </div>
-                            ))}
-                          </div>
+                          {selectedComplaint.status !== "closed" && selectedComplaint.status !== "resolved" && (
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => openFollowUpDialog(selectedComplaint)}
+                              data-testid="button-create-follow-up-order"
+                            >
+                              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                              {lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}
+                            </Button>
+                          )}
                         </div>
                       );
                     }
@@ -882,6 +940,136 @@ export default function SupplierComplaints() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showFollowUpDialog} onOpenChange={setShowFollowUpDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}</DialogTitle>
+            <DialogDescription>
+              {lang === "de"
+                ? "Passen Sie die Mengen an und legen Sie das Lieferdatum fest."
+                : "Regola le quantità e imposta la data di consegna."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">{lang === "de" ? "Produkte" : "Prodotti"}</Label>
+              {followUpItems.map((item, idx) => (
+                <div key={idx} className="p-3 rounded-lg border space-y-2" data-testid={`follow-up-item-${idx}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{item.productName}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {parseFloat(item.unitPrice).toFixed(2)} EUR/{lang === "de" ? "Stk" : "pz"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label className="text-xs text-muted-foreground shrink-0">{lang === "de" ? "Menge" : "Quantità"}</Label>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => {
+                          const updated = [...followUpItems];
+                          updated[idx] = { ...updated[idx], quantity: Math.max(1, updated[idx].quantity - 1) };
+                          setFollowUpItems(updated);
+                        }}
+                        data-testid={`button-decrease-${idx}`}
+                      >
+                        <span className="text-base">-</span>
+                      </Button>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const updated = [...followUpItems];
+                          updated[idx] = { ...updated[idx], quantity: Math.max(1, parseInt(e.target.value) || 1) };
+                          setFollowUpItems(updated);
+                        }}
+                        className="w-16 h-7 text-center text-sm"
+                        data-testid={`input-quantity-${idx}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => {
+                          const updated = [...followUpItems];
+                          updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + 1 };
+                          setFollowUpItems(updated);
+                        }}
+                        data-testid={`button-increase-${idx}`}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <span className="text-sm font-medium ml-auto">
+                      {(item.quantity * parseFloat(item.unitPrice)).toFixed(2)} EUR
+                    </span>
+                  </div>
+                </div>
+              ))}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border font-medium text-sm">
+                <span>{lang === "de" ? "Gesamt" : "Totale"}</span>
+                <span>{followUpItems.reduce((sum, item) => sum + item.quantity * parseFloat(item.unitPrice), 0).toFixed(2)} EUR</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">{lang === "de" ? "Lieferdatum" : "Data di consegna"}</Label>
+              <Input
+                type="date"
+                value={followUpDeliveryDate}
+                onChange={(e) => setFollowUpDeliveryDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                data-testid="input-follow-up-delivery-date"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">{lang === "de" ? "Notiz" : "Note"}</Label>
+              <Textarea
+                value={followUpNotes}
+                onChange={(e) => setFollowUpNotes(e.target.value)}
+                placeholder={lang === "de" ? "Optionale Notiz zur Nachlieferung..." : "Nota opzionale per la riconsegna..."}
+                rows={2}
+                data-testid="input-follow-up-notes"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowFollowUpDialog(false)}>
+              {lang === "de" ? "Abbrechen" : "Annulla"}
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedComplaint && followUpDeliveryDate && followUpItems.length > 0) {
+                  followUpOrderMutation.mutate({
+                    complaintId: selectedComplaint.id,
+                    items: followUpItems,
+                    deliveryDate: followUpDeliveryDate,
+                    notes: followUpNotes,
+                  });
+                }
+              }}
+              disabled={!followUpDeliveryDate || followUpItems.length === 0 || followUpOrderMutation.isPending}
+              data-testid="button-confirm-follow-up-order"
+            >
+              {followUpOrderMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Truck className="h-4 w-4 mr-2" />
+              )}
+              {lang === "de" ? "Nachlieferung bestätigen" : "Conferma riconsegna"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

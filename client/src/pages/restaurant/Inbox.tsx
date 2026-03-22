@@ -1014,8 +1014,12 @@ export default function RestaurantInbox() {
                         const parsed = JSON.parse(conv.lastMessage?.content || "");
                         if (parsed.refType && parsed.text) msgPreviewText = parsed.text;
                       } catch {}
+                      let isFollowUpOrder = false;
+                      if (conv.lastMessage?.messageType === "order") {
+                        try { isFollowUpOrder = JSON.parse(conv.lastMessage.content)?.isFollowUp === true; } catch {}
+                      }
                       const messagePreview = conv.lastMessage?.messageType === "order" 
-                        ? t("inbox", "orderMessage") 
+                        ? (isFollowUpOrder ? (lang === "de" ? "Nachlieferung" : "Riconsegna") : t("inbox", "orderMessage")) 
                         : conv.lastMessage?.messageType === "complaint"
                         ? t("inbox", "complaintMessage")
                         : conv.lastMessage?.messageType === "document"

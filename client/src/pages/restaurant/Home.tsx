@@ -307,6 +307,9 @@ export default function RestaurantHome() {
       if (msg.messageType === "order") {
         const data = JSON.parse(msg.content);
         const id = (data.orderId || msg.orderId || "")?.substring(0, 8);
+        if (data.isFollowUp) {
+          return id ? `${lang === "de" ? "Nachlieferung" : "Riconsegna"} #${id}` : (lang === "de" ? "Nachlieferung" : "Riconsegna");
+        }
         return id ? `${lang === "de" ? "Neue Bestellung" : "Nuovo ordine"} #${id}` : (lang === "de" ? "Neue Bestellung" : "Nuovo ordine");
       }
       if (msg.messageType === "complaint") {
