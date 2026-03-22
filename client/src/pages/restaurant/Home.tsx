@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Search, Save } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Search, Save, CircleAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
 import type { OrderWithDetails, ConversationWithUser, ProductWithSupplierAndPromotion, OrderTemplateWithItems } from "@shared/schema";
@@ -269,6 +269,9 @@ export default function RestaurantHome() {
   const unreadConversations = useMemo(() => {
     if (!conversations) return [];
     return conversations.filter(c => c.unreadCount > 0).sort((a, b) => {
+      const aPriority = a.lastMessage?.priority === "important" ? 1 : 0;
+      const bPriority = b.lastMessage?.priority === "important" ? 1 : 0;
+      if (bPriority !== aPriority) return bPriority - aPriority;
       const aTime = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
       const bTime = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
       return bTime - aTime;
@@ -673,13 +676,21 @@ export default function RestaurantHome() {
                 </div>
               ) : unreadConversations.length > 0 ? (
                 <div className="space-y-2">
-                  {unreadConversations.slice(0, 3).map((conv) => (
+                  {unreadConversations.slice(0, 3).map((conv) => {
+                    const isPriority = conv.lastMessage?.priority === "important";
+                    return (
                     <div
                       key={conv.id}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md hover:border-blue-300/40"
+                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md ${isPriority ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20 hover:border-red-400" : "border-border bg-card hover:border-blue-300/40"}`}
                       onClick={() => navigate(`/restaurant/inbox?chat=${conv.id}`)}
                       data-testid={`unread-chat-${conv.id}`}
                     >
+                      {isPriority && (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
+                          <CircleAlert className="h-4 w-4 text-red-600" />
+                        </div>
+                      )}
+                      {!isPriority && (
                       <Avatar className="h-9 w-9 shrink-0">
                         {conv.otherUser.profileImageUrl ? (
                           <AvatarImage src={conv.otherUser.profileImageUrl} alt={conv.otherUser.companyName || conv.otherUser.name} />
@@ -688,26 +699,35 @@ export default function RestaurantHome() {
                           {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-semibold truncate" data-testid={`text-unread-supplier-${conv.id}`}>
-                            {conv.otherUser.companyName || conv.otherUser.name}
-                          </span>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {isPriority && (
+                              <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
+                                PRIORIT&Auml;T
+                              </Badge>
+                            )}
+                            <span className="text-sm font-semibold truncate" data-testid={`text-unread-supplier-${conv.id}`}>
+                              {conv.otherUser.companyName || conv.otherUser.name}
+                            </span>
+                          </div>
                           <span className="text-[10px] text-muted-foreground shrink-0" data-testid={`text-unread-time-${conv.id}`}>
                             {conv.lastMessage?.createdAt && format(new Date(conv.lastMessage.createdAt), "HH:mm", { locale: dateLocale })}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <p className="text-xs text-muted-foreground truncate flex-1" data-testid={`text-unread-preview-${conv.id}`}>
+                          <p className={`text-xs truncate flex-1 ${isPriority ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`} data-testid={`text-unread-preview-${conv.id}`}>
                             {getMessagePreview(conv)}
                           </p>
-                          <Badge className="bg-blue-600 text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0" data-testid={`badge-unread-conv-${conv.id}`}>
+                          <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-blue-600"}`} data-testid={`badge-unread-conv-${conv.id}`}>
                             {conv.unreadCount}
                           </Badge>
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                   {totalUnread > 3 && (
                     <p className="text-xs text-muted-foreground text-center pt-1" data-testid="text-more-unread">
                       +{totalUnread - 3} {t("restaurantHome", "moreUnread")}
