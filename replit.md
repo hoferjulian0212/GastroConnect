@@ -1,7 +1,7 @@
 # GastroConnect
 
 ## Overview
-GastroConnect is a web application that facilitates connections between restaurants and suppliers in the gastronomy industry. It offers distinct, role-based interfaces for restaurants (customers) and suppliers (vendors), each with tailored navigation, views, and business logic. A shared messaging system enables direct communication. The platform allows restaurants to browse catalogs, manage carts, place orders, and communicate with suppliers. Suppliers can manage inventory, process orders, and engage with customers via the chat system. Key features include a WhatsApp-style chat, mobile responsiveness for both roles, a notification system with deep-linking, delivery note generation, a promotions system, configurable delivery days, order modification capabilities, and minimum order quantity enforcement. The project aims to streamline ordering and communication within the food service supply chain.
+GastroConnect is a web application designed to streamline interactions between restaurants and suppliers in the gastronomy industry. It provides distinct, role-based interfaces for restaurants (customers) and suppliers (vendors) to manage orders, inventory, and communications. Key features include a WhatsApp-style chat system, mobile responsiveness, a notification system with deep-linking, delivery note generation, a promotions system, configurable delivery schedules, and order modification capabilities. The platform aims to enhance efficiency in the food service supply chain through improved ordering and communication.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -9,80 +9,64 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX Decisions
-The application uses a clean and modern UI design.
-- **Global Styles**: Inter font, `Gray-50` background for pages, `White` for surfaces (cards, sidebars), and `Indigo-600` as the primary accent color.
-- **Component Styles**: Cards feature `rounded-xl` corners, `border border-gray-200`, and `shadow-sm`. Buttons are `rounded-lg` with `transition-all`. Tables use `divide-y divide-border`.
-- **Layout**: A fixed-width (`w-64`) left sidebar and a flexible, scrollable main content area.
-- **Mobile Responsiveness**: Both restaurant and supplier interfaces are fully mobile-responsive. This is achieved through fixed bottom navigation bars on mobile (`md:hidden`), hiding the sidebar on mobile, and adjusting content padding. The `md:` (768px) breakpoint separates mobile and desktop layouts.
-- **Immersive Chat**: The inbox features a WhatsApp-style immersive chat on mobile, taking full screen height and hiding other UI elements for a focused experience.
-- **Restaurant Home Page**: Top "Anstehende Lieferungen" (Upcoming Deliveries) card showing confirmed/in-delivery/delivered-today orders grouped by delivery date with three special states: **delivered-today** (green card, checkmark icon), **overdue** (red card, X icon, "Nachricht senden" button linking to inbox), **delayed/rescheduled** (amber card, "In Verspätung" badge, shows original vs new date). Below it, a two-column grid with the left column containing: 1) "Ungelesene Nachrichten" card showing up to 3 unread chats with supplier name, message preview, time, and unread count badge (click navigates to specific chat); 2) "Laufende Aktionen" card with horizontally scrollable promotion product cards matching catalog style (discount badge, pricing, quantity selector, add-to-cart button). API endpoint: `GET /api/restaurant/upcoming-deliveries`.
+The application features a clean, modern UI with a consistent design language. It uses the Inter font, a `Gray-50` page background, `White` for surfaces, and `Indigo-600` as the primary accent color. Components like cards and buttons follow a `rounded-xl` and `rounded-lg` style respectively, with `shadow-sm` for cards. Layouts include a fixed-width left sidebar and a flexible main content area. The application is fully mobile-responsive, utilizing fixed bottom navigation on smaller screens and an immersive, full-screen chat experience. The restaurant homepage displays upcoming deliveries with status indicators (delivered-today, overdue, delayed), unread messages, and active promotions.
 
 ### Technical Implementations
-- **Frontend**: React with TypeScript and Vite. Uses Wouter for routing, TanStack React Query for state management, Shadcn/ui for UI components, and Tailwind CSS for styling. React Context API manages user state and role switching.
-- **Backend**: Node.js with Express 5, written in TypeScript using ESM modules. It provides RESTful APIs under the `/api/*` prefix.
-- **Data Layer**: Drizzle ORM with PostgreSQL, utilizing shared schema (`shared/schema.ts`) and Zod for validation. Drizzle Kit handles database migrations.
-- **Role Separation**: Strict role separation is enforced with independent UI components, route handlers, and page components for restaurants and suppliers.
-- **Profile Picture Uploads**: Users can upload profile pictures via presigned URLs to Object Storage (GCS).
-- **Notification System**: Supports various notification types (new message, order status, complaints) with deep-linking functionality to relevant sections of the application.
-- **Delivery Note System**: Generates A4 PDF delivery notes using PDFKit, stores them in Object Storage, and integrates them into the chat system and a dedicated "Documents" section.
-- **Promotions System**: Allows suppliers to create and manage product promotions. Restaurants see active promotions highlighted in the catalog with discounted pricing.
-- **Delivery Days Scheduling**: Suppliers can define specific delivery days for each restaurant, optionally with a time window (e.g., 15:00-16:00) per day. The `deliverySchedules` table has `deliveryTimeFrom` and `deliveryTimeTo` columns (HH:MM format, nullable). The restaurant's cart page displays available delivery dates based on these schedules, including time windows when set, considering multiple suppliers in a single order.
-- **Order Modification**: Restaurants can edit pending orders. For confirmed orders, they can send a change request to the supplier, who can approve or deny it via the inbox. All changes are logged in the chat.
-- **Inbox Wizard Actions**: Both restaurant and supplier inbox views feature inline wizard-based actions directly on order cards. Restaurants can edit (pending), request changes (confirmed), or cancel orders. Suppliers can confirm, mark in delivery, mark delivered, or cancel orders — all with a confirmation step wizard inline on the card.
-- **Minimum Order Quantity (MOQ)**: Products can have a default MOQ, and suppliers can set custom MOQs for specific restaurants. The system enforces MOQs in the catalog and cart, both client-side and server-side.
-- **Minimum Order Value (MOV)**: Suppliers can set minimum order values globally or per delivery zone (postal code prefix). The `minimumOrderValues` table stores supplierId, zone (nullable), and minimumValue. Cart page shows MOV warnings per supplier group and disables ordering when below threshold. Server-side enforcement on order creation. Restaurant Suppliers page displays applicable MOV per supplier. Supplier management UI in the Restaurants detail view.
-- **Supplier Statistics Card**: Supplier home page features a statistics card with KPIs (total revenue, total orders, average order value), a 6-month revenue bar chart (recharts), and a top 5 products ranking with progress bars. Data from `GET /api/supplier/detailed-stats` endpoint.
-- **Inventory Management**: Products have `stockQuantity` and `lowStockThreshold` fields. Stock is automatically deducted when orders are confirmed, and reversed when orders are cancelled or set back to pending via change requests. Manual stock in/out with full audit trail via `stockMovements` table. Low stock alerts displayed on supplier home page.
-- **Partial Confirmation (Soft-Inventory)**: Suppliers can confirm orders with adjusted quantities per item via `POST /api/orders/:id/confirm`. Order items have `confirmedQuantity` and `rejectedQuantity` fields. Status `partially_confirmed` (orange theme) is used when any item quantity is reduced. Stock is deducted based on confirmed quantities only. Chat auto-message of type `order_change_request` with `content.type: "partial_confirmation"` shows item-by-item breakdown in both inboxes.
-- **Supplier Cancel Restriction**: Suppliers cannot cancel orders once they are `in_delivery`. Only restaurants can cancel at that stage. Suppliers have a "Status korrigieren" (Correct status) dropdown in order detail views to change to any status for corrections.
-- **Cost Analysis (Wareneinsatz pro Gast)**: Restaurant page at `/restaurant/cost-analysis` for tracking food cost per guest. Features: monthly KPI dashboard (cost per guest, target, total costs, overnights), configurable target cost per guest, daily overnight stays entry management with add/delete, monthly trend bar chart with target reference line. Data models: `overnightStays` (date + guest count), `costSettings` (target cost per guest). Backend routes validate with Zod schemas and enforce ownership on delete. Bilingual (DE/IT).
+- **Frontend**: Built with React, TypeScript, and Vite. It uses Wouter for routing, TanStack React Query for state management, Shadcn/ui for UI components, and Tailwind CSS for styling. React Context API manages user and role states.
+- **Backend**: Node.js with Express 5, written in TypeScript using ESM modules, providing RESTful APIs.
+- **Data Layer**: Drizzle ORM with PostgreSQL, utilizing shared schema and Zod for validation. Drizzle Kit manages database migrations.
+- **Role Separation**: Strict separation of concerns is implemented for restaurant and supplier roles, with independent UIs, route handlers, and page components.
+- **Profile Management**: Users can upload profile pictures to Object Storage via presigned URLs.
+- **Notification System**: Supports various notification types (e.g., new messages, order status updates) with deep-linking to relevant sections.
+- **Delivery Note System**: Generates A4 PDF delivery notes using PDFKit, stores them in Object Storage, and integrates them into the chat and a dedicated "Documents" section.
+- **Promotions System**: Allows suppliers to create product promotions, which are highlighted in the restaurant catalog with discounted pricing.
+- **Delivery Days Scheduling**: Suppliers can define specific delivery days and optional time windows per restaurant. The cart page dynamically displays available delivery dates.
+- **Order Modification**: Restaurants can edit pending orders directly or send change requests for confirmed orders, which suppliers can approve/deny. All changes are logged in the chat.
+- **Inbox Wizard Actions**: Inboxes include inline wizard-based actions for managing orders (e.g., restaurants editing/canceling, suppliers confirming/delivering/canceling).
+- **Minimum Order Quantity (MOQ) & Value (MOV)**: Products can have default or custom MOQs enforced client-side and server-side. Suppliers can set global or zone-specific MOVs, displayed on the cart page with warnings and enforced during order creation.
+- **Supplier Statistics**: Supplier home page features a statistics card with KPIs, a 6-month revenue chart, and top 5 products ranking.
+- **Inventory Management**: Tracks `stockQuantity` and `lowStockThreshold`. Stock is automatically adjusted upon order confirmation/cancellation, with manual adjustments recorded in `stockMovements`. Low stock alerts are displayed.
+- **Partial Confirmation**: Suppliers can confirm orders with adjusted item quantities. Orders become `partially_confirmed` and an auto-message details the changes in chat.
+- **Order Cancellation Rules**: Suppliers cannot cancel orders once `in_delivery`. A "Correct status" dropdown allows suppliers to adjust status for corrections.
+- **Cost Analysis**: A restaurant page for tracking food cost per guest, including a monthly KPI dashboard, configurable targets, daily overnight stays entry, and trend charts.
+- **Order Templates**: Restaurants can create and manage reusable order templates from scratch or existing orders, displayed as detailed cards on the Orders page with inline editing, quick actions, and direct add-to-cart functionality. A quick-action card on the home page displays up to 3 templates for fast ordering.
+- **Push Notifications**: Implemented via Web Push API with a service worker and VAPID keys for real-time notifications, including deep-linking to relevant app sections. A toggle is available in user settings.
+- **Online Status System**: Tracks user activity with `lastSeenAt` timestamps. An `OnlineStatus` component displays "Online", "Last seen X", or "Offline" in chat headers and conversation lists.
+- **Per-Supplier Order Notes**: Cart notes are specific to each supplier, allowing separate remarks for different parts of a bulk order.
+- **Account Switcher**: A component for selecting active restaurant or supplier accounts, useful for testing and multi-account users, with selection persistence.
+- **Priority Messaging**: Messages can be marked as "important", visually distinguished with a red background and special indicators, used for urgent communications like complaint forms.
+- **Document Center**: A dedicated section that groups documents (delivery notes, invoices) by supplier with expandable accordions. Each supplier section includes a statistics card displaying order and spending data, along with a 6-month mini bar chart. Monthly invoice PDFs can be generated.
 
 ### Core Data Models
-- **Users**: Role-based (restaurant/supplier) with company information and profile pictures.
-- **Products**: Supplier-owned with pricing and inventory.
-- **Orders**: Transaction records with status tracking.
-- **Cart Items**: Temporary storage per restaurant.
-- **Conversations/Messages**: For 1:1 chat between roles.
-- **Delivery Schedules**: Configurable delivery days per supplier-restaurant pair.
-- **Promotions**: Product discounts with start/end dates.
-- **Documents**: Records for generated PDFs like delivery notes.
-- **Custom MOQ**: Overrides for product MOQs specific to a restaurant.
-- **Order Templates**: Reusable order templates with named product lists and quantities. Integrated as a tab within the restaurant Orders page (URL: `/restaurant/orders?tab=templates`). Templates display as expanded detail-rich cards showing all products grouped by supplier, with inline quantity editing (+/- buttons), item removal, inline name editing (click name to rename), duplicate/delete actions, estimated total price, out-of-stock badges, and "last updated" timestamps. Restaurants can create templates from scratch or from existing orders, add products, and use templates to quickly add items to cart. Old route `/restaurant/templates` redirects to the tab. A quick-action card on the restaurant Home page shows up to 3 templates with product details, totals, out-of-stock badges, and a "Bestellen"/"Ordina" button that adds all in-stock items to cart and navigates to cart.
-- **Push Subscriptions**: Stores browser push notification subscriptions per user. Each record has `endpoint`, `p256dh`, and `auth` fields from the Web Push API.
-- **QuantityInput Component**: Shared component at `client/src/components/QuantityInput.tsx`. Renders +/- buttons with a clickable number in between; clicking the number opens an inline input field for manual quantity entry. Supports `min`, `size` ("sm"/"md"), `disabled`, and `testIdPrefix` props. Used across Catalog, Cart, Home promotions, Inbox (create order + edit order), and Templates pages.
-- **Push Notifications System**: Real phone/browser push notifications via Web Push API. Service worker at `client/public/sw.js`, push service at `server/pushService.ts`, subscription hook at `client/src/hooks/usePushNotifications.ts`. VAPID keys stored in env vars (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`). Push toggle available in Settings pages for both roles. Every in-app notification also triggers a push notification to the user's subscribed devices. Push notifications include deep-link URLs that navigate directly to the relevant page when tapped.
-- **Online Status System**: Users table has `lastSeenAt` timestamp column. `POST /api/heartbeat` updates the timestamp every 30 seconds via `useHeartbeat` hook (active on both inbox pages). `GET /api/users/:id/status` returns the `lastSeenAt` value. `OnlineStatus` component at `client/src/components/OnlineStatus.tsx` displays a colored dot + text: green "Online" if seen within 2 minutes, gray "Zuletzt online Xmin/Xh/dd.mm" otherwise, or gray "Offline" if never seen. Shown in chat headers of both inboxes. Conversation list avatars show a green dot badge for online users.
-- **Per-Supplier Order Notes**: Cart notes (`Anmerkungen zur Bestellung`) are per-supplier, not global. Each supplier card in the cart has its own textarea. State is `Record<string, string>` keyed by supplier ID. Backend `createOrderSchema` accepts `perSupplierNotes` field. Single-supplier orders pass `notes`, bulk orders pass `perSupplierNotes`.
-- **Account Switcher**: Allows selecting which restaurant or supplier account to use during testing and in production. Component at `client/src/components/AccountSwitcher.tsx`. Uses a DropdownMenu showing all users of the current role. Selection persists in localStorage (`gastroconnect_selected_{role}_id`). Visible in both sidebars (compact mode) and Settings pages. `UserContext` exposes `selectUser(userId)` and `selectedUserId`. `UserLoader` in App.tsx respects the stored preference when auto-selecting users. Hidden when only one account of the role exists.
-- **Document Center (Grouped by Supplier)**: Documents page groups all documents by supplier/restaurant with expandable accordion sections. Under each supplier: subcategories for Lieferscheine (delivery notes) and Rechnungen (invoices). Each supplier section includes a statistics card showing total orders, total spent, average order value, and a 6-month mini bar chart. Monthly invoice PDF generation via `GET /api/restaurant/monthly-invoice?restaurantId=...&supplierId=...&month=YYYY-MM`. Restaurant-supplier order stats via `GET /api/restaurant/supplier-order-stats?restaurantId=...&supplierId=...`.
+Users, Products, Orders, Cart Items, Conversations/Messages, Delivery Schedules, Promotions, Documents, Custom MOQ, Order Templates, Push Subscriptions, Overnight Stays, Cost Settings, Stock Movements.
 
 ## External Dependencies
 
 ### Database
-- **PostgreSQL**: Primary database.
+- PostgreSQL
 
 ### UI Framework Dependencies
-- **Radix UI**: Accessible, unstyled UI primitives.
-- **Tailwind CSS**: Utility-first CSS framework.
-- **Lucide React**: Icon library.
-- **class-variance-authority**: Component variant management.
-- **embla-carousel-react**: Carousel functionality.
-- **react-day-picker**: Calendar/date picker.
-- **recharts**: Charting library.
-- **vaul**: Drawer component.
-- **cmdk**: Command palette component.
+- Radix UI
+- Tailwind CSS
+- Lucide React
+- class-variance-authority
+- embla-carousel-react
+- react-day-picker
+- recharts
+- vaul
+- cmdk
 
 ### Form Handling
-- **react-hook-form**: Form state management.
-- **@hookform/resolvers**: Zod resolver integration.
-- **zod**: Schema validation.
+- react-hook-form
+- @hookform/resolvers
+- zod
 
 ### Development Tools
-- **Vite**: Build tool and development server.
-- **Drizzle Kit**: Database migration tooling.
-- **esbuild**: Production server bundling.
-- **tsx**: TypeScript execution for development.
+- Vite
+- Drizzle Kit
+- esbuild
+- tsx
 
 ### Other Integrations
-- **PDFKit**: For generating PDF delivery notes.
-- **Object Storage (GCS)**: Used for storing profile pictures and generated documents.
+- PDFKit (for PDF generation)
+- Object Storage (GCS)

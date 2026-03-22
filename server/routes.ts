@@ -177,6 +177,7 @@ const sendMessageSchema = z.object({
   senderId: uuidField,
   content: z.string().min(1).max(50000),
   messageType: z.enum(["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request"]).optional(),
+  priority: z.enum(["standard", "important"]).optional(),
 }).strict();
 
 const markReadSchema = z.object({
@@ -1956,7 +1957,8 @@ export async function registerRoutes(
         conversationId: req.params.id,
         senderId: validated.senderId,
         messageType: validated.messageType || "text",
-        content: validated.content
+        content: validated.content,
+        priority: validated.priority || "standard",
       });
       
       const conversation = await storage.getConversation(req.params.id);
@@ -2232,7 +2234,8 @@ export async function registerRoutes(
 
   app.post("/api/complaints", async (req, res) => {
     try {
-      const validated = insertComplaintSchema.parse(req.body);
+      const { priorityImmediate, ...complaintData } = req.body;
+      const validated = insertComplaintSchema.parse(complaintData);
       const complaint = await storage.createComplaint(validated);
       
       await storage.addComplaintStatusHistory(complaint.id, null, "open", validated.restaurantId);
@@ -2251,6 +2254,7 @@ export async function registerRoutes(
         messageType: "complaint",
         content: complaintContent,
         orderId: validated.orderId,
+        priority: priorityImmediate ? "important" : "standard",
       });
       
       const restaurant = await storage.getUser(validated.restaurantId);

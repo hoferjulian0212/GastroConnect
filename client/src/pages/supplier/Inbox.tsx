@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, Plus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import OnlineStatus from "@/components/OnlineStatus";
@@ -146,6 +147,8 @@ export default function SupplierInbox() {
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
   const [confirmOrderForDialog, setConfirmOrderForDialog] = useState<any | null>(null);
   const [replyToMessage, setReplyToMessage] = useState<{ id: string; senderName: string; preview: string } | null>(null);
+  const [messagePriority, setMessagePriority] = useState<"standard" | "important">("standard");
+  const [priorityPopoverOpen, setPriorityPopoverOpen] = useState(false);
 
   // Complaint management state
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
@@ -471,17 +474,19 @@ export default function SupplierInbox() {
   };
 
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ content, messageType = "text" }: { content: string; messageType?: string }) => {
+    mutationFn: async ({ content, messageType = "text", priority = "standard" }: { content: string; messageType?: string; priority?: string }) => {
       return apiRequest("POST", `/api/conversations/${selectedConversation}/messages`, {
         content,
         messageType,
         senderId: currentUser?.id,
+        priority,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       setMessageText("");
+      setMessagePriority("standard");
       setTimeout(scrollToBottom, 100);
     },
   });
@@ -616,13 +621,13 @@ export default function SupplierInbox() {
         });
         setReplyToMessage(null);
       }
-      sendMessageMutation.mutate({ content, messageType: "text" });
+      sendMessageMutation.mutate({ content, messageType: "text", priority: messagePriority });
     }
   };
 
   const handleSendAttachment = (content: string) => {
     if (selectedConversation) {
-      sendMessageMutation.mutate({ content, messageType: "attachment" });
+      sendMessageMutation.mutate({ content, messageType: "attachment", priority: messagePriority });
     }
   };
 
@@ -1672,19 +1677,38 @@ export default function SupplierInbox() {
                                   const showSenderName = !prevMessage || prevMessage.senderId !== message.senderId || showDateDivider;
                                   const messagePreviewText = refData ? refData.text! : message.content;
                                   const senderName = isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || "");
+                                  const isImportant = message.priority === "important";
                                   return (
                                     <div className={`max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
                                       <div className="flex-1 min-w-0">
-                                        {showSenderName && (
+                                        {isImportant && (
+                                          <div className={`flex items-center gap-1 mb-0.5 px-1 ${isOwn ? "justify-end" : ""}`}>
+                                            <span className="text-[11px] font-bold text-red-500 uppercase">IMPORTANT</span>
+                                          </div>
+                                        )}
+                                        {showSenderName && !isImportant && (
                                           <p className={`text-[11px] font-semibold mb-0.5 px-1 ${isOwn ? "text-right text-secondary-foreground/70" : "text-indigo-600 dark:text-indigo-400"}`}>
                                             {senderName}
                                           </p>
                                         )}
+                                        {showSenderName && isImportant && (
+                                          <p className={`text-[11px] font-semibold mb-0.5 px-1 ${isOwn ? "text-right text-red-400" : "text-red-500"}`}>
+                                            {senderName}
+                                          </p>
+                                        )}
+                                        <div className={`flex items-start gap-1.5 ${isOwn ? "flex-row-reverse" : ""}`}>
+                                          {isImportant && (
+                                            <div className="shrink-0 mt-2">
+                                              <CircleAlert className="h-4 w-4 text-red-500" />
+                                            </div>
+                                          )}
                                         <div
                                           className={`rounded-lg px-3 py-2 shadow-lg ${
-                                            isOwn
-                                              ? "bg-secondary text-secondary-foreground"
-                                              : "bg-muted"
+                                            isImportant
+                                              ? "bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-foreground"
+                                              : isOwn
+                                                ? "bg-secondary text-secondary-foreground"
+                                                : "bg-muted"
                                           }`}
                                         >
                                           {refData && refData.refType === "reply" && (
@@ -1747,15 +1771,16 @@ export default function SupplierInbox() {
                                           )}
                                           <p className="text-sm">{refData ? refData.text : message.content}</p>
                                           <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
-                                            <span className={`text-[10px] ${isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
+                                            <span className={`text-[10px] ${isImportant ? "text-muted-foreground" : isOwn ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>
                                               {format(messageDate, "HH:mm")}
                                             </span>
                                             {isOwn && (
                                               message.isRead 
-                                                ? <CheckCheck className="h-3 w-3 text-secondary-foreground/70" />
-                                                : <Check className="h-3 w-3 text-secondary-foreground/70" />
+                                                ? <CheckCheck className={`h-3 w-3 ${isImportant ? "text-muted-foreground" : "text-secondary-foreground/70"}`} />
+                                                : <Check className={`h-3 w-3 ${isImportant ? "text-muted-foreground" : "text-secondary-foreground/70"}`} />
                                             )}
                                           </div>
+                                        </div>
                                         </div>
                                       </div>
                                       <button
@@ -1812,7 +1837,60 @@ export default function SupplierInbox() {
                       </div>
                     </div>
                   )}
+                  {messagePriority === "important" && (
+                    <div className="flex items-center justify-between mb-2 px-1" data-testid="priority-important-banner">
+                      <div className="flex items-center gap-1.5">
+                        <CircleAlert className="h-4 w-4 text-red-500" />
+                        <span className="text-sm font-bold text-red-500">IMPORTANT!</span>
+                      </div>
+                      <button
+                        onClick={() => setMessagePriority("standard")}
+                        className="shrink-0 hover:text-destructive transition-colors text-muted-foreground"
+                        data-testid="button-remove-priority"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                   <div className="flex gap-2 items-center">
+                    <Popover open={priorityPopoverOpen} onOpenChange={setPriorityPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="icon" className="rounded-full shrink-0" data-testid="button-delivery-options">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-2" align="start">
+                        <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">{lang === "de" ? "Zustelloptionen" : "Opzioni di consegna"}</p>
+                        <button
+                          className={`w-full flex items-center gap-3 p-3 rounded-md text-left transition-colors ${messagePriority === "standard" ? "bg-muted" : "hover:bg-muted/50"}`}
+                          onClick={() => { setMessagePriority("standard"); setPriorityPopoverOpen(false); }}
+                          data-testid="button-priority-standard"
+                        >
+                          <div className="h-8 w-8 rounded-full bg-muted-foreground/10 flex items-center justify-center shrink-0">
+                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold">Standard</p>
+                            <p className="text-xs text-muted-foreground">{lang === "de" ? "Nachricht wird normal gesendet" : "Il messaggio verra inviato normalmente"}</p>
+                          </div>
+                          {messagePriority === "standard" && <Check className="h-4 w-4 text-primary shrink-0" />}
+                        </button>
+                        <button
+                          className={`w-full flex items-center gap-3 p-3 rounded-md text-left transition-colors ${messagePriority === "important" ? "bg-muted" : "hover:bg-muted/50"}`}
+                          onClick={() => { setMessagePriority("important"); setPriorityPopoverOpen(false); }}
+                          data-testid="button-priority-important"
+                        >
+                          <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                            <CircleAlert className="h-4 w-4 text-red-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold">Important</p>
+                            <p className="text-xs text-muted-foreground">{lang === "de" ? "Nachricht wird als wichtig markiert" : "Il messaggio sara contrassegnato come importante"}</p>
+                          </div>
+                          {messagePriority === "important" && <Check className="h-4 w-4 text-primary shrink-0" />}
+                        </button>
+                      </PopoverContent>
+                    </Popover>
                     {selectedConversation && currentUser && (
                       <AttachmentPopover
                         conversationId={selectedConversation}

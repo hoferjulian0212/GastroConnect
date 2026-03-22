@@ -112,6 +112,7 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   orderId: varchar("order_id", { length: 36 }).references(() => orders.id),
   documentUrl: text("document_url"),
+  priority: text("priority").default("standard").notNull(),
   isRead: boolean("is_read").default(false).notNull(),
   dismissed: boolean("dismissed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

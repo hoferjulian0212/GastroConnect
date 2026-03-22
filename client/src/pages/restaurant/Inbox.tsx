@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
@@ -173,6 +173,9 @@ export default function RestaurantInbox() {
   const [attachedOrderRef, setAttachedOrderRef] = useState<{ id: string; label: string } | null>(null);
   const [replyToMessage, setReplyToMessage] = useState<{ id: string; senderName: string; preview: string } | null>(null);
   const [complaintDescription, setComplaintDescription] = useState("");
+  const [messagePriority, setMessagePriority] = useState<"standard" | "important">("standard");
+  const [priorityPopoverOpen, setPriorityPopoverOpen] = useState(false);
+  const [complaintPriorityImmediate, setComplaintPriorityImmediate] = useState(false);
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
   const [showComplaintDetail, setShowComplaintDetail] = useState(false);
   const [loadingComplaintDetail, setLoadingComplaintDetail] = useState(false);
@@ -647,17 +650,19 @@ export default function RestaurantInbox() {
   };
 
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ content, messageType = "text" }: { content: string; messageType?: string }) => {
+    mutationFn: async ({ content, messageType = "text", priority = "standard" }: { content: string; messageType?: string; priority?: string }) => {
       return apiRequest("POST", `/api/conversations/${selectedConversation}/messages`, {
         content,
         messageType,
         senderId: currentUser?.id,
+        priority,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       setMessageText("");
+      setMessagePriority("standard");
       setTimeout(scrollToBottom, 100);
     },
   });
@@ -707,7 +712,7 @@ export default function RestaurantInbox() {
   });
 
   const createComplaintMutation = useMutation({
-    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string }) => {
+    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; priorityImmediate?: boolean }) => {
       return apiRequest("POST", "/api/complaints", data);
     },
     onSuccess: () => {
@@ -722,6 +727,7 @@ export default function RestaurantInbox() {
       setComplaintOrderId("");
       setComplaintTitle("");
       setComplaintDescription("");
+      setComplaintPriorityImmediate(false);
       setActionMode("none");
       setShowComplaintDetail(false);
       setSelectedComplaintId(null);
@@ -742,8 +748,9 @@ export default function RestaurantInbox() {
       orderId: complaintOrderId,
       restaurantId: currentUser!.id,
       supplierId,
-      title: complaintTitle.trim(),
+      title: complaintPriorityImmediate ? `[PRIORITY IMMEDIATE] ${complaintTitle.trim()}` : complaintTitle.trim(),
       description: complaintDescription.trim(),
+      priorityImmediate: complaintPriorityImmediate,
     });
   };
 
@@ -894,13 +901,13 @@ export default function RestaurantInbox() {
         });
         setReplyToMessage(null);
       }
-      sendMessageMutation.mutate({ content, messageType: "text" });
+      sendMessageMutation.mutate({ content, messageType: "text", priority: messagePriority });
     }
   };
 
   const handleSendAttachment = (content: string) => {
     if (selectedConversation) {
-      sendMessageMutation.mutate({ content, messageType: "attachment" });
+      sendMessageMutation.mutate({ content, messageType: "attachment", priority: messagePriority });
     }
   };
 
@@ -1899,19 +1906,38 @@ export default function RestaurantInbox() {
                                     const showSenderName = !prevMessage || prevMessage.senderId !== message.senderId || showDateDivider;
                                     const messagePreviewText = refData ? refData.text! : message.content;
                                     const senderName = isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || "");
+                                    const isImportant = message.priority === "important";
                                     return (
                                       <div className={`max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
                                         <div className="flex-1 min-w-0">
-                                          {showSenderName && (
+                                          {isImportant && (
+                                            <div className={`flex items-center gap-1 mb-0.5 px-1 ${isOwn ? "justify-end" : ""}`}>
+                                              <span className="text-[11px] font-bold text-red-500 uppercase">IMPORTANT</span>
+                                            </div>
+                                          )}
+                                          {showSenderName && !isImportant && (
                                             <p className={`text-[11px] font-semibold mb-0.5 px-1 ${isOwn ? "text-right text-primary/70" : "text-indigo-600 dark:text-indigo-400"}`}>
                                               {senderName}
                                             </p>
                                           )}
+                                          {showSenderName && isImportant && (
+                                            <p className={`text-[11px] font-semibold mb-0.5 px-1 ${isOwn ? "text-right text-red-400" : "text-red-500"}`}>
+                                              {senderName}
+                                            </p>
+                                          )}
+                                          <div className={`flex items-start gap-1.5 ${isOwn ? "flex-row-reverse" : ""}`}>
+                                            {isImportant && (
+                                              <div className="shrink-0 mt-2">
+                                                <CircleAlert className="h-4 w-4 text-red-500" />
+                                              </div>
+                                            )}
                                           <div
                                             className={`rounded-lg px-3 py-2 shadow-lg ${
-                                              isOwn
-                                                ? "bg-primary text-primary-foreground"
-                                                : "bg-muted"
+                                              isImportant
+                                                ? "bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-foreground"
+                                                : isOwn
+                                                  ? "bg-primary text-primary-foreground"
+                                                  : "bg-muted"
                                             }`}
                                           >
                                             {refData && refData.refType === "reply" && (
@@ -1974,15 +2000,16 @@ export default function RestaurantInbox() {
                                             )}
                                             <p className="text-sm">{refData ? refData.text : message.content}</p>
                                             <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
-                                              <span className={`text-[10px] ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                                              <span className={`text-[10px] ${isImportant ? "text-muted-foreground" : isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                                                 {format(messageDate, "HH:mm")}
                                               </span>
                                               {isOwn && (
                                                 message.isRead 
-                                                  ? <CheckCheck className="h-3 w-3 text-primary-foreground/70" />
-                                                  : <Check className="h-3 w-3 text-primary-foreground/70" />
+                                                  ? <CheckCheck className={`h-3 w-3 ${isImportant ? "text-muted-foreground" : "text-primary-foreground/70"}`} />
+                                                  : <Check className={`h-3 w-3 ${isImportant ? "text-muted-foreground" : "text-primary-foreground/70"}`} />
                                               )}
                                             </div>
+                                          </div>
                                           </div>
                                         </div>
                                         <button
@@ -2169,6 +2196,26 @@ export default function RestaurantInbox() {
                             data-testid="textarea-complaint-description"
                           />
                         </div>
+
+                        <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30">
+                          <input
+                            type="checkbox"
+                            id="complaint-priority-immediate"
+                            checked={complaintPriorityImmediate}
+                            onChange={(e) => setComplaintPriorityImmediate(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 rounded border-red-300 text-red-500 focus:ring-red-500"
+                            data-testid="checkbox-priority-immediate"
+                          />
+                          <label htmlFor="complaint-priority-immediate" className="flex-1 cursor-pointer">
+                            <div className="flex items-center gap-1.5">
+                              <CircleAlert className="h-4 w-4 text-red-500" />
+                              <span className="text-sm font-semibold text-red-600 dark:text-red-400">Priority Immediate</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {lang === "de" ? "Dringend - Lieferant wird sofort benachrichtigt" : "Urgente - Il fornitore verra avvisato immediatamente"}
+                            </p>
+                          </label>
+                        </div>
                       </div>
                     </ScrollArea>
                     <div className="p-4 border-t border-border bg-background shrink-0">
@@ -2221,6 +2268,22 @@ export default function RestaurantInbox() {
                       </div>
                     </div>
                   )}
+
+                  {messagePriority === "important" && (
+                    <div className="flex items-center justify-between mb-2 px-1" data-testid="priority-important-banner">
+                      <div className="flex items-center gap-1.5">
+                        <CircleAlert className="h-4 w-4 text-red-500" />
+                        <span className="text-sm font-bold text-red-500">IMPORTANT!</span>
+                      </div>
+                      <button
+                        onClick={() => setMessagePriority("standard")}
+                        className="shrink-0 hover:text-destructive transition-colors text-muted-foreground"
+                        data-testid="button-remove-priority"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                   <div className="flex gap-2 items-center">
                     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                       <PopoverTrigger asChild>
@@ -2247,6 +2310,7 @@ export default function RestaurantInbox() {
                             setComplaintOrderId("");
                             setComplaintTitle("");
                             setComplaintDescription("");
+                            setComplaintPriorityImmediate(false);
                             setPopoverOpen(false);
                           }}
                           data-testid="button-new-complaint"
@@ -2254,6 +2318,48 @@ export default function RestaurantInbox() {
                           <AlertCircle className="h-4 w-4" />
                           {t("complaints", "newComplaint")}
                         </button>
+                        <Separator className="my-1" />
+                        <Popover open={priorityPopoverOpen} onOpenChange={setPriorityPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <button
+                              className="w-full flex items-center gap-2 p-2 rounded-md text-sm hover-elevate text-left"
+                              data-testid="button-set-delivery-options"
+                            >
+                              <CircleAlert className="h-4 w-4" />
+                              {lang === "de" ? "Zustelloptionen" : "Opzioni di consegna"}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-2" side="right" align="start">
+                            <button
+                              className={`w-full flex items-center gap-3 p-3 rounded-md text-left transition-colors ${messagePriority === "standard" ? "bg-muted" : "hover:bg-muted/50"}`}
+                              onClick={() => { setMessagePriority("standard"); setPriorityPopoverOpen(false); setPopoverOpen(false); }}
+                              data-testid="button-priority-standard"
+                            >
+                              <div className="h-8 w-8 rounded-full bg-muted-foreground/10 flex items-center justify-center shrink-0">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold">Standard</p>
+                                <p className="text-xs text-muted-foreground">{lang === "de" ? "Nachricht wird normal gesendet" : "Il messaggio verra inviato normalmente"}</p>
+                              </div>
+                              {messagePriority === "standard" && <Check className="h-4 w-4 text-primary shrink-0" />}
+                            </button>
+                            <button
+                              className={`w-full flex items-center gap-3 p-3 rounded-md text-left transition-colors ${messagePriority === "important" ? "bg-muted" : "hover:bg-muted/50"}`}
+                              onClick={() => { setMessagePriority("important"); setPriorityPopoverOpen(false); setPopoverOpen(false); }}
+                              data-testid="button-priority-important"
+                            >
+                              <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                                <CircleAlert className="h-4 w-4 text-red-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold">Important</p>
+                                <p className="text-xs text-muted-foreground">{lang === "de" ? "Nachricht wird als wichtig markiert" : "Il messaggio sara contrassegnato come importante"}</p>
+                              </div>
+                              {messagePriority === "important" && <Check className="h-4 w-4 text-primary shrink-0" />}
+                            </button>
+                          </PopoverContent>
+                        </Popover>
                       </PopoverContent>
                     </Popover>
                     {selectedConversation && currentUser && (
