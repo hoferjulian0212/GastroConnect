@@ -398,7 +398,7 @@ export default function Landing() {
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button
               size="lg"
-              className="w-full sm:w-auto gap-2 text-base"
+              className="w-full sm:w-auto gap-2 text-base text-[#000000]"
               onClick={() => handleStart("supplier")}
               data-testid="button-cta-supplier"
             >
