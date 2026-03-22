@@ -640,6 +640,7 @@ export default function RestaurantInbox() {
   const handleSelectConversation = (conversationId: string) => {
     setSelectedConversation(conversationId);
     setReplyToMessage(null);
+    setAttachedOrderRef(null);
     if (currentUser?.id) {
       markAsReadMutation.mutate(conversationId);
       apiRequest("PATCH", `/api/notifications/read-by-reference?userId=${currentUser.id}&referenceId=${conversationId}&type=new_message`).then(() => {
