@@ -135,11 +135,31 @@ export default function SupplierHome() {
   const getMessagePreview = (conv: ConversationWithUser) => {
     if (!conv.lastMessage) return "";
     const msg = conv.lastMessage;
-    if (msg.messageType === "order") return t("orders", "order");
-    if (msg.messageType === "complaint") return t("common", "complaints");
-    if (msg.messageType === "attachment") return t("common", "attachment");
-    if (msg.messageType === "promotion") return lang === "de" ? "Aktion" : "Promozione";
-    if (msg.messageType === "order_change_request") return t("orders", "order");
+    try {
+      if (msg.messageType === "order") {
+        const data = JSON.parse(msg.content);
+        const id = (data.orderId || msg.orderId || "")?.substring(0, 8);
+        return id ? `${lang === "de" ? "Neue Bestellung" : "Nuovo ordine"} #${id}` : (lang === "de" ? "Neue Bestellung" : "Nuovo ordine");
+      }
+      if (msg.messageType === "complaint") {
+        const data = JSON.parse(msg.content);
+        return data.title
+          ? `${lang === "de" ? "Reklamation" : "Reclamo"}: ${data.title.replace("[PRIORITY IMMEDIATE] ", "")}`
+          : (lang === "de" ? "Neue Reklamation" : "Nuovo reclamo");
+      }
+      if (msg.messageType === "document") {
+        const data = JSON.parse(msg.content);
+        const id = (data.orderId || "")?.substring(0, 8);
+        return id ? `${lang === "de" ? "Lieferschein" : "Bolla di consegna"} #${id}` : (lang === "de" ? "Neuer Lieferschein" : "Nuova bolla");
+      }
+      if (msg.messageType === "order_change_request") {
+        const data = JSON.parse(msg.content);
+        const id = (data.orderId || msg.orderId || "")?.substring(0, 8);
+        return id ? `${lang === "de" ? "Aenderungsanfrage" : "Richiesta di modifica"} #${id}` : (lang === "de" ? "Aenderungsanfrage" : "Richiesta di modifica");
+      }
+    } catch {}
+    if (msg.messageType === "attachment") return lang === "de" ? "Anhang" : "Allegato";
+    if (msg.messageType === "promotion") return lang === "de" ? "Neue Aktion" : "Nuova promozione";
     return msg.content?.slice(0, 80) || "";
   };
 
