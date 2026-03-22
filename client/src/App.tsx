@@ -222,9 +222,9 @@ function AppLayout() {
             <img src={logoImg} alt="GastroConnect Logo" className="h-28 w-28 object-contain dark:invert" />
             <span className="text-2xl font-bold text-foreground tracking-tight">GastroConnect</span>
             <div className="flex items-center gap-2 mt-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
-              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
-              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
+              <div className="h-1.5 w-1.5 rounded-full bg-black animate-bounce [animation-delay:0ms]" />
+              <div className="h-1.5 w-1.5 rounded-full bg-black animate-bounce [animation-delay:150ms]" />
+              <div className="h-1.5 w-1.5 rounded-full bg-black animate-bounce [animation-delay:300ms]" />
             </div>
           </div>
         </div>
