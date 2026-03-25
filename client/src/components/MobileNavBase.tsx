@@ -29,12 +29,41 @@ function clamp(val: number, min: number, max: number) {
   return Math.max(min, Math.min(max, val));
 }
 
+function generateBlobPath(w: number, h: number, neck: number, vel: number): string {
+  if (w < 2 || h < 2) return "M 0,0 Z";
+
+  const ry = h / 2;
+
+  if (neck < 0.01) {
+    const r = Math.min(ry, w / 2);
+    return `M ${r},0 L ${w - r},0 A ${r},${ry} 0 0 1 ${w - r},${h} L ${r},${h} A ${r},${ry} 0 0 1 ${r},0 Z`;
+  }
+
+  const r = Math.min(ry, w / 4);
+  const neckDepth = ry * neck * 0.75;
+
+  const velShift = clamp(vel / 800, -0.12, 0.12);
+  const midX = w / 2 + w * velShift;
+
+  const cp1x = lerp(r * 1.2, midX, 0.5);
+  const cp2x = lerp(midX, w - r * 1.2, 0.5);
+
+  return [
+    `M ${r.toFixed(1)},0`,
+    `C ${cp1x.toFixed(1)},${neckDepth.toFixed(1)} ${cp2x.toFixed(1)},${neckDepth.toFixed(1)} ${(w - r).toFixed(1)},0`,
+    `A ${r.toFixed(1)},${ry.toFixed(1)} 0 0 1 ${(w - r).toFixed(1)},${h.toFixed(1)}`,
+    `C ${cp2x.toFixed(1)},${(h - neckDepth).toFixed(1)} ${cp1x.toFixed(1)},${(h - neckDepth).toFixed(1)} ${r.toFixed(1)},${h.toFixed(1)}`,
+    `A ${r.toFixed(1)},${ry.toFixed(1)} 0 0 1 ${r.toFixed(1)},0`,
+    "Z",
+  ].join(" ");
+}
+
 const DRAG_THRESHOLD = 8;
 
 const snapSpring = {
   type: "spring" as const,
-  stiffness: 400,
-  damping: 30,
+  stiffness: 420,
+  damping: 32,
   mass: 0.8,
 };
 
@@ -52,32 +81,62 @@ export function MobileNavBase({
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const glassRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const totalItems = mainNavItems.length + 1;
+  const cachedHeight = useRef(48);
 
-  const indicatorX = useMotionValue(0);
-  const indicatorWidth = useMotionValue(72);
+  const blobX = useMotionValue(0);
+  const blobW = useMotionValue(72);
+  const blobNeck = useMotionValue(0);
+
+  const springX = useSpring(blobX, snapSpring);
+  const springW = useSpring(blobW, snapSpring);
+  const springNeck = useSpring(blobNeck, { stiffness: 450, damping: 25, mass: 0.5 });
 
   const rawVelocity = useMotionValue(0);
   const smoothVelocity = useSpring(rawVelocity, { stiffness: 300, damping: 30 });
 
-  const scaleX = useTransform(smoothVelocity, (v) => {
-    return 1 + Math.min(Math.abs(v) / 800, 0.18);
-  });
-  const scaleY = useTransform(smoothVelocity, (v) => {
-    return 1 - Math.min(Math.abs(v) / 1000, 0.12);
-  });
-
-  const springX = useSpring(indicatorX, snapSpring);
-  const springWidth = useSpring(indicatorWidth, snapSpring);
+  const scaleX = useTransform(smoothVelocity, (v) => 1 + Math.min(Math.abs(v) / 900, 0.12));
+  const scaleY = useTransform(smoothVelocity, (v) => 1 - Math.min(Math.abs(v) / 1100, 0.08));
 
   const pointerDown = useRef(false);
   const hasDragged = useRef(false);
   const dragStartX = useRef(0);
-  const dragStartIndicatorX = useRef(0);
+  const dragStartBlobX = useRef(0);
   const lastDragX = useRef(0);
   const lastDragTime = useRef(0);
   const pointerId = useRef<number | null>(null);
+
+  const updateClipPath = useCallback(() => {
+    const el = glassRef.current;
+    if (!el) return;
+    const w = springW.get();
+    const neck = springNeck.get();
+    const vel = smoothVelocity.get();
+    const h = cachedHeight.current;
+    el.style.clipPath = `path('${generateBlobPath(w, h, neck, vel)}')`;
+  }, [springW, springNeck, smoothVelocity]);
+
+  useEffect(() => {
+    let raf = 0;
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(() => { raf = 0; updateClipPath(); });
+    };
+
+    const unsubs = [
+      springW.on("change", schedule),
+      springNeck.on("change", schedule),
+      smoothVelocity.on("change", schedule),
+    ];
+
+    requestAnimationFrame(() => {
+      if (glassRef.current) cachedHeight.current = glassRef.current.offsetHeight;
+      updateClipPath();
+    });
+
+    return () => { unsubs.forEach((fn) => fn()); if (raf) cancelAnimationFrame(raf); };
+  }, [springW, springNeck, smoothVelocity, updateClipPath]);
 
   const isMoreActive = moreMenuItems.some(
     (item) => location === item.url || location.startsWith(item.url)
@@ -110,10 +169,27 @@ export function MobileNavBase({
     if (idx < 0 || idx >= measurements.length) return;
     const m = measurements[idx];
     if (!m) return;
-    indicatorX.set(m.x);
-    indicatorWidth.set(m.width);
+    blobX.set(m.x);
+    blobW.set(m.width);
+    blobNeck.set(0);
     rawVelocity.set(0);
-  }, [getItemMeasurements, indicatorX, indicatorWidth, rawVelocity]);
+  }, [getItemMeasurements, blobX, blobW, blobNeck, rawVelocity]);
+
+  useEffect(() => {
+    const activeIdx = getActiveIndex();
+    if (activeIdx >= 0) {
+      const measurements = getItemMeasurements();
+      const m = measurements[activeIdx];
+      if (m) {
+        springX.jump(m.x);
+        springW.jump(m.width);
+        springNeck.jump(0);
+        blobX.set(m.x);
+        blobW.set(m.width);
+        blobNeck.set(0);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const activeIdx = getActiveIndex();
@@ -123,35 +199,22 @@ export function MobileNavBase({
   }, [location, isMoreOpen, getActiveIndex, snapToIndex]);
 
   useEffect(() => {
-    const activeIdx = getActiveIndex();
-    if (activeIdx >= 0) {
-      const measurements = getItemMeasurements();
-      const m = measurements[activeIdx];
-      if (m) {
-        springX.jump(m.x);
-        springWidth.jump(m.width);
-        indicatorX.set(m.x);
-        indicatorWidth.set(m.width);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
     const handleResize = () => {
+      if (glassRef.current) cachedHeight.current = glassRef.current.offsetHeight;
       const activeIdx = getActiveIndex();
-      if (activeIdx >= 0) {
-        requestAnimationFrame(() => snapToIndex(activeIdx));
-      }
+      if (activeIdx >= 0) requestAnimationFrame(() => {
+        snapToIndex(activeIdx);
+        updateClipPath();
+      });
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [getActiveIndex, snapToIndex]);
+  }, [getActiveIndex, snapToIndex, updateClipPath]);
 
   const interpolateIndicator = useCallback((clientX: number) => {
     const measurements = getItemMeasurements();
     if (measurements.length === 0) return;
 
-    const dx = clientX - dragStartX.current;
     const now = Date.now();
     const dt = Math.max(now - lastDragTime.current, 1);
     const instantVelocity = ((clientX - lastDragX.current) / dt) * 16;
@@ -159,53 +222,63 @@ export function MobileNavBase({
     lastDragX.current = clientX;
     lastDragTime.current = now;
 
-    const targetX = dragStartIndicatorX.current + dx;
+    const dx = clientX - dragStartX.current;
+    const targetX = dragStartBlobX.current + dx;
     const firstM = measurements[0];
     const lastM = measurements[measurements.length - 1];
     if (!firstM || !lastM) return;
 
     const clampedX = clamp(targetX, firstM.x, lastM.x);
-    const currentW = indicatorWidth.get();
-    const targetCenter = clampedX + currentW / 2;
+    const refW = blobW.get() || 72;
+    const targetCenter = clampedX + refW / 2;
 
-    let closestA = 0;
-    let closestB = 0;
+    let srcIdx = 0;
+    let tgtIdx = 0;
 
     for (let i = 0; i < measurements.length - 1; i++) {
       if (targetCenter >= measurements[i].center && targetCenter <= measurements[i + 1].center) {
-        closestA = i;
-        closestB = i + 1;
+        srcIdx = i;
+        tgtIdx = i + 1;
         break;
       }
     }
 
     if (targetCenter <= measurements[0].center) {
-      closestA = 0;
-      closestB = 0;
+      srcIdx = 0;
+      tgtIdx = 0;
     } else if (targetCenter >= measurements[measurements.length - 1].center) {
-      closestA = measurements.length - 1;
-      closestB = measurements.length - 1;
+      srcIdx = measurements.length - 1;
+      tgtIdx = measurements.length - 1;
     }
 
-    const mA = measurements[closestA];
-    const mB = measurements[closestB];
+    const mA = measurements[srcIdx];
+    const mB = measurements[tgtIdx];
 
-    if (closestA === closestB) {
-      indicatorX.set(mA.x);
-      indicatorWidth.set(mA.width);
+    if (srcIdx === tgtIdx) {
+      blobX.set(mA.x);
+      blobW.set(mA.width);
+      blobNeck.set(0);
     } else {
       const range = mB.center - mA.center;
       const progress = range > 0 ? clamp((targetCenter - mA.center) / range, 0, 1) : 0;
-      indicatorX.set(lerp(mA.x, mB.x, progress));
-      indicatorWidth.set(lerp(mA.width, mB.width, progress));
+
+      const left = mA.x;
+      const right = mB.x + mB.width;
+      blobX.set(left);
+      blobW.set(right - left);
+
+      const gap = mB.x - (mA.x + mA.width);
+      const distFactor = clamp(gap / 80, 0, 1);
+      const progressFactor = 1 - Math.pow(Math.abs(2 * progress - 1), 1.5);
+      blobNeck.set(distFactor * progressFactor * 0.85);
     }
-  }, [getItemMeasurements, indicatorX, indicatorWidth, rawVelocity]);
+  }, [getItemMeasurements, blobX, blobW, blobNeck, rawVelocity]);
 
   const snapToClosest = useCallback(() => {
     const measurements = getItemMeasurements();
     if (measurements.length === 0) return -1;
 
-    const currentCenter = indicatorX.get() + indicatorWidth.get() / 2;
+    const currentCenter = blobX.get() + blobW.get() / 2;
     let closestIdx = 0;
     let closestDist = Infinity;
 
@@ -220,32 +293,26 @@ export function MobileNavBase({
     rawVelocity.set(0);
     snapToIndex(closestIdx);
     return closestIdx;
-  }, [getItemMeasurements, indicatorX, indicatorWidth, snapToIndex, rawVelocity]);
+  }, [getItemMeasurements, blobX, blobW, snapToIndex, rawVelocity]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     pointerDown.current = true;
     hasDragged.current = false;
     dragStartX.current = e.clientX;
-    dragStartIndicatorX.current = indicatorX.get();
+    dragStartBlobX.current = blobX.get();
     lastDragX.current = e.clientX;
     lastDragTime.current = Date.now();
     pointerId.current = e.pointerId;
-  }, [indicatorX]);
+  }, [blobX]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!pointerDown.current) return;
-
     const dx = Math.abs(e.clientX - dragStartX.current);
-
     if (!hasDragged.current && dx < DRAG_THRESHOLD) return;
-
     if (!hasDragged.current) {
       hasDragged.current = true;
-      try {
-        containerRef.current?.setPointerCapture(e.pointerId);
-      } catch {}
+      try { containerRef.current?.setPointerCapture(e.pointerId); } catch {}
     }
-
     e.preventDefault();
     interpolateIndicator(e.clientX);
   }, [interpolateIndicator]);
@@ -253,16 +320,11 @@ export function MobileNavBase({
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!pointerDown.current) return;
     pointerDown.current = false;
-
-    try {
-      containerRef.current?.releasePointerCapture(e.pointerId);
-    } catch {}
-
+    try { containerRef.current?.releasePointerCapture(e.pointerId); } catch {}
     if (hasDragged.current) {
       e.preventDefault();
       e.stopPropagation();
       const closestIdx = snapToClosest();
-
       if (closestIdx >= 0) {
         if (closestIdx < mainNavItems.length) {
           setLocation(mainNavItems[closestIdx].url);
@@ -271,7 +333,6 @@ export function MobileNavBase({
         }
       }
     }
-
     hasDragged.current = false;
     pointerId.current = null;
   }, [snapToClosest, mainNavItems, setLocation]);
@@ -376,15 +437,17 @@ export function MobileNavBase({
         >
           {activeIndex >= 0 && (
             <motion.div
-              className="liquid-indicator"
+              ref={glassRef}
+              className="liquid-metaball"
               style={{
                 x: springX,
-                width: springWidth,
+                width: springW,
                 scaleX,
                 scaleY,
               }}
             >
-              <div className="liquid-indicator-shine" />
+              <div className="liquid-metaball-glow" />
+              <div className="liquid-metaball-shine" />
             </motion.div>
           )}
 
