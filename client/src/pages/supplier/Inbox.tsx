@@ -1185,7 +1185,7 @@ export default function SupplierInbox() {
                                   const isDismissed = message.dismissed;
                                   if (isDismissed) {
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`promotion-dismissed-${message.id}`}>
+                                      <div className="w-[75%] max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`promotion-dismissed-${message.id}`}>
                                         <div className="flex items-center justify-between px-3 py-2 gap-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1200,8 +1200,8 @@ export default function SupplierInbox() {
                                     );
                                   }
                                   return (
-                                    <div className={`w-[75%] max-w-sm rounded-lg border-2 shadow-sm overflow-hidden ${isExpired ? "border-muted bg-muted/20 opacity-60" : "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"}`} data-testid={`promotion-card-${message.id}`}>
-                                      <div className={`flex items-center justify-between px-3 py-1.5 border-b ${isExpired ? "border-muted bg-muted/30" : "border-green-200 dark:border-green-800 bg-green-100/50 dark:bg-green-900/30"}`}>
+                                    <div className={`w-[75%] max-w-sm rounded-2xl border-2 shadow-sm overflow-hidden ${isExpired ? "border-muted bg-muted/20 opacity-60" : "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"}`} data-testid={`promotion-card-${message.id}`}>
+                                      <div className={`flex items-center justify-between px-4 pt-3 pb-1 ${isExpired ? "" : ""}`}>
                                         <div className="flex items-center gap-2">
                                           <Tag className={`h-4 w-4 ${isExpired ? "text-muted-foreground" : "text-green-600 dark:text-green-400"}`} />
                                           <span className={`text-xs font-semibold ${isExpired ? "text-muted-foreground" : "text-green-700 dark:text-green-300"}`}>{promoData.name}</span>
@@ -1248,7 +1248,7 @@ export default function SupplierInbox() {
                                   const inactive = orderStatus ? isOrderInactive(orderStatus) : false;
                                   if (inactive) {
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-order-${message.id}`}>
+                                      <div className="w-[75%] max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-order-${message.id}`}>
                                         <div className="flex items-center justify-between px-3 py-2 gap-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1280,8 +1280,8 @@ export default function SupplierInbox() {
                                   }
                                   const statusStyle = getStatusCardBg(orderStatus || "pending");
                                   return (
-                                    <div className={`w-[75%] max-w-sm rounded-lg border shadow-sm overflow-hidden ${statusStyle.card}`}>
-                                      <div className={`flex items-center justify-between px-3 py-1.5 border-b ${statusStyle.header}`}>
+                                    <div className={`w-[75%] max-w-sm rounded-2xl border shadow-sm overflow-hidden ${statusStyle.card}`}>
+                                      <div className="flex items-center justify-between px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <ClipboardList className={`h-3.5 w-3.5 ${statusStyle.icon}`} />
                                           <span className={`text-xs font-semibold ${statusStyle.icon}`}>Bestellung</span>
@@ -1292,17 +1292,17 @@ export default function SupplierInbox() {
                                               {getStatusLabel(orderStatus)}
                                             </span>
                                           )}
-                                          <span className="text-xs text-muted-foreground">
+                                          <span className="text-[10px] text-muted-foreground">
                                             {format(messageDate, "HH:mm")}
                                           </span>
                                         </div>
                                       </div>
-                                      <div className="px-3 py-2">
+                                      <div className="px-4 py-2">
                                         {orderData ? (
-                                          <div className="space-y-1">
+                                          <div className="space-y-0">
                                             {orderData.items.map((item, idx) => (
-                                              <div key={idx} className="flex items-center gap-2.5 py-1.5" data-testid={`order-item-${message.id}-${idx}`}>
-                                                <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0 border border-border/50">
+                                              <div key={idx} className="flex items-center gap-3 py-2" data-testid={`order-item-${message.id}-${idx}`}>
+                                                <div className="w-11 h-11 rounded-full overflow-hidden bg-muted/60 flex-shrink-0">
                                                   {item.imageUrl ? (
                                                     <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
                                                   ) : null}
@@ -1311,16 +1311,15 @@ export default function SupplierInbox() {
                                                   </div>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                  <span className="text-xs font-medium truncate block">{item.name}</span>
-                                                  <span className="text-[10px] text-muted-foreground">{item.quantity}x</span>
+                                                  <span className="text-[13px] font-medium truncate block">{item.name}</span>
+                                                  <span className="text-[11px] text-muted-foreground">{item.quantity}x</span>
                                                 </div>
-                                                <span className="text-xs font-semibold flex-shrink-0">{item.price}€</span>
+                                                <span className="text-[13px] font-semibold flex-shrink-0">{item.price}€</span>
                                               </div>
                                             ))}
-                                            <Separator className="my-1" />
-                                            <div className="flex justify-between items-center text-xs font-semibold">
-                                              <span>Gesamt</span>
-                                              <span>{orderData.total}€</span>
+                                            <div className="flex justify-between items-center pt-2 pb-1">
+                                              <span className="text-[13px] font-semibold">Gesamt</span>
+                                              <span className="text-[13px] font-bold">{orderData.total}€</span>
                                             </div>
                                           </div>
                                         ) : (
@@ -1328,7 +1327,7 @@ export default function SupplierInbox() {
                                         )}
                                       </div>
                                       {message.orderId && (
-                                        <div className="px-3 py-2 border-t border-border bg-muted/20 space-y-2">
+                                        <div className="px-4 pb-3 pt-1 space-y-2">
                                           {cardWizard?.orderId === message.orderId ? (
                                             <div className="p-3 rounded-lg border bg-card space-y-3" data-testid={`wizard-confirm-${message.orderId}`}>
                                               <div className="flex items-center gap-2">
@@ -1432,7 +1431,7 @@ export default function SupplierInbox() {
                                   const inactive = complaintStatus ? isComplaintInactive(complaintStatus) : false;
                                   if (inactive) {
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-complaint-${message.id}`}>
+                                      <div className="w-[75%] max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-complaint-${message.id}`}>
                                         <div className="flex items-center justify-between px-3 py-2 gap-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <AlertCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1469,8 +1468,8 @@ export default function SupplierInbox() {
                                     );
                                   }
                                   return (
-                                    <div className="w-[75%] max-w-sm rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-red-500/30 shadow-lg">
-                                      <div className="flex items-center justify-between px-3 py-1.5 border-b bg-red-500/10 border-red-500/20">
+                                    <div className="w-[75%] max-w-sm rounded-2xl border bg-card shadow-sm overflow-hidden border-2 border-red-500/30 shadow-lg">
+                                      <div className="flex items-center justify-between px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
                                           <span className="text-xs font-semibold text-red-600 dark:text-red-400">Reklamation</span>
@@ -1554,17 +1553,17 @@ export default function SupplierInbox() {
                                   let docData: { title?: string; orderId?: string; fileUrl?: string } = {};
                                   try { docData = JSON.parse(message.content); } catch {}
                                   return (
-                                    <div className="w-[75%] max-w-sm rounded-lg border bg-white dark:bg-card shadow-sm overflow-hidden border-border">
-                                      <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/30 border-border">
+                                    <div className="w-[75%] max-w-sm rounded-2xl border bg-white dark:bg-card shadow-sm overflow-hidden border-border">
+                                      <div className="flex items-center justify-between px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <FileText className="h-3.5 w-3.5 text-foreground" />
                                           <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">Lieferschein</span>
                                         </div>
-                                        <span className="text-xs text-muted-foreground">
+                                        <span className="text-[10px] text-muted-foreground">
                                           {format(messageDate, "HH:mm")}
                                         </span>
                                       </div>
-                                      <div className="px-3 py-2">
+                                      <div className="px-4 py-2">
                                         <p className="text-sm font-medium">{docData.title || "Dokument"}</p>
                                         {docData.orderId && (
                                           <p className="text-xs text-muted-foreground mt-1">
@@ -1573,7 +1572,7 @@ export default function SupplierInbox() {
                                         )}
                                       </div>
                                       {docData.orderId && (
-                                        <div className="px-3 py-2 border-t border-blue-500/20 bg-blue-500/5">
+                                        <div className="px-4 pb-3 pt-1">
                                           <Button
                                             variant="default"
                                             size="sm"
@@ -1598,8 +1597,8 @@ export default function SupplierInbox() {
                                   if (changeData.type === "partial_confirmation") {
                                     const pcData = changeData as { type?: string; orderId?: string; status?: string; message?: string; items?: { name: string; ordered: number; confirmed: number; rejected: number; price: string }[]; total?: string; originalTotal?: string };
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-lg border bg-white dark:bg-card shadow-sm overflow-hidden border-border" data-testid={`partial-confirmation-${message.id}`}>
-                                        <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/30 border-border">
+                                      <div className="w-[75%] max-w-sm rounded-2xl border bg-white dark:bg-card shadow-sm overflow-hidden border-border" data-testid={`partial-confirmation-${message.id}`}>
+                                        <div className="flex items-center justify-between px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <AlertTriangle className="h-3.5 w-3.5 text-orange-600" />
                                             <span className="text-xs font-semibold text-orange-600">
@@ -1658,7 +1657,7 @@ export default function SupplierInbox() {
                                   const label = isEdited ? "Bestellung angepasst" : isResponse ? (changeData.approved ? "Änderung genehmigt" : "Änderung abgelehnt") : "Änderungsanfrage";
                                   if (changeInactive) {
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-lg border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-change-${message.id}`}>
+                                      <div className="w-[75%] max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-change-${message.id}`}>
                                         <div className="flex items-center justify-between px-3 py-2 gap-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <Pencil className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1687,15 +1686,15 @@ export default function SupplierInbox() {
                                     );
                                   }
                                   return (
-                                    <div className="w-[75%] max-w-sm rounded-lg border bg-white dark:bg-card shadow-sm overflow-hidden border-border">
-                                      <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/30 border-border">
+                                    <div className="w-[75%] max-w-sm rounded-2xl border bg-white dark:bg-card shadow-sm overflow-hidden border-border">
+                                      <div className="flex items-center justify-between px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <Pencil className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                                           <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{label}</span>
                                         </div>
-                                        <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                        <span className="text-[10px] text-muted-foreground">{format(messageDate, "HH:mm")}</span>
                                       </div>
-                                      <div className="px-3 py-2">
+                                      <div className="px-4 py-2">
                                         {changeData.orderId && (
                                           <p className="text-xs text-muted-foreground mb-2">Bestellung #{changeData.orderId.slice(0, 8)}</p>
                                         )}
@@ -1705,7 +1704,7 @@ export default function SupplierInbox() {
                                         )}
                                       </div>
                                       {isPendingRequest && !isOwn && changeData.orderId && (
-                                        <div className="px-3 py-2 border-t border-amber-500/20 bg-amber-500/5 flex gap-2">
+                                        <div className="px-4 pb-3 pt-1 flex gap-2">
                                           <Button
                                             variant="default"
                                             size="sm"
