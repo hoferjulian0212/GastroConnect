@@ -1,0 +1,149 @@
+Enhance the existing mobile navigation (RestaurantMobileNav.tsx and SupplierMobileNav.tsx) by adding a "liquid glass" active indicator WITHOUT breaking current functionality.
+
+Important:
+- Do NOT rebuild the navigation.
+- Extend the existing implementation.
+- Apply ONLY to mobile (keep md:hidden behavior).
+- Preserve all current logic (routing, badges, chat hiding, more menu).
+
+--------------------------------------------------
+1. CORE IDEA
+--------------------------------------------------
+Add a dynamic "liquid glass bubble" that sits BEHIND the active nav item and smoothly moves between items.
+
+This bubble should:
+- Morph slightly in size/shape during movement
+- Animate smoothly between positions (no jump)
+- Feel elastic and fluid (like liquid)
+
+--------------------------------------------------
+2. STRUCTURE CHANGES
+--------------------------------------------------
+Inside the nav container:
+
+- Wrap all nav items in a relative container
+- Add ONE absolute positioned element:
+  <div class="liquid-indicator" />
+
+- This element acts as the moving bubble behind items
+
+Each nav item:
+- Add a ref (useRef) to measure position + width
+- Keep existing Link logic unchanged
+
+--------------------------------------------------
+3. POSITIONING LOGIC
+--------------------------------------------------
+On route change:
+
+- Detect active item (already implemented via location)
+- Measure:
+  - offsetLeft
+  - width
+
+- Move the liquid indicator to:
+  translateX(activeItem.offsetLeft)
+  width = activeItem.width
+
+Use:
+- transform: translateX(...)
+- width animation
+
+--------------------------------------------------
+4. ANIMATION (IMPORTANT)
+--------------------------------------------------
+Use Framer Motion (preferred) OR CSS transitions if needed.
+
+If using Framer Motion:
+- Use layout animation OR animate={{ x, width }}
+- Add spring config:
+  stiffness: ~300
+  damping: ~25
+  mass: ~0.8
+
+Add "liquid feel":
+- Slight overshoot when moving
+- Scale effect during transition:
+  scaleX: 1 → 1.05 → 1
+  scaleY: 1 → 0.95 → 1
+
+--------------------------------------------------
+5. LIQUID GLASS STYLE
+--------------------------------------------------
+Reuse existing .floating-nav glass base.
+
+For the indicator:
+- background: rgba(255,255,255,0.25)
+- backdrop-filter: blur(25px) saturate(180%)
+- border-radius: 9999px
+- subtle inner highlight:
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.4),
+    0 2px 8px rgba(0,0,0,0.08)
+
+Dark mode:
+- rgba(255,255,255,0.08–0.12)
+
+The bubble must look like part of the glass layer, not a solid button.
+
+--------------------------------------------------
+6. ACTIVE ITEM ADJUSTMENT
+--------------------------------------------------
+Remove inline color-only active state.
+
+Instead:
+- Active item:
+  text color stronger (e.g. #000 / white in dark)
+- Inactive:
+  reduced opacity
+
+Add:
+- transition-all duration-200
+
+--------------------------------------------------
+7. INTERACTION (LIQUID FEEL)
+--------------------------------------------------
+On tap:
+- Slight scale feedback (0.95 → 1)
+- Bubble reacts immediately (no delay)
+
+Optional (if simple):
+- Add tiny lag effect:
+  bubble follows with ~30–60ms delay for viscosity feel
+
+--------------------------------------------------
+8. PERFORMANCE
+--------------------------------------------------
+- Use transform only (no left positioning)
+- Avoid layout thrashing
+- Memoize item refs if needed
+- Do NOT introduce heavy re-renders
+
+--------------------------------------------------
+9. "MORE" BUTTON
+--------------------------------------------------
+- Bubble should ALSO move to "More" when active
+- Do NOT change popup logic yet
+- Only visual consistency
+
+--------------------------------------------------
+10. CODE REUSE
+--------------------------------------------------
+IMPORTANT:
+
+Both:
+- RestaurantMobileNav.tsx
+- SupplierMobileNav.tsx
+
+Share identical logic.
+
+Refactor if needed:
+→ Extract a shared component:
+   MobileNavBase.tsx
+
+But DO NOT break existing behavior.
+
+--------------------------------------------------
+GOAL
+--------------------------------------------------
+Transform the current static glass nav into a high-end, fluid "liquid glass" navigation with a moving, morphing indicator — similar to premium mobile app UI — while keeping the existing structure intact.
