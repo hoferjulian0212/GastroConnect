@@ -11,7 +11,7 @@ export function RoleSwitcher() {
         variant={currentRole === "restaurant" ? "default" : "ghost"}
         size="sm"
         onClick={() => switchRole("restaurant")}
-        className="gap-2"
+        className={`gap-2 ${currentRole === "restaurant" ? "text-[#000000]" : ""}`}
         data-testid="button-switch-restaurant"
       >
         <Store className="h-4 w-4" />
@@ -21,7 +21,7 @@ export function RoleSwitcher() {
         variant={currentRole === "supplier" ? "default" : "ghost"}
         size="sm"
         onClick={() => switchRole("supplier")}
-        className="gap-2"
+        className={`gap-2 ${currentRole === "supplier" ? "text-[#000000]" : ""}`}
         data-testid="button-switch-supplier"
       >
         <Truck className="h-4 w-4" />
