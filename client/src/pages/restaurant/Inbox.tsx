@@ -81,16 +81,8 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const getStatusCardBg = (status: string) => {
-  switch (status) {
-    case "pending": return { card: "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40", header: "bg-yellow-500/10 border-yellow-500/20", icon: "text-yellow-600 dark:text-yellow-400" };
-    case "confirmed": return { card: "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40", header: "bg-blue-500/10 border-blue-500/20", icon: "text-blue-600 dark:text-blue-400" };
-    case "partially_confirmed": return { card: "bg-orange-50/60 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40", header: "bg-orange-500/10 border-orange-500/20", icon: "text-orange-600 dark:text-orange-400" };
-    case "in_delivery": return { card: "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40", header: "bg-purple-500/10 border-purple-500/20", icon: "text-purple-600 dark:text-purple-400" };
-    case "delivered": return { card: "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40", header: "bg-green-500/10 border-green-500/20", icon: "text-green-600 dark:text-green-400" };
-    case "cancelled": return { card: "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40", header: "bg-red-500/10 border-red-500/20", icon: "text-red-600 dark:text-red-400" };
-    default: return { card: "bg-card border-green-500/30", header: "bg-green-500/10 border-green-500/20", icon: "text-green-600 dark:text-green-400" };
-  }
+const getStatusCardBg = (_status: string) => {
+  return { card: "bg-white dark:bg-card border-border", header: "bg-muted/30 border-border", icon: "text-foreground" };
 };
 
 const getStatusLabel = (status: string) => {
@@ -1518,7 +1510,7 @@ export default function RestaurantInbox() {
                                     }
                                     const statusStyle = getStatusCardBg(orderStatus || "pending");
                                     return (
-                                      <div className={`w-[75%] max-w-sm rounded-lg border-2 shadow-sm overflow-hidden ${statusStyle.card}`}>
+                                      <div className={`w-[75%] max-w-sm rounded-lg border shadow-sm overflow-hidden ${statusStyle.card}`}>
                                         <div className={`flex items-center justify-between px-3 py-1.5 border-b ${statusStyle.header}`}>
                                           <div className="flex items-center gap-2">
                                             <ClipboardList className={`h-3.5 w-3.5 ${statusStyle.icon}`} />
@@ -1566,7 +1558,7 @@ export default function RestaurantInbox() {
                                           )}
                                         </div>
                                         {message.orderId && (
-                                          <div className="px-3 py-2 border-t border-green-500/20 bg-green-500/5 space-y-2">
+                                          <div className="px-3 py-2 border-t border-border bg-muted/20 space-y-2">
                                             {cardWizard?.orderId === message.orderId ? (
                                               <div className="p-3 rounded-lg border bg-card space-y-3" data-testid={`wizard-confirm-${message.orderId}`}>
                                                 {cardWizard.action === "change_request" ? (
@@ -1818,10 +1810,10 @@ export default function RestaurantInbox() {
                                     let docData: { title?: string; orderId?: string; fileUrl?: string } = {};
                                     try { docData = JSON.parse(message.content); } catch {}
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-blue-500/30 shadow-lg">
-                                        <div className="flex items-center justify-between px-3 py-1.5 border-b bg-blue-500/10 border-blue-500/20">
+                                      <div className="w-[75%] max-w-sm rounded-lg border bg-white dark:bg-card shadow-sm overflow-hidden border-border">
+                                        <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/30 border-border">
                                           <div className="flex items-center gap-2">
-                                            <FileText className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                            <FileText className="h-3.5 w-3.5 text-foreground" />
                                             <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t("inbox", "deliveryNote")}</span>
                                           </div>
                                           <span className="text-xs text-muted-foreground">
@@ -1862,8 +1854,8 @@ export default function RestaurantInbox() {
                                     if (changeData.type === "partial_confirmation") {
                                       const pcData = changeData as { type?: string; orderId?: string; status?: string; message?: string; items?: { name: string; ordered: number; confirmed: number; rejected: number; price: string }[]; total?: string; originalTotal?: string };
                                       return (
-                                        <div className="w-[75%] max-w-sm rounded-lg border bg-card shadow-sm overflow-hidden border-orange-300" data-testid={`partial-confirmation-${message.id}`}>
-                                          <div className="flex items-center justify-between px-3 py-1.5 border-b bg-orange-500/10 border-orange-500/20">
+                                        <div className="w-[75%] max-w-sm rounded-lg border bg-white dark:bg-card shadow-sm overflow-hidden border-border" data-testid={`partial-confirmation-${message.id}`}>
+                                          <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/30 border-border">
                                             <div className="flex items-center gap-2">
                                               <AlertTriangle className="h-3.5 w-3.5 text-orange-600" />
                                               <span className="text-xs font-semibold text-orange-600">
@@ -1945,8 +1937,8 @@ export default function RestaurantInbox() {
                                       );
                                     }
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-lg border bg-card shadow-sm overflow-hidden border-2 border-amber-500/30">
-                                        <div className="flex items-center justify-between px-3 py-1.5 border-b bg-amber-500/10 border-amber-500/20">
+                                      <div className="w-[75%] max-w-sm rounded-lg border bg-white dark:bg-card shadow-sm overflow-hidden border-border">
+                                        <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/30 border-border">
                                           <div className="flex items-center gap-2">
                                             <Pencil className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                                             <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{label}</span>
