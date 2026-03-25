@@ -845,27 +845,24 @@ export default function SupplierInbox() {
                       <ClipboardList className="h-5 w-5" />
                     </Button>
                     <Dialog open={openActionsPopover} onOpenChange={setOpenActionsPopover}>
-                      <DialogContent className="max-w-[92vw] md:max-w-md p-0 gap-0 rounded-xl">
-                        <DialogHeader className="p-4 pb-2 border-b border-border">
-                          <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-                            <ClipboardList className="h-4 w-4" />
-                            {t("inbox", "openActions")}
-                          </DialogTitle>
-                          <DialogDescription className="text-xs text-muted-foreground">
-                            {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
-                          </DialogDescription>
+                      <DialogContent className="max-w-[92vw] md:max-w-md p-0 gap-0 rounded-2xl">
+                        <DialogHeader className="sr-only">
+                          <DialogTitle>{t("inbox", "openActions")}</DialogTitle>
+                          <DialogDescription>{selectedConv.otherUser.companyName || selectedConv.otherUser.name}</DialogDescription>
                         </DialogHeader>
-                        <div className="max-h-[60vh] overflow-y-auto p-3 space-y-3">
+                        <div className="px-5 pt-5 pb-2">
+                          <div className="flex items-center gap-2">
+                            <ClipboardList className="h-4 w-4 text-foreground" />
+                            <h3 className="text-sm font-semibold text-foreground">{t("inbox", "openActions")}</h3>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 pl-6">{selectedConv.otherUser.companyName || selectedConv.otherUser.name}</p>
+                        </div>
+                        <div className="max-h-[60vh] overflow-y-auto px-4 pb-3 space-y-3">
                           {openActionsOrders && openActionsOrders.length > 0 && (
                             <div>
                               <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-orders-header">Offene Bestellungen ({openActionsOrders.length})</p>
                               <div className="space-y-2">
                                 {openActionsOrders.map((order: any) => {
-                                  const cardBg = order.status === "pending"
-                                    ? "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40"
-                                    : order.status === "confirmed" || order.status === "partially_confirmed"
-                                    ? (order.status === "partially_confirmed" ? "bg-orange-50/60 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40" : "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40")
-                                    : "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40";
                                   const StatusIcon = order.status === "pending" ? Clock : order.status === "partially_confirmed" ? AlertTriangle : order.status === "confirmed" ? CheckCircle : Package;
                                   const nextStatus = order.status === "pending" ? "confirmed" : (order.status === "confirmed" || order.status === "partially_confirmed") ? "in_delivery" : "delivered";
                                   const nextLabel = order.status === "pending" ? "Bestätigen" : (order.status === "confirmed" || order.status === "partially_confirmed") ? "In Lieferung" : "Geliefert";
@@ -873,13 +870,13 @@ export default function SupplierInbox() {
                                   return (
                                     <div
                                       key={order.id}
-                                      className={`rounded-md border p-2.5 space-y-2 ${cardBg}`}
+                                      className="rounded-xl bg-muted/30 dark:bg-muted/20 p-3 space-y-2"
                                       data-testid={`open-action-order-${order.id}`}
                                     >
                                       <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-1.5 min-w-0 cursor-pointer" onClick={() => { setOrderDetailId(order.id); setOpenActionsPopover(false); }}>
                                           <StatusIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                          <span className="text-xs font-mono truncate">#{order.id.slice(0, 8)}</span>
+                                          <span className="text-xs font-mono truncate">Bestellung #{order.id.slice(0, 8)}</span>
                                         </div>
                                         <Badge variant="secondary" className={`text-[10px] shrink-0 ${getStatusColor(order.status)}`}>
                                           {getStatusLabel(order.status)}
@@ -915,25 +912,25 @@ export default function SupplierInbox() {
                                         <span className="font-semibold text-xs text-foreground">{order.totalAmount ? `€${Number(order.totalAmount).toFixed(2)}` : ""}</span>
                                       </div>
                                       {order.status === "in_delivery" && order.requestedDeliveryDate && (
-                                        <div className="flex items-center gap-1.5 rounded bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 px-2 py-1">
-                                          <Truck className="h-3 w-3 text-purple-600 dark:text-purple-400 shrink-0" />
-                                          <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                                        <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 dark:bg-muted/30 px-2 py-1">
+                                          <Truck className="h-3 w-3 text-muted-foreground shrink-0" />
+                                          <span className="text-[10px] font-semibold text-foreground">
                                             {t("orders", "deliveryOn")} {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long" })}
                                           </span>
                                         </div>
                                       )}
                                       {order.status === "delivered" && (
-                                        <div className="flex items-center gap-1.5 rounded bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 px-2 py-1">
-                                          <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
-                                          <span className="text-[10px] font-bold text-green-700 dark:text-green-300">
+                                        <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 dark:bg-muted/30 px-2 py-1">
+                                          <CheckCircle className="h-3 w-3 text-muted-foreground shrink-0" />
+                                          <span className="text-[10px] font-semibold text-foreground">
                                             {t("orders", "deliveredOn")} {format(new Date(order.updatedAt || order.createdAt), "dd.MM.yyyy", { locale: dateFnsLocale })}
                                           </span>
                                         </div>
                                       )}
                                       {order.status !== "in_delivery" && order.status !== "delivered" && order.requestedDeliveryDate && (
-                                        <div className="flex items-center gap-1 rounded bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5">
-                                          <CalendarDays className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
-                                          <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300">
+                                        <div className="flex items-center gap-1 rounded-lg bg-muted/40 dark:bg-muted/30 px-2 py-0.5">
+                                          <CalendarDays className="h-3 w-3 text-muted-foreground shrink-0" />
+                                          <span className="text-[10px] font-semibold text-foreground">
                                             {t("orders", "deliveryOn")} {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "long" })}
                                           </span>
                                         </div>
@@ -941,7 +938,8 @@ export default function SupplierInbox() {
                                       <div className="flex items-center gap-1.5 pt-0.5">
                                         <Button
                                           size="sm"
-                                          className="text-xs flex-1"
+                                          variant="outline"
+                                          className="text-xs flex-1 bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-lg"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             if (nextStatus === "in_delivery") {
@@ -967,17 +965,17 @@ export default function SupplierInbox() {
                                           }}
                                           data-testid={`button-action-order-next-${order.id}`}
                                         >
-                                          <NextIcon className="h-3 w-3 mr-1" />
+                                          <NextIcon className="h-3 w-3 mr-1 text-black" />
                                           {nextLabel}
                                         </Button>
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className="text-xs"
+                                          className="text-xs bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-lg"
                                           onClick={() => { setOrderDetailId(order.id); setOpenActionsPopover(false); }}
                                           data-testid={`button-action-order-detail-${order.id}`}
                                         >
-                                          <Eye className="h-3 w-3 mr-1" />
+                                          <Eye className="h-3 w-3 mr-1 text-black" />
                                           Details
                                         </Button>
                                       </div>
@@ -992,9 +990,6 @@ export default function SupplierInbox() {
                               <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-complaints-header">Offene Reklamationen ({openActionsComplaints.length})</p>
                               <div className="space-y-2">
                                 {openActionsComplaints.map((complaint: any) => {
-                                  const cardBg = complaint.status === "open"
-                                    ? "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40"
-                                    : "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40";
                                   const StatusIcon = complaint.status === "open" ? AlertCircle : Clock;
                                   const nextStatus = complaint.status === "open" ? "in_progress" : "resolved";
                                   const nextLabel = complaint.status === "open" ? "In Bearbeitung" : "Gelöst";
@@ -1002,7 +997,7 @@ export default function SupplierInbox() {
                                   return (
                                     <div
                                       key={complaint.id}
-                                      className={`rounded-md border p-2.5 space-y-2 ${cardBg}`}
+                                      className="rounded-xl bg-muted/30 dark:bg-muted/20 p-3 space-y-2"
                                       data-testid={`open-action-complaint-${complaint.id}`}
                                     >
                                       <div className="flex items-center justify-between gap-2">
@@ -1018,14 +1013,15 @@ export default function SupplierInbox() {
                                         <p className="text-[10px] text-muted-foreground line-clamp-2">{complaint.description}</p>
                                       )}
                                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                        <span>Bestellung #{complaint.orderId?.slice(0, 8)}</span>
+                                        <span>Reklamation #{complaint.orderId?.slice(0, 8)}</span>
                                         <span>•</span>
                                         <span>{format(new Date(complaint.createdAt), "dd.MM.yy", { locale: de })}</span>
                                       </div>
                                       <div className="flex items-center gap-1.5 pt-0.5">
                                         <Button
                                           size="sm"
-                                          className="text-xs flex-1"
+                                          variant="outline"
+                                          className="text-xs flex-1 bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-lg"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             apiRequest("PATCH", `/api/complaints/${complaint.id}`, { status: nextStatus, changedBy: currentUser?.id })
@@ -1042,17 +1038,17 @@ export default function SupplierInbox() {
                                           }}
                                           data-testid={`button-action-complaint-next-${complaint.id}`}
                                         >
-                                          <NextIcon className="h-3 w-3 mr-1" />
+                                          <NextIcon className="h-3 w-3 mr-1 text-black" />
                                           {nextLabel}
                                         </Button>
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className="text-xs"
+                                          className="text-xs bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-lg"
                                           onClick={() => { openComplaintDetailById(complaint.id); setOpenActionsPopover(false); }}
                                           data-testid={`button-action-complaint-detail-${complaint.id}`}
                                         >
-                                          <Eye className="h-3 w-3 mr-1" />
+                                          <Eye className="h-3 w-3 mr-1 text-black" />
                                           Details
                                         </Button>
                                       </div>
@@ -1063,31 +1059,31 @@ export default function SupplierInbox() {
                             </div>
                           )}
                           {(!openActionsOrders || openActionsOrders.length === 0) && (!openActionsComplaints || openActionsComplaints.length === 0) && (
-                            <div className="flex flex-col items-center justify-center py-6 text-center">
-                              <CheckCircle className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                            <div className="flex flex-col items-center justify-center py-8 text-center">
+                              <CheckCircle className="h-8 w-8 text-muted-foreground/30 mb-2" />
                               <p className="text-sm text-muted-foreground" data-testid="text-no-open-actions">{t("inbox", "noOpenActions")}</p>
                             </div>
                           )}
                         </div>
-                        <div className="border-t border-border p-2 space-y-1">
+                        <div className="px-4 pb-4 pt-1 space-y-2">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="w-full justify-start text-xs"
+                            className="w-full justify-center text-xs bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-xl h-9"
                             onClick={() => { setOpenActionsPopover(false); setLocation(`/supplier/orders?restaurantId=${selectedConv.otherUser.id}`); }}
                             data-testid="button-view-all-orders"
                           >
-                            <ShoppingBag className="h-3.5 w-3.5 mr-2" />
+                            <ShoppingBag className="h-3.5 w-3.5 mr-2 text-black" />
                             {t("inbox", "viewAllOrders")}
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="w-full justify-start text-xs"
+                            className="w-full justify-center text-xs bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-xl h-9"
                             onClick={() => { setOpenActionsPopover(false); setLocation(`/supplier/complaints?restaurantId=${selectedConv.otherUser.id}`); }}
                             data-testid="button-view-all-complaints"
                           >
-                            <AlertCircle className="h-3.5 w-3.5 mr-2" />
+                            <AlertCircle className="h-3.5 w-3.5 mr-2 text-black" />
                             {t("inbox", "viewAllComplaints")}
                           </Button>
                         </div>
