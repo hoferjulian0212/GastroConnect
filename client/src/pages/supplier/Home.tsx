@@ -383,7 +383,7 @@ export default function SupplierHome() {
               {groupedDeliveries.map((group) => (
                 <div key={group.dateKey}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-primary" : "text-muted-foreground"}`} />
+                    <Calendar className="h-3.5 w-3.5 text-[#6b7280]" />
                     <span className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
                       {group.label}
                     </span>
