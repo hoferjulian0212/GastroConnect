@@ -1,0 +1,231 @@
+Upgrade the mobile navigation liquid indicator to a TRUE "droplet / metaball" behavior with dynamic shape deformation and background amplification.
+
+IMPORTANT:
+Current implementation is still too rigid.
+We now want a REAL fluid droplet behavior (like liquid connecting between points).
+
+--------------------------------------------------
+1. CORE CONCEPT (VERY IMPORTANT)
+--------------------------------------------------
+
+The indicator is NOT a fixed pill.
+
+It must behave like a LIQUID DROPLET:
+- It stretches toward the next item while dragging
+- It keeps a connection to the previous position
+- It forms a "teardrop / blob" shape between two points
+
+This is called a "metaball / liquid interpolation effect"
+
+--------------------------------------------------
+2. RENDER TWO LAYERS (REQUIRED)
+--------------------------------------------------
+
+Instead of ONE bubble, create TWO:
+
+A) Base bubble (current position)
+B) Target bubble (next item)
+
+Both are circles / rounded blobs.
+
+Then VISUALLY CONNECT them.
+
+--------------------------------------------------
+3. CREATE LIQUID CONNECTION (KEY FEATURE)
+--------------------------------------------------
+
+Use ONE of the following approaches:
+
+OPTION A (Preferred):
+- Use SVG with a dynamic PATH between both circles
+- Update path in real time
+
+OPTION B:
+- Use CSS + radial gradients + scale distortion (simpler fallback)
+
+--------------------------------------------------
+4. SVG METABALL IMPLEMENTATION (EXACT)
+--------------------------------------------------
+
+Render:
+
+<svg class="liquid-svg">
+  <path d={dynamicPath} />
+</svg>
+
+You must:
+
+- Calculate positions of:
+  circle A (current item)
+  circle B (next item based on drag)
+
+- Compute a connecting path between them
+  (Bezier curves)
+
+Path must update on EVERY drag frame.
+
+--------------------------------------------------
+5. DRAG-BASED MORPHING (CRITICAL)
+--------------------------------------------------
+
+While dragging:
+
+- Distance between A and B increases
+→ connection stretches
+
+- When close:
+→ shape becomes round
+
+- When far:
+→ shape becomes long "droplet"
+
+Use:
+
+distance = abs(positionA - positionB)
+
+Then:
+
+- Increase horizontal stretch
+- Reduce vertical radius slightly
+- Add curvature to path
+
+--------------------------------------------------
+6. REAL-TIME INTERPOLATION (MISSING BEFORE)
+--------------------------------------------------
+
+DO NOT snap between items.
+
+Instead:
+
+- Always calculate:
+  currentIndex (floor)
+  nextIndex (ceil)
+
+- progress = decimal between them (0 → 1)
+
+Then:
+
+centerX = lerp(A.center, B.center, progress)
+
+BUT ALSO:
+- Keep BOTH circles alive
+- Not just one interpolated position
+
+This is what creates the liquid connection.
+
+--------------------------------------------------
+7. BACKGROUND AMPLIFICATION (YOUR REQUIREMENT)
+--------------------------------------------------
+
+Inside the bubble, the background must feel "enhanced".
+
+Implement:
+
+- Stronger blur INSIDE bubble:
+  backdrop-filter: blur(50px) saturate(220%)
+
+- Add brightness boost:
+  filter: brightness(1.1)
+
+- Add subtle inner glow:
+  radial gradient:
+    center = brighter
+    edges = softer
+
+Example:
+background:
+  radial-gradient(
+    circle at center,
+    rgba(255,255,255,0.45),
+    rgba(255,255,255,0.1)
+  )
+
+IMPORTANT:
+The bubble must look like it is MAGNIFYING / ENHANCING the background behind it.
+
+--------------------------------------------------
+8. LIQUID SHAPE DEFORMATION
+--------------------------------------------------
+
+While dragging:
+
+- scaleX increases with speed + distance
+- scaleY decreases slightly
+
+BUT ALSO:
+- Corners must NOT stay perfectly round
+- Use dynamic border-radius:
+
+border-radius:
+  60% 40% 55% 45% / 55% 45% 60% 40%
+
+Animate these values slightly during movement.
+
+This creates organic blob feeling.
+
+--------------------------------------------------
+9. VELOCITY-BASED EFFECT (TINDER FEEL)
+--------------------------------------------------
+
+Track velocity:
+
+- Fast swipe:
+  → long stretched droplet
+  → stronger glow
+
+- Slow movement:
+  → round blob
+
+Example:
+
+stretchFactor = clamp(velocity / 1200, 0, 0.25)
+
+--------------------------------------------------
+10. SNAP BACK TO PERFECT SHAPE
+--------------------------------------------------
+
+When user releases:
+
+- Animate to closest item
+- Merge both circles into ONE
+- Return to perfect rounded pill
+
+Use spring:
+stiffness: 420
+damping: 32
+
+--------------------------------------------------
+11. PERFORMANCE (VERY IMPORTANT)
+--------------------------------------------------
+
+- Use requestAnimationFrame OR Framer Motion
+- Avoid layout recalculations per frame
+- Cache item positions
+- Only update transforms + SVG path
+
+--------------------------------------------------
+12. DO NOT BREAK EXISTING SYSTEM
+--------------------------------------------------
+
+Keep:
+- routing
+- badges
+- chat hiding
+- more menu
+
+Only upgrade visual + interaction layer.
+
+--------------------------------------------------
+GOAL (CRYSTAL CLEAR)
+--------------------------------------------------
+
+We want:
+
+✔ A blob that stretches like liquid between items  
+✔ A visible connection between positions (not teleporting)  
+✔ A droplet / metaball shape during swipe  
+✔ Background inside bubble looks enhanced / magnified  
+✔ Smooth snap back to clean shape  
+
+If it looks like a simple animated pill → WRONG  
+If it looks like a fluid droplet following your finger → CORRECT  

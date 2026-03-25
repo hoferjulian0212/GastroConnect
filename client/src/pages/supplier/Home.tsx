@@ -349,7 +349,6 @@ export default function SupplierHome() {
           {currentUser?.companyName || ""}
         </h1>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
@@ -385,9 +384,7 @@ export default function SupplierHome() {
                 <div key={group.dateKey}>
                   <div className="flex items-center gap-2 mb-2">
                     <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className={`text-xs font-semibold uppercase tracking-wide ${
-                      group.isToday ? "text-primary" : "text-muted-foreground"
-                    }`}>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
                       {group.label}
                     </span>
                     {group.isToday && (
@@ -608,7 +605,6 @@ export default function SupplierHome() {
         </CardContent>
       </Card>
       </div>
-
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div className="flex items-center gap-2.5">
@@ -685,7 +681,6 @@ export default function SupplierHome() {
           )}
         </CardContent>
       </Card>
-
       {((actionRequired?.staleOrders?.length || 0) > 0 || (actionRequired?.openComplaints?.length || 0) > 0) && (
         <Card className="border-red-200 dark:border-red-900/50">
           <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
@@ -832,7 +827,6 @@ export default function SupplierHome() {
           </CardContent>
         </Card>
       )}
-
       <Card data-testid="card-statistics">
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div className="flex items-center gap-2.5">
@@ -970,7 +964,6 @@ export default function SupplierHome() {
           )}
         </CardContent>
       </Card>
-
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
           <div className="flex items-center gap-2.5">
@@ -1037,7 +1030,6 @@ export default function SupplierHome() {
           )}
         </CardContent>
       </Card>
-
       <Dialog open={!!detailOrder} onOpenChange={(open) => { if (!open) { setDetailOrder(null); setShowMessageInput(false); setOrderMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">
           <DialogHeader>
@@ -1175,7 +1167,6 @@ export default function SupplierHome() {
           )}
         </DialogContent>
       </Dialog>
-
       {deliveryDatePicker && (
         <DeliveryDatePicker
           open={true}

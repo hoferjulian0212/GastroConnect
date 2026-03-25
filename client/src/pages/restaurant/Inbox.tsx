@@ -1010,14 +1010,15 @@ export default function RestaurantInbox() {
                       if (conv.lastMessage?.messageType === "order") {
                         try { isFollowUpOrder = JSON.parse(conv.lastMessage.content)?.isFollowUp === true; } catch {}
                       }
+                      const lastOid = conv.lastMessage?.orderId ? ` #${conv.lastMessage.orderId.slice(0, 8)}` : "";
                       const messagePreview = conv.lastMessage?.messageType === "order" 
-                        ? (isFollowUpOrder ? (lang === "de" ? "Nachlieferung" : "Riconsegna") : t("inbox", "orderMessage")) 
+                        ? (isFollowUpOrder ? (lang === "de" ? "Nachlieferung" : "Riconsegna") : (lang === "de" ? "Bestellung" : "Ordine")) + lastOid
                         : conv.lastMessage?.messageType === "complaint"
-                        ? t("inbox", "complaintMessage")
+                        ? (lang === "de" ? "Reklamation" : "Reclamo") + lastOid
                         : conv.lastMessage?.messageType === "document"
-                        ? t("inbox", "documentMessage")
+                        ? (lang === "de" ? "Lieferschein" : "Bolla") + lastOid
                         : conv.lastMessage?.messageType === "order_change_request"
-                        ? t("inbox", "changeRequest")
+                        ? (lang === "de" ? "Änderungsanfrage" : "Richiesta modifica") + lastOid
                         : conv.lastMessage?.messageType === "promotion"
                         ? t("promotionsPage", "promotionMessage")
                         : conv.lastMessage?.messageType === "attachment"
@@ -1482,7 +1483,7 @@ export default function RestaurantInbox() {
                                           <div className="flex items-center justify-between px-3 py-2 gap-2">
                                             <div className="flex items-center gap-2 min-w-0">
                                               <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                              <span className="text-xs text-muted-foreground truncate">{t("inbox", "orderMessage")} {message.orderId ? `#${message.orderId.slice(0, 8)}` : ""}</span>
+                                              <span className="text-xs text-muted-foreground truncate">{lang === "de" ? "Bestellung" : "Ordine"} {message.orderId ? `#${message.orderId.slice(0, 8)}` : ""}</span>
                                               {orderStatus && (
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${getStatusColor(orderStatus)}`}>
                                                   {getOrderStatus(orderStatus, lang)}
@@ -1514,7 +1515,7 @@ export default function RestaurantInbox() {
                                         <div className="flex items-center justify-between px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <ClipboardList className={`h-3.5 w-3.5 ${statusStyle.icon}`} />
-                                            <span className={`text-xs font-semibold ${statusStyle.icon}`}>{t("inbox", "orderMessage")} {message.orderId ? `#${message.orderId.slice(0, 8)}` : ""}</span>
+                                            <span className={`text-xs font-semibold ${statusStyle.icon}`}>{lang === "de" ? "Bestellung" : "Ordine"} {message.orderId ? `#${message.orderId.slice(0, 8)}` : ""}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {orderStatus && (
@@ -2051,7 +2052,7 @@ export default function RestaurantInbox() {
                                                     <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-primary-foreground/70" : "text-foreground"}`} />
                                                   )}
                                                   <span className={`text-[11px] font-medium truncate ${isOwn ? "text-primary-foreground/80" : "text-foreground/80"}`}>
-                                                    {refData.refLabel || (refData.refType === "order" ? t("inbox", "orderMessage") : t("inbox", "complaintMessage"))}
+                                                    {refData.refLabel || (refData.refType === "order" ? (lang === "de" ? "Bestellung" : "Ordine") : (lang === "de" ? "Reklamation" : "Reclamo"))}
                                                   </span>
                                                 </div>
                                               </div>
@@ -2122,7 +2123,7 @@ export default function RestaurantInbox() {
                     <ScrollArea className="flex-1 px-4">
                       <div className="space-y-2 pb-4">
                         {supplierProducts?.filter(p => p.inStock).map((product) => (
-                          <div key={product.id} className="flex items-center gap-3 p-3 rounded-lg bg-primary/5">
+                          <div key={product.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30">
                             {product.imageUrl ? (
                               <div className="w-12 h-12 rounded-md overflow-hidden bg-muted shrink-0 cursor-pointer" onClick={() => setInboxDetailProduct(product)} data-testid={`button-product-detail-${product.id}`}>
                                 <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
@@ -2536,30 +2537,28 @@ export default function RestaurantInbox() {
       </Card>
 
       <Dialog open={!!orderDetailId} onOpenChange={(open) => !open && setOrderDetailId(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-green-600" />
-              {t("orders", "orderDetails")}
-            </DialogTitle>
-          </DialogHeader>
-          {orderDetail && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-primary/5">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">{t("orders", "orderNumber")}</div>
-                  <span className="font-mono text-sm font-semibold" data-testid="text-order-id">#{orderDetail.id.slice(0, 8)}</span>
-                </div>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
+          <DialogHeader className="sr-only"><DialogTitle>{lang === "de" ? "Bestelldetails" : "Dettagli ordine"}</DialogTitle></DialogHeader>
+          <div className="px-6 pt-6 pb-2">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Bestellung" : "Ordine"}</p>
+                <h2 className="text-lg font-semibold tracking-tight" data-testid="text-order-id">#{orderDetail?.id.slice(0, 8)}</h2>
+              </div>
+              {orderDetail && (
                 <Badge className={getStatusColor(orderDetail.status)} data-testid="badge-order-status">
                   {getOrderStatus(orderDetail.status, lang)}
                 </Badge>
-              </div>
-
+              )}
+            </div>
+          </div>
+          {orderDetail && (
+            <div className="px-6 pb-6 space-y-5">
               {orderDetail.supplier && (
-                <div className="flex items-center gap-3 p-3 rounded-lg border">
+                <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={orderDetail.supplier.profileImageUrl || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                    <AvatarFallback className="bg-muted text-muted-foreground text-sm font-semibold">
                       {orderDetail.supplier.companyName?.substring(0, 2).toUpperCase() || "?"}
                     </AvatarFallback>
                   </Avatar>
@@ -2570,7 +2569,7 @@ export default function RestaurantInbox() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-xs text-muted-foreground mb-0.5">{t("orders", "createdAt")}</div>
                   <div className="text-sm font-medium">{format(new Date(orderDetail.createdAt), "dd.MM.yyyy", { locale: dateLocale })}</div>
@@ -2583,7 +2582,7 @@ export default function RestaurantInbox() {
                 </div>
               </div>
               {orderDetail.createdByUser && (
-                <div className="flex items-center gap-2 p-3 rounded-lg border" data-testid="detail-created-by">
+                <div className="flex items-center gap-2" data-testid="detail-created-by">
                   <UserIcon className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div>
                     <div className="text-xs text-muted-foreground">{t("orders", "createdBy")}</div>
@@ -2591,38 +2590,32 @@ export default function RestaurantInbox() {
                   </div>
                 </div>
               )}
-              
-              <Separator />
 
               <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4" />
+                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
                   {t("orders", "statusHistory")}
                 </h4>
-                <div className="p-3 rounded-lg bg-muted/30 border">
-                  <StatusTimeline
-                    history={orderStatusHistory || []}
-                    type="order"
-                    createdAt={orderDetail.createdAt}
-                    currentStatus={orderDetail.status}
-                  />
-                </div>
+                <StatusTimeline
+                  history={orderStatusHistory || []}
+                  type="order"
+                  createdAt={orderDetail.createdAt}
+                  currentStatus={orderDetail.status}
+                />
               </div>
-              
-              <Separator />
-              
+
               <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
-                  <Package className="h-4 w-4" />
+                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Package className="h-3.5 w-3.5" />
                   {t("common", "products")} ({orderDetail.items.length})
                 </h4>
-                <div className="rounded-lg border overflow-hidden">
+                <div className="rounded-xl border overflow-hidden">
                   {orderDetail.items.map((item: any, idx: number) => (
                     <div key={item.id} className={`flex items-center gap-2.5 px-3 py-2.5 ${idx < orderDetail.items.length - 1 ? "border-b" : ""}`} data-testid={`order-item-${item.id}`}>
                       {item.productImageUrl ? (
-                        <img src={item.productImageUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
+                        <img src={item.productImageUrl} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
                       ) : (
-                        <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
+                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
                           <Package className="h-4 w-4 text-muted-foreground" />
                         </div>
                       )}
@@ -2646,61 +2639,51 @@ export default function RestaurantInbox() {
                       <span className="text-sm font-semibold whitespace-nowrap">{parseFloat(item.totalPrice).toFixed(2)}€</span>
                     </div>
                   ))}
-                  <div className="flex justify-between items-center gap-2 px-3 py-3 bg-green-500/10 border-t">
+                  <div className="flex justify-between items-center gap-2 px-3 py-3 border-t bg-muted/30">
                     <span className="text-sm font-bold">{t("orders", "totalAmount")}</span>
-                    <span className="text-base font-bold text-green-700 dark:text-green-400">{parseFloat(orderDetail.totalAmount).toFixed(2)}€</span>
+                    <span className="text-base font-bold">{parseFloat(orderDetail.totalAmount).toFixed(2)}€</span>
                   </div>
                 </div>
               </div>
 
               {orderDetail.notes && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium mb-2 text-sm">{t("orders", "notes")}</h4>
-                    <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/30 border">{orderDetail.notes}</p>
-                  </div>
-                </>
+                <div>
+                  <h4 className="font-medium mb-2 text-sm text-muted-foreground">{t("orders", "notes")}</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{orderDetail.notes}</p>
+                </div>
               )}
 
               {orderDetail.status === "in_delivery" && (
-                <>
-                  <Separator />
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      const a = document.createElement("a"); a.href = `/api/orders/${orderDetail.id}/delivery-note/download`; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                    }}
-                    data-testid="button-download-delivery-note"
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    Lieferschein herunterladen
-                  </Button>
-                </>
+                <Button
+                  variant="outline"
+                  className="w-full rounded-xl"
+                  onClick={() => {
+                    const a = document.createElement("a"); a.href = `/api/orders/${orderDetail.id}/delivery-note/download`; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                  }}
+                  data-testid="button-download-delivery-note"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {lang === "de" ? "Lieferschein herunterladen" : "Scarica bolla"}
+                </Button>
               )}
 
               {orderDetail.status === "pending" && (
-                <>
-                  <Separator />
-                  <Button
-                    className="w-full"
-                    onClick={() => openEditOrderInbox(orderDetail)}
-                    data-testid="button-edit-order-inbox"
-                  >
-                    <Pencil className="h-4 w-4 mr-2" />
-                    {t("orders", "editOrder")}
-                  </Button>
-                </>
+                <Button
+                  className="w-full rounded-xl"
+                  onClick={() => openEditOrderInbox(orderDetail)}
+                  data-testid="button-edit-order-inbox"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  {t("orders", "editOrder")}
+                </Button>
               )}
 
               {(orderDetail.status === "pending" || orderDetail.status === "confirmed" || orderDetail.status === "partially_confirmed") && (
                 <>
-                  <Separator />
                   {!showCancelOrderConfirm ? (
                     <Button
                       variant="destructive"
-                      className="w-full"
+                      className="w-full rounded-xl"
                       onClick={() => setShowCancelOrderConfirm(true)}
                       data-testid="button-cancel-order-inbox"
                     >
@@ -2708,14 +2691,14 @@ export default function RestaurantInbox() {
                       {t("orders", "cancelOrder")}
                     </Button>
                   ) : (
-                    <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/5 space-y-3">
+                    <div className="p-4 rounded-xl border border-destructive/20 space-y-3">
                       <p className="text-sm font-medium text-destructive">{t("orders", "confirmCancel")}</p>
                       <p className="text-xs text-muted-foreground">{t("orders", "cancelWarning")}</p>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1"
+                          className="flex-1 rounded-lg"
                           onClick={() => setShowCancelOrderConfirm(false)}
                           data-testid="button-cancel-order-abort"
                         >
@@ -2724,7 +2707,7 @@ export default function RestaurantInbox() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          className="flex-1"
+                          className="flex-1 rounded-lg"
                           onClick={() => cancelOrderMutation.mutate(orderDetail.id)}
                           disabled={cancelOrderMutation.isPending}
                           data-testid="button-cancel-order-confirm"
@@ -2748,160 +2731,146 @@ export default function RestaurantInbox() {
           setLoadingComplaintDetail(false);
         }
       }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              {t("complaints", "complaintDetails")}
-            </DialogTitle>
-          </DialogHeader>
-          
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
+          <DialogHeader className="sr-only"><DialogTitle>{lang === "de" ? "Reklamationsdetails" : "Dettagli reclamo"}</DialogTitle></DialogHeader>
           {(loadingComplaintDetail || isLoadingComplaintDetail) ? (
-            <div className="space-y-4">
+            <div className="p-6 space-y-4">
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
           ) : isComplaintDetailError ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-12 px-6 text-muted-foreground">
               <AlertCircle className="mx-auto h-10 w-10 mb-2 text-destructive" />
               <p className="text-sm font-medium text-destructive">{t("inbox", "loadError")}</p>
               <p className="text-xs text-muted-foreground mt-1">{t("inbox", "complaintLoadError")}</p>
             </div>
           ) : complaintDetail ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-primary/5">
-                {(() => {
-                  const statusInfo = formatComplaintStatus(complaintDetail.status);
-                  const StatusIcon = statusInfo.icon;
-                  return (
-                    <>
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-1">{t("inbox", "complaintMessage")}</div>
-                        <span className="font-mono text-sm font-semibold" data-testid="text-complaint-id">#{complaintDetail.id.slice(0, 8)}</span>
-                      </div>
+            <>
+              <div className="px-6 pt-6 pb-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Reklamation" : "Reclamo"}</p>
+                    <h2 className="text-lg font-semibold tracking-tight" data-testid="text-complaint-id">#{complaintDetail.id.slice(0, 8)}</h2>
+                  </div>
+                  {(() => {
+                    const statusInfo = formatComplaintStatus(complaintDetail.status);
+                    const StatusIcon = statusInfo.icon;
+                    return (
                       <Badge variant={statusInfo.variant} className="flex items-center gap-1" data-testid="badge-complaint-status">
                         <StatusIcon className="h-3 w-3" />
                         {statusInfo.label}
                       </Badge>
-                    </>
-                  );
-                })()}
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-lg border">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={complaintDetail.supplier?.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                    {complaintDetail.supplier?.companyName?.substring(0, 2).toUpperCase() || "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-medium text-sm">{complaintDetail.supplier?.companyName || t("common", "supplier")}</div>
-                  <div className="text-xs text-muted-foreground">{complaintDetail.supplier?.email}</div>
+                    );
+                  })()}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">{t("orders", "createdAt")}</div>
-                  <div className="text-sm font-medium">{format(new Date(complaintDetail.createdAt), "dd.MM.yyyy", { locale: dateLocale })}</div>
-                  <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.createdAt), "HH:mm", { locale: dateLocale })}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">{t("orders", "lastChange")}</div>
-                  <div className="text-sm font-medium">{format(new Date(complaintDetail.updatedAt), "dd.MM.yyyy", { locale: dateLocale })}</div>
-                  <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.updatedAt), "HH:mm", { locale: dateLocale })}</div>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  {(complaintDetail as any).priority === "urgent" && (
-                    <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
-                      PRIORIT&Auml;T
-                    </Badge>
-                  )}
-                  <h4 className="font-semibold text-base" data-testid="text-complaint-title">{complaintDetail.title}</h4>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed p-3 rounded-lg bg-muted/30 border" data-testid="text-complaint-description">{complaintDetail.description}</p>
-
-                {complaintDetail.affectedItems && (() => {
-                  try {
-                    const items = JSON.parse(complaintDetail.affectedItems);
-                    if (Array.isArray(items) && items.length > 0) {
-                      return (
-                        <div className="p-3 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
-                            <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
-                              {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
-                            </span>
-                          </div>
-                          <div className="space-y-1">
-                            {items.map((ai: any, idx: number) => (
-                              <div key={idx} className="flex items-center justify-between text-sm">
-                                <span className="text-foreground">{ai.productName}</span>
-                                <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  } catch { return null; }
-                })()}
-              </div>
-
-              {complaintDetail.mediaUrls && complaintDetail.mediaUrls.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-sm mb-2">{t("complaints", "attachments")}</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    {complaintDetail.mediaUrls.map((url: string, idx: number) => (
-                      <a key={idx} href={getMediaSrc(url)} rel="noopener noreferrer" className="block aspect-square rounded-lg overflow-hidden border hover-elevate">
-                        {isVideoFile(url) ? (
-                          <div className="h-full w-full flex items-center justify-center bg-muted">
-                            <Package className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                        ) : (
-                          <img 
-                            src={getMediaSrc(url)} 
-                            alt={`${t("complaints", "attachment")} ${idx + 1}`}
-                            className="h-full w-full object-cover"
-                          />
-                        )}
-                      </a>
-                    ))}
+              <div className="px-6 pb-6 space-y-5">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={complaintDetail.supplier?.profileImageUrl || undefined} />
+                    <AvatarFallback className="bg-muted text-muted-foreground text-sm font-semibold">
+                      {complaintDetail.supplier?.companyName?.substring(0, 2).toUpperCase() || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-medium text-sm">{complaintDetail.supplier?.companyName || t("common", "supplier")}</div>
+                    <div className="text-xs text-muted-foreground">{complaintDetail.supplier?.email}</div>
                   </div>
                 </div>
-              )}
 
-              <Separator />
-
-              <div className="p-3 rounded-lg border">
-                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                  <span className="text-sm font-medium">{t("complaints", "affectedOrder")}</span>
-                  <Badge variant="outline">#{complaintDetail.orderId.substring(0, 8)}</Badge>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-0.5">{t("orders", "createdAt")}</div>
+                    <div className="text-sm font-medium">{format(new Date(complaintDetail.createdAt), "dd.MM.yyyy", { locale: dateLocale })}</div>
+                    <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.createdAt), "HH:mm", { locale: dateLocale })}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-0.5">{t("orders", "lastChange")}</div>
+                    <div className="text-sm font-medium">{format(new Date(complaintDetail.updatedAt), "dd.MM.yyyy", { locale: dateLocale })}</div>
+                    <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.updatedAt), "HH:mm", { locale: dateLocale })}</div>
+                  </div>
                 </div>
-                {complaintDetail.order && (
-                  <div className="text-sm text-muted-foreground">
-                    {t("orders", "totalAmount")}: {parseFloat(complaintDetail.order.totalAmount).toFixed(2)}€
+
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    {(complaintDetail as any).priority === "urgent" && (
+                      <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
+                        PRIORITÄT
+                      </Badge>
+                    )}
+                    <h4 className="font-semibold text-base" data-testid="text-complaint-title">{complaintDetail.title}</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-complaint-description">{complaintDetail.description}</p>
+
+                  {complaintDetail.affectedItems && (() => {
+                    try {
+                      const items = JSON.parse(complaintDetail.affectedItems);
+                      if (Array.isArray(items) && items.length > 0) {
+                        return (
+                          <div className="mt-3 p-3 rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                              <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
+                                {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
+                              </span>
+                            </div>
+                            <div className="space-y-1">
+                              {items.map((ai: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between text-sm">
+                                  <span className="text-foreground">{ai.productName}</span>
+                                  <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    } catch { return null; }
+                  })()}
+                </div>
+
+                {complaintDetail.mediaUrls && complaintDetail.mediaUrls.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2 text-muted-foreground">{t("complaints", "attachments")}</h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      {complaintDetail.mediaUrls.map((url: string, idx: number) => (
+                        <a key={idx} href={getMediaSrc(url)} rel="noopener noreferrer" className="block aspect-square rounded-xl overflow-hidden border hover-elevate">
+                          {isVideoFile(url) ? (
+                            <div className="h-full w-full flex items-center justify-center bg-muted">
+                              <Package className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <img 
+                              src={getMediaSrc(url)} 
+                              alt={`${t("complaints", "attachment")} ${idx + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                          )}
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </div>
 
-              <Separator />
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground">{t("complaints", "affectedOrder")}</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">#{complaintDetail.orderId.substring(0, 8)}</Badge>
+                    {complaintDetail.order && (
+                      <span className="text-sm text-muted-foreground">{parseFloat(complaintDetail.order.totalAmount).toFixed(2)}€</span>
+                    )}
+                  </div>
+                </div>
 
-              <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4" />
-                  {t("orders", "statusHistory")}
-                </h4>
-                <div className="p-3 rounded-lg bg-muted/30 border">
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5" />
+                    {t("orders", "statusHistory")}
+                  </h4>
                   <StatusTimeline
                     history={complaintStatusHistoryData || []}
                     type="complaint"
@@ -2909,80 +2878,75 @@ export default function RestaurantInbox() {
                     currentStatus={complaintDetail.status}
                   />
                 </div>
-              </div>
 
-              <Separator />
-
-              <div>
-                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  {t("complaints", "comments")} ({complaintComments?.length || 0})
-                </h4>
-                {loadingComments ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-16 w-full" />
-                    <Skeleton className="h-16 w-full" />
-                  </div>
-                ) : complaintComments && complaintComments.length > 0 ? (
-                  <div className="space-y-3 max-h-60 overflow-y-auto">
-                    {complaintComments.map((comment) => (
-                      <div key={comment.id} className="p-3 rounded-lg bg-muted/30 border" data-testid={`comment-${comment.id}`}>
-                        <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={comment.user?.profileImageUrl || undefined} />
-                              <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                {comment.user?.companyName?.substring(0, 2).toUpperCase() || comment.user?.name?.substring(0, 2).toUpperCase() || "?"}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium">{comment.user?.companyName || comment.user?.name || t("common", "unknown")}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {comment.user?.role === "supplier" ? t("common", "supplier") : t("common", "restaurant")}
-                            </Badge>
+                <div>
+                  <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-muted-foreground">
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    {t("complaints", "comments")} ({complaintComments?.length || 0})
+                  </h4>
+                  {loadingComments ? (
+                    <div className="space-y-3">
+                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-16 w-full" />
+                    </div>
+                  ) : complaintComments && complaintComments.length > 0 ? (
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {complaintComments.map((comment) => (
+                        <div key={comment.id} className="p-3 rounded-xl bg-muted/20" data-testid={`comment-${comment.id}`}>
+                          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={comment.user?.profileImageUrl || undefined} />
+                                <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                                  {comment.user?.companyName?.substring(0, 2).toUpperCase() || comment.user?.name?.substring(0, 2).toUpperCase() || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm font-medium">{comment.user?.companyName || comment.user?.name || t("common", "unknown")}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {comment.user?.role === "supplier" ? t("common", "supplier") : t("common", "restaurant")}
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(comment.createdAt), "dd.MM. HH:mm", { locale: dateLocale })}
+                            </span>
                           </div>
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(comment.createdAt), "dd.MM. HH:mm", { locale: dateLocale })}
-                          </span>
+                          <p className="text-sm text-muted-foreground ml-8">{comment.content}</p>
                         </div>
-                        <p className="text-sm text-muted-foreground ml-8">{comment.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">{t("complaints", "noComments")}</p>
-                )}
-              </div>
-
-              {complaintDetail.status !== "closed" && complaintDetail.status !== "resolved" && (
-                <div className="space-y-2 border-t pt-4">
-                  <Label className="text-sm">{t("complaints", "addComment")}</Label>
-                  <div className="flex gap-2">
-                    <Textarea
-                      value={newComplaintComment}
-                      onChange={(e) => setNewComplaintComment(e.target.value)}
-                      placeholder={t("complaints", "commentPlaceholder")}
-                      rows={2}
-                      className="flex-1"
-                      data-testid="input-inbox-complaint-comment"
-                    />
-                    <Button
-                      size="icon"
-                      onClick={() => selectedComplaintId && addComplaintCommentMutation.mutate({ complaintId: selectedComplaintId, content: newComplaintComment.trim() })}
-                      disabled={!newComplaintComment.trim() || addComplaintCommentMutation.isPending}
-                      data-testid="button-inbox-send-complaint-comment"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">{t("complaints", "noComments")}</p>
+                  )}
                 </div>
-              )}
 
-              {(complaintDetail.status === "resolved" || complaintDetail.status === "closed") && (
-                <>
-                  <Separator />
+                {complaintDetail.status !== "closed" && complaintDetail.status !== "resolved" && (
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-sm">{t("complaints", "addComment")}</Label>
+                    <div className="flex gap-2">
+                      <Textarea
+                        value={newComplaintComment}
+                        onChange={(e) => setNewComplaintComment(e.target.value)}
+                        placeholder={t("complaints", "commentPlaceholder")}
+                        rows={2}
+                        className="flex-1"
+                        data-testid="input-inbox-complaint-comment"
+                      />
+                      <Button
+                        size="icon"
+                        onClick={() => selectedComplaintId && addComplaintCommentMutation.mutate({ complaintId: selectedComplaintId, content: newComplaintComment.trim() })}
+                        disabled={!newComplaintComment.trim() || addComplaintCommentMutation.isPending}
+                        data-testid="button-inbox-send-complaint-comment"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {(complaintDetail.status === "resolved" || complaintDetail.status === "closed") && (
                   <Button
                     variant="outline"
-                    className="w-full"
+                    className="w-full rounded-xl"
                     onClick={() => selectedComplaintId && reopenComplaintMutation.mutate(selectedComplaintId)}
                     disabled={reopenComplaintMutation.isPending}
                     data-testid="button-reopen-complaint"
@@ -2990,54 +2954,53 @@ export default function RestaurantInbox() {
                     <AlertCircle className="h-4 w-4 mr-2" />
                     {lang === "de" ? "Reklamation wieder öffnen" : "Riapri reclamo"}
                   </Button>
-                </>
-              )}
+                )}
 
-              {complaintDetail.status === "open" && (
-                <>
-                  <Separator />
-                  {!showWithdrawComplaintConfirm ? (
-                    <Button
-                      variant="destructive"
-                      className="w-full"
-                      onClick={() => setShowWithdrawComplaintConfirm(true)}
-                      data-testid="button-withdraw-complaint-inbox"
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      {t("complaints", "withdrawComplaint")}
-                    </Button>
-                  ) : (
-                    <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/5 space-y-3">
-                      <p className="text-sm font-medium text-destructive">{t("complaints", "confirmWithdraw")}</p>
-                      <p className="text-xs text-muted-foreground">{t("complaints", "withdrawWarning")}</p>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => setShowWithdrawComplaintConfirm(false)}
-                          data-testid="button-withdraw-complaint-abort"
-                        >
-                          {t("common", "cancel")}
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => selectedComplaintId && withdrawComplaintMutation.mutate(selectedComplaintId)}
-                          disabled={withdrawComplaintMutation.isPending}
-                          data-testid="button-withdraw-complaint-confirm"
-                        >
-                          {withdrawComplaintMutation.isPending ? t("inbox", "closing") : t("inbox", "yesWithdraw")}
-                        </Button>
+                {complaintDetail.status === "open" && (
+                  <>
+                    {!showWithdrawComplaintConfirm ? (
+                      <Button
+                        variant="destructive"
+                        className="w-full rounded-xl"
+                        onClick={() => setShowWithdrawComplaintConfirm(true)}
+                        data-testid="button-withdraw-complaint-inbox"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        {t("complaints", "withdrawComplaint")}
+                      </Button>
+                    ) : (
+                      <div className="p-4 rounded-xl border border-destructive/20 space-y-3">
+                        <p className="text-sm font-medium text-destructive">{t("complaints", "confirmWithdraw")}</p>
+                        <p className="text-xs text-muted-foreground">{t("complaints", "withdrawWarning")}</p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 rounded-lg"
+                            onClick={() => setShowWithdrawComplaintConfirm(false)}
+                            data-testid="button-withdraw-complaint-abort"
+                          >
+                            {t("common", "cancel")}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="flex-1 rounded-lg"
+                            onClick={() => selectedComplaintId && withdrawComplaintMutation.mutate(selectedComplaintId)}
+                            disabled={withdrawComplaintMutation.isPending}
+                            data-testid="button-withdraw-complaint-confirm"
+                          >
+                            {withdrawComplaintMutation.isPending ? t("inbox", "closing") : t("inbox", "yesWithdraw")}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-12 px-6 text-muted-foreground">
               <AlertCircle className="mx-auto h-10 w-10 mb-2 opacity-50" />
               <p className="text-sm">{t("inbox", "complaintNotFound")}</p>
             </div>
@@ -3062,7 +3025,7 @@ export default function RestaurantInbox() {
               <Label className="text-sm font-medium mb-2 block">{t("orders", "orderItems")}</Label>
               <div className="space-y-2">
                 {editItemsInbox.map((item: any, index) => (
-                  <div key={item.id} className="flex items-center gap-2.5 p-3 rounded-md bg-primary/5" data-testid={`inbox-edit-item-${item.productId}`}>
+                  <div key={item.id} className="flex items-center gap-2.5 p-3 rounded-xl bg-muted/30" data-testid={`inbox-edit-item-${item.productId}`}>
                     {item.productImageUrl ? (
                       <img src={item.productImageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
                     ) : (

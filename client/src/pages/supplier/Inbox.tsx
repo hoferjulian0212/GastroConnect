@@ -726,16 +726,17 @@ export default function SupplierInbox() {
                       if (conv.lastMessage?.messageType === "order") {
                         try { isFollowUpOrder = JSON.parse(conv.lastMessage.content)?.isFollowUp === true; } catch {}
                       }
+                      const lastOid = conv.lastMessage?.orderId ? ` #${conv.lastMessage.orderId.slice(0, 8)}` : "";
                       const messagePreview = conv.lastMessage?.messageType === "order" 
-                        ? (isFollowUpOrder ? (lang === "de" ? "Nachlieferung" : "Riconsegna") : (lang === "de" ? "Neue Bestellung" : "Nuovo ordine"))
+                        ? (isFollowUpOrder ? (lang === "de" ? "Nachlieferung" : "Riconsegna") : (lang === "de" ? "Bestellung" : "Ordine")) + lastOid
                         : conv.lastMessage?.messageType === "complaint"
-                        ? (lang === "de" ? "Reklamation" : "Reclamo")
+                        ? (lang === "de" ? "Reklamation" : "Reclamo") + lastOid
                         : conv.lastMessage?.messageType === "document"
-                        ? (lang === "de" ? "Lieferschein" : "Bolla di consegna")
+                        ? (lang === "de" ? "Lieferschein" : "Bolla") + lastOid
                         : conv.lastMessage?.messageType === "attachment"
                         ? (lang === "de" ? "Anhang" : "Allegato")
                         : conv.lastMessage?.messageType === "order_change_request"
-                        ? (lang === "de" ? "Änderungsanfrage" : "Richiesta modifica")
+                        ? (lang === "de" ? "Änderungsanfrage" : "Richiesta modifica") + lastOid
                         : conv.lastMessage?.messageType === "promotion"
                         ? (lang === "de" ? "Aktion" : "Promozione")
                         : messagePreviewText;
@@ -1835,7 +1836,7 @@ export default function SupplierInbox() {
                                                   <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
                                                 )}
                                                 <span className={`text-[11px] font-medium truncate ${isOwn ? "text-secondary-foreground/80" : "text-foreground/80"}`}>
-                                                  {refData.refLabel || (refData.refType === "order" ? (lang === "de" ? "Bestellung" : "Ordine") : (lang === "de" ? "Reklamation" : "Reclamo"))}
+                                                  {refData.refLabel || (refData.refType === "order" ? ((lang === "de" ? "Bestellung" : "Ordine") + (refData.orderId ? ` #${refData.orderId.slice(0, 8)}` : "")) : ((lang === "de" ? "Reklamation" : "Reclamo") + (refData.orderId ? ` #${refData.orderId.slice(0, 8)}` : "")))}
                                                 </span>
                                               </div>
                                             </div>
@@ -2028,94 +2029,89 @@ export default function SupplierInbox() {
       </Card>
 
       <Dialog open={!!orderDetailId} onOpenChange={(open) => !open && setOrderDetailId(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-green-600" />
-              Bestelldetails
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
+          <DialogHeader className="sr-only"><DialogTitle>{lang === "de" ? "Bestelldetails" : "Dettagli ordine"}</DialogTitle></DialogHeader>
+          <div className="px-6 pt-6 pb-2">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Bestellung" : "Ordine"}</p>
+                <h2 className="text-lg font-semibold tracking-tight" data-testid="text-order-id">#{orderDetail?.id.slice(0, 8)}</h2>
+              </div>
+              {orderDetail && (
+                <Badge className={`${getStatusColor(orderDetail.status)} text-xs`} variant="outline" data-testid="badge-order-status">
+                  {getStatusLabel(orderDetail.status)}
+                </Badge>
+              )}
+            </div>
+          </div>
           {orderDetail && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-muted/50">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Bestellnummer</div>
-                  <span className="font-mono text-sm font-semibold" data-testid="text-order-id">#{orderDetail.id.slice(0, 8)}</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge className={`${getStatusColor(orderDetail.status)} text-xs`} variant="outline">
-                    {getStatusLabel(orderDetail.status)}
-                  </Badge>
-                  {orderDetail.status !== "delivered" && orderDetail.status !== "cancelled" && (
-                    <>
-                      {orderDetail.status === "pending" && (
-                        <Button size="sm" onClick={() => { setOrderDetailId(null); setConfirmOrderForDialog(orderDetail); }} data-testid="button-status-confirmed">
-                          <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                          {lang === "it" ? "Conferma" : "Bestätigen"}
-                        </Button>
-                      )}
-                      {(orderDetail.status === "confirmed" || orderDetail.status === "partially_confirmed") && (
-                        <Button size="sm" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "in_delivery" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-in_delivery">
-                          <Truck className="h-3.5 w-3.5 mr-1" />
-                          {lang === "it" ? "In consegna" : "In Lieferung"}
-                        </Button>
-                      )}
-                      {orderDetail.status === "in_delivery" && (
-                        <Button size="sm" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "delivered" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-delivered">
-                          <Package className="h-3.5 w-3.5 mr-1" />
-                          Geliefert
-                        </Button>
-                      )}
-                      {orderDetail.status !== "in_delivery" && (
-                        <Button size="sm" variant="outline" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "cancelled" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-cancelled">
-                          <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
-                          {lang === "it" ? "Annulla" : "Stornieren"}
-                        </Button>
-                      )}
-                    </>
+            <div className="px-6 pb-6 space-y-5">
+              {orderDetail.status !== "delivered" && orderDetail.status !== "cancelled" && (
+                <div className="flex flex-wrap gap-2">
+                  {orderDetail.status === "pending" && (
+                    <Button size="sm" className="rounded-lg" onClick={() => { setOrderDetailId(null); setConfirmOrderForDialog(orderDetail); }} data-testid="button-status-confirmed">
+                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                      {lang === "it" ? "Conferma" : "Bestätigen"}
+                    </Button>
+                  )}
+                  {(orderDetail.status === "confirmed" || orderDetail.status === "partially_confirmed") && (
+                    <Button size="sm" className="rounded-lg" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "in_delivery" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-in_delivery">
+                      <Truck className="h-3.5 w-3.5 mr-1" />
+                      {lang === "it" ? "In consegna" : "In Lieferung"}
+                    </Button>
+                  )}
+                  {orderDetail.status === "in_delivery" && (
+                    <Button size="sm" className="rounded-lg" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "delivered" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-delivered">
+                      <Package className="h-3.5 w-3.5 mr-1" />
+                      {lang === "de" ? "Geliefert" : "Consegnato"}
+                    </Button>
+                  )}
+                  {orderDetail.status !== "in_delivery" && (
+                    <Button size="sm" variant="outline" className="rounded-lg" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "cancelled" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-cancelled">
+                      <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
+                      {lang === "it" ? "Annulla" : "Stornieren"}
+                    </Button>
                   )}
                 </div>
-              </div>
+              )}
 
               {orderDetail.status !== "cancelled" && (
-                <div className="border rounded-lg p-3 bg-muted/20">
+                <div>
                   <div className="flex items-center gap-2 mb-2">
                     <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
                     <p className="text-xs font-medium text-muted-foreground">
                       {lang === "it" ? "Correggi stato" : "Status korrigieren"}
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    <Select
-                      onValueChange={(value) => {
-                        if (value && value !== orderDetail.status) {
-                          updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: value });
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-8 text-xs flex-1" data-testid="select-status-correction">
-                        <SelectValue placeholder={lang === "it" ? "Seleziona stato..." : "Status wählen..."} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]
-                          .filter(s => s !== orderDetail.status)
-                          .map(s => (
-                            <SelectItem key={s} value={s} data-testid={`select-correction-${s}`}>
-                              {getStatusLabel(s)}
-                            </SelectItem>
-                          ))
-                        }
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Select
+                    onValueChange={(value) => {
+                      if (value && value !== orderDetail.status) {
+                        updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: value });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs" data-testid="select-status-correction">
+                      <SelectValue placeholder={lang === "it" ? "Seleziona stato..." : "Status wählen..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]
+                        .filter(s => s !== orderDetail.status)
+                        .map(s => (
+                          <SelectItem key={s} value={s} data-testid={`select-correction-${s}`}>
+                            {getStatusLabel(s)}
+                          </SelectItem>
+                        ))
+                      }
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
               {orderDetail.restaurant && (
-                <div className="flex items-center gap-3 p-3 rounded-lg border">
+                <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={orderDetail.restaurant.profileImageUrl || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                    <AvatarFallback className="bg-muted text-muted-foreground text-sm font-semibold">
                       {orderDetail.restaurant.companyName?.substring(0, 2).toUpperCase() || "?"}
                     </AvatarFallback>
                   </Avatar>
@@ -2126,20 +2122,20 @@ export default function SupplierInbox() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Erstellt am</div>
+                  <div className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Erstellt am" : "Creato il"}</div>
                   <div className="text-sm font-medium">{format(new Date(orderDetail.createdAt), "dd.MM.yyyy", { locale: de })}</div>
-                  <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.createdAt), "HH:mm", { locale: de })} Uhr</div>
+                  <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.createdAt), "HH:mm", { locale: de })}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Letzte Änderung</div>
+                  <div className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Letzte Änderung" : "Ultima modifica"}</div>
                   <div className="text-sm font-medium">{format(new Date(orderDetail.updatedAt), "dd.MM.yyyy", { locale: de })}</div>
-                  <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.updatedAt), "HH:mm", { locale: de })} Uhr</div>
+                  <div className="text-xs text-muted-foreground">{format(new Date(orderDetail.updatedAt), "HH:mm", { locale: de })}</div>
                 </div>
               </div>
               {orderDetail.createdByUser && (
-                <div className="flex items-center gap-2 p-3 rounded-lg border" data-testid="detail-created-by">
+                <div className="flex items-center gap-2" data-testid="detail-created-by">
                   <UserIcon className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div>
                     <div className="text-xs text-muted-foreground">{t("orders", "createdBy")}</div>
@@ -2147,38 +2143,32 @@ export default function SupplierInbox() {
                   </div>
                 </div>
               )}
-              
-              <Separator />
 
               <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4" />
-                  Statusverlauf
+                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
+                  {lang === "de" ? "Statusverlauf" : "Cronologia stato"}
                 </h4>
-                <div className="p-3 rounded-lg bg-muted/30 border">
-                  <StatusTimeline
-                    history={orderStatusHistory || []}
-                    type="order"
-                    createdAt={orderDetail.createdAt}
-                    currentStatus={orderDetail.status}
-                  />
-                </div>
+                <StatusTimeline
+                  history={orderStatusHistory || []}
+                  type="order"
+                  createdAt={orderDetail.createdAt}
+                  currentStatus={orderDetail.status}
+                />
               </div>
-              
-              <Separator />
-              
+
               <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
-                  <Package className="h-4 w-4" />
-                  Produkte ({orderDetail.items.length})
+                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Package className="h-3.5 w-3.5" />
+                  {lang === "de" ? "Produkte" : "Prodotti"} ({orderDetail.items.length})
                 </h4>
-                <div className="rounded-lg border overflow-hidden">
+                <div className="rounded-xl border overflow-hidden">
                   {orderDetail.items.map((item: any, idx: number) => (
                     <div key={item.id} className={`flex items-center gap-2.5 px-3 py-2.5 ${idx < orderDetail.items.length - 1 ? "border-b" : ""}`} data-testid={`order-item-${item.id}`}>
                       {item.productImageUrl ? (
-                        <img src={item.productImageUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
+                        <img src={item.productImageUrl} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
                       ) : (
-                        <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
+                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
                           <Package className="h-4 w-4 text-muted-foreground" />
                         </div>
                       )}
@@ -2202,28 +2192,24 @@ export default function SupplierInbox() {
                       <span className="text-sm font-semibold whitespace-nowrap">{parseFloat(item.totalPrice).toFixed(2)}€</span>
                     </div>
                   ))}
-                  <div className="flex justify-between items-center gap-2 px-3 py-3 bg-green-500/10 border-t">
+                  <div className="flex justify-between items-center gap-2 px-3 py-3 border-t bg-muted/30">
                     <span className="text-sm font-bold">{lang === "it" ? "Totale" : "Gesamtbetrag"}</span>
-                    <span className="text-base font-bold text-green-700 dark:text-green-400">{parseFloat(orderDetail.totalAmount).toFixed(2)}€</span>
+                    <span className="text-base font-bold">{parseFloat(orderDetail.totalAmount).toFixed(2)}€</span>
                   </div>
                 </div>
               </div>
 
               {orderDetail.notes && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium mb-2 text-sm">Notizen</h4>
-                    <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/30 border">{orderDetail.notes}</p>
-                  </div>
-                </>
+                <div>
+                  <h4 className="font-medium mb-2 text-sm text-muted-foreground">{lang === "de" ? "Notizen" : "Note"}</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{orderDetail.notes}</p>
+                </div>
               )}
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Complaint Detail Dialog */}
       <Dialog open={showComplaintDetail} onOpenChange={(open) => {
         setShowComplaintDetail(open);
         if (!open) {
@@ -2231,163 +2217,151 @@ export default function SupplierInbox() {
           setLoadingComplaintDetail(false);
         }
       }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              Reklamationsdetails
-            </DialogTitle>
-          </DialogHeader>
-          
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
+          <DialogHeader className="sr-only"><DialogTitle>{lang === "de" ? "Reklamationsdetails" : "Dettagli reclamo"}</DialogTitle></DialogHeader>
           {(loadingComplaintDetail || isLoadingComplaintDetail) ? (
-            <div className="space-y-4">
+            <div className="p-6 space-y-4">
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
           ) : isComplaintDetailError ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-12 px-6 text-muted-foreground">
               <AlertCircle className="mx-auto h-10 w-10 mb-2 text-destructive" />
-              <p className="text-sm font-medium text-destructive">Fehler beim Laden</p>
-              <p className="text-xs text-muted-foreground mt-1">Die Reklamation konnte nicht geladen werden.</p>
+              <p className="text-sm font-medium text-destructive">{lang === "de" ? "Fehler beim Laden" : "Errore di caricamento"}</p>
+              <p className="text-xs text-muted-foreground mt-1">{lang === "de" ? "Die Reklamation konnte nicht geladen werden." : "Impossibile caricare il reclamo."}</p>
             </div>
           ) : complaintDetail ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-muted/50">
-                {(() => {
-                  const statusInfo = formatComplaintStatus(complaintDetail.status);
-                  const StatusIcon = statusInfo.icon;
-                  return (
-                    <>
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-1">Reklamation</div>
-                        <span className="font-mono text-sm font-semibold" data-testid="text-complaint-id">#{complaintDetail.id.slice(0, 8)}</span>
-                      </div>
+            <>
+              <div className="px-6 pt-6 pb-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Reklamation" : "Reclamo"}</p>
+                    <h2 className="text-lg font-semibold tracking-tight" data-testid="text-complaint-id">#{complaintDetail.id.slice(0, 8)}</h2>
+                  </div>
+                  {(() => {
+                    const statusInfo = formatComplaintStatus(complaintDetail.status);
+                    const StatusIcon = statusInfo.icon;
+                    return (
                       <Badge variant={statusInfo.variant} className="flex items-center gap-1" data-testid="badge-complaint-status">
                         <StatusIcon className="h-3 w-3" />
                         {statusInfo.label}
                       </Badge>
-                    </>
-                  );
-                })()}
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-lg border">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={complaintDetail.restaurant?.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                    {complaintDetail.restaurant?.companyName?.substring(0, 2).toUpperCase() || "??"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-medium text-sm">{complaintDetail.restaurant?.companyName || "Unbekannt"}</div>
-                  <div className="text-xs text-muted-foreground">{complaintDetail.restaurant?.email}</div>
+                    );
+                  })()}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Erstellt am</div>
-                  <div className="text-sm font-medium">{format(new Date(complaintDetail.createdAt), "dd.MM.yyyy", { locale: de })}</div>
-                  <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.createdAt), "HH:mm", { locale: de })} Uhr</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Letzte Änderung</div>
-                  <div className="text-sm font-medium">{format(new Date(complaintDetail.updatedAt), "dd.MM.yyyy", { locale: de })}</div>
-                  <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.updatedAt), "HH:mm", { locale: de })} Uhr</div>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  {(complaintDetail as any).priority === "urgent" && (
-                    <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
-                      PRIORIT&Auml;T
-                    </Badge>
-                  )}
-                  <h4 className="font-semibold text-base" data-testid="text-complaint-title">{complaintDetail.title}</h4>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap p-3 rounded-lg bg-muted/30 border" data-testid="text-complaint-description">{complaintDetail.description}</p>
-
-                {complaintDetail.affectedItems && (() => {
-                  try {
-                    const items = JSON.parse(complaintDetail.affectedItems);
-                    if (Array.isArray(items) && items.length > 0) {
-                      return (
-                        <div className="p-3 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
-                            <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
-                              {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
-                            </span>
-                          </div>
-                          <div className="space-y-1">
-                            {items.map((ai: any, idx: number) => (
-                              <div key={idx} className="flex items-center justify-between text-sm">
-                                <span className="text-foreground">{ai.productName}</span>
-                                <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  } catch { return null; }
-                })()}
-              </div>
-
-              {complaintDetail.mediaUrls && complaintDetail.mediaUrls.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Anhänge</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    {complaintDetail.mediaUrls.map((url, idx) => (
-                      <a 
-                        key={idx} 
-                        href={getMediaSrc(url)}
-                        rel="noopener noreferrer"
-                        className="block aspect-square rounded-lg overflow-hidden border hover-elevate"
-                      >
-                        {isVideoFile(url) ? (
-                          <div className="h-full w-full flex items-center justify-center bg-muted">
-                            <FileVideo className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                        ) : (
-                          <img 
-                            src={getMediaSrc(url)} 
-                            alt={`Anhang ${idx + 1}`}
-                            className="h-full w-full object-cover"
-                          />
-                        )}
-                      </a>
-                    ))}
+              <div className="px-6 pb-6 space-y-5">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={complaintDetail.restaurant?.profileImageUrl || undefined} />
+                    <AvatarFallback className="bg-muted text-muted-foreground text-sm font-semibold">
+                      {complaintDetail.restaurant?.companyName?.substring(0, 2).toUpperCase() || "??"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-medium text-sm">{complaintDetail.restaurant?.companyName || (lang === "de" ? "Unbekannt" : "Sconosciuto")}</div>
+                    <div className="text-xs text-muted-foreground">{complaintDetail.restaurant?.email}</div>
                   </div>
                 </div>
-              )}
 
-              <Separator />
-
-              <div className="p-3 rounded-lg border">
-                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                  <span className="text-sm font-medium">Betroffene Bestellung</span>
-                  <Badge variant="outline">#{complaintDetail.orderId.substring(0, 8)}</Badge>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Erstellt am" : "Creato il"}</div>
+                    <div className="text-sm font-medium">{format(new Date(complaintDetail.createdAt), "dd.MM.yyyy", { locale: de })}</div>
+                    <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.createdAt), "HH:mm", { locale: de })}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Letzte Änderung" : "Ultima modifica"}</div>
+                    <div className="text-sm font-medium">{format(new Date(complaintDetail.updatedAt), "dd.MM.yyyy", { locale: de })}</div>
+                    <div className="text-xs text-muted-foreground">{format(new Date(complaintDetail.updatedAt), "HH:mm", { locale: de })}</div>
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  Gesamtbetrag: {complaintDetail.order?.totalAmount ? parseFloat(complaintDetail.order.totalAmount).toFixed(2) : "0.00"}€
+
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    {(complaintDetail as any).priority === "urgent" && (
+                      <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
+                        PRIORITÄT
+                      </Badge>
+                    )}
+                    <h4 className="font-semibold text-base" data-testid="text-complaint-title">{complaintDetail.title}</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap" data-testid="text-complaint-description">{complaintDetail.description}</p>
+
+                  {complaintDetail.affectedItems && (() => {
+                    try {
+                      const items = JSON.parse(complaintDetail.affectedItems);
+                      if (Array.isArray(items) && items.length > 0) {
+                        return (
+                          <div className="mt-3 p-3 rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                              <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
+                                {lang === "de" ? "Nachlieferung angefragt" : "Riconsegna richiesta"}
+                              </span>
+                            </div>
+                            <div className="space-y-1">
+                              {items.map((ai: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between text-sm">
+                                  <span className="text-foreground">{ai.productName}</span>
+                                  <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    } catch { return null; }
+                  })()}
                 </div>
-              </div>
 
-              <Separator />
+                {complaintDetail.mediaUrls && complaintDetail.mediaUrls.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2 text-muted-foreground">{lang === "de" ? "Anhänge" : "Allegati"}</h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      {complaintDetail.mediaUrls.map((url, idx) => (
+                        <a 
+                          key={idx} 
+                          href={getMediaSrc(url)}
+                          rel="noopener noreferrer"
+                          className="block aspect-square rounded-xl overflow-hidden border hover-elevate"
+                        >
+                          {isVideoFile(url) ? (
+                            <div className="h-full w-full flex items-center justify-center bg-muted">
+                              <FileVideo className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <img 
+                              src={getMediaSrc(url)} 
+                              alt={`${lang === "de" ? "Anhang" : "Allegato"} ${idx + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                          )}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-              <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4" />
-                  Statusverlauf
-                </h4>
-                <div className="p-3 rounded-lg bg-muted/30 border">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground">{lang === "de" ? "Betroffene Bestellung" : "Ordine interessato"}</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">#{complaintDetail.orderId.substring(0, 8)}</Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {complaintDetail.order?.totalAmount ? parseFloat(complaintDetail.order.totalAmount).toFixed(2) : "0.00"}€
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5" />
+                    {lang === "de" ? "Statusverlauf" : "Cronologia stato"}
+                  </h4>
                   <StatusTimeline
                     history={complaintStatusHistoryData || []}
                     type="complaint"
@@ -2395,108 +2369,104 @@ export default function SupplierInbox() {
                     currentStatus={complaintDetail.status}
                   />
                 </div>
-              </div>
 
-              <Separator />
-
-              <div>
-                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  Kommentare ({complaintComments?.length || 0})
-                </h4>
-                {loadingComments ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-16 w-full" />
-                    <Skeleton className="h-16 w-full" />
-                  </div>
-                ) : complaintComments && complaintComments.length > 0 ? (
-                  <div className="space-y-3 max-h-60 overflow-y-auto">
-                    {complaintComments.map((comment) => (
-                      <div key={comment.id} className="p-3 rounded-lg bg-muted/30 border" data-testid={`comment-${comment.id}`}>
-                        <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={comment.user?.profileImageUrl || undefined} />
-                              <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                {comment.user?.companyName?.substring(0, 2).toUpperCase() || comment.user?.name?.substring(0, 2).toUpperCase() || "?"}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium">{comment.user?.companyName || comment.user?.name || "Unbekannt"}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {comment.user?.role === "supplier" ? t("common", "supplier") : t("common", "restaurant")}
-                            </Badge>
+                <div>
+                  <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-muted-foreground">
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    {lang === "de" ? "Kommentare" : "Commenti"} ({complaintComments?.length || 0})
+                  </h4>
+                  {loadingComments ? (
+                    <div className="space-y-3">
+                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-16 w-full" />
+                    </div>
+                  ) : complaintComments && complaintComments.length > 0 ? (
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {complaintComments.map((comment) => (
+                        <div key={comment.id} className="p-3 rounded-xl bg-muted/20" data-testid={`comment-${comment.id}`}>
+                          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={comment.user?.profileImageUrl || undefined} />
+                                <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                                  {comment.user?.companyName?.substring(0, 2).toUpperCase() || comment.user?.name?.substring(0, 2).toUpperCase() || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm font-medium">{comment.user?.companyName || comment.user?.name || (lang === "de" ? "Unbekannt" : "Sconosciuto")}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {comment.user?.role === "supplier" ? t("common", "supplier") : t("common", "restaurant")}
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(comment.createdAt), "dd.MM. HH:mm", { locale: de })}
+                            </span>
                           </div>
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(comment.createdAt), "dd.MM. HH:mm", { locale: de })}
-                          </span>
+                          <p className="text-sm text-muted-foreground ml-8">{comment.content}</p>
                         </div>
-                        <p className="text-sm text-muted-foreground ml-8">{comment.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">Noch keine Kommentare vorhanden</p>
-                )}
-              </div>
-
-              {complaintDetail.status !== "closed" && complaintDetail.status !== "resolved" && (
-                <div className="space-y-2 border-t pt-4">
-                  <Label className="text-sm">Kommentar hinzufügen</Label>
-                  <div className="flex gap-2">
-                    <Textarea
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Schreiben Sie einen Kommentar..."
-                      rows={2}
-                      className="flex-1"
-                      data-testid="input-supplier-complaint-comment"
-                    />
-                    <Button
-                      size="icon"
-                      onClick={() => selectedComplaintId && addComplaintCommentMutation.mutate({ complaintId: selectedComplaintId, content: newComment.trim() })}
-                      disabled={!newComment.trim() || addComplaintCommentMutation.isPending}
-                      data-testid="button-supplier-send-complaint-comment"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">{lang === "de" ? "Noch keine Kommentare vorhanden" : "Nessun commento ancora"}</p>
+                  )}
                 </div>
-              )}
 
-              <Separator />
+                {complaintDetail.status !== "closed" && complaintDetail.status !== "resolved" && (
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-sm">{lang === "de" ? "Kommentar hinzufügen" : "Aggiungi commento"}</Label>
+                    <div className="flex gap-2">
+                      <Textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder={lang === "de" ? "Schreiben Sie einen Kommentar..." : "Scrivi un commento..."}
+                        rows={2}
+                        className="flex-1"
+                        data-testid="input-supplier-complaint-comment"
+                      />
+                      <Button
+                        size="icon"
+                        onClick={() => selectedComplaintId && addComplaintCommentMutation.mutate({ complaintId: selectedComplaintId, content: newComment.trim() })}
+                        disabled={!newComment.trim() || addComplaintCommentMutation.isPending}
+                        data-testid="button-supplier-send-complaint-comment"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  variant="outline"
-                  className="flex-1 text-foreground"
-                  onClick={openComplaintStatusDialog}
-                  data-testid="button-change-complaint-status"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  {lang === "de" ? "Status ändern" : "Cambia stato"}
-                </Button>
-                {complaintDetail.affectedItems && complaintDetail.status !== "closed" && complaintDetail.status !== "resolved" && (() => {
-                  try {
-                    const items = JSON.parse(complaintDetail.affectedItems);
-                    return Array.isArray(items) && items.length > 0;
-                  } catch { return false; }
-                })() && (
+                <div className="flex gap-2 flex-wrap">
                   <Button
                     variant="outline"
-                    className="flex-1 text-foreground"
-                    onClick={openFollowUpDialog}
-                    data-testid="button-create-follow-up-order"
+                    className="flex-1 text-foreground rounded-xl"
+                    onClick={openComplaintStatusDialog}
+                    data-testid="button-change-complaint-status"
                   >
-                    <Truck className="h-4 w-4 mr-2" />
-                    {lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}
+                    <Settings className="h-4 w-4 mr-2" />
+                    {lang === "de" ? "Status ändern" : "Cambia stato"}
                   </Button>
-                )}
+                  {complaintDetail.affectedItems && complaintDetail.status !== "closed" && complaintDetail.status !== "resolved" && (() => {
+                    try {
+                      const items = JSON.parse(complaintDetail.affectedItems);
+                      return Array.isArray(items) && items.length > 0;
+                    } catch { return false; }
+                  })() && (
+                    <Button
+                      variant="outline"
+                      className="flex-1 text-foreground rounded-xl"
+                      onClick={openFollowUpDialog}
+                      data-testid="button-create-follow-up-order"
+                    >
+                      <Truck className="h-4 w-4 mr-2" />
+                      {lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
+            </>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-12 px-6 text-muted-foreground">
               <AlertCircle className="mx-auto h-10 w-10 mb-2 opacity-50" />
-              <p className="text-sm">Reklamation nicht gefunden</p>
+              <p className="text-sm">{lang === "de" ? "Reklamation nicht gefunden" : "Reclamo non trovato"}</p>
             </div>
           )}
         </DialogContent>
