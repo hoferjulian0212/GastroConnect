@@ -1573,7 +1573,7 @@ export default function RestaurantInbox() {
                                                       data-testid={`wizard-reason-${message.orderId}`}
                                                     />
                                                     <div className="flex gap-2">
-                                                      <Button variant="outline" size="sm" className="flex-1" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
+                                                      <Button variant="outline" size="sm" className="flex-1 text-foreground" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
                                                         {t("common", "cancel")}
                                                       </Button>
                                                       <Button
@@ -1596,7 +1596,7 @@ export default function RestaurantInbox() {
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">{lang === "it" ? "Questa azione non può essere annullata." : "Diese Aktion kann nicht rückgängig gemacht werden."}</p>
                                                     <div className="flex gap-2">
-                                                      <Button variant="outline" size="sm" className="flex-1" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
+                                                      <Button variant="outline" size="sm" className="flex-1 text-foreground" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
                                                         {t("common", "cancel")}
                                                       </Button>
                                                       <Button
@@ -1620,7 +1620,7 @@ export default function RestaurantInbox() {
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">{lang === "it" ? "Apri l'editor per modificare prodotti e quantità." : "Öffne den Editor um Produkte und Mengen zu ändern."}</p>
                                                     <div className="flex gap-2">
-                                                      <Button variant="outline" size="sm" className="flex-1" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
+                                                      <Button variant="outline" size="sm" className="flex-1 text-foreground" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
                                                         {t("common", "cancel")}
                                                       </Button>
                                                       <Button

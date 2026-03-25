@@ -602,8 +602,9 @@ export default function SupplierComplaints() {
                           </div>
                           {selectedComplaint.status !== "closed" && selectedComplaint.status !== "resolved" && (
                             <Button
+                              variant="outline"
                               size="sm"
-                              className="w-full"
+                              className="w-full text-foreground"
                               onClick={() => openFollowUpDialog(selectedComplaint)}
                               data-testid="button-create-follow-up-order"
                             >
@@ -703,6 +704,7 @@ export default function SupplierComplaints() {
                   <Button
                     size="sm"
                     variant="outline"
+                    className="text-foreground"
                     onClick={() => { setShowDetailDialog(false); setTimeout(() => openStatusWizard(selectedComplaint), 100); }}
                     data-testid="button-detail-change-status"
                   >
@@ -733,7 +735,7 @@ export default function SupplierComplaints() {
                 {!showComplaintMessageInput ? (
                   <Button
                     variant="outline"
-                    className="w-full"
+                    className="w-full text-foreground"
                     size="sm"
                     onClick={() => setShowComplaintMessageInput(true)}
                     data-testid="button-complaint-write-message"
@@ -840,14 +842,14 @@ export default function SupplierComplaints() {
                       <XCircle className="h-3.5 w-3.5 mr-1.5" />
                       {lang === "de" ? "Schließen" : "Chiudere"}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
+                    <Button size="sm" variant="outline" className="text-foreground" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
                       <Clock className="h-3.5 w-3.5 mr-1.5" />
                       {lang === "de" ? "Wieder öffnen" : "Riaprire"}
                     </Button>
                   </>
                 )}
                 {selectedComplaint?.status === "closed" && (
-                  <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
+                  <Button size="sm" variant="outline" className="text-foreground" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
                     <Clock className="h-3.5 w-3.5 mr-1.5" />
                     {lang === "de" ? "Wieder öffnen" : "Riaprire"}
                   </Button>
@@ -856,7 +858,7 @@ export default function SupplierComplaints() {
             </div>
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full text-foreground"
               onClick={() => setShowStatusDialog(false)}
               data-testid="button-cancel-status"
             >
@@ -1045,7 +1047,7 @@ export default function SupplierComplaints() {
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowFollowUpDialog(false)}>
+            <Button variant="outline" className="text-foreground" onClick={() => setShowFollowUpDialog(false)}>
               {lang === "de" ? "Abbrechen" : "Annulla"}
             </Button>
             <Button

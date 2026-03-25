@@ -1347,7 +1347,7 @@ export default function SupplierInbox() {
                                                 {cardWizard.action === "cancelled" && (lang === "it" ? "Questa azione non può essere annullata." : "Diese Aktion kann nicht rückgängig gemacht werden.")}
                                               </p>
                                               <div className="flex gap-2">
-                                                <Button variant="outline" size="sm" className="flex-1" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
+                                                <Button variant="outline" size="sm" className="flex-1 text-foreground" onClick={() => setCardWizard(null)} data-testid={`wizard-cancel-${message.orderId}`}>
                                                   {lang === "it" ? "Annulla" : "Abbrechen"}
                                                 </Button>
                                                 <Button
@@ -2484,7 +2484,7 @@ export default function SupplierInbox() {
               <div className="flex gap-2 flex-wrap">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 text-foreground"
                   onClick={openComplaintStatusDialog}
                   data-testid="button-change-complaint-status"
                 >
@@ -2498,7 +2498,8 @@ export default function SupplierInbox() {
                   } catch { return false; }
                 })() && (
                   <Button
-                    className="flex-1"
+                    variant="outline"
+                    className="flex-1 text-foreground"
                     onClick={openFollowUpDialog}
                     data-testid="button-create-follow-up-order"
                   >
@@ -2567,14 +2568,14 @@ export default function SupplierInbox() {
                       <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
                       Schließen
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => updateComplaintStatusMutation.mutate({ id: selectedComplaintId!, status: "open" })} disabled={updateComplaintStatusMutation.isPending} data-testid="button-status-open">
+                    <Button size="sm" variant="outline" className="text-foreground" onClick={() => updateComplaintStatusMutation.mutate({ id: selectedComplaintId!, status: "open" })} disabled={updateComplaintStatusMutation.isPending} data-testid="button-status-open">
                       <Clock className="h-3.5 w-3.5 mr-1" />
                       Wieder öffnen
                     </Button>
                   </>
                 )}
                 {complaintDetail.status === "closed" && (
-                  <Button size="sm" variant="outline" onClick={() => updateComplaintStatusMutation.mutate({ id: selectedComplaintId!, status: "open" })} disabled={updateComplaintStatusMutation.isPending} data-testid="button-status-open">
+                  <Button size="sm" variant="outline" className="text-foreground" onClick={() => updateComplaintStatusMutation.mutate({ id: selectedComplaintId!, status: "open" })} disabled={updateComplaintStatusMutation.isPending} data-testid="button-status-open">
                     <Clock className="h-3.5 w-3.5 mr-1" />
                     Wieder öffnen
                   </Button>
@@ -2586,6 +2587,7 @@ export default function SupplierInbox() {
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
+              className="text-foreground"
               onClick={() => setShowStatusDialog(false)}
             >
               Abbrechen
@@ -2823,7 +2825,7 @@ export default function SupplierInbox() {
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowFollowUpDialog(false)}>
+            <Button variant="outline" className="text-foreground" onClick={() => setShowFollowUpDialog(false)}>
               {lang === "de" ? "Abbrechen" : "Annulla"}
             </Button>
             <Button

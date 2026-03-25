@@ -883,6 +883,7 @@ export default function Complaints() {
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
+              className="text-foreground"
               onClick={() => resetForm()}
               data-testid="button-cancel-create-complaint"
             >
@@ -1063,7 +1064,7 @@ export default function Complaints() {
                 {!showComplaintMessageInput ? (
                   <Button
                     variant="outline"
-                    className="w-full"
+                    className="w-full text-foreground"
                     size="sm"
                     onClick={() => setShowComplaintMessageInput(true)}
                     data-testid="button-complaint-write-message"
@@ -1208,6 +1209,7 @@ export default function Complaints() {
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
+              className="text-foreground"
               onClick={() => setEditingComplaint(null)}
               data-testid="button-cancel-edit-complaint"
             >
@@ -1235,6 +1237,7 @@ export default function Complaints() {
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
+              className="text-foreground"
               onClick={() => setWithdrawComplaintId(null)}
               data-testid="button-cancel-withdraw"
             >
