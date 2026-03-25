@@ -1,0 +1,193 @@
+Fix and implement a REAL liquid glass navigation behavior in the existing mobile nav (RestaurantMobileNav.tsx and SupplierMobileNav.tsx).
+
+IMPORTANT:
+The previous implementation failed because it was too abstract.
+Now implement this EXACTLY as described below.
+
+Do NOT redesign. Extend the current component.
+
+--------------------------------------------------
+1. ADD A MOVING INDICATOR (REQUIRED)
+--------------------------------------------------
+Inside the nav container:
+
+- Add ONE absolute element:
+  <motion.div className="liquid-indicator" />
+
+- Parent container must be:
+  position: relative
+
+Indicator must be:
+  position: absolute
+  bottom: 4px
+  height: ~48px
+  border-radius: 9999px
+  z-index: 0
+
+Nav items:
+- Must have z-index: 1 (so they sit above the bubble)
+
+--------------------------------------------------
+2. TRACK ITEM POSITIONS (REQUIRED)
+--------------------------------------------------
+For EACH nav item:
+
+- Add ref:
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([])
+
+- Assign refs:
+  ref={(el) => (itemRefs.current[index] = el)}
+
+On active route change:
+
+- Get active item index
+- Read:
+  const el = itemRefs.current[activeIndex]
+  const { offsetLeft, offsetWidth } = el
+
+Store in state:
+  x = offsetLeft
+  width = offsetWidth
+
+--------------------------------------------------
+3. ANIMATE WITH FRAMER MOTION (REQUIRED)
+--------------------------------------------------
+Install and use Framer Motion.
+
+Indicator must animate using:
+
+<motion.div
+  animate={{
+    x: x,
+    width: width,
+    scaleX: isMoving ? 1.08 : 1,
+    scaleY: isMoving ? 0.92 : 1
+  }}
+  transition={{
+    type: "spring",
+    stiffness: 320,
+    damping: 28,
+    mass: 0.7
+  }}
+/>
+
+IMPORTANT:
+- Use transform: translateX (Framer handles this via x)
+- DO NOT use left positioning
+
+--------------------------------------------------
+4. CREATE REAL "LIQUID" EFFECT (THIS WAS MISSING)
+--------------------------------------------------
+The liquid effect is NOT just blur.
+It is SHAPE DEFORMATION during movement.
+
+Implement:
+
+- When route changes:
+  set isMoving = true
+  after 180–250ms → set isMoving = false
+
+This causes:
+- stretch horizontally (scaleX)
+- compress vertically (scaleY)
+
+This simulates liquid physics.
+
+--------------------------------------------------
+5. GLASS VISUAL (FIX THIS PROPERLY)
+--------------------------------------------------
+Indicator style:
+
+background: rgba(255,255,255,0.18)
+backdrop-filter: blur(30px) saturate(180%)
+-webkit-backdrop-filter: blur(30px) saturate(180%)
+
+box-shadow:
+  inset 0 1px 1px rgba(255,255,255,0.5),
+  0 4px 12px rgba(0,0,0,0.08)
+
+border: 1px solid rgba(255,255,255,0.25)
+
+Dark mode:
+background: rgba(255,255,255,0.06)
+
+IMPORTANT:
+This must look like GLASS, not a solid pill.
+
+--------------------------------------------------
+6. REMOVE OLD ACTIVE LOGIC (IMPORTANT)
+--------------------------------------------------
+REMOVE:
+style={{ color: "#4285F4" }}
+
+REPLACE WITH:
+- Active item:
+  font-medium + higher opacity
+- Inactive:
+  opacity: 0.6
+
+The bubble is now the active indicator — not color.
+
+--------------------------------------------------
+7. ADD TAP FEEDBACK (MISSING BEFORE)
+--------------------------------------------------
+Each nav item:
+
+<motion.div
+  whileTap={{ scale: 0.92 }}
+>
+  ...
+</motion.div>
+
+This makes interaction feel fluid.
+
+--------------------------------------------------
+8. SWIPE / SCROLL BEHAVIOR (FIX EXPECTATION)
+--------------------------------------------------
+IMPORTANT CLARIFICATION:
+
+Current nav:
+- flex-1
+- NOT scrollable
+
+Therefore:
+❌ You CANNOT have real swipe-follow physics
+
+So do NOT fake horizontal swipe.
+
+Instead:
+✔ Make transitions BETWEEN items feel liquid
+
+If you want swipe:
+- You would need overflow-x-auto + dynamic widths
+- DO NOT implement this now
+
+--------------------------------------------------
+9. PERFORMANCE RULES
+--------------------------------------------------
+- Animate ONLY transform + width
+- No layout thrashing
+- No expensive re-renders
+- Keep existing TanStack Query logic untouched
+
+--------------------------------------------------
+10. APPLY TO BOTH NAVS
+--------------------------------------------------
+Apply identical logic to:
+
+- RestaurantMobileNav.tsx
+- SupplierMobileNav.tsx
+
+OR extract shared component.
+
+--------------------------------------------------
+GOAL (VERY CLEAR)
+--------------------------------------------------
+We are NOT building a draggable/swipe system.
+
+We are building:
+→ A morphing, animated glass indicator
+→ That stretches and moves like liquid
+→ When switching between nav items
+
+This must feel like a native iOS-level animation.
