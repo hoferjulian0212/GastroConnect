@@ -1482,7 +1482,7 @@ export default function RestaurantInbox() {
                                           <div className="flex items-center justify-between px-3 py-2 gap-2">
                                             <div className="flex items-center gap-2 min-w-0">
                                               <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                              <span className="text-xs text-muted-foreground truncate">{t("inbox", "orderMessage")}</span>
+                                              <span className="text-xs text-muted-foreground truncate">{t("inbox", "orderMessage")} {message.orderId ? `#${message.orderId.slice(0, 8)}` : ""}</span>
                                               {orderStatus && (
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${getStatusColor(orderStatus)}`}>
                                                   {getOrderStatus(orderStatus, lang)}
@@ -1514,7 +1514,7 @@ export default function RestaurantInbox() {
                                         <div className="flex items-center justify-between px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <ClipboardList className={`h-3.5 w-3.5 ${statusStyle.icon}`} />
-                                            <span className={`text-xs font-semibold ${statusStyle.icon}`}>{t("inbox", "orderMessage")}</span>
+                                            <span className={`text-xs font-semibold ${statusStyle.icon}`}>{t("inbox", "orderMessage")} {message.orderId ? `#${message.orderId.slice(0, 8)}` : ""}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {orderStatus && (
@@ -1683,7 +1683,7 @@ export default function RestaurantInbox() {
                                           <div className="flex items-center justify-between px-3 py-2 gap-2">
                                             <div className="flex items-center gap-2 min-w-0">
                                               <AlertCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                              <span className="text-xs text-muted-foreground truncate">{complaintData?.title || t("inbox", "complaintMessage")}</span>
+                                              <span className="text-xs text-muted-foreground truncate">{t("inbox", "complaintMessage")} {complaintData?.orderId ? `#${complaintData.orderId.slice(0, 8)}` : ""}</span>
                                               {complaintStatus && (
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${getComplaintStatusColor(complaintStatus)}`}>
                                                   {getComplaintStatus(complaintStatus, lang)}
@@ -1720,7 +1720,7 @@ export default function RestaurantInbox() {
                                         <div className="flex items-center justify-between px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                                            <span className="text-xs font-semibold text-red-600 dark:text-red-400">{t("inbox", "complaintMessage")}</span>
+                                            <span className="text-xs font-semibold text-red-600 dark:text-red-400">{t("inbox", "complaintMessage")} {complaintData?.orderId ? `#${complaintData.orderId.slice(0, 8)}` : ""}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {complaintStatus && (
@@ -1774,11 +1774,11 @@ export default function RestaurantInbox() {
                                           )}
                                         </div>
                                         {(complaintData?.complaintId || complaintData?.orderId) && (
-                                          <div className="px-3 py-2 border-t border-red-500/20 bg-red-500/5">
+                                          <div className="px-4 pb-3 pt-1">
                                             <Button
-                                              variant="destructive"
+                                              variant="outline"
                                               size="sm"
-                                              className="w-full"
+                                              className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/30"
                                               onClick={() => {
                                                 if (complaintData.complaintId) {
                                                   openComplaintDetailById(complaintData.complaintId);
@@ -1805,7 +1805,7 @@ export default function RestaurantInbox() {
                                         <div className="flex items-center justify-between px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <FileText className="h-3.5 w-3.5 text-foreground" />
-                                            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t("inbox", "deliveryNote")}</span>
+                                            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t("inbox", "deliveryNote")} {docData.orderId ? `#${docData.orderId.slice(0, 8)}` : ""}</span>
                                           </div>
                                           <span className="text-[10px] text-muted-foreground">
                                             {format(messageDate, "HH:mm")}
@@ -1853,6 +1853,7 @@ export default function RestaurantInbox() {
                                                 {pcData.status === "partially_confirmed"
                                                   ? (lang === "it" ? "Parzialmente confermato" : "Teilbestatigt")
                                                   : (lang === "it" ? "Confermato" : "Bestatigt")}
+                                                {pcData.orderId ? ` #${pcData.orderId.slice(0, 8)}` : ""}
                                               </span>
                                             </div>
                                             <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
@@ -1882,9 +1883,9 @@ export default function RestaurantInbox() {
                                             )}
                                           </div>
                                           {pcData.orderId && (
-                                            <div className="px-3 py-1.5 border-t bg-muted/30">
-                                              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] w-full" onClick={() => setOrderDetailId(pcData.orderId!)} data-testid={`button-pc-details-${message.id}`}>
-                                                <Eye className="h-3 w-3 mr-1" />
+                                            <div className="px-4 pb-3 pt-1">
+                                              <Button variant="outline" size="sm" className="w-full text-xs h-8" onClick={() => setOrderDetailId(pcData.orderId!)} data-testid={`button-pc-details-${message.id}`}>
+                                                <Eye className="h-3.5 w-3.5 mr-1" />
                                                 {lang === "it" ? "Dettagli" : "Details"}
                                               </Button>
                                             </div>
@@ -1932,14 +1933,11 @@ export default function RestaurantInbox() {
                                         <div className="flex items-center justify-between px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <Pencil className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                                            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{label}</span>
+                                            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{label} {changeData.orderId ? `#${changeData.orderId.slice(0, 8)}` : ""}</span>
                                           </div>
                                           <span className="text-[10px] text-muted-foreground">{format(messageDate, "HH:mm")}</span>
                                         </div>
                                         <div className="px-4 py-2">
-                                          {changeData.orderId && (
-                                            <p className="text-xs text-muted-foreground mb-2">{t("orders", "order")} #{changeData.orderId.slice(0, 8)}</p>
-                                          )}
                                           <p className="text-sm">{changeData.message}</p>
                                           {changeData.reason && (
                                             <p className="text-sm text-muted-foreground mt-1">{t("inbox", "reason")}: {changeData.reason}</p>

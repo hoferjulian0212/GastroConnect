@@ -480,21 +480,37 @@ html, body, #root {
   border-radius: 9999px;
   pointer-events: none;
   z-index: 0;
-  background: rgba(255, 255, 255, 0.18);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.08));
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(255,255,255,0.4);
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.5),
-    0 4px 12px rgba(0, 0, 0, 0.08);
+    inset 0 2px 6px rgba(255,255,255,0.6),
+    inset 0 -2px 6px rgba(255,255,255,0.2),
+    0 8px 24px rgba(0,0,0,0.12);
   will-change: transform, width;
+  overflow: hidden;
+}
+.liquid-indicator-shine {
+  position: absolute;
+  top: 0;
+  left: -20%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  transform: skewX(-20deg);
+  pointer-events: none;
 }
 .dark .liquid-indicator {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255,255,255,0.15);
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.12),
-    0 4px 12px rgba(0, 0, 0, 0.25);
+    inset 0 2px 6px rgba(255,255,255,0.15),
+    inset 0 -2px 6px rgba(255,255,255,0.05),
+    0 8px 24px rgba(0,0,0,0.30);
+}
+.dark .liquid-indicator-shine {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
 }
 
 .nav-item-active {

@@ -4,7 +4,7 @@ import { MoreHorizontal, X } from "lucide-react";
 import { useChat } from "@/context/ChatContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion";
 
 export interface NavItem {
   title: string;
@@ -21,11 +21,21 @@ interface MobileNavBaseProps {
   testIdPrefix: string;
 }
 
-const indicatorSpring = {
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
+}
+
+function clamp(val: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, val));
+}
+
+const DRAG_THRESHOLD = 8;
+
+const snapSpring = {
   type: "spring" as const,
-  stiffness: 320,
-  damping: 28,
-  mass: 0.7,
+  stiffness: 400,
+  damping: 30,
+  mass: 0.8,
 };
 
 export function MobileNavBase({
@@ -40,13 +50,34 @@ export function MobileNavBase({
   const { lang } = useLanguage();
   const t = useT(lang);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [isMoving, setIsMoving] = useState(false);
-  const [indicatorPos, setIndicatorPos] = useState({ x: 0, width: 0 });
-  const prevActiveRef = useRef(-1);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const totalItems = mainNavItems.length + 1;
+
+  const indicatorX = useMotionValue(0);
+  const indicatorWidth = useMotionValue(72);
+
+  const rawVelocity = useMotionValue(0);
+  const smoothVelocity = useSpring(rawVelocity, { stiffness: 300, damping: 30 });
+
+  const scaleX = useTransform(smoothVelocity, (v) => {
+    return 1 + Math.min(Math.abs(v) / 800, 0.18);
+  });
+  const scaleY = useTransform(smoothVelocity, (v) => {
+    return 1 - Math.min(Math.abs(v) / 1000, 0.12);
+  });
+
+  const springX = useSpring(indicatorX, snapSpring);
+  const springWidth = useSpring(indicatorWidth, snapSpring);
+
+  const pointerDown = useRef(false);
+  const hasDragged = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartIndicatorX = useRef(0);
+  const lastDragX = useRef(0);
+  const lastDragTime = useRef(0);
+  const pointerId = useRef<number | null>(null);
 
   const isMoreActive = moreMenuItems.some(
     (item) => location === item.url || location.startsWith(item.url)
@@ -62,49 +93,188 @@ export function MobileNavBase({
     return location === rootPath ? 0 : -1;
   }, [location, mainNavItems, rootPath, isMoreActive, isMoreOpen]);
 
-  const measureAndUpdate = useCallback(() => {
-    const activeIdx = getActiveIndex();
-    if (activeIdx < 0 || !containerRef.current) return;
-    const el = itemRefs.current[activeIdx];
-    if (!el) return;
+  const getItemMeasurements = useCallback(() => {
+    if (!containerRef.current) return [];
     const containerRect = containerRef.current.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-    const newX = elRect.left - containerRect.left;
-    const newWidth = elRect.width;
-    setIndicatorPos((prev) => {
-      if (Math.abs(prev.x - newX) < 0.5 && Math.abs(prev.width - newWidth) < 0.5) return prev;
-      return { x: newX, width: newWidth };
+    return itemRefs.current.map((el) => {
+      if (!el) return { x: 0, width: 0, center: 0 };
+      const rect = el.getBoundingClientRect();
+      const x = rect.left - containerRect.left;
+      const width = rect.width;
+      return { x, width, center: x + width / 2 };
     });
-  }, [getActiveIndex]);
+  }, []);
+
+  const snapToIndex = useCallback((idx: number) => {
+    const measurements = getItemMeasurements();
+    if (idx < 0 || idx >= measurements.length) return;
+    const m = measurements[idx];
+    if (!m) return;
+    indicatorX.set(m.x);
+    indicatorWidth.set(m.width);
+    rawVelocity.set(0);
+  }, [getItemMeasurements, indicatorX, indicatorWidth, rawVelocity]);
 
   useEffect(() => {
     const activeIdx = getActiveIndex();
-    if (activeIdx >= 0 && prevActiveRef.current >= 0 && prevActiveRef.current !== activeIdx) {
-      setIsMoving(true);
-      const timer = setTimeout(() => setIsMoving(false), 220);
-      return () => clearTimeout(timer);
+    if (activeIdx >= 0 && !pointerDown.current) {
+      requestAnimationFrame(() => snapToIndex(activeIdx));
     }
-    prevActiveRef.current = activeIdx;
-  }, [getActiveIndex, location, isMoreOpen]);
+  }, [location, isMoreOpen, getActiveIndex, snapToIndex]);
 
   useEffect(() => {
-    prevActiveRef.current = getActiveIndex();
+    const activeIdx = getActiveIndex();
+    if (activeIdx >= 0) {
+      const measurements = getItemMeasurements();
+      const m = measurements[activeIdx];
+      if (m) {
+        springX.jump(m.x);
+        springWidth.jump(m.width);
+        indicatorX.set(m.x);
+        indicatorWidth.set(m.width);
+      }
+    }
   }, []);
 
   useEffect(() => {
-    measureAndUpdate();
-  }, [location, isMoreOpen, measureAndUpdate]);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(measureAndUpdate);
-    return () => cancelAnimationFrame(frame);
-  }, [measureAndUpdate]);
-
-  useEffect(() => {
-    const handleResize = () => measureAndUpdate();
+    const handleResize = () => {
+      const activeIdx = getActiveIndex();
+      if (activeIdx >= 0) {
+        requestAnimationFrame(() => snapToIndex(activeIdx));
+      }
+    };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [measureAndUpdate]);
+  }, [getActiveIndex, snapToIndex]);
+
+  const interpolateIndicator = useCallback((clientX: number) => {
+    const measurements = getItemMeasurements();
+    if (measurements.length === 0) return;
+
+    const dx = clientX - dragStartX.current;
+    const now = Date.now();
+    const dt = Math.max(now - lastDragTime.current, 1);
+    const instantVelocity = ((clientX - lastDragX.current) / dt) * 16;
+    rawVelocity.set(instantVelocity);
+    lastDragX.current = clientX;
+    lastDragTime.current = now;
+
+    const targetX = dragStartIndicatorX.current + dx;
+    const firstM = measurements[0];
+    const lastM = measurements[measurements.length - 1];
+    if (!firstM || !lastM) return;
+
+    const clampedX = clamp(targetX, firstM.x, lastM.x);
+    const currentW = indicatorWidth.get();
+    const targetCenter = clampedX + currentW / 2;
+
+    let closestA = 0;
+    let closestB = 0;
+
+    for (let i = 0; i < measurements.length - 1; i++) {
+      if (targetCenter >= measurements[i].center && targetCenter <= measurements[i + 1].center) {
+        closestA = i;
+        closestB = i + 1;
+        break;
+      }
+    }
+
+    if (targetCenter <= measurements[0].center) {
+      closestA = 0;
+      closestB = 0;
+    } else if (targetCenter >= measurements[measurements.length - 1].center) {
+      closestA = measurements.length - 1;
+      closestB = measurements.length - 1;
+    }
+
+    const mA = measurements[closestA];
+    const mB = measurements[closestB];
+
+    if (closestA === closestB) {
+      indicatorX.set(mA.x);
+      indicatorWidth.set(mA.width);
+    } else {
+      const range = mB.center - mA.center;
+      const progress = range > 0 ? clamp((targetCenter - mA.center) / range, 0, 1) : 0;
+      indicatorX.set(lerp(mA.x, mB.x, progress));
+      indicatorWidth.set(lerp(mA.width, mB.width, progress));
+    }
+  }, [getItemMeasurements, indicatorX, indicatorWidth, rawVelocity]);
+
+  const snapToClosest = useCallback(() => {
+    const measurements = getItemMeasurements();
+    if (measurements.length === 0) return -1;
+
+    const currentCenter = indicatorX.get() + indicatorWidth.get() / 2;
+    let closestIdx = 0;
+    let closestDist = Infinity;
+
+    for (let i = 0; i < measurements.length; i++) {
+      const dist = Math.abs(currentCenter - measurements[i].center);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestIdx = i;
+      }
+    }
+
+    rawVelocity.set(0);
+    snapToIndex(closestIdx);
+    return closestIdx;
+  }, [getItemMeasurements, indicatorX, indicatorWidth, snapToIndex, rawVelocity]);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    pointerDown.current = true;
+    hasDragged.current = false;
+    dragStartX.current = e.clientX;
+    dragStartIndicatorX.current = indicatorX.get();
+    lastDragX.current = e.clientX;
+    lastDragTime.current = Date.now();
+    pointerId.current = e.pointerId;
+  }, [indicatorX]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!pointerDown.current) return;
+
+    const dx = Math.abs(e.clientX - dragStartX.current);
+
+    if (!hasDragged.current && dx < DRAG_THRESHOLD) return;
+
+    if (!hasDragged.current) {
+      hasDragged.current = true;
+      try {
+        containerRef.current?.setPointerCapture(e.pointerId);
+      } catch {}
+    }
+
+    e.preventDefault();
+    interpolateIndicator(e.clientX);
+  }, [interpolateIndicator]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!pointerDown.current) return;
+    pointerDown.current = false;
+
+    try {
+      containerRef.current?.releasePointerCapture(e.pointerId);
+    } catch {}
+
+    if (hasDragged.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      const closestIdx = snapToClosest();
+
+      if (closestIdx >= 0) {
+        if (closestIdx < mainNavItems.length) {
+          setLocation(mainNavItems[closestIdx].url);
+        } else {
+          setIsMoreOpen(true);
+        }
+      }
+    }
+
+    hasDragged.current = false;
+    pointerId.current = null;
+  }, [snapToClosest, mainNavItems, setLocation]);
 
   const handleMoreItemClick = (url: string) => {
     setIsMoreOpen(false);
@@ -195,18 +365,27 @@ export function MobileNavBase({
         style={navStyle}
         data-testid={`${testIdPrefix}-mobile-nav`}
       >
-        <div className="flex items-stretch relative" ref={containerRef}>
+        <div
+          className="flex items-stretch relative"
+          ref={containerRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{ touchAction: "none" }}
+        >
           {activeIndex >= 0 && (
             <motion.div
               className="liquid-indicator"
-              animate={{
-                x: indicatorPos.x,
-                width: indicatorPos.width,
-                scaleX: isMoving ? 1.08 : 1,
-                scaleY: isMoving ? 0.92 : 1,
+              style={{
+                x: springX,
+                width: springWidth,
+                scaleX,
+                scaleY,
               }}
-              transition={indicatorSpring}
-            />
+            >
+              <div className="liquid-indicator-shine" />
+            </motion.div>
           )}
 
           {mainNavItems.map((item, index) => {
@@ -223,7 +402,7 @@ export function MobileNavBase({
                 ref={(el: HTMLAnchorElement | null) => {
                   itemRefs.current[index] = el;
                 }}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 relative z-10 py-3 ${
+                className={`flex-1 flex flex-col items-center justify-center gap-1 relative z-10 py-3 select-none ${
                   isActive ? "nav-item-active" : "nav-item-inactive"
                 }`}
                 data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
@@ -252,7 +431,7 @@ export function MobileNavBase({
               itemRefs.current[totalItems - 1] = el;
             }}
             onClick={() => setIsMoreOpen(!isMoreOpen)}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 relative z-10 py-3 ${
+            className={`flex-1 flex flex-col items-center justify-center gap-1 relative z-10 py-3 select-none ${
               isMoreActive || isMoreOpen
                 ? "nav-item-active"
                 : "nav-item-inactive"

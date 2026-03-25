@@ -1,0 +1,192 @@
+Upgrade the existing mobile navigation to a TRUE liquid swipe navigation with real-time finger tracking and a Tinder-like liquid glass effect.
+
+IMPORTANT:
+This is NOT just an animation between clicks.
+The indicator must FOLLOW the finger while dragging.
+
+Do NOT simplify this.
+
+--------------------------------------------------
+1. MAKE NAV HORIZONTALLY DRAGGABLE (REQUIRED)
+--------------------------------------------------
+
+CHANGE layout:
+
+- Remove: flex-1 on items
+- Set container:
+  display: flex
+  gap: 8px
+  padding: 6px
+
+- Each item:
+  min-width: 72px
+  flex-shrink: 0
+
+- Nav container:
+  overflow-x: auto
+  scroll-behavior: smooth
+  -webkit-overflow-scrolling: touch
+
+IMPORTANT:
+Now the nav can scroll horizontally.
+
+--------------------------------------------------
+2. ADD DRAG SYSTEM (CORE FEATURE)
+--------------------------------------------------
+
+Use Framer Motion drag.
+
+Wrap nav items:
+
+<motion.div
+  drag="x"
+  dragConstraints={{ left: -maxScroll, right: 0 }}
+  onDrag={(e, info) => {
+    setDragX(info.point.x)
+  }}
+  onDragEnd={() => snapToClosestItem()}
+/>
+
+--------------------------------------------------
+3. TRACK FINGER POSITION (CRITICAL)
+--------------------------------------------------
+
+Create state:
+
+const [dragX, setDragX] = useState(0)
+
+While dragging:
+- Continuously update dragX
+
+Now the indicator must FOLLOW this value.
+
+--------------------------------------------------
+4. LIQUID INDICATOR (REAL IMPLEMENTATION)
+--------------------------------------------------
+
+Add:
+
+<motion.div className="liquid-indicator" />
+
+Animate like this:
+
+animate={{
+  x: interpolatedX,
+  width: interpolatedWidth,
+  scaleX: velocity > 0 ? 1.15 : 0.95,
+  scaleY: velocity > 0 ? 0.85 : 1.05
+}}
+
+--------------------------------------------------
+5. INTERPOLATION (THIS CREATES "LIQUID")
+--------------------------------------------------
+
+DO NOT snap directly to items.
+
+Instead:
+
+- Calculate nearest TWO items based on drag position
+- Interpolate between them:
+
+progress = how far between item A and B
+
+x = lerp(A.offsetLeft, B.offsetLeft, progress)
+width = lerp(A.width, B.width, progress)
+
+This creates the "melting / morphing" effect.
+
+--------------------------------------------------
+6. VELOCITY-BASED DEFORMATION (TINDER FEEL)
+--------------------------------------------------
+
+Track velocity:
+
+const velocity = useVelocity(dragX)
+
+Use it to deform bubble:
+
+- Fast swipe → stretched horizontally
+- Slow movement → round shape
+
+Example:
+scaleX = 1 + Math.min(Math.abs(velocity) / 1000, 0.2)
+scaleY = 1 - Math.min(Math.abs(velocity) / 1200, 0.15)
+
+--------------------------------------------------
+7. SNAP AFTER RELEASE
+--------------------------------------------------
+
+On drag end:
+
+- Find closest item center
+- Animate bubble to that item
+- Also scroll container to center that item
+
+Use spring:
+stiffness: 400
+damping: 30
+
+--------------------------------------------------
+8. ULTRA LIQUID GLASS STYLE (UPGRADE DESIGN)
+--------------------------------------------------
+
+Indicator MUST look like iOS/Tinder:
+
+background:
+  linear-gradient(
+    135deg,
+    rgba(255,255,255,0.35),
+    rgba(255,255,255,0.08)
+  )
+
+backdrop-filter: blur(40px) saturate(200%)
+
+border:
+  1px solid rgba(255,255,255,0.4)
+
+box-shadow:
+  inset 0 2px 6px rgba(255,255,255,0.6),
+  inset 0 -2px 6px rgba(255,255,255,0.2),
+  0 8px 24px rgba(0,0,0,0.12)
+
+Add subtle highlight overlay:
+- pseudo element with gradient light reflection
+
+--------------------------------------------------
+9. REMOVE STATIC BEHAVIOR (IMPORTANT)
+--------------------------------------------------
+
+REMOVE:
+- static active color logic
+- instant switching
+
+REPLACE:
+- bubble defines active state
+- text only slightly changes opacity
+
+--------------------------------------------------
+10. KEEP EXISTING SYSTEM INTACT
+--------------------------------------------------
+
+DO NOT BREAK:
+- routing (Wouter)
+- badges (TanStack Query)
+- chat hiding
+- "More" menu
+
+Only enhance visuals + interaction.
+
+--------------------------------------------------
+GOAL (VERY CLEAR)
+--------------------------------------------------
+
+We want:
+
+✔ Finger-driven movement (REAL TIME)
+✔ Bubble FOLLOWS finger (not jumps)
+✔ Shape morphs dynamically
+✔ Smooth snap after release
+✔ Premium iOS / Tinder-level fluidity
+
+If it feels like a normal tab bar → it's WRONG.
+If it feels like liquid attached to your finger → it's CORRECT.
