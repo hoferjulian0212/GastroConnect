@@ -4,7 +4,7 @@ import { MoreHorizontal, X } from "lucide-react";
 import { useChat } from "@/context/ChatContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export interface NavItem {
   title: string;
@@ -21,7 +21,12 @@ interface MobileNavBaseProps {
   testIdPrefix: string;
 }
 
-const springConfig = { stiffness: 300, damping: 25, mass: 0.8 };
+const indicatorSpring = {
+  type: "spring" as const,
+  stiffness: 320,
+  damping: 28,
+  mass: 0.7,
+};
 
 export function MobileNavBase({
   mainNavItems,
@@ -35,25 +40,13 @@ export function MobileNavBase({
   const { lang } = useLanguage();
   const t = useT(lang);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const [indicatorPos, setIndicatorPos] = useState({ x: 0, width: 0 });
+  const prevActiveRef = useRef(-1);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const totalItems = mainNavItems.length + 1;
-
-  const indicatorX = useMotionValue(0);
-  const indicatorWidth = useMotionValue(0);
-  const springX = useSpring(indicatorX, springConfig);
-  const springWidth = useSpring(indicatorWidth, springConfig);
-
-  const scaleX = useTransform(springX, (latest) => {
-    const target = indicatorX.get();
-    const diff = Math.abs(latest - target);
-    return 1 + Math.min(diff / 400, 0.05);
-  });
-
-  const scaleY = useTransform(scaleX, (sx) => {
-    return 1 - (sx - 1) * 0.6;
-  });
 
   const isMoreActive = moreMenuItems.some(
     (item) => location === item.url || location.startsWith(item.url)
@@ -69,25 +62,49 @@ export function MobileNavBase({
     return location === rootPath ? 0 : -1;
   }, [location, mainNavItems, rootPath, isMoreActive, isMoreOpen]);
 
-  const updateIndicator = useCallback(() => {
+  const measureAndUpdate = useCallback(() => {
     const activeIdx = getActiveIndex();
     if (activeIdx < 0 || !containerRef.current) return;
     const el = itemRefs.current[activeIdx];
     if (!el) return;
     const containerRect = containerRef.current.getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
-    indicatorX.set(elRect.left - containerRect.left);
-    indicatorWidth.set(elRect.width);
-  }, [getActiveIndex, indicatorX, indicatorWidth]);
+    const newX = elRect.left - containerRect.left;
+    const newWidth = elRect.width;
+    setIndicatorPos((prev) => {
+      if (Math.abs(prev.x - newX) < 0.5 && Math.abs(prev.width - newWidth) < 0.5) return prev;
+      return { x: newX, width: newWidth };
+    });
+  }, [getActiveIndex]);
 
   useEffect(() => {
-    updateIndicator();
-  }, [location, isMoreOpen, updateIndicator]);
+    const activeIdx = getActiveIndex();
+    if (activeIdx >= 0 && prevActiveRef.current >= 0 && prevActiveRef.current !== activeIdx) {
+      setIsMoving(true);
+      const timer = setTimeout(() => setIsMoving(false), 220);
+      return () => clearTimeout(timer);
+    }
+    prevActiveRef.current = activeIdx;
+  }, [getActiveIndex, location, isMoreOpen]);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(updateIndicator);
+    prevActiveRef.current = getActiveIndex();
+  }, []);
+
+  useEffect(() => {
+    measureAndUpdate();
+  }, [location, isMoreOpen, measureAndUpdate]);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(measureAndUpdate);
     return () => cancelAnimationFrame(frame);
-  }, [updateIndicator]);
+  }, [measureAndUpdate]);
+
+  useEffect(() => {
+    const handleResize = () => measureAndUpdate();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [measureAndUpdate]);
 
   const handleMoreItemClick = (url: string) => {
     setIsMoreOpen(false);
@@ -182,14 +199,13 @@ export function MobileNavBase({
           {activeIndex >= 0 && (
             <motion.div
               className="liquid-indicator"
-              style={{
-                x: springX,
-                width: springWidth,
-                scaleX,
-                scaleY,
+              animate={{
+                x: indicatorPos.x,
+                width: indicatorPos.width,
+                scaleX: isMoving ? 1.08 : 1,
+                scaleY: isMoving ? 0.92 : 1,
               }}
-              layout
-              transition={springConfig}
+              transition={indicatorSpring}
             />
           )}
 
@@ -207,14 +223,14 @@ export function MobileNavBase({
                 ref={(el: HTMLAnchorElement | null) => {
                   itemRefs.current[index] = el;
                 }}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 relative z-10 transition-all duration-200 py-3 ${
+                className={`flex-1 flex flex-col items-center justify-center gap-1 relative z-10 py-3 ${
                   isActive ? "nav-item-active" : "nav-item-inactive"
                 }`}
                 data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
               >
                 <motion.div
                   className="relative inline-flex items-center justify-center"
-                  whileTap={{ scale: 0.9 }}
+                  whileTap={{ scale: 0.92 }}
                   transition={{ duration: 0.1 }}
                 >
                   <item.icon className="h-5 w-5" />
@@ -236,7 +252,7 @@ export function MobileNavBase({
               itemRefs.current[totalItems - 1] = el;
             }}
             onClick={() => setIsMoreOpen(!isMoreOpen)}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 relative z-10 transition-all duration-200 py-3 ${
+            className={`flex-1 flex flex-col items-center justify-center gap-1 relative z-10 py-3 ${
               isMoreActive || isMoreOpen
                 ? "nav-item-active"
                 : "nav-item-inactive"
@@ -245,7 +261,7 @@ export function MobileNavBase({
           >
             <motion.div
               className="relative inline-flex items-center justify-center"
-              whileTap={{ scale: 0.9 }}
+              whileTap={{ scale: 0.92 }}
               transition={{ duration: 0.1 }}
             >
               <MoreHorizontal className="h-5 w-5" />
