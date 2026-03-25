@@ -108,32 +108,11 @@ export default function RestaurantHome() {
     },
   });
 
-  const deleteCostStayMutation = useMutation({
-    mutationFn: (id: string) =>
-      apiRequest("DELETE", `/api/restaurant/overnight-stays/${id}?restaurantId=${currentUser?.id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        predicate: (q) => {
-          const key = q.queryKey[0] as string;
-          return typeof key === "string" && (key.startsWith("/api/restaurant/overnight-stays") || key.startsWith("/api/restaurant/cost-analysis"));
-        },
-      });
-    },
-    onError: () => {
-      toast({ title: lang === "de" ? "Fehler beim Loschen" : "Errore nell'eliminazione", variant: "destructive" });
-    },
-  });
-
   const todayEntry = useMemo(() => {
     if (!overnightEntries) return null;
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     return overnightEntries.find(e => e.date === todayStr) || null;
-  }, [overnightEntries]);
-
-  const recentEntries = useMemo(() => {
-    if (!overnightEntries) return [];
-    return [...overnightEntries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
   }, [overnightEntries]);
 
   const [orderingTemplateId, setOrderingTemplateId] = useState<string | null>(null);
@@ -1306,32 +1285,6 @@ export default function RestaurantHome() {
                     )}
                   </div>
 
-                  {recentEntries.length > 0 && (
-                    <div className="border-t pt-2">
-                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
-                        {lang === "de" ? "Letzte Einträge" : "Ultime voci"}
-                      </span>
-                      <div className="mt-1.5 space-y-1">
-                        {recentEntries.map((entry) => (
-                          <div key={entry.id} className="flex items-center justify-between py-1 px-2 rounded text-xs hover:bg-muted/50 group" data-testid={`stay-entry-${entry.id}`}>
-                            <span className="text-muted-foreground">
-                              {entry.date.split("-").reverse().join(".")}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{entry.overnightStays} {t("costAnalysis", "guests")}</span>
-                              <button
-                                onClick={() => deleteCostStayMutation.mutate(entry.id)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                data-testid={`button-delete-stay-${entry.id}`}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </CardContent>
