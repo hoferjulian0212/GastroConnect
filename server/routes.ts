@@ -1036,10 +1036,11 @@ export async function registerRoutes(
         // Create order message in chat
         const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
         const orderContent = JSON.stringify({
-          items: orderItems.map(item => ({
+          items: orderItems.map((item, idx) => ({
             name: item.productName,
             quantity: item.quantity,
-            price: item.totalPrice
+            price: item.totalPrice,
+            imageUrl: items[idx]?.product?.imageUrl || null
           })),
           total: totalAmount
         });
@@ -1125,11 +1126,17 @@ export async function registerRoutes(
 
       // Create order message in chat
       const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
+      const productImages: Record<string, string | null> = {};
+      for (const item of items) {
+        const prod = await storage.getProduct(item.productId);
+        if (prod) productImages[item.productId] = prod.imageUrl || null;
+      }
       const orderContent = JSON.stringify({
         items: orderItems.map(item => ({
           name: item.productName,
           quantity: item.quantity,
-          price: item.totalPrice
+          price: item.totalPrice,
+          imageUrl: productImages[item.productId] || null
         })),
         total: totalAmount
       });
@@ -2460,11 +2467,17 @@ export async function registerRoutes(
       await storage.addOrderStatusHistory(order.id, "pending", "confirmed", effectiveSupplierId);
 
       const conversation = await storage.getOrCreateConversation(complaint.restaurantId, effectiveSupplierId);
+      const followUpImages: Record<string, string | null> = {};
+      for (const item of orderItems) {
+        const prod = await storage.getProduct(item.productId);
+        if (prod) followUpImages[item.productId] = prod.imageUrl || null;
+      }
       const orderContent = JSON.stringify({
         items: orderItems.map(item => ({
           name: item.productName,
           quantity: item.quantity,
-          price: item.totalPrice
+          price: item.totalPrice,
+          imageUrl: followUpImages[item.productId] || null
         })),
         total: totalAmount,
         isFollowUp: true,

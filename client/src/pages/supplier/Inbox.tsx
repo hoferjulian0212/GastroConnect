@@ -33,7 +33,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface OrderContent {
-  items: { name: string; quantity: number; price: string }[];
+  items: { name: string; quantity: number; price: string; imageUrl?: string | null }[];
   total: string;
 }
 
@@ -1307,11 +1307,22 @@ export default function SupplierInbox() {
                                       </div>
                                       <div className="px-3 py-2">
                                         {orderData ? (
-                                          <div className="space-y-2">
+                                          <div className="space-y-1">
                                             {orderData.items.map((item, idx) => (
-                                              <div key={idx} className="flex justify-between items-center text-xs">
-                                                <span>{item.quantity}x {item.name}</span>
-                                                <span className="text-muted-foreground">{item.price}€</span>
+                                              <div key={idx} className="flex items-center gap-2 py-1" data-testid={`order-item-${message.id}-${idx}`}>
+                                                <div className="w-8 h-8 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                                                  {item.imageUrl ? (
+                                                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+                                                  ) : null}
+                                                  <div className={`w-full h-full flex items-center justify-center ${item.imageUrl ? 'hidden' : ''}`}>
+                                                    <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                                                  </div>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <span className="text-xs font-medium truncate block">{item.name}</span>
+                                                  <span className="text-[10px] text-muted-foreground">{item.quantity}x</span>
+                                                </div>
+                                                <span className="text-xs font-medium text-muted-foreground flex-shrink-0">{item.price}€</span>
                                               </div>
                                             ))}
                                             <Separator className="my-1" />
