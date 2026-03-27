@@ -130,36 +130,39 @@ export function PartialConfirmationDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2" data-testid="dialog-confirm-order-title">
-            <CheckCircle className="h-5 w-5 text-blue-600" />
-            {lang === "it" ? "Conferma ordine" : "Bestellung bestätigen"}
+        <DialogHeader className="sr-only">
+          <DialogTitle data-testid="dialog-confirm-order-title">{lang === "it" ? "Conferma ordine" : "Bestellung bestätigen"}</DialogTitle>
+        </DialogHeader>
+
+        <div className="px-5 pt-5 pb-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-blue-600" />
+            <h3 className="text-sm font-semibold">{lang === "it" ? "Conferma ordine" : "Bestellung bestätigen"}</h3>
             <Badge variant="outline" className="ml-auto text-xs">
               #{order.id.slice(0, 8)}
             </Badge>
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-muted-foreground">
-            {lang === "it"
-              ? "Imposta la quantità confermata per ogni posizione"
-              : "Bestätigte Menge pro Position festlegen"}
-          </p>
-          {hasChanges && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-7"
-              onClick={setAllFull}
-              data-testid="button-confirm-all"
-            >
-              {lang === "it" ? "Conferma tutto" : "Alle bestätigen"}
-            </Button>
-          )}
+          </div>
+          <div className="flex items-center justify-between mt-1 pl-6">
+            <p className="text-xs text-muted-foreground">
+              {lang === "it"
+                ? "Imposta la quantità confermata per ogni posizione"
+                : "Bestätigte Menge pro Position festlegen"}
+            </p>
+            {hasChanges && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7"
+                onClick={setAllFull}
+                data-testid="button-confirm-all"
+              >
+                {lang === "it" ? "Conferma tutto" : "Alle bestätigen"}
+              </Button>
+            )}
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1" data-testid="confirm-items-list">
+        <div className="flex-1 overflow-y-auto space-y-1 px-5" data-testid="confirm-items-list">
           {order.items.map((item) => {
             const confirmed = confirmedQuantities[item.id] ?? item.quantity;
             const rejected = item.quantity - confirmed;
@@ -230,9 +233,9 @@ export function PartialConfirmationDialog({
           })}
         </div>
 
-        <div className="border-t pt-3 mt-2 space-y-2">
+        <div className="px-5 pb-5 space-y-2">
           {hasChanges && (
-            <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 border border-amber-200">
+            <div className="flex items-start gap-2 p-2 rounded-xl bg-amber-50 border border-amber-200">
               <Info className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
               <p className="text-xs text-amber-700">
                 {lang === "it"
@@ -242,36 +245,38 @@ export function PartialConfirmationDialog({
             </div>
           )}
 
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">
-              {lang === "it" ? "Totale originale" : "Ursprünglicher Betrag"}
-            </span>
-            <span className={hasChanges ? "line-through text-muted-foreground" : "font-medium"}>
-              {originalTotal.toFixed(2)}€
-            </span>
-          </div>
-          {hasChanges && (
+          <div className="rounded-xl bg-muted/30 p-3 space-y-1.5">
             <div className="flex justify-between text-sm">
-              <span className="font-medium">
-                {lang === "it" ? "Nuovo totale" : "Neuer Betrag"}
+              <span className="text-muted-foreground">
+                {lang === "it" ? "Totale originale" : "Ursprünglicher Betrag"}
               </span>
-              <span className="font-semibold text-primary">
-                {confirmedTotal.toFixed(2)}€
+              <span className={hasChanges ? "line-through text-muted-foreground" : "font-medium"}>
+                {originalTotal.toFixed(2)}€
               </span>
             </div>
-          )}
+            {hasChanges && (
+              <div className="flex justify-between text-sm">
+                <span className="font-medium">
+                  {lang === "it" ? "Nuovo totale" : "Neuer Betrag"}
+                </span>
+                <span className="font-semibold text-primary">
+                  {confirmedTotal.toFixed(2)}€
+                </span>
+              </div>
+            )}
+          </div>
 
           <div className="flex gap-2 pt-1">
             <Button
               variant="outline"
-              className="flex-1"
+              className="flex-1 rounded-lg"
               onClick={() => onOpenChange(false)}
               data-testid="button-cancel-confirm"
             >
               {lang === "it" ? "Annulla" : "Abbrechen"}
             </Button>
             <Button
-              className="flex-1"
+              className="flex-1 rounded-lg"
               onClick={handleConfirm}
               disabled={confirmMutation.isPending}
               data-testid="button-submit-confirm"

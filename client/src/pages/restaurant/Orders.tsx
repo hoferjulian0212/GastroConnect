@@ -934,25 +934,23 @@ export default function RestaurantOrders() {
 
       <Dialog open={!!detailOrder} onOpenChange={(open) => { if (!open) { setDetailOrder(null); setShowMessageInput(false); setOrderMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {detailOrder && getStatusIcon(detailOrder.status)}
-              {t("orders", "order")} #{detailOrder?.id.slice(0, 8)}
-            </DialogTitle>
-            <DialogDescription>
-              {t("orders", "orderDetails")}
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("orders", "order")} #{detailOrder?.id.slice(0, 8)}</DialogTitle>
           </DialogHeader>
           {detailOrder && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="px-5 pt-5 pb-5 space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("orders", "order")}</p>
+                  <h3 className="text-base font-semibold">#{detailOrder.id.slice(0, 8)}</h3>
+                </div>
                 <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
                   {getStatusIcon(detailOrder.status)}
                   <span className="ml-1">{getStatusLabel(detailOrder.status)}</span>
                 </Badge>
               </div>
 
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm rounded-xl bg-muted/30 p-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("common", "supplier")}</span>
                   <span className="font-medium">{detailOrder.supplier?.companyName || detailOrder.supplier?.name || t("common", "unknown")}</span>
@@ -975,7 +973,7 @@ export default function RestaurantOrders() {
                 )}
               </div>
 
-              <div className="border-t border-border pt-3">
+              <div>
                 <p className="text-sm font-medium mb-2">{t("common", "items")} ({detailOrder.items?.length || 0})</p>
                 <div className="space-y-2">
                   {detailOrder.items?.map((item) => {
@@ -983,7 +981,7 @@ export default function RestaurantOrders() {
                     return (
                       <div
                         key={item.id}
-                        className={`flex justify-between items-center text-sm p-2 rounded-md bg-muted/50 ${product ? "cursor-pointer hover:bg-muted transition-colors" : ""}`}
+                        className={`flex justify-between items-center text-sm p-2 rounded-xl bg-muted/30 ${product ? "cursor-pointer hover:bg-muted transition-colors" : ""}`}
                         onClick={() => product && setSelectedProduct(product)}
                         data-testid={`detail-item-${item.id}`}
                       >
@@ -1020,20 +1018,20 @@ export default function RestaurantOrders() {
               </div>
 
               {detailOrder.notes && (
-                <div className="border-t border-border pt-3">
+                <div className="rounded-xl bg-muted/30 p-3">
                   <p className="text-sm font-medium mb-1">{t("orders", "notes")}</p>
                   <p className="text-sm text-muted-foreground">{detailOrder.notes}</p>
                 </div>
               )}
 
-              <div className="border-t border-border pt-3 flex items-center justify-between">
+              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
                 <span className="text-sm font-medium">{t("common", "total")}</span>
                 <span className="text-lg font-bold" data-testid="text-detail-total">{detailOrder.totalAmount}€</span>
               </div>
 
-              <div className="border-t border-border pt-4 space-y-2.5">
+              <div className="space-y-2.5">
                 {(canEditOrder(detailOrder) || canRequestChange(detailOrder)) && (
-                  <div className="rounded-lg bg-muted/40 p-3 space-y-2">
+                  <div className="rounded-xl bg-muted/30 p-3 space-y-2">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       {lang === "de" ? "Aktionen" : "Azioni"}
                     </p>
@@ -1132,22 +1130,26 @@ export default function RestaurantOrders() {
 
       <Dialog open={!!editingOrder} onOpenChange={(open) => !open && setEditingOrder(null)}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5 text-primary" />
-              {t("orders", "editOrder")}
-            </DialogTitle>
-            <DialogDescription>
-              {t("orders", "order")} #{editingOrder?.id.slice(0, 8)} - {t("orders", "editOrderDesc")}
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("orders", "editOrder")}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="px-5 pt-5 pb-2">
+            <div className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              <h3 className="text-sm font-semibold">{t("orders", "editOrder")}</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 pl-6">
+              {t("orders", "order")} #{editingOrder?.id.slice(0, 8)}
+            </p>
+          </div>
+
+          <div className="space-y-4 px-5 pb-5">
             <div>
               <Label className="text-sm font-medium mb-2 block">{t("orders", "orderItems")}</Label>
               <div className="space-y-2">
                 {editItems.map((item: any, index) => (
-                  <div key={item.id} className="flex items-center gap-2.5 p-3 rounded-md bg-muted/50" data-testid={`edit-item-${item.productId}`}>
+                  <div key={item.id} className="flex items-center gap-2.5 p-3 rounded-xl bg-muted/30" data-testid={`edit-item-${item.productId}`}>
                     {item.productImageUrl ? (
                       <img src={item.productImageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
                     ) : (
@@ -1323,11 +1325,12 @@ export default function RestaurantOrders() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setEditingOrder(null)} data-testid="button-cancel-edit">
+          <div className="flex gap-2 px-5 pb-5">
+            <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setEditingOrder(null)} data-testid="button-cancel-edit">
               {t("common", "cancel")}
             </Button>
             <Button
+              className="flex-1 rounded-lg"
               onClick={() => {
                 if (!editingOrder) return;
                 const deliveryDate = editDeliveryOption === "date" && editSelectedDeliveryDate ? editSelectedDeliveryDate : null;
@@ -1339,22 +1342,25 @@ export default function RestaurantOrders() {
               {updateOrderItemsMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {t("orders", "saveChanges")}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!changeRequestOrder} onOpenChange={(open) => { if (!open) { setChangeRequestOrder(null); setChangeRequestReason(""); } }}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquareText className="h-5 w-5 text-primary" />
-              {t("orders", "requestChange")}
-            </DialogTitle>
-            <DialogDescription>
-              {t("orders", "order")} #{changeRequestOrder?.id.slice(0, 8)} {t("orders", "changeRequestDesc")}
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("orders", "requestChange")}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="px-5 pt-5 pb-2">
+            <div className="flex items-center gap-2">
+              <MessageSquareText className="h-4 w-4" />
+              <h3 className="text-sm font-semibold">{t("orders", "requestChange")}</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 pl-6">
+              {t("orders", "order")} #{changeRequestOrder?.id.slice(0, 8)}
+            </p>
+          </div>
+          <div className="px-5 pb-5 space-y-4">
             <div>
               <label className="text-sm font-medium mb-1.5 block">{t("orders", "changeRequestReason")}</label>
               <Textarea
@@ -1366,20 +1372,21 @@ export default function RestaurantOrders() {
                 data-testid="input-change-reason"
               />
             </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 rounded-lg" onClick={() => { setChangeRequestOrder(null); setChangeRequestReason(""); }} data-testid="button-cancel-request">
+                {t("common", "cancel")}
+              </Button>
+              <Button
+                className="flex-1 rounded-lg"
+                onClick={() => changeRequestOrder && changeRequestMutation.mutate({ orderId: changeRequestOrder.id, reason: changeRequestReason })}
+                disabled={!changeRequestReason.trim() || changeRequestMutation.isPending}
+                data-testid="button-send-request"
+              >
+                {changeRequestMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {t("orders", "sendRequest")}
+              </Button>
+            </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setChangeRequestOrder(null); setChangeRequestReason(""); }} data-testid="button-cancel-request">
-              {t("common", "cancel")}
-            </Button>
-            <Button
-              onClick={() => changeRequestOrder && changeRequestMutation.mutate({ orderId: changeRequestOrder.id, reason: changeRequestReason })}
-              disabled={!changeRequestReason.trim() || changeRequestMutation.isPending}
-              data-testid="button-send-request"
-            >
-              {changeRequestMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {t("orders", "sendRequest")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

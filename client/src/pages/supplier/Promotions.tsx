@@ -427,30 +427,32 @@ export default function SupplierPromotions() {
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
-          <DialogHeader>
+          <DialogHeader className="sr-only">
             <DialogTitle>{t("promotionsPage", "createPromotion")}</DialogTitle>
-            <DialogDescription>
-              <div className="flex items-center gap-2 mt-2">
-                {[1, 2, 3].map(step => (
-                  <div key={step} className="flex items-center gap-1.5">
-                    <div className={`flex items-center justify-center h-6 w-6 rounded-full text-[11px] font-bold ${
-                      wizardStep === step ? "bg-primary text-primary-foreground" :
-                      wizardStep > step ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                      "bg-muted text-muted-foreground"
-                    }`}>
-                      {wizardStep > step ? <Check className="h-3 w-3" /> : step}
-                    </div>
-                    <span className={`text-xs hidden sm:inline ${wizardStep === step ? "font-medium text-foreground" : "text-muted-foreground"}`}>
-                      {t("promotionsPage", step === 1 ? "step1" : step === 2 ? "step2" : "step3")}
-                    </span>
-                    {step < 3 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-                  </div>
-                ))}
-              </div>
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto px-1">
+          <div className="px-5 pt-5 pb-2 space-y-2">
+            <h3 className="text-sm font-semibold">{t("promotionsPage", "createPromotion")}</h3>
+            <div className="flex items-center gap-2">
+              {[1, 2, 3].map(step => (
+                <div key={step} className="flex items-center gap-1.5">
+                  <div className={`flex items-center justify-center h-6 w-6 rounded-full text-[11px] font-bold ${
+                    wizardStep === step ? "bg-primary text-primary-foreground" :
+                    wizardStep > step ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                    "bg-muted text-muted-foreground"
+                  }`}>
+                    {wizardStep > step ? <Check className="h-3 w-3" /> : step}
+                  </div>
+                  <span className={`text-xs hidden md:block ${wizardStep === step ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                    {t("promotionsPage", step === 1 ? "step1" : step === 2 ? "step2" : "step3")}
+                  </span>
+                  {step < 3 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-5 pb-5">
             {wizardStep === 1 && (
               <div className="space-y-4 py-2">
                 <div>
@@ -674,7 +676,7 @@ export default function SupplierPromotions() {
                   </div>
                 )}
 
-                <div className="border-t pt-4">
+                <div className="pt-2">
                   <div
                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                       notifyChat ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
@@ -691,7 +693,7 @@ export default function SupplierPromotions() {
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
+                <div className="p-3 rounded-xl bg-muted/30 space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">{lang === "de" ? "Zusammenfassung" : "Riepilogo"}</p>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
@@ -720,9 +722,9 @@ export default function SupplierPromotions() {
             )}
           </div>
 
-          <DialogFooter className="gap-2 border-t pt-3">
+          <div className="flex gap-2 px-5 pb-5">
             {wizardStep > 1 && (
-              <Button variant="outline" onClick={() => setWizardStep(wizardStep - 1)} data-testid="button-wizard-back">
+              <Button variant="outline" className="rounded-lg" onClick={() => setWizardStep(wizardStep - 1)} data-testid="button-wizard-back">
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 {t("promotionsPage", "back")}
               </Button>
@@ -730,6 +732,7 @@ export default function SupplierPromotions() {
             <div className="flex-1" />
             {wizardStep < 3 ? (
               <Button
+                className="rounded-lg"
                 onClick={() => setWizardStep(wizardStep + 1)}
                 disabled={wizardStep === 1 ? !canGoToStep2 : !canGoToStep3}
                 data-testid="button-wizard-next"
@@ -739,6 +742,7 @@ export default function SupplierPromotions() {
               </Button>
             ) : (
               <Button
+                className="rounded-lg"
                 onClick={handleSubmit}
                 disabled={isPending || !canSubmit}
                 data-testid="button-save-promotion"
@@ -747,7 +751,7 @@ export default function SupplierPromotions() {
                 {t("common", "create")}
               </Button>
             )}
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
       <AlertDialog open={!!overwriteProduct} onOpenChange={(open) => { if (!open) setOverwriteProduct(null); }}>

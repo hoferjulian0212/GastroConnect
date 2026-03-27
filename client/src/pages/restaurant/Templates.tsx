@@ -470,23 +470,26 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
 
       <Dialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
+          <DialogHeader className="sr-only">
             <DialogTitle>{t("templates", "deleteTemplate")}</DialogTitle>
-            <DialogDescription>{t("templates", "deleteConfirm")}</DialogDescription>
           </DialogHeader>
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setDeleteId(null)} data-testid="button-cancel-delete">
-              {t("common", "cancel")}
-            </Button>
-            <Button
-              variant="destructive"
-              className="flex-1"
-              disabled={deleteMutation.isPending}
-              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
-              data-testid="button-confirm-delete"
-            >
-              {t("common", "delete")}
-            </Button>
+          <div className="px-5 pt-5 pb-5 space-y-4">
+            <h3 className="text-sm font-semibold">{t("templates", "deleteTemplate")}</h3>
+            <p className="text-sm text-muted-foreground">{t("templates", "deleteConfirm")}</p>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setDeleteId(null)} data-testid="button-cancel-delete">
+                {t("common", "cancel")}
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 rounded-lg"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+                data-testid="button-confirm-delete"
+              >
+                {t("common", "delete")}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -610,11 +613,14 @@ function CreateEditDialog({
     return (
       <Dialog open onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="max-w-md" data-testid="dialog-choose-template-mode">
-          <DialogHeader>
+          <DialogHeader className="sr-only">
             <DialogTitle>{t("templates", "newTemplate")}</DialogTitle>
-            <DialogDescription>{t("templates", "orderTemplatesDesc")}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 pt-1">
+          <div className="px-5 pt-5 pb-2">
+            <h3 className="text-sm font-semibold">{t("templates", "newTemplate")}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("templates", "orderTemplatesDesc")}</p>
+          </div>
+          <div className="space-y-3 px-5 pb-5">
             <button
               type="button"
               className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-transparent hover:border-primary/30 bg-muted/30 hover:bg-primary/5 transition-all text-left"
@@ -656,16 +662,19 @@ function CreateEditDialog({
     return (
       <Dialog open onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-from-order">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("templates", "selectOrder")}</DialogTitle>
+          </DialogHeader>
+          <div className="px-5 pt-5 pb-2">
+            <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setMode("choose")} data-testid="button-back-to-choose">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              {t("templates", "selectOrder")}
-            </DialogTitle>
-            <DialogDescription>{t("templates", "createFromOrderDesc")}</DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              <h3 className="text-sm font-semibold">{t("templates", "selectOrder")}</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 pl-9">{t("templates", "createFromOrderDesc")}</p>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-2 px-5 pb-5 pr-4">
             {ordersLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map(i => (
@@ -723,19 +732,20 @@ function CreateEditDialog({
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-create-template">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{template ? t("templates", "editTemplate") : t("templates", "newTemplate")}</DialogTitle>
+        </DialogHeader>
+        <div className="px-5 pt-5 pb-2">
+          <div className="flex items-center gap-2">
             {!template && (
               <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => { setMode("choose"); setSelectedItems([]); setName(""); }} data-testid="button-back-to-choose">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            {template ? t("templates", "editTemplate") : t("templates", "newTemplate")}
-          </DialogTitle>
-          <DialogDescription>
-            {t("templates", "orderTemplatesDesc")}
-          </DialogDescription>
-        </DialogHeader>
+            <h3 className="text-sm font-semibold">{template ? t("templates", "editTemplate") : t("templates", "newTemplate")}</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5 pl-9">{t("templates", "orderTemplatesDesc")}</p>
+        </div>
 
         <div className="flex-1 overflow-y-auto space-y-4 px-1 -mx-1">
           {!template && (
@@ -962,17 +972,18 @@ function UseTemplateDialog({
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-use-template">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-primary" />
-            {template.name}
-          </DialogTitle>
-          <DialogDescription>
-            {t("templates", "orderTemplatesDesc")}
-          </DialogDescription>
+        <DialogHeader className="sr-only">
+          <DialogTitle>{template.name}</DialogTitle>
         </DialogHeader>
+        <div className="px-5 pt-5 pb-2">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            <h3 className="text-sm font-semibold">{template.name}</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5 pl-6">{t("templates", "orderTemplatesDesc")}</p>
+        </div>
 
-        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-2 px-5 pb-5 pr-4">
           {availableItems.map(item => (
             <div key={item.productId} className="flex items-center gap-2.5 p-2.5 rounded-lg border bg-card" data-testid={`use-item-${item.productId}`}>
               {item.product.imageUrl ? (

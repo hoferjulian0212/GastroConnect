@@ -1,6 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Package, Euro, Tag, Layers, Info, Clock, Percent } from "lucide-react";
 import { differenceInDays, differenceInHours, format } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -22,16 +21,13 @@ export default function ProductDetailDialog({ product, open, onOpenChange, suppl
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto" data-testid="dialog-product-detail">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            {lang === "de" ? "Produktdetails" : "Dettagli prodotto"}
-          </DialogTitle>
+        <DialogHeader className="sr-only">
+          <DialogTitle>{lang === "de" ? "Produktdetails" : "Dettagli prodotto"}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 px-5 pt-5 pb-5">
           {product.imageUrl ? (
-            <div className="w-full h-48 rounded-lg overflow-hidden bg-muted">
+            <div className="w-full h-48 rounded-xl overflow-hidden bg-muted">
               <img
                 src={product.imageUrl}
                 alt={product.name}
@@ -39,7 +35,7 @@ export default function ProductDetailDialog({ product, open, onOpenChange, suppl
               />
             </div>
           ) : (
-            <div className="w-full h-48 rounded-lg bg-muted flex items-center justify-center">
+            <div className="w-full h-48 rounded-xl bg-muted flex items-center justify-center">
               <Package className="h-16 w-16 text-muted-foreground/20" />
             </div>
           )}
@@ -66,8 +62,6 @@ export default function ProductDetailDialog({ product, open, onOpenChange, suppl
             )}
           </div>
 
-          <Separator />
-
           {product.activePromotion && (() => {
             const promo = product.activePromotion;
             const now = new Date();
@@ -89,7 +83,7 @@ export default function ProductDetailDialog({ product, open, onOpenChange, suppl
               else remainingText = "Termina presto";
             }
             return (
-              <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40" data-testid="promo-detail-banner">
+              <div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40" data-testid="promo-detail-banner">
                 <div className="flex items-center gap-2 mb-2">
                   <Percent className="h-4 w-4 text-green-600 dark:text-green-400" />
                   <span className="text-sm font-semibold text-green-700 dark:text-green-400">
@@ -109,14 +103,14 @@ export default function ProductDetailDialog({ product, open, onOpenChange, suppl
           })()}
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-lg bg-muted/50">
+            <div className="p-3 rounded-xl bg-muted/30">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                 <Euro className="h-3.5 w-3.5" />
                 {product.activePromotion ? (lang === "de" ? "Originalpreis" : "Prezzo originale") : (lang === "de" ? "Preis" : "Prezzo")}
               </div>
               <p className="font-semibold text-lg" data-testid="text-product-price">{product.price}€</p>
             </div>
-            <div className="p-3 rounded-lg bg-muted/50">
+            <div className="p-3 rounded-xl bg-muted/30">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                 <Layers className="h-3.5 w-3.5" />
                 {lang === "de" ? "Einheit" : "Unità"}
@@ -126,7 +120,7 @@ export default function ProductDetailDialog({ product, open, onOpenChange, suppl
           </div>
 
           {product.category && (
-            <div className="p-3 rounded-lg bg-muted/50">
+            <div className="p-3 rounded-xl bg-muted/30">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                 <Tag className="h-3.5 w-3.5" />
                 {lang === "de" ? "Kategorie" : "Categoria"}
@@ -136,22 +130,19 @@ export default function ProductDetailDialog({ product, open, onOpenChange, suppl
           )}
 
           {product.description && (
-            <>
-              <Separator />
-              <div>
-                <div className="flex items-center gap-1.5 text-sm font-medium mb-2">
-                  <Info className="h-4 w-4" />
-                  {lang === "de" ? "Beschreibung" : "Descrizione"}
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-product-description">
-                  {product.description}
-                </p>
+            <div>
+              <div className="flex items-center gap-1.5 text-sm font-medium mb-2">
+                <Info className="h-4 w-4" />
+                {lang === "de" ? "Beschreibung" : "Descrizione"}
               </div>
-            </>
+              <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-product-description">
+                {product.description}
+              </p>
+            </div>
           )}
 
           {product.stockQuantity != null && product.stockQuantity > 0 && (
-            <div className="p-3 rounded-lg bg-muted/50">
+            <div className="p-3 rounded-xl bg-muted/30">
               <div className="text-xs text-muted-foreground mb-1">{lang === "de" ? "Lagerbestand" : "Scorte"}</div>
               <p className="font-medium" data-testid="text-product-stock">{product.stockQuantity} {product.unit}</p>
             </div>

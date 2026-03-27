@@ -1015,24 +1015,22 @@ export default function SupplierHome() {
       </Card>
       <Dialog open={!!detailOrder} onOpenChange={(open) => { if (!open) { setDetailOrder(null); setShowMessageInput(false); setOrderMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShoppingBag className="h-5 w-5 text-primary" />
-              {lang === "de" ? "Auftrag" : "Ordine"} #{detailOrder?.id.slice(0, 8)}
-            </DialogTitle>
-            <DialogDescription>
-              {lang === "de" ? "Auftragsdetails und Artikelübersicht" : "Dettagli ordine e panoramica articoli"}
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{lang === "de" ? "Auftrag" : "Ordine"} #{detailOrder?.id.slice(0, 8)}</DialogTitle>
           </DialogHeader>
           {detailOrder && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="px-5 pt-5 pb-5 space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">{lang === "de" ? "Auftrag" : "Ordine"}</p>
+                  <h3 className="text-base font-semibold">#{detailOrder.id.slice(0, 8)}</h3>
+                </div>
                 <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
                   {getOrderStatus(detailOrder.status, lang, true)}
                 </Badge>
               </div>
 
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm rounded-xl bg-muted/30 p-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("common", "restaurant")}</span>
                   <span className="font-medium">{detailOrder.restaurant?.companyName || detailOrder.restaurant?.name || t("common", "unknown")}</span>
@@ -1051,11 +1049,11 @@ export default function SupplierHome() {
                 </div>
               </div>
 
-              <div className="border-t border-border pt-3">
+              <div>
                 <p className="text-sm font-medium mb-2">{t("common", "items")} ({detailOrder.items?.length || 0})</p>
                 <div className="space-y-2">
                   {detailOrder.items?.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50" data-testid={`home-detail-item-${item.id}`}>
+                    <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-xl bg-muted/30" data-testid={`home-detail-item-${item.id}`}>
                       <div className="flex items-center gap-2 min-w-0">
                         {item.productImageUrl ? (
                           <img src={item.productImageUrl} alt={item.productName} className="h-8 w-8 rounded object-cover shrink-0" />
@@ -1077,20 +1075,20 @@ export default function SupplierHome() {
               </div>
 
               {detailOrder.notes && (
-                <div className="border-t border-border pt-3">
+                <div className="rounded-xl bg-muted/30 p-3">
                   <p className="text-sm font-medium mb-1">{lang === "de" ? "Anmerkungen" : "Note"}</p>
                   <p className="text-sm text-muted-foreground">{detailOrder.notes}</p>
                 </div>
               )}
 
-              <div className="border-t border-border pt-3 flex items-center justify-between">
+              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
                 <span className="text-sm font-medium">{t("common", "total")}</span>
                 <span className="text-lg font-bold" data-testid="text-home-detail-total">{detailOrder.totalAmount}€</span>
               </div>
 
-              <div className="border-t border-border pt-4 space-y-2.5">
+              <div className="space-y-2.5">
                 <Button
-                  className="w-full"
+                  className="w-full rounded-lg"
                   onClick={() => { setDetailOrder(null); navigate(`/supplier/orders?orderId=${detailOrder.id}`); }}
                   data-testid="home-detail-goto-order"
                 >

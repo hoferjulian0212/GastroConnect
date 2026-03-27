@@ -3002,17 +3002,21 @@ export default function RestaurantInbox() {
 
       <Dialog open={!!editingOrderInbox} onOpenChange={(open) => !open && setEditingOrderInbox(null)}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5 text-primary" />
-              {t("orders", "editOrder")}
-            </DialogTitle>
-            <DialogDescription>
-              {t("orders", "order")} #{editingOrderInbox?.id.slice(0, 8)} - {t("inbox", "editOrderDesc")}
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("orders", "editOrder")}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="px-5 pt-5 pb-2">
+            <div className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              <h3 className="text-sm font-semibold">{t("orders", "editOrder")}</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 pl-6">
+              {t("orders", "order")} #{editingOrderInbox?.id.slice(0, 8)}
+            </p>
+          </div>
+
+          <div className="space-y-4 px-5 pb-5">
             <div>
               <Label className="text-sm font-medium mb-2 block">{t("orders", "orderItems")}</Label>
               <div className="space-y-2">
@@ -3186,11 +3190,12 @@ export default function RestaurantInbox() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setEditingOrderInbox(null)} data-testid="inbox-button-cancel-edit">
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setEditingOrderInbox(null)} data-testid="inbox-button-cancel-edit">
               {t("common", "cancel")}
             </Button>
             <Button
+              className="flex-1 rounded-lg"
               onClick={() => {
                 if (!editingOrderInbox) return;
                 const deliveryDate = editDeliveryOptionInbox === "date" && editSelectedDeliveryDateInbox ? editSelectedDeliveryDateInbox : null;
@@ -3202,7 +3207,7 @@ export default function RestaurantInbox() {
               {updateOrderItemsInboxMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {t("orders", "saveChanges")}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

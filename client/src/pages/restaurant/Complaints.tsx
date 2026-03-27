@@ -631,16 +631,17 @@ export default function Complaints() {
 
       <Dialog open={showCreateDialog} onOpenChange={(open) => { if (!open) resetForm(); }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-create-complaint">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-primary" />
-              {t("complaints", "newComplaint")}
-            </DialogTitle>
-            <DialogDescription>
-              {t("complaints", "writeComplaint")}
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("complaints", "newComplaint")}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 md:space-y-4">
+          <div className="px-5 pt-5 pb-2">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              <h3 className="text-sm font-semibold">{t("complaints", "newComplaint")}</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 pl-6">{t("complaints", "writeComplaint")}</p>
+          </div>
+          <div className="space-y-3 md:space-y-4 px-5 pb-5">
             <div className="space-y-2">
               <Label>{t("complaints", "selectSupplier")}</Label>
               {loadingSuppliers ? (
@@ -882,16 +883,17 @@ export default function Complaints() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          <div className="flex gap-2">
             <Button
               variant="outline"
-              className="text-foreground"
+              className="flex-1 rounded-lg"
               onClick={() => resetForm()}
               data-testid="button-cancel-create-complaint"
             >
               {t("common", "cancel")}
             </Button>
             <Button
+              className="flex-1 rounded-lg"
               onClick={handleSubmit}
               disabled={!canSubmit || createComplaintMutation.isPending}
               data-testid="button-submit-complaint"
@@ -899,23 +901,17 @@ export default function Complaints() {
               <Send className="mr-2 h-4 w-4" />
               {createComplaintMutation.isPending ? t("complaints", "sending") : t("complaints", "submitComplaint")}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!detailComplaint} onOpenChange={(open) => { if (!open) { setDetailComplaint(null); setNewComment(""); setShowComplaintMessageInput(false); setComplaintMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-primary" />
-              {t("common", "complaints")}
-            </DialogTitle>
-            <DialogDescription>
-              {t("complaints", "complaintDetail")}
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("common", "complaints")}</DialogTitle>
           </DialogHeader>
           {detailComplaint && (
-            <div className="flex flex-col flex-1 min-h-0 space-y-4">
+            <div className="flex flex-col flex-1 min-h-0 px-5 pt-5 pb-5 space-y-4">
               <div className="space-y-3 shrink-0">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -1007,7 +1003,7 @@ export default function Complaints() {
                 )}
               </div>
 
-              <div className="border-t border-border pt-3 flex-1 overflow-auto min-h-0">
+              <div className="flex-1 overflow-auto min-h-0">
                 <p className="text-sm font-medium mb-2">{t("complaints", "comments")}</p>
                 <div className="space-y-3">
                   {loadingComments ? (
@@ -1043,7 +1039,7 @@ export default function Complaints() {
                 </div>
               </div>
 
-              <div className="border-t border-border pt-3 shrink-0 space-y-2">
+              <div className="shrink-0 space-y-2">
                 <div className="flex gap-2">
                   <Textarea
                     value={newComment}
@@ -1120,11 +1116,14 @@ export default function Complaints() {
       {/* Edit Complaint Dialog */}
       <Dialog open={!!editingComplaint} onOpenChange={(open) => !open && setEditingComplaint(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader>
+          <DialogHeader className="sr-only">
             <DialogTitle>{t("complaints", "editComplaint")}</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="px-5 pt-5 pb-2">
+            <h3 className="text-sm font-semibold">{t("complaints", "editComplaint")}</h3>
+          </div>
+          <div className="space-y-4 px-5 pb-5">
             <div className="space-y-2">
               <Label>{t("complaints", "subject")}</Label>
               <Input
@@ -1208,52 +1207,57 @@ export default function Complaints() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          <div className="flex gap-2">
             <Button
               variant="outline"
-              className="text-foreground"
+              className="flex-1 rounded-lg"
               onClick={() => setEditingComplaint(null)}
               data-testid="button-cancel-edit-complaint"
             >
               {t("common", "cancel")}
             </Button>
             <Button
+              className="flex-1 rounded-lg"
               onClick={handleEditSubmit}
               disabled={!editTitle.trim() || !editDescription.trim() || updateComplaintMutation.isPending}
               data-testid="button-save-edit-complaint"
             >
               {updateComplaintMutation.isPending ? t("complaints", "saving") : t("common", "save")}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!withdrawComplaintId} onOpenChange={(open) => !open && setWithdrawComplaintId(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
+          <DialogHeader className="sr-only">
             <DialogTitle>{t("complaints", "withdrawComplaint")}</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            {t("complaints", "withdrawConfirm")}
-          </p>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              className="text-foreground"
-              onClick={() => setWithdrawComplaintId(null)}
-              data-testid="button-cancel-withdraw"
-            >
-              {t("common", "cancel")}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => withdrawComplaintId && withdrawComplaintMutation.mutate(withdrawComplaintId)}
-              disabled={withdrawComplaintMutation.isPending}
-              data-testid="button-confirm-withdraw"
-            >
-              {withdrawComplaintMutation.isPending ? t("complaints", "closing") : t("complaints", "withdraw")}
-            </Button>
-          </DialogFooter>
+          <div className="px-5 pt-5 pb-5 space-y-4">
+            <h3 className="text-sm font-semibold">{t("complaints", "withdrawComplaint")}</h3>
+            <p className="text-sm text-muted-foreground">
+              {t("complaints", "withdrawConfirm")}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-lg"
+                onClick={() => setWithdrawComplaintId(null)}
+                data-testid="button-cancel-withdraw"
+              >
+                {t("common", "cancel")}
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 rounded-lg"
+                onClick={() => withdrawComplaintId && withdrawComplaintMutation.mutate(withdrawComplaintId)}
+                disabled={withdrawComplaintMutation.isPending}
+                data-testid="button-confirm-withdraw"
+              >
+                {withdrawComplaintMutation.isPending ? t("complaints", "closing") : t("complaints", "withdraw")}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

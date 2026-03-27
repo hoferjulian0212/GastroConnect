@@ -1294,25 +1294,23 @@ export default function RestaurantHome() {
 
       <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {detailOrder && getStatusIcon(detailOrder.status)}
-              {t("orders", "order")} #{detailOrder?.id.slice(0, 8)}
-            </DialogTitle>
-            <DialogDescription>
-              {t("orders", "orderDetails")}
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("orders", "order")} #{detailOrder?.id.slice(0, 8)}</DialogTitle>
           </DialogHeader>
           {detailOrder && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="px-5 pt-5 pb-5 space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("orders", "order")}</p>
+                  <h3 className="text-base font-semibold">#{detailOrder.id.slice(0, 8)}</h3>
+                </div>
                 <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
                   {getStatusIcon(detailOrder.status)}
                   <span className="ml-1">{getOrderStatus(detailOrder.status, lang)}</span>
                 </Badge>
               </div>
 
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm rounded-xl bg-muted/30 p-3">
                 <div className="flex justify-between gap-2">
                   <span className="text-muted-foreground">{t("common", "supplier")}</span>
                   <span className="font-medium text-right">{detailOrder.supplier?.companyName || detailOrder.supplier?.name || t("common", "unknown")}</span>
@@ -1329,11 +1327,11 @@ export default function RestaurantHome() {
                 )}
               </div>
 
-              <div className="border-t border-border pt-3">
+              <div>
                 <p className="text-sm font-medium mb-2">{t("common", "items")} ({detailOrder.items?.length || 0})</p>
                 <div className="space-y-2">
                   {detailOrder.items?.map((item: any) => (
-                    <div key={item.id} className="flex items-center gap-2.5 text-sm p-2 rounded-md bg-muted/50" data-testid={`home-detail-item-${item.id}`}>
+                    <div key={item.id} className="flex items-center gap-2.5 text-sm p-2 rounded-xl bg-muted/30" data-testid={`home-detail-item-${item.id}`}>
                       {item.productImageUrl ? (
                         <img src={item.productImageUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
                       ) : (
@@ -1353,19 +1351,19 @@ export default function RestaurantHome() {
               </div>
 
               {detailOrder.notes && (
-                <div className="border-t border-border pt-3">
+                <div className="rounded-xl bg-muted/30 p-3">
                   <p className="text-sm font-medium mb-1">{t("orders", "notes")}</p>
                   <p className="text-sm text-muted-foreground">{detailOrder.notes}</p>
                 </div>
               )}
 
-              <div className="border-t border-border pt-3 flex items-center justify-between">
+              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
                 <span className="text-sm font-medium">{t("common", "total")}</span>
                 <span className="text-lg font-bold" data-testid="text-home-detail-total">{detailOrder.totalAmount}€</span>
               </div>
 
-              <div className="border-t border-border pt-3">
-                <Button variant="outline" className="w-full" asChild>
+              <div>
+                <Button variant="outline" className="w-full rounded-lg" asChild>
                   <Link href="/restaurant/orders" data-testid="link-go-to-orders">
                     {t("common", "all")} {t("common", "orders")}
                   </Link>

@@ -658,25 +658,23 @@ export default function SupplierOrders() {
 
       <Dialog open={!!detailOrder} onOpenChange={(open) => { if (!open) { setDetailOrder(null); setShowMessageInput(false); setOrderMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {detailOrder && getStatusIcon(detailOrder.status)}
-              {lang === "de" ? "Auftrag" : "Ordine"} #{detailOrder?.id.slice(0, 8)}
-            </DialogTitle>
-            <DialogDescription>
-              {lang === "de" ? "Auftragsdetails und Artikelübersicht" : "Dettagli ordine e panoramica articoli"}
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{lang === "de" ? "Auftrag" : "Ordine"} #{detailOrder?.id.slice(0, 8)}</DialogTitle>
           </DialogHeader>
           {detailOrder && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="px-5 pt-5 pb-5 space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">{lang === "de" ? "Auftrag" : "Ordine"}</p>
+                  <h3 className="text-base font-semibold">#{detailOrder.id.slice(0, 8)}</h3>
+                </div>
                 <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
                   {getStatusIcon(detailOrder.status)}
                   <span className="ml-1">{getOrderStatus(detailOrder.status, lang, true)}</span>
                 </Badge>
               </div>
 
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm rounded-xl bg-muted/30 p-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("common", "restaurant")}</span>
                   <span className="font-medium">{detailOrder.restaurant?.companyName || detailOrder.restaurant?.name || t("common", "unknown")}</span>
@@ -751,7 +749,7 @@ export default function SupplierOrders() {
                 )}
               </div>
 
-              <div className="border-t border-border pt-3">
+              <div>
                 <p className="text-sm font-medium mb-2">{t("common", "items")} ({detailOrder.items?.length || 0})</p>
                 <div className="space-y-2">
                   {detailOrder.items?.map((item) => {
@@ -759,7 +757,7 @@ export default function SupplierOrders() {
                     return (
                       <div
                         key={item.id}
-                        className={`flex justify-between items-center text-sm p-2 rounded-md bg-muted/50 ${product ? "cursor-pointer hover:bg-muted transition-colors" : ""}`}
+                        className={`flex justify-between items-center text-sm p-2 rounded-xl bg-muted/30 ${product ? "cursor-pointer hover:bg-muted transition-colors" : ""}`}
                         onClick={() => product && setSelectedProduct(product)}
                         data-testid={`detail-item-${item.id}`}
                       >
@@ -785,20 +783,20 @@ export default function SupplierOrders() {
               </div>
 
               {detailOrder.notes && (
-                <div className="border-t border-border pt-3">
+                <div className="rounded-xl bg-muted/30 p-3">
                   <p className="text-sm font-medium mb-1">{lang === "de" ? "Anmerkungen" : "Note"}</p>
                   <p className="text-sm text-muted-foreground">{detailOrder.notes}</p>
                 </div>
               )}
 
-              <div className="border-t border-border pt-3 flex items-center justify-between">
+              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
                 <span className="text-sm font-medium">{t("common", "total")}</span>
                 <span className="text-lg font-bold" data-testid="text-detail-total">{detailOrder.totalAmount}€</span>
               </div>
 
-              <div className="border-t border-border pt-4 space-y-2.5">
+              <div className="space-y-2.5">
                 {detailOrder.status !== "delivered" && detailOrder.status !== "cancelled" && (
-                  <div className="rounded-lg bg-muted/40 p-3 space-y-2">
+                  <div className="rounded-xl bg-muted/30 p-3 space-y-2">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       {lang === "de" ? "Aktionen" : "Azioni"}
                     </p>

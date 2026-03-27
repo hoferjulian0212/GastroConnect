@@ -429,17 +429,21 @@ export default function Documents() {
 
       <Dialog open={!!selectedDoc} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="dialog-delivery-note-preview">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              {selectedDoc?.title}
-            </DialogTitle>
-            <DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{selectedDoc?.title}</DialogTitle>
+          </DialogHeader>
+
+          <div className="px-5 pt-5 pb-2">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <h3 className="text-sm font-semibold">{selectedDoc?.title}</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 pl-6">
               {isEditing
                 ? (lang === "de" ? "Daten bearbeiten und korrigierten Lieferschein herunterladen" : "Modifica i dati e scarica la bolla corretta")
                 : (lang === "de" ? "Lieferschein-Vorschau" : "Anteprima bolla di consegna")}
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
 
           {isLoadingPreview ? (
             <div className="space-y-3">
@@ -448,7 +452,7 @@ export default function Documents() {
               <Skeleton className="h-40 w-full" />
             </div>
           ) : previewData && editData ? (
-            <div className="space-y-4">
+            <div className="space-y-4 px-5 pb-5">
               {!isEditing ? (
                 <>
                   <div className="grid grid-cols-2 gap-4">
@@ -473,11 +477,11 @@ export default function Documents() {
                     <span>{l("deliveryDate")}: <span className="font-medium text-foreground">{previewData.deliveryDate}</span></span>
                   </div>
 
-                  <div className="border-t border-border pt-3">
+                  <div>
                     <p className="text-sm font-medium mb-2">{l("items")} ({previewData.items.length})</p>
                     <div className="space-y-1.5">
                       {previewData.items.map((item, i) => (
-                        <div key={i} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50" data-testid={`preview-item-${i}`}>
+                        <div key={i} className="flex justify-between items-center text-sm p-2 rounded-xl bg-muted/30" data-testid={`preview-item-${i}`}>
                           <div className="min-w-0 flex-1">
                             <span className="font-medium">{item.quantity}x</span>{" "}
                             <span>{item.productName}</span>
@@ -490,23 +494,23 @@ export default function Documents() {
                   </div>
 
                   {previewData.notes && (
-                    <div className="border-t border-border pt-3">
+                    <div className="rounded-xl bg-muted/30 p-3">
                       <p className="text-xs font-medium text-muted-foreground mb-1">{l("notes")}</p>
                       <p className="text-sm">{previewData.notes}</p>
                     </div>
                   )}
 
-                  <div className="border-t border-border pt-3 flex items-center justify-between">
+                  <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
                     <span className="text-sm font-medium">{l("total")}</span>
                     <span className="text-lg font-bold" data-testid="text-preview-total">{previewData.totalAmount} EUR</span>
                   </div>
 
-                  <div className="flex gap-2 pt-2">
-                    <Button variant="outline" className="flex-1" onClick={() => setIsEditing(true)} data-testid="button-edit-delivery-note">
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setIsEditing(true)} data-testid="button-edit-delivery-note">
                       <Pencil className="h-4 w-4 mr-1.5" />
                       {l("edit")}
                     </Button>
-                    <Button className="flex-1" onClick={() => {
+                    <Button className="flex-1 rounded-lg" onClick={() => {
                       if (selectedDoc) {
                         const a = document.createElement("a"); a.href = `/api/orders/${selectedDoc.orderId}/delivery-note/download`; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
                       }
@@ -537,11 +541,11 @@ export default function Documents() {
                     </div>
                   </div>
 
-                  <div className="border-t border-border pt-3">
+                  <div>
                     <p className="text-sm font-medium mb-2">{l("items")}</p>
                     <div className="space-y-2">
                       {editData.items.map((item, i) => (
-                        <div key={i} className="flex items-center gap-2 p-2 rounded-md bg-muted/50" data-testid={`edit-item-${i}`}>
+                        <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-muted/30" data-testid={`edit-item-${i}`}>
                           <div className="flex-1 min-w-0 space-y-1">
                             <Input value={item.productName} onChange={(e) => updateEditItem(i, "productName", e.target.value)} className="text-sm" placeholder={l("product")} />
                             <div className="flex gap-2">
@@ -571,16 +575,16 @@ export default function Documents() {
                     <Textarea value={editData.notes} onChange={(e) => setEditData({ ...editData, notes: e.target.value })} className="text-sm resize-none" rows={2} data-testid="input-edit-notes" />
                   </div>
 
-                  <div className="border-t border-border pt-3 flex items-center justify-between">
+                  <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
                     <span className="text-sm font-medium">{l("total")}</span>
                     <span className="text-lg font-bold">{editData.totalAmount} EUR</span>
                   </div>
 
-                  <div className="flex gap-2 pt-2">
-                    <Button variant="outline" className="flex-1" onClick={() => { setEditData(previewData ? { ...previewData } : null); setIsEditing(false); }} data-testid="button-cancel-edit">
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1 rounded-lg" onClick={() => { setEditData(previewData ? { ...previewData } : null); setIsEditing(false); }} data-testid="button-cancel-edit">
                       {l("cancel")}
                     </Button>
-                    <Button className="flex-1" onClick={handleDownloadEdited} data-testid="button-download-edited">
+                    <Button className="flex-1 rounded-lg" onClick={handleDownloadEdited} data-testid="button-download-edited">
                       <Download className="h-4 w-4 mr-1.5" />
                       {l("downloadEdited")}
                     </Button>

@@ -4,7 +4,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Truck, CalendarIcon, Info } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { addDays, isBefore, startOfDay, format } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
@@ -71,17 +71,19 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm" data-testid="dialog-delivery-date-picker">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5 text-purple-600" />
-            {t("supplierOrders", "selectDeliveryDate")}
-          </DialogTitle>
-          <DialogDescription>
-            {t("supplierOrders", "selectDeliveryDateDesc")}
-          </DialogDescription>
+        <DialogHeader className="sr-only">
+          <DialogTitle>{t("supplierOrders", "selectDeliveryDate")}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="px-5 pt-5 pb-2">
+          <div className="flex items-center gap-2">
+            <Truck className="h-4 w-4 text-purple-600" />
+            <h3 className="text-sm font-semibold">{t("supplierOrders", "selectDeliveryDate")}</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5 pl-6">{t("supplierOrders", "selectDeliveryDateDesc")}</p>
+        </div>
+
+        <div className="space-y-3 px-5 pb-5">
           {allowedDaysOfWeek !== null && (
             <div className="flex flex-wrap gap-1">
               {Array.from(allowedDaysOfWeek).sort().map(day => (
@@ -93,14 +95,14 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
           )}
 
           {schedulesError && (
-            <div className="flex items-start gap-2 p-2 rounded-md bg-destructive/10">
+            <div className="flex items-start gap-2 p-2 rounded-xl bg-destructive/10">
               <Info className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
               <p className="text-xs text-destructive">{lang === "it" ? "Errore nel caricamento dei giorni di consegna" : "Fehler beim Laden der Liefertage"}</p>
             </div>
           )}
 
           {allowedDaysOfWeek === null && schedules !== undefined && !schedulesError && (
-            <div className="flex items-start gap-2 p-2 rounded-md bg-muted/50">
+            <div className="flex items-start gap-2 p-2 rounded-xl bg-muted/30">
               <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
               <p className="text-xs text-muted-foreground">{t("supplierOrders", "noDeliveryDaysConfigured")}</p>
             </div>
@@ -123,7 +125,7 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
           </div>
 
           {selectedDate && (
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/40">
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/40">
               <CalendarIcon className="h-4 w-4 text-purple-600 shrink-0" />
               <span className="text-sm font-medium" data-testid="text-selected-delivery-date">
                 {format(selectedDate, "EEEE, dd. MMMM yyyy", { locale: dateLocale })}
@@ -132,11 +134,11 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
           )}
 
           <div className="flex gap-2 pt-1">
-            <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)} data-testid="button-cancel-delivery-date">
+            <Button variant="outline" className="flex-1 rounded-lg" onClick={() => onOpenChange(false)} data-testid="button-cancel-delivery-date">
               {t("common", "cancel")}
             </Button>
             <Button
-              className="flex-1"
+              className="flex-1 rounded-lg"
               disabled={!selectedDate || isPending}
               onClick={handleConfirm}
               data-testid="button-confirm-delivery-date"

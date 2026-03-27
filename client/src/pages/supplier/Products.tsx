@@ -373,19 +373,20 @@ function InventoryView({ products, lang, t }: { products: Product[]; lang: strin
 
       <Dialog open={!!historyProduct} onOpenChange={(open) => { if (!open) setHistoryProduct(null); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <History className="h-5 w-5" />
-              {t("supplierProducts", "stockMovements")}
-            </DialogTitle>
-            <DialogDescription>
-              {historyProduct?.name} — {historyProduct?.stockQuantity ?? 0} {historyProduct?.unit}
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("supplierProducts", "stockMovements")}</DialogTitle>
           </DialogHeader>
+          <div className="px-5 pt-5 pb-2">
+            <div className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              <h3 className="text-sm font-semibold">{t("supplierProducts", "stockMovements")}</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 pl-6">{historyProduct?.name} — {historyProduct?.stockQuantity ?? 0} {historyProduct?.unit}</p>
+          </div>
           {stockMovements && stockMovements.length > 0 ? (
-            <div className="space-y-1.5 max-h-80 overflow-y-auto">
+            <div className="space-y-1.5 max-h-80 overflow-y-auto px-5 pb-5">
               {stockMovements.slice(0, 30).map((movement) => (
-                <div key={movement.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-xs" data-testid={`stock-movement-${movement.id}`}>
+                <div key={movement.id} className="flex items-center justify-between p-2 rounded-xl bg-muted/30 text-xs" data-testid={`stock-movement-${movement.id}`}>
                   <div className="flex items-center gap-2">
                     {(movement.type === "manual_in" || movement.type === "order_cancelled" || movement.type === "order_reversed" || movement.type === "manual_set") ? (
                       <ArrowDown className="h-3 w-3 text-green-600" />
@@ -678,13 +679,16 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
+          <DialogHeader className="sr-only">
             <DialogTitle>{editingPromo ? t("promotionsPage", "editPromotion") : lang === "de" ? "Neue Aktion erstellen" : "Crea nuova promozione"}</DialogTitle>
-            <DialogDescription>
-              {editingPromo ? (lang === "de" ? "Ändern Sie die Rabattaktion." : "Modifica la promozione.") : (lang === "de" ? "Erstellen Sie eine Rabattaktion für eines Ihrer Produkte." : "Crea una promozione per uno dei tuoi prodotti.")}
-            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="px-5 pt-5 pb-2">
+            <h3 className="text-sm font-semibold">{editingPromo ? t("promotionsPage", "editPromotion") : lang === "de" ? "Neue Aktion erstellen" : "Crea nuova promozione"}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {editingPromo ? (lang === "de" ? "Ändern Sie die Rabattaktion." : "Modifica la promozione.") : (lang === "de" ? "Rabattaktion erstellen" : "Crea promozione")}
+            </p>
+          </div>
+          <div className="space-y-4 px-5 pb-5">
             <div>
               <Label className="text-sm">{lang === "de" ? "Produkt" : "Prodotto"}</Label>
               <Select value={selectedProductId} onValueChange={setSelectedProductId}>
@@ -759,11 +763,12 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
               </div>
             </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={resetForm} data-testid="button-cancel-promotion">
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1 rounded-lg" onClick={resetForm} data-testid="button-cancel-promotion">
               {t("common", "cancel")}
             </Button>
             <Button
+              className="flex-1 rounded-lg"
               onClick={handleSubmit}
               disabled={isPending || !selectedProductId || !discountPercent || !startDate || !endDate}
               data-testid="button-save-promotion"
@@ -771,7 +776,7 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
               {isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
               {editingPromo ? t("common", "save") : t("common", "create")}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
@@ -1077,14 +1082,17 @@ export default function SupplierProducts() {
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
+              <DialogHeader className="sr-only">
                 <DialogTitle>{editingProduct ? t("supplierProducts", "editProduct") : t("supplierProducts", "addProduct")}</DialogTitle>
-                <DialogDescription>
-                  {editingProduct 
-                    ? (lang === "de" ? "Bearbeiten Sie die Produktinformationen" : "Modifica le informazioni del prodotto")
-                    : (lang === "de" ? "Fügen Sie ein neues Produkt zu Ihrem Katalog hinzu" : "Aggiungi un nuovo prodotto al tuo catalogo")}
-                </DialogDescription>
               </DialogHeader>
+              <div className="px-5 pt-5 pb-2">
+                <h3 className="text-sm font-semibold">{editingProduct ? t("supplierProducts", "editProduct") : t("supplierProducts", "addProduct")}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {editingProduct 
+                    ? (lang === "de" ? "Produktinformationen bearbeiten" : "Modifica le informazioni del prodotto")
+                    : (lang === "de" ? "Neues Produkt zum Katalog hinzufügen" : "Aggiungi un nuovo prodotto al catalogo")}
+                </p>
+              </div>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <div className="space-y-2">
@@ -1359,18 +1367,19 @@ export default function SupplierProducts() {
                     )}
                   />
 
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <div className="flex gap-2 px-5 pb-5">
+                    <Button type="button" variant="outline" className="flex-1 rounded-lg" onClick={() => setIsDialogOpen(false)}>
                       {t("common", "cancel")}
                     </Button>
                     <Button 
                       type="submit" 
+                      className="flex-1 rounded-lg"
                       disabled={createProductMutation.isPending || updateProductMutation.isPending || isUploading}
                       data-testid="button-save-product"
                     >
                       {editingProduct ? t("common", "save") : t("common", "create")}
                     </Button>
-                  </DialogFooter>
+                  </div>
                 </form>
               </Form>
             </DialogContent>

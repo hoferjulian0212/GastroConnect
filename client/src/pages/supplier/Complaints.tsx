@@ -545,17 +545,11 @@ export default function SupplierComplaints() {
 
       <Dialog open={showDetailDialog} onOpenChange={(open) => { if (!open) { setShowDetailDialog(false); setSelectedComplaint(null); setNewComment(""); setShowComplaintMessageInput(false); setComplaintMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-primary" />
-              {lang === "de" ? "Reklamation" : "Reclamo"}
-            </DialogTitle>
-            <DialogDescription>
-              {lang === "de" ? "Details und Kommentare" : "Dettagli e commenti"}
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{lang === "de" ? "Reklamation" : "Reclamo"}</DialogTitle>
           </DialogHeader>
           {selectedComplaint && (
-            <div className="flex flex-col flex-1 min-h-0 space-y-4">
+            <div className="flex flex-col flex-1 min-h-0 px-5 pt-5 pb-5 space-y-4">
               <div className="space-y-3 shrink-0">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -790,77 +784,73 @@ export default function SupplierComplaints() {
 
       <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
+          <DialogHeader className="sr-only">
             <DialogTitle>{t("supplierComplaints", "updateStatus")}</DialogTitle>
-            <DialogDescription>
-              {lang === "de" ? "Wählen Sie den neuen Status für diese Reklamation" : "Seleziona il nuovo stato per questo reclamo"}
-            </DialogDescription>
           </DialogHeader>
           
-          {selectedComplaint && (
-            <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-muted/50">
+          <div className="px-5 pt-5 pb-2">
+            <h3 className="text-sm font-semibold">{t("supplierComplaints", "updateStatus")}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">{lang === "de" ? "Wählen Sie den neuen Status" : "Seleziona il nuovo stato"}</p>
+          </div>
+
+          <div className="px-5 pb-5 space-y-3">
+            {selectedComplaint && (
+              <div className="p-3 rounded-xl bg-muted/30">
                 <div className="font-medium text-sm">{selectedComplaint.title}</div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {selectedComplaint.restaurant?.companyName} • {formatShortDate(selectedComplaint.createdAt)}
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="border-t border-border pt-4 space-y-3">
-            <div className="rounded-lg bg-muted/40 p-3 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {lang === "de" ? "Aktionen" : "Azioni"}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {selectedComplaint?.status === "open" && (
-                  <>
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "in_progress" })} disabled={updateStatusMutation.isPending} data-testid="button-status-in_progress">
-                      <Loader2 className="h-3.5 w-3.5 mr-1.5" />
-                      {lang === "de" ? "In Bearbeitung" : "In lavorazione"}
-                    </Button>
-                    <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
-                      <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                      {lang === "de" ? "Schließen" : "Chiudere"}
-                    </Button>
-                  </>
-                )}
-                {selectedComplaint?.status === "in_progress" && (
-                  <>
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "resolved" })} disabled={updateStatusMutation.isPending} data-testid="button-status-resolved">
-                      <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                      {lang === "de" ? "Gelöst" : "Risolto"}
-                    </Button>
-                    <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
-                      <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                      {lang === "de" ? "Schließen" : "Chiudere"}
-                    </Button>
-                  </>
-                )}
-                {selectedComplaint?.status === "resolved" && (
-                  <>
-                    <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
-                      <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                      {lang === "de" ? "Schließen" : "Chiudere"}
-                    </Button>
-                    <Button size="sm" variant="outline" className="text-foreground" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
-                      <Clock className="h-3.5 w-3.5 mr-1.5" />
-                      {lang === "de" ? "Wieder öffnen" : "Riaprire"}
-                    </Button>
-                  </>
-                )}
-                {selectedComplaint?.status === "closed" && (
-                  <Button size="sm" variant="outline" className="text-foreground" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
+            <div className="flex flex-wrap gap-2">
+              {selectedComplaint?.status === "open" && (
+                <>
+                  <Button size="sm" className="rounded-lg" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "in_progress" })} disabled={updateStatusMutation.isPending} data-testid="button-status-in_progress">
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5" />
+                    {lang === "de" ? "In Bearbeitung" : "In lavorazione"}
+                  </Button>
+                  <Button size="sm" variant="outline" className="rounded-lg" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
+                    <XCircle className="h-3.5 w-3.5 mr-1.5 text-destructive" />
+                    {lang === "de" ? "Schließen" : "Chiudere"}
+                  </Button>
+                </>
+              )}
+              {selectedComplaint?.status === "in_progress" && (
+                <>
+                  <Button size="sm" className="rounded-lg" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "resolved" })} disabled={updateStatusMutation.isPending} data-testid="button-status-resolved">
+                    <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                    {lang === "de" ? "Gelöst" : "Risolto"}
+                  </Button>
+                  <Button size="sm" variant="outline" className="rounded-lg" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
+                    <XCircle className="h-3.5 w-3.5 mr-1.5 text-destructive" />
+                    {lang === "de" ? "Schließen" : "Chiudere"}
+                  </Button>
+                </>
+              )}
+              {selectedComplaint?.status === "resolved" && (
+                <>
+                  <Button size="sm" variant="outline" className="rounded-lg" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "closed" })} disabled={updateStatusMutation.isPending} data-testid="button-status-closed">
+                    <XCircle className="h-3.5 w-3.5 mr-1.5 text-destructive" />
+                    {lang === "de" ? "Schließen" : "Chiudere"}
+                  </Button>
+                  <Button size="sm" variant="outline" className="rounded-lg" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
                     <Clock className="h-3.5 w-3.5 mr-1.5" />
                     {lang === "de" ? "Wieder öffnen" : "Riaprire"}
                   </Button>
-                )}
-              </div>
+                </>
+              )}
+              {selectedComplaint?.status === "closed" && (
+                <Button size="sm" variant="outline" className="rounded-lg" onClick={() => updateStatusMutation.mutate({ id: selectedComplaint.id, status: "open" })} disabled={updateStatusMutation.isPending} data-testid="button-status-open">
+                  <Clock className="h-3.5 w-3.5 mr-1.5" />
+                  {lang === "de" ? "Wieder öffnen" : "Riaprire"}
+                </Button>
+              )}
             </div>
+
             <Button
               variant="outline"
-              className="w-full text-foreground"
+              className="w-full rounded-lg"
               onClick={() => setShowStatusDialog(false)}
               data-testid="button-cancel-status"
             >
@@ -872,16 +862,18 @@ export default function SupplierComplaints() {
 
       <Dialog open={showCommentDialog} onOpenChange={setShowCommentDialog}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader>
+          <DialogHeader className="sr-only">
             <DialogTitle>{lang === "de" ? "Kommentare" : "Commenti"}</DialogTitle>
-            <DialogDescription>
-              {lang === "de" ? "Kommentare zur Reklamation anzeigen und hinzufügen" : "Visualizza e aggiungi commenti al reclamo"}
-            </DialogDescription>
           </DialogHeader>
           
+          <div className="px-5 pt-5 pb-2">
+            <h3 className="text-sm font-semibold">{lang === "de" ? "Kommentare" : "Commenti"}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">{lang === "de" ? "Kommentare anzeigen und hinzufügen" : "Visualizza e aggiungi commenti"}</p>
+          </div>
+
           {selectedComplaint && (
-            <div className="flex flex-col flex-1 min-h-0 space-y-4">
-              <div className="p-3 rounded-lg bg-muted/50 shrink-0">
+            <div className="flex flex-col flex-1 min-h-0 space-y-4 px-5 pb-5">
+              <div className="p-3 rounded-xl bg-muted/30 shrink-0">
                 <div className="font-medium text-sm">{selectedComplaint.title}</div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {selectedComplaint.restaurant?.companyName} • {formatShortDate(selectedComplaint.createdAt)}
@@ -949,16 +941,20 @@ export default function SupplierComplaints() {
 
       <Dialog open={showFollowUpDialog} onOpenChange={setShowFollowUpDialog}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
+          <DialogHeader className="sr-only">
             <DialogTitle>{lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}</DialogTitle>
-            <DialogDescription>
+          </DialogHeader>
+
+          <div className="px-5 pt-5 pb-2">
+            <h3 className="text-sm font-semibold">{lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
               {lang === "de"
                 ? "Passen Sie die Mengen an und legen Sie das Lieferdatum fest."
                 : "Regola le quantità e imposta la data di consegna."}
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-5 pb-5">
             <div className="space-y-3">
               <Label className="text-sm font-medium">{lang === "de" ? "Produkte" : "Prodotti"}</Label>
               {followUpItems.map((item, idx) => (
@@ -1048,11 +1044,12 @@ export default function SupplierComplaints() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" className="text-foreground" onClick={() => setShowFollowUpDialog(false)}>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setShowFollowUpDialog(false)}>
               {lang === "de" ? "Abbrechen" : "Annulla"}
             </Button>
             <Button
+              className="flex-1 rounded-lg"
               onClick={() => {
                 if (selectedComplaint && followUpDeliveryDate && followUpItems.length > 0) {
                   followUpOrderMutation.mutate({
@@ -1073,7 +1070,7 @@ export default function SupplierComplaints() {
               )}
               {lang === "de" ? "Nachlieferung bestätigen" : "Conferma riconsegna"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
