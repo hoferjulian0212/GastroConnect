@@ -468,32 +468,32 @@ export default function RestaurantOrders() {
     <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
       <Card className={`hover-elevate ${getStatusCardBg(order.status)}`}>
       <CardContent className="p-3 md:p-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-semibold text-sm md:text-base" data-testid={`text-supplier-${order.id}`}>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-sm md:text-base truncate" data-testid={`text-supplier-${order.id}`}>
                 {supplierName}
               </p>
-              <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs`} variant="outline">
+            </div>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs shrink-0`} variant="outline">
                 {getStatusIcon(order.status)}
                 <span className="ml-1">{getStatusLabel(order.status)}</span>
               </Badge>
-            </div>
-            <div className="flex items-center gap-3 mt-1 text-[11px] md:text-xs text-muted-foreground flex-wrap">
-              <span className="flex items-center gap-1">
-                <ShoppingBag className="h-3 w-3" />
+              <span className="flex items-center gap-1 text-[11px] md:text-xs text-muted-foreground">
+                <ShoppingBag className="h-3 w-3 shrink-0" />
                 #{order.id.slice(0, 8)}
               </span>
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
+              <span className="flex items-center gap-1 text-[11px] md:text-xs text-muted-foreground">
+                <Clock className="h-3 w-3 shrink-0" />
                 {format(new Date(order.createdAt), "dd.MM.yy", { locale: dateLocale })}
               </span>
-              <span>
+              <span className="text-[11px] md:text-xs text-muted-foreground">
                 {order.items?.length || 0} {t("common", "items")}
               </span>
               {order.createdByUser && (
-                <span className="flex items-center gap-1" data-testid={`text-created-by-${order.id}`}>
-                  <UserIcon className="h-3 w-3" />
+                <span className="flex items-center gap-1 text-[11px] md:text-xs text-muted-foreground" data-testid={`text-created-by-${order.id}`}>
+                  <UserIcon className="h-3 w-3 shrink-0" />
                   {order.createdByUser.name}
                 </span>
               )}
@@ -591,7 +591,7 @@ export default function RestaurantOrders() {
                         {i === 3 && <Truck className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
                         {i === 4 && <CheckCircle className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
                       </div>
-                      <span className={`text-[9px] md:text-[10px] mt-0.5 text-center leading-tight ${isCurrent ? "font-semibold text-foreground" : isActive ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
+                      <span className={`hidden md:block text-[10px] mt-0.5 text-center leading-tight ${isCurrent ? "font-semibold text-foreground" : isActive ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
                         {getStatusLabel(step)}
                       </span>
                     </div>
@@ -620,28 +620,29 @@ export default function RestaurantOrders() {
             )}
           </div>
           {(canEditOrder(order) || canRequestChange(order)) && (
-            <div className="flex gap-1.5">
+            <div className="grid grid-cols-2 gap-1.5 w-full md:flex md:w-auto">
               {canEditOrder(order) && (
                 <>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="text-xs"
                     onClick={(e) => { e.stopPropagation(); openEditDialog(order); }}
                     data-testid={`button-edit-order-${order.id}`}
                   >
-                    <Pencil className="h-3 w-3 mr-1" />
-                    {t("orders", "editOrder")}
+                    <Pencil className="h-3 w-3 mr-1 shrink-0" />
+                    <span className="truncate">{t("orders", "editOrder")}</span>
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="destructive"
                     size="sm"
-                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                    className="text-xs"
                     onClick={(e) => { e.stopPropagation(); cancelOrderMutation.mutate(order.id); }}
                     disabled={cancelOrderMutation.isPending}
                     data-testid={`button-cancel-order-${order.id}`}
                   >
-                    <XCircle className="h-3 w-3 mr-1" />
-                    {lang === "de" ? "Stornieren" : "Annullare"}
+                    <XCircle className="h-3 w-3 mr-1 shrink-0" />
+                    <span className="truncate">{lang === "de" ? "Stornieren" : "Annullare"}</span>
                   </Button>
                 </>
               )}
@@ -649,11 +650,12 @@ export default function RestaurantOrders() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="text-xs"
                   onClick={(e) => { e.stopPropagation(); setChangeRequestOrder(order); }}
                   data-testid={`button-change-request-${order.id}`}
                 >
-                  <MessageSquareText className="h-3 w-3 mr-1" />
-                  {t("orders", "requestChange")}
+                  <MessageSquareText className="h-3 w-3 mr-1 shrink-0" />
+                  <span className="truncate">{t("orders", "requestChange")}</span>
                 </Button>
               )}
             </div>

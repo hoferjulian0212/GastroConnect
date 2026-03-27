@@ -477,20 +477,22 @@ export default function SupplierComplaints() {
                     </Avatar>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        {(complaint as any).priority === "urgent" && (
-                          <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
-                            PRIORIT&Auml;T
+                      <div className="mb-0.5">
+                        <span className="font-medium text-sm line-clamp-1">{complaint.title}</span>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <Badge variant={statusInfo.variant} className="text-[9px] px-1.5 py-0 h-4 shrink-0">
+                            <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
+                            {statusInfo.label}
                           </Badge>
-                        )}
-                        <span className="font-medium text-sm truncate">{complaint.title}</span>
-                        <Badge variant={statusInfo.variant} className="text-[9px] px-1.5 py-0 h-4 shrink-0">
-                          <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
-                          {statusInfo.label}
-                        </Badge>
+                          {(complaint as any).priority === "urgent" && (
+                            <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
+                              PRIORITÄT
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-1">{complaint.description}</p>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] md:text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-2 mt-1 text-[10px] md:text-[11px] text-muted-foreground flex-wrap">
                         <span>{complaint.restaurant?.companyName || t("common", "unknown")}</span>
                         <span>·</span>
                         <span className="font-mono font-semibold">#{complaint.orderId.substring(0, 8)}</span>

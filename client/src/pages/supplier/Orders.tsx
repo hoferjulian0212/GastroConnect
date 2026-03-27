@@ -301,75 +301,73 @@ export default function SupplierOrders() {
     <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
       <Card className={`hover-elevate ${getStatusCardBg(order.status)}`}>
       <CardContent className="p-3 md:p-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-semibold text-sm md:text-base" data-testid={`text-restaurant-${order.id}`}>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-sm md:text-base truncate" data-testid={`text-restaurant-${order.id}`}>
                 {restaurantName}
               </p>
-              <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs`} variant="outline">
+              <p className="text-base md:text-lg font-bold shrink-0" data-testid={`text-total-${order.id}`}>{order.totalAmount}€</p>
+            </div>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <Badge className={`${getStatusColor(order.status)} text-[10px] md:text-xs shrink-0`} variant="outline">
                 {getStatusIcon(order.status)}
                 <span className="ml-1">{getOrderStatus(order.status, lang, true)}</span>
               </Badge>
-            </div>
-            <div className="flex items-center gap-3 mt-1 text-[11px] md:text-xs text-muted-foreground flex-wrap">
-              <span className="flex items-center gap-1">
-                <ShoppingBag className="h-3 w-3" />
+              <span className="flex items-center gap-1 text-[11px] md:text-xs text-muted-foreground">
+                <ShoppingBag className="h-3 w-3 shrink-0" />
                 #{order.id.slice(0, 8)}
               </span>
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
+              <span className="flex items-center gap-1 text-[11px] md:text-xs text-muted-foreground">
+                <Clock className="h-3 w-3 shrink-0" />
                 {format(new Date(order.createdAt), "dd.MM.yy", { locale: dateFnsLocale })}
               </span>
-              <span>
+              <span className="text-[11px] md:text-xs text-muted-foreground">
                 {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
               </span>
               {order.createdByUser && (
-                <span className="flex items-center gap-1" data-testid={`text-created-by-${order.id}`}>
-                  <UserIcon className="h-3 w-3" />
+                <span className="flex items-center gap-1 text-[11px] md:text-xs text-muted-foreground" data-testid={`text-created-by-${order.id}`}>
+                  <UserIcon className="h-3 w-3 shrink-0" />
                   {order.createdByUser.name}
                 </span>
               )}
             </div>
           </div>
-          <div className="text-right shrink-0" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base md:text-lg font-bold" data-testid={`text-total-${order.id}`}>{order.totalAmount}€</p>
-            {order.status !== "delivered" && order.status !== "cancelled" && (
-              <div className="flex flex-wrap gap-1.5">
-                {order.status === "pending" && (
-                  <Button size="sm" onClick={() => setConfirmOrder(order)} data-testid={`button-status-confirmed-${order.id}`}>
-                    <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                    {lang === "de" ? "Bestätigen" : "Confermare"}
-                  </Button>
-                )}
-                {(order.status === "confirmed" || order.status === "partially_confirmed") && (
-                  <Button size="sm" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-status-in_delivery-${order.id}`}>
-                    <Truck className="h-3.5 w-3.5 mr-1" />
-                    {lang === "de" ? "In Lieferung" : "In consegna"}
-                  </Button>
-                )}
-                {order.status === "in_delivery" && (
-                  <Button size="sm" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-delivered-${order.id}`}>
-                    <Package className="h-3.5 w-3.5 mr-1" />
-                    {lang === "de" ? "Geliefert" : "Consegnato"}
-                  </Button>
-                )}
-                {order.status !== "in_delivery" && (
-                  <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-cancelled-${order.id}`}>
-                    <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
-                    {lang === "de" ? "Stornieren" : "Annullare"}
-                  </Button>
-                )}
-                {!order.requestedDeliveryDate && order.status !== "pending" && (
-                  <Button size="sm" variant="outline" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-set-date-${order.id}`}>
-                    <CalendarDays className="h-3.5 w-3.5 mr-1 text-purple-600" />
-                    {lang === "de" ? "Datum setzen" : "Imposta data"}
-                  </Button>
-                )}
-              </div>
+        </div>
+        {order.status !== "delivered" && order.status !== "cancelled" && (
+          <div className="mt-2 grid grid-cols-2 gap-1.5" onClick={(e) => e.stopPropagation()}>
+            {order.status === "pending" && (
+              <Button size="sm" className="text-xs" onClick={() => setConfirmOrder(order)} data-testid={`button-status-confirmed-${order.id}`}>
+                <CheckCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
+                <span className="truncate">{lang === "de" ? "Bestätigen" : "Confermare"}</span>
+              </Button>
+            )}
+            {(order.status === "confirmed" || order.status === "partially_confirmed") && (
+              <Button size="sm" className="text-xs" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-status-in_delivery-${order.id}`}>
+                <Truck className="h-3.5 w-3.5 mr-1 shrink-0" />
+                <span className="truncate">{lang === "de" ? "In Lieferung" : "In consegna"}</span>
+              </Button>
+            )}
+            {order.status === "in_delivery" && (
+              <Button size="sm" className="text-xs" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-delivered-${order.id}`}>
+                <Package className="h-3.5 w-3.5 mr-1 shrink-0" />
+                <span className="truncate">{lang === "de" ? "Geliefert" : "Consegnato"}</span>
+              </Button>
+            )}
+            {order.status !== "in_delivery" && (
+              <Button size="sm" variant="destructive" className="text-xs" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-cancelled-${order.id}`}>
+                <XCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
+                <span className="truncate">{lang === "de" ? "Stornieren" : "Annullare"}</span>
+              </Button>
+            )}
+            {!order.requestedDeliveryDate && order.status !== "pending" && (
+              <Button size="sm" variant="outline" className="text-xs" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-set-date-${order.id}`}>
+                <CalendarDays className="h-3.5 w-3.5 mr-1 shrink-0 text-purple-600" />
+                <span className="truncate">{lang === "de" ? "Datum setzen" : "Imposta data"}</span>
+              </Button>
             )}
           </div>
-        </div>
+        )}
 
         {order.status === "in_delivery" && order.requestedDeliveryDate && (
           <div className="mt-2 flex items-center gap-2 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 px-3 py-2" data-testid={`banner-delivery-date-${order.id}`}>
@@ -448,7 +446,7 @@ export default function SupplierOrders() {
                         {i === 3 && <Truck className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
                         {i === 4 && <CheckCircle className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
                       </div>
-                      <span className={`text-[9px] md:text-[10px] mt-0.5 text-center leading-tight ${isCurrent ? "font-semibold text-foreground" : isActive ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
+                      <span className={`hidden md:block text-[10px] mt-0.5 text-center leading-tight ${isCurrent ? "font-semibold text-foreground" : isActive ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
                         {getOrderStatus(step, lang, true)}
                       </span>
                     </div>
