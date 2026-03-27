@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, Product, ConversationWithUser, ComplaintWithDetails } from "@shared/schema";
@@ -713,14 +713,12 @@ export default function SupplierHome() {
                 {actionRequired!.staleOrders.map((order) => (
                   <div
                     key={order.id}
-                    className="p-2.5 md:p-3 rounded-xl border border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10 transition-all duration-200 hover:shadow-md"
+                    className="p-2.5 md:p-3 rounded-xl border border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10 transition-all duration-200 hover:shadow-md cursor-pointer active:scale-[0.98]"
+                    onClick={() => navigate(`/supplier/orders?orderId=${order.id}`)}
                     data-testid={`stale-order-${order.id}`}
                   >
                     <div className="flex items-center justify-between">
-                      <div
-                        className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
-                        onClick={() => setDetailOrder(order)}
-                      >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
                           <Clock className="h-4 w-4 text-red-600" />
                         </div>
@@ -739,17 +737,9 @@ export default function SupplierHome() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
                         <span className="text-sm font-bold">{order.totalAmount}€</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-[10px]"
-                          onClick={() => navigate(`/supplier/orders?orderId=${order.id}`)}
-                          data-testid={`stale-goto-order-${order.id}`}
-                        >
-                          <ArrowRight className="h-3 w-3" />
-                        </Button>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </div>
                   </div>
@@ -777,7 +767,8 @@ export default function SupplierHome() {
                   return (
                     <div
                       key={complaint.id}
-                      className={`p-2.5 md:p-3 rounded-xl border transition-all duration-200 hover:shadow-md ${complaint.priority === "urgent" ? "border-red-300 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10" : "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/10"}`}
+                      className={`p-2.5 md:p-3 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer active:scale-[0.98] ${complaint.priority === "urgent" ? "border-red-300 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10" : "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/10"}`}
+                      onClick={() => navigate(`/supplier/complaints?complaintId=${complaint.id}`)}
                       data-testid={`action-complaint-${complaint.id}`}
                     >
                       <div className="flex items-center justify-between">
@@ -808,15 +799,7 @@ export default function SupplierHome() {
                             </div>
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-[10px] shrink-0 ml-2"
-                          onClick={() => navigate(`/supplier/complaints?complaintId=${complaint.id}`)}
-                          data-testid={`action-goto-complaint-${complaint.id}`}
-                        >
-                          <ArrowRight className="h-3 w-3" />
-                        </Button>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
                       </div>
                     </div>
                   );
