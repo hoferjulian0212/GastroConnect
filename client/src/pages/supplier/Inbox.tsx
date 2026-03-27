@@ -939,7 +939,7 @@ export default function SupplierInbox() {
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className="text-xs flex-1 bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-lg"
+                                          className="text-xs flex-1 border-border/40 rounded-lg"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             if (nextStatus === "in_delivery") {
@@ -965,17 +965,17 @@ export default function SupplierInbox() {
                                           }}
                                           data-testid={`button-action-order-next-${order.id}`}
                                         >
-                                          <NextIcon className="h-3 w-3 mr-1 text-black" />
+                                          <NextIcon className="h-3 w-3 mr-1" />
                                           {nextLabel}
                                         </Button>
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className="text-xs bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-lg"
+                                          className="text-xs border-border/40 rounded-lg"
                                           onClick={() => { setOrderDetailId(order.id); setOpenActionsPopover(false); }}
                                           data-testid={`button-action-order-detail-${order.id}`}
                                         >
-                                          <Eye className="h-3 w-3 mr-1 text-black" />
+                                          <Eye className="h-3 w-3 mr-1" />
                                           Details
                                         </Button>
                                       </div>
@@ -1021,7 +1021,7 @@ export default function SupplierInbox() {
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className="text-xs flex-1 bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-lg"
+                                          className="text-xs flex-1 border-border/40 rounded-lg"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             apiRequest("PATCH", `/api/complaints/${complaint.id}`, { status: nextStatus, changedBy: currentUser?.id })
@@ -1038,17 +1038,17 @@ export default function SupplierInbox() {
                                           }}
                                           data-testid={`button-action-complaint-next-${complaint.id}`}
                                         >
-                                          <NextIcon className="h-3 w-3 mr-1 text-black" />
+                                          <NextIcon className="h-3 w-3 mr-1" />
                                           {nextLabel}
                                         </Button>
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className="text-xs bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-lg"
+                                          className="text-xs border-border/40 rounded-lg"
                                           onClick={() => { openComplaintDetailById(complaint.id); setOpenActionsPopover(false); }}
                                           data-testid={`button-action-complaint-detail-${complaint.id}`}
                                         >
-                                          <Eye className="h-3 w-3 mr-1 text-black" />
+                                          <Eye className="h-3 w-3 mr-1" />
                                           Details
                                         </Button>
                                       </div>
@@ -1069,21 +1069,21 @@ export default function SupplierInbox() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="w-full justify-center text-xs bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-xl h-9"
+                            className="w-full justify-center text-xs border-border/40 rounded-xl h-9"
                             onClick={() => { setOpenActionsPopover(false); setLocation(`/supplier/orders?restaurantId=${selectedConv.otherUser.id}`); }}
                             data-testid="button-view-all-orders"
                           >
-                            <ShoppingBag className="h-3.5 w-3.5 mr-2 text-black" />
+                            <ShoppingBag className="h-3.5 w-3.5 mr-2" />
                             {t("inbox", "viewAllOrders")}
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="w-full justify-center text-xs bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-xl h-9"
+                            className="w-full justify-center text-xs border-border/40 rounded-xl h-9"
                             onClick={() => { setOpenActionsPopover(false); setLocation(`/supplier/complaints?restaurantId=${selectedConv.otherUser.id}`); }}
                             data-testid="button-view-all-complaints"
                           >
-                            <AlertCircle className="h-3.5 w-3.5 mr-2 text-black" />
+                            <AlertCircle className="h-3.5 w-3.5 mr-2" />
                             {t("inbox", "viewAllComplaints")}
                           </Button>
                         </div>

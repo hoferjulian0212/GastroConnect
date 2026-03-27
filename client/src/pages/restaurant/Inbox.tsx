@@ -1270,21 +1270,21 @@ export default function RestaurantInbox() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="w-full justify-center text-xs bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-xl h-9"
+                              className="w-full justify-center text-xs border-border/40 rounded-xl h-9"
                               onClick={() => { setOpenActionsPopover(false); setLocation(`/restaurant/orders?supplierId=${selectedConv.otherUser.id}`); }}
                               data-testid="button-view-all-orders"
                             >
-                              <ShoppingBag className="h-3.5 w-3.5 mr-2 text-black" />
+                              <ShoppingBag className="h-3.5 w-3.5 mr-2" />
                               {t("inbox", "viewAllOrders")}
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="w-full justify-center text-xs bg-white dark:bg-white text-black border-border/40 hover:bg-gray-50 dark:hover:bg-gray-100 rounded-xl h-9"
+                              className="w-full justify-center text-xs border-border/40 rounded-xl h-9"
                               onClick={() => { setOpenActionsPopover(false); setLocation(`/restaurant/complaints?supplierId=${selectedConv.otherUser.id}`); }}
                               data-testid="button-view-all-complaints"
                             >
-                              <AlertCircle className="h-3.5 w-3.5 mr-2 text-black" />
+                              <AlertCircle className="h-3.5 w-3.5 mr-2" />
                               {t("inbox", "viewAllComplaints")}
                             </Button>
                           </div>
