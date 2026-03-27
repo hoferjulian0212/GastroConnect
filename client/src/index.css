@@ -452,16 +452,17 @@ html, body, #root {
 }
 
 .floating-nav {
-  background: rgba(255, 255, 255, 0.50);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
 }
 .dark .floating-nav {
-  background: rgba(23, 23, 23, 0.45);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(23, 23, 23, 0.50);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
-
 
 .liquid-metaball {
   position: absolute;
@@ -473,24 +474,26 @@ html, body, #root {
   -webkit-backdrop-filter: blur(50px) saturate(220%);
   backdrop-filter: blur(50px) saturate(220%);
   background: radial-gradient(
-    ellipse at center,
-    rgba(255, 255, 255, 0.45),
-    rgba(255, 255, 255, 0.1)
+    ellipse at 50% 35%,
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0.15)
   );
   box-shadow:
-    inset 0 1px 4px rgba(255, 255, 255, 0.5),
-    inset 0 -1px 4px rgba(255, 255, 255, 0.2);
+    inset 0 1px 6px rgba(255, 255, 255, 0.55),
+    inset 0 -1px 4px rgba(255, 255, 255, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.04);
   will-change: transform, width, clip-path;
   overflow: hidden;
   clip-path: inset(0 round 9999px);
+  transform-origin: center center;
 }
 .liquid-metaball-glow {
   position: absolute;
   inset: 0;
   background: radial-gradient(
-    circle at 50% 30%,
-    rgba(255, 255, 255, 0.35),
-    transparent 70%
+    circle at 50% 25%,
+    rgba(255, 255, 255, 0.4),
+    transparent 65%
   );
   pointer-events: none;
 }
@@ -500,25 +503,26 @@ html, body, #root {
   left: -20%;
   width: 50%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
   transform: skewX(-20deg);
   pointer-events: none;
 }
 .dark .liquid-metaball {
   background: radial-gradient(
-    ellipse at center,
-    rgba(255, 255, 255, 0.12),
-    rgba(255, 255, 255, 0.03)
+    ellipse at 50% 35%,
+    rgba(255, 255, 255, 0.14),
+    rgba(255, 255, 255, 0.04)
   );
   box-shadow:
     inset 0 1px 4px rgba(255, 255, 255, 0.15),
-    inset 0 -1px 4px rgba(255, 255, 255, 0.05);
+    inset 0 -1px 4px rgba(255, 255, 255, 0.05),
+    0 2px 8px rgba(0, 0, 0, 0.12);
 }
 .dark .liquid-metaball-glow {
   background: radial-gradient(
-    circle at 50% 30%,
-    rgba(255, 255, 255, 0.1),
-    transparent 70%
+    circle at 50% 25%,
+    rgba(255, 255, 255, 0.12),
+    transparent 65%
   );
 }
 .dark .liquid-metaball-shine {

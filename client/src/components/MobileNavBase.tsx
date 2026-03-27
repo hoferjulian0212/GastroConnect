@@ -29,42 +29,57 @@ function clamp(val: number, min: number, max: number) {
   return Math.max(min, Math.min(max, val));
 }
 
-function generateBlobPath(w: number, h: number, neck: number, vel: number): string {
+function f(n: number): string {
+  return n.toFixed(1);
+}
+
+function generateDropletPath(w: number, h: number, vel: number): string {
   if (w < 2 || h < 2) return "M 0,0 Z";
 
-  const ry = h / 2;
+  const cy = h / 2;
+  const absVel = Math.abs(vel);
+  const d = Math.min(absVel / 320, 0.8);
 
-  if (neck < 0.01) {
-    const r = Math.min(ry, w / 2);
-    return `M ${r},0 L ${w - r},0 A ${r},${ry} 0 0 1 ${w - r},${h} L ${r},${h} A ${r},${ry} 0 0 1 ${r},0 Z`;
-  }
+  const squeeze = d * cy * 0.35;
+  const narrow = d * Math.min(cy, w * 0.42) * 0.28;
 
-  const r = Math.min(ry, w / 4);
-  const neckDepth = ry * neck * 0.75;
+  const k = 0.6;
+  const R = Math.min(cy, w * 0.48);
 
-  const velShift = clamp(vel / 800, -0.12, 0.12);
-  const midX = w / 2 + w * velShift;
+  const leftSqueeze = vel > 0 ? squeeze : 0;
+  const leftNarrow = vel > 0 ? narrow : 0;
+  const rightSqueeze = vel < 0 ? squeeze : 0;
+  const rightNarrow = vel < 0 ? narrow : 0;
 
-  const cp1x = lerp(r * 1.2, midX, 0.5);
-  const cp2x = lerp(midX, w - r * 1.2, 0.5);
+  const Rl = vel > 0 ? R * (1 - d * 0.15) : R;
+  const Rr = vel < 0 ? R * (1 - d * 0.15) : R;
+
+  const tlY = leftSqueeze;
+  const blY = h - leftSqueeze;
+  const trY = rightSqueeze;
+  const brY = h - rightSqueeze;
+  const lX = leftNarrow;
+  const rX = w - rightNarrow;
 
   return [
-    `M ${r.toFixed(1)},0`,
-    `C ${cp1x.toFixed(1)},${neckDepth.toFixed(1)} ${cp2x.toFixed(1)},${neckDepth.toFixed(1)} ${(w - r).toFixed(1)},0`,
-    `A ${r.toFixed(1)},${ry.toFixed(1)} 0 0 1 ${(w - r).toFixed(1)},${h.toFixed(1)}`,
-    `C ${cp2x.toFixed(1)},${(h - neckDepth).toFixed(1)} ${cp1x.toFixed(1)},${(h - neckDepth).toFixed(1)} ${r.toFixed(1)},${h.toFixed(1)}`,
-    `A ${r.toFixed(1)},${ry.toFixed(1)} 0 0 1 ${r.toFixed(1)},0`,
+    `M ${f(Rl)},${f(tlY)}`,
+    `L ${f(w - Rr)},${f(trY)}`,
+    `C ${f(w - Rr + Rr * k)},${f(trY)} ${f(rX)},${f(lerp(trY, cy, k))} ${f(rX)},${f(cy)}`,
+    `C ${f(rX)},${f(lerp(cy, brY, 1 - k))} ${f(w - Rr + Rr * k)},${f(brY)} ${f(w - Rr)},${f(brY)}`,
+    `L ${f(Rl)},${f(blY)}`,
+    `C ${f(Rl - Rl * k)},${f(blY)} ${f(lX)},${f(lerp(cy, blY, 1 - k))} ${f(lX)},${f(cy)}`,
+    `C ${f(lX)},${f(lerp(tlY, cy, k))} ${f(Rl - Rl * k)},${f(tlY)} ${f(Rl)},${f(tlY)}`,
     "Z",
   ].join(" ");
 }
 
-const DRAG_THRESHOLD = 8;
+const DRAG_THRESHOLD = 6;
 
 const snapSpring = {
   type: "spring" as const,
-  stiffness: 420,
-  damping: 32,
-  mass: 0.8,
+  stiffness: 380,
+  damping: 30,
+  mass: 0.7,
 };
 
 export function MobileNavBase({
@@ -88,17 +103,15 @@ export function MobileNavBase({
 
   const blobX = useMotionValue(0);
   const blobW = useMotionValue(72);
-  const blobNeck = useMotionValue(0);
 
   const springX = useSpring(blobX, snapSpring);
   const springW = useSpring(blobW, snapSpring);
-  const springNeck = useSpring(blobNeck, { stiffness: 450, damping: 25, mass: 0.5 });
 
   const rawVelocity = useMotionValue(0);
-  const smoothVelocity = useSpring(rawVelocity, { stiffness: 300, damping: 30 });
+  const smoothVelocity = useSpring(rawVelocity, { stiffness: 220, damping: 20, mass: 0.6 });
 
-  const scaleX = useTransform(smoothVelocity, (v) => 1 + Math.min(Math.abs(v) / 900, 0.12));
-  const scaleY = useTransform(smoothVelocity, (v) => 1 - Math.min(Math.abs(v) / 1100, 0.08));
+  const scaleX = useTransform(smoothVelocity, (v) => 1 + Math.min(Math.abs(v) / 1200, 0.05));
+  const scaleY = useTransform(smoothVelocity, (v) => 1 - Math.min(Math.abs(v) / 1500, 0.03));
 
   const pointerDown = useRef(false);
   const hasDragged = useRef(false);
@@ -112,11 +125,10 @@ export function MobileNavBase({
     const el = glassRef.current;
     if (!el) return;
     const w = springW.get();
-    const neck = springNeck.get();
     const vel = smoothVelocity.get();
     const h = cachedHeight.current;
-    el.style.clipPath = `path('${generateBlobPath(w, h, neck, vel)}')`;
-  }, [springW, springNeck, smoothVelocity]);
+    el.style.clipPath = `path('${generateDropletPath(w, h, vel)}')`;
+  }, [springW, smoothVelocity]);
 
   useEffect(() => {
     let raf = 0;
@@ -126,7 +138,6 @@ export function MobileNavBase({
 
     const unsubs = [
       springW.on("change", schedule),
-      springNeck.on("change", schedule),
       smoothVelocity.on("change", schedule),
     ];
 
@@ -136,7 +147,7 @@ export function MobileNavBase({
     });
 
     return () => { unsubs.forEach((fn) => fn()); if (raf) cancelAnimationFrame(raf); };
-  }, [springW, springNeck, smoothVelocity, updateClipPath]);
+  }, [springW, smoothVelocity, updateClipPath]);
 
   const isMoreActive = moreMenuItems.some(
     (item) => location === item.url || location.startsWith(item.url)
@@ -171,9 +182,8 @@ export function MobileNavBase({
     if (!m) return;
     blobX.set(m.x);
     blobW.set(m.width);
-    blobNeck.set(0);
     rawVelocity.set(0);
-  }, [getItemMeasurements, blobX, blobW, blobNeck, rawVelocity]);
+  }, [getItemMeasurements, blobX, blobW, rawVelocity]);
 
   useEffect(() => {
     const activeIdx = getActiveIndex();
@@ -183,10 +193,8 @@ export function MobileNavBase({
       if (m) {
         springX.jump(m.x);
         springW.jump(m.width);
-        springNeck.jump(0);
         blobX.set(m.x);
         blobW.set(m.width);
-        blobNeck.set(0);
       }
     }
   }, []);
@@ -229,50 +237,8 @@ export function MobileNavBase({
     if (!firstM || !lastM) return;
 
     const clampedX = clamp(targetX, firstM.x, lastM.x);
-    const refW = blobW.get() || 72;
-    const targetCenter = clampedX + refW / 2;
-
-    let srcIdx = 0;
-    let tgtIdx = 0;
-
-    for (let i = 0; i < measurements.length - 1; i++) {
-      if (targetCenter >= measurements[i].center && targetCenter <= measurements[i + 1].center) {
-        srcIdx = i;
-        tgtIdx = i + 1;
-        break;
-      }
-    }
-
-    if (targetCenter <= measurements[0].center) {
-      srcIdx = 0;
-      tgtIdx = 0;
-    } else if (targetCenter >= measurements[measurements.length - 1].center) {
-      srcIdx = measurements.length - 1;
-      tgtIdx = measurements.length - 1;
-    }
-
-    const mA = measurements[srcIdx];
-    const mB = measurements[tgtIdx];
-
-    if (srcIdx === tgtIdx) {
-      blobX.set(mA.x);
-      blobW.set(mA.width);
-      blobNeck.set(0);
-    } else {
-      const range = mB.center - mA.center;
-      const progress = range > 0 ? clamp((targetCenter - mA.center) / range, 0, 1) : 0;
-
-      const left = mA.x;
-      const right = mB.x + mB.width;
-      blobX.set(left);
-      blobW.set(right - left);
-
-      const gap = mB.x - (mA.x + mA.width);
-      const distFactor = clamp(gap / 80, 0, 1);
-      const progressFactor = 1 - Math.pow(Math.abs(2 * progress - 1), 1.5);
-      blobNeck.set(distFactor * progressFactor * 0.85);
-    }
-  }, [getItemMeasurements, blobX, blobW, blobNeck, rawVelocity]);
+    blobX.set(clampedX);
+  }, [getItemMeasurements, blobX, rawVelocity]);
 
   const snapToClosest = useCallback(() => {
     const measurements = getItemMeasurements();
