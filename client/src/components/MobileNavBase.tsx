@@ -29,11 +29,11 @@ function clamp(val: number, min: number, max: number) {
   return Math.max(min, Math.min(max, val));
 }
 
-function f(n: number): string {
+function fmt(n: number): string {
   return n.toFixed(1);
 }
 
-function generateDropletPath(w: number, h: number, vel: number): string {
+function generateDropletPath(w: number, h: number, vel: number, oy: number = 0): string {
   if (w < 2 || h < 2) return "M 0,0 Z";
 
   const cy = h / 2;
@@ -54,21 +54,22 @@ function generateDropletPath(w: number, h: number, vel: number): string {
   const Rl = vel > 0 ? R * (1 - d * 0.15) : R;
   const Rr = vel < 0 ? R * (1 - d * 0.15) : R;
 
-  const tlY = leftSqueeze;
-  const blY = h - leftSqueeze;
-  const trY = rightSqueeze;
-  const brY = h - rightSqueeze;
+  const tlY = leftSqueeze + oy;
+  const blY = h - leftSqueeze + oy;
+  const trY = rightSqueeze + oy;
+  const brY = h - rightSqueeze + oy;
+  const midY = cy + oy;
   const lX = leftNarrow;
   const rX = w - rightNarrow;
 
   return [
-    `M ${f(Rl)},${f(tlY)}`,
-    `L ${f(w - Rr)},${f(trY)}`,
-    `C ${f(w - Rr + Rr * k)},${f(trY)} ${f(rX)},${f(lerp(trY, cy, k))} ${f(rX)},${f(cy)}`,
-    `C ${f(rX)},${f(lerp(cy, brY, 1 - k))} ${f(w - Rr + Rr * k)},${f(brY)} ${f(w - Rr)},${f(brY)}`,
-    `L ${f(Rl)},${f(blY)}`,
-    `C ${f(Rl - Rl * k)},${f(blY)} ${f(lX)},${f(lerp(cy, blY, 1 - k))} ${f(lX)},${f(cy)}`,
-    `C ${f(lX)},${f(lerp(tlY, cy, k))} ${f(Rl - Rl * k)},${f(tlY)} ${f(Rl)},${f(tlY)}`,
+    `M ${fmt(Rl)},${fmt(tlY)}`,
+    `L ${fmt(w - Rr)},${fmt(trY)}`,
+    `C ${fmt(w - Rr + Rr * k)},${fmt(trY)} ${fmt(rX)},${fmt(lerp(trY, midY, k))} ${fmt(rX)},${fmt(midY)}`,
+    `C ${fmt(rX)},${fmt(lerp(midY, brY, 1 - k))} ${fmt(w - Rr + Rr * k)},${fmt(brY)} ${fmt(w - Rr)},${fmt(brY)}`,
+    `L ${fmt(Rl)},${fmt(blY)}`,
+    `C ${fmt(Rl - Rl * k)},${fmt(blY)} ${fmt(lX)},${fmt(lerp(midY, blY, 1 - k))} ${fmt(lX)},${fmt(midY)}`,
+    `C ${fmt(lX)},${fmt(lerp(tlY, midY, k))} ${fmt(Rl - Rl * k)},${fmt(tlY)} ${fmt(Rl)},${fmt(tlY)}`,
     "Z",
   ].join(" ");
 }
@@ -94,9 +95,11 @@ export function MobileNavBase({
   const { lang } = useLanguage();
   const t = useT(lang);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [navWidth, setNavWidth] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const glassRef = useRef<HTMLDivElement>(null);
+  const activeOverlayRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const totalItems = mainNavItems.length + 1;
   const cachedHeight = useRef(48);
@@ -110,8 +113,7 @@ export function MobileNavBase({
   const rawVelocity = useMotionValue(0);
   const smoothVelocity = useSpring(rawVelocity, { stiffness: 220, damping: 20, mass: 0.6 });
 
-  const scaleX = useTransform(smoothVelocity, (v) => 1 + Math.min(Math.abs(v) / 1200, 0.05));
-  const scaleY = useTransform(smoothVelocity, (v) => 1 - Math.min(Math.abs(v) / 1500, 0.03));
+  const negSpringX = useTransform(springX, (v) => -v);
 
   const pointerDown = useRef(false);
   const hasDragged = useRef(false);
@@ -122,12 +124,13 @@ export function MobileNavBase({
   const pointerId = useRef<number | null>(null);
 
   const updateClipPath = useCallback(() => {
-    const el = glassRef.current;
-    if (!el) return;
     const w = springW.get();
     const vel = smoothVelocity.get();
     const h = cachedHeight.current;
-    el.style.clipPath = `path('${generateDropletPath(w, h, vel)}')`;
+    const blobPath = generateDropletPath(w, h, vel);
+    if (glassRef.current) glassRef.current.style.clipPath = `path('${blobPath}')`;
+    const overlayPath = generateDropletPath(w, h, vel, 4);
+    if (activeOverlayRef.current) activeOverlayRef.current.style.clipPath = `path('${overlayPath}')`;
   }, [springW, smoothVelocity]);
 
   useEffect(() => {
@@ -143,6 +146,7 @@ export function MobileNavBase({
 
     requestAnimationFrame(() => {
       if (glassRef.current) cachedHeight.current = glassRef.current.offsetHeight;
+      if (containerRef.current) setNavWidth(containerRef.current.offsetWidth);
       updateClipPath();
     });
 
@@ -209,6 +213,7 @@ export function MobileNavBase({
   useEffect(() => {
     const handleResize = () => {
       if (glassRef.current) cachedHeight.current = glassRef.current.offsetHeight;
+      if (containerRef.current) setNavWidth(containerRef.current.offsetWidth);
       const activeIdx = getActiveIndex();
       if (activeIdx >= 0) requestAnimationFrame(() => {
         snapToIndex(activeIdx);
@@ -402,27 +407,64 @@ export function MobileNavBase({
           style={{ touchAction: "none" }}
         >
           {activeIndex >= 0 && (
-            <motion.div
-              ref={glassRef}
-              className="liquid-metaball"
-              style={{
-                x: springX,
-                width: springW,
-                scaleX,
-                scaleY,
-              }}
-            >
-              <div className="liquid-metaball-glow" />
-              <div className="liquid-metaball-shine" />
-            </motion.div>
+            <>
+              <motion.div
+                ref={glassRef}
+                className="liquid-metaball"
+                style={{
+                  x: springX,
+                  width: springW,
+                }}
+              >
+                <div className="liquid-metaball-glow" />
+                <div className="liquid-metaball-shine" />
+              </motion.div>
+
+              <motion.div
+                ref={activeOverlayRef}
+                className="active-items-overlay"
+                style={{
+                  x: springX,
+                  width: springW,
+                }}
+              >
+                {navWidth > 0 && (
+                  <motion.div
+                    className="flex items-stretch"
+                    style={{
+                      x: negSpringX,
+                      width: navWidth,
+                      height: "100%",
+                    }}
+                  >
+                    {mainNavItems.map((item) => (
+                      <div
+                        key={item.url}
+                        className="flex-1 flex flex-col items-center justify-center gap-1 py-3 nav-item-active"
+                      >
+                        <div className="inline-flex items-center justify-center">
+                          <item.icon className="h-5 w-5" />
+                        </div>
+                        <span className="text-[10px] font-medium text-center w-full">
+                          {item.title}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex-1 flex flex-col items-center justify-center gap-1 py-3 nav-item-active">
+                      <div className="inline-flex items-center justify-center">
+                        <MoreHorizontal className="h-5 w-5" />
+                      </div>
+                      <span className="text-[10px] font-medium text-center w-full">
+                        {t("common", "more")}
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            </>
           )}
 
           {mainNavItems.map((item, index) => {
-            const isActive = isMoreOpen
-              ? false
-              : item.url === rootPath
-                ? location === rootPath
-                : location.startsWith(item.url);
             const badgeCount = item.hasBadge ? getBadgeCount(item.url) : 0;
 
             return (
@@ -432,9 +474,8 @@ export function MobileNavBase({
                 ref={(el: HTMLAnchorElement | null) => {
                   itemRefs.current[index] = el;
                 }}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 relative z-10 py-3 select-none ${
-                  isActive ? "nav-item-active" : "nav-item-inactive"
-                }`}
+                className="flex-1 flex flex-col items-center justify-center gap-1 relative py-3 select-none nav-item-inactive"
+                style={{ zIndex: 5 }}
                 data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
               >
                 <motion.div
@@ -461,11 +502,8 @@ export function MobileNavBase({
               itemRefs.current[totalItems - 1] = el;
             }}
             onClick={() => setIsMoreOpen(!isMoreOpen)}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 relative z-10 py-3 select-none ${
-              isMoreActive || isMoreOpen
-                ? "nav-item-active"
-                : "nav-item-inactive"
-            }`}
+            className="flex-1 flex flex-col items-center justify-center gap-1 relative py-3 select-none nav-item-inactive"
+            style={{ zIndex: 5 }}
             data-testid={`${testIdPrefix}-mobile-nav-more`}
           >
             <motion.div
