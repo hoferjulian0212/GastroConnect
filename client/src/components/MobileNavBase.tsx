@@ -452,8 +452,9 @@ export function MobileNavBase({
           )}
 
           {mainNavItems.map((item, index) => {
-            const isActive =
-              item.url === rootPath
+            const isActive = isMoreOpen
+              ? false
+              : item.url === rootPath
                 ? location === rootPath
                 : location.startsWith(item.url);
             const badgeCount = item.hasBadge ? getBadgeCount(item.url) : 0;
