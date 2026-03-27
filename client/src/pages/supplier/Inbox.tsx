@@ -1371,13 +1371,13 @@ export default function SupplierInbox() {
                                               </div>
                                             </div>
                                           ) : (
-                                            <div className="flex gap-1.5 flex-wrap">
-                                              <Button size="sm" variant="outline" className="flex-1 text-xs h-8 min-w-0" onClick={() => setOrderDetailId(message.orderId)} data-testid={`button-order-details-${message.id}`}>
+                                            <div className="grid grid-cols-2 gap-1.5">
+                                              <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setOrderDetailId(message.orderId)} data-testid={`button-order-details-${message.id}`}>
                                                 <Eye className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                Details
+                                                <span className="truncate">Details</span>
                                               </Button>
                                               {orderStatus === "pending" && (
-                                                <Button size="sm" variant="outline" className="flex-1 text-xs h-8 min-w-0" onClick={async () => {
+                                                <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={async () => {
                                                   try {
                                                     const res = await fetch(`/api/orders/${message.orderId}`);
                                                     if (res.ok) {
@@ -1387,31 +1387,31 @@ export default function SupplierInbox() {
                                                   } catch {}
                                                 }} data-testid={`button-card-confirm-${message.id}`}>
                                                   <CheckCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                  {lang === "it" ? "Conferma" : "Bestätigen"}
+                                                  <span className="truncate">{lang === "it" ? "Conferma" : "Bestätigen"}</span>
                                                 </Button>
                                               )}
                                               {(orderStatus === "confirmed" || orderStatus === "partially_confirmed") && (
-                                                <Button size="sm" variant="outline" className="flex-1 text-xs h-8 min-w-0" onClick={() => setCardWizard({ orderId: message.orderId!, action: "in_delivery" })} data-testid={`button-card-in_delivery-${message.id}`}>
+                                                <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setCardWizard({ orderId: message.orderId!, action: "in_delivery" })} data-testid={`button-card-in_delivery-${message.id}`}>
                                                   <Truck className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                  {lang === "it" ? "Consegna" : "Lieferung"}
+                                                  <span className="truncate">{lang === "it" ? "Consegna" : "Lieferung"}</span>
                                                 </Button>
                                               )}
                                               {orderStatus === "in_delivery" && (
-                                                <Button size="sm" variant="outline" className="flex-1 text-xs h-8 min-w-0" onClick={() => setCardWizard({ orderId: message.orderId!, action: "delivered" })} data-testid={`button-card-delivered-${message.id}`}>
+                                                <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setCardWizard({ orderId: message.orderId!, action: "delivered" })} data-testid={`button-card-delivered-${message.id}`}>
                                                   <Package className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                  {lang === "it" ? "Consegnato" : "Geliefert"}
+                                                  <span className="truncate">{lang === "it" ? "Consegnato" : "Geliefert"}</span>
                                                 </Button>
                                               )}
                                               {orderStatus && !["delivered", "cancelled", "in_delivery"].includes(orderStatus) && (
-                                                <Button size="sm" variant="outline" className="flex-1 text-xs h-8 min-w-0" onClick={() => setCardWizard({ orderId: message.orderId!, action: "cancelled" })} data-testid={`button-card-cancel-${message.id}`}>
+                                                <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setCardWizard({ orderId: message.orderId!, action: "cancelled" })} data-testid={`button-card-cancel-${message.id}`}>
                                                   <XCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                  {lang === "it" ? "Annulla" : "Stornieren"}
+                                                  <span className="truncate">{lang === "it" ? "Annulla" : "Stornieren"}</span>
                                                 </Button>
                                               )}
                                               {orderStatus && !["delivered", "cancelled", "pending"].includes(orderStatus) && selectedConv && (
-                                                <Button size="sm" variant="outline" className="flex-1 text-xs h-8 min-w-0" onClick={() => setDeliveryDatePicker({ orderId: message.orderId!, restaurantId: selectedConv.restaurantId })} data-testid={`button-set-date-${message.id}`}>
+                                                <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setDeliveryDatePicker({ orderId: message.orderId!, restaurantId: selectedConv.restaurantId })} data-testid={`button-set-date-${message.id}`}>
                                                   <CalendarDays className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                  {lang === "it" ? "Data" : "Datum"}
+                                                  <span className="truncate">{lang === "it" ? "Data" : "Datum"}</span>
                                                 </Button>
                                               )}
                                             </div>
@@ -2430,15 +2430,15 @@ export default function SupplierInbox() {
                   </div>
                 )}
 
-                <div className="flex gap-2 flex-wrap">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Button
                     variant="outline"
-                    className="flex-1 text-foreground rounded-xl"
+                    className="text-foreground rounded-xl truncate"
                     onClick={openComplaintStatusDialog}
                     data-testid="button-change-complaint-status"
                   >
-                    <Settings className="h-4 w-4 mr-2" />
-                    {lang === "de" ? "Status ändern" : "Cambia stato"}
+                    <Settings className="h-4 w-4 mr-2 shrink-0" />
+                    <span className="truncate">{lang === "de" ? "Status ändern" : "Cambia stato"}</span>
                   </Button>
                   {complaintDetail.affectedItems && complaintDetail.status !== "closed" && complaintDetail.status !== "resolved" && (() => {
                     try {
@@ -2448,12 +2448,12 @@ export default function SupplierInbox() {
                   })() && (
                     <Button
                       variant="outline"
-                      className="flex-1 text-foreground rounded-xl"
+                      className="text-foreground rounded-xl truncate"
                       onClick={openFollowUpDialog}
                       data-testid="button-create-follow-up-order"
                     >
-                      <Truck className="h-4 w-4 mr-2" />
-                      {lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}
+                      <Truck className="h-4 w-4 mr-2 shrink-0" />
+                      <span className="truncate">{lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}</span>
                     </Button>
                   )}
                 </div>

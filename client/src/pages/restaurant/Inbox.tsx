@@ -1433,20 +1433,20 @@ export default function RestaurantInbox() {
                                             <span>{t("promotionsPage", "validUntil")} {format(endDate, "dd.MM.yyyy")}</span>
                                           </div>
                                           {!isExpired && (
-                                            <div className="flex gap-2 pt-1">
+                                            <div className="grid grid-cols-2 gap-2 pt-1">
                                               <Button
                                                 size="sm"
-                                                className="flex-1 h-8 text-xs"
+                                                className="h-8 text-xs truncate"
                                                 onClick={() => setLocation(`/restaurant/catalog?supplierId=${promoData.supplierId}`)}
                                                 data-testid={`button-order-promo-${message.id}`}
                                               >
-                                                <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
-                                                {t("promotionsPage", "orderNow")}
+                                                <ShoppingCart className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                                                <span className="truncate">{t("promotionsPage", "orderNow")}</span>
                                               </Button>
                                               <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="h-8 text-xs"
+                                                className="h-8 text-xs truncate"
                                                 onClick={async () => {
                                                   try {
                                                     await apiRequest("PATCH", `/api/messages/${message.id}/dismiss`);
@@ -1455,8 +1455,8 @@ export default function RestaurantInbox() {
                                                 }}
                                                 data-testid={`button-dismiss-promo-${message.id}`}
                                               >
-                                                <X className="h-3.5 w-3.5 mr-1" />
-                                                {t("promotionsPage", "notInterested")}
+                                                <X className="h-3.5 w-3.5 mr-1 shrink-0" />
+                                                <span className="truncate">{t("promotionsPage", "notInterested")}</span>
                                               </Button>
                                             </div>
                                           )}
@@ -1635,27 +1635,27 @@ export default function RestaurantInbox() {
                                                 ) : null}
                                               </div>
                                             ) : (
-                                              <div className="flex gap-1.5 flex-wrap">
-                                                <Button size="sm" variant="outline" className="flex-1 text-xs h-8 min-w-0" onClick={() => setOrderDetailId(message.orderId)} data-testid={`button-order-details-${message.id}`}>
+                                              <div className="grid grid-cols-2 gap-1.5">
+                                                <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setOrderDetailId(message.orderId)} data-testid={`button-order-details-${message.id}`}>
                                                   <Eye className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                  Details
+                                                  <span className="truncate">Details</span>
                                                 </Button>
                                                 {orderStatus === "pending" && (
-                                                  <Button size="sm" variant="outline" className="flex-1 text-xs h-8 min-w-0" onClick={() => setCardWizard({ orderId: message.orderId!, action: "edit" })} data-testid={`button-card-edit-${message.id}`}>
+                                                  <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setCardWizard({ orderId: message.orderId!, action: "edit" })} data-testid={`button-card-edit-${message.id}`}>
                                                     <Pencil className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                    {lang === "it" ? "Modifica" : "Bearbeiten"}
+                                                    <span className="truncate">{lang === "it" ? "Modifica" : "Bearbeiten"}</span>
                                                   </Button>
                                                 )}
                                                 {(orderStatus === "confirmed" || orderStatus === "partially_confirmed") && (
-                                                  <Button size="sm" variant="outline" className="flex-1 text-xs h-8 min-w-0" onClick={() => setCardWizard({ orderId: message.orderId!, action: "change_request", reason: "" })} data-testid={`button-card-change-request-${message.id}`}>
+                                                  <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setCardWizard({ orderId: message.orderId!, action: "change_request", reason: "" })} data-testid={`button-card-change-request-${message.id}`}>
                                                     <Pencil className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                    {lang === "it" ? "Modifica" : "Ändern"}
+                                                    <span className="truncate">{lang === "it" ? "Modifica" : "Ändern"}</span>
                                                   </Button>
                                                 )}
                                                 {orderStatus && !["delivered", "cancelled"].includes(orderStatus) && (
-                                                  <Button size="sm" variant="outline" className="flex-1 text-xs h-8 min-w-0" onClick={() => setCardWizard({ orderId: message.orderId!, action: "cancel" })} data-testid={`button-card-cancel-${message.id}`}>
+                                                  <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setCardWizard({ orderId: message.orderId!, action: "cancel" })} data-testid={`button-card-cancel-${message.id}`}>
                                                     <XCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                    {lang === "it" ? "Annulla" : "Stornieren"}
+                                                    <span className="truncate">{lang === "it" ? "Annulla" : "Stornieren"}</span>
                                                   </Button>
                                                 )}
                                               </div>
