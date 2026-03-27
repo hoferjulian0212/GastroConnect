@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, type LucideIcon } from "react";
 import { Link, useLocation } from "wouter";
-import { MoreHorizontal, X } from "lucide-react";
+import { MoreHorizontal, X, ChevronRight } from "lucide-react";
 import { useChat } from "@/context/ChatContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -337,6 +337,10 @@ export function MobileNavBase({
     pointerId.current = null;
   }, [snapToClosest, mainNavItems, setLocation]);
 
+  useEffect(() => {
+    if (isMoreOpen) setIsMoreOpen(false);
+  }, [location]);
+
   const handleMoreItemClick = (url: string) => {
     setIsMoreOpen(false);
     setLocation(url);
@@ -361,62 +365,58 @@ export function MobileNavBase({
       <AnimatePresence>
         {isMoreOpen && (
           <motion.div
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            onClick={() => setIsMoreOpen(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            data-testid={`${testIdPrefix}-mobile-nav-overlay`}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isMoreOpen && (
-          <motion.div
-            className="fixed z-50 border border-border rounded-2xl shadow-lg p-2 min-w-[180px] md:hidden floating-nav-menu"
-            style={{
-              bottom: "calc(80px + env(safe-area-inset-bottom, 16px))",
-              right: "20px",
-            }}
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            className="fixed inset-0 z-[60] md:hidden bg-background"
+            initial={{ opacity: 0, y: "100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ type: "spring", stiffness: 380, damping: 34, mass: 0.8 }}
             data-testid={`${testIdPrefix}-mobile-nav-more-menu`}
           >
-            <div className="flex items-center justify-between px-2 py-1 mb-1 border-b border-border">
-              <span className="text-xs font-medium text-muted-foreground">
-                {t("common", "moreOptions")}
-              </span>
-              <button
-                onClick={() => setIsMoreOpen(false)}
-                className="p-1 rounded hover-elevate"
-                data-testid={`button-close-${testIdPrefix}-more-menu`}
-              >
-                <X className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            </div>
-            {moreMenuItems.map((item) => {
-              const isActive =
-                location === item.url || location.startsWith(item.url);
-              return (
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between px-5 pt-[max(16px,env(safe-area-inset-top))] pb-3">
+                <h2 className="text-lg font-semibold text-foreground">
+                  {t("common", "more")}
+                </h2>
                 <button
-                  key={item.url}
-                  onClick={() => handleMoreItemClick(item.url)}
-                  className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors ${
-                    isActive
-                      ? "text-primary font-semibold"
-                      : "text-foreground hover-elevate"
-                  }`}
-                  data-testid={`${testIdPrefix}-mobile-nav-more-${item.url.split("/").pop()}`}
+                  onClick={() => setIsMoreOpen(false)}
+                  className="p-2 -mr-2 rounded-full hover:bg-muted/60 transition-colors"
+                  data-testid={`button-close-${testIdPrefix}-more-menu`}
                 >
-                  <item.icon className="h-4 w-4" />
-                  <span className="text-sm font-semibold">{item.title}</span>
+                  <X className="h-5 w-5 text-muted-foreground" />
                 </button>
-              );
-            })}
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-4 pb-[calc(80px+env(safe-area-inset-bottom,16px))]">
+                <div className="space-y-1">
+                  {moreMenuItems.map((item) => {
+                    const isActive =
+                      location === item.url || location.startsWith(item.url);
+                    return (
+                      <button
+                        key={item.url}
+                        onClick={() => handleMoreItemClick(item.url)}
+                        className={`flex items-center gap-4 w-full px-4 py-3.5 rounded-2xl text-left transition-colors ${
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-foreground hover:bg-muted/50 active:bg-muted/70"
+                        }`}
+                        data-testid={`${testIdPrefix}-mobile-nav-more-${item.url.split("/").pop()}`}
+                      >
+                        <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${
+                          isActive ? "bg-primary/15" : "bg-muted/60"
+                        }`}>
+                          <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                        </div>
+                        <span className={`flex-1 text-[15px] ${isActive ? "font-semibold" : "font-medium"}`}>
+                          {item.title}
+                        </span>
+                        <ChevronRight className={`h-4 w-4 ${isActive ? "text-primary/50" : "text-muted-foreground/40"}`} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
