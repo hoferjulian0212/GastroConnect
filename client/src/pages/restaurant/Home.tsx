@@ -680,19 +680,19 @@ export default function RestaurantHome() {
                             </div>
                           </div>
                           {isOverdue && (
-                            <div className="px-3 pb-3">
+                            <div className="px-3 pb-3 flex justify-end">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="w-full text-xs border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
+                                className="text-xs bg-white dark:bg-background text-foreground border-border h-7 px-2.5 rounded-lg"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate(`/restaurant/inbox?to=${order.supplierId}`);
                                 }}
                                 data-testid={`button-send-overdue-msg-${order.id}`}
                               >
-                                <Send className="h-3.5 w-3.5 mr-1.5" />
-                                {lang === "de" ? "Nachricht senden" : "Invia messaggio"}
+                                <Send className="h-3 w-3 mr-1" />
+                                {lang === "de" ? "Nachricht" : "Messaggio"}
                               </Button>
                             </div>
                           )}
