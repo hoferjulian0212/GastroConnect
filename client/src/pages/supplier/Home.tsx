@@ -788,12 +788,12 @@ export default function SupplierHome() {
                                 {statusLabels[lang]?.[complaint.status] || complaint.status}
                               </Badge>
                             </div>
-                            <div className="flex items-center gap-1 mt-0.5">
+                            <div className="flex items-center gap-1 mt-0.5 min-w-0">
                               <UserIcon className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
                               <p className="text-[10px] md:text-xs text-muted-foreground truncate">
                                 {complaint.restaurant?.companyName || complaint.restaurant?.name}
                               </p>
-                              <span className="text-[10px] text-muted-foreground/70 ml-1">
+                              <span className="text-[10px] text-muted-foreground/70 shrink-0 ml-1">
                                 {formatDistanceToNow(new Date(complaint.createdAt), { addSuffix: true, locale: dateLocale })}
                               </span>
                             </div>
@@ -837,30 +837,30 @@ export default function SupplierHome() {
           ) : detailedStats && (detailedStats.totalOrders > 0 || detailedStats.topProducts.length > 0) ? (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-2 md:gap-3">
-                <div className="rounded-xl border border-border bg-white dark:bg-gray-900 p-3 md:p-4">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Euro className="h-3.5 w-3.5 text-indigo-600" />
-                    <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t("supplierHome", "totalRevenue")}</span>
+                <div className="rounded-xl border border-border bg-white dark:bg-gray-900 p-3 md:p-4 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1 min-w-0">
+                    <Euro className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                    <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "totalRevenue")}</span>
                   </div>
-                  <p className="text-lg md:text-xl font-bold text-foreground" data-testid="text-total-revenue">
+                  <p className="text-lg md:text-xl font-bold text-foreground truncate" data-testid="text-total-revenue">
                     {detailedStats.totalRevenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
                   </p>
                 </div>
-                <div className="rounded-xl border border-border bg-white dark:bg-gray-900 p-3 md:p-4">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Hash className="h-3.5 w-3.5 text-emerald-600" />
-                    <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t("supplierHome", "totalOrders")}</span>
+                <div className="rounded-xl border border-border bg-white dark:bg-gray-900 p-3 md:p-4 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1 min-w-0">
+                    <Hash className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "totalOrders")}</span>
                   </div>
                   <p className="text-lg md:text-xl font-bold text-foreground" data-testid="text-total-orders">
                     {detailedStats.totalOrders}
                   </p>
                 </div>
-                <div className="rounded-xl border border-border bg-white dark:bg-gray-900 p-3 md:p-4">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <TrendingUp className="h-3.5 w-3.5 text-amber-600" />
-                    <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t("supplierHome", "avgOrderValue")}</span>
+                <div className="rounded-xl border border-border bg-white dark:bg-gray-900 p-3 md:p-4 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1 min-w-0">
+                    <TrendingUp className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                    <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "avgOrderValue")}</span>
                   </div>
-                  <p className="text-lg md:text-xl font-bold text-foreground" data-testid="text-avg-order-value">
+                  <p className="text-lg md:text-xl font-bold text-foreground truncate" data-testid="text-avg-order-value">
                     {detailedStats.avgOrderValue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
                   </p>
                 </div>
@@ -996,8 +996,8 @@ export default function SupplierHome() {
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-[10px] md:text-xs shrink-0 ml-2">
-                    {product.stockQuantity ?? 0} {product.unit} {t("supplierHome", "stockLeft")}
+                  <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-[10px] md:text-xs shrink-0 ml-2 whitespace-nowrap">
+                    <span className="tabular-nums">{product.stockQuantity ?? 0}</span> {product.unit}
                   </Badge>
                 </div>
               ))}
@@ -1031,17 +1031,17 @@ export default function SupplierHome() {
               </div>
 
               <div className="space-y-2 text-sm rounded-xl bg-muted/30 p-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("common", "restaurant")}</span>
-                  <span className="font-medium">{detailOrder.restaurant?.companyName || detailOrder.restaurant?.name || t("common", "unknown")}</span>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">{t("common", "restaurant")}</span>
+                  <span className="font-medium truncate text-right">{detailOrder.restaurant?.companyName || detailOrder.restaurant?.name || t("common", "unknown")}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{lang === "de" ? "Bestellt am" : "Ordinato il"}</span>
-                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</span>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">{lang === "de" ? "Bestellt am" : "Ordinato il"}</span>
+                  <span className="shrink-0">{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{lang === "de" ? "Gewünschter Liefertermin" : "Data consegna richiesta"}</span>
-                  <span>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">{lang === "de" ? "Liefertermin" : "Data consegna"}</span>
+                  <span className="text-right truncate">
                     {detailOrder.requestedDeliveryDate
                       ? new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })
                       : (lang === "de" ? "Sobald wie möglich" : "Il prima possibile")}
@@ -1062,10 +1062,10 @@ export default function SupplierHome() {
                             <Package className="h-4 w-4 text-muted-foreground/40" />
                           </div>
                         )}
-                        <div className="min-w-0">
+                        <div className="min-w-0 truncate">
                           <span className="font-medium">{item.quantity}x</span>{" "}
                           <span>{item.productName}</span>
-                          <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
+                          <span className="text-muted-foreground ml-1">@ {item.unitPrice}€</span>
                         </div>
                       </div>
                       <span className="font-medium shrink-0 ml-2">{item.totalPrice}€</span>

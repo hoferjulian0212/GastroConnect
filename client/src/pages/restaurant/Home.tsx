@@ -1299,18 +1299,18 @@ export default function RestaurantHome() {
               </div>
 
               <div className="space-y-2 text-sm rounded-xl bg-muted/30 p-3">
-                <div className="flex justify-between gap-2">
-                  <span className="text-muted-foreground">{t("common", "supplier")}</span>
-                  <span className="font-medium text-right">{detailOrder.supplier?.companyName || detailOrder.supplier?.name || t("common", "unknown")}</span>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">{t("common", "supplier")}</span>
+                  <span className="font-medium text-right truncate">{detailOrder.supplier?.companyName || detailOrder.supplier?.name || t("common", "unknown")}</span>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-muted-foreground">{t("orders", "createdAt")}</span>
-                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</span>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">{t("orders", "createdAt")}</span>
+                  <span className="shrink-0">{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</span>
                 </div>
                 {detailOrder.requestedDeliveryDate && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground">{t("orders", "requestedDeliveryDate")}</span>
-                    <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "it" ? "it-IT" : "de-DE", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground shrink-0">{lang === "de" ? "Liefertermin" : "Data consegna"}</span>
+                    <span className="text-right truncate">{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "it" ? "it-IT" : "de-DE", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
                   </div>
                 )}
               </div>
@@ -1327,12 +1327,12 @@ export default function RestaurantHome() {
                           <Package className="h-4 w-4 text-muted-foreground" />
                         </div>
                       )}
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 truncate">
                         <span className="font-medium">{item.quantity}x</span>{" "}
                         <span>{item.productName}</span>
-                        <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
+                        <span className="text-muted-foreground ml-1">@ {item.unitPrice}€</span>
                       </div>
-                      <span className="font-medium shrink-0">{item.totalPrice}€</span>
+                      <span className="font-medium shrink-0 ml-2">{item.totalPrice}€</span>
                     </div>
                   ))}
                 </div>
