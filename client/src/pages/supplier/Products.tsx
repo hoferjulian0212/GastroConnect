@@ -1451,7 +1451,7 @@ export default function SupplierProducts() {
                     control={form.control}
                     name="inStock"
                     render={({ field }) => (
-                      <FormItem className="flex items-center justify-between rounded-md border p-3">
+                      <FormItem className="flex items-center justify-between gap-2 rounded-md border p-3">
                         <div>
                           <FormLabel className="mb-0">{t("common", "available")}</FormLabel>
                           <p className="text-xs text-muted-foreground">{t("supplierProducts", "inStock")}</p>

@@ -481,8 +481,8 @@ export default function Documents() {
                     <p className="text-sm font-medium mb-2">{l("items")} ({previewData.items.length})</p>
                     <div className="space-y-1.5">
                       {previewData.items.map((item, i) => (
-                        <div key={i} className="flex justify-between items-center text-sm p-2 rounded-xl bg-muted/30" data-testid={`preview-item-${i}`}>
-                          <div className="min-w-0 flex-1">
+                        <div key={i} className="flex items-center gap-2 text-sm p-2 rounded-xl bg-muted/30" data-testid={`preview-item-${i}`}>
+                          <div className="min-w-0 flex-1 truncate">
                             <span className="font-medium">{item.quantity}x</span>{" "}
                             <span>{item.productName}</span>
                             <span className="text-muted-foreground ml-1">@ {item.unitPrice} EUR</span>
@@ -500,7 +500,7 @@ export default function Documents() {
                     </div>
                   )}
 
-                  <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
+                  <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">{l("total")}</span>
                     <span className="text-lg font-bold" data-testid="text-preview-total">{previewData.totalAmount} EUR</span>
                   </div>
@@ -575,7 +575,7 @@ export default function Documents() {
                     <Textarea value={editData.notes} onChange={(e) => setEditData({ ...editData, notes: e.target.value })} className="text-sm resize-none" rows={2} data-testid="input-edit-notes" />
                   </div>
 
-                  <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
+                  <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">{l("total")}</span>
                     <span className="text-lg font-bold">{editData.totalAmount} EUR</span>
                   </div>

@@ -345,17 +345,17 @@ export default function RestaurantProfile() {
               </h3>
               <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
               <div className="mt-4 w-full space-y-2">
-                <div className="flex justify-between text-sm py-2 border-b border-border">
-                  <span className="text-muted-foreground">{t("profile", "role")}</span>
-                  <span>{t("common", "restaurant")}</span>
+                <div className="flex justify-between gap-3 text-sm py-2 border-b border-border">
+                  <span className="text-muted-foreground shrink-0">{t("profile", "role")}</span>
+                  <span className="text-right truncate">{t("common", "restaurant")}</span>
                 </div>
-                <div className="flex justify-between text-sm py-2 border-b border-border">
-                  <span className="text-muted-foreground">{t("profile", "phone")}</span>
-                  <span>{currentUser?.phone || "-"}</span>
+                <div className="flex justify-between gap-3 text-sm py-2 border-b border-border">
+                  <span className="text-muted-foreground shrink-0">{t("profile", "phone")}</span>
+                  <span className="text-right truncate">{currentUser?.phone || "-"}</span>
                 </div>
-                <div className="flex justify-between text-sm py-2">
-                  <span className="text-muted-foreground">{t("profile", "city")}</span>
-                  <span>{currentUser?.city || "-"}</span>
+                <div className="flex justify-between gap-3 text-sm py-2">
+                  <span className="text-muted-foreground shrink-0">{t("profile", "city")}</span>
+                  <span className="text-right truncate">{currentUser?.city || "-"}</span>
                 </div>
               </div>
             </CardContent>

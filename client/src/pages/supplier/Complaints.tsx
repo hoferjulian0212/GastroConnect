@@ -589,7 +589,7 @@ export default function SupplierComplaints() {
                             </div>
                             <div className="space-y-1">
                               {items.map((ai: any, idx: number) => (
-                                <div key={idx} className="flex items-center justify-between text-sm">
+                                <div key={idx} className="flex items-center justify-between gap-2 text-sm">
                                   <span className="text-foreground">{ai.productName}</span>
                                   <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} EUR</span>
                                 </div>
@@ -616,17 +616,17 @@ export default function SupplierComplaints() {
                 })()}
 
                 <div className="space-y-1.5 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("common", "restaurant")}</span>
-                    <span className="font-medium">{selectedComplaint.restaurant?.companyName || t("common", "unknown")}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground shrink-0">{t("common", "restaurant")}</span>
+                    <span className="font-medium text-right truncate">{selectedComplaint.restaurant?.companyName || t("common", "unknown")}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{lang === "de" ? "Bestellung" : "Ordine"}</span>
-                    <span>#{selectedComplaint.orderId.substring(0, 8)}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground shrink-0">{lang === "de" ? "Bestellung" : "Ordine"}</span>
+                    <span className="shrink-0">#{selectedComplaint.orderId.substring(0, 8)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{lang === "de" ? "Erstellt am" : "Creato il"}</span>
-                    <span>{formatDate(selectedComplaint.createdAt)}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground shrink-0">{lang === "de" ? "Erstellt am" : "Creato il"}</span>
+                    <span className="shrink-0">{formatDate(selectedComplaint.createdAt)}</span>
                   </div>
                 </div>
 
@@ -959,7 +959,7 @@ export default function SupplierComplaints() {
               <Label className="text-sm font-medium">{lang === "de" ? "Produkte" : "Prodotti"}</Label>
               {followUpItems.map((item, idx) => (
                 <div key={idx} className="p-3 rounded-lg border space-y-2" data-testid={`follow-up-item-${idx}`}>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">{item.productName}</span>
                     <span className="text-xs text-muted-foreground">
                       {parseFloat(item.unitPrice).toFixed(2)} EUR/{lang === "de" ? "Stk" : "pz"}
@@ -1015,7 +1015,7 @@ export default function SupplierComplaints() {
                   </div>
                 </div>
               ))}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border font-medium text-sm">
+              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-muted/50 border font-medium text-sm">
                 <span>{lang === "de" ? "Gesamt" : "Totale"}</span>
                 <span>{followUpItems.reduce((sum, item) => sum + item.quantity * parseFloat(item.unitPrice), 0).toFixed(2)} EUR</span>
               </div>

@@ -293,14 +293,14 @@ export default function RestaurantCart() {
 
           <Card className={`text-left transition-all duration-500 delay-400 ${confirmationVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
             <CardContent className="p-4 space-y-3">
-              <div className="flex justify-between items-center py-1">
-                <span className="text-sm text-muted-foreground">{t("cart", "orderNumber")}</span>
-                <span className="text-sm font-mono font-medium" data-testid="text-order-id">#{orderConfirmation.orderId}</span>
+              <div className="flex justify-between items-center gap-3 py-1">
+                <span className="text-sm text-muted-foreground shrink-0">{t("cart", "orderNumber")}</span>
+                <span className="text-sm font-mono font-medium truncate" data-testid="text-order-id">#{orderConfirmation.orderId}</span>
               </div>
               <Separator />
-              <div className="flex justify-between items-center py-1">
-                <span className="text-sm text-muted-foreground">{t("cart", "orderDate")}</span>
-                <span className="text-sm font-medium">{format(new Date(orderConfirmation.createdAt), "dd. MMM yyyy, HH:mm", { locale: dateLocaleObj })}</span>
+              <div className="flex justify-between items-center gap-3 py-1">
+                <span className="text-sm text-muted-foreground shrink-0">{t("cart", "orderDate")}</span>
+                <span className="text-sm font-medium shrink-0">{format(new Date(orderConfirmation.createdAt), "dd. MMM yyyy, HH:mm", { locale: dateLocaleObj })}</span>
               </div>
               <Separator />
               <div className="flex justify-between items-start gap-4 py-1">
@@ -312,14 +312,14 @@ export default function RestaurantCart() {
                 </div>
               </div>
               <Separator />
-              <div className="flex justify-between items-center py-1">
-                <span className="text-sm text-muted-foreground">{t("common", "items")}</span>
+              <div className="flex justify-between items-center gap-3 py-1">
+                <span className="text-sm text-muted-foreground shrink-0">{t("common", "items")}</span>
                 <span className="text-sm font-medium">{orderConfirmation.itemCount}</span>
               </div>
               <Separator />
-              <div className="flex justify-between items-center py-1">
-                <span className="text-sm text-muted-foreground">{t("cart", "deliveryDateLabel")}</span>
-                <span className="text-sm font-medium">
+              <div className="flex justify-between items-center gap-3 py-1">
+                <span className="text-sm text-muted-foreground shrink-0">{t("cart", "deliveryDateLabel")}</span>
+                <span className="text-sm font-medium text-right truncate">
                   {orderConfirmation.deliveryDate
                     ? format(new Date(orderConfirmation.deliveryDate), "dd. MMM yyyy", { locale: dateLocaleObj })
                     : t("cart", "asapDelivery")}
@@ -335,9 +335,9 @@ export default function RestaurantCart() {
                 </>
               )}
               <Separator />
-              <div className="flex justify-between items-center py-1">
-                <span className="text-sm font-medium">{t("common", "total")}</span>
-                <span className="text-lg font-bold" data-testid="text-order-total">{orderConfirmation.total}€</span>
+              <div className="flex justify-between items-center gap-3 py-1">
+                <span className="text-sm font-medium shrink-0">{t("common", "total")}</span>
+                <span className="text-lg font-bold shrink-0" data-testid="text-order-total">{orderConfirmation.total}€</span>
               </div>
             </CardContent>
           </Card>
@@ -639,16 +639,16 @@ export default function RestaurantCart() {
               <CardContent className="space-y-3 md:space-y-4 p-3 pt-0 md:p-6 md:pt-0">
                 <div className="space-y-2">
                   {Object.entries(groupedBySupplier || {}).map(([supplierId, { supplier, items }]) => (
-                    <div key={supplierId} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{supplier.companyName || supplier.name}</span>
-                      <span>{calculateTotal(items)}€</span>
+                    <div key={supplierId} className="flex justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground truncate min-w-0">{supplier.companyName || supplier.name}</span>
+                      <span className="shrink-0">{calculateTotal(items)}€</span>
                     </div>
                   ))}
                 </div>
                 <Separator />
-                <div className="flex justify-between font-bold text-base md:text-lg">
-                  <span>{t("common", "total")}</span>
-                  <span data-testid="text-total-amount">{grandTotal}€</span>
+                <div className="flex justify-between gap-3 font-bold text-base md:text-lg">
+                  <span className="shrink-0">{t("common", "total")}</span>
+                  <span className="shrink-0" data-testid="text-total-amount">{grandTotal}€</span>
                 </div>
               </CardContent>
               <CardFooter className="p-3 md:p-6">

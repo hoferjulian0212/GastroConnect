@@ -1264,7 +1264,7 @@ export default function RestaurantHome() {
                     </div>
 
                     {todayEntry && (
-                      <div className="mt-2 flex items-center justify-between p-2 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/30 text-xs">
+                      <div className="mt-2 flex items-center justify-between gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/30 text-xs">
                         <span className="text-green-700 dark:text-green-400 font-medium">
                           {lang === "de" ? "Heute" : "Oggi"}: {todayEntry.overnightStays} {t("costAnalysis", "guests")}
                         </span>
@@ -1345,7 +1345,7 @@ export default function RestaurantHome() {
                 </div>
               )}
 
-              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
+              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between gap-2">
                 <span className="text-sm font-medium">{t("common", "total")}</span>
                 <span className="text-lg font-bold" data-testid="text-home-detail-total">{detailOrder.totalAmount}€</span>
               </div>
@@ -1485,7 +1485,7 @@ export default function RestaurantHome() {
                     <Plus className="h-3.5 w-3.5" />
                     {lang === "de" ? "Produkte hinzufuegen" : "Aggiungi prodotti"}
                   </Button>
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
                     <div>
                       <span className="text-xs text-muted-foreground">{lang === "de" ? "Geschaetzt" : "Stimato"}: </span>
                       <span className="text-sm font-bold">{wizardTotalEstimate.toFixed(2)}€</span>
@@ -1718,7 +1718,7 @@ export default function RestaurantHome() {
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
                     <Button variant="outline" size="sm" onClick={() => setWizardStep("items")} data-testid="wizard-back-step">
                       {lang === "de" ? "Zurueck" : "Indietro"}
                     </Button>

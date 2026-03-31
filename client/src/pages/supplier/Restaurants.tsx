@@ -94,7 +94,7 @@ export default function SupplierRestaurants() {
               data-testid={`restaurant-card-${restaurant.id}`}
             >
               <CardContent className="p-4 md:p-6">
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between gap-2 mb-4">
                   <Avatar className="h-12 w-12">
                     <AvatarImage src={restaurant.profileImageUrl || undefined} alt={restaurant.companyName || restaurant.name} />
                     <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
@@ -642,7 +642,7 @@ function RestaurantDetail({
 
       <Card>
         <CardHeader className="p-3 md:p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div>
               <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <Euro className="h-4 w-4 md:h-5 md:w-5" />

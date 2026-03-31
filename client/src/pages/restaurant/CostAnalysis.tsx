@@ -223,7 +223,7 @@ export default function CostAnalysis() {
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 md:p-6 space-y-4 md:space-y-6 pb-24 md:pb-6 overflow-y-auto">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-xl md:text-2xl font-bold" data-testid="cost-analysis-title">
               {t("costAnalysis", "title")}
@@ -396,7 +396,7 @@ export default function CostAnalysis() {
 
         <Card data-testid="card-overnight-entries">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <CalendarDays className="w-4 h-4" />
                 {t("costAnalysis", "overnightStays")}
@@ -455,7 +455,7 @@ export default function CostAnalysis() {
                   .map(entry => (
                     <div
                       key={entry.id}
-                      className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg"
+                      className="flex items-center justify-between gap-2 py-2 px-3 bg-gray-50 rounded-lg"
                       data-testid={`overnight-entry-${entry.id}`}
                     >
                       <div className="flex items-center gap-3">

@@ -8,7 +8,7 @@ export default function About() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 pt-4 pb-6">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between gap-2 mb-4">
           <Link href="/">
             <Button variant="ghost" className="gap-2" data-testid="button-back-home">
               <ArrowLeft className="h-4 w-4" />

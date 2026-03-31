@@ -1031,7 +1031,7 @@ function UseTemplateDialog({
         </div>
 
         <div className="border-t pt-3 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-sm text-muted-foreground">{t("common", "total")} ({availableItems.length} {t("templates", "products")})</span>
             <span className="text-lg font-bold">{totalEstimate.toFixed(2)}&euro;</span>
           </div>

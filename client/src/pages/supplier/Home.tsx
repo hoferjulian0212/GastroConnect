@@ -636,7 +636,7 @@ export default function SupplierHome() {
                   onClick={() => setDetailOrder(order)}
                   data-testid={`order-item-${order.id}`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
                         <ShoppingBag className="h-4 w-4 text-primary" />
@@ -717,7 +717,7 @@ export default function SupplierHome() {
                     onClick={() => navigate(`/supplier/orders?orderId=${order.id}`)}
                     data-testid={`stale-order-${order.id}`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
                           <Clock className="h-4 w-4 text-red-600" />
@@ -771,7 +771,7 @@ export default function SupplierHome() {
                       onClick={() => navigate(`/supplier/complaints?complaintId=${complaint.id}`)}
                       data-testid={`action-complaint-${complaint.id}`}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 shrink-0">
                             <AlertTriangle className="h-4 w-4 text-amber-600" />
@@ -921,7 +921,7 @@ export default function SupplierHome() {
                               style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-2">
                             <span className="text-[10px] md:text-xs text-muted-foreground">
                               {product.quantity}x
                             </span>
@@ -978,7 +978,7 @@ export default function SupplierHome() {
               {lowStockProducts.map((product) => (
                 <div
                   key={product.id}
-                  className="flex items-center justify-between p-2.5 md:p-3 rounded-xl border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20"
+                  className="flex items-center justify-between gap-2 p-2.5 md:p-3 rounded-xl border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20"
                   data-testid={`low-stock-item-${product.id}`}
                 >
                   <div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">
@@ -1053,7 +1053,7 @@ export default function SupplierHome() {
                 <p className="text-sm font-medium mb-2">{t("common", "items")} ({detailOrder.items?.length || 0})</p>
                 <div className="space-y-2">
                   {detailOrder.items?.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-xl bg-muted/30" data-testid={`home-detail-item-${item.id}`}>
+                    <div key={item.id} className="flex justify-between gap-2 items-center text-sm p-2 rounded-xl bg-muted/30" data-testid={`home-detail-item-${item.id}`}>
                       <div className="flex items-center gap-2 min-w-0">
                         {item.productImageUrl ? (
                           <img src={item.productImageUrl} alt={item.productName} className="h-8 w-8 rounded object-cover shrink-0" />
@@ -1081,7 +1081,7 @@ export default function SupplierHome() {
                 </div>
               )}
 
-              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
+              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between gap-2">
                 <span className="text-sm font-medium">{t("common", "total")}</span>
                 <span className="text-lg font-bold" data-testid="text-home-detail-total">{detailOrder.totalAmount}€</span>
               </div>

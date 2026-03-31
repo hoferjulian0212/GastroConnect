@@ -1100,7 +1100,7 @@ export default function RestaurantInbox() {
             {selectedConversation && selectedConv ? (
               <>
                 <div className="border-b border-border px-3 py-3.5 md:px-4 md:py-4 bg-background">
-                  <div className="flex items-center justify-between min-h-[44px]">
+                  <div className="flex items-center justify-between gap-2 min-h-[44px]">
                     <div className="flex items-center gap-2.5 md:gap-3">
                       <Button
                         variant="ghost"
@@ -1184,7 +1184,7 @@ export default function RestaurantInbox() {
                                             )}
                                           </div>
                                         )}
-                                        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                        <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
                                           <span>
                                             {format(new Date(order.createdAt), "dd.MM.yy", { locale: dateLocale })}
                                             {order.createdByUser && (
@@ -1309,7 +1309,7 @@ export default function RestaurantInbox() {
                 {conversationDocs && conversationDocs.filter(d => d.type === "delivery_note").length > 0 && (
                   <div className="border-b border-border shrink-0" data-testid="delivery-notes-panel">
                     <button
-                      className="w-full flex items-center justify-between px-4 py-2 text-xs hover:bg-muted/50 transition-colors"
+                      className="w-full flex items-center justify-between gap-2 px-4 py-2 text-xs hover:bg-muted/50 transition-colors"
                       onClick={() => setShowDeliveryNotes(!showDeliveryNotes)}
                       data-testid="button-toggle-delivery-notes"
                     >
@@ -1325,7 +1325,7 @@ export default function RestaurantInbox() {
                         {conversationDocs.filter(d => d.type === "delivery_note").map((doc: any) => (
                           <div
                             key={doc.id}
-                            className="flex items-center justify-between rounded-md bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/30 px-3 py-1.5"
+                            className="flex items-center justify-between gap-2 rounded-md bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/30 px-3 py-1.5"
                             data-testid={`delivery-note-item-${doc.id}`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
@@ -1396,7 +1396,7 @@ export default function RestaurantInbox() {
                                     const isExpired = endDate < now;
                                     return (
                                       <div className={`w-[75%] max-w-sm rounded-2xl border-2 shadow-sm overflow-hidden ${isExpired ? "border-muted bg-muted/20 opacity-60" : "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"}`} data-testid={`promotion-card-${message.id}`}>
-                                        <div className={`flex items-center justify-between px-4 pt-3 pb-1 ${isExpired ? "" : ""}`}>
+                                        <div className={`flex items-center justify-between gap-2 px-4 pt-3 pb-1 ${isExpired ? "" : ""}`}>
                                           <div className="flex items-center gap-2">
                                             <Tag className={`h-4 w-4 ${isExpired ? "text-muted-foreground" : "text-green-600 dark:text-green-400"}`} />
                                             <span className={`text-xs font-semibold ${isExpired ? "text-muted-foreground" : "text-green-700 dark:text-green-300"}`}>{promoData.name}</span>
@@ -1422,9 +1422,9 @@ export default function RestaurantInbox() {
                                                     <Package className="h-3 w-3 text-muted-foreground/30" />
                                                   </div>
                                                 )}
-                                                <span className="font-medium flex-1">{prod.name}</span>
-                                                <span className="text-muted-foreground line-through">{prod.originalPrice}€</span>
-                                                <span className="font-semibold text-green-600 dark:text-green-400">{prod.discountedPrice}€/{prod.unit}</span>
+                                                <span className="font-medium flex-1 min-w-0 truncate">{prod.name}</span>
+                                                <span className="text-muted-foreground line-through shrink-0">{prod.originalPrice}€</span>
+                                                <span className="font-semibold text-green-600 dark:text-green-400 shrink-0">{prod.discountedPrice}€/{prod.unit}</span>
                                               </div>
                                             ))}
                                           </div>
@@ -1504,7 +1504,7 @@ export default function RestaurantInbox() {
                                     const statusStyle = getStatusCardBg(orderStatus || "pending");
                                     return (
                                       <div className={`w-[75%] max-w-sm rounded-2xl border shadow-sm overflow-hidden ${statusStyle.card}`}>
-                                        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                                        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <ClipboardList className={`h-3.5 w-3.5 ${statusStyle.icon}`} />
                                             <span className={`text-xs font-semibold ${statusStyle.icon}`}>{lang === "de" ? "Bestellung" : "Ordine"} {message.orderId ? `#${message.orderId.slice(0, 8)}` : ""}</span>
@@ -1540,9 +1540,9 @@ export default function RestaurantInbox() {
                                                   <span className="text-[13px] font-semibold flex-shrink-0">{item.price}€</span>
                                                 </div>
                                               ))}
-                                              <div className="flex justify-between items-center pt-2 pb-1">
-                                                <span className="text-[13px] font-semibold">{t("common", "total")}</span>
-                                                <span className="text-[13px] font-bold">{orderData.total}€</span>
+                                              <div className="flex justify-between items-center gap-3 pt-2 pb-1">
+                                                <span className="text-[13px] font-semibold shrink-0">{t("common", "total")}</span>
+                                                <span className="text-[13px] font-bold shrink-0">{orderData.total}€</span>
                                               </div>
                                             </div>
                                           ) : (
@@ -1710,7 +1710,7 @@ export default function RestaurantInbox() {
                                     }
                                     return (
                                       <div className="w-[75%] max-w-sm rounded-2xl border bg-card shadow-sm overflow-hidden border-2 border-red-500/30 shadow-lg">
-                                        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                                        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
                                             <span className="text-xs font-semibold text-red-600 dark:text-red-400">{t("inbox", "complaintMessage")} {complaintData?.orderId ? `#${complaintData.orderId.slice(0, 8)}` : ""}</span>
@@ -1753,7 +1753,7 @@ export default function RestaurantInbox() {
                                                   </div>
                                                   <div className="space-y-0.5">
                                                     {complaintData.affectedItems.map((ai, idx) => (
-                                                      <div key={idx} className="flex items-center justify-between text-xs">
+                                                      <div key={idx} className="flex items-center justify-between gap-2 text-xs">
                                                         <span className="text-foreground">{ai.productName}</span>
                                                         <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
                                                       </div>
@@ -1795,7 +1795,7 @@ export default function RestaurantInbox() {
                                     try { docData = JSON.parse(message.content); } catch {}
                                     return (
                                       <div className="w-[75%] max-w-sm rounded-2xl border bg-white dark:bg-card shadow-sm overflow-hidden border-border">
-                                        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                                        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <FileText className="h-3.5 w-3.5 text-foreground" />
                                             <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t("inbox", "deliveryNote")} {docData.orderId ? `#${docData.orderId.slice(0, 8)}` : ""}</span>
@@ -1839,7 +1839,7 @@ export default function RestaurantInbox() {
                                       const pcData = changeData as { type?: string; orderId?: string; status?: string; message?: string; items?: { name: string; ordered: number; confirmed: number; rejected: number; price: string }[]; total?: string; originalTotal?: string };
                                       return (
                                         <div className="w-[75%] max-w-sm rounded-2xl border bg-white dark:bg-card shadow-sm overflow-hidden border-border" data-testid={`partial-confirmation-${message.id}`}>
-                                          <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                                          <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                             <div className="flex items-center gap-2">
                                               <AlertTriangle className="h-3.5 w-3.5 text-orange-600" />
                                               <span className="text-xs font-semibold text-orange-600">
@@ -1858,7 +1858,7 @@ export default function RestaurantInbox() {
                                               </p>
                                             )}
                                             {pcData.items?.map((item, idx) => (
-                                              <div key={idx} className={`flex items-center justify-between text-xs ${item.rejected > 0 ? "text-orange-700" : "text-foreground"}`}>
+                                              <div key={idx} className={`flex items-center justify-between gap-2 text-xs ${item.rejected > 0 ? "text-orange-700" : "text-foreground"}`}>
                                                 <span className="truncate flex-1">{item.name}</span>
                                                 <span className="shrink-0 ml-2">
                                                   {item.confirmed}/{item.ordered}
@@ -1869,7 +1869,7 @@ export default function RestaurantInbox() {
                                               </div>
                                             ))}
                                             {pcData.total && (
-                                              <div className="flex items-center justify-between text-xs font-semibold pt-1 border-t">
+                                              <div className="flex items-center justify-between gap-2 text-xs font-semibold pt-1 border-t">
                                                 <span>{lang === "it" ? "Totale" : "Gesamt"}</span>
                                                 <span>{pcData.total}</span>
                                               </div>
@@ -1923,7 +1923,7 @@ export default function RestaurantInbox() {
                                     }
                                     return (
                                       <div className="w-[75%] max-w-sm rounded-2xl border bg-white dark:bg-card shadow-sm overflow-hidden border-border">
-                                        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                                        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <Pencil className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                                             <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{label} {changeData.orderId ? `#${changeData.orderId.slice(0, 8)}` : ""}</span>
@@ -2099,7 +2099,7 @@ export default function RestaurantInbox() {
                 ) : actionMode === "order" ? (
                   <div className="flex-1 flex flex-col overflow-hidden">
                     <div className="p-4 pb-0">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between gap-2 mb-4">
                         <h3 className="font-semibold flex items-center gap-2">
                           <ShoppingCart className="h-5 w-5" />
                           {t("inbox", "orderMessage")}
@@ -2179,7 +2179,7 @@ export default function RestaurantInbox() {
                 ) : actionMode === "complaint" ? (
                   <div className="flex-1 flex flex-col overflow-hidden">
                     <div className="p-4 pb-0">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between gap-2 mb-4">
                         <h3 className="font-semibold flex items-center gap-2">
                           <AlertCircle className="h-5 w-5 text-red-500" />
                           {t("complaints", "newComplaint")}
@@ -2372,7 +2372,7 @@ export default function RestaurantInbox() {
                   )}
 
                   {messagePriority === "important" && (
-                    <div className="flex items-center justify-between mb-2 px-1" data-testid="priority-important-banner">
+                    <div className="flex items-center justify-between gap-2 mb-2 px-1" data-testid="priority-important-banner">
                       <div className="flex items-center gap-1.5">
                         <CircleAlert className="h-4 w-4 text-red-500" />
                         <span className="text-sm font-bold text-red-500">IMPORTANT!</span>
@@ -2811,7 +2811,7 @@ export default function RestaurantInbox() {
                             </div>
                             <div className="space-y-1">
                               {items.map((ai: any, idx: number) => (
-                                <div key={idx} className="flex items-center justify-between text-sm">
+                                <div key={idx} className="flex items-center justify-between gap-2 text-sm">
                                   <span className="text-foreground">{ai.productName}</span>
                                   <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
                                 </div>
@@ -3184,7 +3184,7 @@ export default function RestaurantInbox() {
 
             <Separator />
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium">{t("orders", "totalAmount")}</span>
               <span className="text-lg font-bold" data-testid="inbox-text-edit-total">{editTotalInbox}€</span>
             </div>

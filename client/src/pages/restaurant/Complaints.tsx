@@ -950,7 +950,7 @@ export default function Complaints() {
                           </div>
                           <div className="space-y-1">
                             {items.map((ai: any, idx: number) => (
-                              <div key={idx} className="flex items-center justify-between text-sm">
+                              <div key={idx} className="flex items-center justify-between gap-2 text-sm">
                                 <span className="text-foreground">{ai.productName}</span>
                                 <span className="text-muted-foreground">{ai.quantity}x {parseFloat(ai.unitPrice).toFixed(2)} €</span>
                               </div>
@@ -964,17 +964,17 @@ export default function Complaints() {
                 })()}
 
                 <div className="space-y-1.5 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("common", "supplier")}</span>
-                    <span className="font-medium">{detailComplaint.supplier?.companyName || t("common", "unknown")}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground shrink-0">{t("common", "supplier")}</span>
+                    <span className="font-medium text-right truncate">{detailComplaint.supplier?.companyName || t("common", "unknown")}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("orders", "order")}</span>
-                    <span>#{detailComplaint.orderId.substring(0, 8)}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground shrink-0">{t("orders", "order")}</span>
+                    <span className="shrink-0">#{detailComplaint.orderId.substring(0, 8)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("orders", "createdAt")}</span>
-                    <span>{formatDate(detailComplaint.createdAt)}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground shrink-0">{t("orders", "createdAt")}</span>
+                    <span className="shrink-0">{formatDate(detailComplaint.createdAt)}</span>
                   </div>
                 </div>
 

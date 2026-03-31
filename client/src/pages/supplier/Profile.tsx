@@ -345,17 +345,17 @@ export default function SupplierProfile() {
               </h3>
               <p className="text-xs md:text-sm text-muted-foreground">{currentUser?.email}</p>
               <div className="mt-3 md:mt-4 w-full space-y-2">
-                <div className="flex justify-between text-xs md:text-sm py-1.5 md:py-2 border-b border-border">
-                  <span className="text-muted-foreground">{lang === "de" ? "Rolle" : "Ruolo"}</span>
-                  <span>{t("common", "supplier")}</span>
+                <div className="flex justify-between gap-3 text-xs md:text-sm py-1.5 md:py-2 border-b border-border">
+                  <span className="text-muted-foreground shrink-0">{lang === "de" ? "Rolle" : "Ruolo"}</span>
+                  <span className="text-right truncate">{t("common", "supplier")}</span>
                 </div>
-                <div className="flex justify-between text-xs md:text-sm py-1.5 md:py-2 border-b border-border">
-                  <span className="text-muted-foreground">{t("profile", "phone")}</span>
-                  <span>{currentUser?.phone || "-"}</span>
+                <div className="flex justify-between gap-3 text-xs md:text-sm py-1.5 md:py-2 border-b border-border">
+                  <span className="text-muted-foreground shrink-0">{t("profile", "phone")}</span>
+                  <span className="text-right truncate">{currentUser?.phone || "-"}</span>
                 </div>
-                <div className="flex justify-between text-xs md:text-sm py-1.5 md:py-2">
-                  <span className="text-muted-foreground">{lang === "de" ? "Stadt" : "Città"}</span>
-                  <span>{currentUser?.city || "-"}</span>
+                <div className="flex justify-between gap-3 text-xs md:text-sm py-1.5 md:py-2">
+                  <span className="text-muted-foreground shrink-0">{lang === "de" ? "Stadt" : "Città"}</span>
+                  <span className="text-right truncate">{currentUser?.city || "-"}</span>
                 </div>
               </div>
             </CardContent>

@@ -520,7 +520,7 @@ export default function SupplierPromotions() {
 
             {wizardStep === 2 && (
               <div className="space-y-3 py-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <Label className="text-sm">{t("promotionsPage", "selectProducts")} *</Label>
                   <Badge variant="secondary" className="text-xs">{selectedProductIds.length} {t("promotionsPage", "selectedProducts")}</Badge>
                 </div>
@@ -632,7 +632,7 @@ export default function SupplierPromotions() {
 
                 {targetMode === "specific" && (
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <Label className="text-sm">{t("promotionsPage", "selectRestaurants")}</Label>
                       <Badge variant="secondary" className="text-xs">{selectedRestaurantIds.length}</Badge>
                     </div>
@@ -696,25 +696,25 @@ export default function SupplierPromotions() {
                 <div className="p-3 rounded-xl bg-muted/30 space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">{lang === "de" ? "Zusammenfassung" : "Riepilogo"}</p>
                   <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t("promotionsPage", "promotionName")}:</span>
-                      <span className="font-medium">{promoName || "—"}</span>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground shrink-0">{t("promotionsPage", "promotionName")}:</span>
+                      <span className="font-medium text-right truncate">{promoName || "—"}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t("promotionsPage", "discount")}:</span>
-                      <span className="font-medium text-green-600">-{discountPercent}%</span>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground shrink-0">{t("promotionsPage", "discount")}:</span>
+                      <span className="font-medium text-green-600 shrink-0">-{discountPercent}%</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t("promotionsPage", "products")}:</span>
-                      <span className="font-medium">{selectedProductIds.length}</span>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground shrink-0">{t("promotionsPage", "products")}:</span>
+                      <span className="font-medium shrink-0">{selectedProductIds.length}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t("promotionsPage", "targetRestaurants")}:</span>
-                      <span className="font-medium">{targetMode === "all" ? t("promotionsPage", "allRestaurants") : `${selectedRestaurantIds.length} ${t("promotionsPage", "specificRestaurants")}`}</span>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground shrink-0">{t("promotionsPage", "targetRestaurants")}:</span>
+                      <span className="font-medium text-right truncate">{targetMode === "all" ? t("promotionsPage", "allRestaurants") : `${selectedRestaurantIds.length} ${t("promotionsPage", "specificRestaurants")}`}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{lang === "de" ? "Zeitraum" : "Periodo"}:</span>
-                      <span className="font-medium text-xs">{startDate && endDate ? `${format(new Date(startDate), "dd.MM.yy")} - ${format(new Date(endDate), "dd.MM.yy")}` : "—"}</span>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground shrink-0">{lang === "de" ? "Zeitraum" : "Periodo"}:</span>
+                      <span className="font-medium text-xs shrink-0">{startDate && endDate ? `${format(new Date(startDate), "dd.MM.yy")} - ${format(new Date(endDate), "dd.MM.yy")}` : "—"}</span>
                     </div>
                   </div>
                 </div>

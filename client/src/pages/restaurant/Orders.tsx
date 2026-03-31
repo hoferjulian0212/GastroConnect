@@ -951,24 +951,24 @@ export default function RestaurantOrders() {
               </div>
 
               <div className="space-y-2 text-sm rounded-xl bg-muted/30 p-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("common", "supplier")}</span>
-                  <span className="font-medium">{detailOrder.supplier?.companyName || detailOrder.supplier?.name || t("common", "unknown")}</span>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">{t("common", "supplier")}</span>
+                  <span className="font-medium text-right truncate">{detailOrder.supplier?.companyName || detailOrder.supplier?.name || t("common", "unknown")}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("orders", "createdAt")}</span>
-                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</span>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">{t("orders", "createdAt")}</span>
+                  <span className="shrink-0">{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</span>
                 </div>
                 {detailOrder.createdByUser && (
-                  <div className="flex justify-between" data-testid="detail-created-by">
-                    <span className="text-muted-foreground">{t("orders", "createdBy")}</span>
-                    <span className="font-medium">{detailOrder.createdByUser.name}</span>
+                  <div className="flex justify-between gap-3" data-testid="detail-created-by">
+                    <span className="text-muted-foreground shrink-0">{t("orders", "createdBy")}</span>
+                    <span className="font-medium text-right truncate">{detailOrder.createdByUser.name}</span>
                   </div>
                 )}
                 {detailOrder.requestedDeliveryDate && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("orders", "requestedDeliveryDate")}</span>
-                    <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "it" ? "it-IT" : "de-DE", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground shrink-0">{lang === "de" ? "Liefertermin" : "Data consegna"}</span>
+                    <span className="text-right truncate">{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "it" ? "it-IT" : "de-DE", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
                   </div>
                 )}
               </div>
@@ -981,7 +981,7 @@ export default function RestaurantOrders() {
                     return (
                       <div
                         key={item.id}
-                        className={`flex justify-between items-center text-sm p-2 rounded-xl bg-muted/30 ${product ? "cursor-pointer hover:bg-muted transition-colors" : ""}`}
+                        className={`flex items-center gap-2 text-sm p-2 rounded-xl bg-muted/30 ${product ? "cursor-pointer hover:bg-muted transition-colors" : ""}`}
                         onClick={() => product && setSelectedProduct(product)}
                         data-testid={`detail-item-${item.id}`}
                       >
@@ -993,10 +993,10 @@ export default function RestaurantOrders() {
                               <Package className="h-4 w-4 text-muted-foreground/40" />
                             </div>
                           )}
-                          <div className="min-w-0">
+                          <div className="min-w-0 truncate">
                             <span className="font-medium">{item.quantity}x</span>{" "}
                             <span className={product ? "underline decoration-dotted underline-offset-2" : ""}>{item.productName}</span>
-                            <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
+                            <span className="text-muted-foreground ml-1">@ {item.unitPrice}€</span>
                             {(item as any).confirmedQuantity != null && (item as any).confirmedQuantity < item.quantity && (
                               <div className="flex items-center gap-1 mt-0.5">
                                 <AlertTriangle className="h-3 w-3 text-orange-500" />
@@ -1024,7 +1024,7 @@ export default function RestaurantOrders() {
                 </div>
               )}
 
-              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
+              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between gap-2">
                 <span className="text-sm font-medium">{t("common", "total")}</span>
                 <span className="text-lg font-bold" data-testid="text-detail-total">{detailOrder.totalAmount}€</span>
               </div>
@@ -1319,7 +1319,7 @@ export default function RestaurantOrders() {
 
             <Separator />
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium">{t("common", "total")}</span>
               <span className="text-lg font-bold" data-testid="text-edit-total">{editTotal}€</span>
             </div>

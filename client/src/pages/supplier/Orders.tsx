@@ -675,30 +675,30 @@ export default function SupplierOrders() {
               </div>
 
               <div className="space-y-2 text-sm rounded-xl bg-muted/30 p-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("common", "restaurant")}</span>
-                  <span className="font-medium">{detailOrder.restaurant?.companyName || detailOrder.restaurant?.name || t("common", "unknown")}</span>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">{t("common", "restaurant")}</span>
+                  <span className="font-medium text-right truncate">{detailOrder.restaurant?.companyName || detailOrder.restaurant?.name || t("common", "unknown")}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{lang === "de" ? "Bestellt am" : "Ordinato il"}</span>
-                  <span>{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateFnsLocale })}</span>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">{lang === "de" ? "Bestellt am" : "Ordinato il"}</span>
+                  <span className="shrink-0">{format(new Date(detailOrder.createdAt), "dd.MM.yyyy HH:mm", { locale: dateFnsLocale })}</span>
                 </div>
                 {detailOrder.createdByUser && (
-                  <div className="flex justify-between" data-testid="detail-created-by">
-                    <span className="text-muted-foreground">{t("orders", "createdBy")}</span>
-                    <span className="font-medium">{detailOrder.createdByUser.name}</span>
+                  <div className="flex justify-between gap-3" data-testid="detail-created-by">
+                    <span className="text-muted-foreground shrink-0">{t("orders", "createdBy")}</span>
+                    <span className="font-medium text-right truncate">{detailOrder.createdByUser.name}</span>
                   </div>
                 )}
                 {detailOrder.requestedDeliveryDate ? (
                   <div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{lang === "de" ? "Gewünschter Liefertermin" : "Data consegna richiesta"}</span>
-                      <span>{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground shrink-0">{lang === "de" ? "Liefertermin" : "Data consegna"}</span>
+                      <span className="text-right truncate">{new Date(detailOrder.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long", year: "numeric" })}</span>
                     </div>
                     {detailOrder.originalDeliveryDate && (
-                      <div className="flex justify-between mt-1">
-                        <span className="text-muted-foreground text-xs">{lang === "de" ? "Ursprünglicher Termin" : "Data originale"}</span>
-                        <span className="text-xs text-amber-600 dark:text-amber-400">{new Date(detailOrder.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "short" })}</span>
+                      <div className="flex justify-between gap-3 mt-1">
+                        <span className="text-muted-foreground text-xs shrink-0">{lang === "de" ? "Urspr. Termin" : "Data originale"}</span>
+                        <span className="text-xs text-amber-600 dark:text-amber-400 text-right truncate">{new Date(detailOrder.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "short" })}</span>
                       </div>
                     )}
                     {(detailOrder.status === "in_delivery" || detailOrder.status === "confirmed") && new Date(detailOrder.requestedDeliveryDate + "T00:00:00") < new Date(new Date().toDateString()) && (
@@ -742,9 +742,9 @@ export default function SupplierOrders() {
                     )}
                   </div>
                 ) : (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{lang === "de" ? "Gewünschter Liefertermin" : "Data consegna richiesta"}</span>
-                    <span className="text-muted-foreground">{lang === "de" ? "Sobald wie möglich" : "Il prima possibile"}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground shrink-0">{lang === "de" ? "Liefertermin" : "Data consegna"}</span>
+                    <span className="text-muted-foreground text-right truncate">{lang === "de" ? "Sobald wie möglich" : "Il prima possibile"}</span>
                   </div>
                 )}
               </div>
@@ -757,7 +757,7 @@ export default function SupplierOrders() {
                     return (
                       <div
                         key={item.id}
-                        className={`flex justify-between items-center text-sm p-2 rounded-xl bg-muted/30 ${product ? "cursor-pointer hover:bg-muted transition-colors" : ""}`}
+                        className={`flex items-center gap-2 text-sm p-2 rounded-xl bg-muted/30 ${product ? "cursor-pointer hover:bg-muted transition-colors" : ""}`}
                         onClick={() => product && setSelectedProduct(product)}
                         data-testid={`detail-item-${item.id}`}
                       >
@@ -769,10 +769,10 @@ export default function SupplierOrders() {
                               <Package className="h-4 w-4 text-muted-foreground/40" />
                             </div>
                           )}
-                          <div className="min-w-0">
+                          <div className="min-w-0 truncate">
                             <span className="font-medium">{item.quantity}x</span>{" "}
                             <span className={product ? "underline decoration-dotted underline-offset-2" : ""}>{item.productName}</span>
-                            <span className="text-muted-foreground ml-2">@ {item.unitPrice}€</span>
+                            <span className="text-muted-foreground ml-1">@ {item.unitPrice}€</span>
                           </div>
                         </div>
                         <span className="font-medium shrink-0 ml-2">{item.totalPrice}€</span>
@@ -789,7 +789,7 @@ export default function SupplierOrders() {
                 </div>
               )}
 
-              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between">
+              <div className="rounded-xl bg-muted/30 p-3 flex items-center justify-between gap-2">
                 <span className="text-sm font-medium">{t("common", "total")}</span>
                 <span className="text-lg font-bold" data-testid="text-detail-total">{detailOrder.totalAmount}€</span>
               </div>
