@@ -318,8 +318,8 @@ export default function SupplierHome() {
       </div>
 
       {/* Upcoming Deliveries */}
-      <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
-        <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0 hidden md:flex">
               <Truck className="h-5 w-5 text-primary" />
@@ -339,7 +339,6 @@ export default function SupplierHome() {
             </Link>
           </Button>
         </div>
-        <div className="md:px-5 md:pb-5">
 
         {deliveriesLoading ? (
           <div className="flex gap-3 overflow-hidden md:flex-col">
@@ -519,571 +518,556 @@ export default function SupplierHome() {
             </p>
           </div>
         )}
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <div className="space-y-4 md:space-y-6">
-          {/* Unread Messages */}
-          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
-            <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-blue-500/10 shrink-0 hidden md:flex">
-                  <MessageSquare className="h-5 w-5 text-blue-500" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg md:text-xl font-bold" data-testid="text-unread-messages-title">
-                      {t("supplierHome", "unreadMessages")}
-                    </h2>
-                    {totalUnread > 0 && (
-                      <Badge className="bg-blue-600 text-white text-[10px] px-1.5 py-0 min-w-[20px] flex items-center justify-center" data-testid="badge-unread-count">
-                        {totalUnread}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground hidden md:block">
-                    {t("supplierHome", "unreadMessagesDesc")}
-                  </p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
-                <Link href="/supplier/inbox" data-testid="link-view-all-messages">{t("supplierHome", "allMessages")}</Link>
-              </Button>
+      {/* Unread Messages */}
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-blue-500/10 shrink-0 hidden md:flex">
+              <MessageSquare className="h-5 w-5 text-blue-500" />
             </div>
-            <div className="md:px-5 md:pb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg md:text-xl font-bold" data-testid="text-unread-messages-title">
+                  {t("supplierHome", "unreadMessages")}
+                </h2>
+                {totalUnread > 0 && (
+                  <Badge className="bg-blue-600 text-white text-[10px] px-1.5 py-0 min-w-[20px] flex items-center justify-center" data-testid="badge-unread-count">
+                    {totalUnread}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground hidden md:block">
+                {t("supplierHome", "unreadMessagesDesc")}
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
+            <Link href="/supplier/inbox" data-testid="link-view-all-messages">{t("supplierHome", "allMessages")}</Link>
+          </Button>
+        </div>
             {convLoading ? (
               <div className="flex gap-3 overflow-hidden md:flex-col">
                 {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="min-w-[220px] h-[130px] md:min-w-0 md:h-14 rounded-xl shrink-0" />
-                ))}
-              </div>
-            ) : unreadConversations.length > 0 ? (
-              <>
-                {/* Mobile: horizontal scroll cards */}
-                <div
-                  className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
-                  style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
-                >
-                  {unreadConversations.slice(0, 5).map((conv) => {
-                    const isPriority = conv.lastMessage?.priority === "important";
-                    return (
-                      <div
-                        key={conv.id}
-                        className={`min-w-[220px] w-[220px] shrink-0 snap-start rounded-2xl border p-4 cursor-pointer transition-all active:scale-[0.98] ${isPriority ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20" : "border-border bg-card"}`}
-                        onClick={() => navigate(`/supplier/inbox?chat=${conv.id}`)}
-                        data-testid={`unread-chat-${conv.id}`}
-                      >
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <Avatar className="h-10 w-10 shrink-0">
-                            {conv.otherUser.profileImageUrl ? (
-                              <AvatarImage src={conv.otherUser.profileImageUrl} alt={conv.otherUser.companyName || conv.otherUser.name} />
-                            ) : null}
-                            <AvatarFallback className={`text-xs font-bold ${isPriority ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"}`}>
-                              {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-blue-600"}`} data-testid={`badge-unread-conv-${conv.id}`}>
-                            {conv.unreadCount}
-                          </Badge>
-                        </div>
+      <Skeleton key={i} className="min-w-[220px] h-[130px] md:min-w-0 md:h-14 rounded-xl shrink-0" />
+    ))}
+  </div>
+) : unreadConversations.length > 0 ? (
+  <>
+    {/* Mobile: horizontal scroll cards */}
+    <div
+      className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
+      style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+    >
+      {unreadConversations.slice(0, 5).map((conv) => {
+        const isPriority = conv.lastMessage?.priority === "important";
+        return (
+          <div
+            key={conv.id}
+            className={`min-w-[220px] w-[220px] shrink-0 snap-start rounded-2xl border p-4 cursor-pointer transition-all active:scale-[0.98] ${isPriority ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20" : "border-border bg-card"}`}
+            onClick={() => navigate(`/supplier/inbox?chat=${conv.id}`)}
+            data-testid={`unread-chat-${conv.id}`}
+          >
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <Avatar className="h-10 w-10 shrink-0">
+                {conv.otherUser.profileImageUrl ? (
+                  <AvatarImage src={conv.otherUser.profileImageUrl} alt={conv.otherUser.companyName || conv.otherUser.name} />
+                ) : null}
+                <AvatarFallback className={`text-xs font-bold ${isPriority ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"}`}>
+                  {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-blue-600"}`} data-testid={`badge-unread-conv-${conv.id}`}>
+                {conv.unreadCount}
+              </Badge>
+            </div>
 
-                        <div className="flex items-center gap-1.5 mb-1">
-                          {isPriority && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
-                          <p className={`text-sm font-semibold truncate ${isPriority ? "text-red-700 dark:text-red-400" : ""}`} data-testid={`text-unread-restaurant-${conv.id}`}>
-                            {conv.otherUser.companyName || conv.otherUser.name}
-                          </p>
-                        </div>
-                        <p className={`text-xs line-clamp-2 ${isPriority ? "text-red-600/70 dark:text-red-400/70" : "text-muted-foreground"}`} data-testid={`text-unread-preview-${conv.id}`}>
-                          {getMessagePreview(conv)}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-2" data-testid={`text-unread-time-${conv.id}`}>
-                          {conv.lastMessage?.createdAt && format(new Date(conv.lastMessage.createdAt), "HH:mm", { locale: dateLocale })}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="flex items-center gap-1.5 mb-1">
+              {isPriority && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+              <p className={`text-sm font-semibold truncate ${isPriority ? "text-red-700 dark:text-red-400" : ""}`} data-testid={`text-unread-restaurant-${conv.id}`}>
+                {conv.otherUser.companyName || conv.otherUser.name}
+              </p>
+            </div>
+            <p className={`text-xs line-clamp-2 ${isPriority ? "text-red-600/70 dark:text-red-400/70" : "text-muted-foreground"}`} data-testid={`text-unread-preview-${conv.id}`}>
+              {getMessagePreview(conv)}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-2" data-testid={`text-unread-time-${conv.id}`}>
+              {conv.lastMessage?.createdAt && format(new Date(conv.lastMessage.createdAt), "HH:mm", { locale: dateLocale })}
+            </p>
+          </div>
+        );
+      })}
+    </div>
 
-                {/* Desktop: stacked list */}
-                <div className="hidden md:block space-y-2">
-                  {unreadConversations.slice(0, 3).map((conv) => {
-                    const isPriority = conv.lastMessage?.priority === "important";
-                    return (
-                      <div
-                        key={conv.id}
-                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md ${isPriority ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20 hover:border-red-400" : "border-border bg-card hover:border-blue-300/40"}`}
-                        onClick={() => navigate(`/supplier/inbox?chat=${conv.id}`)}
-                        data-testid={`unread-chat-desktop-${conv.id}`}
-                      >
-                        {isPriority && (
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
-                            <Flame className="h-4 w-4 text-red-600" />
-                          </div>
-                        )}
-                        {!isPriority && (
-                          <Avatar className="h-9 w-9 shrink-0">
-                            {conv.otherUser.profileImageUrl ? (
-                              <AvatarImage src={conv.otherUser.profileImageUrl} alt={conv.otherUser.companyName || conv.otherUser.name} />
-                            ) : null}
-                            <AvatarFallback className="bg-blue-100 text-blue-700 text-xs dark:bg-blue-900/30 dark:text-blue-400">
-                              {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              {isPriority && (
-                                <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                              )}
-                              <span className={`text-sm font-semibold truncate ${isPriority ? "text-red-700 dark:text-red-400" : ""}`} data-testid={`text-unread-restaurant-desktop-${conv.id}`}>
-                                {conv.otherUser.companyName || conv.otherUser.name}
-                              </span>
-                            </div>
-                            <span className="text-[10px] text-muted-foreground shrink-0" data-testid={`text-unread-time-desktop-${conv.id}`}>
-                              {conv.lastMessage?.createdAt && format(new Date(conv.lastMessage.createdAt), "HH:mm", { locale: dateLocale })}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <p className={`text-xs truncate flex-1 ${isPriority ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`} data-testid={`text-unread-preview-desktop-${conv.id}`}>
-                              {getMessagePreview(conv)}
-                            </p>
-                            <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-blue-600"}`} data-testid={`badge-unread-conv-desktop-${conv.id}`}>
-                              {conv.unreadCount}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {totalUnread > 3 && (
-                    <p className="text-xs text-muted-foreground text-center pt-1" data-testid="text-more-unread">
-                      +{totalUnread - 3} {t("supplierHome", "moreUnread")}
-                    </p>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
-                  <MessageSquare className="h-6 w-6 text-muted-foreground/40" />
-                </div>
-                <p className="text-sm font-medium text-muted-foreground">{t("supplierHome", "noUnreadMessages")}</p>
-                <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "noUnreadMessagesDesc")}</p>
+    {/* Desktop: stacked list */}
+    <div className="hidden md:block space-y-2">
+      {unreadConversations.slice(0, 3).map((conv) => {
+        const isPriority = conv.lastMessage?.priority === "important";
+        return (
+          <div
+            key={conv.id}
+            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md ${isPriority ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20 hover:border-red-400" : "border-border bg-card hover:border-blue-300/40"}`}
+            onClick={() => navigate(`/supplier/inbox?chat=${conv.id}`)}
+            data-testid={`unread-chat-desktop-${conv.id}`}
+          >
+            {isPriority && (
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
+                <Flame className="h-4 w-4 text-red-600" />
               </div>
             )}
+            {!isPriority && (
+              <Avatar className="h-9 w-9 shrink-0">
+                {conv.otherUser.profileImageUrl ? (
+                  <AvatarImage src={conv.otherUser.profileImageUrl} alt={conv.otherUser.companyName || conv.otherUser.name} />
+                ) : null}
+                <AvatarFallback className="bg-blue-100 text-blue-700 text-xs dark:bg-blue-900/30 dark:text-blue-400">
+                  {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {isPriority && (
+                    <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                  )}
+                  <span className={`text-sm font-semibold truncate ${isPriority ? "text-red-700 dark:text-red-400" : ""}`} data-testid={`text-unread-restaurant-desktop-${conv.id}`}>
+                    {conv.otherUser.companyName || conv.otherUser.name}
+                  </span>
+                </div>
+                <span className="text-[10px] text-muted-foreground shrink-0" data-testid={`text-unread-time-desktop-${conv.id}`}>
+                  {conv.lastMessage?.createdAt && format(new Date(conv.lastMessage.createdAt), "HH:mm", { locale: dateLocale })}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className={`text-xs truncate flex-1 ${isPriority ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`} data-testid={`text-unread-preview-desktop-${conv.id}`}>
+                  {getMessagePreview(conv)}
+                </p>
+                <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-blue-600"}`} data-testid={`badge-unread-conv-desktop-${conv.id}`}>
+                  {conv.unreadCount}
+                </Badge>
+              </div>
             </div>
           </div>
+        );
+      })}
+      {totalUnread > 3 && (
+        <p className="text-xs text-muted-foreground text-center pt-1" data-testid="text-more-unread">
+          +{totalUnread - 3} {t("supplierHome", "moreUnread")}
+        </p>
+      )}
+    </div>
+  </>
+) : (
+  <div className="flex flex-col items-center justify-center py-8 text-center">
+    <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
+      <MessageSquare className="h-6 w-6 text-muted-foreground/40" />
+    </div>
+    <p className="text-sm font-medium text-muted-foreground">{t("supplierHome", "noUnreadMessages")}</p>
+    <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "noUnreadMessagesDesc")}</p>
+  </div>
+)}
+  </div>
 
-          {/* New Orders */}
-          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
-            <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0 hidden md:flex">
-                  <ClipboardList className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-lg md:text-xl font-bold">{t("supplierHome", "newOrders")}</h2>
-                  <p className="text-xs text-muted-foreground hidden md:block">{lang === "de" ? "Bestellungen der letzten 24 Stunden" : "Ordini delle ultime 24 ore"}</p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
-                <Link href="/supplier/orders" data-testid="link-view-all-orders">{t("common", "all")}</Link>
-              </Button>
+      {/* New Orders */}
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0 hidden md:flex">
+              <ClipboardList className="h-5 w-5 text-primary" />
             </div>
-            <div className="md:px-5 md:pb-5">
-            {ordersLoading ? (
-              <div className="flex gap-3 overflow-hidden md:flex-col">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="min-w-[200px] h-[160px] md:min-w-0 md:h-20 rounded-xl shrink-0" />
-                ))}
-              </div>
-            ) : recentOrders && recentOrders.length > 0 ? (
-              <>
-                {/* Mobile: horizontal scroll cards */}
+            <div>
+              <h2 className="text-lg md:text-xl font-bold">{t("supplierHome", "newOrders")}</h2>
+              <p className="text-xs text-muted-foreground hidden md:block">{lang === "de" ? "Bestellungen der letzten 24 Stunden" : "Ordini delle ultime 24 ore"}</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
+            <Link href="/supplier/orders" data-testid="link-view-all-orders">{t("common", "all")}</Link>
+          </Button>
+        </div>
+        {ordersLoading ? (
+          <div className="flex gap-3 overflow-hidden md:flex-col">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="min-w-[200px] h-[160px] md:min-w-0 md:h-20 rounded-xl shrink-0" />
+            ))}
+          </div>
+        ) : recentOrders && recentOrders.length > 0 ? (
+          <>
+            {/* Mobile: horizontal scroll cards */}
+            <div
+              className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+            >
+              {recentOrders.map((order) => (
                 <div
-                  className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
-                  style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+                  key={order.id}
+                  className="min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border border-border bg-card p-4 cursor-pointer transition-all active:scale-[0.98]"
+                  onClick={() => navigate(`/supplier/orders/${order.id}`)}
+                  data-testid={`order-item-${order.id}`}
                 >
-                  {recentOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border border-border bg-card p-4 cursor-pointer transition-all active:scale-[0.98]"
-                      onClick={() => navigate(`/supplier/orders/${order.id}`)}
-                      data-testid={`order-item-${order.id}`}
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary/10 shrink-0">
-                          <ShoppingBag className="h-5 w-5 text-primary" />
-                        </div>
-                        <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
-                          {getOrderStatus(order.status, lang, true)}
-                        </Badge>
-                      </div>
-
-                      <p className="text-sm font-semibold truncate">{order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
-                      </p>
-
-                      <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
-                        <span className="text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</span>
-                        <span className="text-base font-bold">{order.totalAmount}€</span>
-                      </div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary/10 shrink-0">
+                      <ShoppingBag className="h-5 w-5 text-primary" />
                     </div>
-                  ))}
-                </div>
+                    <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
+                      {getOrderStatus(order.status, lang, true)}
+                    </Badge>
+                  </div>
 
-                {/* Desktop: stacked list */}
-                <div className="hidden md:block space-y-2">
-                  {recentOrders.map((order) => (
+                  <p className="text-sm font-semibold truncate">{order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+                  </p>
+
+                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
+                    <span className="text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</span>
+                    <span className="text-base font-bold">{order.totalAmount}€</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: stacked list */}
+            <div className="hidden md:block space-y-2">
+              {recentOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all duration-200 cursor-pointer"
+                  onClick={() => navigate(`/supplier/orders/${order.id}`)}
+                  data-testid={`order-item-${order.id}`}
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                    <ShoppingBag className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-sm font-medium">#{order.id.slice(0, 8)}</p>
+                      <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
+                        {getOrderStatus(order.status, lang, true)}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <UserIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <p className="text-xs text-muted-foreground truncate">
+                        {order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}
+                      </p>
+                      <span className="text-xs text-muted-foreground">·</span>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                    <span className="text-base font-bold">{order.totalAmount}€</span>
+                    <span className="text-xs text-muted-foreground">
+                      {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
+              <ClipboardList className="h-6 w-6 text-muted-foreground/40" />
+            </div>
+            <p className="text-sm font-medium text-muted-foreground">{t("supplierHome", "noNewOrders")}</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "allProcessed")}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Action Required */}
+      {((actionRequired?.staleOrders?.length || 0) > 0 || (actionRequired?.openComplaints?.length || 0) > 0) && (
+        <div>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0 hidden md:flex">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg md:text-xl font-bold" data-testid="text-action-required-title">
+                    {lang === "de" ? "Erforderliche Aktionen" : "Azioni richieste"}
+                  </h2>
+                  <Badge className="bg-red-600 text-white text-[10px] px-1.5 py-0 min-w-[20px] flex items-center justify-center">
+                    {(actionRequired?.staleOrders?.length || 0) + (actionRequired?.openComplaints?.length || 0)}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground hidden md:block">
+                  {lang === "de" ? "Unbearbeitete Bestellungen und Reklamationen" : "Ordini non elaborati e reclami"}
+                </p>
+              </div>
+            </div>
+          </div>
+          {/* Mobile: horizontal scroll cards */}
+          <div
+            className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+          >
+            {(actionRequired?.staleOrders || []).map((order) => (
+              <div
+                key={order.id}
+                className="min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10 p-4 cursor-pointer transition-all active:scale-[0.98]"
+                onClick={() => navigate(`/supplier/orders/${order.id}`)}
+                data-testid={`stale-order-${order.id}`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/30 shrink-0">
+                    <Clock className="h-5 w-5 text-red-600" />
+                  </div>
+                  <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
+                    {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+                  </Badge>
+                </div>
+                <p className="text-sm font-semibold truncate">{order.restaurant?.companyName || order.restaurant?.name}</p>
+                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-red-200/50 dark:border-red-900/30">
+                  <span className="text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</span>
+                  <span className="text-base font-bold">{order.totalAmount}€</span>
+                </div>
+              </div>
+            ))}
+            {(actionRequired?.openComplaints || []).map((complaint) => {
+              const statusLabels: Record<string, Record<string, string>> = {
+                de: { open: "Offen", in_progress: "In Bearbeitung", resolved: "Gelöst" },
+                it: { open: "Aperto", in_progress: "In lavorazione", resolved: "Risolto" },
+              };
+              return (
+                <div
+                  key={complaint.id}
+                  className={`min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border p-4 cursor-pointer transition-all active:scale-[0.98] ${complaint.priority === "urgent" ? "border-red-300 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10" : "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/10"}`}
+                  onClick={() => navigate(`/supplier/complaints/${complaint.id}`)}
+                  data-testid={`action-complaint-${complaint.id}`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 shrink-0">
+                      {complaint.priority === "urgent" ? <Flame className="h-5 w-5 text-red-500" /> : <AlertTriangle className="h-5 w-5 text-amber-600" />}
+                    </div>
+                    <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5" variant="outline">
+                      {statusLabels[lang]?.[complaint.status] || complaint.status}
+                    </Badge>
+                  </div>
+                  <p className={`text-sm font-semibold truncate ${complaint.priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{complaint.restaurant?.companyName || complaint.restaurant?.name}</p>
+                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
+                    <span className="text-xs text-muted-foreground font-mono">#{complaint.id.slice(0, 8)}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {formatDistanceToNow(new Date(complaint.createdAt), { addSuffix: true, locale: dateLocale })}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: stacked list */}
+          <div className="hidden md:block space-y-3">
+            {(actionRequired?.staleOrders?.length || 0) > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {lang === "de" ? "Unbearbeitete Bestellungen" : "Ordini non elaborati"} ({actionRequired!.staleOrders.length})
+                </p>
+                <div className="space-y-2">
+                  {actionRequired!.staleOrders.map((order) => (
                     <div
                       key={order.id}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all duration-200 cursor-pointer"
+                      className="flex items-center gap-3 p-3 rounded-xl border border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10 hover:shadow-md transition-all duration-200 cursor-pointer"
                       onClick={() => navigate(`/supplier/orders/${order.id}`)}
-                      data-testid={`order-item-${order.id}`}
+                      data-testid={`stale-order-desktop-${order.id}`}
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-                        <ShoppingBag className="h-5 w-5 text-primary" />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
+                        <Clock className="h-5 w-5 text-red-600" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                          <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
-                            {getOrderStatus(order.status, lang, true)}
+                          <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
+                            {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-1 mt-0.5">
                           <UserIcon className="h-3 w-3 text-muted-foreground shrink-0" />
                           <p className="text-xs text-muted-foreground truncate">
-                            {order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}
+                            {order.restaurant?.companyName || order.restaurant?.name}
                           </p>
-                          <span className="text-xs text-muted-foreground">·</span>
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
-                          </span>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
                         <span className="text-base font-bold">{order.totalAmount}€</span>
-                        <span className="text-xs text-muted-foreground">
-                          {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
-                        </span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </div>
                   ))}
                 </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
-                  <ClipboardList className="h-6 w-6 text-muted-foreground/40" />
-                </div>
-                <p className="text-sm font-medium text-muted-foreground">{t("supplierHome", "noNewOrders")}</p>
-                <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "allProcessed")}</p>
               </div>
             )}
-            </div>
-          </div>
-        </div>
 
-        <div className="space-y-4 md:space-y-6">
-          {/* Action Required */}
-          {((actionRequired?.staleOrders?.length || 0) > 0 || (actionRequired?.openComplaints?.length || 0) > 0) && (
-            <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
-              <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0 hidden md:flex">
-                    <AlertCircle className="h-5 w-5 text-red-600" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-lg md:text-xl font-bold" data-testid="text-action-required-title">
-                        {lang === "de" ? "Erforderliche Aktionen" : "Azioni richieste"}
-                      </h2>
-                      <Badge className="bg-red-600 text-white text-[10px] px-1.5 py-0 min-w-[20px] flex items-center justify-center">
-                        {(actionRequired?.staleOrders?.length || 0) + (actionRequired?.openComplaints?.length || 0)}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground hidden md:block">
-                      {lang === "de" ? "Unbearbeitete Bestellungen und Reklamationen" : "Ordini non elaborati e reclami"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="md:px-5 md:pb-5">
-              {/* Mobile: horizontal scroll cards */}
-              <div
-                className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
-                style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
-              >
-                {(actionRequired?.staleOrders || []).map((order) => (
-                  <div
-                    key={order.id}
-                    className="min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10 p-4 cursor-pointer transition-all active:scale-[0.98]"
-                    onClick={() => navigate(`/supplier/orders/${order.id}`)}
-                    data-testid={`stale-order-${order.id}`}
-                  >
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/30 shrink-0">
-                        <Clock className="h-5 w-5 text-red-600" />
-                      </div>
-                      <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
-                        {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
-                      </Badge>
-                    </div>
-                    <p className="text-sm font-semibold truncate">{order.restaurant?.companyName || order.restaurant?.name}</p>
-                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-red-200/50 dark:border-red-900/30">
-                      <span className="text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</span>
-                      <span className="text-base font-bold">{order.totalAmount}€</span>
-                    </div>
-                  </div>
-                ))}
-                {(actionRequired?.openComplaints || []).map((complaint) => {
-                  const statusLabels: Record<string, Record<string, string>> = {
-                    de: { open: "Offen", in_progress: "In Bearbeitung", resolved: "Gelöst" },
-                    it: { open: "Aperto", in_progress: "In lavorazione", resolved: "Risolto" },
-                  };
-                  return (
-                    <div
-                      key={complaint.id}
-                      className={`min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border p-4 cursor-pointer transition-all active:scale-[0.98] ${complaint.priority === "urgent" ? "border-red-300 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10" : "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/10"}`}
-                      onClick={() => navigate(`/supplier/complaints/${complaint.id}`)}
-                      data-testid={`action-complaint-${complaint.id}`}
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 shrink-0">
+            {(actionRequired?.openComplaints?.length || 0) > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {lang === "de" ? "Reklamationen" : "Reclami"} ({actionRequired!.openComplaints.length})
+                </p>
+                <div className="space-y-2">
+                  {actionRequired!.openComplaints.map((complaint) => {
+                    const statusColors: Record<string, string> = {
+                      open: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+                      in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+                      resolved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+                    };
+                    const statusLabels: Record<string, Record<string, string>> = {
+                      de: { open: "Offen", in_progress: "In Bearbeitung", resolved: "Gelöst" },
+                      it: { open: "Aperto", in_progress: "In lavorazione", resolved: "Risolto" },
+                    };
+                    return (
+                      <div
+                        key={complaint.id}
+                        className={`flex items-center gap-3 p-3 rounded-xl border hover:shadow-md transition-all duration-200 cursor-pointer ${complaint.priority === "urgent" ? "border-red-300 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10" : "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/10"}`}
+                        onClick={() => navigate(`/supplier/complaints/${complaint.id}`)}
+                        data-testid={`action-complaint-desktop-${complaint.id}`}
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 shrink-0">
                           {complaint.priority === "urgent" ? <Flame className="h-5 w-5 text-red-500" /> : <AlertTriangle className="h-5 w-5 text-amber-600" />}
                         </div>
-                        <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5" variant="outline">
-                          {statusLabels[lang]?.[complaint.status] || complaint.status}
-                        </Badge>
-                      </div>
-                      <p className={`text-sm font-semibold truncate ${complaint.priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{complaint.restaurant?.companyName || complaint.restaurant?.name}</p>
-                      <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
-                        <span className="text-xs text-muted-foreground font-mono">#{complaint.id.slice(0, 8)}</span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {formatDistanceToNow(new Date(complaint.createdAt), { addSuffix: true, locale: dateLocale })}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Desktop: stacked list */}
-              <div className="hidden md:block space-y-3">
-                {(actionRequired?.staleOrders?.length || 0) > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {lang === "de" ? "Unbearbeitete Bestellungen" : "Ordini non elaborati"} ({actionRequired!.staleOrders.length})
-                    </p>
-                    <div className="space-y-2">
-                      {actionRequired!.staleOrders.map((order) => (
-                        <div
-                          key={order.id}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10 hover:shadow-md transition-all duration-200 cursor-pointer"
-                          onClick={() => navigate(`/supplier/orders/${order.id}`)}
-                          data-testid={`stale-order-desktop-${order.id}`}
-                        >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
-                            <Clock className="h-5 w-5 text-red-600" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                              <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
-                                {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <UserIcon className="h-3 w-3 text-muted-foreground shrink-0" />
-                              <p className="text-xs text-muted-foreground truncate">
-                                {order.restaurant?.companyName || order.restaurant?.name}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 ml-2">
-                            <span className="text-base font-bold">{order.totalAmount}€</span>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {(actionRequired?.openComplaints?.length || 0) > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {lang === "de" ? "Reklamationen" : "Reclami"} ({actionRequired!.openComplaints.length})
-                    </p>
-                    <div className="space-y-2">
-                      {actionRequired!.openComplaints.map((complaint) => {
-                        const statusColors: Record<string, string> = {
-                          open: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-                          in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-                          resolved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-                        };
-                        const statusLabels: Record<string, Record<string, string>> = {
-                          de: { open: "Offen", in_progress: "In Bearbeitung", resolved: "Gelöst" },
-                          it: { open: "Aperto", in_progress: "In lavorazione", resolved: "Risolto" },
-                        };
-                        return (
-                          <div
-                            key={complaint.id}
-                            className={`flex items-center gap-3 p-3 rounded-xl border hover:shadow-md transition-all duration-200 cursor-pointer ${complaint.priority === "urgent" ? "border-red-300 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10" : "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/10"}`}
-                            onClick={() => navigate(`/supplier/complaints/${complaint.id}`)}
-                            data-testid={`action-complaint-desktop-${complaint.id}`}
-                          >
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 shrink-0">
-                              {complaint.priority === "urgent" ? <Flame className="h-5 w-5 text-red-500" /> : <AlertTriangle className="h-5 w-5 text-amber-600" />}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {complaint.priority === "urgent" && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
-                                <p className={`text-sm font-medium truncate ${complaint.priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</p>
-                                <Badge className={`${statusColors[complaint.status] || ""} text-[10px] px-1.5`} variant="outline">
-                                  {statusLabels[lang]?.[complaint.status] || complaint.status}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <UserIcon className="h-3 w-3 text-muted-foreground shrink-0" />
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {complaint.restaurant?.companyName || complaint.restaurant?.name}
-                                </p>
-                                <span className="text-[10px] text-muted-foreground/70 shrink-0 ml-1">
-                                  {formatDistanceToNow(new Date(complaint.createdAt), { addSuffix: true, locale: dateLocale })}
-                                </span>
-                              </div>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-              </div>
-            </div>
-          )}
-
-          {/* Low Stock */}
-          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
-            <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0 hidden md:flex">
-                  <AlertTriangle className="h-5 w-5 text-orange-600" />
-                </div>
-                <div>
-                  <h2 className="text-lg md:text-xl font-bold" data-testid="text-low-stock-title">
-                    {t("supplierHome", "lowStockAlerts")}
-                  </h2>
-                  <p className="text-xs text-muted-foreground hidden md:block">
-                    {t("supplierHome", "lowStockAlertsDesc")}
-                  </p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
-                <Link href="/supplier/products" data-testid="link-manage-stock">{t("common", "products")}</Link>
-              </Button>
-            </div>
-            <div className="md:px-5 md:pb-5">
-            {lowStockLoading ? (
-              <div className="flex gap-3 overflow-hidden md:flex-col">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="min-w-[180px] h-[120px] md:min-w-0 md:h-14 rounded-xl shrink-0" />
-                ))}
-              </div>
-            ) : lowStockProducts && lowStockProducts.length > 0 ? (
-              <>
-                {/* Mobile: horizontal scroll cards */}
-                <div
-                  className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
-                  style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
-                >
-                  {lowStockProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="min-w-[180px] w-[180px] shrink-0 snap-start rounded-2xl border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20 p-4 cursor-pointer transition-all active:scale-[0.98]"
-                      onClick={() => navigate("/supplier/products")}
-                      data-testid={`low-stock-item-${product.id}`}
-                    >
-                      <div className="flex items-center gap-2 mb-3">
-                        {product.imageUrl ? (
-                          <img src={product.imageUrl} alt="" className="h-10 w-10 rounded-xl object-cover shrink-0" />
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/30 shrink-0">
-                            <Package className="h-5 w-5 text-orange-600" />
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm font-semibold truncate">{product.name}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {t("supplierHome", "threshold")}: {product.lowStockThreshold} {product.unit}
-                      </p>
-                      <div className="mt-3 pt-2.5 border-t border-orange-200/50 dark:border-orange-800/30">
-                        <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-[10px]">
-                          <span className="tabular-nums">{product.stockQuantity ?? 0}</span> {product.unit}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Desktop: stacked list */}
-                <div className="hidden md:block space-y-2">
-                  {lowStockProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="flex items-center justify-between gap-2 p-3 rounded-xl border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20"
-                      data-testid={`low-stock-item-desktop-${product.id}`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {product.imageUrl ? (
-                          <img src={product.imageUrl} alt="" className="h-9 w-9 rounded-lg object-cover shrink-0" />
-                        ) : (
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0">
-                            <Package className="h-4 w-4 text-orange-600" />
-                          </div>
-                        )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{product.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {t("supplierHome", "threshold")}: {product.lowStockThreshold} {product.unit}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {complaint.priority === "urgent" && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+                            <p className={`text-sm font-medium truncate ${complaint.priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</p>
+                            <Badge className={`${statusColors[complaint.status] || ""} text-[10px] px-1.5`} variant="outline">
+                              {statusLabels[lang]?.[complaint.status] || complaint.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <UserIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <p className="text-xs text-muted-foreground truncate">
+                              {complaint.restaurant?.companyName || complaint.restaurant?.name}
+                            </p>
+                            <span className="text-[10px] text-muted-foreground/70 shrink-0 ml-1">
+                              {formatDistanceToNow(new Date(complaint.createdAt), { addSuffix: true, locale: dateLocale })}
+                            </span>
+                          </div>
                         </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
                       </div>
-                      <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-xs shrink-0 ml-2 whitespace-nowrap">
-                        <span className="tabular-nums">{product.stockQuantity ?? 0}</span> {product.unit}
-                      </Badge>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
-                  <Package className="h-6 w-6 text-muted-foreground/40" />
-                </div>
-                <p className="text-sm font-medium text-muted-foreground">{t("supplierHome", "noLowStock")}</p>
-                <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "noLowStockDesc")}</p>
               </div>
             )}
-            </div>
           </div>
         </div>
+      )}
+
+      {/* Low Stock */}
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0 hidden md:flex">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-lg md:text-xl font-bold" data-testid="text-low-stock-title">
+                {t("supplierHome", "lowStockAlerts")}
+              </h2>
+              <p className="text-xs text-muted-foreground hidden md:block">
+                {t("supplierHome", "lowStockAlertsDesc")}
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
+            <Link href="/supplier/products" data-testid="link-manage-stock">{t("common", "products")}</Link>
+          </Button>
+        </div>
+        {lowStockLoading ? (
+          <div className="flex gap-3 overflow-hidden md:flex-col">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="min-w-[180px] h-[120px] md:min-w-0 md:h-14 rounded-xl shrink-0" />
+            ))}
+          </div>
+        ) : lowStockProducts && lowStockProducts.length > 0 ? (
+          <>
+            {/* Mobile: horizontal scroll cards */}
+            <div
+              className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+            >
+              {lowStockProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="min-w-[180px] w-[180px] shrink-0 snap-start rounded-2xl border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20 p-4 cursor-pointer transition-all active:scale-[0.98]"
+                  onClick={() => navigate("/supplier/products")}
+                  data-testid={`low-stock-item-${product.id}`}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt="" className="h-10 w-10 rounded-xl object-cover shrink-0" />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/30 shrink-0">
+                        <Package className="h-5 w-5 text-orange-600" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold truncate">{product.name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {t("supplierHome", "threshold")}: {product.lowStockThreshold} {product.unit}
+                  </p>
+                  <div className="mt-3 pt-2.5 border-t border-orange-200/50 dark:border-orange-800/30">
+                    <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-[10px]">
+                      <span className="tabular-nums">{product.stockQuantity ?? 0}</span> {product.unit}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: stacked list */}
+            <div className="hidden md:block space-y-2">
+              {lowStockProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="flex items-center justify-between gap-2 p-3 rounded-xl border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20"
+                  data-testid={`low-stock-item-desktop-${product.id}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt="" className="h-9 w-9 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0">
+                        <Package className="h-4 w-4 text-orange-600" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{product.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("supplierHome", "threshold")}: {product.lowStockThreshold} {product.unit}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-xs shrink-0 ml-2 whitespace-nowrap">
+                    <span className="tabular-nums">{product.stockQuantity ?? 0}</span> {product.unit}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
+              <Package className="h-6 w-6 text-muted-foreground/40" />
+            </div>
+            <p className="text-sm font-medium text-muted-foreground">{t("supplierHome", "noLowStock")}</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "noLowStockDesc")}</p>
+          </div>
+        )}
       </div>
 
       {/* Statistics */}
-      <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
-        <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 shrink-0 hidden md:flex">
               <BarChart3 className="h-5 w-5 text-indigo-600" />
@@ -1098,7 +1082,6 @@ export default function SupplierHome() {
             </div>
           </div>
         </div>
-        <div className="md:px-5 md:pb-5">
         {statsLoading ? (
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
@@ -1217,7 +1200,6 @@ export default function SupplierHome() {
             <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "noStatsYetDesc")}</p>
           </div>
         )}
-        </div>
       </div>
 
       {deliveryDatePicker && (

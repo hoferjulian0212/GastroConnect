@@ -5,7 +5,6 @@ import { useUser } from "@/context/UserContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Package, ShoppingCart, Check, Clock, Tag, Euro, Layers, Info, Percent, Store } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -223,131 +222,131 @@ export default function ProductDetail() {
         {lang === "de" ? "Zurueck" : "Indietro"}
       </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-        <div>
-          {product.imageUrl ? (
-            <div className="w-full aspect-square rounded-xl overflow-hidden bg-muted">
-              <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-            </div>
-          ) : (
-            <div className="w-full aspect-square rounded-xl bg-muted flex items-center justify-center">
-              <Package className="h-20 w-20 text-muted-foreground/20" />
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-4">
+      <div className="max-w-3xl mx-auto">
+        <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-6">
           <div>
-            <h1 className="text-2xl font-bold" data-testid="text-product-name">{product.name}</h1>
-            <div className="flex items-center gap-2 mt-2">
-              <Avatar className="h-5 w-5">
-                <AvatarImage src={product.supplier?.profileImageUrl || undefined} />
-                <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-semibold">
-                  {(product.supplier?.companyName || product.supplier?.name || "").substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-muted-foreground">{product.supplier?.companyName || product.supplier?.name}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {product.inStock ? (
-              <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                {lang === "de" ? "Verfuegbar" : "Disponibile"}
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                {lang === "de" ? "Nicht verfuegbar" : "Non disponibile"}
-              </Badge>
-            )}
-            {product.category && <Badge variant="secondary">{product.category}</Badge>}
-          </div>
-
-          {hasPromo && promo.endDate && (() => {
-            const now = new Date();
-            const end = new Date(promo.endDate);
-            const daysLeft = differenceInDays(end, now);
-            const hoursLeft = differenceInHours(end, now);
-            let remainingText = "";
-            if (daysLeft <= 0 && hoursLeft > 0) remainingText = t("common", "endsToday");
-            else if (daysLeft === 1) remainingText = t("common", "oneDay");
-            else if (daysLeft > 1) remainingText = `${t("common", "still")} ${daysLeft} ${t("common", "daysLeft")}`;
-            else remainingText = t("common", "endsSoon");
-            return (
-              <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40">
-                <div className="flex items-center gap-2 mb-1">
-                  <Percent className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <span className="text-sm font-semibold text-green-700 dark:text-green-400">
-                    {lang === "de" ? `Aktion: -${promo.discountPercent}% Rabatt` : `Promozione: -${promo.discountPercent}% sconto`}
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-muted-foreground line-through text-sm">{originalPrice.toFixed(2)}€</span>
-                  <span className="text-xl font-bold text-green-600 dark:text-green-400">{discountedPrice.toFixed(2)}€/{product.unit}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
-                  <Clock className="h-3 w-3 shrink-0" />
-                  <span className="font-medium">{remainingText} — {format(end, "dd.MM.yyyy", { locale: dateLocale })}</span>
-                </div>
+            {product.imageUrl ? (
+              <div className="w-full aspect-[4/3] md:aspect-square rounded-xl overflow-hidden bg-muted">
+                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
               </div>
-            );
-          })()}
-
-          {!hasPromo && (
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold">{originalPrice.toFixed(2)}€</span>
-              <span className="text-base text-muted-foreground">/{product.unit}</span>
-            </div>
-          )}
-
-          <Separator />
-
-          <div className="flex items-center gap-3">
-            <QuantityInput
-              value={quantity}
-              onChange={setQuantity}
-              min={getMinOrderQty(product)}
-              disabled={!product.inStock}
-              size="md"
-              testIdPrefix="detail-qty"
-            />
-            <Button
-              className={`flex-1 gap-2 ${
-                added
-                  ? "bg-green-500 border-green-500 text-white hover:bg-green-500 no-default-hover-elevate no-default-active-elevate"
-                  : ""
-              }`}
-              disabled={!product.inStock || addToCartMutation.isPending}
-              onClick={() => handleAddToCart(product)}
-              data-testid="button-add-to-cart"
-            >
-              {added ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  {lang === "de" ? "Hinzugefuegt" : "Aggiunto"}
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="h-4 w-4" />
-                  {lang === "de" ? "In den Warenkorb" : "Aggiungi al carrello"}
-                </>
-              )}
-            </Button>
+            ) : (
+              <div className="w-full aspect-[4/3] md:aspect-square rounded-xl bg-muted flex items-center justify-center">
+                <Package className="h-16 w-16 md:h-20 md:w-20 text-muted-foreground/20" />
+              </div>
+            )}
           </div>
 
-          {product.minOrderQuantity && product.minOrderQuantity > 1 && (
-            <p className="text-xs text-muted-foreground">
-              {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
-            </p>
-          )}
+          <div className="space-y-3 md:space-y-4">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold" data-testid="text-product-name">{product.name}</h1>
+              <div className="flex items-center gap-2 mt-1.5">
+                <Avatar className="h-5 w-5">
+                  <AvatarImage src={product.supplier?.profileImageUrl || undefined} />
+                  <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-semibold">
+                    {(product.supplier?.companyName || product.supplier?.name || "").substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm text-muted-foreground">{product.supplier?.companyName || product.supplier?.name}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {product.inStock ? (
+                <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                  {lang === "de" ? "Verfuegbar" : "Disponibile"}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                  {lang === "de" ? "Nicht verfuegbar" : "Non disponibile"}
+                </Badge>
+              )}
+              {product.category && <Badge variant="secondary">{product.category}</Badge>}
+            </div>
+
+            {hasPromo && promo.endDate && (() => {
+              const now = new Date();
+              const end = new Date(promo.endDate);
+              const daysLeft = differenceInDays(end, now);
+              const hoursLeft = differenceInHours(end, now);
+              let remainingText = "";
+              if (daysLeft <= 0 && hoursLeft > 0) remainingText = t("common", "endsToday");
+              else if (daysLeft === 1) remainingText = t("common", "oneDay");
+              else if (daysLeft > 1) remainingText = `${t("common", "still")} ${daysLeft} ${t("common", "daysLeft")}`;
+              else remainingText = t("common", "endsSoon");
+              return (
+                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Percent className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <span className="text-sm font-semibold text-green-700 dark:text-green-400">
+                      {lang === "de" ? `Aktion: -${promo.discountPercent}% Rabatt` : `Promozione: -${promo.discountPercent}% sconto`}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-muted-foreground line-through text-sm">{originalPrice.toFixed(2)}€</span>
+                    <span className="text-lg font-bold text-green-600 dark:text-green-400">{discountedPrice.toFixed(2)}€/{product.unit}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                    <Clock className="h-3 w-3 shrink-0" />
+                    <span className="font-medium">{remainingText} — {format(end, "dd.MM.yyyy", { locale: dateLocale })}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {!hasPromo && (
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl md:text-2xl font-bold">{originalPrice.toFixed(2)}€</span>
+                <span className="text-sm md:text-base text-muted-foreground">/{product.unit}</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 pt-1">
+              <QuantityInput
+                value={quantity}
+                onChange={setQuantity}
+                min={getMinOrderQty(product)}
+                disabled={!product.inStock}
+                size="md"
+                testIdPrefix="detail-qty"
+              />
+              <Button
+                className={`flex-1 gap-2 ${
+                  added
+                    ? "bg-green-500 border-green-500 text-white hover:bg-green-500 no-default-hover-elevate no-default-active-elevate"
+                    : ""
+                }`}
+                disabled={!product.inStock || addToCartMutation.isPending}
+                onClick={() => handleAddToCart(product)}
+                data-testid="button-add-to-cart"
+              >
+                {added ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    {lang === "de" ? "Hinzugefuegt" : "Aggiunto"}
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="h-4 w-4" />
+                    {lang === "de" ? "In den Warenkorb" : "Aggiungi al carrello"}
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {product.minOrderQuantity && product.minOrderQuantity > 1 && (
+              <p className="text-xs text-muted-foreground">
+                {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-4 md:space-y-6">
         {product.description && (
           <div>
-            <h3 className="text-base font-semibold mb-2 flex items-center gap-2">
-              <Info className="h-4 w-4" />
+            <h3 className="text-sm md:text-base font-semibold mb-1.5 flex items-center gap-2">
+              <Info className="h-4 w-4 text-muted-foreground" />
               {lang === "de" ? "Beschreibung" : "Descrizione"}
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-product-description">
@@ -356,60 +355,54 @@ export default function ProductDetail() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <div className="p-3 rounded-lg bg-muted/50">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-              <Euro className="h-3.5 w-3.5" />
-              {hasPromo ? (lang === "de" ? "Originalpreis" : "Prezzo originale") : (lang === "de" ? "Preis" : "Prezzo")}
+        <div className="grid grid-cols-3 gap-2 md:gap-3">
+          <div className="p-2.5 md:p-3 rounded-xl bg-muted/40">
+            <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
+              <Euro className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
+              <span className="truncate">{hasPromo ? (lang === "de" ? "Original" : "Originale") : (lang === "de" ? "Preis" : "Prezzo")}</span>
             </div>
-            <p className="font-semibold text-lg">{product.price}€/{product.unit}</p>
+            <p className="font-semibold text-sm md:text-lg truncate">{product.price}€/{product.unit}</p>
           </div>
-          <div className="p-3 rounded-lg bg-muted/50">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-              <Layers className="h-3.5 w-3.5" />
-              {lang === "de" ? "Einheit" : "Unita"}
+          <div className="p-2.5 md:p-3 rounded-xl bg-muted/40">
+            <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
+              <Layers className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
+              <span className="truncate">{lang === "de" ? "Einheit" : "Unita"}</span>
             </div>
-            <p className="font-semibold text-lg">{product.unit}</p>
+            <p className="font-semibold text-sm md:text-lg">{product.unit}</p>
           </div>
           {product.category && (
-            <div className="p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                <Tag className="h-3.5 w-3.5" />
-                {lang === "de" ? "Kategorie" : "Categoria"}
+            <div className="p-2.5 md:p-3 rounded-xl bg-muted/40">
+              <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
+                <Tag className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
+                <span className="truncate">{lang === "de" ? "Kategorie" : "Categoria"}</span>
               </div>
-              <p className="font-medium">{product.category}</p>
+              <p className="font-medium text-sm md:text-base truncate">{product.category}</p>
             </div>
           )}
         </div>
 
         {similarProducts.length > 0 && (
-          <>
-            <Separator />
-            <div>
-              <h3 className="text-lg font-semibold mb-3">
-                {lang === "de" ? "Aehnliche Produkte" : "Prodotti simili"}
-              </h3>
-              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
-                {similarProducts.map(renderRelatedCard)}
-              </div>
+          <div>
+            <h3 className="text-base md:text-lg font-semibold mb-2.5">
+              {lang === "de" ? "Aehnliche Produkte" : "Prodotti simili"}
+            </h3>
+            <div className="grid gap-2.5 md:gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
+              {similarProducts.map(renderRelatedCard)}
             </div>
-          </>
+          </div>
         )}
 
         {alsoFromSupplier.length > 0 && (
-          <>
-            <Separator />
-            <div>
-              <h3 className="text-lg font-semibold mb-3">
-                {lang === "de"
-                  ? `Mehr von ${product.supplier?.companyName || product.supplier?.name}`
-                  : `Altro da ${product.supplier?.companyName || product.supplier?.name}`}
-              </h3>
-              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
-                {alsoFromSupplier.map(renderRelatedCard)}
-              </div>
+          <div>
+            <h3 className="text-base md:text-lg font-semibold mb-2.5">
+              {lang === "de"
+                ? `Mehr von ${product.supplier?.companyName || product.supplier?.name}`
+                : `Altro da ${product.supplier?.companyName || product.supplier?.name}`}
+            </h3>
+            <div className="grid gap-2.5 md:gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
+              {alsoFromSupplier.map(renderRelatedCard)}
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
