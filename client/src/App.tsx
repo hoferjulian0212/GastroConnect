@@ -50,18 +50,22 @@ import SupplierRestaurants from "@/pages/supplier/Restaurants";
 import SupplierPromotions from "@/pages/supplier/Promotions";
 import About from "@/pages/About";
 import Documents from "@/pages/Documents";
+import OrderDetail from "@/pages/OrderDetail";
+import ComplaintDetail from "@/pages/ComplaintDetail";
 
 function RestaurantRouter() {
   return (
     <Switch>
       <Route path="/restaurant" component={RestaurantHome} />
       <Route path="/restaurant/inbox" component={RestaurantInbox} />
+      <Route path="/restaurant/orders/:id" component={OrderDetail} />
       <Route path="/restaurant/orders" component={RestaurantOrders} />
       <Route path="/restaurant/catalog" component={RestaurantCatalog} />
       <Route path="/restaurant/product/:id" component={RestaurantProductDetail} />
       <Route path="/restaurant/cart" component={RestaurantCart} />
 
       <Route path="/restaurant/templates"><Redirect to="/restaurant/orders?tab=templates" /></Route>
+      <Route path="/restaurant/complaints/:id" component={ComplaintDetail} />
       <Route path="/restaurant/complaints" component={RestaurantComplaints} />
       <Route path="/restaurant/suppliers" component={RestaurantSuppliers} />
       <Route path="/restaurant/settings" component={RestaurantSettings} />
@@ -80,8 +84,10 @@ function SupplierRouter() {
       <Route path="/supplier/inbox" component={SupplierInbox} />
       <Route path="/supplier/products" component={SupplierProducts} />
       <Route path="/supplier/restaurants" component={SupplierRestaurants} />
+      <Route path="/supplier/orders/:id" component={OrderDetail} />
       <Route path="/supplier/orders" component={SupplierOrders} />
       <Route path="/supplier/promotions" component={SupplierPromotions} />
+      <Route path="/supplier/complaints/:id" component={ComplaintDetail} />
       <Route path="/supplier/complaints" component={SupplierComplaints} />
       <Route path="/supplier/settings" component={SupplierSettings} />
       <Route path="/supplier/profile" component={SupplierProfile} />
@@ -200,6 +206,8 @@ function AppLayout() {
     return () => document.removeEventListener("click", handler, true);
   }, []);
 
+  const isDetailPage = /^\/(restaurant|supplier)\/(orders|complaints)\/[^/]+$/.test(location);
+
   const sidebarStyle = {
     "--sidebar-width": "256px",
     "--sidebar-width-icon": "3rem",
@@ -239,7 +247,7 @@ function AppLayout() {
               )}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <header className={`flex items-center justify-between gap-4 p-3 border-b border-border bg-background sticky top-0 z-10 pt-[0px] pb-[0px] ${isInChat ? 'hidden md:flex' : ''}`}>
+              <header className={`flex items-center justify-between gap-4 p-3 border-b border-border bg-background sticky top-0 z-10 pt-[0px] pb-[0px] ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
                 <div className="flex items-center gap-3">
                   <MobileProfileButton />
                   <div className="hidden md:flex items-center gap-2">
@@ -262,11 +270,11 @@ function AppLayout() {
                   <NotificationBell />
                 </div>
               </header>
-              <main className={`flex-1 overflow-auto ${isInChat ? 'p-0 pb-0' : 'p-4 md:p-6 pb-28'} md:p-6 md:pb-6`}>
+              <main className={`flex-1 overflow-auto ${isInChat || isDetailPage ? 'p-0 pb-0' : 'p-4 md:p-6 pb-28'} md:p-6 md:pb-6 ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
                 {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
               </main>
             </div>
-            {currentRole === "supplier" ? <SupplierMobileNav /> : <RestaurantMobileNav />}
+            {!isDetailPage && (currentRole === "supplier" ? <SupplierMobileNav /> : <RestaurantMobileNav />)}
           </div>
         </SidebarProvider>
       )}

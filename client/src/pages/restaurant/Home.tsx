@@ -601,7 +601,7 @@ export default function RestaurantHome() {
                                     ? "border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/20"
                                     : "border-border bg-card"
                             }`}
-                            onClick={() => setDetailOrder(order)}
+                            onClick={() => navigate(`/restaurant/orders/${order.id}`)}
                             data-testid={`delivery-item-${order.id}`}
                           >
                             <div className="flex items-center justify-between gap-2 mb-3">
@@ -700,7 +700,7 @@ export default function RestaurantHome() {
                           >
                             <div
                               className="flex items-center gap-3 p-3 cursor-pointer"
-                              onClick={() => setDetailOrder(order)}
+                              onClick={() => navigate(`/restaurant/orders/${order.id}`)}
                             >
                               <div className={`flex items-center justify-center h-10 w-10 rounded-lg shrink-0 ${
                                 isDelivered

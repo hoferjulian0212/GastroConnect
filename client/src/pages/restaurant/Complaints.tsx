@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
-import { useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,7 @@ import { useT, getOrderStatus, getComplaintStatus } from "@/lib/translations";
 
 export default function Complaints() {
   const { currentUser } = useUser();
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const { lang } = useLanguage();
   const t = useT(lang);
@@ -144,7 +145,7 @@ export default function Complaints() {
   useEffect(() => {
     if (highlightComplaintId && existingComplaints) {
       const complaint = existingComplaints.find(c => c.id === highlightComplaintId);
-      if (complaint) setDetailComplaint(complaint);
+      if (complaint) navigate(`/restaurant/complaints/${complaint.id}`);
     }
   }, [highlightComplaintId, existingComplaints]);
 
@@ -550,7 +551,7 @@ export default function Complaints() {
                     <div
                       key={complaint.id}
                       className={`flex items-center gap-2.5 md:gap-3 p-2.5 md:p-3 rounded-lg border cursor-pointer hover-elevate transition-all ${(complaint as any).priority === "urgent" ? "border-red-300 dark:border-red-800 bg-red-50/60 dark:bg-red-950/15" : getComplaintCardBg(complaint.status)}`}
-                      onClick={() => setDetailComplaint(complaint)}
+                      onClick={() => navigate(`/restaurant/complaints/${complaint.id}`)}
                       data-testid={`complaint-${complaint.id}`}
                     >
                       <div className={`w-1 self-stretch rounded-full shrink-0 ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />

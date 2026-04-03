@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
-import { useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,7 @@ import { useT, getComplaintStatus } from "@/lib/translations";
 export default function SupplierComplaints() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const [, navTo] = useLocation();
   const { lang } = useLanguage();
   const t = useT(lang);
   const searchString = useSearch();
@@ -173,10 +174,7 @@ export default function SupplierComplaints() {
   useEffect(() => {
     if (highlightComplaintId && complaints) {
       const complaint = complaints.find(c => c.id === highlightComplaintId);
-      if (complaint) {
-        setSelectedComplaint(complaint);
-        setShowDetailDialog(true);
-      }
+      if (complaint) navTo(`/supplier/complaints/${complaint.id}`);
     }
   }, [highlightComplaintId, complaints]);
 
@@ -464,7 +462,7 @@ export default function SupplierComplaints() {
                   <div
                     key={complaint.id}
                     className={`flex items-center gap-2.5 md:gap-3 p-2.5 md:p-3 rounded-lg border cursor-pointer hover-elevate transition-all ${(complaint as any).priority === "urgent" ? "border-red-300 dark:border-red-800 bg-red-50/60 dark:bg-red-950/15" : getComplaintCardBg(complaint.status)}`}
-                    onClick={() => openDetailDialog(complaint)}
+                    onClick={() => navTo(`/supplier/complaints/${complaint.id}`)}
                     data-testid={`complaint-${complaint.id}`}
                   >
                     <div className={`w-1 self-stretch rounded-full shrink-0 ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />

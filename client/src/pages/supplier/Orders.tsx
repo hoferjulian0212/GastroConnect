@@ -18,7 +18,7 @@ import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
@@ -27,6 +27,7 @@ import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialo
 export default function SupplierOrders() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const [, navTo] = useLocation();
   const { lang } = useLanguage();
   const t = useT(lang);
   const dateFnsLocale = lang === "de" ? de : it;
@@ -259,7 +260,7 @@ export default function SupplierOrders() {
   useEffect(() => {
     if (highlightOrderId && orders) {
       const order = orders.find(o => o.id === highlightOrderId);
-      if (order) setDetailOrder(order);
+      if (order) navTo(`/supplier/orders/${order.id}`);
     }
   }, [highlightOrderId, orders]);
 
@@ -298,7 +299,7 @@ export default function SupplierOrders() {
 
     return (
     <div ref={isHighlighted ? highlightRef : undefined}>
-    <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
+    <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => navTo(`/supplier/orders/${order.id}`)} data-testid={`order-card-${order.id}`}>
       <Card className={`hover-elevate ${getStatusCardBg(order.status)}`}>
       <CardContent className="p-3 md:p-4">
         <div className="flex items-start justify-between gap-2">

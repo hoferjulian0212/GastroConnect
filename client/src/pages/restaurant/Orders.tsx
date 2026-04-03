@@ -370,7 +370,7 @@ export default function RestaurantOrders() {
   useEffect(() => {
     if (highlightOrderId && orders) {
       const order = orders.find(o => o.id === highlightOrderId);
-      if (order) setDetailOrder(order);
+      if (order) navigate(`/restaurant/orders/${order.id}`);
     }
   }, [highlightOrderId, orders]);
 
@@ -465,7 +465,7 @@ export default function RestaurantOrders() {
 
     return (
     <div ref={isHighlighted ? highlightRef : undefined}>
-    <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => setDetailOrder(order)} data-testid={`order-card-${order.id}`}>
+    <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => navigate(`/restaurant/orders/${order.id}`)} data-testid={`order-card-${order.id}`}>
       <Card className={`hover-elevate ${getStatusCardBg(order.status)}`}>
       <CardContent className="p-3 md:p-4">
         <div className="flex items-start justify-between gap-2">
