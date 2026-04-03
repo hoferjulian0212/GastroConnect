@@ -1,9 +1,8 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Search, Save, CircleAlert, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Search, Save, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
 import type { OrderWithDetails, ConversationWithUser, ProductWithSupplierAndPromotion, OrderTemplateWithItems } from "@shared/schema";
@@ -521,225 +520,378 @@ export default function RestaurantHome() {
         </h1>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+      {/* ── Upcoming Deliveries ── */}
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0 hidden md:flex">
               <Truck className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base md:text-lg" data-testid="text-upcoming-deliveries-title">
+              <h2 className="text-lg md:text-xl font-bold" data-testid="text-upcoming-deliveries-title">
                 {t("restaurantHome", "upcomingDeliveries")}
-              </CardTitle>
-              <CardDescription className="text-xs md:text-sm">
+              </h2>
+              <p className="text-xs text-muted-foreground hidden md:block">
                 {t("restaurantHome", "upcomingDeliveriesDesc")}
-              </CardDescription>
+              </p>
             </div>
           </div>
           <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
             <Link href="/restaurant/orders" data-testid="link-view-all-orders">{t("common", "all")}</Link>
           </Button>
-        </CardHeader>
-        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : groupedDeliveries.length > 0 ? (
-            <div className="space-y-4">
-              {groupedDeliveries.map((group) => (
-                <div key={group.dateKey}>
-                  <div className="flex items-center gap-2 mb-2">
-                    {group.type === "overdue" ? (
-                      <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-                    ) : (
-                      <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-primary" : "text-muted-foreground"}`} />
-                    )}
-                    <span className={`text-xs font-semibold uppercase tracking-wide ${
-                      group.type === "overdue" ? "text-red-500" : group.isToday ? "text-primary" : "text-muted-foreground"
-                    }`}>
-                      {group.label}
-                    </span>
-                    {group.isToday && group.type !== "overdue" && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    {group.orders.length === 0 && group.isToday && (
-                      <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center" data-testid="today-no-deliveries">
-                        <p className="text-sm text-muted-foreground">
-                          {lang === "de" ? "Keine Lieferungen geplant f\u00FCr heute" : "Nessuna consegna prevista per oggi"}
-                        </p>
-                      </div>
-                    )}
-                    {group.orders.map((order) => {
-                      const deliveryState = getOrderDeliveryState(order);
-                      const isDelivered = deliveryState === "delivered_today";
-                      const isOverdue = deliveryState === "overdue";
-                      const isDelayed = deliveryState === "delayed";
-                      const supplierName = order.supplier?.companyName || order.supplier?.name || t("common", "unknown");
+        </div>
 
-                      return (
-                        <div
-                          key={order.id}
-                          className={`rounded-xl border transition-all duration-200 ${
-                            isDelivered
-                              ? "border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-950/20"
-                              : isOverdue
-                                ? "border-red-300 dark:border-red-700 bg-red-50/30 dark:bg-red-950/20"
-                                : isDelayed
-                                  ? "border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/20"
-                                  : "border-border bg-card hover:shadow-md hover:border-primary/20"
-                          }`}
-                          data-testid={`delivery-item-${order.id}`}
-                        >
+        {isLoading ? (
+          <div className="flex gap-3 overflow-hidden md:flex-col">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="min-w-[200px] h-[160px] md:min-w-0 md:h-16 rounded-xl shrink-0" />
+            ))}
+          </div>
+        ) : groupedDeliveries.length > 0 ? (
+          <div className="space-y-4">
+            {groupedDeliveries.map((group) => (
+              <div key={group.dateKey}>
+                <div className="flex items-center gap-2 mb-2">
+                  {group.type === "overdue" ? (
+                    <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                  ) : (
+                    <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-primary" : "text-muted-foreground"}`} />
+                  )}
+                  <span className={`text-xs font-semibold uppercase tracking-wide ${
+                    group.type === "overdue" ? "text-red-500" : group.isToday ? "text-primary" : "text-muted-foreground"
+                  }`}>
+                    {group.label}
+                  </span>
+                  {group.isToday && group.type !== "overdue" && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                  )}
+                </div>
+
+                {group.orders.length === 0 && group.isToday && (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center" data-testid="today-no-deliveries">
+                    <p className="text-sm text-muted-foreground">
+                      {lang === "de" ? "Keine Lieferungen geplant f\u00FCr heute" : "Nessuna consegna prevista per oggi"}
+                    </p>
+                  </div>
+                )}
+
+                {group.orders.length > 0 && (
+                  <>
+                    {/* Mobile: horizontal scroll cards */}
+                    <div
+                      className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
+                      style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+                    >
+                      {group.orders.map((order) => {
+                        const deliveryState = getOrderDeliveryState(order);
+                        const isDelivered = deliveryState === "delivered_today";
+                        const isOverdue = deliveryState === "overdue";
+                        const isDelayed = deliveryState === "delayed";
+                        const supplierName = order.supplier?.companyName || order.supplier?.name || t("common", "unknown");
+
+                        return (
                           <div
-                            className="flex items-center gap-3 p-3 cursor-pointer"
-                            onClick={() => setDetailOrder(order)}
-                          >
-                            <div className={`flex items-center justify-center h-10 w-10 rounded-lg shrink-0 ${
+                            key={order.id}
+                            className={`min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border p-4 cursor-pointer transition-all active:scale-[0.98] ${
                               isDelivered
-                                ? "bg-green-100 dark:bg-green-900/30"
+                                ? "border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-950/20"
                                 : isOverdue
-                                  ? "bg-red-100 dark:bg-red-900/30"
+                                  ? "border-red-300 dark:border-red-700 bg-red-50/30 dark:bg-red-950/20"
                                   : isDelayed
-                                    ? "bg-amber-100 dark:bg-amber-900/30"
-                                    : order.status === "in_delivery"
-                                      ? "bg-purple-100 dark:bg-purple-900/30"
-                                      : "bg-blue-100 dark:bg-blue-900/30"
-                            }`}>
-                              {isDelivered
-                                ? <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                : isOverdue
-                                  ? <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
-                                  : isDelayed
-                                    ? <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                                    : order.status === "in_delivery"
-                                      ? <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                      : <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                              }
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className={`text-sm font-medium truncate ${isOverdue ? "text-red-700 dark:text-red-400" : ""}`}>
-                                  {supplierName}
-                                </span>
-                                {isDelivered ? (
-                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1.5" variant="outline">
-                                    {lang === "de" ? "Geliefert" : "Consegnato"}
-                                  </Badge>
-                                ) : isOverdue ? (
-                                  <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
-                                    {lang === "de" ? "Überfällig" : "Scaduto"}
-                                  </Badge>
-                                ) : isDelayed ? (
-                                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5" variant="outline">
-                                    {lang === "de" ? "In Verspätung" : "In ritardo"}
-                                  </Badge>
-                                ) : (
-                                  <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
-                                    {getOrderStatus(order.status, lang)}
-                                  </Badge>
-                                )}
+                                    ? "border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/20"
+                                    : "border-border bg-card"
+                            }`}
+                            onClick={() => setDetailOrder(order)}
+                            data-testid={`delivery-item-${order.id}`}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                              <div className={`flex items-center justify-center h-10 w-10 rounded-xl shrink-0 ${
+                                isDelivered
+                                  ? "bg-green-100 dark:bg-green-900/30"
+                                  : isOverdue
+                                    ? "bg-red-100 dark:bg-red-900/30"
+                                    : isDelayed
+                                      ? "bg-amber-100 dark:bg-amber-900/30"
+                                      : order.status === "in_delivery"
+                                        ? "bg-purple-100 dark:bg-purple-900/30"
+                                        : "bg-blue-100 dark:bg-blue-900/30"
+                              }`}>
+                                {isDelivered
+                                  ? <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                  : isOverdue
+                                    ? <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
+                                    : isDelayed
+                                      ? <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                      : order.status === "in_delivery"
+                                        ? <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                        : <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                }
                               </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {order.items?.length || 0} {t("common", "items")} — #{order.id.slice(0, 8)}
-                                {order.createdByUser && (
-                                  <span className="ml-1.5" data-testid={`text-created-by-${order.id}`}>— {order.createdByUser.name}</span>
-                                )}
-                              </p>
-                              {isDelayed && order.originalDeliveryDate && (
-                                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
-                                  {lang === "de" ? "Ursprünglich" : "Originale"}: {new Date(order.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
-                                  {" → "}
-                                  {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
-                                </p>
-                              )}
-                              {isOverdue && (
-                                <p className="text-[11px] text-red-500 dark:text-red-400 mt-0.5">
-                                  {lang === "de" ? "Erwartet am" : "Previsto per il"} {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "short" })}
-                                </p>
+                              {isDelivered ? (
+                                <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1.5" variant="outline">
+                                  {lang === "de" ? "Geliefert" : "Consegnato"}
+                                </Badge>
+                              ) : isOverdue ? (
+                                <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
+                                  {lang === "de" ? "Überfällig" : "Scaduto"}
+                                </Badge>
+                              ) : isDelayed ? (
+                                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5" variant="outline">
+                                  {lang === "de" ? "In Verspätung" : "In ritardo"}
+                                </Badge>
+                              ) : (
+                                <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
+                                  {getOrderStatus(order.status, lang)}
+                                </Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-sm font-bold">{order.totalAmount}€</span>
+
+                            <p className={`text-sm font-semibold truncate ${isOverdue ? "text-red-700 dark:text-red-400" : ""}`}>
+                              {supplierName}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {order.items?.length || 0} {t("common", "items")}
+                            </p>
+
+                            {isDelayed && order.originalDeliveryDate && (
+                              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1.5">
+                                {new Date(order.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+                                {" → "}
+                                {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+                              </p>
+                            )}
+                            {isOverdue && (
+                              <p className="text-[10px] text-red-500 dark:text-red-400 mt-1.5">
+                                {lang === "de" ? "Erwartet" : "Previsto"}: {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+                              </p>
+                            )}
+
+                            <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
+                              <span className="text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</span>
+                              <span className="text-base font-bold">{order.totalAmount}€</span>
                             </div>
                           </div>
-                          {isOverdue && (
-                            <div className="px-3 pb-3 flex justify-end">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-xs bg-white dark:bg-background text-foreground border-border h-7 px-2.5 rounded-lg"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/restaurant/inbox?to=${order.supplierId}`);
-                                }}
-                                data-testid={`button-send-overdue-msg-${order.id}`}
-                              >
-                                <Send className="h-3 w-3 mr-1" />
-                                {lang === "de" ? "Nachricht" : "Messaggio"}
-                              </Button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop: stacked list */}
+                    <div className="hidden md:block space-y-2">
+                      {group.orders.map((order) => {
+                        const deliveryState = getOrderDeliveryState(order);
+                        const isDelivered = deliveryState === "delivered_today";
+                        const isOverdue = deliveryState === "overdue";
+                        const isDelayed = deliveryState === "delayed";
+                        const supplierName = order.supplier?.companyName || order.supplier?.name || t("common", "unknown");
+
+                        return (
+                          <div
+                            key={order.id}
+                            className={`rounded-xl border transition-all duration-200 ${
+                              isDelivered
+                                ? "border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-950/20"
+                                : isOverdue
+                                  ? "border-red-300 dark:border-red-700 bg-red-50/30 dark:bg-red-950/20"
+                                  : isDelayed
+                                    ? "border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/20"
+                                    : "border-border bg-card hover:shadow-md hover:border-primary/20"
+                            }`}
+                            data-testid={`delivery-item-${order.id}`}
+                          >
+                            <div
+                              className="flex items-center gap-3 p-3 cursor-pointer"
+                              onClick={() => setDetailOrder(order)}
+                            >
+                              <div className={`flex items-center justify-center h-10 w-10 rounded-lg shrink-0 ${
+                                isDelivered
+                                  ? "bg-green-100 dark:bg-green-900/30"
+                                  : isOverdue
+                                    ? "bg-red-100 dark:bg-red-900/30"
+                                    : isDelayed
+                                      ? "bg-amber-100 dark:bg-amber-900/30"
+                                      : order.status === "in_delivery"
+                                        ? "bg-purple-100 dark:bg-purple-900/30"
+                                        : "bg-blue-100 dark:bg-blue-900/30"
+                              }`}>
+                                {isDelivered
+                                  ? <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                  : isOverdue
+                                    ? <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
+                                    : isDelayed
+                                      ? <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                      : order.status === "in_delivery"
+                                        ? <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                        : <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                }
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className={`text-sm font-medium truncate ${isOverdue ? "text-red-700 dark:text-red-400" : ""}`}>
+                                    {supplierName}
+                                  </span>
+                                  {isDelivered ? (
+                                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1.5" variant="outline">
+                                      {lang === "de" ? "Geliefert" : "Consegnato"}
+                                    </Badge>
+                                  ) : isOverdue ? (
+                                    <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
+                                      {lang === "de" ? "Überfällig" : "Scaduto"}
+                                    </Badge>
+                                  ) : isDelayed ? (
+                                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5" variant="outline">
+                                      {lang === "de" ? "In Verspätung" : "In ritardo"}
+                                    </Badge>
+                                  ) : (
+                                    <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
+                                      {getOrderStatus(order.status, lang)}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {order.items?.length || 0} {t("common", "items")} — #{order.id.slice(0, 8)}
+                                  {order.createdByUser && (
+                                    <span className="ml-1.5" data-testid={`text-created-by-${order.id}`}>— {order.createdByUser.name}</span>
+                                  )}
+                                </p>
+                                {isDelayed && order.originalDeliveryDate && (
+                                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                    {lang === "de" ? "Ursprünglich" : "Originale"}: {new Date(order.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+                                    {" → "}
+                                    {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+                                  </p>
+                                )}
+                                {isOverdue && (
+                                  <p className="text-[11px] text-red-500 dark:text-red-400 mt-0.5">
+                                    {lang === "de" ? "Erwartet am" : "Previsto per il"} {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "short" })}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-sm font-bold">{order.totalAmount}€</span>
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="flex items-center justify-center h-14 w-14 rounded-full bg-muted/50 mb-3">
-                <Truck className="h-7 w-7 text-muted-foreground/40" />
+                            {isOverdue && (
+                              <div className="px-3 pb-3 flex justify-end">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs bg-white dark:bg-background text-foreground border-border h-7 px-2.5 rounded-lg"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/restaurant/inbox?to=${order.supplierId}`);
+                                  }}
+                                  data-testid={`button-send-overdue-msg-${order.id}`}
+                                >
+                                  <Send className="h-3 w-3 mr-1" />
+                                  {lang === "de" ? "Nachricht" : "Messaggio"}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
-              <p className="text-sm font-medium text-muted-foreground">{t("restaurantHome", "noUpcomingDeliveries")}</p>
-              <p className="text-xs text-muted-foreground mt-1">{t("restaurantHome", "noUpcomingDeliveriesDesc")}</p>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="flex items-center justify-center h-14 w-14 rounded-full bg-muted/50 mb-3">
+              <Truck className="h-7 w-7 text-muted-foreground/40" />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-sm font-medium text-muted-foreground">{t("restaurantHome", "noUpcomingDeliveries")}</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("restaurantHome", "noUpcomingDeliveriesDesc")}</p>
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-4 md:space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+          {/* ── Unread Messages ── */}
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-blue-500/10 shrink-0">
+                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-blue-500/10 shrink-0 hidden md:flex">
                   <MessageSquare className="h-5 w-5 text-blue-500" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-base md:text-lg" data-testid="text-unread-messages-title">
+                    <h2 className="text-lg md:text-xl font-bold" data-testid="text-unread-messages-title">
                       {t("restaurantHome", "unreadMessages")}
-                    </CardTitle>
+                    </h2>
                     {totalUnread > 0 && (
                       <Badge className="bg-blue-600 text-white text-[10px] px-1.5 py-0 min-w-[20px] flex items-center justify-center" data-testid="badge-unread-count">
                         {totalUnread}
                       </Badge>
                     )}
                   </div>
-                  <CardDescription className="text-xs md:text-sm">
+                  <p className="text-xs text-muted-foreground hidden md:block">
                     {t("restaurantHome", "unreadMessagesDesc")}
-                  </CardDescription>
+                  </p>
                 </div>
               </div>
               <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
                 <Link href="/restaurant/inbox" data-testid="link-view-all-messages">{t("restaurantHome", "allMessages")}</Link>
               </Button>
-            </CardHeader>
-            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-              {convLoading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-14 w-full rounded-lg" />
-                  ))}
+            </div>
+
+            {convLoading ? (
+              <div className="flex gap-3 overflow-hidden md:flex-col">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="min-w-[220px] h-[130px] md:min-w-0 md:h-14 rounded-xl shrink-0" />
+                ))}
+              </div>
+            ) : unreadConversations.length > 0 ? (
+              <>
+                {/* Mobile: horizontal scroll cards */}
+                <div
+                  className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
+                  style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+                >
+                  {unreadConversations.slice(0, 5).map((conv) => {
+                    const isPriority = conv.lastMessage?.priority === "important";
+                    return (
+                      <div
+                        key={conv.id}
+                        className={`min-w-[220px] w-[220px] shrink-0 snap-start rounded-2xl border p-4 cursor-pointer transition-all active:scale-[0.98] ${isPriority ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20" : "border-border bg-card"}`}
+                        onClick={() => navigate(`/restaurant/inbox?chat=${conv.id}`)}
+                        data-testid={`unread-chat-${conv.id}`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <Avatar className="h-10 w-10 shrink-0">
+                            {conv.otherUser.profileImageUrl ? (
+                              <AvatarImage src={conv.otherUser.profileImageUrl} alt={conv.otherUser.companyName || conv.otherUser.name} />
+                            ) : null}
+                            <AvatarFallback className={`text-xs font-bold ${isPriority ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"}`}>
+                              {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-blue-600"}`} data-testid={`badge-unread-conv-${conv.id}`}>
+                            {conv.unreadCount}
+                          </Badge>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 mb-1">
+                          {isPriority && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+                          <p className={`text-sm font-semibold truncate ${isPriority ? "text-red-700 dark:text-red-400" : ""}`} data-testid={`text-unread-supplier-${conv.id}`}>
+                            {conv.otherUser.companyName || conv.otherUser.name}
+                          </p>
+                        </div>
+                        <p className={`text-xs line-clamp-2 ${isPriority ? "text-red-600/70 dark:text-red-400/70" : "text-muted-foreground"}`} data-testid={`text-unread-preview-${conv.id}`}>
+                          {getMessagePreview(conv)}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-2" data-testid={`text-unread-time-${conv.id}`}>
+                          {conv.lastMessage?.createdAt && format(new Date(conv.lastMessage.createdAt), "HH:mm", { locale: dateLocale })}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
-              ) : unreadConversations.length > 0 ? (
-                <div className="space-y-2">
+
+                {/* Desktop: stacked list */}
+                <div className="hidden md:block space-y-2">
                   {unreadConversations.slice(0, 3).map((conv) => {
                     const isPriority = conv.lastMessage?.priority === "important";
                     return (
@@ -747,11 +899,11 @@ export default function RestaurantHome() {
                       key={conv.id}
                       className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md ${isPriority ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20 hover:border-red-400" : "border-border bg-card hover:border-blue-300/40"}`}
                       onClick={() => navigate(`/restaurant/inbox?chat=${conv.id}`)}
-                      data-testid={`unread-chat-${conv.id}`}
+                      data-testid={`unread-chat-desktop-${conv.id}`}
                     >
                       {isPriority && (
                         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
-                          <CircleAlert className="h-4 w-4 text-red-600" />
+                          <Flame className="h-4 w-4 text-red-600" />
                         </div>
                       )}
                       {!isPriority && (
@@ -770,19 +922,19 @@ export default function RestaurantHome() {
                             {isPriority && (
                               <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />
                             )}
-                            <span className={`text-sm font-semibold truncate ${isPriority ? "text-red-700 dark:text-red-400" : ""}`} data-testid={`text-unread-supplier-${conv.id}`}>
+                            <span className={`text-sm font-semibold truncate ${isPriority ? "text-red-700 dark:text-red-400" : ""}`}>
                               {conv.otherUser.companyName || conv.otherUser.name}
                             </span>
                           </div>
-                          <span className="text-[10px] text-muted-foreground shrink-0" data-testid={`text-unread-time-${conv.id}`}>
+                          <span className="text-[10px] text-muted-foreground shrink-0">
                             {conv.lastMessage?.createdAt && format(new Date(conv.lastMessage.createdAt), "HH:mm", { locale: dateLocale })}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <p className={`text-xs truncate flex-1 ${isPriority ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`} data-testid={`text-unread-preview-${conv.id}`}>
+                          <p className={`text-xs truncate flex-1 ${isPriority ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`}>
                             {getMessagePreview(conv)}
                           </p>
-                          <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-blue-600"}`} data-testid={`badge-unread-conv-${conv.id}`}>
+                          <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-blue-600"}`}>
                             {conv.unreadCount}
                           </Badge>
                         </div>
@@ -796,38 +948,38 @@ export default function RestaurantHome() {
                     </p>
                   )}
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
-                    <MessageSquare className="h-6 w-6 text-muted-foreground/40" />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">{t("restaurantHome", "noUnreadMessages")}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{t("restaurantHome", "noUnreadMessagesDesc")}</p>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
+                  <MessageSquare className="h-6 w-6 text-muted-foreground/40" />
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <p className="text-sm font-medium text-muted-foreground">{t("restaurantHome", "noUnreadMessages")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("restaurantHome", "noUnreadMessagesDesc")}</p>
+              </div>
+            )}
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+          {/* ── Active Promotions ── */}
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-green-500/10 shrink-0">
+                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-green-500/10 shrink-0 hidden md:flex">
                   <Tag className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-base md:text-lg" data-testid="text-active-promotions-title">
+                  <h2 className="text-lg md:text-xl font-bold" data-testid="text-active-promotions-title">
                     {t("restaurantHome", "activePromotions")}
-                  </CardTitle>
-                  <CardDescription className="text-xs md:text-sm">
+                  </h2>
+                  <p className="text-xs text-muted-foreground hidden md:block">
                     {t("restaurantHome", "activePromotionsDesc")}
-                  </CardDescription>
+                  </p>
                 </div>
               </div>
               <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
                 <Link href="/restaurant/catalog?promotions=true" data-testid="link-view-all-promotions">{t("restaurantHome", "allPromotions")}</Link>
               </Button>
-            </CardHeader>
-            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            </div>
               {productsLoading ? (
                 <div className="flex gap-3 overflow-hidden">
                   {[1, 2, 3].map((i) => (
@@ -981,136 +1133,180 @@ export default function RestaurantHome() {
                   <p className="text-xs text-muted-foreground mt-1">{t("restaurantHome", "noActivePromotionsDesc")}</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+          </div>
         </div>
 
         <div className="space-y-4 md:space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+          {/* ── Order Templates ── */}
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-500/10 shrink-0">
+                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-500/10 shrink-0 hidden md:flex">
                   <ClipboardList className="h-5 w-5 text-orange-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-base md:text-lg" data-testid="text-templates-title">
+                  <h2 className="text-lg md:text-xl font-bold" data-testid="text-templates-title">
                     {lang === "de" ? "Bestellvorlagen" : "Modelli d'ordine"}
-                  </CardTitle>
-                  <CardDescription className="text-xs md:text-sm">
+                  </h2>
+                  <p className="text-xs text-muted-foreground hidden md:block">
                     {lang === "de" ? "Wiederkehrende Bestellungen" : "Ordini ricorrenti"}
-                  </CardDescription>
+                  </p>
                 </div>
               </div>
               <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
                 <Link href="/restaurant/orders?tab=templates" data-testid="link-view-all-templates">{t("common", "all")}</Link>
               </Button>
-            </CardHeader>
-            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            </div>
               {templatesLoading ? (
-                <div className="space-y-3">
+                <div className="flex gap-3 overflow-hidden md:flex-col">
                   {[1, 2].map((i) => (
-                    <Skeleton key={i} className="h-24 w-full rounded-lg" />
+                    <Skeleton key={i} className="min-w-[200px] h-[140px] md:min-w-0 md:h-24 rounded-xl shrink-0" />
                   ))}
                 </div>
               ) : templates && templates.length > 0 ? (
-                <div className="space-y-2">
-                  {templates.slice(0, 3).map((tmpl) => {
-                    const inStockItems = tmpl.items.filter(i => i.product.inStock !== false);
-                    const outOfStockCount = tmpl.items.length - inStockItems.length;
-                    const total = inStockItems.reduce((sum, i) => sum + parseFloat(i.product.price) * i.quantity, 0);
-                    const isExpanded = expandedTemplateId === tmpl.id;
+                <>
+                  {/* Mobile: horizontal scroll template cards */}
+                  <div
+                    className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
+                    style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+                  >
+                    {templates.slice(0, 5).map((tmpl) => {
+                      const inStockItems = tmpl.items.filter(i => i.product.inStock !== false);
+                      const outOfStockCount = tmpl.items.length - inStockItems.length;
+                      const total = inStockItems.reduce((sum, i) => sum + parseFloat(i.product.price) * i.quantity, 0);
 
-                    return (
-                      <div
-                        key={tmpl.id}
-                        className="rounded-xl border border-border bg-card overflow-hidden transition-all"
-                        data-testid={`template-card-${tmpl.id}`}
-                      >
+                      return (
                         <div
-                          className="flex items-center justify-between gap-2 p-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
-                          onClick={() => setExpandedTemplateId(isExpanded ? null : tmpl.id)}
-                          data-testid={`template-header-${tmpl.id}`}
+                          key={tmpl.id}
+                          className="min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border border-border bg-card p-4 cursor-pointer transition-all active:scale-[0.98]"
+                          onClick={() => openTemplateWizard(tmpl)}
+                          data-testid={`template-card-${tmpl.id}`}
                         >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <ClipboardList className="h-4 w-4 text-orange-500 shrink-0" />
-                            <h3 className="text-sm font-semibold truncate" data-testid={`text-template-name-${tmpl.id}`}>{tmpl.name}</h3>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-xs text-muted-foreground">
-                              {tmpl.items.length} {t("common", "items")}
-                            </span>
-                            <span className="text-sm font-bold tabular-nums">{total.toFixed(2)}&euro;</span>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 shrink-0">
+                              <ClipboardList className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                            </div>
                             {outOfStockCount > 0 && (
-                              <Badge variant="outline" className="text-[10px] border-red-200 text-red-500 px-1">
-                                {outOfStockCount}
+                              <Badge variant="outline" className="text-[10px] border-red-200 text-red-500 px-1 ml-auto">
+                                {outOfStockCount} {lang === "de" ? "n.v." : "n.d."}
                               </Badge>
                             )}
-                            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                          </div>
+
+                          <p className="text-sm font-semibold truncate" data-testid={`text-template-name-${tmpl.id}`}>{tmpl.name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {tmpl.items.length} {t("common", "items")}
+                          </p>
+
+                          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
+                            <span className="text-base font-bold tabular-nums">{total.toFixed(2)}&euro;</span>
+                            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                           </div>
                         </div>
+                      );
+                    })}
+                  </div>
 
-                        {isExpanded && (
-                          <div className="px-2.5 pb-2.5 space-y-2 border-t border-border/50 pt-2">
-                            {(() => {
-                              const supplierGroups = new Map<string, { name: string; items: typeof tmpl.items }>();
-                              for (const item of tmpl.items) {
-                                const sid = item.product.supplierId;
-                                const sname = item.product.supplier?.companyName || item.product.supplier?.name || "";
-                                if (!supplierGroups.has(sid)) supplierGroups.set(sid, { name: sname, items: [] });
-                                supplierGroups.get(sid)!.items.push(item);
-                              }
-                              return Array.from(supplierGroups.entries()).map(([sid, group]) => (
-                                <div key={sid}>
-                                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{group.name}</p>
-                                  <div className="space-y-0.5 mt-0.5">
-                                    {group.items.map((item) => {
-                                      const oos = item.product.inStock === false;
-                                      return (
-                                        <div key={item.id} className={`flex items-center gap-2 text-xs ${oos ? "text-muted-foreground/50 line-through" : ""}`} data-testid={`template-item-${item.id}`}>
-                                          {item.product.imageUrl ? (
-                                            <img src={item.product.imageUrl} alt="" className="h-6 w-6 rounded object-cover shrink-0" />
-                                          ) : (
-                                            <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0">
-                                              <Package className="h-3 w-3 text-muted-foreground" />
-                                            </div>
-                                          )}
-                                          <span className="truncate flex-1">
-                                            <span className="font-medium">{item.quantity}x</span> {item.product.name}
-                                          </span>
-                                          <span className="shrink-0 ml-2 tabular-nums">{(parseFloat(item.product.price) * item.quantity).toFixed(2)}&euro;</span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              ));
-                            })()}
-                            <div className="flex items-center justify-end gap-2 pt-1.5">
-                              <Button
-                                size="sm"
-                                className="text-xs h-7 gap-1"
-                                disabled={inStockItems.length === 0}
-                                onClick={(e) => { e.stopPropagation(); openTemplateWizard(tmpl); }}
-                                data-testid={`button-order-template-${tmpl.id}`}
-                              >
-                                <ShoppingCart className="h-3 w-3" />
-                                {lang === "de" ? "Bestellen" : "Ordina"}
-                              </Button>
+                  {/* Desktop: expandable stacked list */}
+                  <div className="hidden md:block space-y-2">
+                    {templates.slice(0, 3).map((tmpl) => {
+                      const inStockItems = tmpl.items.filter(i => i.product.inStock !== false);
+                      const outOfStockCount = tmpl.items.length - inStockItems.length;
+                      const total = inStockItems.reduce((sum, i) => sum + parseFloat(i.product.price) * i.quantity, 0);
+                      const isExpanded = expandedTemplateId === tmpl.id;
+
+                      return (
+                        <div
+                          key={tmpl.id}
+                          className="rounded-xl border border-border bg-card overflow-hidden transition-all"
+                          data-testid={`template-card-desktop-${tmpl.id}`}
+                        >
+                          <div
+                            className="flex items-center justify-between gap-2 p-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
+                            onClick={() => setExpandedTemplateId(isExpanded ? null : tmpl.id)}
+                            data-testid={`template-header-${tmpl.id}`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <ClipboardList className="h-4 w-4 text-orange-500 shrink-0" />
+                              <h3 className="text-sm font-semibold truncate">{tmpl.name}</h3>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-xs text-muted-foreground">
+                                {tmpl.items.length} {t("common", "items")}
+                              </span>
+                              <span className="text-sm font-bold tabular-nums">{total.toFixed(2)}&euro;</span>
+                              {outOfStockCount > 0 && (
+                                <Badge variant="outline" className="text-[10px] border-red-200 text-red-500 px-1">
+                                  {outOfStockCount}
+                                </Badge>
+                              )}
+                              <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                             </div>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {templates.length > 3 && (
-                    <Button variant="outline" className="w-full text-xs h-8" asChild>
-                      <Link href="/restaurant/orders?tab=templates" data-testid="link-more-templates">
-                        {lang === "de" ? `Alle ${templates.length} Vorlagen anzeigen` : `Mostra tutti ${templates.length} i modelli`}
-                        <ArrowRight className="h-3 w-3 ml-1" />
-                      </Link>
-                    </Button>
-                  )}
-                </div>
+
+                          {isExpanded && (
+                            <div className="px-2.5 pb-2.5 space-y-2 border-t border-border/50 pt-2">
+                              {(() => {
+                                const supplierGroups = new Map<string, { name: string; items: typeof tmpl.items }>();
+                                for (const item of tmpl.items) {
+                                  const sid = item.product.supplierId;
+                                  const sname = item.product.supplier?.companyName || item.product.supplier?.name || "";
+                                  if (!supplierGroups.has(sid)) supplierGroups.set(sid, { name: sname, items: [] });
+                                  supplierGroups.get(sid)!.items.push(item);
+                                }
+                                return Array.from(supplierGroups.entries()).map(([sid, group]) => (
+                                  <div key={sid}>
+                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{group.name}</p>
+                                    <div className="space-y-0.5 mt-0.5">
+                                      {group.items.map((item) => {
+                                        const oos = item.product.inStock === false;
+                                        return (
+                                          <div key={item.id} className={`flex items-center gap-2 text-xs ${oos ? "text-muted-foreground/50 line-through" : ""}`} data-testid={`template-item-${item.id}`}>
+                                            {item.product.imageUrl ? (
+                                              <img src={item.product.imageUrl} alt="" className="h-6 w-6 rounded object-cover shrink-0" />
+                                            ) : (
+                                              <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0">
+                                                <Package className="h-3 w-3 text-muted-foreground" />
+                                              </div>
+                                            )}
+                                            <span className="truncate flex-1">
+                                              <span className="font-medium">{item.quantity}x</span> {item.product.name}
+                                            </span>
+                                            <span className="shrink-0 ml-2 tabular-nums">{(parseFloat(item.product.price) * item.quantity).toFixed(2)}&euro;</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ));
+                              })()}
+                              <div className="flex items-center justify-end gap-2 pt-1.5">
+                                <Button
+                                  size="sm"
+                                  className="text-xs h-7 gap-1"
+                                  disabled={inStockItems.length === 0}
+                                  onClick={(e) => { e.stopPropagation(); openTemplateWizard(tmpl); }}
+                                  data-testid={`button-order-template-${tmpl.id}`}
+                                >
+                                  <ShoppingCart className="h-3 w-3" />
+                                  {lang === "de" ? "Bestellen" : "Ordina"}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {templates.length > 3 && (
+                      <Button variant="outline" className="w-full text-xs h-8" asChild>
+                        <Link href="/restaurant/orders?tab=templates" data-testid="link-more-templates">
+                          {lang === "de" ? `Alle ${templates.length} Vorlagen anzeigen` : `Mostra tutti ${templates.length} i modelli`}
+                          <ArrowRight className="h-3 w-3 ml-1" />
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">
@@ -1129,20 +1325,20 @@ export default function RestaurantHome() {
                   </Button>
                 </div>
               )}
-            </CardContent>
-          </Card>
+          </div>
 
-          <Card data-testid="card-cost-analysis-home">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 md:p-6">
+          {/* ── Cost Analysis ── */}
+          <div data-testid="card-cost-analysis-home">
+            <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-purple-500/10 shrink-0">
+                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-purple-500/10 shrink-0 hidden md:flex">
                   <Calculator className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-base md:text-lg" data-testid="text-cost-analysis-title">
+                  <h2 className="text-lg md:text-xl font-bold" data-testid="text-cost-analysis-title">
                     {t("costAnalysis", "title")}
-                  </CardTitle>
-                  <CardDescription className="text-xs md:text-sm">
+                  </h2>
+                  <p className="text-xs text-muted-foreground hidden md:block">
                     {(() => {
                       const monthNames = lang === "de"
                         ? ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
@@ -1150,7 +1346,7 @@ export default function RestaurantHome() {
                       const [y, m] = costCurrentMonth.split("-");
                       return `${monthNames[parseInt(m) - 1]} ${y}`;
                     })()}
-                  </CardDescription>
+                  </p>
                 </div>
               </div>
               <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
@@ -1158,8 +1354,7 @@ export default function RestaurantHome() {
                   {t("common", "all")}
                 </Link>
               </Button>
-            </CardHeader>
-            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            </div>
               {costLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-16 w-full rounded-lg" />
@@ -1273,8 +1468,7 @@ export default function RestaurantHome() {
 
                 </div>
               )}
-            </CardContent>
-          </Card>
+          </div>
         </div>
       </div>
 
