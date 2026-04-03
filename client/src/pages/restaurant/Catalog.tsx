@@ -176,7 +176,7 @@ export default function RestaurantCatalog() {
     <div className="space-y-4 md:space-y-6">
       {!selectedCategory ? (
         <>
-          <div className="relative w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] h-56 md:h-72 overflow-hidden -mt-4 md:-mt-6 -mx-4 md:-mx-6" style={{ maskImage: "linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)" }}>
+          <div className="relative w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] h-56 md:h-72 overflow-hidden -mt-4 md:-mt-6 -mx-4 md:-mx-6">
             <img
               src={heroBannerImg}
               alt=""
