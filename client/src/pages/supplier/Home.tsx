@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert, ChevronRight } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert, ChevronRight, Flame } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, Product, ConversationWithUser, ComplaintWithDetails } from "@shared/schema";
@@ -546,7 +546,7 @@ export default function SupplierHome() {
                 >
                   {isPriority && (
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
-                      <CircleAlert className="h-4 w-4 text-red-600" />
+                      <Flame className="h-4 w-4 text-red-600" />
                     </div>
                   )}
                   {!isPriority && (
@@ -563,11 +563,9 @@ export default function SupplierHome() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
                         {isPriority && (
-                          <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
-                            PRIORIT&Auml;T
-                          </Badge>
+                          <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />
                         )}
-                        <span className="text-sm font-semibold truncate" data-testid={`text-unread-restaurant-${conv.id}`}>
+                        <span className={`text-sm font-semibold truncate ${isPriority ? "text-red-700 dark:text-red-400" : ""}`} data-testid={`text-unread-restaurant-${conv.id}`}>
                           {conv.otherUser.companyName || conv.otherUser.name}
                         </span>
                       </div>
@@ -779,11 +777,9 @@ export default function SupplierHome() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {complaint.priority === "urgent" && (
-                                <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
-                                  PRIORIT&Auml;T
-                                </Badge>
+                                <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />
                               )}
-                              <p className="text-xs md:text-sm font-medium truncate">{complaint.title}</p>
+                              <p className={`text-xs md:text-sm font-medium truncate ${complaint.priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</p>
                               <Badge className={`${statusColors[complaint.status] || ""} text-[10px] px-1.5`} variant="outline">
                                 {statusLabels[lang]?.[complaint.status] || complaint.status}
                               </Badge>

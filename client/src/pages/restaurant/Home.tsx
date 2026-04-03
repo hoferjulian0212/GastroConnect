@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Search, Save, CircleAlert, Calculator, Target, TrendingUp, TrendingDown, Users, Euro } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Search, Save, CircleAlert, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
 import type { OrderWithDetails, ConversationWithUser, ProductWithSupplierAndPromotion, OrderTemplateWithItems } from "@shared/schema";
@@ -768,11 +768,9 @@ export default function RestaurantHome() {
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 min-w-0">
                             {isPriority && (
-                              <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
-                                PRIORIT&Auml;T
-                              </Badge>
+                              <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />
                             )}
-                            <span className="text-sm font-semibold truncate" data-testid={`text-unread-supplier-${conv.id}`}>
+                            <span className={`text-sm font-semibold truncate ${isPriority ? "text-red-700 dark:text-red-400" : ""}`} data-testid={`text-unread-supplier-${conv.id}`}>
                               {conv.otherUser.companyName || conv.otherUser.name}
                             </span>
                           </div>

@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, Plus, RefreshCw } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, Plus, RefreshCw, Flame } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
@@ -1488,11 +1488,9 @@ export default function SupplierInbox() {
                                             <div className="flex items-center justify-between flex-wrap gap-1">
                                               <div className="flex items-center gap-1.5">
                                                 {message.priority === "important" && (
-                                                  <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
-                                                    PRIORIT&Auml;T
-                                                  </Badge>
+                                                  <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />
                                                 )}
-                                                <span className="font-medium">{complaintData.title}</span>
+                                                <span className={`font-medium ${message.priority === "important" ? "text-red-700 dark:text-red-400" : ""}`}>{complaintData.title}</span>
                                               </div>
                                               <Badge variant="outline" className="text-xs">
                                                 Bestellung #{complaintData.orderId?.substring(0, 8)}
@@ -1749,27 +1747,18 @@ export default function SupplierInbox() {
                                   return (
                                     <div className={`max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
                                       <div className="flex-1 min-w-0">
-                                        {isImportant && (
+                                        {showSenderName && (
+                                          <p className={`text-[11px] font-semibold mb-0.5 px-1 flex items-center gap-1 ${isOwn ? "justify-end" : ""} ${isImportant ? (isOwn ? "text-red-400" : "text-red-500") : (isOwn ? "text-secondary-foreground/70" : "text-indigo-600 dark:text-indigo-400")}`}>
+                                            {isImportant && <Flame className="h-3 w-3 text-red-500" />}
+                                            {senderName}
+                                          </p>
+                                        )}
+                                        {!showSenderName && isImportant && (
                                           <div className={`flex items-center gap-1 mb-0.5 px-1 ${isOwn ? "justify-end" : ""}`}>
-                                            <span className="text-[11px] font-bold text-red-500 uppercase">IMPORTANT</span>
+                                            <Flame className="h-3 w-3 text-red-500" />
                                           </div>
                                         )}
-                                        {showSenderName && !isImportant && (
-                                          <p className={`text-[11px] font-semibold mb-0.5 px-1 ${isOwn ? "text-right text-secondary-foreground/70" : "text-indigo-600 dark:text-indigo-400"}`}>
-                                            {senderName}
-                                          </p>
-                                        )}
-                                        {showSenderName && isImportant && (
-                                          <p className={`text-[11px] font-semibold mb-0.5 px-1 ${isOwn ? "text-right text-red-400" : "text-red-500"}`}>
-                                            {senderName}
-                                          </p>
-                                        )}
                                         <div className={`flex items-start gap-1.5 ${isOwn ? "flex-row-reverse" : ""}`}>
-                                          {isImportant && (
-                                            <div className="shrink-0 mt-2">
-                                              <CircleAlert className="h-4 w-4 text-red-500" />
-                                            </div>
-                                          )}
                                         <div
                                           className={`rounded-lg px-3 py-2 shadow-lg ${
                                             isImportant
@@ -1906,10 +1895,10 @@ export default function SupplierInbox() {
                     </div>
                   )}
                   {messagePriority === "important" && (
-                    <div className="flex items-center justify-between gap-2 mb-2 px-1" data-testid="priority-important-banner">
+                    <div className="flex items-center justify-between gap-2 mb-2 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800" data-testid="priority-important-banner">
                       <div className="flex items-center gap-1.5">
-                        <CircleAlert className="h-4 w-4 text-red-500" />
-                        <span className="text-sm font-bold text-red-500">IMPORTANT!</span>
+                        <Flame className="h-3.5 w-3.5 text-red-500" />
+                        <span className="text-xs font-semibold text-red-600 dark:text-red-400">{lang === "de" ? "Dringend" : "Urgente"}</span>
                       </div>
                       <button
                         onClick={() => setMessagePriority("standard")}
@@ -1949,10 +1938,10 @@ export default function SupplierInbox() {
                           data-testid="button-priority-important"
                         >
                           <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                            <CircleAlert className="h-4 w-4 text-red-500" />
+                            <Flame className="h-4 w-4 text-red-500" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold">Important</p>
+                            <p className="text-sm font-semibold">{lang === "de" ? "Dringend" : "Urgente"}</p>
                             <p className="text-xs text-muted-foreground">{lang === "de" ? "Nachricht wird als wichtig markiert" : "Il messaggio sara contrassegnato come importante"}</p>
                           </div>
                           {messagePriority === "important" && <Check className="h-4 w-4 text-primary shrink-0" />}
@@ -2277,14 +2266,15 @@ export default function SupplierInbox() {
                 </div>
 
                 <div>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    {(complaintDetail as any).priority === "urgent" && (
-                      <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
-                        PRIORITÄT
-                      </Badge>
-                    )}
-                    <h4 className="font-semibold text-base" data-testid="text-complaint-title">{complaintDetail.title}</h4>
-                  </div>
+                  {(complaintDetail as any).priority === "urgent" && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 mb-2">
+                      <Flame className="h-4 w-4 text-red-500 shrink-0" />
+                      <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                        {lang === "de" ? "Dringende Reklamation" : "Reclamo urgente"}
+                      </span>
+                    </div>
+                  )}
+                  <h4 className="font-semibold text-base mb-2" data-testid="text-complaint-title">{complaintDetail.title}</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap" data-testid="text-complaint-description">{complaintDetail.description}</p>
 
                   {complaintDetail.affectedItems && (() => {

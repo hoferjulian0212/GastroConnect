@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, CircleAlert, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw } from "lucide-react";
+import { AlertCircle, CircleAlert, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw, Flame } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -549,25 +549,25 @@ export default function Complaints() {
                   return (
                     <div
                       key={complaint.id}
-                      className={`flex items-center gap-2.5 md:gap-3 p-2.5 md:p-3 rounded-lg border cursor-pointer hover-elevate transition-all ${getComplaintCardBg(complaint.status)}`}
+                      className={`flex items-center gap-2.5 md:gap-3 p-2.5 md:p-3 rounded-lg border cursor-pointer hover-elevate transition-all ${(complaint as any).priority === "urgent" ? "border-red-300 dark:border-red-800 bg-red-50/60 dark:bg-red-950/15" : getComplaintCardBg(complaint.status)}`}
                       onClick={() => setDetailComplaint(complaint)}
                       data-testid={`complaint-${complaint.id}`}
                     >
-                      <div className={`w-1 self-stretch rounded-full shrink-0 ${getComplaintAccent(complaint.status)}`} />
+                      <div className={`w-1 self-stretch rounded-full shrink-0 ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />
 
                       <div className="min-w-0 flex-1">
                         <div className="mb-0.5">
-                          <span className="font-medium text-sm line-clamp-1">{complaint.title}</span>
+                          <div className="flex items-center gap-1.5">
+                            {(complaint as any).priority === "urgent" && (
+                              <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                            )}
+                            <span className={`font-medium text-sm line-clamp-1 ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</span>
+                          </div>
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                             <Badge variant={statusInfo.variant} className="text-[9px] px-1.5 py-0 h-4 shrink-0">
                               <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
                               {statusInfo.label}
                             </Badge>
-                            {(complaint as any).priority === "urgent" && (
-                              <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
-                                PRIORITÄT
-                              </Badge>
-                            )}
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground line-clamp-1">{complaint.description}</p>
@@ -860,27 +860,36 @@ export default function Complaints() {
               </p>
             </div>
 
-            <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30">
+            <label
+              htmlFor="dialog-complaint-priority-immediate"
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                priorityImmediate
+                  ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30"
+                  : "border-border bg-muted/30 hover:bg-muted/50"
+              }`}
+            >
               <input
                 type="checkbox"
                 id="dialog-complaint-priority-immediate"
                 checked={priorityImmediate}
                 onChange={(e) => setPriorityImmediate(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-red-300 text-red-500 focus:ring-red-500"
+                className="sr-only"
                 data-testid="checkbox-priority-immediate"
               />
-              <label htmlFor="dialog-complaint-priority-immediate" className="flex-1 cursor-pointer">
-                <div className="flex items-center gap-1.5">
-                  <CircleAlert className="h-4 w-4 text-red-500" />
-                  <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                    {lang === "de" ? "Als Prioritaet setzen" : "Imposta come priorita"}
-                  </span>
-                </div>
+              <div className={`flex items-center justify-center h-8 w-8 rounded-lg shrink-0 ${
+                priorityImmediate ? "bg-red-500" : "bg-muted"
+              }`}>
+                <Flame className={`h-4 w-4 ${priorityImmediate ? "text-white" : "text-muted-foreground"}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className={`text-sm font-medium ${priorityImmediate ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+                  {lang === "de" ? "Dringend" : "Urgente"}
+                </span>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {lang === "de" ? "Dringend - Lieferant wird sofort benachrichtigt" : "Urgente - Il fornitore verra avvisato immediatamente"}
+                  {lang === "de" ? "Lieferant wird sofort benachrichtigt" : "Il fornitore verra avvisato subito"}
                 </p>
-              </label>
-            </div>
+              </div>
+            </label>
           </div>
 
           <div className="flex gap-2">
@@ -913,15 +922,16 @@ export default function Complaints() {
           {detailComplaint && (
             <div className="flex flex-col flex-1 min-h-0 px-5 pt-5 pb-5 space-y-4">
               <div className="space-y-3 shrink-0">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    {(detailComplaint as any).priority === "urgent" && (
-                      <Badge className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold" variant="outline">
-                        PRIORIT&Auml;T
-                      </Badge>
-                    )}
-                    <h3 className="font-medium text-sm md:text-base">{detailComplaint.title}</h3>
+                {(detailComplaint as any).priority === "urgent" && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                    <Flame className="h-4 w-4 text-red-500 shrink-0" />
+                    <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                      {lang === "de" ? "Dringende Reklamation" : "Reclamo urgente"}
+                    </span>
                   </div>
+                )}
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-medium text-sm md:text-base min-w-0 truncate">{detailComplaint.title}</h3>
                   {(() => {
                     const si = formatComplaintStatus(detailComplaint.status);
                     const SI = si.icon;
