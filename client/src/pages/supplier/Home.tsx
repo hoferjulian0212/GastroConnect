@@ -318,8 +318,8 @@ export default function SupplierHome() {
       </div>
 
       {/* Upcoming Deliveries */}
-      <div>
-        <div className="flex items-center justify-between gap-2 mb-3">
+      <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
+        <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0 hidden md:flex">
               <Truck className="h-5 w-5 text-primary" />
@@ -339,6 +339,7 @@ export default function SupplierHome() {
             </Link>
           </Button>
         </div>
+        <div className="md:px-5 md:pb-5">
 
         {deliveriesLoading ? (
           <div className="flex gap-3 overflow-hidden md:flex-col">
@@ -518,13 +519,14 @@ export default function SupplierHome() {
             </p>
           </div>
         )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-4 md:space-y-6">
           {/* Unread Messages */}
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
+            <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-blue-500/10 shrink-0 hidden md:flex">
                   <MessageSquare className="h-5 w-5 text-blue-500" />
@@ -549,7 +551,7 @@ export default function SupplierHome() {
                 <Link href="/supplier/inbox" data-testid="link-view-all-messages">{t("supplierHome", "allMessages")}</Link>
               </Button>
             </div>
-
+            <div className="md:px-5 md:pb-5">
             {convLoading ? (
               <div className="flex gap-3 overflow-hidden md:flex-col">
                 {[1, 2, 3].map((i) => (
@@ -671,11 +673,12 @@ export default function SupplierHome() {
                 <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "noUnreadMessagesDesc")}</p>
               </div>
             )}
+            </div>
           </div>
 
           {/* New Orders */}
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
+            <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0 hidden md:flex">
                   <ClipboardList className="h-5 w-5 text-primary" />
@@ -689,7 +692,7 @@ export default function SupplierHome() {
                 <Link href="/supplier/orders" data-testid="link-view-all-orders">{t("common", "all")}</Link>
               </Button>
             </div>
-
+            <div className="md:px-5 md:pb-5">
             {ordersLoading ? (
               <div className="flex gap-3 overflow-hidden md:flex-col">
                 {[1, 2, 3].map((i) => (
@@ -784,14 +787,15 @@ export default function SupplierHome() {
                 <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "allProcessed")}</p>
               </div>
             )}
+            </div>
           </div>
         </div>
 
         <div className="space-y-4 md:space-y-6">
           {/* Action Required */}
           {((actionRequired?.staleOrders?.length || 0) > 0 || (actionRequired?.openComplaints?.length || 0) > 0) && (
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
+              <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
                 <div className="flex items-center gap-2.5">
                   <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0 hidden md:flex">
                     <AlertCircle className="h-5 w-5 text-red-600" />
@@ -811,7 +815,7 @@ export default function SupplierHome() {
                   </div>
                 </div>
               </div>
-
+              <div className="md:px-5 md:pb-5">
               {/* Mobile: horizontal scroll cards */}
               <div
                 className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
@@ -966,12 +970,13 @@ export default function SupplierHome() {
                   </div>
                 )}
               </div>
+              </div>
             </div>
           )}
 
           {/* Low Stock */}
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
+            <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0 hidden md:flex">
                   <AlertTriangle className="h-5 w-5 text-orange-600" />
@@ -989,7 +994,7 @@ export default function SupplierHome() {
                 <Link href="/supplier/products" data-testid="link-manage-stock">{t("common", "products")}</Link>
               </Button>
             </div>
-
+            <div className="md:px-5 md:pb-5">
             {lowStockLoading ? (
               <div className="flex gap-3 overflow-hidden md:flex-col">
                 {[1, 2, 3].map((i) => (
@@ -1071,13 +1076,14 @@ export default function SupplierHome() {
                 <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "noLowStockDesc")}</p>
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Statistics */}
-      <div>
-        <div className="flex items-center justify-between gap-2 mb-3">
+      <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
+        <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 shrink-0 hidden md:flex">
               <BarChart3 className="h-5 w-5 text-indigo-600" />
@@ -1092,7 +1098,7 @@ export default function SupplierHome() {
             </div>
           </div>
         </div>
-
+        <div className="md:px-5 md:pb-5">
         {statsLoading ? (
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
@@ -1211,6 +1217,7 @@ export default function SupplierHome() {
             <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "noStatsYetDesc")}</p>
           </div>
         )}
+        </div>
       </div>
 
       {deliveryDatePicker && (
