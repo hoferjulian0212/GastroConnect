@@ -172,7 +172,7 @@ function MobileProfileButton() {
       className="md:hidden"
       data-testid="button-mobile-profile"
     >
-      <Avatar className="h-8 w-8">
+      <Avatar className="h-9 w-9">
         <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name || ""} />
         <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
           {initials}
@@ -247,7 +247,7 @@ function AppLayout() {
               )}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <header className={`flex items-center justify-between gap-4 p-3 border-b border-border bg-background sticky top-0 z-10 pt-[0px] pb-[0px] ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
+              <header className={`flex items-center justify-between gap-4 px-4 py-2.5 md:px-4 md:py-1.5 border-b border-border bg-background sticky top-0 z-10 ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
                 <div className="flex items-center gap-3">
                   <MobileProfileButton />
                   <div className="hidden md:flex items-center gap-2">
