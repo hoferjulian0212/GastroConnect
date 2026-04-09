@@ -321,9 +321,6 @@ export default function SupplierHome() {
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0 hidden md:flex">
-              <Truck className="h-5 w-5 text-primary" />
-            </div>
             <div>
               <h2 className="text-lg md:text-xl font-bold" data-testid="text-upcoming-deliveries-title">
                 {t("supplierHome", "upcomingDeliveries")}
@@ -528,9 +525,6 @@ export default function SupplierHome() {
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-blue-500/10 shrink-0 hidden md:flex">
-                  <MessageSquare className="h-5 w-5 text-blue-500" />
-                </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg md:text-xl font-bold" data-testid="text-unread-messages-title">
@@ -680,9 +674,6 @@ export default function SupplierHome() {
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0 hidden md:flex">
-                  <ClipboardList className="h-5 w-5 text-primary" />
-                </div>
                 <div>
                   <h2 className="text-lg md:text-xl font-bold">{t("supplierHome", "newOrders")}</h2>
                   <p className="text-xs text-muted-foreground hidden md:block">{lang === "de" ? "Bestellungen der letzten 24 Stunden" : "Ordini delle ultime 24 ore"}</p>
@@ -797,9 +788,6 @@ export default function SupplierHome() {
             <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
               <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0 hidden md:flex">
-                    <AlertCircle className="h-5 w-5 text-red-600" />
-                  </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-lg md:text-xl font-bold" data-testid="text-action-required-title">
@@ -978,9 +966,6 @@ export default function SupplierHome() {
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0 hidden md:flex">
-                  <AlertTriangle className="h-5 w-5 text-orange-600" />
-                </div>
                 <div>
                   <h2 className="text-lg md:text-xl font-bold" data-testid="text-low-stock-title">
                     {t("supplierHome", "lowStockAlerts")}
@@ -1085,9 +1070,6 @@ export default function SupplierHome() {
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 shrink-0 hidden md:flex">
-              <BarChart3 className="h-5 w-5 text-indigo-600" />
-            </div>
             <div>
               <h2 className="text-lg md:text-xl font-bold" data-testid="text-statistics-title">
                 {t("supplierHome", "statistics")}

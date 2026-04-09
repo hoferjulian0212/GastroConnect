@@ -524,9 +524,6 @@ export default function RestaurantHome() {
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0 hidden md:flex">
-              <Truck className="h-5 w-5 text-primary" />
-            </div>
             <div>
               <h2 className="text-lg md:text-xl font-bold" data-testid="text-upcoming-deliveries-title">
                 {t("restaurantHome", "upcomingDeliveries")}
@@ -815,9 +812,6 @@ export default function RestaurantHome() {
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-blue-500/10 shrink-0 hidden md:flex">
-                  <MessageSquare className="h-5 w-5 text-blue-500" />
-                </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg md:text-xl font-bold" data-testid="text-unread-messages-title">
@@ -968,9 +962,6 @@ export default function RestaurantHome() {
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-green-500/10 shrink-0 hidden md:flex">
-                  <Tag className="h-5 w-5 text-green-600" />
-                </div>
                 <div>
                   <h2 className="text-lg md:text-xl font-bold" data-testid="text-active-promotions-title">
                     {t("restaurantHome", "activePromotions")}
@@ -1147,9 +1138,6 @@ export default function RestaurantHome() {
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-500/10 shrink-0 hidden md:flex">
-                  <ClipboardList className="h-5 w-5 text-orange-600" />
-                </div>
                 <div>
                   <h2 className="text-lg md:text-xl font-bold" data-testid="text-templates-title">
                     {lang === "de" ? "Bestellvorlagen" : "Modelli d'ordine"}
@@ -1339,9 +1327,6 @@ export default function RestaurantHome() {
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm" data-testid="card-cost-analysis-home">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-purple-500/10 shrink-0 hidden md:flex">
-                  <Calculator className="h-5 w-5 text-purple-600" />
-                </div>
                 <div>
                   <h2 className="text-lg md:text-xl font-bold" data-testid="text-cost-analysis-title">
                     {t("costAnalysis", "title")}
