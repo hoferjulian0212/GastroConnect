@@ -320,7 +320,7 @@ function AppLayout() {
               )}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 border-b ${isHomePage ? 'border-transparent' : 'border-white/10'} bg-[#161921] ${isHomePage ? '' : 'sticky top-0 z-20'} ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
+              <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 ${isHomePage ? '' : 'border-b border-white/10'} bg-[#161921] ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
                 <div className="flex items-center gap-3 md:flex-1 md:min-w-0">
                   <MobileProfileButton />
                   <div className="hidden md:flex items-center gap-2 shrink-0">
@@ -343,7 +343,7 @@ function AppLayout() {
                   <DesktopProfileButton />
                 </div>
               </header>
-              <main className={`flex-1 overflow-auto ${isInChat || isDetailPage ? 'p-0 pb-0' : 'p-4 md:p-6 pb-28'} md:p-6 md:pb-6 ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
+              <main className={`flex-1 overflow-auto ${isInChat || isDetailPage ? 'p-0 pb-0' : 'p-4 md:p-6 pb-28'} md:p-6 md:pb-6 ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''} ${isHomePage ? '!pt-0 md:!pt-0' : ''}`}>
                 {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
               </main>
             </div>

@@ -512,7 +512,7 @@ export default function RestaurantHome() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <div className="-mx-4 -mt-4 md:-mx-6 md:-mt-6 bg-[#161921] px-4 md:px-6 pt-6 pb-6">
+        <div className="-mx-4 md:-mx-6 bg-[#161921] px-4 md:px-6 pt-6 pb-6">
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-5" data-testid="text-page-title">
             {currentUser?.companyName || ""}
           </h1>
