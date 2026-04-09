@@ -318,62 +318,62 @@ export default function SupplierHome() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <div className="-mx-4 -mt-4 md:-mx-6 md:-mt-6 bg-[#161921] px-4 md:px-6 pt-6 pb-24">
-          <h1 className="text-3xl md:text-4xl font-bold text-white" data-testid="text-page-title">
+        <div className="-mx-4 -mt-4 md:-mx-6 md:-mt-6 bg-[#161921] px-4 md:px-6 pt-6 pb-6">
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-5" data-testid="text-page-title">
             {currentUser?.companyName || ""}
           </h1>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 -mt-16 relative z-10">
-          <Link href="/supplier/inbox" data-testid="kpi-card-messages">
-            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col justify-between min-h-[120px]">
-              <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <Link href="/supplier/inbox" data-testid="kpi-card-messages">
+              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
+                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span>
+                <div className="flex items-end justify-between mt-auto">
+                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : totalUnread}</p>
+                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-blue-500/20">
+                    <MessageSquare className="h-5 w-5 text-blue-400" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+            <Link href="/supplier/orders" data-testid="kpi-card-orders">
+              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
+                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Neue Bestellungen" : "Nuovi ordini"}</span>
+                <div className="flex items-end justify-between mt-auto">
+                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-new-orders">{ordersLoading ? "..." : (recentOrders?.length || 0)}</p>
+                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-amber-500/20">
+                    <ClipboardList className="h-5 w-5 text-amber-400" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+            <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 flex flex-col justify-between min-h-[120px]" data-testid="kpi-card-stats">
+              <span className="text-xs md:text-sm text-gray-400 font-medium">{t("supplierHome", "statistics")}</span>
               <div className="flex items-end justify-between mt-auto">
-                <p className="text-4xl md:text-5xl font-bold text-foreground leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : totalUnread}</p>
-                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                  <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                {statsLoading ? (
+                  <Skeleton className="h-10 w-20 bg-white/10" />
+                ) : monthlyChange !== null ? (
+                  <p className={`text-3xl md:text-4xl font-bold leading-none ${monthlyChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`} data-testid="kpi-stats-change">
+                    {monthlyChange >= 0 ? '+' : ''}{monthlyChange.toFixed(1)}%
+                  </p>
+                ) : (
+                  <p className="text-4xl font-bold text-gray-500 leading-none">--</p>
+                )}
+                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-emerald-500/20">
+                  <BarChart3 className="h-5 w-5 text-emerald-400" />
                 </div>
               </div>
             </div>
-          </Link>
-          <Link href="/supplier/orders" data-testid="kpi-card-orders">
-            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col justify-between min-h-[120px]">
-              <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Neue Bestellungen" : "Nuovi ordini"}</span>
-              <div className="flex items-end justify-between mt-auto">
-                <p className="text-4xl md:text-5xl font-bold text-foreground leading-none" data-testid="kpi-new-orders">{ordersLoading ? "..." : (recentOrders?.length || 0)}</p>
-                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
-                  <ClipboardList className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <Link href="/supplier/products" data-testid="kpi-card-low-stock">
+              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
+                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Niedriger Bestand" : "Scorte basse"}</span>
+                <div className="flex items-end justify-between mt-auto">
+                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-low-stock">{lowStockLoading ? "..." : (lowStockProducts?.length || 0)}</p>
+                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-rose-500/20">
+                    <AlertTriangle className="h-5 w-5 text-rose-400" />
+                  </div>
                 </div>
               </div>
-            </div>
-          </Link>
-          <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 flex flex-col justify-between min-h-[120px]" data-testid="kpi-card-stats">
-            <span className="text-xs md:text-sm text-muted-foreground font-medium">{t("supplierHome", "statistics")}</span>
-            <div className="flex items-end justify-between mt-auto">
-              {statsLoading ? (
-                <Skeleton className="h-10 w-20" />
-              ) : monthlyChange !== null ? (
-                <p className={`text-3xl md:text-4xl font-bold leading-none ${monthlyChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`} data-testid="kpi-stats-change">
-                  {monthlyChange >= 0 ? '+' : ''}{monthlyChange.toFixed(1)}%
-                </p>
-              ) : (
-                <p className="text-4xl font-bold text-muted-foreground leading-none">--</p>
-              )}
-              <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              </div>
-            </div>
+            </Link>
           </div>
-          <Link href="/supplier/products" data-testid="kpi-card-low-stock">
-            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col justify-between min-h-[120px]">
-              <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Niedriger Bestand" : "Scorte basse"}</span>
-              <div className="flex items-end justify-between mt-auto">
-                <p className="text-4xl md:text-5xl font-bold text-foreground leading-none" data-testid="kpi-low-stock">{lowStockLoading ? "..." : (lowStockProducts?.length || 0)}</p>
-                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-orange-100 dark:bg-orange-900/30">
-                  <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                </div>
-              </div>
-            </div>
-          </Link>
         </div>
       </div>
 

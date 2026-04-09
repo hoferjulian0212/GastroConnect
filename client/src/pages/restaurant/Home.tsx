@@ -512,64 +512,64 @@ export default function RestaurantHome() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <div className="-mx-4 -mt-4 md:-mx-6 md:-mt-6 bg-[#161921] px-4 md:px-6 pt-6 pb-24">
-          <h1 className="text-3xl md:text-4xl font-bold text-white" data-testid="text-page-title">
+        <div className="-mx-4 -mt-4 md:-mx-6 md:-mt-6 bg-[#161921] px-4 md:px-6 pt-6 pb-6">
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-5" data-testid="text-page-title">
             {currentUser?.companyName || ""}
           </h1>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 -mt-16 relative z-10">
-          <Link href="/restaurant/inbox" data-testid="kpi-card-messages">
-            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col justify-between min-h-[120px]">
-              <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span>
-              <div className="flex items-end justify-between mt-auto">
-                <p className="text-4xl md:text-5xl font-bold text-foreground leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : totalUnread}</p>
-                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                  <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <Link href="/restaurant/inbox" data-testid="kpi-card-messages">
+              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
+                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span>
+                <div className="flex items-end justify-between mt-auto">
+                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : totalUnread}</p>
+                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-blue-500/20">
+                    <MessageSquare className="h-5 w-5 text-blue-400" />
+                  </div>
                 </div>
               </div>
-            </div>
-          </Link>
-          <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 flex flex-col justify-between min-h-[120px]" data-testid="kpi-card-cost-per-guest">
-            <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Wareneinsatz/Gast" : "Costo/ospite"}</span>
-            <div className="flex items-end justify-between mt-auto">
-              {costLoading ? (
-                <Skeleton className="h-10 w-20" />
-              ) : costAnalysis?.costPerGuest && parseFloat(costAnalysis.costPerGuest) > 0 ? (
-                <p className="text-3xl md:text-4xl font-bold text-foreground leading-none" data-testid="kpi-cost-per-guest">{parseFloat(costAnalysis.costPerGuest).toFixed(2)}€</p>
-              ) : (
-                <p className="text-4xl font-bold text-muted-foreground leading-none" data-testid="kpi-cost-per-guest">--</p>
-              )}
-              <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
-                <Calculator className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 flex flex-col justify-between min-h-[120px]" data-testid="kpi-card-empty">
-            <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Kommt bald" : "In arrivo"}</span>
-            <div className="flex items-end justify-between mt-auto">
-              <p className="text-4xl font-bold text-muted-foreground/30 leading-none">--</p>
-              <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-gray-100 dark:bg-gray-800">
-                <Sparkles className="h-5 w-5 text-gray-400" />
-              </div>
-            </div>
-          </div>
-          <Link href="/restaurant/cost-analysis" data-testid="kpi-card-monthly-spending">
-            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col justify-between min-h-[120px]">
-              <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Monatsausgaben" : "Spese mensili"}</span>
+            </Link>
+            <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 flex flex-col justify-between min-h-[120px]" data-testid="kpi-card-cost-per-guest">
+              <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Wareneinsatz/Gast" : "Costo/ospite"}</span>
               <div className="flex items-end justify-between mt-auto">
                 {costLoading ? (
-                  <Skeleton className="h-10 w-20" />
-                ) : costAnalysis?.totalCosts && parseFloat(costAnalysis.totalCosts) > 0 ? (
-                  <p className="text-3xl md:text-4xl font-bold text-foreground leading-none" data-testid="kpi-monthly-spending">{parseFloat(costAnalysis.totalCosts).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€</p>
+                  <Skeleton className="h-10 w-20 bg-white/10" />
+                ) : costAnalysis?.costPerGuest && parseFloat(costAnalysis.costPerGuest) > 0 ? (
+                  <p className="text-3xl md:text-4xl font-bold text-white leading-none" data-testid="kpi-cost-per-guest">{parseFloat(costAnalysis.costPerGuest).toFixed(2)}€</p>
                 ) : (
-                  <p className="text-4xl font-bold text-muted-foreground leading-none" data-testid="kpi-monthly-spending">--</p>
+                  <p className="text-4xl font-bold text-gray-500 leading-none" data-testid="kpi-cost-per-guest">--</p>
                 )}
-                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30">
-                  <Euro className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-emerald-500/20">
+                  <Calculator className="h-5 w-5 text-emerald-400" />
                 </div>
               </div>
             </div>
-          </Link>
+            <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 flex flex-col justify-between min-h-[120px]" data-testid="kpi-card-empty">
+              <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Kommt bald" : "In arrivo"}</span>
+              <div className="flex items-end justify-between mt-auto">
+                <p className="text-4xl font-bold text-gray-600 leading-none">--</p>
+                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/[0.06]">
+                  <Sparkles className="h-5 w-5 text-gray-500" />
+                </div>
+              </div>
+            </div>
+            <Link href="/restaurant/cost-analysis" data-testid="kpi-card-monthly-spending">
+              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
+                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Monatsausgaben" : "Spese mensili"}</span>
+                <div className="flex items-end justify-between mt-auto">
+                  {costLoading ? (
+                    <Skeleton className="h-10 w-20 bg-white/10" />
+                  ) : costAnalysis?.totalCosts && parseFloat(costAnalysis.totalCosts) > 0 ? (
+                    <p className="text-3xl md:text-4xl font-bold text-white leading-none" data-testid="kpi-monthly-spending">{parseFloat(costAnalysis.totalCosts).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€</p>
+                  ) : (
+                    <p className="text-4xl font-bold text-gray-500 leading-none" data-testid="kpi-monthly-spending">--</p>
+                  )}
+                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-amber-500/20">
+                    <Euro className="h-5 w-5 text-amber-400" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </div>
         </div>
       </div>
 

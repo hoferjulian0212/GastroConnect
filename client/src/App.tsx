@@ -320,7 +320,7 @@ function AppLayout() {
               )}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 border-b ${isHomePage ? 'border-transparent' : 'border-white/10'} bg-[#161921] sticky top-0 z-20 ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
+              <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 border-b ${isHomePage ? 'border-transparent' : 'border-white/10'} bg-[#161921] ${isHomePage ? '' : 'sticky top-0 z-20'} ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
                 <div className="flex items-center gap-3 md:flex-1 md:min-w-0">
                   <MobileProfileButton />
                   <div className="hidden md:flex items-center gap-2 shrink-0">
