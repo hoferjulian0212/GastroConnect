@@ -230,6 +230,61 @@ function HeaderNav() {
   );
 }
 
+function PageHero() {
+  const [location] = useLocation();
+  const { lang } = useLanguage();
+  const { currentRole } = useUser();
+
+  const isHomePage = location === `/${currentRole}`;
+  const isDetailPage = /^\/(restaurant|supplier)\/(orders|complaints)\/[^/]+$/.test(location);
+
+  if (isHomePage || isDetailPage) return null;
+
+  const titles: Record<string, Record<string, string>> = {
+    de: {
+      inbox: 'Inbox',
+      orders: 'Bestellungen',
+      catalog: 'Katalog',
+      products: 'Produkte',
+      suppliers: 'Lieferanten',
+      restaurants: 'Kunden',
+      complaints: 'Reklamationen',
+      settings: 'Einstellungen',
+      profile: 'Profil',
+      documents: 'Dokumente',
+      'cost-analysis': 'Kostenanalyse',
+      promotions: 'Aktionen',
+      cart: 'Warenkorb',
+    },
+    it: {
+      inbox: 'Inbox',
+      orders: 'Ordini',
+      catalog: 'Catalogo',
+      products: 'Prodotti',
+      suppliers: 'Fornitori',
+      restaurants: 'Clienti',
+      complaints: 'Reclami',
+      settings: 'Impostazioni',
+      profile: 'Profilo',
+      documents: 'Documenti',
+      'cost-analysis': 'Analisi costi',
+      promotions: 'Promozioni',
+      cart: 'Carrello',
+    },
+  };
+
+  const segment = location.split('/')[2] || '';
+  const title = titles[lang]?.[segment] || titles.de[segment];
+
+  if (!title) return null;
+
+  return (
+    <div className="-mx-4 md:-mx-6 bg-[#161921] px-4 md:px-6 pt-4 pb-6" data-testid="page-hero">
+      <h1 className="text-2xl md:text-3xl font-bold text-white">{title}</h1>
+    </div>
+  );
+}
+
 function DesktopProfileButton() {
   const { currentUser, currentRole } = useUser();
   const [, setLocation] = useLocation();
@@ -319,8 +374,8 @@ function AppLayout() {
                 <SupplierSidebar />
               )}
             </div>
-            <div className="flex flex-col flex-1 min-w-0">
-              <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 ${isHomePage ? '' : 'border-b border-white/10'} bg-[#161921] ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
+            <div className="flex flex-col flex-1 min-w-0 overflow-auto">
+              <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 bg-[#161921] shrink-0 ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
                 <div className="flex items-center gap-3 md:flex-1 md:min-w-0">
                   <MobileProfileButton />
                   <div className="hidden md:flex items-center gap-2 shrink-0">
@@ -343,7 +398,8 @@ function AppLayout() {
                   <DesktopProfileButton />
                 </div>
               </header>
-              <main className={`flex-1 overflow-auto ${isInChat || isDetailPage ? 'p-0 pb-0' : 'p-4 md:p-6 pb-28'} md:p-6 md:pb-6 ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''} ${isHomePage ? '!pt-0 md:!pt-0' : ''}`}>
+              <main className={`flex-1 ${isInChat || isDetailPage ? 'p-0 pb-0' : 'px-4 pt-0 md:px-6 pb-28 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
+                <PageHero />
                 {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
               </main>
             </div>
