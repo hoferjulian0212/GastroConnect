@@ -521,8 +521,8 @@ export default function RestaurantHome() {
       </div>
 
       {/* ── Upcoming Deliveries ── */}
-      <div>
-        <div className="flex items-center justify-between gap-2 mb-3">
+      <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
+        <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 shrink-0 hidden md:flex">
               <Truck className="h-5 w-5 text-primary" />
@@ -540,6 +540,7 @@ export default function RestaurantHome() {
             <Link href="/restaurant/orders" data-testid="link-view-all-orders">{t("common", "all")}</Link>
           </Button>
         </div>
+        <div className="md:px-5 md:pb-5">
 
         {isLoading ? (
           <div className="flex gap-3 overflow-hidden md:flex-col">
@@ -805,13 +806,14 @@ export default function RestaurantHome() {
             <p className="text-xs text-muted-foreground mt-1">{t("restaurantHome", "noUpcomingDeliveriesDesc")}</p>
           </div>
         )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-4 md:space-y-6">
           {/* ── Unread Messages ── */}
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
+            <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-blue-500/10 shrink-0 hidden md:flex">
                   <MessageSquare className="h-5 w-5 text-blue-500" />
@@ -836,6 +838,7 @@ export default function RestaurantHome() {
                 <Link href="/restaurant/inbox" data-testid="link-view-all-messages">{t("restaurantHome", "allMessages")}</Link>
               </Button>
             </div>
+            <div className="md:px-5 md:pb-5">
 
             {convLoading ? (
               <div className="flex gap-3 overflow-hidden md:flex-col">
@@ -958,11 +961,12 @@ export default function RestaurantHome() {
                 <p className="text-xs text-muted-foreground mt-1">{t("restaurantHome", "noUnreadMessagesDesc")}</p>
               </div>
             )}
+            </div>
           </div>
 
           {/* ── Active Promotions ── */}
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
+            <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-green-500/10 shrink-0 hidden md:flex">
                   <Tag className="h-5 w-5 text-green-600" />
@@ -980,6 +984,7 @@ export default function RestaurantHome() {
                 <Link href="/restaurant/catalog?promotions=true" data-testid="link-view-all-promotions">{t("restaurantHome", "allPromotions")}</Link>
               </Button>
             </div>
+            <div className="md:px-5 md:pb-5">
               {productsLoading ? (
                 <div className="flex gap-3 overflow-hidden">
                   {[1, 2, 3].map((i) => (
@@ -1133,13 +1138,14 @@ export default function RestaurantHome() {
                   <p className="text-xs text-muted-foreground mt-1">{t("restaurantHome", "noActivePromotionsDesc")}</p>
                 </div>
               )}
+            </div>
           </div>
         </div>
 
         <div className="space-y-4 md:space-y-6">
           {/* ── Order Templates ── */}
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
+            <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-orange-500/10 shrink-0 hidden md:flex">
                   <ClipboardList className="h-5 w-5 text-orange-600" />
@@ -1157,6 +1163,7 @@ export default function RestaurantHome() {
                 <Link href="/restaurant/orders?tab=templates" data-testid="link-view-all-templates">{t("common", "all")}</Link>
               </Button>
             </div>
+            <div className="md:px-5 md:pb-5">
               {templatesLoading ? (
                 <div className="flex gap-3 overflow-hidden md:flex-col">
                   {[1, 2].map((i) => (
@@ -1325,11 +1332,12 @@ export default function RestaurantHome() {
                   </Button>
                 </div>
               )}
+            </div>
           </div>
 
           {/* ── Cost Analysis ── */}
-          <div data-testid="card-cost-analysis-home">
-            <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm" data-testid="card-cost-analysis-home">
+            <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-purple-500/10 shrink-0 hidden md:flex">
                   <Calculator className="h-5 w-5 text-purple-600" />
@@ -1355,6 +1363,7 @@ export default function RestaurantHome() {
                 </Link>
               </Button>
             </div>
+            <div className="md:px-5 md:pb-5">
               {costLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-16 w-full rounded-lg" />
@@ -1468,6 +1477,7 @@ export default function RestaurantHome() {
 
                 </div>
               )}
+            </div>
           </div>
         </div>
       </div>
