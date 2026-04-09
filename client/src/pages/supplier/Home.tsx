@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert, ChevronRight, Flame } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, TrendingDown, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert, ChevronRight, Flame } from "lucide-react";
 import type { OrderWithDetails, Product, ConversationWithUser, ComplaintWithDetails } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -125,6 +125,15 @@ export default function SupplierHome() {
   }, [conversations]);
 
   const totalUnread = unreadConversations.length;
+
+  const monthlyChange = useMemo(() => {
+    const months = detailedStats?.monthlyRevenue || [];
+    if (months.length < 2) return null;
+    const current = months[months.length - 1]?.revenue || 0;
+    const previous = months[months.length - 2]?.revenue || 0;
+    if (previous === 0) return null;
+    return ((current - previous) / previous * 100);
+  }, [detailedStats]);
 
   const getMessagePreview = (conv: ConversationWithUser) => {
     if (!conv.lastMessage) return "";
@@ -308,13 +317,70 @@ export default function SupplierHome() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="text-center">
-        <p className="text-sm md:text-base text-muted-foreground">
-          {t("common", "welcomeBack")}
-        </p>
-        <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">
-          {currentUser?.companyName || ""}
-        </h1>
+      <div>
+        <div className="-mx-4 -mt-4 md:-mx-6 md:-mt-6 bg-[#161921] px-4 md:px-6 pt-5 pb-20">
+          <p className="text-sm text-gray-400 mb-1">
+            {t("common", "welcomeBack")}
+          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
+            {currentUser?.companyName || ""}
+          </h1>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 -mt-14 relative z-10">
+          <Link href="/supplier/inbox" data-testid="kpi-card-messages">
+            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span>
+                <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                  <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+              <p className="text-3xl md:text-4xl font-bold text-foreground" data-testid="kpi-unread-messages">{convLoading ? "..." : totalUnread}</p>
+            </div>
+          </Link>
+          <Link href="/supplier/orders" data-testid="kpi-card-orders">
+            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Neue Bestellungen" : "Nuovi ordini"}</span>
+                <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                  <ClipboardList className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+              </div>
+              <p className="text-3xl md:text-4xl font-bold text-foreground" data-testid="kpi-new-orders">{ordersLoading ? "..." : (recentOrders?.length || 0)}</p>
+            </div>
+          </Link>
+          <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5" data-testid="kpi-card-stats">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs md:text-sm text-muted-foreground font-medium">{t("supplierHome", "statistics")}</span>
+              <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-purple-100 dark:bg-purple-900/30">
+                <BarChart3 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+            {statsLoading ? (
+              <Skeleton className="h-10 w-20" />
+            ) : monthlyChange !== null ? (
+              <div className="flex items-center gap-2">
+                <p className={`text-2xl md:text-3xl font-bold ${monthlyChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`} data-testid="kpi-stats-change">
+                  {monthlyChange >= 0 ? '+' : ''}{monthlyChange.toFixed(1)}%
+                </p>
+                {monthlyChange >= 0 ? <TrendingUp className="h-5 w-5 text-emerald-500" /> : <TrendingDown className="h-5 w-5 text-red-500" />}
+              </div>
+            ) : (
+              <p className="text-3xl font-bold text-muted-foreground">--</p>
+            )}
+          </div>
+          <Link href="/supplier/products" data-testid="kpi-card-low-stock">
+            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Niedriger Bestand" : "Scorte basse"}</span>
+                <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-orange-100 dark:bg-orange-900/30">
+                  <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                </div>
+              </div>
+              <p className="text-3xl md:text-4xl font-bold text-foreground" data-testid="kpi-low-stock">{lowStockLoading ? "..." : (lowStockProducts?.length || 0)}</p>
+            </div>
+          </Link>
+        </div>
       </div>
 
       {/* Upcoming Deliveries */}

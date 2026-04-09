@@ -182,6 +182,30 @@ function MobileProfileButton() {
   );
 }
 
+function DesktopProfileButton() {
+  const { currentUser, currentRole } = useUser();
+  const [, setLocation] = useLocation();
+
+  const initials = currentUser?.name
+    ? currentUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+    : "?";
+
+  return (
+    <button
+      onClick={() => setLocation(`/${currentRole}/settings`)}
+      className="hidden md:flex items-center"
+      data-testid="button-desktop-profile"
+    >
+      <Avatar className="h-8 w-8 ring-2 ring-white/20 transition-all hover:ring-white/40">
+        <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name || ""} />
+        <AvatarFallback className="bg-white/10 text-white font-semibold text-xs">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+    </button>
+  );
+}
+
 function AppLayout() {
   const { currentRole, isLoading } = useUser();
   const { isInChat } = useChat();
@@ -207,6 +231,7 @@ function AppLayout() {
   }, []);
 
   const isDetailPage = /^\/(restaurant|supplier)\/(orders|complaints)\/[^/]+$/.test(location);
+  const isHomePage = location === '/restaurant' || location === '/supplier';
 
   const sidebarStyle = {
     "--sidebar-width": "256px",
@@ -247,13 +272,13 @@ function AppLayout() {
               )}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <header className={`flex items-center justify-between gap-4 px-4 py-2.5 md:px-4 md:py-1.5 border-b border-border bg-background sticky top-0 z-10 ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
+              <header className={`dark flex items-center justify-between gap-4 px-4 py-2.5 md:px-4 md:py-1.5 border-b ${isHomePage ? 'border-transparent' : 'border-white/10'} bg-[#161921] sticky top-0 z-20 ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
                 <div className="flex items-center gap-3">
                   <MobileProfileButton />
                   <div className="hidden md:flex items-center gap-2">
                     <div className="flex items-center gap-2">
-                      <img src={logoImg} alt="GastroConnect Logo" className="h-20 w-20 object-contain dark:invert -mr-2" />
-                      <span className="text-xl font-bold text-foreground tracking-tight">GastroConnect</span>
+                      <img src={logoImg} alt="GastroConnect Logo" className="h-20 w-20 object-contain invert -mr-2" />
+                      <span className="text-xl font-bold text-white tracking-tight">GastroConnect</span>
                     </div>
                   </div>
                 </div>
@@ -268,6 +293,7 @@ function AppLayout() {
                     </div>
                   )}
                   <NotificationBell />
+                  <DesktopProfileButton />
                 </div>
               </header>
               <main className={`flex-1 overflow-auto ${isInChat || isDetailPage ? 'p-0 pb-0' : 'p-4 md:p-6 pb-28'} md:p-6 md:pb-6 ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
