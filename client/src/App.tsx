@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { ChatProvider, useChat } from "@/context/ChatContext";
-import { LanguageProvider } from "@/context/LanguageContext";
+import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -182,6 +182,54 @@ function MobileProfileButton() {
   );
 }
 
+function HeaderNav() {
+  const { currentRole } = useUser();
+  const [location] = useLocation();
+  const { lang } = useLanguage();
+
+  const restaurantLinks = [
+    { href: '/restaurant', label: 'Dashboard', exact: true },
+    { href: '/restaurant/inbox', label: 'Inbox' },
+    { href: '/restaurant/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
+    { href: '/restaurant/catalog', label: lang === 'de' ? 'Katalog' : 'Catalogo' },
+    { href: '/restaurant/suppliers', label: lang === 'de' ? 'Lieferanten' : 'Fornitori' },
+  ];
+
+  const supplierLinks = [
+    { href: '/supplier', label: 'Dashboard', exact: true },
+    { href: '/supplier/inbox', label: 'Inbox' },
+    { href: '/supplier/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
+    { href: '/supplier/products', label: lang === 'de' ? 'Produkte' : 'Prodotti' },
+    { href: '/supplier/restaurants', label: lang === 'de' ? 'Kunden' : 'Clienti' },
+  ];
+
+  const links = currentRole === 'restaurant' ? restaurantLinks : supplierLinks;
+
+  const isActive = (link: { href: string; exact?: boolean }) => {
+    if (link.exact) return location === link.href;
+    return location === link.href || location.startsWith(link.href + '/');
+  };
+
+  return (
+    <nav className="hidden md:flex items-center gap-1" data-testid="header-nav">
+      {links.map(link => (
+        <Link key={link.href} href={link.href}>
+          <span
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              isActive(link)
+                ? 'bg-white/15 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+            data-testid={`nav-link-${link.href.split('/').pop()}`}
+          >
+            {link.label}
+          </span>
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 function DesktopProfileButton() {
   const { currentUser, currentRole } = useUser();
   const [, setLocation] = useLocation();
@@ -272,17 +320,16 @@ function AppLayout() {
               )}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <header className={`dark flex items-center justify-between gap-4 px-4 py-2.5 md:px-4 md:py-1.5 border-b ${isHomePage ? 'border-transparent' : 'border-white/10'} bg-[#161921] sticky top-0 z-20 ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
-                <div className="flex items-center gap-3">
+              <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 border-b ${isHomePage ? 'border-transparent' : 'border-white/10'} bg-[#161921] sticky top-0 z-20 ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
+                <div className="flex items-center gap-3 md:flex-1 md:min-w-0">
                   <MobileProfileButton />
-                  <div className="hidden md:flex items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <img src={logoImg} alt="GastroConnect Logo" className="h-20 w-20 object-contain invert -mr-2" />
-                      <span className="text-xl font-bold text-white tracking-tight">GastroConnect</span>
-                    </div>
+                  <div className="hidden md:flex items-center gap-2 shrink-0">
+                    <img src={logoImg} alt="GastroConnect Logo" className="h-8 w-8 object-contain invert" />
+                    <span className="text-lg font-bold text-white tracking-tight">GastroConnect</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <HeaderNav />
+                <div className="flex items-center gap-2 ml-auto md:flex-1 md:justify-end md:min-w-0">
                   <div className="hidden md:block">
                     <RoleSwitcher />
                   </div>

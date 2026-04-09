@@ -512,62 +512,62 @@ export default function RestaurantHome() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <div className="-mx-4 -mt-4 md:-mx-6 md:-mt-6 bg-[#161921] px-4 md:px-6 pt-5 pb-20">
-          <p className="text-sm text-gray-400 mb-1">
-            {t("common", "welcomeBack")}
-          </p>
-          <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
+        <div className="-mx-4 -mt-4 md:-mx-6 md:-mt-6 bg-[#161921] px-4 md:px-6 pt-6 pb-24">
+          <h1 className="text-3xl md:text-4xl font-bold text-white" data-testid="text-page-title">
             {currentUser?.companyName || ""}
           </h1>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 -mt-14 relative z-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 -mt-16 relative z-10">
           <Link href="/restaurant/inbox" data-testid="kpi-card-messages">
-            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span>
-                <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                  <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col justify-between min-h-[120px]">
+              <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span>
+              <div className="flex items-end justify-between mt-auto">
+                <p className="text-4xl md:text-5xl font-bold text-foreground leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : totalUnread}</p>
+                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                  <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
-              <p className="text-3xl md:text-4xl font-bold text-foreground" data-testid="kpi-unread-messages">{convLoading ? "..." : totalUnread}</p>
             </div>
           </Link>
-          <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5" data-testid="kpi-card-cost-per-guest">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Wareneinsatz/Gast" : "Costo/ospite"}</span>
-              <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
-                <Calculator className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              </div>
-            </div>
-            {costLoading ? (
-              <Skeleton className="h-10 w-20" />
-            ) : costAnalysis?.costPerGuest && parseFloat(costAnalysis.costPerGuest) > 0 ? (
-              <p className="text-2xl md:text-3xl font-bold text-foreground" data-testid="kpi-cost-per-guest">{parseFloat(costAnalysis.costPerGuest).toFixed(2)}€</p>
-            ) : (
-              <p className="text-3xl font-bold text-muted-foreground" data-testid="kpi-cost-per-guest">--</p>
-            )}
-          </div>
-          <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 flex flex-col items-center justify-center" data-testid="kpi-card-empty">
-            <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-gray-100 dark:bg-gray-800 mb-2">
-              <Sparkles className="h-4 w-4 text-gray-400" />
-            </div>
-            <p className="text-xs text-muted-foreground">{lang === "de" ? "Kommt bald" : "In arrivo"}</p>
-          </div>
-          <Link href="/restaurant/cost-analysis" data-testid="kpi-card-monthly-spending">
-            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Monatsausgaben" : "Spese mensili"}</span>
-                <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-amber-100 dark:bg-amber-900/30">
-                  <Euro className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                </div>
-              </div>
+          <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 flex flex-col justify-between min-h-[120px]" data-testid="kpi-card-cost-per-guest">
+            <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Wareneinsatz/Gast" : "Costo/ospite"}</span>
+            <div className="flex items-end justify-between mt-auto">
               {costLoading ? (
                 <Skeleton className="h-10 w-20" />
-              ) : costAnalysis?.totalCosts && parseFloat(costAnalysis.totalCosts) > 0 ? (
-                <p className="text-2xl md:text-3xl font-bold text-foreground" data-testid="kpi-monthly-spending">{parseFloat(costAnalysis.totalCosts).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€</p>
+              ) : costAnalysis?.costPerGuest && parseFloat(costAnalysis.costPerGuest) > 0 ? (
+                <p className="text-3xl md:text-4xl font-bold text-foreground leading-none" data-testid="kpi-cost-per-guest">{parseFloat(costAnalysis.costPerGuest).toFixed(2)}€</p>
               ) : (
-                <p className="text-3xl font-bold text-muted-foreground" data-testid="kpi-monthly-spending">--</p>
+                <p className="text-4xl font-bold text-muted-foreground leading-none" data-testid="kpi-cost-per-guest">--</p>
               )}
+              <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                <Calculator className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 flex flex-col justify-between min-h-[120px]" data-testid="kpi-card-empty">
+            <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Kommt bald" : "In arrivo"}</span>
+            <div className="flex items-end justify-between mt-auto">
+              <p className="text-4xl font-bold text-muted-foreground/30 leading-none">--</p>
+              <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-gray-100 dark:bg-gray-800">
+                <Sparkles className="h-5 w-5 text-gray-400" />
+              </div>
+            </div>
+          </div>
+          <Link href="/restaurant/cost-analysis" data-testid="kpi-card-monthly-spending">
+            <div className="rounded-2xl bg-card border border-border shadow-sm p-4 md:p-5 cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col justify-between min-h-[120px]">
+              <span className="text-xs md:text-sm text-muted-foreground font-medium">{lang === "de" ? "Monatsausgaben" : "Spese mensili"}</span>
+              <div className="flex items-end justify-between mt-auto">
+                {costLoading ? (
+                  <Skeleton className="h-10 w-20" />
+                ) : costAnalysis?.totalCosts && parseFloat(costAnalysis.totalCosts) > 0 ? (
+                  <p className="text-3xl md:text-4xl font-bold text-foreground leading-none" data-testid="kpi-monthly-spending">{parseFloat(costAnalysis.totalCosts).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€</p>
+                ) : (
+                  <p className="text-4xl font-bold text-muted-foreground leading-none" data-testid="kpi-monthly-spending">--</p>
+                )}
+                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                  <Euro className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+              </div>
             </div>
           </Link>
         </div>
