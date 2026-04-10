@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw, User as UserIcon, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw, User as UserIcon, SlidersHorizontal, ChevronUp, ChevronDown, Download } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
@@ -44,6 +44,7 @@ export default function SupplierOrders() {
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
   const [showSecondaryFilters, setShowSecondaryFilters] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [orderMessage, setOrderMessage] = useState("");
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
@@ -94,6 +95,19 @@ export default function SupplierOrders() {
     setFilterRestaurant("all");
     setFilterDateFrom("");
     setFilterDateTo("");
+  };
+
+  const handleExport = (format: "csv" | "pdf") => {
+    const params = new URLSearchParams({
+      userId: currentUser?.id || "",
+      role: "supplier",
+      format,
+    });
+    if (filterDateFrom) params.set("dateFrom", filterDateFrom);
+    if (filterDateTo) params.set("dateTo", filterDateTo);
+    if (filterRestaurant !== "all") params.set("restaurantId", filterRestaurant);
+    window.open(`/api/orders/export?${params.toString()}`, "_blank");
+    setShowExportMenu(false);
   };
 
   const deliveryNoteMutation = useMutation({
@@ -503,9 +517,41 @@ export default function SupplierOrders() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="orders-hero">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{lang === "de" ? "Aufträge" : "Ordini"}</h1>
-          <p className="text-sm text-white/50 mt-1">{t("supplierOrders", "incomingOrders")}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{lang === "de" ? "Aufträge" : "Ordini"}</h1>
+            <p className="text-sm text-white/50 mt-1">{t("supplierOrders", "incomingOrders")}</p>
+          </div>
+          <div className="relative hidden md:block">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/20 bg-white/[0.07] text-white text-xs font-medium hover:bg-white/15 transition-all"
+              data-testid="button-export"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Export</span>
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-1 bg-[#1e2130] border border-white/10 rounded-xl shadow-xl z-30 min-w-[160px] py-1">
+                <button
+                  onClick={() => handleExport("csv")}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                  data-testid="export-csv"
+                >
+                  <FileText className="h-4 w-4" />
+                  CSV Export
+                </button>
+                <button
+                  onClick={() => handleExport("pdf")}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                  data-testid="export-pdf"
+                >
+                  <FileText className="h-4 w-4" />
+                  PDF Export
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {uniqueRestaurants.length > 0 && (

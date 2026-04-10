@@ -3406,7 +3406,201 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/orders/export", async (req, res) => {
+    try {
+      const { userId, role, format, dateFrom, dateTo, supplierId, restaurantId } = req.query as Record<string, string>;
+      if (!userId || !role || !format) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      const allOrders = role === "restaurant"
+        ? await storage.getOrdersByRestaurant(userId)
+        : await storage.getOrdersBySupplier(userId);
+
+      let filtered = allOrders.filter(o => ["delivered", "confirmed", "in_delivery", "partially_confirmed", "cancelled"].includes(o.status));
+
+      if (dateFrom) {
+        const from = new Date(dateFrom);
+        filtered = filtered.filter(o => new Date(o.createdAt) >= from);
+      }
+      if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        filtered = filtered.filter(o => new Date(o.createdAt) <= to);
+      }
+      if (supplierId && role === "restaurant") {
+        filtered = filtered.filter(o => o.supplierId === supplierId);
+      }
+      if (restaurantId && role === "supplier") {
+        filtered = filtered.filter(o => o.restaurantId === restaurantId);
+      }
+
+      const escapeCsv = (val: string) => {
+        if (/[;\n\r"]/.test(val)) return `"${val.replace(/"/g, '""')}"`;
+        if (/^[=+\-@]/.test(val)) return `'${val}`;
+        return val;
+      };
+
+      const ordersWithItems = filtered.map(order => {
+        const partner = role === "restaurant"
+          ? (order.supplier?.companyName || order.supplier?.name || "Unbekannt")
+          : (order.restaurant?.companyName || order.restaurant?.name || "Unbekannt");
+        return { ...order, partnerName: partner };
+      });
+
+      const statusLabels: Record<string, string> = {
+        pending: "Ausstehend",
+        confirmed: "Bestätigt",
+        partially_confirmed: "Teilbestätigt",
+        in_delivery: "In Lieferung",
+        delivered: "Geliefert",
+        cancelled: "Storniert",
+      };
+
+      if (format === "csv") {
+        const partnerLabel = role === "restaurant" ? "Lieferant" : "Restaurant";
+        const header = `Bestell-Nr;${partnerLabel};Status;Datum;Lieferdatum;Artikel;Menge;Einzelpreis;Gesamt;Bestellsumme;Notizen`;
+        const rows: string[] = [];
+
+        for (const order of ordersWithItems) {
+          const dateStr = new Date(order.createdAt).toLocaleDateString("de-DE");
+          const deliveryDate = order.requestedDeliveryDate || "-";
+          const orderItems = order.items || [];
+          if (orderItems.length === 0) {
+            rows.push([order.id.slice(0, 8), escapeCsv(order.partnerName), statusLabels[order.status] || order.status, dateStr, deliveryDate, "-", "-", "-", "-", `${order.totalAmount}€`, escapeCsv(order.notes || "")].join(";"));
+          } else {
+            orderItems.forEach((item: any, idx: number) => {
+              rows.push([
+                idx === 0 ? order.id.slice(0, 8) : "",
+                idx === 0 ? escapeCsv(order.partnerName) : "",
+                idx === 0 ? (statusLabels[order.status] || order.status) : "",
+                idx === 0 ? dateStr : "",
+                idx === 0 ? deliveryDate : "",
+                escapeCsv(item.productName || item.product?.name || ""),
+                String(item.quantity),
+                `${item.unitPrice}€`,
+                `${item.totalPrice}€`,
+                idx === 0 ? `${order.totalAmount}€` : "",
+                idx === 0 ? escapeCsv(order.notes || "") : ""
+              ].join(";"));
+            });
+          }
+        }
+
+        const csvContent = "\uFEFF" + header + "\n" + rows.join("\n");
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="Bestellungen_Export_${new Date().toISOString().slice(0, 10)}.csv"`);
+        return res.send(csvContent);
+      }
+
+      if (format === "pdf") {
+        const pdfBuffer = await generateOrdersExportPDF(ordersWithItems, role, statusLabels);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="Bestellungen_Export_${new Date().toISOString().slice(0, 10)}.pdf"`);
+        return res.send(pdfBuffer);
+      }
+
+      res.status(400).json({ error: "Unsupported format" });
+    } catch (error) {
+      console.error("Export error:", error);
+      res.status(500).json({ error: "Export failed" });
+    }
+  });
+
   return httpServer;
+}
+
+async function generateOrdersExportPDF(
+  orders: Array<{
+    id: string;
+    status: string;
+    totalAmount: string;
+    notes: string | null;
+    createdAt: string | Date;
+    requestedDeliveryDate: string | null;
+    partnerName: string;
+    items: Array<{ productName?: string; product?: { name: string }; quantity: number; unitPrice: string; totalPrice: string }>;
+  }>,
+  role: string,
+  statusLabels: Record<string, string>
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 40, bufferPages: true });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const partnerLabel = role === "restaurant" ? "Lieferant" : "Restaurant";
+    const today = new Date().toLocaleDateString("de-DE");
+
+    doc.font("Helvetica-Bold").fontSize(18).fillColor("#161921");
+    doc.text("GastroConnect", 40, 40);
+    doc.font("Helvetica").fontSize(10).fillColor("#666666");
+    doc.text(`Bestellübersicht | Erstellt am ${today}`, 40, 62);
+    doc.text(`${orders.length} Bestellung${orders.length !== 1 ? "en" : ""}`, 40, 76);
+
+    doc.moveTo(40, 95).lineTo(555, 95).strokeColor("#e0e0e0").lineWidth(1).stroke();
+
+    let y = 110;
+    const pageBottom = 780;
+
+    for (const order of orders) {
+      const blockHeight = 60 + order.items.length * 16;
+      if (y + blockHeight > pageBottom) {
+        doc.addPage();
+        y = 40;
+      }
+
+      doc.font("Helvetica-Bold").fontSize(10).fillColor("#161921");
+      doc.text(`#${order.id.slice(0, 8)}`, 40, y);
+      doc.font("Helvetica").fontSize(9).fillColor("#666666");
+      doc.text(order.partnerName, 120, y);
+      doc.text(statusLabels[order.status] || order.status, 300, y);
+      doc.text(new Date(order.createdAt).toLocaleDateString("de-DE"), 420, y);
+      doc.font("Helvetica-Bold").fontSize(9).fillColor("#161921");
+      doc.text(`${order.totalAmount}€`, 500, y, { width: 55, align: "right" });
+
+      y += 18;
+
+      if (order.items.length > 0) {
+        doc.font("Helvetica").fontSize(8).fillColor("#999999");
+        doc.text("Artikel", 55, y);
+        doc.text("Menge", 300, y);
+        doc.text("Preis", 370, y);
+        doc.text("Gesamt", 500, y, { width: 55, align: "right" });
+        y += 14;
+
+        for (const item of order.items) {
+          if (y + 14 > pageBottom) {
+            doc.addPage();
+            y = 40;
+          }
+          doc.font("Helvetica").fontSize(8).fillColor("#333333");
+          doc.text(item.productName || item.product?.name || "", 55, y, { width: 240 });
+          doc.text(String(item.quantity), 300, y);
+          doc.text(`${item.unitPrice}€`, 370, y);
+          doc.text(`${item.totalPrice}€`, 500, y, { width: 55, align: "right" });
+          y += 14;
+        }
+      }
+
+      y += 6;
+      doc.moveTo(40, y).lineTo(555, y).strokeColor("#f0f0f0").lineWidth(0.5).stroke();
+      y += 10;
+    }
+
+    const totalSum = orders.reduce((sum, o) => sum + parseFloat(o.totalAmount || "0"), 0);
+    if (y + 30 > pageBottom) {
+      doc.addPage();
+      y = 40;
+    }
+    y += 10;
+    doc.font("Helvetica-Bold").fontSize(12).fillColor("#161921");
+    doc.text(`Gesamtsumme: ${totalSum.toFixed(2)}€`, 40, y, { width: 515, align: "right" });
+
+    doc.end();
+  });
 }
 
 async function generateDeliveryNotePDF(order: {
