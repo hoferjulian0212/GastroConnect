@@ -258,17 +258,6 @@ function InventoryView({ products, lang, t }: { products: Product[]; lang: strin
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-lg"
-                      onClick={() => quickAdjust(product, -1)}
-                      disabled={currentStock <= 0 || stockMovementMutation.isPending}
-                      data-testid={`button-quick-minus-${product.id}`}
-                    >
-                      <span className="text-base font-medium leading-none">−</span>
-                    </Button>
-
                     <div className="flex flex-col items-center min-w-[44px]">
                       <span className={`text-lg font-bold tabular-nums leading-tight ${
                         status === "out" ? "text-red-600 dark:text-red-400" :
@@ -288,17 +277,6 @@ function InventoryView({ products, lang, t }: { products: Product[]; lang: strin
                       title={lang === "de" ? "Bestand anpassen" : "Regola scorta"}
                     >
                       <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-lg"
-                      onClick={() => quickAdjust(product, 1)}
-                      disabled={stockMovementMutation.isPending}
-                      data-testid={`button-quick-plus-${product.id}`}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
                     </Button>
 
                     <Button
