@@ -77,6 +77,7 @@ export default function RestaurantOrders() {
   const [editDeliveryOption, setEditDeliveryOption] = useState<"asap" | "date">("asap");
   const [editSelectedDeliveryDate, setEditSelectedDeliveryDate] = useState<string>("");
   const [changeRequestOrder, setChangeRequestOrder] = useState<OrderWithDetails | null>(null);
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const [changeRequestReason, setChangeRequestReason] = useState("");
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [orderMessage, setOrderMessage] = useState("");
@@ -680,7 +681,7 @@ export default function RestaurantOrders() {
                     variant="destructive"
                     size="sm"
                     className="text-xs"
-                    onClick={(e) => { e.stopPropagation(); cancelOrderMutation.mutate(order.id); }}
+                    onClick={(e) => { e.stopPropagation(); setCancelConfirmId(order.id); }}
                     disabled={cancelOrderMutation.isPending}
                     data-testid={`button-cancel-order-${order.id}`}
                   >
@@ -1037,7 +1038,7 @@ export default function RestaurantOrders() {
                                 icon: <XCircle className="h-5 w-5" />,
                                 label: lang === "de" ? "Stornieren" : "Annulla",
                                 color: "bg-red-500",
-                                onClick: () => cancelOrderMutation.mutate(order.id),
+                                onClick: () => setCancelConfirmId(order.id),
                                 testId: `swipe-cancel-${order.id}`,
                               },
                             ]
@@ -1174,7 +1175,7 @@ export default function RestaurantOrders() {
                             variant="outline"
                             size="sm"
                             className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                            onClick={() => cancelOrderMutation.mutate(detailOrder.id)}
+                            onClick={() => setCancelConfirmId(detailOrder.id)}
                             disabled={cancelOrderMutation.isPending}
                             data-testid="button-detail-cancel-order"
                           >
@@ -1519,6 +1520,34 @@ export default function RestaurantOrders() {
         onOpenChange={(open) => { if (!open) setSelectedProduct(null); }}
         supplierName={selectedProduct ? (allProducts?.find(p => p.id === selectedProduct.id)?.supplier as any)?.companyName : undefined}
       />
+
+      <Dialog open={!!cancelConfirmId} onOpenChange={(open) => { if (!open) setCancelConfirmId(null); }}>
+        <DialogContent className="max-w-sm" data-testid="dialog-cancel-confirm">
+          <DialogHeader>
+            <DialogTitle>{lang === "de" ? "Bestellung stornieren?" : "Annullare l'ordine?"}</DialogTitle>
+            <DialogDescription>
+              {lang === "de"
+                ? "Diese Aktion kann nicht rückgängig gemacht werden. Die Bestellung wird endgültig storniert."
+                : "Questa azione non può essere annullata. L'ordine verrà annullato definitivamente."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setCancelConfirmId(null)} data-testid="button-cancel-abort">
+              {lang === "de" ? "Abbrechen" : "Annulla"}
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={() => { if (cancelConfirmId) { cancelOrderMutation.mutate(cancelConfirmId); setCancelConfirmId(null); } }}
+              disabled={cancelOrderMutation.isPending}
+              data-testid="button-cancel-confirm"
+            >
+              {cancelOrderMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <XCircle className="h-4 w-4 mr-2" />}
+              {lang === "de" ? "Ja, stornieren" : "Sì, annulla"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

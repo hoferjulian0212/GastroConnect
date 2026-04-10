@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw, User as UserIcon, SlidersHorizontal, ChevronUp, ChevronDown, Download, RefreshCw, Check } from "lucide-react";
@@ -49,6 +49,7 @@ export default function SupplierOrders() {
     },
   });
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const [filterRestaurant, setFilterRestaurant] = useState<string>(initialRestaurantId || "all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
@@ -61,6 +62,7 @@ export default function SupplierOrders() {
   const [confirmOrder, setConfirmOrder] = useState<OrderWithDetails | null>(null);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [showBatchCancelConfirm, setShowBatchCancelConfirm] = useState(false);
 
   const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`],
@@ -452,7 +454,7 @@ export default function SupplierOrders() {
               </Button>
             )}
             {order.status !== "in_delivery" && (
-              <Button size="sm" variant="destructive" className="text-xs" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-cancelled-${order.id}`}>
+              <Button size="sm" variant="destructive" className="text-xs" onClick={() => setCancelConfirmId(order.id)} disabled={updateStatusMutation.isPending} data-testid={`button-status-cancelled-${order.id}`}>
                 <XCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
                 <span className="truncate">{lang === "de" ? "Stornieren" : "Annullare"}</span>
               </Button>
@@ -888,7 +890,7 @@ export default function SupplierOrders() {
                                       icon: <XCircle className="h-5 w-5" />,
                                       label: lang === "de" ? "Stornieren" : "Annulla",
                                       color: "bg-red-500",
-                                      onClick: () => updateStatusMutation.mutate({ orderId: order.id, status: "cancelled" }),
+                                      onClick: () => setCancelConfirmId(order.id),
                                       testId: `swipe-cancel-${order.id}`,
                                     },
                                   ]
@@ -1079,7 +1081,7 @@ export default function SupplierOrders() {
                         </Button>
                       )}
                       {detailOrder.status !== "in_delivery" && (
-                        <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => updateStatusMutation.mutate({ orderId: detailOrder.id, status: "cancelled" })} disabled={updateStatusMutation.isPending} data-testid="button-status-cancelled">
+                        <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => setCancelConfirmId(detailOrder.id)} disabled={updateStatusMutation.isPending} data-testid="button-status-cancelled">
                           <XCircle className="h-3.5 w-3.5 mr-1.5" />
                           {lang === "de" ? "Stornieren" : "Annullare"}
                         </Button>
@@ -1241,6 +1243,62 @@ export default function SupplierOrders() {
         />
       )}
 
+      <Dialog open={!!cancelConfirmId} onOpenChange={(open) => { if (!open) setCancelConfirmId(null); }}>
+        <DialogContent className="max-w-sm" data-testid="dialog-cancel-confirm">
+          <DialogHeader>
+            <DialogTitle>{lang === "de" ? "Bestellung stornieren?" : "Annullare l'ordine?"}</DialogTitle>
+            <DialogDescription>
+              {lang === "de"
+                ? "Diese Aktion kann nicht rückgängig gemacht werden. Die Bestellung wird endgültig storniert."
+                : "Questa azione non può essere annullata. L'ordine verrà annullato definitivamente."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setCancelConfirmId(null)} data-testid="button-cancel-abort">
+              {lang === "de" ? "Abbrechen" : "Annulla"}
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={() => { if (cancelConfirmId) { updateStatusMutation.mutate({ orderId: cancelConfirmId, status: "cancelled" }); setCancelConfirmId(null); } }}
+              disabled={updateStatusMutation.isPending}
+              data-testid="button-cancel-confirm"
+            >
+              {updateStatusMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <XCircle className="h-4 w-4 mr-2" />}
+              {lang === "de" ? "Ja, stornieren" : "Sì, annulla"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBatchCancelConfirm} onOpenChange={(open) => { if (!open) setShowBatchCancelConfirm(false); }}>
+        <DialogContent className="max-w-sm" data-testid="dialog-batch-cancel-confirm">
+          <DialogHeader>
+            <DialogTitle>{lang === "de" ? `${selectedOrders.size} Bestellungen stornieren?` : `Annullare ${selectedOrders.size} ordini?`}</DialogTitle>
+            <DialogDescription>
+              {lang === "de"
+                ? "Alle ausgewählten Bestellungen werden endgültig storniert. Diese Aktion kann nicht rückgängig gemacht werden."
+                : "Tutti gli ordini selezionati verranno annullati definitivamente. Questa azione non può essere annullata."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setShowBatchCancelConfirm(false)} data-testid="button-batch-cancel-abort">
+              {lang === "de" ? "Abbrechen" : "Annulla"}
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={() => { setShowBatchCancelConfirm(false); batchCancelMutation.mutate(); }}
+              disabled={batchCancelMutation.isPending}
+              data-testid="button-batch-cancel-confirm"
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              {lang === "de" ? "Ja, alle stornieren" : "Sì, annulla tutti"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {batchMode && selectedOrders.size > 0 && (
         <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200" data-testid="batch-action-bar">
           <div className="flex items-center gap-2 bg-[#161921] border border-white/15 rounded-2xl px-4 py-3 shadow-2xl">
@@ -1265,7 +1323,7 @@ export default function SupplierOrders() {
               size="sm"
               variant="destructive"
               className="text-xs gap-1"
-              onClick={() => batchCancelMutation.mutate()}
+              onClick={() => setShowBatchCancelConfirm(true)}
               disabled={batchConfirmMutation.isPending || batchCancelMutation.isPending}
               data-testid="button-batch-cancel"
             >

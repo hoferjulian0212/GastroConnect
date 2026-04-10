@@ -151,6 +151,7 @@ export default function SupplierInbox() {
     },
   });
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
+  const [showCancelOrderConfirm, setShowCancelOrderConfirm] = useState(false);
   const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string } | null>(null);
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
   const [confirmOrderForDialog, setConfirmOrderForDialog] = useState<any | null>(null);
@@ -2061,7 +2062,7 @@ export default function SupplierInbox() {
         </div>
       </Card>
 
-      <Dialog open={!!orderDetailId} onOpenChange={(open) => !open && setOrderDetailId(null)}>
+      <Dialog open={!!orderDetailId} onOpenChange={(open) => { if (!open) { setOrderDetailId(null); setShowCancelOrderConfirm(false); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
           <DialogHeader className="sr-only"><DialogTitle>{lang === "de" ? "Bestelldetails" : "Dettagli ordine"}</DialogTitle></DialogHeader>
           <div className="px-6 pt-6 pb-2">
@@ -2099,11 +2100,31 @@ export default function SupplierInbox() {
                       {lang === "de" ? "Geliefert" : "Consegnato"}
                     </Button>
                   )}
-                  {orderDetail.status !== "in_delivery" && (
-                    <Button size="sm" variant="outline" className="rounded-lg" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "cancelled" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-cancelled">
+                  {orderDetail.status !== "in_delivery" && !showCancelOrderConfirm && (
+                    <Button size="sm" variant="outline" className="rounded-lg" onClick={() => setShowCancelOrderConfirm(true)} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-cancelled">
                       <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
                       {lang === "it" ? "Annulla" : "Stornieren"}
                     </Button>
+                  )}
+                  {showCancelOrderConfirm && (
+                    <div className="p-3 rounded-xl border border-destructive/20 space-y-2 col-span-full">
+                      <p className="text-sm font-medium text-destructive">
+                        {lang === "de" ? "Bestellung wirklich stornieren?" : "Annullare davvero l'ordine?"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {lang === "de"
+                          ? "Diese Aktion kann nicht rückgängig gemacht werden."
+                          : "Questa azione non può essere annullata."}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1 rounded-lg" onClick={() => setShowCancelOrderConfirm(false)} data-testid="button-cancel-order-abort">
+                          {lang === "de" ? "Abbrechen" : "Annulla"}
+                        </Button>
+                        <Button variant="destructive" size="sm" className="flex-1 rounded-lg" onClick={() => { updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "cancelled" }); setShowCancelOrderConfirm(false); }} disabled={updateOrderStatusMutation.isPending} data-testid="button-cancel-order-confirm">
+                          {lang === "de" ? "Ja, stornieren" : "Sì, annulla"}
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
