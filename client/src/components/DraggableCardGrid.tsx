@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, memo } from "react";
-import { GripVertical, Maximize2, Columns2 } from "lucide-react";
+import { GripVertical, Maximize2, Columns2, AlignLeft, AlignRight } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -20,6 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 type CardSize = "full" | "half";
+type CardAlign = "left" | "right";
 
 interface CardSection {
   id: string;
@@ -36,6 +37,7 @@ interface DraggableCardGridProps {
 interface LayoutItem {
   id: string;
   size: CardSize;
+  align?: CardAlign;
 }
 
 function getStorageKey(userId: string, role: string) {
@@ -53,7 +55,7 @@ function loadLayout(userId: string, role: string, sections: CardSection[]): Layo
       if (allExist && noExtras) return parsed;
     }
   } catch {}
-  return sections.map(s => ({ id: s.id, size: s.defaultSize || "full" }));
+  return sections.map(s => ({ id: s.id, size: s.defaultSize || "full", align: "left" as CardAlign }));
 }
 
 const CardContent = memo(function CardContent({ content, editMode }: { content: React.ReactNode; editMode: boolean }) {
@@ -69,10 +71,11 @@ interface SortableCardProps {
   section: CardSection;
   editMode: boolean;
   onToggleSize: (id: string) => void;
+  onToggleAlign: (id: string) => void;
   isLg: boolean;
 }
 
-function SortableCard({ item, section, editMode, onToggleSize, isLg }: SortableCardProps) {
+function SortableCard({ item, section, editMode, onToggleSize, onToggleAlign, isLg }: SortableCardProps) {
   const {
     attributes,
     listeners,
@@ -83,6 +86,8 @@ function SortableCard({ item, section, editMode, onToggleSize, isLg }: SortableC
   } = useSortable({ id: item.id, disabled: !editMode });
 
   const isFull = item.size === "full";
+  const isHalf = !isFull && isLg;
+  const isRight = item.align === "right";
   const widthPercent = (!isLg || isFull) ? "100%" : "calc(50% - 8px)";
 
   const style: React.CSSProperties = {
@@ -92,6 +97,7 @@ function SortableCard({ item, section, editMode, onToggleSize, isLg }: SortableC
     zIndex: isDragging ? 0 : "auto",
     width: widthPercent,
     flexShrink: 0,
+    marginLeft: (isHalf && isRight) ? "auto" : undefined,
   };
 
   return (
@@ -103,6 +109,17 @@ function SortableCard({ item, section, editMode, onToggleSize, isLg }: SortableC
     >
       {editMode && (
         <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
+          {isHalf && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleAlign(item.id); }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-sm text-xs font-medium transition-all bg-muted/80 border-border text-foreground hover:bg-muted"
+              data-testid={`toggle-align-${item.id}`}
+              title={isRight ? "Links" : "Rechts"}
+            >
+              {isRight ? <AlignLeft className="h-3.5 w-3.5" /> : <AlignRight className="h-3.5 w-3.5" />}
+              <span>{isRight ? "Links" : "Rechts"}</span>
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); onToggleSize(item.id); }}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-sm text-xs font-medium transition-all ${
@@ -170,7 +187,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     if (newIds.length > 0 || removedIds.length > 0) {
       const updated = layout
         .filter(l => defaultIds.includes(l.id))
-        .concat(newIds.map(id => ({ id, size: sections.find(s => s.id === id)?.defaultSize || "full" as CardSize })));
+        .concat(newIds.map(id => ({ id, size: sections.find(s => s.id === id)?.defaultSize || "full" as CardSize, align: "left" as CardAlign })));
       setLayout(updated);
       localStorage.setItem(getStorageKey(userId, role), JSON.stringify(updated));
     }
@@ -184,6 +201,13 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const toggleSize = useCallback((id: string) => {
     const newLayout = layout.map(item =>
       item.id === id ? { ...item, size: (item.size === "full" ? "half" : "full") as CardSize } : item
+    );
+    saveLayout(newLayout);
+  }, [layout, saveLayout]);
+
+  const toggleAlign = useCallback((id: string) => {
+    const newLayout = layout.map(item =>
+      item.id === id ? { ...item, align: (item.align === "right" ? "left" : "right") as CardAlign } : item
     );
     saveLayout(newLayout);
   }, [layout, saveLayout]);
@@ -256,6 +280,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
                   section={section}
                   editMode={editMode}
                   onToggleSize={toggleSize}
+                  onToggleAlign={toggleAlign}
                   isLg={isLg}
                 />
               );
