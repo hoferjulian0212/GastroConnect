@@ -16,6 +16,7 @@ import { ShoppingCart, ChevronDown } from "lucide-react";
 import logoImg from "@assets/logo_no_bg.png";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
 import { useEffect, useCallback, useState, useRef } from "react";
@@ -461,6 +462,9 @@ function AppLayout() {
               <div className="flex items-center gap-2 ml-auto md:flex-1 md:justify-end md:min-w-0">
                 <div className="hidden md:block">
                   <RoleSwitcher />
+                </div>
+                <div className="hidden md:block">
+                  <AccountSwitcher compact />
                 </div>
                 <LanguageToggle />
                 {currentRole === "restaurant" && (

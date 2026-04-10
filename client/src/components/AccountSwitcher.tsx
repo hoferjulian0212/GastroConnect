@@ -49,7 +49,7 @@ export function AccountSwitcher({ compact = false }: { compact?: boolean }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className={`flex items-center gap-2 w-full rounded-lg border border-border bg-card px-3 py-2 text-left transition-all hover-elevate cursor-pointer ${compact ? "text-xs" : "text-sm"}`}
+          className={`flex items-center gap-2 w-full rounded-full border border-white/20 bg-white/[0.07] px-3 py-1.5 text-left transition-all hover:bg-white/15 cursor-pointer text-white ${compact ? "text-xs" : "text-sm"}`}
           data-testid="button-switch-account"
         >
           <Avatar className={compact ? "h-6 w-6" : "h-7 w-7"}>
