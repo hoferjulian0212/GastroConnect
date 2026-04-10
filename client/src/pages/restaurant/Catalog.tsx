@@ -276,14 +276,6 @@ export default function RestaurantCatalog() {
         </>
       ) : (
         <>
-          <button
-            onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
-            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-3 px-1"
-            data-testid="button-back-to-categories"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {lang === "de" ? "Zurück" : "Indietro"}
-          </button>
           <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="catalog-category-hero">
             <div className="flex items-center gap-2">
               {(() => {
@@ -342,6 +334,15 @@ export default function RestaurantCatalog() {
               </div>
             )}
           </div>
+
+          <button
+            onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
+            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1"
+            data-testid="button-back-to-categories"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {lang === "de" ? "Zurück" : "Indietro"}
+          </button>
 
           <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
             <div className="relative flex-1">
