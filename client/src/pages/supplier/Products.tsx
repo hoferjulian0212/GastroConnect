@@ -269,11 +269,7 @@ function InventoryView({ products, lang, t }: { products: Product[]; lang: strin
                       <span className="text-base font-medium leading-none">−</span>
                     </Button>
 
-                    <button
-                      className="flex flex-col items-center min-w-[44px] py-1 px-1.5 rounded-lg hover:bg-muted/50 transition-colors"
-                      onClick={() => openAdjustDialog(product)}
-                      data-testid={`button-stock-adjust-${product.id}`}
-                    >
+                    <div className="flex flex-col items-center min-w-[44px]">
                       <span className={`text-lg font-bold tabular-nums leading-tight ${
                         status === "out" ? "text-red-600 dark:text-red-400" :
                         status === "low" ? "text-orange-600 dark:text-orange-400" : ""
@@ -281,7 +277,18 @@ function InventoryView({ products, lang, t }: { products: Product[]; lang: strin
                         {currentStock}
                       </span>
                       <span className="text-[9px] text-muted-foreground leading-tight">{product.unit}</span>
-                    </button>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg"
+                      onClick={() => openAdjustDialog(product)}
+                      data-testid={`button-stock-adjust-${product.id}`}
+                      title={lang === "de" ? "Bestand anpassen" : "Regola scorta"}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
 
                     <Button
                       variant="outline"
