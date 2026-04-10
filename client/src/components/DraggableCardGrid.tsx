@@ -1,170 +1,230 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { GripVertical, Lock, Unlock } from "lucide-react";
+import { GripVertical, Maximize2, Minimize2, Columns2 } from "lucide-react";
+
+type CardSize = "full" | "half";
+
+interface CardSection {
+  id: string;
+  content: React.ReactNode;
+  defaultSize?: CardSize;
+}
 
 interface DraggableCardGridProps {
   userId: string;
   role: string;
-  sections: { id: string; content: React.ReactNode }[];
+  sections: CardSection[];
+}
+
+interface LayoutItem {
+  id: string;
+  size: CardSize;
 }
 
 function getStorageKey(userId: string, role: string) {
-  return `dashboard-layout-${userId}-${role}`;
+  return `dashboard-grid-${userId}-${role}`;
 }
 
-function loadOrder(userId: string, role: string, defaultIds: string[]): string[] {
+function loadLayout(userId: string, role: string, sections: CardSection[]): LayoutItem[] {
   try {
     const saved = localStorage.getItem(getStorageKey(userId, role));
     if (saved) {
-      const parsed = JSON.parse(saved) as string[];
-      const allExist = defaultIds.every(id => parsed.includes(id));
-      const noExtras = parsed.every(id => defaultIds.includes(id));
+      const parsed = JSON.parse(saved) as LayoutItem[];
+      const defaultIds = sections.map(s => s.id);
+      const allExist = defaultIds.every(id => parsed.some(p => p.id === id));
+      const noExtras = parsed.every(p => defaultIds.includes(p.id));
       if (allExist && noExtras) return parsed;
     }
   } catch {}
-  return defaultIds;
+  return sections.map(s => ({ id: s.id, size: s.defaultSize || "full" }));
 }
 
 export default function DraggableCardGrid({ userId, role, sections }: DraggableCardGridProps) {
-  const defaultIds = sections.map(s => s.id);
-  const [order, setOrder] = useState<string[]>(() => loadOrder(userId, role, defaultIds));
+  const [layout, setLayout] = useState<LayoutItem[]>(() => loadLayout(userId, role, sections));
   const [editMode, setEditMode] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
-  const dragNode = useRef<HTMLDivElement | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ id: string; position: "before" | "after" } | null>(null);
+  const dragGhost = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const newIds = defaultIds.filter(id => !order.includes(id));
-    const removedIds = order.filter(id => !defaultIds.includes(id));
+    const defaultIds = sections.map(s => s.id);
+    const currentIds = layout.map(l => l.id);
+    const newIds = defaultIds.filter(id => !currentIds.includes(id));
+    const removedIds = currentIds.filter(id => !defaultIds.includes(id));
     if (newIds.length > 0 || removedIds.length > 0) {
-      const updated = order.filter(id => defaultIds.includes(id)).concat(newIds);
-      setOrder(updated);
+      const updated = layout
+        .filter(l => defaultIds.includes(l.id))
+        .concat(newIds.map(id => ({ id, size: sections.find(s => s.id === id)?.defaultSize || "full" as CardSize })));
+      setLayout(updated);
       localStorage.setItem(getStorageKey(userId, role), JSON.stringify(updated));
     }
-  }, [defaultIds.join(",")]);
+  }, [sections.map(s => s.id).join(",")]);
 
-  const saveOrder = useCallback((newOrder: string[]) => {
-    setOrder(newOrder);
-    localStorage.setItem(getStorageKey(userId, role), JSON.stringify(newOrder));
+  const saveLayout = useCallback((newLayout: LayoutItem[]) => {
+    setLayout(newLayout);
+    localStorage.setItem(getStorageKey(userId, role), JSON.stringify(newLayout));
   }, [userId, role]);
+
+  const toggleSize = useCallback((id: string) => {
+    const newLayout = layout.map(item =>
+      item.id === id ? { ...item, size: (item.size === "full" ? "half" : "full") as CardSize } : item
+    );
+    saveLayout(newLayout);
+  }, [layout, saveLayout]);
 
   const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, id: string) => {
     setDragId(id);
-    dragNode.current = e.currentTarget;
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", id);
+    const el = e.currentTarget;
+    const ghost = document.createElement("div");
+    ghost.style.width = "200px";
+    ghost.style.height = "60px";
+    ghost.style.background = "hsl(var(--primary))";
+    ghost.style.borderRadius = "12px";
+    ghost.style.opacity = "0.8";
+    ghost.style.position = "fixed";
+    ghost.style.top = "-1000px";
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 100, 30);
+    dragGhost.current = ghost;
     requestAnimationFrame(() => {
-      if (dragNode.current) dragNode.current.style.opacity = "0.4";
+      el.style.opacity = "0.3";
+      el.style.transform = "scale(0.95)";
     });
   }, []);
 
-  const handleDragEnd = useCallback(() => {
-    if (dragNode.current) dragNode.current.style.opacity = "1";
+  const handleDragEnd = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.currentTarget.style.opacity = "1";
+    e.currentTarget.style.transform = "";
     setDragId(null);
-    setOverId(null);
-    dragNode.current = null;
+    setDropTarget(null);
+    if (dragGhost.current) {
+      document.body.removeChild(dragGhost.current);
+      dragGhost.current = null;
+    }
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>, id: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    if (dragId && id !== dragId) {
-      setOverId(id);
+    if (!dragId || id === dragId) {
+      setDropTarget(null);
+      return;
     }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const position = e.clientY < midY ? "before" : "after";
+    setDropTarget({ id, position });
   }, [dragId]);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, targetId: string) => {
     e.preventDefault();
     if (!dragId || dragId === targetId) return;
-    const newOrder = [...order];
-    const fromIndex = newOrder.indexOf(dragId);
-    const toIndex = newOrder.indexOf(targetId);
+    const newLayout = [...layout];
+    const fromIndex = newLayout.findIndex(l => l.id === dragId);
+    const toIndex = newLayout.findIndex(l => l.id === targetId);
     if (fromIndex === -1 || toIndex === -1) return;
-    newOrder.splice(fromIndex, 1);
-    newOrder.splice(toIndex, 0, dragId);
-    saveOrder(newOrder);
+    const [moved] = newLayout.splice(fromIndex, 1);
+    const insertAt = dropTarget?.position === "after" ? 
+      (fromIndex < toIndex ? toIndex : toIndex + 1) : 
+      (fromIndex < toIndex ? toIndex - 1 : toIndex);
+    newLayout.splice(Math.max(0, insertAt), 0, moved);
+    saveLayout(newLayout);
     setDragId(null);
-    setOverId(null);
-  }, [dragId, order, saveOrder]);
+    setDropTarget(null);
+  }, [dragId, layout, dropTarget, saveLayout]);
 
-  const handleDragLeave = useCallback(() => {
-    setOverId(null);
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (
+      e.clientX < rect.left || e.clientX > rect.right ||
+      e.clientY < rect.top || e.clientY > rect.bottom
+    ) {
+      setDropTarget(null);
+    }
   }, []);
 
   const sectionMap = new Map(sections.map(s => [s.id, s]));
 
-  const handleTouchMove = useRef<{ id: string; startY: number; currentIndex: number } | null>(null);
-
-  const moveUp = useCallback((id: string) => {
-    const idx = order.indexOf(id);
-    if (idx <= 0) return;
-    const newOrder = [...order];
-    [newOrder[idx - 1], newOrder[idx]] = [newOrder[idx], newOrder[idx - 1]];
-    saveOrder(newOrder);
-  }, [order, saveOrder]);
-
-  const moveDown = useCallback((id: string) => {
-    const idx = order.indexOf(id);
-    if (idx === -1 || idx >= order.length - 1) return;
-    const newOrder = [...order];
-    [newOrder[idx + 1], newOrder[idx]] = [newOrder[idx], newOrder[idx + 1]];
-    saveOrder(newOrder);
-  }, [order, saveOrder]);
-
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="flex justify-end">
+    <div ref={containerRef}>
+      <div className="flex justify-end mb-3 md:mb-4">
         <button
           onClick={() => setEditMode(!editMode)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1.5 rounded-lg hover:bg-muted/50"
+          className={`flex items-center gap-1.5 text-xs font-medium transition-all px-3 py-1.5 rounded-full ${
+            editMode
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          }`}
           data-testid="button-toggle-edit-mode"
         >
-          {editMode ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+          <GripVertical className="h-3.5 w-3.5" />
           <span>{editMode ? "Fertig" : "Anordnen"}</span>
         </button>
       </div>
-      {order.map((id, index) => {
-        const section = sectionMap.get(id);
-        if (!section) return null;
-        const isOver = overId === id && dragId !== id;
-        return (
-          <div
-            key={id}
-            draggable={editMode}
-            onDragStart={editMode ? (e) => handleDragStart(e, id) : undefined}
-            onDragEnd={editMode ? handleDragEnd : undefined}
-            onDragOver={editMode ? (e) => handleDragOver(e, id) : undefined}
-            onDrop={editMode ? (e) => handleDrop(e, id) : undefined}
-            onDragLeave={editMode ? handleDragLeave : undefined}
-            className={`relative transition-all ${editMode ? "cursor-grab active:cursor-grabbing" : ""} ${
-              isOver ? "ring-2 ring-primary/50 ring-offset-2 rounded-xl" : ""
-            } ${dragId === id ? "opacity-40" : ""}`}
-            data-testid={`draggable-card-${id}`}
-          >
-            {editMode && (
-              <div className="absolute -left-1 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-0.5 bg-background border rounded-lg shadow-sm p-1" data-testid={`drag-handle-${id}`}>
-                <button
-                  onClick={(e) => { e.stopPropagation(); moveUp(id); }}
-                  disabled={index === 0}
-                  className="p-0.5 hover:bg-muted rounded disabled:opacity-30"
-                  data-testid={`move-up-${id}`}
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 3L2 7h8L6 3z" fill="currentColor"/></svg>
-                </button>
-                <GripVertical className="h-4 w-4 text-muted-foreground" />
-                <button
-                  onClick={(e) => { e.stopPropagation(); moveDown(id); }}
-                  disabled={index === order.length - 1}
-                  className="p-0.5 hover:bg-muted rounded disabled:opacity-30"
-                  data-testid={`move-down-${id}`}
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 9l4-4H2l4 4z" fill="currentColor"/></svg>
-                </button>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
+        {layout.map((item) => {
+          const section = sectionMap.get(item.id);
+          if (!section) return null;
+          const isFull = item.size === "full";
+          const isDragging = dragId === item.id;
+          const isDropBefore = dropTarget?.id === item.id && dropTarget.position === "before";
+          const isDropAfter = dropTarget?.id === item.id && dropTarget.position === "after";
+
+          return (
+            <div
+              key={item.id}
+              draggable={editMode}
+              onDragStart={editMode ? (e) => handleDragStart(e, item.id) : undefined}
+              onDragEnd={editMode ? handleDragEnd : undefined}
+              onDragOver={editMode ? (e) => handleDragOver(e, item.id) : undefined}
+              onDrop={editMode ? (e) => handleDrop(e, item.id) : undefined}
+              onDragLeave={editMode ? handleDragLeave : undefined}
+              className={`relative transition-all duration-200 ${
+                isFull ? "lg:col-span-2" : "lg:col-span-1"
+              } ${editMode ? "cursor-grab active:cursor-grabbing" : ""} ${
+                isDragging ? "opacity-30 scale-95" : ""
+              } ${editMode && !isDragging ? "ring-1 ring-border/50 rounded-xl" : ""}`}
+              style={{
+                ...(isDropBefore ? { paddingTop: "4px", borderTop: "3px solid hsl(var(--primary))", borderRadius: "12px" } : {}),
+                ...(isDropAfter ? { paddingBottom: "4px", borderBottom: "3px solid hsl(var(--primary))", borderRadius: "12px" } : {}),
+              }}
+              data-testid={`draggable-card-${item.id}`}
+            >
+              {editMode && (
+                <div className="absolute right-2 top-2 z-20 flex items-center gap-1" data-testid={`card-controls-${item.id}`}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleSize(item.id); }}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-background/90 backdrop-blur border shadow-sm text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                    data-testid={`toggle-size-${item.id}`}
+                    title={isFull ? "Halb" : "Voll"}
+                  >
+                    {isFull ? (
+                      <>
+                        <Columns2 className="h-3 w-3" />
+                        <span className="hidden sm:inline">Halb</span>
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="h-3 w-3" />
+                        <span className="hidden sm:inline">Voll</span>
+                      </>
+                    )}
+                  </button>
+                  <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-background/90 backdrop-blur border shadow-sm text-muted-foreground">
+                    <GripVertical className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              )}
+              <div className={`${editMode ? "pointer-events-none select-none" : ""}`}>
+                {section.content}
               </div>
-            )}
-            {section.content}
-          </div>
-        );
-      })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

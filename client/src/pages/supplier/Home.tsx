@@ -382,7 +382,7 @@ export default function SupplierHome() {
         userId={currentUser?.id || ""}
         role="supplier"
         sections={[
-          { id: "upcoming-deliveries", content: (
+          { id: "upcoming-deliveries", defaultSize: "full" as const, content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
@@ -584,7 +584,7 @@ export default function SupplierHome() {
         </div>
       </div>
           )},
-          { id: "unread-messages", content: (
+          { id: "unread-messages", defaultSize: "half" as const, content: (
           <div className="space-y-4 md:space-y-6">
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
@@ -846,7 +846,7 @@ export default function SupplierHome() {
           </div>
           </div>
           )},
-          { id: "action-required", content: (
+          { id: "action-required", defaultSize: "half" as const, content: (
           <>
           {((actionRequired?.staleOrders?.length || 0) > 0 || (actionRequired?.openComplaints?.length || 0) > 0) && (
             <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
@@ -1027,7 +1027,7 @@ export default function SupplierHome() {
           )}
           </>
           )},
-          { id: "low-stock", content: (
+          { id: "low-stock", defaultSize: "half" as const, content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -1129,7 +1129,7 @@ export default function SupplierHome() {
             </div>
           </div>
           )},
-          { id: "statistics", content: (
+          { id: "statistics", defaultSize: "half" as const, content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">

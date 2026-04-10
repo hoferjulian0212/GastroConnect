@@ -578,7 +578,7 @@ export default function RestaurantHome() {
         userId={currentUser?.id || ""}
         role="restaurant"
         sections={[
-          { id: "upcoming-deliveries", content: (
+          { id: "upcoming-deliveries", defaultSize: "full" as const, content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
@@ -864,7 +864,7 @@ export default function RestaurantHome() {
         </div>
       </div>
           )},
-          { id: "unread-messages", content: (
+          { id: "unread-messages", defaultSize: "half" as const, content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -1014,7 +1014,7 @@ export default function RestaurantHome() {
             </div>
           </div>
           )},
-          { id: "active-promotions", content: (
+          { id: "active-promotions", defaultSize: "half" as const, content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -1188,7 +1188,7 @@ export default function RestaurantHome() {
             </div>
           </div>
           )},
-          { id: "order-templates", content: (
+          { id: "order-templates", defaultSize: "half" as const, content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -1377,7 +1377,7 @@ export default function RestaurantHome() {
             </div>
           </div>
           )},
-          { id: "cost-analysis", content: (
+          { id: "cost-analysis", defaultSize: "half" as const, content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm" data-testid="card-cost-analysis-home">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
