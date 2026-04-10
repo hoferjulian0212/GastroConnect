@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
@@ -32,6 +32,11 @@ export default function RestaurantCatalog() {
   const { currentUser } = useUser();
   const [location, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [onlyPromotions, setOnlyPromotions] = useState(false);
@@ -114,6 +119,142 @@ export default function RestaurantCatalog() {
     })).filter(s => s.productCount > 0);
   }, [suppliers, products]);
 
+  const searchSuggestions = useMemo(() => {
+    if (!products || globalSearch.length < 2) return [];
+    const q = globalSearch.toLowerCase();
+    const supplierFiltered = selectedSupplier === "all" ? products : products.filter(p => p.supplierId === selectedSupplier);
+    return supplierFiltered
+      .filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q) ||
+        p.supplier?.companyName?.toLowerCase().includes(q) ||
+        p.supplier?.name?.toLowerCase().includes(q)
+      )
+      .slice(0, 8);
+  }, [products, globalSearch, selectedSupplier]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleGlobalSearchChange = useCallback((value: string) => {
+    setGlobalSearch(value);
+    setShowSuggestions(value.length >= 2);
+    setHighlightIndex(-1);
+  }, []);
+
+  const handleSuggestionSelect = useCallback((product: ProductWithSupplierAndPromotion) => {
+    setShowSuggestions(false);
+    setGlobalSearch("");
+    setSearchQuery("");
+    setLocation(`/restaurant/product/${product.id}`);
+  }, [setLocation]);
+
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setShowSuggestions(false);
+      return;
+    }
+    if (!showSuggestions || searchSuggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightIndex(prev => prev < searchSuggestions.length - 1 ? prev + 1 : 0);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIndex(prev => prev <= 0 ? searchSuggestions.length - 1 : prev - 1);
+    } else if (e.key === "Enter" && highlightIndex >= 0 && highlightIndex < searchSuggestions.length) {
+      e.preventDefault();
+      handleSuggestionSelect(searchSuggestions[highlightIndex]);
+    }
+  }, [showSuggestions, searchSuggestions, highlightIndex, handleSuggestionSelect]);
+
+  useEffect(() => {
+    if (highlightIndex >= 0 && suggestionsRef.current) {
+      const item = suggestionsRef.current.children[highlightIndex] as HTMLElement;
+      item?.scrollIntoView({ block: "nearest" });
+    }
+  }, [highlightIndex]);
+
+  const renderSuggestionDropdown = (isDark: boolean) => {
+    if (!showSuggestions || globalSearch.length < 2) return null;
+    return (
+      <div
+        ref={suggestionsRef}
+        className={`absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border shadow-xl overflow-hidden max-h-[320px] overflow-y-auto ${
+          isDark
+            ? "bg-[#1e2130] border-white/10"
+            : "bg-background border-border"
+        }`}
+        data-testid="search-suggestions"
+      >
+        {searchSuggestions.length > 0 ? (
+          searchSuggestions.map((product, idx) => {
+            const promo = product.activePromotion;
+            const hasPromo = !!promo;
+            const originalPrice = parseFloat(product.price);
+            const discountedPrice = hasPromo ? originalPrice * (1 - promo.discountPercent / 100) : originalPrice;
+            return (
+              <button
+                key={product.id}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                  idx === highlightIndex
+                    ? isDark ? "bg-white/10" : "bg-muted"
+                    : isDark ? "hover:bg-white/[0.06]" : "hover:bg-muted/50"
+                } ${idx > 0 ? isDark ? "border-t border-white/5" : "border-t border-border/50" : ""}`}
+                onClick={() => handleSuggestionSelect(product)}
+                data-testid={`suggestion-${product.id}`}
+              >
+                <div className="h-10 w-10 rounded-lg overflow-hidden bg-muted shrink-0">
+                  {product.imageUrl ? (
+                    <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <Package className={`h-4 w-4 ${isDark ? "text-white/20" : "text-muted-foreground/30"}`} />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-sm font-medium truncate ${isDark ? "text-white" : ""}`}>{product.name}</div>
+                  <div className={`text-[11px] truncate ${isDark ? "text-white/40" : "text-muted-foreground"}`}>
+                    {product.supplier?.companyName || product.supplier?.name}
+                    {product.category && ` · ${lang === "it" ? (categoryConfig[product.category]?.it || product.category) : (categoryConfig[product.category]?.de || product.category)}`}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  {hasPromo ? (
+                    <div className="flex flex-col items-end">
+                      <span className={`text-[10px] line-through ${isDark ? "text-white/30" : "text-muted-foreground"}`}>{originalPrice.toFixed(2)}€</span>
+                      <span className="text-sm font-bold text-green-500">{discountedPrice.toFixed(2)}€</span>
+                    </div>
+                  ) : (
+                    <span className={`text-sm font-bold ${isDark ? "text-white" : ""}`}>{originalPrice.toFixed(2)}€</span>
+                  )}
+                  <span className={`text-[10px] ${isDark ? "text-white/30" : "text-muted-foreground"}`}>/{product.unit}</span>
+                </div>
+                {!product.inStock && (
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-red-500/30 text-red-400 shrink-0">
+                    {lang === "de" ? "Aus" : "Esaurito"}
+                  </Badge>
+                )}
+              </button>
+            );
+          })
+        ) : (
+          <div className={`px-4 py-6 text-center ${isDark ? "text-white/40" : "text-muted-foreground"}`}>
+            <Package className={`h-6 w-6 mx-auto mb-2 ${isDark ? "text-white/20" : "text-muted-foreground/30"}`} />
+            <p className="text-sm">{t("common", "noProductsFound")}</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderProductCard = (product: ProductWithSupplierAndPromotion) => {
     const promo = product.activePromotion;
     const hasPromo = !!promo;
@@ -190,6 +331,20 @@ export default function RestaurantCatalog() {
                   ? "Durchsuchen Sie verfügbare Produkte Ihrer Lieferanten."
                   : "Esplora i prodotti disponibili dei tuoi fornitori."}
               </p>
+            </div>
+
+            <div className="relative" ref={searchContainerRef}>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 z-10" />
+              <Input
+                placeholder={lang === "de" ? "Produkt suchen..." : "Cerca prodotto..."}
+                value={globalSearch}
+                onChange={(e) => handleGlobalSearchChange(e.target.value)}
+                onFocus={() => { if (globalSearch.length >= 2) setShowSuggestions(true); }}
+                onKeyDown={handleSearchKeyDown}
+                className="pl-9 h-10 text-sm bg-white/[0.07] border-white/10 text-white placeholder:text-white/30 focus:border-white/30 focus:ring-white/10"
+                data-testid="input-global-search"
+              />
+              {renderSuggestionDropdown(true)}
             </div>
 
             {supplierCards.length > 1 && (
@@ -345,15 +500,21 @@ export default function RestaurantCatalog() {
           </button>
 
           <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
+            <div className="relative flex-1" ref={!selectedCategory ? undefined : searchContainerRef}>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground z-10" />
               <Input
                 placeholder={t("common", "searchProducts")}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  handleGlobalSearchChange(e.target.value);
+                }}
+                onFocus={() => { if (searchQuery.length >= 2) setShowSuggestions(true); }}
+                onKeyDown={handleSearchKeyDown}
                 className="pl-8 md:pl-9 h-9 md:h-10 text-sm"
                 data-testid="input-search-products"
               />
+              {renderSuggestionDropdown(false)}
             </div>
             <div className="flex flex-row gap-2 flex-wrap">
               <Button
