@@ -118,11 +118,6 @@ export default function ProductDetail() {
       })()
     : [];
 
-  const similarProducts = product && products
-    ? products
-        .filter(p => p.id !== product.id && p.category === product.category && p.inStock)
-        .slice(0, 6)
-    : [];
 
   const alsoFromSupplier = product && products
     ? products
@@ -447,16 +442,6 @@ export default function ProductDetail() {
           </div>
         )}
 
-        {similarProducts.length > 0 && (
-          <div>
-            <h3 className="text-base md:text-lg font-semibold mb-2.5">
-              {lang === "de" ? "Ähnliche Produkte" : "Prodotti simili"}
-            </h3>
-            <div className="grid gap-2.5 md:gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
-              {similarProducts.map(renderRelatedCard)}
-            </div>
-          </div>
-        )}
 
         {alsoFromSupplier.length > 0 && (
           <div>
