@@ -329,121 +329,125 @@ export default function SupplierComplaints() {
 
   return (
     <div className="space-y-3 md:space-y-4">
-      <div className="flex items-center gap-2">
-        <AlertCircle className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-        <h1 className="text-lg md:text-xl font-semibold">{t("common", "complaints")}</h1>
-      </div>
+      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="complaints-hero">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "complaints")}</h1>
+          <p className="text-sm text-white/50 mt-1">{lang === "de" ? "Verwalten Sie eingehende Reklamationen" : "Gestisci i reclami ricevuti"}</p>
+        </div>
 
-      {uniqueRestaurants.length > 0 && (
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
-          <button
-            onClick={() => setFilterRestaurant("all")}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border transition-all shrink-0 text-xs ${
-              filterRestaurant === "all"
-                ? "border-primary bg-primary/10 text-primary font-semibold dark:bg-primary/20"
-                : "border-transparent bg-muted/50 text-muted-foreground dark:bg-muted/30"
-            }`}
-            data-testid="filter-complaint-restaurant-all"
-          >
-            <Store className="h-3.5 w-3.5" />
-            <span>{t("common", "all")}</span>
-            <span className="font-bold">{complaints?.length || 0}</span>
-          </button>
-          {uniqueRestaurants.map(restaurant => {
-            const isActive = filterRestaurant === restaurant.id;
+        {uniqueRestaurants.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => setFilterRestaurant("all")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
+                filterRestaurant === "all"
+                  ? "border-white/40 bg-white/20 text-white shadow-sm"
+                  : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
+              }`}
+              data-testid="filter-complaint-restaurant-all"
+            >
+              <Store className="h-3.5 w-3.5" />
+              <span>{t("common", "all")}</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{complaints?.length || 0}</span>
+            </button>
+            {uniqueRestaurants.map(restaurant => {
+              const isActive = filterRestaurant === restaurant.id;
+              return (
+                <button
+                  key={restaurant.id}
+                  onClick={() => setFilterRestaurant(restaurant.id)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
+                    isActive
+                      ? "border-white/40 bg-white/20 text-white shadow-sm"
+                      : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
+                  }`}
+                  data-testid={`filter-complaint-restaurant-${restaurant.id}`}
+                >
+                  <Avatar className="h-4 w-4">
+                    <AvatarImage src={restaurant.profileImageUrl || undefined} />
+                    <AvatarFallback className="text-[7px] font-semibold bg-white/20 text-white">
+                      {restaurant.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="max-w-[80px] truncate">{restaurant.name}</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{restaurant.complaintCount}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          {([
+            { key: "all", dotColor: "bg-gray-400" },
+            { key: "open", dotColor: "bg-yellow-500" },
+            { key: "in_progress", dotColor: "bg-blue-500" },
+            { key: "resolved", dotColor: "bg-green-500" },
+            { key: "closed", dotColor: "bg-gray-500" },
+          ] as const).map(({ key, dotColor }) => {
+            const isActive = filterStatus === key;
+            const count = (statusCounts as any)[key] || 0;
             return (
               <button
-                key={restaurant.id}
-                onClick={() => setFilterRestaurant(restaurant.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border transition-all shrink-0 text-xs ${
+                key={key}
+                onClick={() => setFilterStatus(key)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
                   isActive
-                    ? "border-primary bg-primary/10 text-primary font-semibold dark:bg-primary/20"
-                    : "border-transparent bg-muted/50 text-muted-foreground dark:bg-muted/30"
+                    ? "border-white/40 bg-white/20 text-white shadow-sm"
+                    : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
                 }`}
-                data-testid={`filter-complaint-restaurant-${restaurant.id}`}
+                data-testid={`filter-complaint-status-${key}`}
               >
-                <Avatar className={`h-5 w-5 ${isActive ? "ring-1 ring-primary" : ""}`}>
-                  <AvatarImage src={restaurant.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-[8px] font-semibold">
-                    {restaurant.name.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="max-w-[80px] truncate">{restaurant.name}</span>
-                <span className="font-bold">{restaurant.complaintCount}</span>
+                <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
+                <span className="whitespace-nowrap">
+                  {key === "all" ? t("common", "all") : getComplaintStatus(key, lang)}
+                </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{count}</span>
               </button>
             );
           })}
         </div>
-      )}
 
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
-        {([
-          { key: "all", icon: AlertCircle, activeClass: "bg-primary text-primary-foreground border-primary" },
-          { key: "open", icon: Clock, activeClass: "bg-yellow-500 text-white border-yellow-400 dark:bg-yellow-600 dark:border-yellow-500" },
-          { key: "in_progress", icon: Loader2, activeClass: "bg-blue-500 text-white border-blue-400 dark:bg-blue-600 dark:border-blue-500" },
-          { key: "resolved", icon: CheckCircle, activeClass: "bg-green-500 text-white border-green-400 dark:bg-green-600 dark:border-green-500" },
-          { key: "closed", icon: XCircle, activeClass: "bg-muted-foreground text-background border-muted-foreground" },
-        ] as const).map(({ key, icon: Icon, activeClass }) => {
-          const isActive = filterStatus === key;
-          const count = (statusCounts as any)[key] || 0;
-          return (
-            <button
-              key={key}
-              onClick={() => setFilterStatus(key)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-xs transition-all shrink-0 ${
-                isActive ? activeClass : "border-transparent bg-muted/60 text-muted-foreground"
-              }`}
-              data-testid={`filter-complaint-status-${key}`}
-            >
-              <Icon className="h-3 w-3" />
-              <span className="font-medium">
-                {key === "all" ? t("common", "all") : getComplaintStatus(key, lang)}
-              </span>
-              <span className="font-bold">{count}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setShowSecondaryFilters(!showSecondaryFilters)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover-elevate rounded-md px-2 py-1"
-          data-testid="button-toggle-complaint-filters"
-        >
-          <SlidersHorizontal className="h-3 w-3" />
-          <span>{lang === "de" ? "Filter" : "Filtri"}</span>
-          {hasSecondaryFilters && (
-            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
-              {(filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
-            </span>
-          )}
-          {showSecondaryFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        </button>
-        {hasActiveFilters && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={clearFilters}
-            className="text-xs text-muted-foreground hover-elevate rounded-md px-2 py-1 flex items-center gap-1"
-            data-testid="button-clear-complaint-filters"
+            onClick={() => setShowSecondaryFilters(!showSecondaryFilters)}
+            className="flex items-center gap-1.5 text-xs md:text-sm text-white/60 hover:text-white rounded-md px-2 py-1.5 transition-colors"
+            data-testid="button-toggle-complaint-filters"
           >
-            <X className="h-3 w-3" />
-            {t("common", "reset")}
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>{lang === "de" ? "Filter" : "Filtri"}</span>
+            {hasSecondaryFilters && (
+              <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                {(filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
+              </span>
+            )}
+            {showSecondaryFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="text-xs text-white/60 hover:text-white rounded-md px-2 py-1.5 flex items-center gap-1 transition-colors"
+              data-testid="button-clear-complaint-filters"
+            >
+              <X className="h-3 w-3" />
+              {t("common", "reset")}
+            </button>
+          )}
+        </div>
+
+        {showSecondaryFilters && (
+          <div className="flex gap-2 pt-1">
+            <div className="flex-1 min-w-0">
+              <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "from")}</label>
+              <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white" data-testid="filter-complaint-date-from" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "to")}</label>
+              <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white" data-testid="filter-complaint-date-to" />
+            </div>
+          </div>
         )}
       </div>
-
-      {showSecondaryFilters && (
-        <div className="flex gap-2 px-1">
-          <div className="flex-1 min-w-0">
-            <label className="text-[10px] text-muted-foreground mb-0.5 block">{t("common", "from")}</label>
-            <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="h-8 text-xs" data-testid="filter-complaint-date-from" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <label className="text-[10px] text-muted-foreground mb-0.5 block">{t("common", "to")}</label>
-            <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="h-8 text-xs" data-testid="filter-complaint-date-to" />
-          </div>
-        </div>
-      )}
 
       <div className="space-y-1.5 md:space-y-2">
           {isLoading ? (

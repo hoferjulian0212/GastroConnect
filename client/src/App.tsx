@@ -327,8 +327,9 @@ function PageHero() {
   const isDetailPage = /^\/(restaurant|supplier)\/(orders|complaints)\/[^/]+$/.test(location);
 
   const isOrdersPage = /^\/(restaurant|supplier)\/orders$/.test(location);
+  const isComplaintsPage = /^\/(restaurant|supplier)\/complaints$/.test(location);
 
-  if (isHomePage || isDetailPage || isOrdersPage) return null;
+  if (isHomePage || isDetailPage || isOrdersPage || isComplaintsPage) return null;
 
   const role = currentRole;
   const pages: Record<string, Record<string, { title: string; subtitle?: string }>> = {
