@@ -712,7 +712,7 @@ export default function RestaurantOrders() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl -mx-4 md:-mx-6 -mt-0 mb-4 space-y-3" data-testid="orders-hero">
+      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="orders-hero">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "orders")}</h1>
           <p className="text-sm text-white/50 mt-1">{t("orders", "allOrdersOverview")}</p>
