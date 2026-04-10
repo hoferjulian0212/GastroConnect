@@ -16,6 +16,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 
 export default function ProductDetail() {
   const [, params] = useRoute("/restaurant/product/:id");
@@ -28,6 +29,7 @@ export default function ProductDetail() {
   const dateLocale = lang === "it" ? it : de;
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const { triggerFly } = useFlyToCart();
 
   const { data: products, isLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
     queryKey: [`/api/products?restaurantId=${currentUser?.id}`],
@@ -72,7 +74,11 @@ export default function ProductDetail() {
     },
   });
 
-  const handleAddToCart = (p: ProductWithSupplierAndPromotion, qty?: number) => {
+  const handleAddToCart = (p: ProductWithSupplierAndPromotion, qty?: number, sourceEvent?: React.MouseEvent) => {
+    const btn = sourceEvent?.currentTarget as HTMLElement | undefined;
+    if (btn) {
+      triggerFly(btn, p.imageUrl);
+    }
     addToCartMutation.mutate({
       productId: p.id,
       supplierId: p.supplierId,
@@ -128,7 +134,9 @@ export default function ProductDetail() {
   const [addedRelated, setAddedRelated] = useState<Set<string>>(new Set());
   const [relatedQuantities, setRelatedQuantities] = useState<Record<string, number>>({});
 
-  const handleAddRelated = (p: ProductWithSupplierAndPromotion) => {
+  const handleAddRelated = (p: ProductWithSupplierAndPromotion, sourceEvent?: React.MouseEvent) => {
+    const btn = sourceEvent?.currentTarget as HTMLElement | undefined;
+    if (btn) triggerFly(btn, p.imageUrl);
     const qty = relatedQuantities[p.id] || getMinOrderQty(p);
     addToCartMutation.mutate({ productId: p.id, supplierId: p.supplierId, quantity: qty }, {
       onSuccess: () => {
@@ -204,7 +212,7 @@ export default function ProductDetail() {
                     : "transition-all duration-200"
                 }`}
                 disabled={!p.inStock || addToCartMutation.isPending}
-                onClick={(e) => { e.stopPropagation(); handleAddRelated(p); }}
+                onClick={(e) => { e.stopPropagation(); handleAddRelated(p, e); }}
                 data-testid={`button-add-related-${p.id}`}
               >
                 {isAdded ? <Check className="h-3.5 w-3.5 shrink-0 animate-cart-check" /> : <ShoppingCart className="h-3.5 w-3.5 shrink-0" />}
@@ -350,7 +358,7 @@ export default function ProductDetail() {
                     : ""
                 }`}
                 disabled={!product.inStock || addToCartMutation.isPending}
-                onClick={() => handleAddToCart(product)}
+                onClick={(e) => handleAddToCart(product, undefined, e)}
                 data-testid="button-add-to-cart"
               >
                 {added ? (

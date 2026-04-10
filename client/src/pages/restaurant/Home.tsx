@@ -18,12 +18,14 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 
 export default function RestaurantHome() {
   const { currentUser } = useUser();
   const { lang } = useLanguage();
   const t = useT(lang);
   const { toast } = useToast();
+  const { triggerFly } = useFlyToCart();
   const [, navigate] = useLocation();
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null);
@@ -347,7 +349,9 @@ export default function RestaurantHome() {
     }));
   };
 
-  const handleAddToCart = (product: ProductWithSupplierAndPromotion) => {
+  const handleAddToCart = (product: ProductWithSupplierAndPromotion, sourceEvent?: React.MouseEvent) => {
+    const btn = sourceEvent?.currentTarget as HTMLElement | undefined;
+    if (btn) triggerFly(btn, product.imageUrl);
     const minQty = getMinOrderQty(product);
     const quantity = quantities[product.id] || minQty;
     addToCartMutation.mutate({ productId: product.id, supplierId: product.supplierId, quantity });
@@ -1160,7 +1164,7 @@ export default function RestaurantHome() {
                                     : "transition-all duration-200"
                                 }`}
                                 disabled={!product.inStock || addToCartMutation.isPending}
-                                onClick={() => handleAddToCart(product)}
+                                onClick={(e) => handleAddToCart(product, e)}
                                 data-testid={`button-promo-add-to-cart-${product.id}`}
                               >
                                 {addedProductIds.has(product.id) ? (
