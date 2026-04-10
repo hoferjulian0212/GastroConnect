@@ -141,9 +141,12 @@ export default function RestaurantCatalog() {
             </Badge>
           )}
           {!product.inStock && (
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1">
               <span className="text-[9px] font-medium text-white bg-red-600 px-1.5 py-0.5 rounded">
-                {lang === "de" ? "Nicht verfuegbar" : "Non disponibile"}
+                {lang === "de" ? "Nicht verfügbar" : "Non disponibile"}
+              </span>
+              <span className="text-[8px] text-white/80 underline underline-offset-2">
+                {lang === "de" ? "Alternativen ansehen" : "Vedi alternative"}
               </span>
             </div>
           )}

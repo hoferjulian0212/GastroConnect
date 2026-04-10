@@ -80,6 +80,44 @@ export default function ProductDetail() {
     });
   };
 
+  const outOfStockAlternatives = product && products && !product.inStock
+    ? (() => {
+        const nameWords = product.name.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+
+        const candidates = products
+          .filter(p => p.id !== product.id && p.inStock)
+          .map(p => {
+            const isSameSupplier = p.supplierId === product.supplierId;
+            const isSameCategory = !!(product.category && p.category && p.category === product.category);
+            const pNameLower = p.name.toLowerCase();
+            const nameMatchCount = nameWords.filter(w => pNameLower.includes(w)).length;
+            const nameMatchRatio = nameWords.length > 0 ? nameMatchCount / nameWords.length : 0;
+            const unitMatch = p.unit === product.unit;
+
+            if (!isSameSupplier && !isSameCategory && nameMatchRatio === 0) return null;
+
+            return {
+              product: p,
+              isSameSupplier,
+              isSameCategory,
+              nameMatchRatio,
+              unitMatch,
+            };
+          })
+          .filter((a): a is NonNullable<typeof a> => a !== null)
+          .sort((a, b) => {
+            if (a.isSameSupplier !== b.isSameSupplier) return a.isSameSupplier ? -1 : 1;
+            if (a.isSameCategory !== b.isSameCategory) return a.isSameCategory ? -1 : 1;
+            if (a.nameMatchRatio !== b.nameMatchRatio) return b.nameMatchRatio - a.nameMatchRatio;
+            if (a.unitMatch !== b.unitMatch) return a.unitMatch ? -1 : 1;
+            return 0;
+          })
+          .slice(0, 6);
+
+        return candidates;
+      })()
+    : [];
+
   const similarProducts = product && products
     ? products
         .filter(p => p.id !== product.id && p.category === product.category && p.inStock)
@@ -338,6 +376,22 @@ export default function ProductDetail() {
                 {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
               </p>
             )}
+
+            {!product.inStock && outOfStockAlternatives.length > 0 && (
+              <div className="mt-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                    {lang === "de"
+                      ? `${outOfStockAlternatives.length} verfügbare Alternative${outOfStockAlternatives.length !== 1 ? "n" : ""} gefunden`
+                      : `${outOfStockAlternatives.length} alternativ${outOfStockAlternatives.length !== 1 ? "e" : "a"} disponibil${outOfStockAlternatives.length !== 1 ? "i" : "e"}`}
+                  </span>
+                </div>
+                <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-1">
+                  {lang === "de" ? "Siehe unten für Details" : "Vedi sotto per i dettagli"}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -381,10 +435,22 @@ export default function ProductDetail() {
           )}
         </div>
 
+        {!product.inStock && outOfStockAlternatives.length > 0 && (
+          <div>
+            <h3 className="text-base md:text-lg font-semibold mb-2.5 flex items-center gap-2">
+              <Package className="h-5 w-5 text-amber-500" />
+              {lang === "de" ? "Verfügbare Alternativen" : "Alternative disponibili"}
+            </h3>
+            <div className="grid gap-2.5 md:gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
+              {outOfStockAlternatives.map(alt => renderRelatedCard(alt.product))}
+            </div>
+          </div>
+        )}
+
         {similarProducts.length > 0 && (
           <div>
             <h3 className="text-base md:text-lg font-semibold mb-2.5">
-              {lang === "de" ? "Aehnliche Produkte" : "Prodotti simili"}
+              {lang === "de" ? "Ähnliche Produkte" : "Prodotti simili"}
             </h3>
             <div className="grid gap-2.5 md:gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
               {similarProducts.map(renderRelatedCard)}
