@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Package, ShoppingCart, ShoppingBag, AlertCircle, Settings, Truck, FileText, User, Calculator } from "lucide-react";
+import { Home, MessageSquare, Package, ShoppingCart, ShoppingBag, AlertCircle, Settings, Truck, FileText, User, Calculator, ArrowUpDown } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -22,6 +22,7 @@ export function RestaurantMobileNav() {
     { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag },
     { title: t("common", "complaints"), url: "/restaurant/complaints", icon: AlertCircle },
     { title: t("common", "documents"), url: "/restaurant/documents", icon: FileText },
+    { title: lang === "de" ? "Preisvergleich" : "Confronto prezzi", url: "/restaurant/price-comparison", icon: ArrowUpDown },
     { title: t("common", "costAnalysis"), url: "/restaurant/cost-analysis", icon: Calculator },
     { title: t("common", "profile"), url: "/restaurant/profile", icon: User },
     { title: t("common", "settings"), url: "/restaurant/settings", icon: Settings },

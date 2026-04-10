@@ -249,7 +249,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
               key={item.id}
               ref={setCardRef(item.id)}
               className={`relative ${isFull ? "col-span-1 lg:col-span-2" : "col-span-1"} ${
-                isLifted ? "" : "transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
+                isLifted ? "" : "transition-all duration-300 ease-out"
               } ${
                 isDragging && !isLifted ? "opacity-30" : ""
               } ${

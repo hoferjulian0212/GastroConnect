@@ -37,6 +37,7 @@ import RestaurantProfile from "@/pages/restaurant/Profile";
 import RestaurantComplaints from "@/pages/restaurant/Complaints";
 import RestaurantSuppliers from "@/pages/restaurant/Suppliers";
 import RestaurantCostAnalysis from "@/pages/restaurant/CostAnalysis";
+import RestaurantPriceComparison from "@/pages/restaurant/PriceComparison";
 import SupplierHome from "@/pages/supplier/Home";
 import SupplierInbox from "@/pages/supplier/Inbox";
 import SupplierProducts from "@/pages/supplier/Products";
@@ -70,6 +71,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/profile" component={RestaurantProfile} />
       <Route path="/restaurant/documents" component={Documents} />
       <Route path="/restaurant/cost-analysis" component={RestaurantCostAnalysis} />
+      <Route path="/restaurant/price-comparison" component={RestaurantPriceComparison} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -277,6 +279,7 @@ function HeaderNav() {
       children: [
         { href: '/restaurant/catalog', label: lang === 'de' ? 'Katalog' : 'Catalogo' },
         { href: '/restaurant/suppliers', label: lang === 'de' ? 'Lieferanten' : 'Fornitori' },
+        { href: '/restaurant/price-comparison', label: lang === 'de' ? 'Preisvergleich' : 'Confronto prezzi' },
         { href: '/restaurant/cost-analysis', label: lang === 'de' ? 'Kostenanalyse' : 'Analisi costi' },
       ],
     },
@@ -330,9 +333,10 @@ function PageHero() {
   const isComplaintsPage = /^\/(restaurant|supplier)\/complaints$/.test(location);
   const isProductsPage = /^\/(restaurant\/catalog|supplier\/products)$/.test(location);
   const isCostAnalysisPage = location === "/restaurant/cost-analysis";
+  const isPriceComparisonPage = location === "/restaurant/price-comparison";
   const isPromotionsPage = location === "/supplier/promotions";
 
-  if (isHomePage || isDetailPage || isOrdersPage || isComplaintsPage || isProductsPage || isCostAnalysisPage || isPromotionsPage) return null;
+  if (isHomePage || isDetailPage || isOrdersPage || isComplaintsPage || isProductsPage || isCostAnalysisPage || isPriceComparisonPage || isPromotionsPage) return null;
 
   const role = currentRole;
   const pages: Record<string, Record<string, { title: string; subtitle?: string }>> = {
