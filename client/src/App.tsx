@@ -373,7 +373,7 @@ function AppLayout() {
               )}
             </div>
             <div className="flex flex-col flex-1 min-w-0 overflow-auto">
-              <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 bg-[#161921] shrink-0 ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
+              <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
                 <div className="flex items-center gap-3 md:flex-1 md:min-w-0">
                   <MobileProfileButton />
                   <div className="hidden md:flex items-center gap-2 shrink-0">
