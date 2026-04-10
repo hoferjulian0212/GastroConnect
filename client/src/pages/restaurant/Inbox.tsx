@@ -518,31 +518,50 @@ export default function RestaurantInbox() {
   }, [conversations, selectedConversation]);
 
   const prevMessageCountRef = useRef<number>(0);
+  const knownMessageIdsRef = useRef<Set<string>>(new Set());
   const [newMessageIds, setNewMessageIds] = useState<Set<string>>(new Set());
+  const [sentMessageIds, setSentMessageIds] = useState<Set<string>>(new Set());
+  const incomingTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const sentTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (messages && messages.length > 0) {
       const currentCount = messages.length;
       if (prevMessageCountRef.current > 0 && currentCount > prevMessageCountRef.current) {
-        const newIds = new Set<string>();
-        const newMessages = messages.slice(prevMessageCountRef.current);
-        newMessages.forEach(m => {
-          if (m.senderId !== currentUser?.id) {
-            newIds.add(m.id);
+        const incomingIds: string[] = [];
+        const ownIds: string[] = [];
+        messages.forEach(m => {
+          if (!knownMessageIdsRef.current.has(m.id)) {
+            if (m.senderId !== currentUser?.id) {
+              incomingIds.push(m.id);
+            } else {
+              ownIds.push(m.id);
+            }
           }
         });
-        if (newIds.size > 0) {
-          setNewMessageIds(newIds);
-          setTimeout(() => setNewMessageIds(new Set()), 2000);
+        if (incomingIds.length > 0) {
+          setNewMessageIds(prev => { const next = new Set(prev); incomingIds.forEach(id => next.add(id)); return next; });
+          clearTimeout(incomingTimerRef.current);
+          incomingTimerRef.current = setTimeout(() => setNewMessageIds(new Set()), 2000);
+        }
+        if (ownIds.length > 0) {
+          setSentMessageIds(prev => { const next = new Set(prev); ownIds.forEach(id => next.add(id)); return next; });
+          clearTimeout(sentTimerRef.current);
+          sentTimerRef.current = setTimeout(() => setSentMessageIds(new Set()), 1500);
         }
       }
+      knownMessageIdsRef.current = new Set(messages.map(m => m.id));
       prevMessageCountRef.current = currentCount;
     }
   }, [messages, currentUser?.id]);
 
   useEffect(() => {
     prevMessageCountRef.current = 0;
+    knownMessageIdsRef.current = new Set();
     setNewMessageIds(new Set());
+    setSentMessageIds(new Set());
+    clearTimeout(incomingTimerRef.current);
+    clearTimeout(sentTimerRef.current);
   }, [selectedConversation]);
 
   const { data: conversationStatuses } = useQuery<{
@@ -1368,8 +1387,9 @@ export default function RestaurantInbox() {
                           const showDateDivider = !prevMessage || !isSameDay(messageDate, new Date(prevMessage.createdAt));
                           
                           const isNewMessage = newMessageIds.has(message.id);
+                          const isSentMessage = sentMessageIds.has(message.id);
                           return (
-                            <div key={message.id} className={isNewMessage ? "animate-slide-in-message" : ""}>
+                            <div key={message.id} className={isNewMessage ? "animate-slide-in-message" : isSentMessage ? "animate-fly-up-message" : ""}>
                               {showDateDivider && (
                                 <div className="flex justify-center my-4">
                                   <span className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
