@@ -3,7 +3,6 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider } from "@/components/ui/sidebar";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { ChatProvider, useChat } from "@/context/ChatContext";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
@@ -17,8 +16,6 @@ import { ShoppingCart, ChevronDown } from "lucide-react";
 import logoImg from "@assets/logo_no_bg.png";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
-import { RestaurantSidebar } from "@/components/RestaurantSidebar";
-import { SupplierSidebar } from "@/components/SupplierSidebar";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
 import { useEffect, useCallback, useState, useRef } from "react";
@@ -426,11 +423,6 @@ function AppLayout() {
   const isDetailPage = /^\/(restaurant|supplier)\/(orders|complaints)\/[^/]+$/.test(location);
   const isHomePage = location === '/restaurant' || location === '/supplier';
 
-  const sidebarStyle = {
-    "--sidebar-width": "256px",
-    "--sidebar-width-icon": "3rem",
-  } as React.CSSProperties;
-
   if (location === "/") {
     return <Landing />;
   }
@@ -455,47 +447,38 @@ function AppLayout() {
           </div>
         </div>
       ) : (
-        <SidebarProvider style={sidebarStyle}>
-          <div className="flex h-dvh w-full">
-            <div className="hidden md:block">
-              {currentRole === "restaurant" ? (
-                <RestaurantSidebar />
-              ) : (
-                <SupplierSidebar />
-              )}
-            </div>
-            <div className="flex flex-col flex-1 min-w-0 overflow-auto">
-              <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
-                <div className="flex items-center gap-3 md:flex-1 md:min-w-0">
-                  <MobileProfileButton />
-                  <div className="hidden md:flex items-center gap-2 shrink-0">
-                    <img src={logoImg} alt="GastroConnect Logo" className="h-8 w-8 object-contain invert" />
-                    <span className="text-lg font-bold text-white tracking-tight">GastroConnect</span>
-                  </div>
+        <div className="flex h-dvh w-full">
+          <div className="flex flex-col flex-1 min-w-0 overflow-auto">
+            <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
+              <div className="flex items-center gap-3 md:flex-1 md:min-w-0">
+                <MobileProfileButton />
+                <div className="hidden md:flex items-center gap-2 shrink-0">
+                  <img src={logoImg} alt="GastroConnect Logo" className="h-8 w-8 object-contain invert" />
+                  <span className="text-lg font-bold text-white tracking-tight">GastroConnect</span>
                 </div>
-                <HeaderNav />
-                <div className="flex items-center gap-2 ml-auto md:flex-1 md:justify-end md:min-w-0">
+              </div>
+              <HeaderNav />
+              <div className="flex items-center gap-2 ml-auto md:flex-1 md:justify-end md:min-w-0">
+                <div className="hidden md:block">
+                  <RoleSwitcher />
+                </div>
+                <LanguageToggle />
+                {currentRole === "restaurant" && (
                   <div className="hidden md:block">
-                    <RoleSwitcher />
+                    <CartButton />
                   </div>
-                  <LanguageToggle />
-                  {currentRole === "restaurant" && (
-                    <div className="hidden md:block">
-                      <CartButton />
-                    </div>
-                  )}
-                  <NotificationBell />
-                  <DesktopProfileButton />
-                </div>
-              </header>
-              <main className={`flex-1 ${isInChat || isDetailPage ? 'p-0 pb-0' : 'px-4 pt-0 md:px-6 pb-28 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
-                <PageHero />
-                {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
-              </main>
-            </div>
-            {!isDetailPage && (currentRole === "supplier" ? <SupplierMobileNav /> : <RestaurantMobileNav />)}
+                )}
+                <NotificationBell />
+                <DesktopProfileButton />
+              </div>
+            </header>
+            <main className={`flex-1 ${isInChat || isDetailPage ? 'p-0 pb-0' : 'px-4 pt-0 md:px-6 pb-28 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
+              <PageHero />
+              {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
+            </main>
           </div>
-        </SidebarProvider>
+          {!isDetailPage && (currentRole === "supplier" ? <SupplierMobileNav /> : <RestaurantMobileNav />)}
+        </div>
       )}
     </>
   );
