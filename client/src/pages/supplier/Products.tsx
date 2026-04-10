@@ -660,51 +660,6 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
 
   return (
     <div className="space-y-4">
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="grid gap-2 md:gap-3 grid-cols-3 flex-1">
-            <Card>
-              <CardContent className="pt-3 p-2.5 md:pt-4 md:p-3">
-                <div className="text-center">
-                  <div className="text-xl md:text-2xl font-bold text-primary" data-testid="text-total-promotions">{promotions?.length || 0}</div>
-                  <p className="text-[10px] md:text-xs text-muted-foreground">{t("common", "total")}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-3 p-2.5 md:pt-4 md:p-3">
-                <div className="text-center">
-                  <div className="text-xl md:text-2xl font-bold text-green-600" data-testid="text-active-promotions">
-                    {promotions?.filter(p => {
-                      const now = new Date();
-                      return p.isActive && new Date(p.startDate) <= now && new Date(p.endDate) >= now;
-                    }).length || 0}
-                  </div>
-                  <p className="text-[10px] md:text-xs text-muted-foreground">{t("promotionsPage", "active")}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-3 p-2.5 md:pt-4 md:p-3">
-                <div className="text-center">
-                  <div className="text-xl md:text-2xl font-bold text-muted-foreground" data-testid="text-expired-promotions">
-                    {promotions?.filter(p => new Date(p.endDate) < new Date()).length || 0}
-                  </div>
-                  <p className="text-[10px] md:text-xs text-muted-foreground">{t("promotionsPage", "expired")}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          <Button onClick={openCreateDialog} size="sm" className="gap-1.5 shrink-0 hidden md:flex" data-testid="button-create-promotion">
-            <Plus className="h-4 w-4" />
-            {t("promotionsPage", "createPromotion")}
-          </Button>
-        </div>
-        <Button onClick={openCreateDialog} size="sm" className="gap-1.5 w-full md:hidden" data-testid="button-create-promotion-mobile">
-          <Plus className="h-4 w-4" />
-          {t("promotionsPage", "createPromotion")}
-        </Button>
-      </div>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -925,6 +880,11 @@ export default function SupplierProducts() {
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: [`/api/supplier/products?supplierId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
+  });
+
+  const { data: promotions } = useQuery<PromotionWithProduct[]>({
+    queryKey: [`/api/promotions?supplierId=${currentUser?.id}`],
+    enabled: !!currentUser?.id && activeTab === "promotions",
   });
 
   const createProductMutation = useMutation({
@@ -1211,6 +1171,36 @@ export default function SupplierProducts() {
             {t("common", "promotions")}
           </button>
         </div>
+
+        {activeTab === "promotions" && (
+          <div className="grid gap-2 md:gap-3 grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
+              <div className="text-center">
+                <div className="text-xl md:text-2xl font-bold text-blue-400" data-testid="text-total-promotions">{promotions?.length || 0}</div>
+                <p className="text-[10px] md:text-xs text-white/50">{t("common", "total")}</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
+              <div className="text-center">
+                <div className="text-xl md:text-2xl font-bold text-green-400" data-testid="text-active-promotions">
+                  {promotions?.filter(p => {
+                    const now = new Date();
+                    return p.isActive && new Date(p.startDate) <= now && new Date(p.endDate) >= now;
+                  }).length || 0}
+                </div>
+                <p className="text-[10px] md:text-xs text-white/50">{t("promotionsPage", "active")}</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
+              <div className="text-center">
+                <div className="text-xl md:text-2xl font-bold text-white/40" data-testid="text-expired-promotions">
+                  {promotions?.filter(p => new Date(p.endDate) < new Date()).length || 0}
+                </div>
+                <p className="text-[10px] md:text-xs text-white/50">{t("promotionsPage", "expired")}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
