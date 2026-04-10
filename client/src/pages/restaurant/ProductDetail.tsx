@@ -246,14 +246,26 @@ export default function ProductDetail() {
 
   return (
     <div className="space-y-6">
-      <button
-        onClick={() => window.history.back()}
-        className="sticky top-0 z-20 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-        data-testid="button-back"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        {lang === "de" ? "Zurueck" : "Indietro"}
-      </button>
+      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="product-detail-hero">
+        <button
+          onClick={() => window.history.back()}
+          className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors"
+          data-testid="button-back"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {lang === "de" ? "Zurueck" : "Indietro"}
+        </button>
+        <h1 className="text-xl md:text-2xl font-bold text-white" data-testid="text-product-name">{product.name}</h1>
+        <div className="flex items-center gap-2">
+          <Avatar className="h-5 w-5">
+            <AvatarImage src={product.supplier?.profileImageUrl || undefined} />
+            <AvatarFallback className="text-[8px] bg-white/20 text-white font-semibold">
+              {(product.supplier?.companyName || product.supplier?.name || "").substring(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-sm text-white/60">{product.supplier?.companyName || product.supplier?.name}</span>
+        </div>
+      </div>
 
       <div className="max-w-3xl mx-auto">
         <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-6">
@@ -270,18 +282,6 @@ export default function ProductDetail() {
           </div>
 
           <div className="space-y-3 md:space-y-4">
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold" data-testid="text-product-name">{product.name}</h1>
-              <div className="flex items-center gap-2 mt-1.5">
-                <Avatar className="h-5 w-5">
-                  <AvatarImage src={product.supplier?.profileImageUrl || undefined} />
-                  <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-semibold">
-                    {(product.supplier?.companyName || product.supplier?.name || "").substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm text-muted-foreground">{product.supplier?.companyName || product.supplier?.name}</span>
-              </div>
-            </div>
 
             <div className="flex items-center gap-2 flex-wrap">
               {product.inStock ? (
