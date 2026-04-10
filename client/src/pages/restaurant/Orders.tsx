@@ -712,165 +712,161 @@ export default function RestaurantOrders() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "orders")}</h1>
-        <p className="text-xs md:text-sm text-muted-foreground">{t("orders", "allOrdersOverview")}</p>
-      </div>
+      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl -mx-4 md:-mx-6 -mt-0 mb-4 space-y-3" data-testid="orders-hero">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "orders")}</h1>
+          <p className="text-sm text-white/50 mt-1">{t("orders", "allOrdersOverview")}</p>
+        </div>
 
-      <div className="flex gap-1 p-1 bg-muted/50 rounded-lg w-fit" data-testid="orders-tab-switcher">
-        <button
-          onClick={() => setActiveTab("orders")}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all bg-background text-foreground shadow-sm"
-          data-testid="tab-orders"
-        >
-          <ShoppingBag className="h-4 w-4" />
-          {t("common", "orders")}
-        </button>
-        <button
-          onClick={() => setActiveTab("templates")}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all text-muted-foreground hover:text-foreground"
-          data-testid="tab-templates"
-        >
-          <ClipboardList className="h-4 w-4" />
-          {t("templates", "orderTemplates")}
-        </button>
-      </div>
-
-      {uniqueSuppliers.length > 0 && (
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+        <div className="flex gap-1 p-1 bg-white/10 rounded-lg w-fit" data-testid="orders-tab-switcher">
           <button
-            onClick={() => setFilterSupplier("all")}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
-              filterSupplier === "all"
-                ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                : "border-border bg-background text-muted-foreground hover:bg-muted/50"
+            onClick={() => setActiveTab("orders")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+              activeTab === "orders" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"
             }`}
-            data-testid="filter-supplier-all"
+            data-testid="tab-orders"
           >
-            <Store className="h-3 w-3" />
-            <span>{t("common", "all")}</span>
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-              filterSupplier === "all" ? "bg-white/20" : "bg-muted"
-            }`}>{orders?.length || 0}</span>
+            <ShoppingBag className="h-4 w-4" />
+            {t("common", "orders")}
           </button>
-          {uniqueSuppliers.map(supplier => {
-            const isActive = filterSupplier === supplier.id;
+          <button
+            onClick={() => setActiveTab("templates")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+              activeTab === "templates" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"
+            }`}
+            data-testid="tab-templates"
+          >
+            <ClipboardList className="h-4 w-4" />
+            {t("templates", "orderTemplates")}
+          </button>
+        </div>
+
+        {uniqueSuppliers.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => setFilterSupplier("all")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
+                filterSupplier === "all"
+                  ? "border-white/40 bg-white/20 text-white shadow-sm"
+                  : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
+              }`}
+              data-testid="filter-supplier-all"
+            >
+              <Store className="h-3 w-3" />
+              <span>{t("common", "all")}</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{orders?.length || 0}</span>
+            </button>
+            {uniqueSuppliers.map(supplier => {
+              const isActive = filterSupplier === supplier.id;
+              return (
+                <button
+                  key={supplier.id}
+                  onClick={() => setFilterSupplier(supplier.id)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
+                    isActive
+                      ? "border-white/40 bg-white/20 text-white shadow-sm"
+                      : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
+                  }`}
+                  data-testid={`filter-supplier-${supplier.id}`}
+                >
+                  <Avatar className="h-4 w-4">
+                    <AvatarImage src={supplier.profileImageUrl || undefined} />
+                    <AvatarFallback className="text-[7px] font-semibold bg-white/20 text-white">
+                      {supplier.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="max-w-[80px] truncate">{supplier.name}</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{supplier.orderCount}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          {([
+            { key: "all", icon: ShoppingBag, dotColor: "bg-gray-400" },
+            { key: "pending", icon: Clock, dotColor: "bg-yellow-500" },
+            { key: "confirmed", icon: Package, dotColor: "bg-blue-500" },
+            { key: "in_delivery", icon: Truck, dotColor: "bg-purple-500" },
+            { key: "delivered", icon: CheckCircle, dotColor: "bg-green-500" },
+            { key: "cancelled", icon: XCircle, dotColor: "bg-red-500" },
+          ] as const).map(({ key, icon: Icon, dotColor }) => {
+            const isActive = filterStatus === key;
+            const count = (statusCounts as any)[key] || 0;
             return (
               <button
-                key={supplier.id}
-                onClick={() => setFilterSupplier(supplier.id)}
+                key={key}
+                onClick={() => setFilterStatus(key)}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
                   isActive
-                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted/50"
+                    ? "border-white/40 bg-white/20 text-white shadow-sm"
+                    : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
                 }`}
-                data-testid={`filter-supplier-${supplier.id}`}
+                data-testid={`filter-status-${key}`}
               >
-                <Avatar className="h-4 w-4">
-                  <AvatarImage src={supplier.profileImageUrl || undefined} />
-                  <AvatarFallback className="text-[7px] font-semibold bg-primary/10 text-primary">
-                    {supplier.name.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="max-w-[80px] truncate">{supplier.name}</span>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  isActive ? "bg-white/20" : "bg-muted"
-                }`}>{supplier.orderCount}</span>
+                <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
+                <span className="whitespace-nowrap">
+                  {key === "all" ? t("common", "all") : getOrderStatus(key, lang)}
+                </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{count}</span>
               </button>
             );
           })}
         </div>
-      )}
 
-      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-        {([
-          { key: "all", icon: ShoppingBag, dotColor: "bg-gray-400" },
-          { key: "pending", icon: Clock, dotColor: "bg-yellow-500" },
-          { key: "confirmed", icon: Package, dotColor: "bg-blue-500" },
-          { key: "in_delivery", icon: Truck, dotColor: "bg-purple-500" },
-          { key: "delivered", icon: CheckCircle, dotColor: "bg-green-500" },
-          { key: "cancelled", icon: XCircle, dotColor: "bg-red-500" },
-        ] as const).map(({ key, icon: Icon, dotColor }) => {
-          const isActive = filterStatus === key;
-          const count = (statusCounts as any)[key] || 0;
-          return (
-            <button
-              key={key}
-              onClick={() => setFilterStatus(key)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
-                isActive
-                  ? "border-primary bg-primary/10 dark:bg-primary/20 text-primary shadow-sm"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted/50"
-              }`}
-              data-testid={`filter-status-${key}`}
-            >
-              <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
-              <span className="whitespace-nowrap">
-                {key === "all" ? t("common", "all") : getOrderStatus(key, lang)}
-              </span>
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                isActive ? "bg-primary/20 dark:bg-primary/30" : "bg-muted"
-              }`}>{count}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setShowSecondaryFilters(!showSecondaryFilters)}
-          className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground hover-elevate rounded-md px-2 py-1.5"
-          data-testid="button-toggle-filters"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          <span>{lang === "de" ? "Filter" : "Filtri"}</span>
-          {hasSecondaryFilters && (
-            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
-              {(filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
-            </span>
-          )}
-          {showSecondaryFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        </button>
-        {hasActiveFilters && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={clearFilters}
-            className="text-xs text-muted-foreground hover-elevate rounded-md px-2 py-1.5 flex items-center gap-1"
-            data-testid="button-clear-filters"
+            onClick={() => setShowSecondaryFilters(!showSecondaryFilters)}
+            className="flex items-center gap-1.5 text-xs md:text-sm text-white/60 hover:text-white rounded-md px-2 py-1.5 transition-colors"
+            data-testid="button-toggle-filters"
           >
-            <X className="h-3 w-3" />
-            {t("common", "reset")}
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>{lang === "de" ? "Filter" : "Filtri"}</span>
+            {hasSecondaryFilters && (
+              <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                {(filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
+              </span>
+            )}
+            {showSecondaryFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="text-xs text-white/60 hover:text-white rounded-md px-2 py-1.5 flex items-center gap-1 transition-colors"
+              data-testid="button-clear-filters"
+            >
+              <X className="h-3 w-3" />
+              {t("common", "reset")}
+            </button>
+          )}
+        </div>
+
+        {showSecondaryFilters && (
+          <div className="flex gap-2 pt-1">
+            <div className="flex-1 min-w-0">
+              <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "from")}</label>
+              <Input
+                type="date"
+                value={filterDateFrom}
+                onChange={e => setFilterDateFrom(e.target.value)}
+                className="h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white"
+                data-testid="filter-date-from"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "to")}</label>
+              <Input
+                type="date"
+                value={filterDateTo}
+                onChange={e => setFilterDateTo(e.target.value)}
+                className="h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white"
+                data-testid="filter-date-to"
+              />
+            </div>
+          </div>
         )}
       </div>
-
-      {showSecondaryFilters && (
-        <Card>
-          <CardContent className="p-3 md:p-4">
-            <div className="flex gap-2">
-              <div className="flex-1 min-w-0">
-                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
-                <Input
-                  type="date"
-                  value={filterDateFrom}
-                  onChange={e => setFilterDateFrom(e.target.value)}
-                  className="h-9 text-xs md:text-sm w-full"
-                  data-testid="filter-date-from"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <label className="text-[10px] md:text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
-                <Input
-                  type="date"
-                  value={filterDateTo}
-                  onChange={e => setFilterDateTo(e.target.value)}
-                  className="h-9 text-xs md:text-sm w-full"
-                  data-testid="filter-date-to"
-                />
-                </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {isLoading ? (
         <div className="space-y-3 md:space-y-4">

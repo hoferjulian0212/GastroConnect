@@ -326,7 +326,9 @@ function PageHero() {
   const isHomePage = location === `/${currentRole}`;
   const isDetailPage = /^\/(restaurant|supplier)\/(orders|complaints)\/[^/]+$/.test(location);
 
-  if (isHomePage || isDetailPage) return null;
+  const isOrdersPage = /^\/(restaurant|supplier)\/orders$/.test(location);
+
+  if (isHomePage || isDetailPage || isOrdersPage) return null;
 
   const role = currentRole;
   const pages: Record<string, Record<string, { title: string; subtitle?: string }>> = {
