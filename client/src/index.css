@@ -667,11 +667,11 @@ html, body, #root {
 }
 
 @keyframes page-fade-in {
-  0% { opacity: 0; transform: translateY(6px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
 .animate-page-enter {
-  animation: page-fade-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation: page-fade-in 0.2s ease-out both;
 }
 
 @keyframes status-dot-pop {
