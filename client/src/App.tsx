@@ -310,7 +310,7 @@ function HeaderNav() {
   const links = currentRole === 'restaurant' ? restaurantLinks : supplierLinks;
 
   return (
-    <nav className="hidden md:flex items-center gap-4" data-testid="header-nav">
+    <nav className="hidden md:flex items-center gap-4 shrink-0" data-testid="header-nav">
       {links.map(item => (
         <HeaderNavDropdown key={item.href} item={item} location={location} />
       ))}
@@ -462,7 +462,7 @@ function AppLayout() {
         <div className="flex h-dvh w-full">
           <div className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto'} ${isInChat || isDetailPage ? '' : 'px-4 md:px-6 pt-4 md:pt-6'}`}>
             <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
-              <div className="flex items-center gap-3 md:flex-1 md:min-w-0">
+              <div className="flex items-center gap-3 shrink-0">
                 <MobileProfileButton />
                 <div className="hidden md:flex items-center gap-2 shrink-0">
                   <img src={logoImg} alt="GastroConnect Logo" className="h-8 w-8 object-contain invert" />
@@ -470,7 +470,7 @@ function AppLayout() {
                 </div>
               </div>
               <HeaderNav />
-              <div className="flex items-center gap-2 ml-auto md:flex-1 md:justify-end md:min-w-0">
+              <div className="flex items-center gap-2 ml-auto shrink-0">
                 <div className="hidden md:block">
                   <RoleSwitcher />
                 </div>
