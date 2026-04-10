@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Search, Save, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame } from "lucide-react";
+import DraggableCardGrid from "@/components/DraggableCardGrid";
 import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
 import type { OrderWithDetails, ConversationWithUser, ProductWithSupplierAndPromotion, OrderTemplateWithItems } from "@shared/schema";
@@ -573,7 +574,11 @@ export default function RestaurantHome() {
         </div>
       </div>
 
-      {/* ── Upcoming Deliveries ── */}
+      <DraggableCardGrid
+        userId={currentUser?.id || ""}
+        role="restaurant"
+        sections={[
+          { id: "upcoming-deliveries", content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
@@ -858,10 +863,8 @@ export default function RestaurantHome() {
         )}
         </div>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <div className="space-y-4 md:space-y-6">
-          {/* ── Unread Messages ── */}
+          )},
+          { id: "unread-messages", content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -1010,8 +1013,8 @@ export default function RestaurantHome() {
             )}
             </div>
           </div>
-
-          {/* ── Active Promotions ── */}
+          )},
+          { id: "active-promotions", content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -1184,10 +1187,8 @@ export default function RestaurantHome() {
               )}
             </div>
           </div>
-        </div>
-
-        <div className="space-y-4 md:space-y-6">
-          {/* ── Order Templates ── */}
+          )},
+          { id: "order-templates", content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -1375,8 +1376,8 @@ export default function RestaurantHome() {
               )}
             </div>
           </div>
-
-          {/* ── Cost Analysis ── */}
+          )},
+          { id: "cost-analysis", content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm" data-testid="card-cost-analysis-home">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -1517,8 +1518,9 @@ export default function RestaurantHome() {
               )}
             </div>
           </div>
-        </div>
-      </div>
+          )},
+        ]}
+      />
 
       <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">

@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
+import DraggableCardGrid from "@/components/DraggableCardGrid";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
@@ -377,7 +378,11 @@ export default function SupplierHome() {
         </div>
       </div>
 
-      {/* Upcoming Deliveries */}
+      <DraggableCardGrid
+        userId={currentUser?.id || ""}
+        role="supplier"
+        sections={[
+          { id: "upcoming-deliveries", content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
@@ -578,10 +583,9 @@ export default function SupplierHome() {
         )}
         </div>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <div className="space-y-4 md:space-y-6">
-          {/* Unread Messages */}
+          )},
+          { id: "unread-messages", content: (
+          <div className="space-y-4 md:space-y-6">
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -840,10 +844,10 @@ export default function SupplierHome() {
             )}
             </div>
           </div>
-        </div>
-
-        <div className="space-y-4 md:space-y-6">
-          {/* Action Required */}
+          </div>
+          )},
+          { id: "action-required", content: (
+          <>
           {((actionRequired?.staleOrders?.length || 0) > 0 || (actionRequired?.openComplaints?.length || 0) > 0) && (
             <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
               <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
@@ -1021,8 +1025,9 @@ export default function SupplierHome() {
               </div>
             </div>
           )}
-
-          {/* Low Stock */}
+          </>
+          )},
+          { id: "low-stock", content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -1123,10 +1128,8 @@ export default function SupplierHome() {
             )}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Statistics */}
+          )},
+          { id: "statistics", content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
@@ -1261,6 +1264,9 @@ export default function SupplierHome() {
         )}
         </div>
       </div>
+          )},
+        ]}
+      />
 
       {deliveryDatePicker && (
         <DeliveryDatePicker
