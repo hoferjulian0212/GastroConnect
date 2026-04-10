@@ -967,10 +967,7 @@ export default function RestaurantInbox() {
 
   return (
     <div className={`${selectedConversation ? 'h-dvh md:h-[calc(100dvh-8rem)]' : 'h-[calc(100dvh-8rem)]'} flex flex-col`}>
-      <div className={`mb-3 md:mb-4 shrink-0 ${selectedConversation ? 'hidden md:block' : ''}`}>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("inbox", "title")}</h1>
-        <p className="text-xs md:text-sm text-muted-foreground">{t("inbox", "subtitle")}</p>
-      </div>
+      <div className={`mb-1 shrink-0 ${selectedConversation ? 'hidden md:block' : ''}`} />
 
       <Card className={`${selectedConversation ? 'flex-1 border-0 md:border rounded-none md:rounded-lg' : 'flex-1'} flex flex-col overflow-hidden`}>
         <div className="flex flex-1 min-h-0 min-w-0">

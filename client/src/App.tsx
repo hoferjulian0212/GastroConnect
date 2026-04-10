@@ -328,47 +328,51 @@ function PageHero() {
 
   if (isHomePage || isDetailPage) return null;
 
-  const titles: Record<string, Record<string, string>> = {
+  const role = currentRole;
+  const pages: Record<string, Record<string, { title: string; subtitle?: string }>> = {
     de: {
-      inbox: 'Inbox',
-      orders: 'Bestellungen',
-      catalog: 'Katalog',
-      products: 'Produkte',
-      suppliers: 'Lieferanten',
-      restaurants: 'Kunden',
-      complaints: 'Reklamationen',
-      settings: 'Einstellungen',
-      profile: 'Profil',
-      documents: 'Dokumente',
-      'cost-analysis': 'Kostenanalyse',
-      promotions: 'Aktionen',
-      cart: 'Warenkorb',
+      inbox: { title: 'Inbox', subtitle: role === 'restaurant' ? 'Kommunizieren Sie mit Ihren Lieferanten' : 'Kommunizieren Sie mit Ihren Kunden' },
+      orders: { title: 'Bestellungen', subtitle: role === 'restaurant' ? 'Verwalten Sie Ihre Bestellungen' : 'Verwalten Sie eingehende Bestellungen' },
+      catalog: { title: 'Katalog', subtitle: 'Durchsuchen Sie verfügbare Produkte' },
+      products: { title: 'Produkte', subtitle: 'Verwalten Sie Ihr Produktsortiment' },
+      suppliers: { title: 'Lieferanten', subtitle: 'Ihre verbundenen Lieferanten' },
+      restaurants: { title: 'Kunden', subtitle: 'Ihre verbundenen Restaurants' },
+      complaints: { title: 'Reklamationen', subtitle: 'Verwalten Sie Ihre Reklamationen' },
+      settings: { title: 'Einstellungen', subtitle: 'Passen Sie Ihre Einstellungen an' },
+      profile: { title: 'Profil', subtitle: 'Verwalten Sie Ihr Profil' },
+      documents: { title: 'Dokumente', subtitle: 'Lieferscheine und Rechnungen' },
+      'cost-analysis': { title: 'Kostenanalyse', subtitle: 'Wareneinsatz und Statistiken' },
+      promotions: { title: 'Aktionen', subtitle: 'Verwalten Sie Ihre Aktionen' },
+      cart: { title: 'Warenkorb', subtitle: 'Ihre ausgewählten Produkte' },
     },
     it: {
-      inbox: 'Inbox',
-      orders: 'Ordini',
-      catalog: 'Catalogo',
-      products: 'Prodotti',
-      suppliers: 'Fornitori',
-      restaurants: 'Clienti',
-      complaints: 'Reclami',
-      settings: 'Impostazioni',
-      profile: 'Profilo',
-      documents: 'Documenti',
-      'cost-analysis': 'Analisi costi',
-      promotions: 'Promozioni',
-      cart: 'Carrello',
+      inbox: { title: 'Inbox', subtitle: role === 'restaurant' ? 'Comunica con i tuoi fornitori' : 'Comunica con i tuoi clienti' },
+      orders: { title: 'Ordini', subtitle: role === 'restaurant' ? 'Gestisci i tuoi ordini' : 'Gestisci gli ordini in arrivo' },
+      catalog: { title: 'Catalogo', subtitle: 'Sfoglia i prodotti disponibili' },
+      products: { title: 'Prodotti', subtitle: 'Gestisci il tuo assortimento' },
+      suppliers: { title: 'Fornitori', subtitle: 'I tuoi fornitori collegati' },
+      restaurants: { title: 'Clienti', subtitle: 'I tuoi ristoranti collegati' },
+      complaints: { title: 'Reclami', subtitle: 'Gestisci i tuoi reclami' },
+      settings: { title: 'Impostazioni', subtitle: 'Personalizza le impostazioni' },
+      profile: { title: 'Profilo', subtitle: 'Gestisci il tuo profilo' },
+      documents: { title: 'Documenti', subtitle: 'Note di consegna e fatture' },
+      'cost-analysis': { title: 'Analisi costi', subtitle: 'Costi e statistiche' },
+      promotions: { title: 'Promozioni', subtitle: 'Gestisci le tue promozioni' },
+      cart: { title: 'Carrello', subtitle: 'I tuoi prodotti selezionati' },
     },
   };
 
   const segment = location.split('/')[2] || '';
-  const title = titles[lang]?.[segment] || titles.de[segment];
+  const page = pages[lang]?.[segment] || pages.de[segment];
 
-  if (!title) return null;
+  if (!page) return null;
 
   return (
     <div className="bg-[#161921] px-4 md:px-6 pt-4 pb-6 rounded-b-3xl" data-testid="page-hero">
-      <h1 className="text-2xl md:text-3xl font-bold text-white">{title}</h1>
+      <h1 className="text-2xl md:text-3xl font-bold text-white">{page.title}</h1>
+      {page.subtitle && (
+        <p className="text-sm text-white/50 mt-1">{page.subtitle}</p>
+      )}
     </div>
   );
 }
