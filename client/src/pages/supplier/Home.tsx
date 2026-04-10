@@ -585,7 +585,6 @@ export default function SupplierHome() {
       </div>
           )},
           { id: "unread-messages", defaultSize: "half" as const, content: (
-          <div className="space-y-4 md:space-y-6">
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -733,8 +732,8 @@ export default function SupplierHome() {
             )}
             </div>
           </div>
-
-          {/* New Orders */}
+          )},
+          { id: "new-orders", defaultSize: "half" as const, content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -843,7 +842,6 @@ export default function SupplierHome() {
               </div>
             )}
             </div>
-          </div>
           </div>
           )},
           { id: "action-required", defaultSize: "half" as const, content: (
