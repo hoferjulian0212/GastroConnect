@@ -674,6 +674,8 @@ export default function RestaurantInbox() {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       setMessageText("");
       setMessagePriority("standard");
+      setAttachedOrderRef(null);
+      setReplyToMessage(null);
       setTimeout(scrollToBottom, 100);
     },
   });
@@ -914,7 +916,6 @@ export default function RestaurantInbox() {
           refLabel: attachedOrderRef.label,
           text: messageText.trim(),
         });
-        setAttachedOrderRef(null);
       } else if (replyToMessage) {
         content = JSON.stringify({
           refType: "reply",
@@ -923,7 +924,6 @@ export default function RestaurantInbox() {
           refPreview: replyToMessage.preview,
           text: messageText.trim(),
         });
-        setReplyToMessage(null);
       }
       sendMessageMutation.mutate({ content, messageType: "text", priority: messagePriority });
     }
@@ -2322,7 +2322,7 @@ export default function RestaurantInbox() {
 
                 <div className="border-t border-border p-3 md:p-4 md:rounded-none md:shadow-none md:border-t md:border-x-0 md:mb-0 md:mx-0 floating-message-bar mobile-message-pill">
                   {replyToMessage && (
-                    <div className="flex items-center gap-2 mb-2 px-1" data-testid="attached-reply-ref">
+                    <div className="flex items-center gap-2 mb-3 px-1" data-testid="attached-reply-ref">
                       <div className="flex-1 min-w-0 bg-muted/60 border-l-3 border-foreground rounded-md px-3 py-1.5">
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
@@ -2341,7 +2341,7 @@ export default function RestaurantInbox() {
                     </div>
                   )}
                   {attachedOrderRef && (
-                    <div className="flex items-center gap-2 mb-2 px-1" data-testid="attached-order-ref">
+                    <div className="flex items-center gap-2 mb-3 px-1" data-testid="attached-order-ref">
                       <div className="flex items-center gap-1.5 bg-primary/10 text-primary rounded-full px-3 py-1 text-xs font-medium">
                         <ShoppingBag className="h-3 w-3" />
                         <span className="truncate max-w-[200px]">{attachedOrderRef.label}</span>

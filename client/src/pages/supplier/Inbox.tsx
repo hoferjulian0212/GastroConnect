@@ -532,6 +532,7 @@ export default function SupplierInbox() {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
       setMessageText("");
       setMessagePriority("standard");
+      setReplyToMessage(null);
       setTimeout(scrollToBottom, 100);
     },
   });
@@ -664,7 +665,6 @@ export default function SupplierInbox() {
           refPreview: replyToMessage.preview,
           text: messageText.trim(),
         });
-        setReplyToMessage(null);
       }
       sendMessageMutation.mutate({ content, messageType: "text", priority: messagePriority });
     }
@@ -1872,7 +1872,7 @@ export default function SupplierInbox() {
 
                 <div className="border-t border-border p-2 md:p-4 md:rounded-none md:shadow-none md:border-t md:border-x-0 md:mb-0 md:mx-0 floating-message-bar mobile-message-pill">
                   {replyToMessage && (
-                    <div className="flex items-center gap-2 mb-2 px-1" data-testid="attached-reply-ref">
+                    <div className="flex items-center gap-2 mb-3 px-1" data-testid="attached-reply-ref">
                       <div className="flex-1 min-w-0 bg-muted/60 border-l-3 border-secondary rounded-md px-3 py-1.5">
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
