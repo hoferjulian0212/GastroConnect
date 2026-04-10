@@ -13,7 +13,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, ChevronDown } from "lucide-react";
 import logoImg from "@assets/logo_no_bg.png";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ import { RestaurantSidebar } from "@/components/RestaurantSidebar";
 import { SupplierSidebar } from "@/components/SupplierSidebar";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { navigate } from "wouter/use-browser-location";
 import type { User } from "@shared/schema";
 
@@ -180,49 +180,141 @@ function MobileProfileButton() {
   );
 }
 
+type NavItem = {
+  href: string;
+  label: string;
+  exact?: boolean;
+  children?: { href: string; label: string }[];
+};
+
+function HeaderNavDropdown({ item, location }: { item: NavItem; location: string }) {
+  const [open, setOpen] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isActive = item.exact
+    ? location === item.href
+    : location === item.href || location.startsWith(item.href + '/') ||
+      (item.children?.some(c => location === c.href || location.startsWith(c.href + '/')) ?? false);
+
+  const handleEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setOpen(true);
+  };
+  const handleLeave = () => {
+    timeoutRef.current = setTimeout(() => setOpen(false), 150);
+  };
+
+  if (!item.children) {
+    return (
+      <Link href={item.href}>
+        <span
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+            isActive ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
+          }`}
+          data-testid={`nav-link-${item.href.split('/').pop()}`}
+        >
+          {item.label}
+        </span>
+      </Link>
+    );
+  }
+
+  return (
+    <div className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+      <Link href={item.href}>
+        <span
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+            isActive ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
+          }`}
+          data-testid={`nav-link-${item.href.split('/').pop()}`}
+        >
+          {item.label}
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </span>
+      </Link>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 min-w-[180px] py-1 bg-[#1e2130] border border-white/10 rounded-xl shadow-xl z-50">
+          {item.children.map(child => {
+            const childActive = location === child.href || location.startsWith(child.href + '/');
+            return (
+              <Link key={child.href} href={child.href}>
+                <span
+                  onClick={() => setOpen(false)}
+                  className={`block px-4 py-2 text-sm transition-colors cursor-pointer ${
+                    childActive ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                  data-testid={`nav-sublink-${child.href.split('/').pop()}`}
+                >
+                  {child.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HeaderNav() {
   const { currentRole } = useUser();
   const [location] = useLocation();
   const { lang } = useLanguage();
 
-  const restaurantLinks = [
+  const restaurantLinks: NavItem[] = [
     { href: '/restaurant', label: 'Dashboard', exact: true },
     { href: '/restaurant/inbox', label: 'Inbox' },
-    { href: '/restaurant/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
-    { href: '/restaurant/catalog', label: lang === 'de' ? 'Katalog' : 'Catalogo' },
-    { href: '/restaurant/suppliers', label: lang === 'de' ? 'Lieferanten' : 'Fornitori' },
+    {
+      href: '/restaurant/orders',
+      label: lang === 'de' ? 'Bestellungen' : 'Ordini',
+      children: [
+        { href: '/restaurant/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
+        { href: '/restaurant/complaints', label: lang === 'de' ? 'Reklamationen' : 'Reclami' },
+        { href: '/restaurant/documents', label: lang === 'de' ? 'Dokumente' : 'Documenti' },
+      ],
+    },
+    {
+      href: '/restaurant/catalog',
+      label: lang === 'de' ? 'Katalog' : 'Catalogo',
+      children: [
+        { href: '/restaurant/catalog', label: lang === 'de' ? 'Katalog' : 'Catalogo' },
+        { href: '/restaurant/suppliers', label: lang === 'de' ? 'Lieferanten' : 'Fornitori' },
+        { href: '/restaurant/cost-analysis', label: lang === 'de' ? 'Kostenanalyse' : 'Analisi costi' },
+      ],
+    },
+    { href: '/restaurant/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },
   ];
 
-  const supplierLinks = [
+  const supplierLinks: NavItem[] = [
     { href: '/supplier', label: 'Dashboard', exact: true },
     { href: '/supplier/inbox', label: 'Inbox' },
-    { href: '/supplier/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
-    { href: '/supplier/products', label: lang === 'de' ? 'Produkte' : 'Prodotti' },
-    { href: '/supplier/restaurants', label: lang === 'de' ? 'Kunden' : 'Clienti' },
+    {
+      href: '/supplier/orders',
+      label: lang === 'de' ? 'Bestellungen' : 'Ordini',
+      children: [
+        { href: '/supplier/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
+        { href: '/supplier/complaints', label: lang === 'de' ? 'Reklamationen' : 'Reclami' },
+        { href: '/supplier/documents', label: lang === 'de' ? 'Dokumente' : 'Documenti' },
+      ],
+    },
+    {
+      href: '/supplier/products',
+      label: lang === 'de' ? 'Produkte' : 'Prodotti',
+      children: [
+        { href: '/supplier/products', label: lang === 'de' ? 'Katalog' : 'Catalogo' },
+        { href: '/supplier/restaurants', label: lang === 'de' ? 'Kunden' : 'Clienti' },
+        { href: '/supplier/promotions', label: lang === 'de' ? 'Aktionen' : 'Promozioni' },
+      ],
+    },
+    { href: '/supplier/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },
   ];
 
   const links = currentRole === 'restaurant' ? restaurantLinks : supplierLinks;
 
-  const isActive = (link: { href: string; exact?: boolean }) => {
-    if (link.exact) return location === link.href;
-    return location === link.href || location.startsWith(link.href + '/');
-  };
-
   return (
     <nav className="hidden md:flex items-center gap-4" data-testid="header-nav">
-      {links.map(link => (
-        <Link key={link.href} href={link.href}>
-          <span
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              isActive(link)
-                ? 'bg-white/15 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
-            }`}
-            data-testid={`nav-link-${link.href.split('/').pop()}`}
-          >
-            {link.label}
-          </span>
-        </Link>
+      {links.map(item => (
+        <HeaderNavDropdown key={item.href} item={item} location={location} />
       ))}
     </nav>
   );
