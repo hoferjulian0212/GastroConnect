@@ -11,7 +11,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
-import heroBannerImg from "@assets/6fefa2793fd6b494e2f8aabea0385afc_1773947302051.jpg";
+
 
 const categoryConfig: Record<string, { de: string; it: string; icon: typeof Package; color: string }> = {
   "Gemuese": { de: "Gemuese", it: "Verdura", icon: Carrot, color: "bg-green-600" },
@@ -176,23 +176,17 @@ export default function RestaurantCatalog() {
     <div className="space-y-4 md:space-y-6">
       {!selectedCategory ? (
         <>
-          <div className="relative w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] h-56 md:h-72 overflow-hidden -mt-4 md:-mt-6 -mx-4 md:-mx-6">
-            <img
-              src={heroBannerImg}
-              alt=""
-              className="w-full h-full object-cover object-center"
-            />
-          </div>
-
-          <div>
-            <h2 className="text-xl md:text-2xl font-bold">
-              {lang === "de" ? "Produktkatalog" : "Catalogo prodotti"}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              {lang === "de"
-                ? "Frische Vielfalt - waehlen Sie eine Kategorie um die Produkte zu sehen."
-                : "Varieta fresca - seleziona una categoria per vedere i prodotti."}
-            </p>
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold">
+                {lang === "de" ? "Produktkatalog" : "Catalogo prodotti"}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {lang === "de"
+                  ? "Waehlen Sie eine Kategorie um die Produkte zu sehen."
+                  : "Seleziona una categoria per vedere i prodotti."}
+              </p>
+            </div>
           </div>
 
           {supplierCards.length > 1 && (

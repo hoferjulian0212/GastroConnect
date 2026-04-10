@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich } from "lucide-react";
-import heroBannerImg from "@assets/6fefa2793fd6b494e2f8aabea0385afc_1773947302051.jpg";
+
 import type { Product, StockMovement, PromotionWithProduct } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1491,23 +1491,15 @@ export default function SupplierProducts() {
         <>
           {!selectedCategory ? (
             <>
-              <div className="relative w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] h-56 md:h-72 overflow-hidden -mt-4 md:-mt-6 -mx-4 md:-mx-6">
-                <img
-                  src={heroBannerImg}
-                  alt=""
-                  className="w-full h-full object-cover object-center"
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3 pt-1">
                 <div>
                   <h2 className="text-xl md:text-2xl font-bold">
                     {lang === "de" ? "Unser Katalog" : "Il nostro catalogo"}
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     {lang === "de"
-                      ? "Frische Vielfalt - waehlen Sie eine Kategorie um die Produkte zu sehen."
-                      : "Varieta fresca - seleziona una categoria per vedere i prodotti."}
+                      ? "Waehlen Sie eine Kategorie um die Produkte zu sehen."
+                      : "Seleziona una categoria per vedere i prodotti."}
                   </p>
                 </div>
                 <Button className="gap-1.5 md:gap-2 text-sm shrink-0" size="sm" onClick={openCreateDialog} data-testid="button-add-product-landing">
