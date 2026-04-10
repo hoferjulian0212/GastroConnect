@@ -283,13 +283,13 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
           return (
             <div
               key={`halves-${gi}`}
-              className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6"
+              className="lg:columns-2 gap-4 md:gap-6"
             >
               {group.items.map((item) => {
                 const section = sectionMap.get(item.id);
                 if (!section) return null;
                 return (
-                  <div key={item.id}>
+                  <div key={item.id} className="break-inside-avoid mb-4 md:mb-6 last:mb-0">
                     {renderCard(item, section, editMode, dragId, dropTarget, handlers)}
                   </div>
                 );
