@@ -283,14 +283,13 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
           return (
             <div
               key={`halves-${gi}`}
-              className="lg:columns-2 gap-4 md:gap-6 space-y-4 md:space-y-6 lg:space-y-0"
-              style={{ columnFill: "balance" }}
+              className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6"
             >
               {group.items.map((item) => {
                 const section = sectionMap.get(item.id);
                 if (!section) return null;
                 return (
-                  <div key={item.id} className="break-inside-avoid mb-4 md:mb-6">
+                  <div key={item.id}>
                     {renderCard(item, section, editMode, dragId, dropTarget, handlers)}
                   </div>
                 );
