@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { GripVertical, Maximize2, Columns2 } from "lucide-react";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 
 type CardSize = "full" | "half";
 
@@ -47,6 +48,13 @@ function reorderLayout(layout: LayoutItem[], fromId: string, toIndex: number): L
   newLayout.splice(Math.max(0, Math.min(insertAt, newLayout.length)), 0, moved);
   return newLayout;
 }
+
+const springTransition = {
+  type: "spring" as const,
+  stiffness: 300,
+  damping: 30,
+  mass: 0.8,
+};
 
 export default function DraggableCardGrid({ userId, role, sections }: DraggableCardGridProps) {
   const [layout, setLayout] = useState<LayoutItem[]>(() => loadLayout(userId, role, sections));
@@ -260,86 +268,100 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
         </button>
       </div>
 
-      <div
-        ref={gridRef}
-        className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start"
-        onPointerMove={isDragging ? handlePointerMove : undefined}
-        onPointerUp={isDragging ? handlePointerUp : undefined}
-        onPointerCancel={isDragging ? handlePointerUp : undefined}
-      >
-        {displayLayout.map((item) => {
-          const section = sectionMap.get(item.id);
-          if (!section) return null;
+      <LayoutGroup>
+        <div
+          ref={gridRef}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start"
+          onPointerMove={isDragging ? handlePointerMove : undefined}
+          onPointerUp={isDragging ? handlePointerUp : undefined}
+          onPointerCancel={isDragging ? handlePointerUp : undefined}
+        >
+          <AnimatePresence mode="popLayout">
+            {displayLayout.map((item) => {
+              const section = sectionMap.get(item.id);
+              if (!section) return null;
 
-          const isFull = item.size === "full";
-          const isBeingDragged = dragState?.id === item.id;
+              const isFull = item.size === "full";
+              const isBeingDragged = dragState?.id === item.id;
 
-          if (isBeingDragged) {
-            return (
-              <div
-                key={`placeholder-${item.id}`}
-                className={`${isFull ? "col-span-1 lg:col-span-2" : "col-span-1"} transition-all duration-300 ease-out`}
-              >
-                <div
-                  className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5"
-                  style={{ height: dragState.height, minHeight: 60 }}
-                  data-testid={`placeholder-${item.id}`}
-                />
-              </div>
-            );
-          }
+              if (isBeingDragged) {
+                return (
+                  <motion.div
+                    key={`placeholder-${item.id}`}
+                    layout
+                    layoutId={`card-${item.id}`}
+                    transition={springTransition}
+                    className={`${isFull ? "col-span-1 lg:col-span-2" : "col-span-1"}`}
+                  >
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5"
+                      style={{ height: dragState.height, minHeight: 60 }}
+                      data-testid={`placeholder-${item.id}`}
+                    />
+                  </motion.div>
+                );
+              }
 
-          return (
-            <div
-              key={item.id}
-              ref={setCardRef(item.id)}
-              className={`relative ${isFull ? "col-span-1 lg:col-span-2" : "col-span-1"} transition-all duration-300 ease-out ${
-                editMode ? "ring-1 ring-border/40 rounded-xl" : ""
-              }`}
-              data-testid={`draggable-card-${item.id}`}
-            >
-              {editMode && (
-                <div
-                  className="absolute right-2 top-2 z-20 flex items-center gap-1.5"
+              return (
+                <motion.div
+                  key={item.id}
+                  layout
+                  layoutId={`card-${item.id}`}
+                  ref={setCardRef(item.id)}
+                  transition={springTransition}
+                  className={`relative ${isFull ? "col-span-1 lg:col-span-2" : "col-span-1"} ${
+                    editMode ? "ring-1 ring-border/40 rounded-xl" : ""
+                  }`}
+                  data-testid={`draggable-card-${item.id}`}
                 >
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleSize(item.id); }}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-sm text-xs font-medium transition-all ${
-                      isFull
-                        ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
-                        : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
-                    }`}
-                    data-testid={`toggle-size-${item.id}`}
-                    title={isFull ? "Halbe Breite" : "Volle Breite"}
-                  >
-                    {isFull ? (
-                      <>
-                        <Columns2 className="h-3.5 w-3.5" />
-                        <span>Halb</span>
-                      </>
-                    ) : (
-                      <>
-                        <Maximize2 className="h-3.5 w-3.5" />
-                        <span>Voll</span>
-                      </>
-                    )}
-                  </button>
-                  <div
-                    className="flex items-center justify-center w-8 h-8 rounded-full bg-background/90 backdrop-blur border shadow-sm text-muted-foreground cursor-grab active:cursor-grabbing touch-none select-none"
-                    onPointerDown={(e) => handlePointerDown(e, item.id)}
-                    data-testid={`drag-handle-${item.id}`}
-                  >
-                    <GripVertical className="h-4 w-4" />
+                  {editMode && (
+                    <div
+                      className="absolute right-2 top-2 z-20 flex items-center gap-1.5"
+                    >
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleSize(item.id); }}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-sm text-xs font-medium transition-all ${
+                          isFull
+                            ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+                            : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                        }`}
+                        data-testid={`toggle-size-${item.id}`}
+                        title={isFull ? "Halbe Breite" : "Volle Breite"}
+                      >
+                        {isFull ? (
+                          <>
+                            <Columns2 className="h-3.5 w-3.5" />
+                            <span>Halb</span>
+                          </>
+                        ) : (
+                          <>
+                            <Maximize2 className="h-3.5 w-3.5" />
+                            <span>Voll</span>
+                          </>
+                        )}
+                      </button>
+                      <div
+                        className="flex items-center justify-center w-8 h-8 rounded-full bg-background/90 backdrop-blur border shadow-sm text-muted-foreground cursor-grab active:cursor-grabbing touch-none select-none"
+                        onPointerDown={(e) => handlePointerDown(e, item.id)}
+                        data-testid={`drag-handle-${item.id}`}
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </div>
+                    </div>
+                  )}
+                  <div className={`${editMode ? "pointer-events-none select-none" : ""}`}>
+                    {section.content}
                   </div>
-                </div>
-              )}
-              <div className={`${editMode ? "pointer-events-none select-none" : ""}`}>
-                {section.content}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      </LayoutGroup>
 
       {dragState && draggedStyle && (() => {
         const item = layout.find(l => l.id === dragState.id);
