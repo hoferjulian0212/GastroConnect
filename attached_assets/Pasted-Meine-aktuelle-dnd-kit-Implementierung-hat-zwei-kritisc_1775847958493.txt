@@ -1,0 +1,54 @@
+Meine aktuelle dnd-kit Implementierung hat zwei kritische Probleme:
+Die Vorschau-Position (Preview beim Dragging) stimmt nicht mit der finalen Drop-Position überein
+Es entstehen weiterhin unerwünschte weiße Lücken zwischen den Cards
+Bitte behebe diese Probleme gezielt.
+🔧 1. Vorschau = Drop-Position fixen
+Aktuell ist die Collision Detection bzw. Sorting Strategy falsch.
+Bitte:
+Verwende im SortableContext die passende Strategy:
+Für Grid-Layouts: rectSortingStrategy
+Stelle sicher:
+Die gleiche Logik wird für Preview UND finalen Drop verwendet
+Kein separates, manuelles Berechnen von Ziel-Indizes mehr
+Nutze ausschließlich dnd-kit interne Mechanismen:
+useSortable
+arrayMove für das Reordering
+👉 Ziel:
+Die Position, die während des Draggings angezeigt wird, muss exakt die Position sein, an der das Element nach dem Loslassen landet.
+🔧 2. Weiße Lücken vollständig entfernen
+Das Problem liegt am Layout.
+Bitte ändere das Layout wie folgt:
+KEIN klassisches CSS Grid mit automatischer Platzierung verwenden
+Stattdessen:
+Option A (empfohlen):
+Verwende ein flex-wrap Layout:
+display: flex
+flex-wrap: wrap
+feste Breiten für Cards (z. B. 50% / 100%)
+ODER
+Option B (wenn Grid bleibt):
+setze grid-auto-flow: dense
+stelle sicher, dass Items aktiv neu sortiert werden
+WICHTIG:
+Cards müssen aktiv neu angeordnet werden (nicht vom Browser automatisch)
+Es dürfen keine „leeren Slots“ im Layout entstehen
+🔧 3. Einheitliche Größenlogik
+Stelle sicher:
+Cards haben klar definierte Breiten:
+halbe Breite
+volle Breite
+Keine unkontrollierten Höhen-Sprünge während des Draggings
+🔧 4. Animation korrekt einstellen
+Nutze transform-basierte Animation (transform: translate)
+KEIN top/left
+Nutze die eingebaute Animation von dnd-kit
+🔧 5. Entferne alte Logik
+Falls vorhanden, bitte entfernen:
+eigene getTargetIndex() Berechnung
+manuelles DOM-Messen (getBoundingClientRect)
+eigenes Preview-System außerhalb von dnd-kit
+🎯 Ziel
+Vorschau entspricht exakt dem finalen Ergebnis
+Keine weißen Lücken mehr
+Cards verschieben sich live und flüssig
+Verhalten wie beim iPhone Homescreen

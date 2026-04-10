@@ -14,7 +14,7 @@ import {
 import {
   SortableContext,
   useSortable,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -69,9 +69,10 @@ interface SortableCardProps {
   section: CardSection;
   editMode: boolean;
   onToggleSize: (id: string) => void;
+  isLg: boolean;
 }
 
-function SortableCard({ item, section, editMode, onToggleSize }: SortableCardProps) {
+function SortableCard({ item, section, editMode, onToggleSize, isLg }: SortableCardProps) {
   const {
     attributes,
     listeners,
@@ -82,21 +83,22 @@ function SortableCard({ item, section, editMode, onToggleSize }: SortableCardPro
   } = useSortable({ id: item.id, disabled: !editMode });
 
   const isFull = item.size === "full";
+  const widthPercent = (!isLg || isFull) ? "100%" : "calc(50% - 8px)";
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition: transition || undefined,
     opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 0 : "auto",
+    width: widthPercent,
+    flexShrink: 0,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative ${isFull ? "col-span-1 lg:col-span-2" : "col-span-1"} ${
-        editMode ? "ring-1 ring-border/40 rounded-xl" : ""
-      }`}
+      className={`relative ${editMode ? "ring-1 ring-border/40 rounded-xl" : ""}`}
       data-testid={`draggable-card-${item.id}`}
     >
       {editMode && (
@@ -142,6 +144,15 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const [layout, setLayout] = useState<LayoutItem[]>(() => loadLayout(userId, role, sections));
   const [editMode, setEditMode] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isLg, setIsLg] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1024px)");
+    setIsLg(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsLg(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
 
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 5 },
@@ -205,6 +216,10 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const activeItem = activeId ? layout.find(l => l.id === activeId) : null;
   const activeSection = activeItem ? sectionMap.get(activeItem.id) : null;
 
+  const activeWidth = activeItem
+    ? (!isLg || activeItem.size === "full") ? "100%" : "calc(50% - 8px)"
+    : "100%";
+
   return (
     <div className="relative">
       <div className="flex justify-end mb-3 md:mb-4">
@@ -229,8 +244,8 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <SortableContext items={layoutIds} strategy={verticalListSortingStrategy}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start">
+        <SortableContext items={layoutIds} strategy={rectSortingStrategy}>
+          <div className="flex flex-wrap gap-4 md:gap-6">
             {layout.map((item) => {
               const section = sectionMap.get(item.id);
               if (!section) return null;
@@ -241,6 +256,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
                   section={section}
                   editMode={editMode}
                   onToggleSize={toggleSize}
+                  isLg={isLg}
                 />
               );
             })}
@@ -257,7 +273,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
             <div
               className="rounded-xl overflow-hidden"
               style={{
-                width: "100%",
+                width: activeWidth,
                 opacity: 0.92,
                 boxShadow: "0 25px 80px rgba(0,0,0,0.28), 0 10px 24px rgba(0,0,0,0.18)",
                 transform: "scale(1.03) rotate(1deg)",
