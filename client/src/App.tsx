@@ -366,7 +366,7 @@ function PageHero() {
   if (!title) return null;
 
   return (
-    <div className="-mx-4 md:-mx-6 bg-[#161921] px-4 md:px-6 pt-4 pb-6 rounded-b-3xl" data-testid="page-hero">
+    <div className="bg-[#161921] px-4 md:px-6 pt-4 pb-6 rounded-b-3xl" data-testid="page-hero">
       <h1 className="text-2xl md:text-3xl font-bold text-white">{title}</h1>
     </div>
   );
@@ -448,7 +448,7 @@ function AppLayout() {
         </div>
       ) : (
         <div className="flex h-dvh w-full">
-          <div className="flex flex-col flex-1 min-w-0 overflow-auto">
+          <div className={`flex flex-col flex-1 min-w-0 overflow-auto ${isInChat || isDetailPage ? '' : 'px-4 md:px-6 pt-4 md:pt-6'}`}>
             <header className={`dark flex items-center gap-4 px-4 py-3 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
               <div className="flex items-center gap-3 md:flex-1 md:min-w-0">
                 <MobileProfileButton />
@@ -472,7 +472,7 @@ function AppLayout() {
                 <DesktopProfileButton />
               </div>
             </header>
-            <main className={`flex-1 ${isInChat || isDetailPage ? 'p-0 pb-0' : 'px-4 pt-0 md:px-6 pb-28 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
+            <main className={`flex-1 ${isInChat || isDetailPage ? 'p-0 pb-0' : 'pt-0 pb-28 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
               <PageHero />
               {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
             </main>
