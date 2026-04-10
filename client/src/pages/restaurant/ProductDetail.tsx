@@ -233,7 +233,7 @@ export default function ProductDetail() {
         <p className="text-muted-foreground">{lang === "de" ? "Produkt nicht gefunden" : "Prodotto non trovato"}</p>
         <Button variant="outline" className="mt-4" onClick={() => setLocation("/restaurant/catalog")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          {lang === "de" ? "Zurueck zum Katalog" : "Torna al catalogo"}
+          {lang === "de" ? "Zurück zum Katalog" : "Torna al catalogo"}
         </Button>
       </div>
     );
@@ -253,7 +253,7 @@ export default function ProductDetail() {
           data-testid="button-back"
         >
           <ArrowLeft className="h-4 w-4" />
-          {lang === "de" ? "Zurueck" : "Indietro"}
+          {lang === "de" ? "Zurück" : "Indietro"}
         </button>
         <h1 className="text-xl md:text-2xl font-bold text-white" data-testid="text-product-name">{product.name}</h1>
         <div className="flex items-center gap-2">
@@ -286,11 +286,11 @@ export default function ProductDetail() {
             <div className="flex items-center gap-2 flex-wrap">
               {product.inStock ? (
                 <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                  {lang === "de" ? "Verfuegbar" : "Disponibile"}
+                  {lang === "de" ? "Verfügbar" : "Disponibile"}
                 </Badge>
               ) : (
                 <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                  {lang === "de" ? "Nicht verfuegbar" : "Non disponibile"}
+                  {lang === "de" ? "Nicht verfügbar" : "Non disponibile"}
                 </Badge>
               )}
               {product.category && <Badge variant="secondary">{product.category}</Badge>}

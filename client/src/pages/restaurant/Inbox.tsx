@@ -2212,7 +2212,7 @@ export default function RestaurantInbox() {
                           <div className="space-y-2">
                             <Label>{lang === "de" ? "Betroffene Produkte" : "Prodotti interessati"}</Label>
                             <p className="text-xs text-muted-foreground">
-                              {lang === "de" ? "Waehlen Sie die Produkte aus, die betroffen sind" : "Seleziona i prodotti interessati"}
+                              {lang === "de" ? "Wählen Sie die Produkte aus, die betroffen sind" : "Seleziona i prodotti interessati"}
                             </p>
                             <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-md border p-2">
                               {complaintOrderDetails.items.map((item) => {
@@ -2249,7 +2249,7 @@ export default function RestaurantInbox() {
                                 <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
                                 <span className="text-xs text-orange-700 dark:text-orange-300">
                                   {lang === "de"
-                                    ? `Nachlieferung fuer ${complaintAffectedItems.length} Produkt(e) wird angefragt`
+                                    ? `Nachlieferung für ${complaintAffectedItems.length} Produkt(e) wird angefragt`
                                     : `Riconsegna per ${complaintAffectedItems.length} prodotto/i verra richiesta`}
                                 </span>
                               </div>

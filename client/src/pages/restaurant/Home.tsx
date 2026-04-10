@@ -379,7 +379,7 @@ export default function RestaurantHome() {
       if (msg.messageType === "order_change_request") {
         const data = JSON.parse(msg.content);
         const id = (data.orderId || msg.orderId || "")?.substring(0, 8);
-        return id ? `${lang === "de" ? "Aenderungsanfrage" : "Richiesta di modifica"} #${id}` : (lang === "de" ? "Aenderungsanfrage" : "Richiesta di modifica");
+        return id ? `${lang === "de" ? "Änderungsanfrage" : "Richiesta di modifica"} #${id}` : (lang === "de" ? "Änderungsanfrage" : "Richiesta di modifica");
       }
     } catch {}
     if (msg.messageType === "attachment") return lang === "de" ? "Anhang" : "Allegato";
@@ -1365,7 +1365,7 @@ export default function RestaurantHome() {
                     {lang === "de" ? "Keine Vorlagen" : "Nessun modello"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {lang === "de" ? "Erstellen Sie Vorlagen fuer wiederkehrende Bestellungen" : "Crea modelli per ordini ricorrenti"}
+                    {lang === "de" ? "Erstellen Sie Vorlagen für wiederkehrende Bestellungen" : "Crea modelli per ordini ricorrenti"}
                   </p>
                   <Button variant="outline" size="sm" className="mt-3 text-xs" asChild>
                     <Link href="/restaurant/orders?tab=templates" data-testid="link-create-template">
@@ -1642,8 +1642,8 @@ export default function RestaurantHome() {
                     <h3 className="font-bold text-base truncate" data-testid="wizard-template-name">{wizardTemplate?.name}</h3>
                     <p className="text-xs text-muted-foreground">
                       {wizardStep === "items" && (lang === "de" ? "Schritt 1 von 2 — Produkte" : "Passo 1 di 2 — Prodotti")}
-                      {wizardStep === "browse_supplier" && (lang === "de" ? "Haendler waehlen" : "Scegli commerciante")}
-                      {wizardStep === "browse_products" && (lang === "de" ? "Produkte hinzufuegen" : "Aggiungi prodotti")}
+                      {wizardStep === "browse_supplier" && (lang === "de" ? "Händler wählen" : "Scegli commerciante")}
+                      {wizardStep === "browse_products" && (lang === "de" ? "Produkte hinzufügen" : "Aggiungi prodotti")}
                       {wizardStep === "review" && (lang === "de" ? "Schritt 2 von 2 — Warenkorb" : "Passo 2 di 2 — Carrello")}
                     </p>
                   </div>
@@ -1725,11 +1725,11 @@ export default function RestaurantHome() {
                     data-testid="wizard-add-products"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    {lang === "de" ? "Produkte hinzufuegen" : "Aggiungi prodotti"}
+                    {lang === "de" ? "Produkte hinzufügen" : "Aggiungi prodotti"}
                   </Button>
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
                     <div>
-                      <span className="text-xs text-muted-foreground">{lang === "de" ? "Geschaetzt" : "Stimato"}: </span>
+                      <span className="text-xs text-muted-foreground">{lang === "de" ? "Geschätzt" : "Stimato"}: </span>
                       <span className="text-sm font-bold">{wizardTotalEstimate.toFixed(2)}€</span>
                     </div>
                     <Button
@@ -1752,7 +1752,7 @@ export default function RestaurantHome() {
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <p className="text-sm font-medium">
-                      {lang === "de" ? "Haendler waehlen" : "Scegli commerciante"}
+                      {lang === "de" ? "Händler wählen" : "Scegli commerciante"}
                     </p>
                   </div>
                   <div className="space-y-2 max-h-[45vh] overflow-y-auto">
@@ -1781,7 +1781,7 @@ export default function RestaurantHome() {
                     ))}
                     {wizardSuppliers.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-4">
-                        {lang === "de" ? "Keine Haendler verfuegbar" : "Nessun commerciante disponibile"}
+                        {lang === "de" ? "Keine Händler verfügbar" : "Nessun commerciante disponibile"}
                       </p>
                     )}
                   </div>
@@ -1877,7 +1877,7 @@ export default function RestaurantHome() {
                               data-testid={`wizard-browse-add-${prod.id}`}
                             >
                               <Plus className="h-3 w-3" />
-                              {lang === "de" ? "Hinzufuegen" : "Aggiungi"}
+                              {lang === "de" ? "Hinzufügen" : "Aggiungi"}
                             </Button>
                           )}
                         </div>
@@ -1900,7 +1900,7 @@ export default function RestaurantHome() {
               {wizardStep === "review" && (
                 <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-review">
                   <p className="text-sm font-medium">
-                    {lang === "de" ? "Bestelluebersicht" : "Riepilogo ordine"}
+                    {lang === "de" ? "Bestellübersicht" : "Riepilogo ordine"}
                   </p>
                   <div className="space-y-3 max-h-[35vh] overflow-y-auto">
                     {Object.entries(wizardItemsBySupplier).map(([sId, group]) => (
@@ -1931,7 +1931,7 @@ export default function RestaurantHome() {
                   {wizardTemplateChanged && (
                     <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-2" data-testid="wizard-save-template-section">
                       <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                        {lang === "de" ? "Die Bestellung wurde geaendert. Vorlage aktualisieren?" : "L'ordine e stato modificato. Aggiornare il modello?"}
+                        {lang === "de" ? "Die Bestellung wurde geändert. Vorlage aktualisieren?" : "L'ordine è stato modificato. Aggiornare il modello?"}
                       </p>
                       <div className="flex gap-2">
                         <Button
@@ -1943,7 +1943,7 @@ export default function RestaurantHome() {
                           data-testid="wizard-save-overwrite"
                         >
                           {wizardSavingTemplate ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                          {lang === "de" ? "Ueberschreiben" : "Sovrascrivi"}
+                          {lang === "de" ? "Überschreiben" : "Sovrascrivi"}
                         </Button>
                         <Button
                           size="sm"
@@ -1962,7 +1962,7 @@ export default function RestaurantHome() {
 
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
                     <Button variant="outline" size="sm" onClick={() => setWizardStep("items")} data-testid="wizard-back-step">
-                      {lang === "de" ? "Zurueck" : "Indietro"}
+                      {lang === "de" ? "Zurück" : "Indietro"}
                     </Button>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-bold">{wizardTotalEstimate.toFixed(2)}€</span>

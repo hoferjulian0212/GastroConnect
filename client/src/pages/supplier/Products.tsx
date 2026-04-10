@@ -1653,7 +1653,7 @@ export default function SupplierProducts() {
                       </p>
                       <Button className="mt-3 md:mt-4 gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-first-product">
                         <Plus className="h-4 w-4" />
-                        {lang === "de" ? "Produkt hinzufuegen" : "Aggiungi prodotto"}
+                        {lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}
                       </Button>
                     </div>
                   )}

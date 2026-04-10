@@ -223,7 +223,7 @@ export default function Documents() {
 
   const labelDe = (key: string) => {
     const labels: Record<string, string> = {
-      supplier: "Haendler", restaurant: "Empfaenger", address: "Adresse", city: "PLZ / Ort",
+      supplier: "Händler", restaurant: "Empfänger", address: "Adresse", city: "PLZ / Ort",
       phone: "Telefon", email: "E-Mail", orderDate: "Bestelldatum", deliveryDate: "Lieferdatum",
       items: "Positionen", product: "Produkt", quantity: "Menge", unitPrice: "Einzelpreis",
       total: "Gesamt", notes: "Anmerkungen", preview: "Vorschau", edit: "Bearbeiten",
@@ -274,7 +274,7 @@ export default function Documents() {
           {lang === "de" ? "Dokument-Center" : "Centro documenti"}
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
-          {lang === "de" ? "Alle Ihre Dokumente nach Haendler geordnet" : "Tutti i tuoi documenti ordinati per commerciante"}
+          {lang === "de" ? "Alle Ihre Dokumente nach Händler geordnet" : "Tutti i tuoi documenti ordinati per commerciante"}
         </p>
       </div>
 

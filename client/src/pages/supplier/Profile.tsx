@@ -201,7 +201,7 @@ export default function SupplierProfile() {
                             {t("profile", "email")}
                           </FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder={lang === "de" ? "email@haendler.de" : "email@commerciante.it"} {...field} data-testid="input-email" />
+                            <Input type="email" placeholder={lang === "de" ? "email@händler.de" : "email@commerciante.it"} {...field} data-testid="input-email" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

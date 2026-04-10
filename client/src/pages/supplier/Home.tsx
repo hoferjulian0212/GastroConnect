@@ -162,7 +162,7 @@ export default function SupplierHome() {
       if (msg.messageType === "order_change_request") {
         const data = JSON.parse(msg.content);
         const id = (data.orderId || msg.orderId || "")?.substring(0, 8);
-        return id ? `${lang === "de" ? "Aenderungsanfrage" : "Richiesta di modifica"} #${id}` : (lang === "de" ? "Aenderungsanfrage" : "Richiesta di modifica");
+        return id ? `${lang === "de" ? "Änderungsanfrage" : "Richiesta di modifica"} #${id}` : (lang === "de" ? "Änderungsanfrage" : "Richiesta di modifica");
       }
     } catch {}
     if (msg.messageType === "attachment") return lang === "de" ? "Anhang" : "Allegato";

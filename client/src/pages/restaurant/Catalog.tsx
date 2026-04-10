@@ -187,7 +187,7 @@ export default function RestaurantCatalog() {
               </h1>
               <p className="text-sm text-white/50 mt-1">
                 {lang === "de"
-                  ? "Durchsuchen Sie verfuegbare Produkte Ihrer Lieferanten."
+                  ? "Durchsuchen Sie verfügbare Produkte Ihrer Lieferanten."
                   : "Esplora i prodotti disponibili dei tuoi fornitori."}
               </p>
             </div>
