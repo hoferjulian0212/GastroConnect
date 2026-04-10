@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { GripVertical, Maximize2, Columns2 } from "lucide-react";
 
 type CardSize = "full" | "half";
@@ -41,10 +41,16 @@ function loadLayout(userId: string, role: string, sections: CardSection[]): Layo
 export default function DraggableCardGrid({ userId, role, sections }: DraggableCardGridProps) {
   const [layout, setLayout] = useState<LayoutItem[]>(() => loadLayout(userId, role, sections));
   const [editMode, setEditMode] = useState(false);
+
   const [dragId, setDragId] = useState<string | null>(null);
-  const [dropIndex, setDropIndex] = useState<number | null>(null);
-  const dragGhost = useRef<HTMLDivElement | null>(null);
+  const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [previewLayout, setPreviewLayout] = useState<LayoutItem[] | null>(null);
+
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const cardRectsRef = useRef<Map<string, DOMRect>>(new Map());
+  const isDraggingRef = useRef(false);
 
   useEffect(() => {
     const defaultIds = sections.map(s => s.id);
@@ -72,183 +78,141 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     saveLayout(newLayout);
   }, [layout, saveLayout]);
 
-  const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, id: string) => {
-    setDragId(id);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", id);
-    const ghost = document.createElement("div");
-    ghost.style.width = "200px";
-    ghost.style.height = "60px";
-    ghost.style.background = "hsl(var(--primary))";
-    ghost.style.borderRadius = "12px";
-    ghost.style.opacity = "0.8";
-    ghost.style.position = "fixed";
-    ghost.style.top = "-1000px";
-    document.body.appendChild(ghost);
-    e.dataTransfer.setDragImage(ghost, 100, 30);
-    dragGhost.current = ghost;
+  const snapshotRects = useCallback(() => {
+    const rects = new Map<string, DOMRect>();
+    cardRefs.current.forEach((el, id) => {
+      rects.set(id, el.getBoundingClientRect());
+    });
+    cardRectsRef.current = rects;
   }, []);
 
-  const handleDragEnd = useCallback(() => {
-    setDragId(null);
-    setDropIndex(null);
-    if (dragGhost.current) {
-      document.body.removeChild(dragGhost.current);
-      dragGhost.current = null;
+  const getTargetIndex = useCallback((clientX: number, clientY: number, currentLayout: LayoutItem[]): number => {
+    let closest = -1;
+    let closestDist = Infinity;
+
+    for (let i = 0; i < currentLayout.length; i++) {
+      const item = currentLayout[i];
+      if (item.id === dragId) continue;
+      const rect = cardRectsRef.current.get(item.id);
+      if (!rect) continue;
+
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const dist = Math.abs(clientY - centerY) * 2 + Math.abs(clientX - centerX) * 0.5;
+
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = i;
+      }
     }
-  }, []);
 
-  const handleSlotDragOver = useCallback((e: React.DragEvent<HTMLDivElement>, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDropIndex(index);
-  }, []);
+    if (closest === -1) return 0;
 
-  const handleSlotDrop = useCallback((e: React.DragEvent<HTMLDivElement>, targetIndex: number) => {
-    e.preventDefault();
+    const closestRect = cardRectsRef.current.get(currentLayout[closest].id);
+    if (closestRect) {
+      const centerY = closestRect.top + closestRect.height / 2;
+      if (clientY > centerY) {
+        return closest + 1;
+      }
+    }
+    return closest;
+  }, [dragId]);
+
+  const computePreview = useCallback((clientX: number, clientY: number) => {
     if (!dragId) return;
+    const targetIdx = getTargetIndex(clientX, clientY, layout);
+    const fromIdx = layout.findIndex(l => l.id === dragId);
+    if (fromIdx === -1) return;
 
     const newLayout = [...layout];
-    const fromIndex = newLayout.findIndex(l => l.id === dragId);
-    if (fromIndex === -1) return;
+    const [moved] = newLayout.splice(fromIdx, 1);
+    const insertAt = targetIdx > fromIdx ? targetIdx - 1 : targetIdx;
+    newLayout.splice(Math.max(0, insertAt), 0, moved);
 
-    const [moved] = newLayout.splice(fromIndex, 1);
-    const adjustedIndex = targetIndex > fromIndex ? targetIndex - 1 : targetIndex;
-    newLayout.splice(Math.max(0, adjustedIndex), 0, moved);
-    saveLayout(newLayout);
-    setDragId(null);
-    setDropIndex(null);
-  }, [dragId, layout, saveLayout]);
+    const changed = newLayout.some((item, i) => item.id !== (previewLayout || layout)[i]?.id);
+    if (changed) {
+      setPreviewLayout(newLayout);
+    }
+  }, [dragId, layout, previewLayout, getTargetIndex]);
 
-  const sectionMap = new Map(sections.map(s => [s.id, s]));
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, id: string) => {
+    if (!editMode) return;
+    e.preventDefault();
+    e.stopPropagation();
 
-  const draggedItem = dragId ? layout.find(l => l.id === dragId) : null;
-  const draggedSize = draggedItem?.size || "full";
+    const el = cardRefs.current.get(id);
+    if (!el) return;
 
-  const computeGridSlots = () => {
-    const slots: { type: "card"; item: LayoutItem; index: number }[] = [];
-    layout.forEach((item, i) => {
-      slots.push({ type: "card", item, index: i });
-    });
-    return slots;
-  };
+    const rect = el.getBoundingClientRect();
+    setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    setDragId(id);
+    setPointerPos({ x: e.clientX, y: e.clientY });
+    isDraggingRef.current = true;
 
-  const slots = computeGridSlots();
+    snapshotRects();
 
-  const renderDropZone = (index: number, spanFull: boolean) => {
-    if (!editMode || !dragId) return null;
-    const isActive = dropIndex === index;
-    return (
-      <div
-        key={`drop-${index}`}
-        className={`rounded-xl border-2 border-dashed transition-all duration-200 ${spanFull ? "col-span-1 lg:col-span-2" : "col-span-1"} ${
-          isActive
-            ? "border-primary bg-primary/10 min-h-[60px]"
-            : "border-transparent min-h-[8px] hover:border-muted-foreground/30 hover:bg-muted/20 hover:min-h-[40px]"
-        }`}
-        onDragOver={(e) => handleSlotDragOver(e, index)}
-        onDrop={(e) => handleSlotDrop(e, index)}
-        data-testid={`drop-zone-${index}`}
-      >
-        {isActive && (
-          <div className="flex items-center justify-center h-full min-h-[60px] text-xs text-primary font-medium">
-            <div className="flex items-center gap-1.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-              Hier ablegen
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [editMode, snapshotRects]);
 
-  const buildGridItems = () => {
-    const items: React.ReactNode[] = [];
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current || !dragId) return;
+    e.preventDefault();
 
-    if (editMode && dragId) {
-      items.push(renderDropZone(0, draggedSize === "full"));
+    setPointerPos({ x: e.clientX, y: e.clientY });
+    computePreview(e.clientX, e.clientY);
+  }, [dragId, computePreview]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current || !dragId) return;
+    e.preventDefault();
+
+    if (previewLayout) {
+      saveLayout(previewLayout);
     }
 
-    slots.forEach((slot) => {
-      const section = sectionMap.get(slot.item.id);
-      if (!section) return;
+    isDraggingRef.current = false;
+    setDragId(null);
+    setPointerPos(null);
+    setPreviewLayout(null);
+  }, [dragId, previewLayout, saveLayout]);
 
-      const isFull = slot.item.size === "full";
-      const isDragging = dragId === slot.item.id;
+  useEffect(() => {
+    if (!editMode) {
+      setDragId(null);
+      setPointerPos(null);
+      setPreviewLayout(null);
+      isDraggingRef.current = false;
+    }
+  }, [editMode]);
 
-      items.push(
-        <div
-          key={slot.item.id}
-          className={`relative ${isFull ? "col-span-1 lg:col-span-2" : "col-span-1"} transition-all duration-200 ${
-            isDragging ? "opacity-20 scale-[0.97]" : ""
-          } ${editMode && !isDragging ? "ring-1 ring-border/40 rounded-xl" : ""}`}
-          draggable={editMode}
-          onDragStart={editMode ? (e) => handleDragStart(e, slot.item.id) : undefined}
-          onDragEnd={editMode ? handleDragEnd : undefined}
-          onDragOver={editMode && dragId && dragId !== slot.item.id ? (e) => {
-            e.preventDefault();
-            const rect = e.currentTarget.getBoundingClientRect();
-            const midY = rect.top + rect.height / 2;
-            if (e.clientY < midY) {
-              setDropIndex(slot.index);
-            } else {
-              setDropIndex(slot.index + 1);
-            }
-          } : undefined}
-          onDrop={editMode ? (e) => {
-            e.preventDefault();
-            if (dropIndex !== null) {
-              handleSlotDrop(e, dropIndex);
-            }
-          } : undefined}
-          data-testid={`draggable-card-${slot.item.id}`}
-        >
-          {editMode && (
-            <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
-              <button
-                onClick={(e) => { e.stopPropagation(); toggleSize(slot.item.id); }}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-sm text-xs font-medium transition-all ${
-                  isFull
-                    ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
-                    : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
-                }`}
-                data-testid={`toggle-size-${slot.item.id}`}
-                title={isFull ? "Halbe Breite" : "Volle Breite"}
-              >
-                {isFull ? (
-                  <>
-                    <Columns2 className="h-3.5 w-3.5" />
-                    <span>Halb</span>
-                  </>
-                ) : (
-                  <>
-                    <Maximize2 className="h-3.5 w-3.5" />
-                    <span>Voll</span>
-                  </>
-                )}
-              </button>
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background/90 backdrop-blur border shadow-sm text-muted-foreground cursor-grab">
-                <GripVertical className="h-4 w-4" />
-              </div>
-            </div>
-          )}
-          <div className={`${editMode ? "pointer-events-none select-none" : ""}`}>
-            {section.content}
-          </div>
-        </div>
-      );
+  const displayLayout = previewLayout || layout;
+  const sectionMap = useMemo(() => new Map(sections.map(s => [s.id, s])), [sections]);
 
-      if (editMode && dragId && slot.item.id !== dragId) {
-        const nextSlot = slots.find(s => s.index === slot.index + 1);
-        const showAfterDrop = !nextSlot || nextSlot.item.id !== dragId;
-        if (showAfterDrop) {
-          items.push(renderDropZone(slot.index + 1, draggedSize === "full"));
-        }
-      }
-    });
+  const getDragStyle = useCallback((id: string): React.CSSProperties => {
+    if (id !== dragId || !pointerPos) return {};
+    const origRect = cardRectsRef.current.get(id);
+    if (!origRect) return {};
+    return {
+      position: "fixed",
+      left: pointerPos.x - dragOffset.x,
+      top: pointerPos.y - dragOffset.y,
+      width: origRect.width,
+      zIndex: 9999,
+      pointerEvents: "none",
+      transform: "scale(1.03) rotate(1.5deg)",
+      opacity: 0.92,
+      boxShadow: "0 20px 60px rgba(0,0,0,0.25), 0 8px 20px rgba(0,0,0,0.15)",
+      transition: "transform 0.15s ease, box-shadow 0.15s ease",
+    };
+  }, [dragId, pointerPos, dragOffset]);
 
-    return items;
-  };
+  const setCardRef = useCallback((id: string) => (el: HTMLDivElement | null) => {
+    if (el) {
+      cardRefs.current.set(id, el);
+    } else {
+      cardRefs.current.delete(id);
+    }
+  }, []);
 
   return (
     <div ref={containerRef}>
@@ -267,8 +231,83 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start">
-        {buildGridItems()}
+      <div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start"
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        {displayLayout.map((item) => {
+          const section = sectionMap.get(item.id);
+          if (!section) return null;
+
+          const isFull = item.size === "full";
+          const isDragging = dragId === item.id;
+          const isLifted = isDragging && pointerPos !== null;
+
+          return (
+            <div
+              key={item.id}
+              ref={setCardRef(item.id)}
+              className={`relative ${isFull ? "col-span-1 lg:col-span-2" : "col-span-1"} ${
+                isLifted ? "" : "transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
+              } ${
+                isDragging && !isLifted ? "opacity-30" : ""
+              } ${
+                editMode && !isDragging ? "ring-1 ring-border/40 rounded-xl" : ""
+              } ${
+                editMode ? "cursor-grab active:cursor-grabbing" : ""
+              }`}
+              style={isLifted ? getDragStyle(item.id) : undefined}
+              data-testid={`draggable-card-${item.id}`}
+            >
+              {editMode && (
+                <div
+                  className="absolute right-2 top-2 z-20 flex items-center gap-1.5"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleSize(item.id); }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-sm text-xs font-medium transition-all ${
+                      isFull
+                        ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+                        : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                    }`}
+                    data-testid={`toggle-size-${item.id}`}
+                    title={isFull ? "Halbe Breite" : "Volle Breite"}
+                  >
+                    {isFull ? (
+                      <>
+                        <Columns2 className="h-3.5 w-3.5" />
+                        <span>Halb</span>
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="h-3.5 w-3.5" />
+                        <span>Voll</span>
+                      </>
+                    )}
+                  </button>
+                  <div
+                    className="flex items-center justify-center w-8 h-8 rounded-full bg-background/90 backdrop-blur border shadow-sm text-muted-foreground cursor-grab touch-none"
+                    onPointerDown={(e) => handlePointerDown(e, item.id)}
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </div>
+                </div>
+              )}
+              <div className={`${editMode ? "pointer-events-none select-none" : ""}`}>
+                {section.content}
+              </div>
+            </div>
+          );
+        })}
+
+        {dragId && pointerPos && (
+          <div
+            className="col-span-1 lg:col-span-2 pointer-events-none"
+            style={{ height: 0, overflow: "visible" }}
+          />
+        )}
       </div>
     </div>
   );
