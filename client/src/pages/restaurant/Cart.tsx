@@ -363,10 +363,6 @@ export default function RestaurantCart() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div>
-        <p className="text-xs md:text-sm text-muted-foreground">{t("cart", "reviewProducts")}</p>
-      </div>
-
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (
