@@ -527,8 +527,10 @@ export default function RestaurantInbox() {
 
   const prevMessageCountRef = useRef<number>(0);
   const knownMessageIdsRef = useRef<Set<string>>(new Set());
+  const knownReadIdsRef = useRef<Set<string>>(new Set());
   const [newMessageIds, setNewMessageIds] = useState<Set<string>>(new Set());
   const [sentMessageIds, setSentMessageIds] = useState<Set<string>>(new Set());
+  const [newlyReadIds, setNewlyReadIds] = useState<Set<string>>(new Set());
   const incomingTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const sentTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -561,13 +563,31 @@ export default function RestaurantInbox() {
       knownMessageIdsRef.current = new Set(messages.map(m => m.id));
       prevMessageCountRef.current = currentCount;
     }
+
+    if (messages) {
+      const freshlyRead: string[] = [];
+      messages.forEach(m => {
+        if (m.senderId === currentUser?.id && m.isRead && !knownReadIdsRef.current.has(m.id)) {
+          if (knownReadIdsRef.current.size > 0) {
+            freshlyRead.push(m.id);
+          }
+        }
+      });
+      knownReadIdsRef.current = new Set(messages.filter(m => m.senderId === currentUser?.id && m.isRead).map(m => m.id));
+      if (freshlyRead.length > 0) {
+        setNewlyReadIds(prev => { const next = new Set(prev); freshlyRead.forEach(id => next.add(id)); return next; });
+        setTimeout(() => setNewlyReadIds(new Set()), 2000);
+      }
+    }
   }, [messages, currentUser?.id]);
 
   useEffect(() => {
     prevMessageCountRef.current = 0;
     knownMessageIdsRef.current = new Set();
+    knownReadIdsRef.current = new Set();
     setNewMessageIds(new Set());
     setSentMessageIds(new Set());
+    setNewlyReadIds(new Set());
     clearTimeout(incomingTimerRef.current);
     clearTimeout(sentTimerRef.current);
   }, [selectedConversation]);
@@ -2093,7 +2113,7 @@ export default function RestaurantInbox() {
                                               </span>
                                               {isOwn && (
                                                 message.isRead 
-                                                  ? <CheckCheck className={`h-3 w-3 ${isImportant ? "text-muted-foreground" : "text-primary-foreground/70"}`} />
+                                                  ? <CheckCheck className={`h-3 w-3 ${newlyReadIds.has(message.id) ? "animate-read-receipt" : ""} ${isImportant ? "text-muted-foreground" : "text-primary-foreground/70"}`} />
                                                   : <Check className={`h-3 w-3 ${isImportant ? "text-muted-foreground" : "text-primary-foreground/70"}`} />
                                               )}
                                             </div>

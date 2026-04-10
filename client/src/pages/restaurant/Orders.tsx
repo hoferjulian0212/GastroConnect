@@ -78,6 +78,7 @@ export default function RestaurantOrders() {
   const [editSelectedDeliveryDate, setEditSelectedDeliveryDate] = useState<string>("");
   const [changeRequestOrder, setChangeRequestOrder] = useState<OrderWithDetails | null>(null);
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [inlineEditItem, setInlineEditItem] = useState<{ orderId: string; itemId: string; quantity: number } | null>(null);
   const [changeRequestReason, setChangeRequestReason] = useState("");
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [orderMessage, setOrderMessage] = useState("");
@@ -183,6 +184,34 @@ export default function RestaurantOrders() {
     },
     onError: () => {
       toast({ title: t("common", "error"), description: t("orders", "orderUpdateError"), variant: "destructive" });
+    },
+  });
+
+  const inlineQuantityMutation = useMutation({
+    mutationFn: async ({ orderId, itemId, quantity }: { orderId: string; itemId: string; quantity: number }) => {
+      const order = orders?.find(o => o.id === orderId);
+      if (!order) throw new Error("Order not found");
+      const updatedItems = order.items.map(i => ({
+        productId: i.productId,
+        productName: i.productName,
+        quantity: i.id === itemId ? quantity : i.quantity,
+        unitPrice: i.unitPrice,
+      }));
+      return await apiRequest("PATCH", `/api/orders/${orderId}/items`, {
+        restaurantId: currentUser?.id,
+        items: updatedItems,
+        requestedDeliveryDate: order.requestedDeliveryDate || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      setInlineEditItem(null);
+      toast({ title: lang === "de" ? "Menge aktualisiert" : "Quantità aggiornata" });
+    },
+    onError: () => {
+      setInlineEditItem(null);
+      toast({ title: t("common", "error"), variant: "destructive" });
     },
   });
 
@@ -591,7 +620,9 @@ export default function RestaurantOrders() {
         {order.items && order.items.length > 0 && (
           <div className="mt-2 pt-2 border-t border-border/30">
             <div className="space-y-1">
-              {order.items.map((item: any) => (
+              {order.items.map((item: any) => {
+                const isInlineEditing = inlineEditItem?.orderId === order.id && inlineEditItem?.itemId === item.id;
+                return (
                 <div key={item.id} className="flex items-center gap-2 text-xs md:text-sm" data-testid={`card-item-${item.id}`}>
                   {item.productImageUrl ? (
                     <img src={item.productImageUrl} alt="" className="h-6 w-6 rounded object-cover shrink-0" />
@@ -601,11 +632,58 @@ export default function RestaurantOrders() {
                     </div>
                   )}
                   <span className="text-muted-foreground flex-1 truncate">
-                    <span className="font-medium text-foreground">{item.quantity}x</span> {item.productName}
+                    {order.status === "pending" && isInlineEditing ? (
+                      <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="h-5 w-5 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center shrink-0 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); setInlineEditItem(prev => prev ? { ...prev, quantity: Math.max(1, prev.quantity - 1) } : null); }}
+                          data-testid={`button-inline-qty-minus-${item.id}`}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="font-bold text-foreground min-w-[1.5rem] text-center" data-testid={`text-inline-qty-${item.id}`}>{inlineEditItem.quantity}</span>
+                        <button
+                          className="h-5 w-5 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center shrink-0 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); setInlineEditItem(prev => prev ? { ...prev, quantity: prev.quantity + 1 } : null); }}
+                          data-testid={`button-inline-qty-plus-${item.id}`}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                        <button
+                          className="ml-1 text-[10px] font-medium text-primary hover:underline"
+                          onClick={(e) => { e.stopPropagation(); inlineQuantityMutation.mutate({ orderId: order.id, itemId: item.id, quantity: inlineEditItem.quantity }); }}
+                          disabled={inlineQuantityMutation.isPending || inlineEditItem.quantity === item.quantity}
+                          data-testid={`button-inline-qty-save-${item.id}`}
+                        >
+                          {inlineQuantityMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : (lang === "de" ? "OK" : "OK")}
+                        </button>
+                        <button
+                          className="text-[10px] text-muted-foreground hover:underline"
+                          onClick={(e) => { e.stopPropagation(); setInlineEditItem(null); }}
+                          data-testid={`button-inline-qty-cancel-${item.id}`}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ) : order.status === "pending" ? (
+                      <span
+                        className={`font-medium text-foreground transition-colors border-b border-dashed border-muted-foreground/40 ${inlineQuantityMutation.isPending ? "opacity-50" : "cursor-pointer hover:text-primary hover:border-primary"}`}
+                        onClick={(e) => { e.stopPropagation(); if (!inlineQuantityMutation.isPending) setInlineEditItem({ orderId: order.id, itemId: item.id, quantity: item.quantity }); }}
+                        data-testid={`button-inline-qty-edit-${item.id}`}
+                      >
+                        {item.quantity}x
+                      </span>
+                    ) : (
+                      <span className="font-medium text-foreground">{item.quantity}x</span>
+                    )}
+                    {" "}{item.productName}
                   </span>
-                  <span className="text-muted-foreground shrink-0 ml-2">{item.totalPrice}€</span>
+                  <span className="text-muted-foreground shrink-0 ml-2">
+                    {isInlineEditing ? `${(parseFloat(item.unitPrice) * inlineEditItem.quantity).toFixed(2)}€` : `${item.totalPrice}€`}
+                  </span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
