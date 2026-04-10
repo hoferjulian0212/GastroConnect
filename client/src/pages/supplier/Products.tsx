@@ -1152,33 +1152,66 @@ export default function SupplierProducts() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {(activeTab !== "products" || selectedCategory) && (
-      <div className="flex items-center justify-between gap-3 md:gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">
-            {activeTab === "products"
-              ? (lang === "de" ? "Produktkatalog" : "Catalogo prodotti")
-              : activeTab === "inventory"
-                ? t("supplierProducts", "stockManagement")
-                : t("common", "promotions")}
-          </h1>
-          <p className="text-sm md:text-base text-muted-foreground">
-            {activeTab === "products"
-              ? t("supplierProducts", "manageProducts")
-              : activeTab === "inventory"
-                ? t("supplierProducts", "manageStock")
-                : (lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti")}
-          </p>
+      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="products-hero">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
+              {activeTab === "products"
+                ? (lang === "de" ? "Produkte" : "Prodotti")
+                : activeTab === "inventory"
+                  ? t("supplierProducts", "stockManagement")
+                  : t("common", "promotions")}
+            </h1>
+            <p className="text-sm text-white/50 mt-1">
+              {activeTab === "products"
+                ? t("supplierProducts", "manageProducts")
+                : activeTab === "inventory"
+                  ? t("supplierProducts", "manageStock")
+                  : (lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti")}
+            </p>
+          </div>
+          {activeTab === "products" && (
+            <Button className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}</span>
+              <span className="sm:hidden">{t("common", "add")}</span>
+            </Button>
+          )}
         </div>
-        {activeTab === "products" && (
-          <Button className="gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}</span>
-            <span className="sm:hidden">{t("common", "add")}</span>
-          </Button>
-        )}
+
+        <div className="flex gap-1 p-1 bg-white/10 rounded-lg w-fit" data-testid="products-tab-switcher">
+          <button
+            onClick={() => { const p = new URLSearchParams(searchStr); p.delete("tab"); window.history.pushState(null, "", `/supplier/products${p.toString() ? `?${p}` : ""}`); window.dispatchEvent(new PopStateEvent("popstate")); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+              activeTab === "products" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"
+            }`}
+            data-testid="tab-products"
+          >
+            <Package className="h-4 w-4" />
+            {lang === "de" ? "Katalog" : "Catalogo"}
+          </button>
+          <button
+            onClick={() => { const p = new URLSearchParams(searchStr); p.set("tab", "inventory"); window.history.pushState(null, "", `/supplier/products?${p}`); window.dispatchEvent(new PopStateEvent("popstate")); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+              activeTab === "inventory" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"
+            }`}
+            data-testid="tab-inventory"
+          >
+            <Warehouse className="h-4 w-4" />
+            {t("supplierProducts", "stockManagement")}
+          </button>
+          <button
+            onClick={() => { const p = new URLSearchParams(searchStr); p.set("tab", "promotions"); window.history.pushState(null, "", `/supplier/products?${p}`); window.dispatchEvent(new PopStateEvent("popstate")); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+              activeTab === "promotions" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"
+            }`}
+            data-testid="tab-promotions"
+          >
+            <Tag className="h-4 w-4" />
+            {t("common", "promotions")}
+          </button>
+        </div>
       </div>
-      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1491,24 +1524,6 @@ export default function SupplierProducts() {
         <>
           {!selectedCategory ? (
             <>
-              <div className="flex items-center justify-between gap-3 pt-1">
-                <div>
-                  <h2 className="text-xl md:text-2xl font-bold">
-                    {lang === "de" ? "Unser Katalog" : "Il nostro catalogo"}
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {lang === "de"
-                      ? "Waehlen Sie eine Kategorie um die Produkte zu sehen."
-                      : "Seleziona una categoria per vedere i prodotti."}
-                  </p>
-                </div>
-                <Button className="gap-1.5 md:gap-2 text-sm shrink-0" size="sm" onClick={openCreateDialog} data-testid="button-add-product-landing">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufuegen" : "Aggiungi prodotto"}</span>
-                  <span className="sm:hidden">{t("common", "add")}</span>
-                </Button>
-              </div>
-
               {isLoading ? (
                 <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
