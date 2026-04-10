@@ -194,27 +194,31 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
               data-testid={`draggable-card-${item.id}`}
             >
               {editMode && (
-                <div className="absolute right-2 top-2 z-20 flex items-center gap-1" data-testid={`card-controls-${item.id}`}>
+                <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5" data-testid={`card-controls-${item.id}`}>
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleSize(item.id); }}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-background/90 backdrop-blur border shadow-sm text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-sm text-xs font-medium transition-all ${
+                      isFull
+                        ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+                        : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                    }`}
                     data-testid={`toggle-size-${item.id}`}
-                    title={isFull ? "Halb" : "Voll"}
+                    title={isFull ? "Halbe Breite" : "Volle Breite"}
                   >
                     {isFull ? (
                       <>
-                        <Columns2 className="h-3 w-3" />
-                        <span className="hidden sm:inline">Halb</span>
+                        <Columns2 className="h-3.5 w-3.5" />
+                        <span>Halb</span>
                       </>
                     ) : (
                       <>
-                        <Maximize2 className="h-3 w-3" />
-                        <span className="hidden sm:inline">Voll</span>
+                        <Maximize2 className="h-3.5 w-3.5" />
+                        <span>Voll</span>
                       </>
                     )}
                   </button>
-                  <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-background/90 backdrop-blur border shadow-sm text-muted-foreground">
-                    <GripVertical className="h-3.5 w-3.5" />
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background/90 backdrop-blur border shadow-sm text-muted-foreground cursor-grab">
+                    <GripVertical className="h-4 w-4" />
                   </div>
                 </div>
               )}
