@@ -368,7 +368,7 @@ function PageHero() {
   if (!page) return null;
 
   return (
-    <div className="bg-[#161921] px-4 md:px-6 pt-4 pb-6 rounded-b-3xl" data-testid="page-hero">
+    <div className="bg-[#161921] px-4 md:px-6 pt-4 pb-8 rounded-b-3xl" data-testid="page-hero">
       <h1 className="text-2xl md:text-3xl font-bold text-white">{page.title}</h1>
       {page.subtitle && (
         <p className="text-sm text-white/50 mt-1">{page.subtitle}</p>
