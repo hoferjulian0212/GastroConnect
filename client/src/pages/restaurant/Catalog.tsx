@@ -275,70 +275,72 @@ export default function RestaurantCatalog() {
         </>
       ) : (
         <>
-          <button
-            onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            data-testid="button-back-to-categories"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {lang === "de" ? "Zurueck" : "Indietro"}
-          </button>
-          <div className="flex items-center gap-2">
-            {(() => {
-              const conf = categoryConfig[selectedCategory];
-              const CatIcon = conf?.icon || Package;
-              return (
-                <>
-                  <div className={`flex items-center justify-center h-8 w-8 rounded-full ${conf?.color || "bg-gray-500"} text-white shrink-0`}>
-                    <CatIcon className="h-4 w-4" />
-                  </div>
-                  <h2 className="text-lg md:text-xl font-bold truncate">
-                    {lang === "it" ? conf?.it : conf?.de}
-                  </h2>
-                </>
-              );
-            })()}
-          </div>
-
-          {supplierCards.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-              <button
-                onClick={() => { setSelectedSupplier("all"); }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all shrink-0 ${
-                  selectedSupplier === "all"
-                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "border-border bg-background text-foreground hover:bg-muted"
-                }`}
-                data-testid="filter-supplier-all-inner"
-              >
-                <Store className="h-3.5 w-3.5 shrink-0" />
-                <span className="text-xs font-medium">{t("common", "all")}</span>
-              </button>
-              {supplierCards.map(supplier => {
-                const isActive = selectedSupplier === supplier.id;
+          <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="catalog-category-hero">
+            <button
+              onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
+              className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors"
+              data-testid="button-back-to-categories"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {lang === "de" ? "Zurueck" : "Indietro"}
+            </button>
+            <div className="flex items-center gap-2">
+              {(() => {
+                const conf = categoryConfig[selectedCategory];
+                const CatIcon = conf?.icon || Package;
                 return (
-                  <button
-                    key={supplier.id}
-                    onClick={() => setSelectedSupplier(supplier.id)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all shrink-0 ${
-                      isActive
-                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                        : "border-border bg-background text-foreground hover:bg-muted"
-                    }`}
-                    data-testid={`filter-supplier-inner-${supplier.id}`}
-                  >
-                    <Avatar className="h-4 w-4 shrink-0">
-                      <AvatarImage src={supplier.profileImageUrl || undefined} />
-                      <AvatarFallback className={`text-[8px] font-semibold ${isActive ? "bg-white/20 text-primary-foreground" : "bg-primary/10 text-primary"}`}>
-                        {supplier.name.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs font-medium whitespace-nowrap max-w-[90px] truncate">{supplier.name}</span>
-                  </button>
+                  <>
+                    <div className={`flex items-center justify-center h-8 w-8 rounded-full ${conf?.color || "bg-gray-500"} text-white shrink-0`}>
+                      <CatIcon className="h-4 w-4" />
+                    </div>
+                    <h2 className="text-lg md:text-xl font-bold text-white truncate">
+                      {lang === "it" ? conf?.it : conf?.de}
+                    </h2>
+                  </>
                 );
-              })}
+              })()}
             </div>
-          )}
+
+            {supplierCards.length > 1 && (
+              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                <button
+                  onClick={() => { setSelectedSupplier("all"); }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
+                    selectedSupplier === "all"
+                      ? "border-white/40 bg-white/20 text-white shadow-sm"
+                      : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
+                  }`}
+                  data-testid="filter-supplier-all-inner"
+                >
+                  <Store className="h-3.5 w-3.5 shrink-0" />
+                  <span>{t("common", "all")}</span>
+                </button>
+                {supplierCards.map(supplier => {
+                  const isActive = selectedSupplier === supplier.id;
+                  return (
+                    <button
+                      key={supplier.id}
+                      onClick={() => setSelectedSupplier(supplier.id)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
+                        isActive
+                          ? "border-white/40 bg-white/20 text-white shadow-sm"
+                          : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
+                      }`}
+                      data-testid={`filter-supplier-inner-${supplier.id}`}
+                    >
+                      <Avatar className="h-4 w-4 shrink-0">
+                        <AvatarImage src={supplier.profileImageUrl || undefined} />
+                        <AvatarFallback className="text-[7px] font-semibold bg-white/20 text-white">
+                          {supplier.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="max-w-[80px] truncate">{supplier.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
             <div className="relative flex-1">
