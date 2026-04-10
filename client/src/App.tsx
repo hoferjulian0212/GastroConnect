@@ -141,20 +141,18 @@ function CartButton() {
   const count = cartCount?.count || 0;
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
+    <button
       onClick={() => setLocation("/restaurant/cart")}
-      className="relative"
+      className="relative flex items-center justify-center h-9 w-9 rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 transition-colors"
       data-testid="button-cart-header"
     >
-      <ShoppingCart className="h-5 w-5" />
+      <ShoppingCart className="h-4.5 w-4.5" />
       {count > 0 && (
         <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-medium">
           {count}
         </span>
       )}
-    </Button>
+    </button>
   );
 }
 
@@ -296,12 +294,12 @@ function DesktopProfileButton() {
   return (
     <button
       onClick={() => setLocation(`/${currentRole}/settings`)}
-      className="hidden md:flex items-center"
+      className="hidden md:flex items-center justify-center h-9 w-9 rounded-full border border-white/20 bg-white/[0.07] hover:bg-white/15 transition-colors"
       data-testid="button-desktop-profile"
     >
-      <Avatar className="h-8 w-8 ring-2 ring-white/20 transition-all hover:ring-white/40">
+      <Avatar className="h-7 w-7">
         <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name || ""} />
-        <AvatarFallback className="bg-white/10 text-white font-semibold text-xs">
+        <AvatarFallback className="bg-transparent text-white font-semibold text-xs">
           {initials}
         </AvatarFallback>
       </Avatar>
