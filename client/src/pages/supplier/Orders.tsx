@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw, User as UserIcon } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw, User as UserIcon, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
@@ -43,6 +43,7 @@ export default function SupplierOrders() {
   const [filterRestaurant, setFilterRestaurant] = useState<string>(initialRestaurantId || "all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
+  const [showSecondaryFilters, setShowSecondaryFilters] = useState(false);
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [orderMessage, setOrderMessage] = useState("");
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
@@ -87,6 +88,7 @@ export default function SupplierOrders() {
   }, [orders, t]);
 
   const hasActiveFilters = filterRestaurant !== "all" || filterDateFrom || filterDateTo;
+  const hasSecondaryFilters = !!(filterDateFrom || filterDateTo);
 
   const clearFilters = () => {
     setFilterRestaurant("all");
@@ -582,27 +584,21 @@ export default function SupplierOrders() {
           })}
         </div>
 
-        <div className="flex flex-row gap-2 md:gap-3 items-end">
-          <div className="w-full sm:w-auto">
-            <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "from")}</label>
-            <Input
-              type="date"
-              value={filterDateFrom}
-              onChange={e => setFilterDateFrom(e.target.value)}
-              className="h-9 text-xs md:text-sm w-full sm:w-[150px] bg-white/10 border-white/20 text-white"
-              data-testid="filter-date-from"
-            />
-          </div>
-          <div className="w-full sm:w-auto">
-            <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "to")}</label>
-            <Input
-              type="date"
-              value={filterDateTo}
-              onChange={e => setFilterDateTo(e.target.value)}
-              className="h-9 text-xs md:text-sm w-full sm:w-[150px] bg-white/10 border-white/20 text-white"
-              data-testid="filter-date-to"
-            />
-          </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSecondaryFilters(!showSecondaryFilters)}
+            className="flex items-center gap-1.5 text-xs md:text-sm text-white/60 hover:text-white rounded-md px-2 py-1.5 transition-colors"
+            data-testid="button-toggle-filters"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>{lang === "de" ? "Datum" : "Data"}</span>
+            {hasSecondaryFilters && (
+              <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                {(filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
+              </span>
+            )}
+            {showSecondaryFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
@@ -614,6 +610,31 @@ export default function SupplierOrders() {
             </button>
           )}
         </div>
+
+        {showSecondaryFilters && (
+          <div className="flex gap-2 pt-1">
+            <div className="flex-1 min-w-0">
+              <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "from")}</label>
+              <Input
+                type="date"
+                value={filterDateFrom}
+                onChange={e => setFilterDateFrom(e.target.value)}
+                className="h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white"
+                data-testid="filter-date-from"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "to")}</label>
+              <Input
+                type="date"
+                value={filterDateTo}
+                onChange={e => setFilterDateTo(e.target.value)}
+                className="h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white"
+                data-testid="filter-date-to"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <Tabs value={activeStatusTab} className="w-full">
