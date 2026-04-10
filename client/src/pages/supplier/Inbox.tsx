@@ -682,8 +682,7 @@ export default function SupplierInbox() {
   };
 
   return (
-    <div className={`${selectedConversation ? 'h-dvh md:h-[calc(100dvh-8rem)]' : 'h-[calc(100dvh-8rem)]'} flex flex-col`}>
-      <div className={`mb-1 shrink-0 ${selectedConversation ? 'hidden md:block' : ''}`} />
+    <div className="flex-1 min-h-0 flex flex-col">
 
       <Card className={`${selectedConversation ? 'flex-1 border-0 md:border rounded-none md:rounded-lg' : 'flex-1'} flex flex-col overflow-hidden`}>
         <div className="flex flex-1 min-h-0 min-w-0">
