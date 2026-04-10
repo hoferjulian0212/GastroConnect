@@ -268,7 +268,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
         </button>
       </div>
 
-      <div className="space-y-4 md:space-y-5">
+      <div className="space-y-4 md:space-y-6">
         {groups.map((group, gi) => {
           if (group.type === "full") {
             const section = sectionMap.get(group.item.id);
@@ -283,14 +283,14 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
           return (
             <div
               key={`halves-${gi}`}
-              className="lg:columns-2 gap-4 md:gap-5 space-y-4 md:space-y-5 lg:space-y-0"
+              className="lg:columns-2 gap-4 md:gap-6 space-y-4 md:space-y-6 lg:space-y-0"
               style={{ columnFill: "balance" }}
             >
               {group.items.map((item) => {
                 const section = sectionMap.get(item.id);
                 if (!section) return null;
                 return (
-                  <div key={item.id} className="break-inside-avoid mb-4 md:mb-5 last:mb-0">
+                  <div key={item.id} className="break-inside-avoid mb-4 md:mb-6">
                     {renderCard(item, section, editMode, dragId, dropTarget, handlers)}
                   </div>
                 );
