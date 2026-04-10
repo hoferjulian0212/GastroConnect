@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import RestaurantTemplates from "./Templates";
+import SwipeableRow from "@/components/SwipeableRow";
 
 interface EditableItem {
   id: string;
@@ -965,7 +966,33 @@ export default function RestaurantOrders() {
                 </div>
                 <div className="space-y-2 md:space-y-3">
                   {group.orders.map((order) => (
-                    <OrderCard key={order.id} order={order} />
+                    <SwipeableRow
+                      key={order.id}
+                      leftActions={[
+                        {
+                          icon: <MessageSquare className="h-5 w-5" />,
+                          label: lang === "de" ? "Nachricht" : "Messaggio",
+                          color: "bg-blue-500",
+                          onClick: () => navigate(`/restaurant/inbox?to=${order.supplierId}&orderRefId=${order.id}`),
+                          testId: `swipe-message-${order.id}`,
+                        },
+                      ]}
+                      rightActions={
+                        order.status === "pending"
+                          ? [
+                              {
+                                icon: <XCircle className="h-5 w-5" />,
+                                label: lang === "de" ? "Stornieren" : "Annulla",
+                                color: "bg-red-500",
+                                onClick: () => cancelOrderMutation.mutate(order.id),
+                                testId: `swipe-cancel-${order.id}`,
+                              },
+                            ]
+                          : []
+                      }
+                    >
+                      <OrderCard order={order} />
+                    </SwipeableRow>
                   ))}
                 </div>
               </div>

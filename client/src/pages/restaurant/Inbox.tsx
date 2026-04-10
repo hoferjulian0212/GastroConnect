@@ -30,6 +30,7 @@ import OnlineStatus from "@/components/OnlineStatus";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus, getComplaintStatus } from "@/lib/translations";
+import SwipeableRow from "@/components/SwipeableRow";
 
 type ActionMode = "none" | "order" | "complaint";
 
@@ -1042,62 +1043,79 @@ export default function RestaurantInbox() {
                       const hasUnread = conv.unreadCount > 0;
                       const isPriorityMsg = conv.lastMessage?.priority === "important";
                       return (
-                        <button
+                        <SwipeableRow
                           key={conv.id}
-                          onClick={() => {
-                            handleSelectConversation(conv.id);
-                            setActionMode("none");
-                            setOrderItems({});
-                          }}
-                          className={`w-full p-2.5 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
-                            selectedConversation === conv.id
-                              ? "bg-muted"
-                              : hasUnread && isPriorityMsg
-                              ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
-                              : hasUnread
-                              ? "bg-primary/5"
-                              : ""
-                          } ${flashingConvIds.has(conv.id) ? "animate-flash-new" : ""}`}
-                          data-testid={`conversation-${conv.id}`}
+                          leftActions={
+                            hasUnread
+                              ? [
+                                  {
+                                    icon: <Check className="h-5 w-5" />,
+                                    label: lang === "de" ? "Gelesen" : "Letto",
+                                    color: "bg-blue-500",
+                                    onClick: () => handleSelectConversation(conv.id),
+                                    testId: `swipe-read-${conv.id}`,
+                                  },
+                                ]
+                              : []
+                          }
+                          rightActions={[]}
                         >
-                          <div className="flex items-center gap-2.5">
-                            <div className="relative shrink-0">
-                              <Avatar className="h-9 w-9">
-                                <AvatarImage src={conv.otherUser.profileImageUrl || undefined} alt={conv.otherUser.name} />
-                                <AvatarFallback className="bg-secondary/20 text-secondary text-sm">
-                                  {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              {hasUnread && isPriorityMsg ? (
-                                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 border-2 border-background flex items-center justify-center text-[8px] font-bold text-white">!</span>
-                              ) : hasUnread ? (
-                                <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary border-2 border-background animate-pulse" />
-                              ) : conv.otherUser.lastSeenAt && (Date.now() - new Date(conv.otherUser.lastSeenAt).getTime()) < 120000 ? (
-                                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-background" />
-                              ) : null}
-                            </div>
-                            <div className="flex-1 min-w-0 overflow-hidden">
-                              <div className="flex items-center justify-between gap-2">
-                                <p className={`text-sm truncate flex-1 min-w-0 ${hasUnread && isPriorityMsg ? "font-bold text-red-600 dark:text-red-400" : hasUnread ? "font-bold text-foreground" : "font-medium"}`}>
-                                  {conv.otherUser.companyName || conv.otherUser.name}
-                                </p>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  {lastMessageTime && (
-                                    <span className={`text-[10px] ${hasUnread && isPriorityMsg ? "text-red-500 font-semibold" : hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
-                                  )}
-                                  {hasUnread && (
-                                    <span className={`flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold ${isPriorityMsg ? "bg-red-500 text-white" : "bg-primary text-primary-foreground"}`}>
-                                      {conv.unreadCount}
-                                    </span>
-                                  )}
-                                </div>
+                          <button
+                            onClick={() => {
+                              handleSelectConversation(conv.id);
+                              setActionMode("none");
+                              setOrderItems({});
+                            }}
+                            className={`w-full p-2.5 rounded-md text-left transition-colors hover-elevate overflow-hidden ${
+                              selectedConversation === conv.id
+                                ? "bg-muted"
+                                : hasUnread && isPriorityMsg
+                                ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
+                                : hasUnread
+                                ? "bg-primary/5"
+                                : ""
+                            } ${flashingConvIds.has(conv.id) ? "animate-flash-new" : ""}`}
+                            data-testid={`conversation-${conv.id}`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="relative shrink-0">
+                                <Avatar className="h-9 w-9">
+                                  <AvatarImage src={conv.otherUser.profileImageUrl || undefined} alt={conv.otherUser.name} />
+                                  <AvatarFallback className="bg-secondary/20 text-secondary text-sm">
+                                    {conv.otherUser.companyName?.charAt(0) || conv.otherUser.name.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                {hasUnread && isPriorityMsg ? (
+                                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 border-2 border-background flex items-center justify-center text-[8px] font-bold text-white">!</span>
+                                ) : hasUnread ? (
+                                  <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary border-2 border-background animate-pulse" />
+                                ) : conv.otherUser.lastSeenAt && (Date.now() - new Date(conv.otherUser.lastSeenAt).getTime()) < 120000 ? (
+                                  <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-background" />
+                                ) : null}
                               </div>
-                              <p className={`text-xs truncate max-w-full ${hasUnread && isPriorityMsg ? "text-red-500 font-semibold" : hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                                {isPriorityMsg && hasUnread ? "! " : ""}{messagePreview}
-                              </p>
+                              <div className="flex-1 min-w-0 overflow-hidden">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className={`text-sm truncate flex-1 min-w-0 ${hasUnread && isPriorityMsg ? "font-bold text-red-600 dark:text-red-400" : hasUnread ? "font-bold text-foreground" : "font-medium"}`}>
+                                    {conv.otherUser.companyName || conv.otherUser.name}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {lastMessageTime && (
+                                      <span className={`text-[10px] ${hasUnread && isPriorityMsg ? "text-red-500 font-semibold" : hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
+                                    )}
+                                    {hasUnread && (
+                                      <span className={`flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold ${isPriorityMsg ? "bg-red-500 text-white" : "bg-primary text-primary-foreground"}`}>
+                                        {conv.unreadCount}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className={`text-xs truncate max-w-full ${hasUnread && isPriorityMsg ? "text-red-500 font-semibold" : hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                                  {isPriorityMsg && hasUnread ? "! " : ""}{messagePreview}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </button>
+                          </button>
+                        </SwipeableRow>
                       );
                     })}
                   </div>

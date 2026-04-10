@@ -23,6 +23,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialog";
+import SwipeableRow from "@/components/SwipeableRow";
 
 export default function SupplierOrders() {
   const { currentUser } = useUser();
@@ -734,7 +735,57 @@ export default function SupplierOrders() {
                       </div>
                       <div className="space-y-2 md:space-y-3">
                         {group.orders.map((order) => (
-                          <OrderCard key={order.id} order={order} />
+                          <SwipeableRow
+                            key={order.id}
+                            leftActions={
+                              order.status === "pending"
+                                ? [
+                                    {
+                                      icon: <CheckCircle className="h-5 w-5" />,
+                                      label: lang === "de" ? "Bestätigen" : "Conferma",
+                                      color: "bg-green-500",
+                                      onClick: () => setConfirmOrder(order),
+                                      testId: `swipe-confirm-${order.id}`,
+                                    },
+                                  ]
+                                : order.status === "confirmed" || order.status === "partially_confirmed"
+                                ? [
+                                    {
+                                      icon: <Truck className="h-5 w-5" />,
+                                      label: lang === "de" ? "Lieferung" : "Consegna",
+                                      color: "bg-blue-500",
+                                      onClick: () => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId }),
+                                      testId: `swipe-deliver-${order.id}`,
+                                    },
+                                  ]
+                                : order.status === "in_delivery"
+                                ? [
+                                    {
+                                      icon: <CheckCircle className="h-5 w-5" />,
+                                      label: lang === "de" ? "Geliefert" : "Consegnato",
+                                      color: "bg-green-500",
+                                      onClick: () => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" }),
+                                      testId: `swipe-delivered-${order.id}`,
+                                    },
+                                  ]
+                                : []
+                            }
+                            rightActions={
+                              order.status !== "delivered" && order.status !== "cancelled" && order.status !== "in_delivery"
+                                ? [
+                                    {
+                                      icon: <XCircle className="h-5 w-5" />,
+                                      label: lang === "de" ? "Stornieren" : "Annulla",
+                                      color: "bg-red-500",
+                                      onClick: () => updateStatusMutation.mutate({ orderId: order.id, status: "cancelled" }),
+                                      testId: `swipe-cancel-${order.id}`,
+                                    },
+                                  ]
+                                : []
+                            }
+                          >
+                            <OrderCard order={order} />
+                          </SwipeableRow>
                         ))}
                       </div>
                     </div>
