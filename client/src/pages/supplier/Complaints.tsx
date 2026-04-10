@@ -439,11 +439,11 @@ export default function SupplierComplaints() {
           <div className="flex gap-2 pt-1">
             <div className="flex-1 min-w-0">
               <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "from")}</label>
-              <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white" data-testid="filter-complaint-date-from" />
+              <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className={`h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white ${!filterDateFrom ? 'date-empty' : ''}`} data-testid="filter-complaint-date-from" />
             </div>
             <div className="flex-1 min-w-0">
               <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "to")}</label>
-              <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white" data-testid="filter-complaint-date-to" />
+              <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className={`h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white ${!filterDateTo ? 'date-empty' : ''}`} data-testid="filter-complaint-date-to" />
             </div>
           </div>
         )}

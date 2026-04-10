@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+input[type="date"].date-empty::-webkit-datetime-edit-text,
+input[type="date"].date-empty::-webkit-datetime-edit-month-field,
+input[type="date"].date-empty::-webkit-datetime-edit-day-field,
+input[type="date"].date-empty::-webkit-datetime-edit-year-field {
+  color: rgba(255, 255, 255, 0.3);
+}
+input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-text,
+input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-month-field,
+input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-day-field,
+input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
+  color: rgba(0, 0, 0, 0.3);
+}
+
 @keyframes wizard-circle {
   0% { transform: scale(0); opacity: 0; }
   50% { transform: scale(1.15); opacity: 1; }

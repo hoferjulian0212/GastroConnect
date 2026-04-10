@@ -850,7 +850,7 @@ export default function RestaurantOrders() {
                 type="date"
                 value={filterDateFrom}
                 onChange={e => setFilterDateFrom(e.target.value)}
-                className="h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white"
+                className={`h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white ${!filterDateFrom ? 'date-empty' : ''}`}
                 data-testid="filter-date-from"
               />
             </div>
@@ -860,7 +860,7 @@ export default function RestaurantOrders() {
                 type="date"
                 value={filterDateTo}
                 onChange={e => setFilterDateTo(e.target.value)}
-                className="h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white"
+                className={`h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white ${!filterDateTo ? 'date-empty' : ''}`}
                 data-testid="filter-date-to"
               />
             </div>
