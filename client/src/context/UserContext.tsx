@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import type { User } from "@shared/schema";
+import { queryClient } from "@/lib/queryClient";
 
 type UserRole = "restaurant" | "supplier";
 
@@ -42,6 +43,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setCurrentRole(role);
     setCurrentUser(null);
     setSelectedUserId(getStoredUserId(role));
+    queryClient.clear();
   }, []);
 
   const selectUser = useCallback((userId: string) => {

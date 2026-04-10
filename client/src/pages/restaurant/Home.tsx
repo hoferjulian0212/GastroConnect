@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Search, Save, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Trash2, Search, Save, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame } from "lucide-react";
 import DraggableCardGrid from "@/components/DraggableCardGrid";
 import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
@@ -58,6 +58,13 @@ export default function RestaurantHome() {
   const { data: products, isLoading: productsLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
     queryKey: [`/api/products?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
+  });
+
+  const { data: allOrders, isLoading: ordersLoading } = useQuery<OrderWithDetails[]>({
+    queryKey: [`/api/orders?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: templates, isLoading: templatesLoading } = useQuery<OrderTemplateWithItems[]>({
@@ -515,6 +522,12 @@ export default function RestaurantHome() {
 
   const totalUnread = unreadConversations.length;
 
+  const pendingOrdersCount = useMemo(() => {
+    if (!allOrders) return 0;
+    const activeStatuses = ["pending", "confirmed", "partially_confirmed", "in_delivery"];
+    return allOrders.filter(o => activeStatuses.includes(o.status)).length;
+  }, [allOrders]);
+
   return (
     <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
       <div>
@@ -549,15 +562,17 @@ export default function RestaurantHome() {
                 </div>
               </div>
             </div>
-            <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 flex flex-col justify-between min-h-[120px]" data-testid="kpi-card-empty">
-              <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Kommt bald" : "In arrivo"}</span>
-              <div className="flex items-end justify-between mt-auto">
-                <p className="text-4xl font-bold text-gray-600 leading-none">--</p>
-                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/[0.06]">
-                  <Sparkles className="h-5 w-5 text-gray-500" />
+            <Link href="/restaurant/orders" data-testid="kpi-card-active-orders">
+              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
+                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Offene Bestellungen" : "Ordini attivi"}</span>
+                <div className="flex items-end justify-between mt-auto">
+                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-active-orders">{ordersLoading ? "..." : <CountUp end={pendingOrdersCount} duration={800} />}</p>
+                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-orange-500/20">
+                    <ShoppingBag className="h-5 w-5 text-orange-400" />
+                  </div>
                 </div>
               </div>
-            </div>
+            </Link>
             <Link href="/restaurant/cost-analysis" data-testid="kpi-card-monthly-spending">
               <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
                 <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Monatsausgaben" : "Spese mensili"}</span>
