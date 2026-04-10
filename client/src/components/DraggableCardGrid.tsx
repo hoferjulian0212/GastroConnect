@@ -38,19 +38,38 @@ function loadLayout(userId: string, role: string, sections: CardSection[]): Layo
   return sections.map(s => ({ id: s.id, size: s.defaultSize || "full" }));
 }
 
+function reorderLayout(layout: LayoutItem[], fromId: string, toIndex: number): LayoutItem[] {
+  const fromIndex = layout.findIndex(l => l.id === fromId);
+  if (fromIndex === -1 || fromIndex === toIndex) return layout;
+  const newLayout = [...layout];
+  const [moved] = newLayout.splice(fromIndex, 1);
+  const insertAt = toIndex > fromIndex ? toIndex - 1 : toIndex;
+  newLayout.splice(Math.max(0, Math.min(insertAt, newLayout.length)), 0, moved);
+  return newLayout;
+}
+
 export default function DraggableCardGrid({ userId, role, sections }: DraggableCardGridProps) {
   const [layout, setLayout] = useState<LayoutItem[]>(() => loadLayout(userId, role, sections));
   const [editMode, setEditMode] = useState(false);
-
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null);
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [dragState, setDragState] = useState<{
+    id: string;
+    pointerX: number;
+    pointerY: number;
+    offsetX: number;
+    offsetY: number;
+    width: number;
+    height: number;
+    startX: number;
+    startY: number;
+  } | null>(null);
   const [previewLayout, setPreviewLayout] = useState<LayoutItem[] | null>(null);
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const cardRectsRef = useRef<Map<string, DOMRect>>(new Map());
-  const isDraggingRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const cardEls = useRef<Map<string, HTMLDivElement>>(new Map());
+  const rafRef = useRef<number>(0);
+  const lastTargetIdx = useRef<number>(-1);
+  const pointerIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     const defaultIds = sections.map(s => s.id);
@@ -78,144 +97,154 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     saveLayout(newLayout);
   }, [layout, saveLayout]);
 
-  const snapshotRects = useCallback(() => {
-    const rects = new Map<string, DOMRect>();
-    cardRefs.current.forEach((el, id) => {
-      rects.set(id, el.getBoundingClientRect());
-    });
-    cardRectsRef.current = rects;
+  const getTargetIndex = useCallback((px: number, py: number, currentLayout: LayoutItem[], dragId: string): number => {
+    const items = currentLayout.filter(l => l.id !== dragId);
+    let bestIdx = 0;
+    let bestDist = Infinity;
+
+    for (let i = 0; i < items.length; i++) {
+      const el = cardEls.current.get(items[i].id);
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dist = Math.hypot((px - cx), (py - cy) * 0.7);
+
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = i;
+      }
+    }
+
+    const bestEl = cardEls.current.get(items[bestIdx]?.id);
+    if (bestEl) {
+      const rect = bestEl.getBoundingClientRect();
+      const cy = rect.top + rect.height / 2;
+      const origIdx = currentLayout.findIndex(l => l.id === items[bestIdx].id);
+      if (py > cy) {
+        return origIdx + 1;
+      }
+      return origIdx;
+    }
+    return 0;
   }, []);
 
-  const getTargetIndex = useCallback((clientX: number, clientY: number, currentLayout: LayoutItem[]): number => {
-    let closest = -1;
-    let closestDist = Infinity;
-
-    for (let i = 0; i < currentLayout.length; i++) {
-      const item = currentLayout[i];
-      if (item.id === dragId) continue;
-      const rect = cardRectsRef.current.get(item.id);
-      if (!rect) continue;
-
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const dist = Math.abs(clientY - centerY) * 2 + Math.abs(clientX - centerX) * 0.5;
-
-      if (dist < closestDist) {
-        closestDist = dist;
-        closest = i;
-      }
-    }
-
-    if (closest === -1) return 0;
-
-    const closestRect = cardRectsRef.current.get(currentLayout[closest].id);
-    if (closestRect) {
-      const centerY = closestRect.top + closestRect.height / 2;
-      if (clientY > centerY) {
-        return closest + 1;
-      }
-    }
-    return closest;
-  }, [dragId]);
-
-  const computePreview = useCallback((clientX: number, clientY: number) => {
-    if (!dragId) return;
-    const targetIdx = getTargetIndex(clientX, clientY, layout);
-    const fromIdx = layout.findIndex(l => l.id === dragId);
-    if (fromIdx === -1) return;
-
-    const newLayout = [...layout];
-    const [moved] = newLayout.splice(fromIdx, 1);
-    const insertAt = targetIdx > fromIdx ? targetIdx - 1 : targetIdx;
-    newLayout.splice(Math.max(0, insertAt), 0, moved);
-
-    const changed = newLayout.some((item, i) => item.id !== (previewLayout || layout)[i]?.id);
-    if (changed) {
-      setPreviewLayout(newLayout);
-    }
-  }, [dragId, layout, previewLayout, getTargetIndex]);
-
-  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, id: string) => {
+  const handlePointerDown = useCallback((e: React.PointerEvent, id: string) => {
     if (!editMode) return;
     e.preventDefault();
     e.stopPropagation();
 
-    const el = cardRefs.current.get(id);
+    const el = cardEls.current.get(id);
     if (!el) return;
-
     const rect = el.getBoundingClientRect();
-    setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-    setDragId(id);
-    setPointerPos({ x: e.clientX, y: e.clientY });
-    isDraggingRef.current = true;
 
-    snapshotRects();
+    pointerIdRef.current = e.pointerId;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  }, [editMode, snapshotRects]);
+    setDragState({
+      id,
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+      width: rect.width,
+      height: rect.height,
+      startX: rect.left,
+      startY: rect.top,
+    });
+    setPreviewLayout(null);
+    lastTargetIdx.current = -1;
+  }, [editMode]);
 
-  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current || !dragId) return;
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragState || e.pointerId !== pointerIdRef.current) return;
     e.preventDefault();
 
-    setPointerPos({ x: e.clientX, y: e.clientY });
-    computePreview(e.clientX, e.clientY);
-  }, [dragId, computePreview]);
+    const px = e.clientX;
+    const py = e.clientY;
 
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current || !dragId) return;
+    setDragState(prev => prev ? { ...prev, pointerX: px, pointerY: py } : null);
+
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const base = previewLayout || layout;
+      const targetIdx = getTargetIndex(px, py, base, dragState.id);
+
+      if (targetIdx !== lastTargetIdx.current) {
+        lastTargetIdx.current = targetIdx;
+        const newLayout = reorderLayout(base, dragState.id, targetIdx);
+        const changed = newLayout.some((item, i) => item.id !== base[i]?.id);
+        if (changed) {
+          setPreviewLayout(newLayout);
+        }
+      }
+    });
+  }, [dragState, layout, previewLayout, getTargetIndex]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!dragState || e.pointerId !== pointerIdRef.current) return;
     e.preventDefault();
+    cancelAnimationFrame(rafRef.current);
 
     if (previewLayout) {
       saveLayout(previewLayout);
     }
 
-    isDraggingRef.current = false;
-    setDragId(null);
-    setPointerPos(null);
+    setDragState(null);
     setPreviewLayout(null);
-  }, [dragId, previewLayout, saveLayout]);
+    lastTargetIdx.current = -1;
+    pointerIdRef.current = null;
+  }, [dragState, previewLayout, saveLayout]);
 
   useEffect(() => {
     if (!editMode) {
-      setDragId(null);
-      setPointerPos(null);
+      cancelAnimationFrame(rafRef.current);
+      setDragState(null);
       setPreviewLayout(null);
-      isDraggingRef.current = false;
+      lastTargetIdx.current = -1;
+      pointerIdRef.current = null;
     }
   }, [editMode]);
 
-  const displayLayout = previewLayout || layout;
-  const sectionMap = useMemo(() => new Map(sections.map(s => [s.id, s])), [sections]);
-
-  const getDragStyle = useCallback((id: string): React.CSSProperties => {
-    if (id !== dragId || !pointerPos) return {};
-    const origRect = cardRectsRef.current.get(id);
-    if (!origRect) return {};
-    return {
-      position: "fixed",
-      left: pointerPos.x - dragOffset.x,
-      top: pointerPos.y - dragOffset.y,
-      width: origRect.width,
-      zIndex: 9999,
-      pointerEvents: "none",
-      transform: "scale(1.03) rotate(1.5deg)",
-      opacity: 0.92,
-      boxShadow: "0 20px 60px rgba(0,0,0,0.25), 0 8px 20px rgba(0,0,0,0.15)",
-      transition: "transform 0.15s ease, box-shadow 0.15s ease",
-    };
-  }, [dragId, pointerPos, dragOffset]);
-
-  const setCardRef = useCallback((id: string) => (el: HTMLDivElement | null) => {
-    if (el) {
-      cardRefs.current.set(id, el);
-    } else {
-      cardRefs.current.delete(id);
-    }
+  useEffect(() => {
+    return () => { cancelAnimationFrame(rafRef.current); };
   }, []);
 
+  useEffect(() => {
+    if (!dragState) return;
+    const handler = (e: Event) => e.preventDefault();
+    document.addEventListener("touchmove", handler, { passive: false });
+    return () => document.removeEventListener("touchmove", handler);
+  }, [dragState]);
+
+  const displayLayout = previewLayout || layout;
+  const sectionMap = useMemo(() => new Map(sections.map(s => [s.id, s])), [sections]);
+  const isDragging = !!dragState;
+
+  const setCardRef = useCallback((id: string) => (el: HTMLDivElement | null) => {
+    if (el) cardEls.current.set(id, el);
+    else cardEls.current.delete(id);
+  }, []);
+
+  const draggedStyle = useMemo((): React.CSSProperties | undefined => {
+    if (!dragState) return undefined;
+    return {
+      position: "fixed",
+      left: dragState.pointerX - dragState.offsetX,
+      top: dragState.pointerY - dragState.offsetY,
+      width: dragState.width,
+      zIndex: 9999,
+      pointerEvents: "none",
+      transform: "scale(1.04) rotate(1.2deg)",
+      opacity: 0.92,
+      borderRadius: "12px",
+      boxShadow: "0 25px 80px rgba(0,0,0,0.28), 0 10px 24px rgba(0,0,0,0.18)",
+      willChange: "transform, left, top",
+    };
+  }, [dragState]);
+
   return (
-    <div ref={containerRef}>
+    <div ref={containerRef} className="relative">
       <div className="flex justify-end mb-3 md:mb-4">
         <button
           onClick={() => setEditMode(!editMode)}
@@ -232,38 +261,46 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
       </div>
 
       <div
+        ref={gridRef}
         className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start"
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        onPointerMove={isDragging ? handlePointerMove : undefined}
+        onPointerUp={isDragging ? handlePointerUp : undefined}
+        onPointerCancel={isDragging ? handlePointerUp : undefined}
       >
         {displayLayout.map((item) => {
           const section = sectionMap.get(item.id);
           if (!section) return null;
 
           const isFull = item.size === "full";
-          const isDragging = dragId === item.id;
-          const isLifted = isDragging && pointerPos !== null;
+          const isBeingDragged = dragState?.id === item.id;
+
+          if (isBeingDragged) {
+            return (
+              <div
+                key={`placeholder-${item.id}`}
+                className={`${isFull ? "col-span-1 lg:col-span-2" : "col-span-1"} transition-all duration-300 ease-out`}
+              >
+                <div
+                  className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5"
+                  style={{ height: dragState.height, minHeight: 60 }}
+                  data-testid={`placeholder-${item.id}`}
+                />
+              </div>
+            );
+          }
 
           return (
             <div
               key={item.id}
               ref={setCardRef(item.id)}
-              className={`relative ${isFull ? "col-span-1 lg:col-span-2" : "col-span-1"} ${
-                isLifted ? "" : "transition-all duration-300 ease-out"
-              } ${
-                isDragging && !isLifted ? "opacity-30" : ""
-              } ${
-                editMode && !isDragging ? "ring-1 ring-border/40 rounded-xl" : ""
-              } ${
-                editMode ? "cursor-grab active:cursor-grabbing" : ""
+              className={`relative ${isFull ? "col-span-1 lg:col-span-2" : "col-span-1"} transition-all duration-300 ease-out ${
+                editMode ? "ring-1 ring-border/40 rounded-xl" : ""
               }`}
-              style={isLifted ? getDragStyle(item.id) : undefined}
               data-testid={`draggable-card-${item.id}`}
             >
               {editMode && (
                 <div
                   className="absolute right-2 top-2 z-20 flex items-center gap-1.5"
-                  onPointerDown={(e) => e.stopPropagation()}
                 >
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleSize(item.id); }}
@@ -288,8 +325,9 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
                     )}
                   </button>
                   <div
-                    className="flex items-center justify-center w-8 h-8 rounded-full bg-background/90 backdrop-blur border shadow-sm text-muted-foreground cursor-grab touch-none"
+                    className="flex items-center justify-center w-8 h-8 rounded-full bg-background/90 backdrop-blur border shadow-sm text-muted-foreground cursor-grab active:cursor-grabbing touch-none select-none"
                     onPointerDown={(e) => handlePointerDown(e, item.id)}
+                    data-testid={`drag-handle-${item.id}`}
                   >
                     <GripVertical className="h-4 w-4" />
                   </div>
@@ -301,14 +339,20 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
             </div>
           );
         })}
-
-        {dragId && pointerPos && (
-          <div
-            className="col-span-1 lg:col-span-2 pointer-events-none"
-            style={{ height: 0, overflow: "visible" }}
-          />
-        )}
       </div>
+
+      {dragState && draggedStyle && (() => {
+        const item = layout.find(l => l.id === dragState.id);
+        const section = item ? sectionMap.get(item.id) : null;
+        if (!section) return null;
+        return (
+          <div style={draggedStyle} className="rounded-xl overflow-hidden">
+            <div className="pointer-events-none select-none">
+              {section.content}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
