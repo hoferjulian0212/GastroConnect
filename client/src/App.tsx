@@ -260,7 +260,7 @@ function HeaderNav() {
   const { lang } = useLanguage();
 
   const restaurantLinks: NavItem[] = [
-    { href: '/restaurant', label: 'Dashboard', exact: true },
+    { href: '/restaurant', label: 'Home', exact: true },
     { href: '/restaurant/inbox', label: 'Inbox' },
     {
       href: '/restaurant/orders',
@@ -284,7 +284,7 @@ function HeaderNav() {
   ];
 
   const supplierLinks: NavItem[] = [
-    { href: '/supplier', label: 'Dashboard', exact: true },
+    { href: '/supplier', label: 'Home', exact: true },
     { href: '/supplier/inbox', label: 'Inbox' },
     {
       href: '/supplier/orders',
