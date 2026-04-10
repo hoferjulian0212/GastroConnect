@@ -1162,8 +1162,13 @@ export async function registerRoutes(
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
+      if (order.restaurantId !== restaurantId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      if (order.status !== "delivered") {
+        return res.status(400).json({ error: "Only delivered orders can be reordered" });
+      }
 
-      // Add items to cart
       for (const item of order.items) {
         await storage.addToCart({
           restaurantId,
@@ -1176,6 +1181,96 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to reorder" });
+    }
+  });
+
+  app.post("/api/supplier/orders/batch-confirm", async (req, res) => {
+    try {
+      const parsed = z.object({ orderIds: z.array(z.string()), supplierId: z.string() }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request body" });
+      const { orderIds, supplierId } = parsed.data;
+      const results: { orderId: string; success: boolean; error?: string }[] = [];
+      for (const orderId of orderIds) {
+        try {
+          const order = await storage.getOrder(orderId);
+          if (!order || order.supplierId !== supplierId || order.status !== "pending") {
+            results.push({ orderId, success: false, error: "Invalid order" });
+            continue;
+          }
+          const stockErrors: string[] = [];
+          for (const item of order.items) {
+            const product = await storage.getProduct(item.productId);
+            if (product && product.stockQuantity !== null && product.stockQuantity !== undefined) {
+              const qty = item.confirmedQuantity ?? item.quantity;
+              if (qty > product.stockQuantity) {
+                stockErrors.push(`${item.productName}: ${qty} > ${product.stockQuantity}`);
+              }
+            }
+          }
+          if (stockErrors.length > 0) {
+            results.push({ orderId, success: false, error: `Insufficient stock: ${stockErrors.join(", ")}` });
+            continue;
+          }
+          await storage.updateOrderStatus(orderId, "confirmed");
+          await storage.addOrderStatusHistory(orderId, "pending", "confirmed", supplierId);
+          const existingMovements = await storage.getStockMovementsByOrder(orderId);
+          const alreadyConfirmed = existingMovements.some((m: any) => m.type === "order_confirmed");
+          if (!alreadyConfirmed) {
+            for (const item of order.items) {
+              const product = await storage.getProduct(item.productId);
+              if (product) {
+                const qty = item.confirmedQuantity ?? item.quantity;
+                const currentStock = product.stockQuantity ?? 0;
+                const newStock = Math.max(0, currentStock - qty);
+                await storage.updateProductStock(item.productId, newStock);
+                await storage.addStockMovement({
+                  productId: item.productId,
+                  supplierId: order.supplierId,
+                  orderId: order.id,
+                  type: "order_confirmed",
+                  quantity: qty,
+                  previousStock: currentStock,
+                  newStock,
+                  note: `Batch: Bestellung #${order.id.slice(0, 8)} bestätigt`,
+                });
+              }
+            }
+          }
+          results.push({ orderId, success: true });
+        } catch {
+          results.push({ orderId, success: false, error: "Processing failed" });
+        }
+      }
+      res.json({ results, confirmed: results.filter(r => r.success).length, failed: results.filter(r => !r.success).length });
+    } catch (error) {
+      res.status(500).json({ error: "Batch confirm failed" });
+    }
+  });
+
+  app.post("/api/supplier/orders/batch-cancel", async (req, res) => {
+    try {
+      const parsed = z.object({ orderIds: z.array(z.string()), supplierId: z.string() }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request body" });
+      const { orderIds, supplierId } = parsed.data;
+      const results: { orderId: string; success: boolean; error?: string }[] = [];
+      for (const orderId of orderIds) {
+        try {
+          const order = await storage.getOrder(orderId);
+          if (!order || order.supplierId !== supplierId || order.status === "delivered" || order.status === "cancelled") {
+            results.push({ orderId, success: false, error: "Invalid order" });
+            continue;
+          }
+          const previousStatus = order.status;
+          await storage.updateOrderStatus(orderId, "cancelled");
+          await storage.addOrderStatusHistory(orderId, previousStatus, "cancelled", supplierId);
+          results.push({ orderId, success: true });
+        } catch {
+          results.push({ orderId, success: false, error: "Processing failed" });
+        }
+      }
+      res.json({ results, cancelled: results.filter(r => r.success).length, failed: results.filter(r => !r.success).length });
+    } catch (error) {
+      res.status(500).json({ error: "Batch cancel failed" });
     }
   });
 

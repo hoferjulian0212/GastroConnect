@@ -4,7 +4,7 @@ import { useRoute, useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, ShoppingBag, Check, MoreHorizontal, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -476,10 +476,13 @@ export default function OrderDetail() {
                   </div>
                   <div className="pb-6">
                     <p className={`text-sm font-medium ${getStatusTextColor(entry.toStatus)}`}>
+                      {getTimelineDescription(entry.toStatus)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {format(new Date(entry.createdAt), "EEEE, dd. MMMM yyyy, HH:mm", { locale: dateLocale })}
                     </p>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      {getTimelineDescription(entry.toStatus)}
+                    <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                      {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true, locale: dateLocale })}
                     </p>
                     {entry.changedByUser && (
                       <p className="text-xs text-muted-foreground/70 mt-0.5">
@@ -490,6 +493,24 @@ export default function OrderDetail() {
                 </div>
               );
             })}
+
+            {order.status === "in_delivery" && order.requestedDeliveryDate && (
+              <div className="mb-4 rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 p-4" data-testid="eta-card">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0">
+                    <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                      {lang === "de" ? "Voraussichtliche Lieferung" : "Consegna prevista"}
+                    </p>
+                    <p className="text-sm font-bold text-purple-700 dark:text-purple-300">
+                      {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {order.status !== "cancelled" && order.status !== "delivered" && (
               <>

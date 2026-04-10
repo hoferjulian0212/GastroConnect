@@ -248,6 +248,23 @@ export default function RestaurantOrders() {
     },
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      return apiRequest("POST", `/api/orders/${orderId}/reorder`, { restaurantId: currentUser?.id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+      toast({
+        title: lang === "de" ? "Artikel in den Warenkorb gelegt" : "Articoli aggiunti al carrello",
+        description: lang === "de" ? "Die Bestellung wurde in Ihren Warenkorb kopiert." : "L'ordine è stato copiato nel carrello.",
+      });
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    },
+  });
+
   const handleExport = (format: "csv" | "pdf") => {
     const params = new URLSearchParams({
       userId: currentUser?.id || "",
@@ -645,7 +662,7 @@ export default function RestaurantOrders() {
               </span>
             )}
           </div>
-          {(canEditOrder(order) || canRequestChange(order)) && (
+          {(canEditOrder(order) || canRequestChange(order) || order.status === "delivered") && (
             <div className="grid grid-cols-2 gap-1.5 w-full md:flex md:w-auto">
               {canEditOrder(order) && (
                 <>
@@ -682,6 +699,23 @@ export default function RestaurantOrders() {
                 >
                   <MessageSquareText className="h-3 w-3 mr-1 shrink-0" />
                   <span className="truncate">{t("orders", "requestChange")}</span>
+                </Button>
+              )}
+              {order.status === "delivered" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs gap-1 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30"
+                  onClick={(e) => { e.stopPropagation(); reorderMutation.mutate(order.id); }}
+                  disabled={reorderMutation.isPending}
+                  data-testid={`button-reorder-${order.id}`}
+                >
+                  {reorderMutation.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <ClipboardList className="h-3 w-3 shrink-0" />
+                  )}
+                  <span className="truncate">{lang === "de" ? "Nachbestellen" : "Riordinare"}</span>
                 </Button>
               )}
             </div>

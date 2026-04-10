@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw, User as UserIcon, SlidersHorizontal, ChevronUp, ChevronDown, Download, RefreshCw } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw, User as UserIcon, SlidersHorizontal, ChevronUp, ChevronDown, Download, RefreshCw, Check } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
@@ -59,6 +59,8 @@ export default function SupplierOrders() {
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ProductWithSupplierAndPromotion | null>(null);
   const [confirmOrder, setConfirmOrder] = useState<OrderWithDetails | null>(null);
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
 
   const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`],
@@ -202,6 +204,65 @@ export default function SupplierOrders() {
     },
   });
 
+  const toggleOrderSelection = (orderId: string) => {
+    setSelectedOrders(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
+
+  const exitBatchMode = () => {
+    setBatchMode(false);
+    setSelectedOrders(new Set());
+  };
+
+  const batchConfirmMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/supplier/orders/batch-confirm", {
+        orderIds: Array.from(selectedOrders),
+        supplierId: currentUser?.id,
+      });
+    },
+    onSuccess: async (res) => {
+      const data = await res.json();
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.includes?.("/api/supplier/detailed-stats") });
+      toast({
+        title: lang === "de" ? `${data.confirmed} Bestellungen bestätigt` : `${data.confirmed} ordini confermati`,
+        ...(data.failed > 0 ? { description: lang === "de" ? `${data.failed} fehlgeschlagen` : `${data.failed} falliti` } : {}),
+      });
+      exitBatchMode();
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    },
+  });
+
+  const batchCancelMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/supplier/orders/batch-cancel", {
+        orderIds: Array.from(selectedOrders),
+        supplierId: currentUser?.id,
+      });
+    },
+    onSuccess: async (res) => {
+      const data = await res.json();
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
+      toast({
+        title: lang === "de" ? `${data.cancelled} Bestellungen storniert` : `${data.cancelled} ordini annullati`,
+        ...(data.failed > 0 ? { description: lang === "de" ? `${data.failed} fehlgeschlagen` : `${data.failed} falliti` } : {}),
+      });
+      exitBatchMode();
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    },
+  });
+
   const sendOrderMessageMutation = useMutation({
     mutationFn: async ({ order, message }: { order: OrderWithDetails; message: string }) => {
       const restaurantName = order.restaurant?.companyName || order.restaurant?.name || "";
@@ -323,12 +384,21 @@ export default function SupplierOrders() {
     const restaurantName = order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown");
     const lastUpdate = order.updatedAt || order.createdAt;
 
+    const isSelected = selectedOrders.has(order.id);
+
     return (
     <div ref={isHighlighted ? highlightRef : undefined}>
-    <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""}`} onClick={() => navTo(`/supplier/orders/${order.id}`)} data-testid={`order-card-${order.id}`}>
+    <div className={`overflow-hidden rounded-md cursor-pointer ${isHighlighted ? "ring-2 ring-primary shadow-md" : ""} ${isSelected ? "ring-2 ring-primary" : ""}`} onClick={() => batchMode && order.status === "pending" ? toggleOrderSelection(order.id) : navTo(`/supplier/orders/${order.id}`)} data-testid={`order-card-${order.id}`}>
       <Card className={`hover-elevate ${getStatusCardBg(order.status)}`}>
       <CardContent className="p-3 md:p-4">
         <div className="flex items-start justify-between gap-2">
+          {batchMode && order.status === "pending" && (
+            <div className="flex items-center shrink-0 pt-0.5" onClick={(e) => { e.stopPropagation(); toggleOrderSelection(order.id); }}>
+              <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/40 bg-background"}`} data-testid={`checkbox-order-${order.id}`}>
+                {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+              </div>
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <p className="font-semibold text-sm md:text-base truncate" data-testid={`text-restaurant-${order.id}`}>
@@ -534,6 +604,27 @@ export default function SupplierOrders() {
             <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{lang === "de" ? "Aufträge" : "Ordini"}</h1>
             <p className="text-sm text-white/50 mt-1">{t("supplierOrders", "incomingOrders")}</p>
           </div>
+          <div className="flex items-center gap-2">
+            {activeStatusTab === "pending" && !batchMode && (
+              <button
+                onClick={() => setBatchMode(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/20 bg-white/[0.07] text-white text-xs font-medium hover:bg-white/15 transition-all"
+                data-testid="button-batch-mode"
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+                <span>{lang === "de" ? "Auswählen" : "Seleziona"}</span>
+              </button>
+            )}
+            {batchMode && (
+              <button
+                onClick={exitBatchMode}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/40 bg-white/20 text-white text-xs font-medium hover:bg-white/25 transition-all"
+                data-testid="button-exit-batch"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span>{lang === "de" ? "Abbrechen" : "Annulla"}</span>
+              </button>
+            )}
           <div className="relative hidden md:block">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
@@ -563,6 +654,7 @@ export default function SupplierOrders() {
                 </button>
               </div>
             )}
+          </div>
           </div>
         </div>
 
@@ -1147,6 +1239,45 @@ export default function SupplierOrders() {
           productsWithStock={allProducts as any}
           onSuccess={() => setConfirmOrder(null)}
         />
+      )}
+
+      {batchMode && selectedOrders.size > 0 && (
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200" data-testid="batch-action-bar">
+          <div className="flex items-center gap-2 bg-[#161921] border border-white/15 rounded-2xl px-4 py-3 shadow-2xl">
+            <span className="text-sm font-medium text-white/80 mr-2">
+              {selectedOrders.size} {lang === "de" ? "ausgewählt" : "selezionati"}
+            </span>
+            <Button
+              size="sm"
+              className="text-xs gap-1"
+              onClick={() => batchConfirmMutation.mutate()}
+              disabled={batchConfirmMutation.isPending || batchCancelMutation.isPending}
+              data-testid="button-batch-confirm"
+            >
+              {batchConfirmMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle className="h-3.5 w-3.5" />
+              )}
+              {lang === "de" ? "Alle bestätigen" : "Conferma tutti"}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="text-xs gap-1"
+              onClick={() => batchCancelMutation.mutate()}
+              disabled={batchConfirmMutation.isPending || batchCancelMutation.isPending}
+              data-testid="button-batch-cancel"
+            >
+              {batchCancelMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <XCircle className="h-3.5 w-3.5" />
+              )}
+              {lang === "de" ? "Alle stornieren" : "Annulla tutti"}
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

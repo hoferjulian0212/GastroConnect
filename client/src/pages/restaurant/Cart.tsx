@@ -6,7 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock, StickyNote } from "lucide-react";
+import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock, StickyNote, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import QuantityInput from "@/components/QuantityInput";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -40,6 +41,15 @@ export default function RestaurantCart() {
   } | null>(null);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const [sendingSupplier, setSendingSupplier] = useState<string | null>(null);
+  const [preConfirmDialog, setPreConfirmDialog] = useState<{
+    mode: "all" | "single";
+    supplierId?: string;
+    supplierName: string;
+    items: { name: string; quantity: number; price: string; unit: string }[];
+    total: string;
+    deliveryDate: string | null;
+    notes: string;
+  } | null>(null);
   const { lang } = useLanguage();
   const t = useT(lang);
 
@@ -608,7 +618,20 @@ export default function RestaurantCart() {
                         size="sm"
                         variant="outline"
                         className="gap-1.5 text-xs md:text-sm shrink-0"
-                        onClick={() => createSupplierOrderMutation.mutate(supplierId)}
+                        onClick={() => {
+                          const deliveryDate = deliveryOptions[supplierId] === "date" && selectedDeliveryDates[supplierId]
+                            ? format(parse(selectedDeliveryDates[supplierId], "yyyy-MM-dd", new Date()), "EEEE, dd. MMMM yyyy", { locale: dateLocale })
+                            : null;
+                          setPreConfirmDialog({
+                            mode: "single",
+                            supplierId,
+                            supplierName: supplier.companyName || supplier.name,
+                            items: items.map(item => ({ name: item.product.name, quantity: item.quantity, price: (getEffectivePrice(item) * item.quantity).toFixed(2), unit: item.product.unit })),
+                            total: calculateTotal(items),
+                            deliveryDate,
+                            notes: orderNotes[supplierId] || "",
+                          });
+                        }}
                         disabled={createSupplierOrderMutation.isPending || createOrderMutation.isPending || isBelowMov(supplierId, items) || (deliveryOptions[supplierId] === "date" && !selectedDeliveryDates[supplierId] && (perSupplierDeliveryDates[supplierId] || []).length > 0)}
                         data-testid={`button-send-supplier-${supplierId}`}
                       >
@@ -650,7 +673,21 @@ export default function RestaurantCart() {
                 <Button
                   className="w-full gap-2 text-sm md:text-base"
                   size="default"
-                  onClick={() => createOrderMutation.mutate()}
+                  onClick={() => {
+                    const allSuppliers = Object.entries(groupedBySupplier || {});
+                    const supplierNames = allSuppliers.map(([, g]) => g.supplier.companyName || g.supplier.name).join(", ");
+                    const allItems = allSuppliers.flatMap(([, g]) => g.items.map(item => ({ name: item.product.name, quantity: item.quantity, price: (getEffectivePrice(item) * item.quantity).toFixed(2), unit: item.product.unit })));
+                    const firstDate = Object.entries(selectedDeliveryDates).find(([sid, d]) => d && deliveryOptions[sid] === "date");
+                    const deliveryDateStr = firstDate ? format(parse(firstDate[1], "yyyy-MM-dd", new Date()), "EEEE, dd. MMMM yyyy", { locale: dateLocale }) : null;
+                    setPreConfirmDialog({
+                      mode: "all",
+                      supplierName: supplierNames,
+                      items: allItems,
+                      total: grandTotal,
+                      deliveryDate: deliveryDateStr,
+                      notes: Object.values(orderNotes).filter(n => n.trim()).join("; "),
+                    });
+                  }}
                   disabled={createOrderMutation.isPending || createSupplierOrderMutation.isPending || supplierIds.some(sid => isBelowMov(sid, (groupedBySupplier || {})[sid]?.items || [])) || supplierIds.some(sid => deliveryOptions[sid] === "date" && !selectedDeliveryDates[sid] && (perSupplierDeliveryDates[sid] || []).length > 0)}
                   data-testid="button-checkout"
                 >
@@ -677,6 +714,83 @@ export default function RestaurantCart() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!preConfirmDialog} onOpenChange={(open) => { if (!open) setPreConfirmDialog(null); }}>
+        <DialogContent className="max-w-md" data-testid="dialog-order-confirm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5 text-primary" />
+              {lang === "de" ? "Bestellung bestätigen" : "Conferma ordine"}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === "de" ? "Bitte überprüfen Sie Ihre Bestellung vor dem Absenden." : "Controlla il tuo ordine prima di inviarlo."}
+            </DialogDescription>
+          </DialogHeader>
+          {preConfirmDialog && (
+            <div className="space-y-4">
+              <div className="rounded-xl bg-muted/40 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground shrink-0">{lang === "de" ? "Lieferant" : "Fornitore"}</span>
+                  <span className="font-medium ml-auto text-right truncate">{preConfirmDialog.supplierName}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground shrink-0">{lang === "de" ? "Lieferung" : "Consegna"}</span>
+                  <span className="font-medium ml-auto text-right truncate">{preConfirmDialog.deliveryDate || (lang === "de" ? "Schnellstmöglich" : "Il prima possibile")}</span>
+                </div>
+              </div>
+
+              <div className="max-h-48 overflow-y-auto space-y-1.5">
+                {preConfirmDialog.items.map((item, i) => (
+                  <div key={i} className="flex justify-between items-center text-sm px-1 gap-2">
+                    <span className="truncate text-muted-foreground">{item.quantity}x {item.name}</span>
+                    <span className="font-medium shrink-0">{item.price}€</span>
+                  </div>
+                ))}
+              </div>
+
+              {preConfirmDialog.notes && (
+                <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 px-3 py-2">
+                  <StickyNote className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-800 dark:text-amber-300">{preConfirmDialog.notes}</p>
+                </div>
+              )}
+
+              <Separator />
+              <div className="flex justify-between items-center font-bold text-lg">
+                <span>{lang === "de" ? "Gesamt" : "Totale"}</span>
+                <span data-testid="confirm-total">{preConfirmDialog.total}€</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setPreConfirmDialog(null)} data-testid="button-confirm-cancel">
+              {lang === "de" ? "Zurück" : "Indietro"}
+            </Button>
+            <Button
+              onClick={() => {
+                if (preConfirmDialog?.mode === "single" && preConfirmDialog.supplierId) {
+                  createSupplierOrderMutation.mutate(preConfirmDialog.supplierId);
+                } else {
+                  createOrderMutation.mutate();
+                }
+                setPreConfirmDialog(null);
+              }}
+              disabled={createOrderMutation.isPending || createSupplierOrderMutation.isPending}
+              className="gap-2"
+              data-testid="button-confirm-send"
+            >
+              {(createOrderMutation.isPending || createSupplierOrderMutation.isPending) ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              {lang === "de" ? "Jetzt bestellen" : "Ordina ora"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
