@@ -1535,14 +1535,15 @@ export default function SupplierProducts() {
             </>
           ) : (
             <>
+              <button
+                onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
+                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1"
+                data-testid="button-back-to-categories"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {lang === "de" ? "Zurück" : "Indietro"}
+              </button>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
-                  className="flex items-center justify-center h-8 w-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors shrink-0"
-                  data-testid="button-back-to-categories"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   {(() => {
                     const conf = categoryConfig[selectedCategory];

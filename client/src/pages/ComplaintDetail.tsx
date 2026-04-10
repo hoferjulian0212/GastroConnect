@@ -150,8 +150,9 @@ export default function ComplaintDetail() {
     return (
       <div className="min-h-dvh bg-background flex flex-col">
         <div className="p-4">
-          <button onClick={goBack} className="h-10 w-10 rounded-full bg-muted/60 flex items-center justify-center" data-testid="button-back">
-            <ArrowLeft className="h-5 w-5" />
+          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
+            <ArrowLeft className="h-4 w-4" />
+            {lang === "de" ? "Zurück" : "Indietro"}
           </button>
         </div>
         <div className="flex-1 flex items-center justify-center">
@@ -186,8 +187,9 @@ export default function ComplaintDetail() {
   return (
     <div className="min-h-dvh bg-background flex flex-col" data-testid="page-complaint-detail">
       <div className="flex items-center justify-between p-4 pb-0">
-        <button onClick={goBack} className="h-10 w-10 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors" data-testid="button-back">
-          <ArrowLeft className="h-5 w-5" />
+        <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
+          <ArrowLeft className="h-4 w-4" />
+          {lang === "de" ? "Zurück" : "Indietro"}
         </button>
         <button className="h-10 w-10 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors" data-testid="button-more-options">
           <MoreHorizontal className="h-5 w-5" />

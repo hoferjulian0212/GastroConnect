@@ -247,14 +247,6 @@ export default function ProductDetail() {
   return (
     <div className="space-y-6">
       <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="product-detail-hero">
-        <button
-          onClick={() => window.history.back()}
-          className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors"
-          data-testid="button-back"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {lang === "de" ? "Zurück" : "Indietro"}
-        </button>
         <h1 className="text-xl md:text-2xl font-bold text-white" data-testid="text-product-name">{product.name}</h1>
         <div className="flex items-center gap-2">
           <Avatar className="h-5 w-5">
@@ -266,6 +258,15 @@ export default function ProductDetail() {
           <span className="text-sm text-white/60">{product.supplier?.companyName || product.supplier?.name}</span>
         </div>
       </div>
+
+      <button
+        onClick={() => window.history.back()}
+        className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-4 md:px-6"
+        data-testid="button-back"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        {lang === "de" ? "Zurück" : "Indietro"}
+      </button>
 
       <div className="max-w-3xl mx-auto">
         <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-6">

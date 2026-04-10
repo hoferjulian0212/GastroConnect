@@ -374,10 +374,15 @@ function RestaurantDetail({
 
   return (
     <div className="space-y-4 md:space-y-6 max-w-4xl mx-auto">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1"
+        data-testid="button-back-to-list"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        {lang === "de" ? "Zurück" : "Indietro"}
+      </button>
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back-to-list">
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl md:text-2xl font-bold truncate" data-testid="text-restaurant-detail-name">
             {restaurant.companyName || restaurant.name}
