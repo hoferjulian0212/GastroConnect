@@ -209,7 +209,7 @@ function HeaderNav() {
   };
 
   return (
-    <nav className="hidden md:flex items-center gap-1" data-testid="header-nav">
+    <nav className="hidden md:flex items-center gap-4" data-testid="header-nav">
       {links.map(link => (
         <Link key={link.href} href={link.href}>
           <span
@@ -277,7 +277,7 @@ function PageHero() {
   if (!title) return null;
 
   return (
-    <div className="-mx-4 md:-mx-6 bg-[#161921] px-4 md:px-6 pt-4 pb-6" data-testid="page-hero">
+    <div className="-mx-4 md:-mx-6 bg-[#161921] px-4 md:px-6 pt-4 pb-6 rounded-b-3xl" data-testid="page-hero">
       <h1 className="text-2xl md:text-3xl font-bold text-white">{title}</h1>
     </div>
   );
