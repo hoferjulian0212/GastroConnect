@@ -287,52 +287,45 @@ export default function SupplierPromotions() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 md:gap-3">
-          <Tag className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl space-y-4" data-testid="promotions-hero">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "promotions")}</h1>
-            <p className="text-xs md:text-sm text-muted-foreground">{lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti"}</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "promotions")}</h1>
+            <p className="text-sm text-white/50 mt-1">{lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti"}</p>
           </div>
+          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5" size="sm" data-testid="button-create-promotion">
+            <Plus className="h-4 w-4" />
+            {t("promotionsPage", "createPromotion")}
+          </Button>
         </div>
-        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} data-testid="button-create-promotion">
-          <Plus className="h-4 w-4 mr-1.5" />
-          {t("promotionsPage", "createPromotion")}
-        </Button>
-      </div>
 
-      <div className="grid gap-3 grid-cols-3 md:gap-4 auto-cols-fr">
-        <Card>
-          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+        <div className="grid gap-2 md:gap-3 grid-cols-3">
+          <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
             <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-primary" data-testid="text-total-promotions">{promotionGroups.length}</div>
-              <p className="text-xs md:text-sm text-muted-foreground">{t("common", "total")}</p>
+              <div className="text-xl md:text-2xl font-bold text-blue-400" data-testid="text-total-promotions">{promotionGroups.length}</div>
+              <p className="text-[10px] md:text-xs text-white/50">{t("common", "total")}</p>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
             <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-green-600" data-testid="text-active-promotions">
+              <div className="text-xl md:text-2xl font-bold text-green-400" data-testid="text-active-promotions">
                 {promotionGroups.filter(g => {
                   const now = new Date();
                   return g.isActive && new Date(g.startDate) <= now && new Date(g.endDate) >= now;
                 }).length}
               </div>
-              <p className="text-xs md:text-sm text-muted-foreground">{t("promotionsPage", "active")}</p>
+              <p className="text-[10px] md:text-xs text-white/50">{t("promotionsPage", "active")}</p>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
             <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-muted-foreground" data-testid="text-expired-promotions">
+              <div className="text-xl md:text-2xl font-bold text-white/40" data-testid="text-expired-promotions">
                 {promotionGroups.filter(g => new Date(g.endDate) < new Date()).length}
               </div>
-              <p className="text-xs md:text-sm text-muted-foreground">{t("promotionsPage", "expired")}</p>
+              <p className="text-[10px] md:text-xs text-white/50">{t("promotionsPage", "expired")}</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-3">
