@@ -32,6 +32,8 @@ import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import SwipeableRow from "@/components/SwipeableRow";
+import StaggeredList from "@/components/StaggeredList";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 interface OrderContent {
   items: { name: string; quantity: number; price: string; imageUrl?: string | null }[];
@@ -143,6 +145,11 @@ export default function SupplierInbox() {
   const [, setLocation] = useLocation();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
+  const { containerRef: pullRefreshRef, pullDistance, isRefreshing, progress: pullProgress } = usePullToRefresh({
+    onRefresh: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+    },
+  });
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
   const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string } | null>(null);
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
@@ -719,7 +726,14 @@ export default function SupplierInbox() {
                 />
               </div>
             </CardHeader>
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div ref={pullRefreshRef} className="flex-1 min-h-0 overflow-y-auto relative">
+              {pullDistance > 0 && (
+                <div className="absolute top-0 left-0 right-0 flex justify-center z-10 pointer-events-none md:hidden" style={{ transform: `translateY(${pullDistance - 40}px)` }}>
+                  <div className={`flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 border border-primary/20 ${isRefreshing ? "animate-pull-spin" : ""}`}>
+                    <RefreshCw className="h-4 w-4 text-primary" style={{ transform: isRefreshing ? undefined : `rotate(${pullProgress * 270}deg)`, opacity: pullProgress }} />
+                  </div>
+                </div>
+              )}
               <div className="px-2 pb-2">
                 {conversationsLoading ? (
                   <div className="space-y-2">
@@ -728,7 +742,7 @@ export default function SupplierInbox() {
                     ))}
                   </div>
                 ) : filteredConversations && filteredConversations.length > 0 ? (
-                  <div className="space-y-0.5">
+                  <StaggeredList className="space-y-0.5" staggerDelay={30}>
                     {filteredConversations.map((conv) => {
                       const lastMessageTime = conv.lastMessage?.createdAt 
                         ? format(new Date(conv.lastMessage.createdAt), isToday(new Date(conv.lastMessage.createdAt)) ? "HH:mm" : "dd.MM.")
@@ -830,7 +844,7 @@ export default function SupplierInbox() {
                         </SwipeableRow>
                       );
                     })}
-                  </div>
+                  </StaggeredList>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center px-4">
                     <MessageSquare className="h-10 w-10 text-muted-foreground/50 mb-2" />

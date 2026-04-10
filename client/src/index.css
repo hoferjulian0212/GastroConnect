@@ -654,3 +654,50 @@ html, body, #root {
 .animate-badge-pulse {
   animation: badge-pulse 0.4s ease-in-out;
 }
+
+@keyframes stagger-fade-in {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes page-fade-in {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-page-enter {
+  animation: page-fade-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes status-dot-pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes status-line-fill {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+.animate-status-dot {
+  animation: status-dot-pop 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+.animate-status-line {
+  animation: status-line-fill 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  transform-origin: left center;
+}
+
+@keyframes toast-progress-shrink {
+  0% { transform: scaleX(1); }
+  100% { transform: scaleX(0); }
+}
+.toast-progress-bar {
+  animation: toast-progress-shrink var(--toast-duration, 4s) linear forwards;
+  transform-origin: left center;
+}
+
+@keyframes pull-spinner {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.animate-pull-spin {
+  animation: pull-spinner 0.8s linear infinite;
+}

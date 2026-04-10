@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList, AlertTriangle, User as UserIcon, Download, FileText } from "lucide-react";
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList, AlertTriangle, User as UserIcon, Download, FileText, RefreshCw } from "lucide-react";
 import type { OrderWithDetails, Product, DeliverySchedule, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { format, addDays, startOfDay, formatDistanceToNow, isToday, isYesterday } from "date-fns";
@@ -24,6 +24,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import RestaurantTemplates from "./Templates";
 import SwipeableRow from "@/components/SwipeableRow";
+import StaggeredList from "@/components/StaggeredList";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 interface EditableItem {
   id: string;
@@ -49,6 +51,12 @@ export default function RestaurantOrders() {
   const highlightRef = useRef<HTMLDivElement>(null);
 
   const activeTab = tabParam === "templates" ? "templates" : "orders";
+
+  const { containerRef: pullRefreshRef, pullDistance, isRefreshing, progress: pullProgress } = usePullToRefresh({
+    onRefresh: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
+    },
+  });
   const setActiveTab = (tab: "orders" | "templates") => {
     if (tab === "templates") {
       navigate("/restaurant/orders?tab=templates");
@@ -593,13 +601,16 @@ export default function RestaurantOrders() {
                 return (
                   <div key={step} className="flex items-center flex-1 last:flex-none">
                     <div className="flex flex-col items-center" data-testid={`status-step-${step}-${order.id}`}>
-                      <div className={`flex items-center justify-center h-6 w-6 md:h-7 md:w-7 rounded-full border-2 transition-colors ${
-                        isCurrent
-                          ? `${getStatusAccent(step)} border-transparent`
-                          : isActive
-                            ? `${getStatusAccent(step)} border-transparent opacity-60`
-                            : "bg-muted/50 border-border"
-                      }`}>
+                      <div
+                        className={`flex items-center justify-center h-6 w-6 md:h-7 md:w-7 rounded-full border-2 ${isActive ? "animate-status-dot" : ""} ${
+                          isCurrent
+                            ? `${getStatusAccent(step)} border-transparent`
+                            : isActive
+                              ? `${getStatusAccent(step)} border-transparent opacity-60`
+                              : "bg-muted/50 border-border"
+                        }`}
+                        style={isActive ? { animationDelay: `${i * 120}ms` } : undefined}
+                      >
                         {i === 0 && <Clock className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
                         {i === 1 && <Package className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
                         {i === 2 && <AlertTriangle className={`h-3 w-3 ${isActive ? "text-white" : "text-muted-foreground"}`} />}
@@ -611,7 +622,7 @@ export default function RestaurantOrders() {
                       </span>
                     </div>
                     {i < statusSteps.length - 1 && (
-                      <div className={`flex-1 h-0.5 mx-1 rounded-full ${i < currentStep ? getStatusAccent(statusSteps[i + 1]) + " opacity-40" : "bg-border"}`} />
+                      <div className={`flex-1 h-0.5 mx-1 rounded-full ${i < currentStep ? getStatusAccent(statusSteps[i + 1]) + " opacity-40 animate-status-line" : "bg-border"}`} style={i < currentStep ? { animationDelay: `${(i + 1) * 120}ms` } : undefined} />
                     )}
                   </div>
                 );
@@ -915,6 +926,14 @@ export default function RestaurantOrders() {
         )}
       </div>
 
+      <div ref={pullRefreshRef} className="relative">
+        {pullDistance > 0 && (
+          <div className="absolute top-0 left-0 right-0 flex justify-center z-10 pointer-events-none md:hidden" style={{ transform: `translateY(${pullDistance - 40}px)` }}>
+            <div className={`flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 border border-primary/20 ${isRefreshing ? "animate-pull-spin" : ""}`}>
+              <RefreshCw className="h-4 w-4 text-primary" style={{ transform: isRefreshing ? undefined : `rotate(${pullProgress * 270}deg)`, opacity: pullProgress }} />
+            </div>
+          </div>
+        )}
       {isLoading ? (
         <div className="space-y-3 md:space-y-4">
           {[1, 2, 3].map((i) => (
@@ -964,7 +983,7 @@ export default function RestaurantOrders() {
                   <h3 className="text-sm font-semibold text-muted-foreground">{group.label}</h3>
                   <span className="text-xs text-muted-foreground/60">({group.orders.length})</span>
                 </div>
-                <div className="space-y-2 md:space-y-3">
+                <StaggeredList className="space-y-2 md:space-y-3" staggerDelay={40}>
                   {group.orders.map((order) => (
                     <SwipeableRow
                       key={order.id}
@@ -994,12 +1013,13 @@ export default function RestaurantOrders() {
                       <OrderCard order={order} />
                     </SwipeableRow>
                   ))}
-                </div>
+                </StaggeredList>
               </div>
             ));
           })()}
         </div>
       )}
+      </div>
 
       <Dialog open={!!detailOrder} onOpenChange={(open) => { if (!open) { setDetailOrder(null); setShowMessageInput(false); setOrderMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">

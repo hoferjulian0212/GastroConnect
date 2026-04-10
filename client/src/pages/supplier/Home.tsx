@@ -17,6 +17,7 @@ import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import DraggableCardGrid from "@/components/DraggableCardGrid";
+import CountUp from "@/components/CountUp";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
@@ -328,7 +329,7 @@ export default function SupplierHome() {
               <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
                 <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span>
                 <div className="flex items-end justify-between mt-auto">
-                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : totalUnread}</p>
+                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : <CountUp end={totalUnread} duration={800} />}</p>
                   <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-blue-500/20">
                     <MessageSquare className="h-5 w-5 text-blue-400" />
                   </div>
@@ -339,7 +340,7 @@ export default function SupplierHome() {
               <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
                 <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Neue Bestellungen" : "Nuovi ordini"}</span>
                 <div className="flex items-end justify-between mt-auto">
-                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-new-orders">{ordersLoading ? "..." : (recentOrders?.length || 0)}</p>
+                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-new-orders">{ordersLoading ? "..." : <CountUp end={recentOrders?.length || 0} duration={800} />}</p>
                   <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-amber-500/20">
                     <ClipboardList className="h-5 w-5 text-amber-400" />
                   </div>
@@ -353,7 +354,7 @@ export default function SupplierHome() {
                   <Skeleton className="h-10 w-20 bg-white/10" />
                 ) : monthlyChange !== null ? (
                   <p className={`text-3xl md:text-4xl font-bold leading-none ${monthlyChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`} data-testid="kpi-stats-change">
-                    {monthlyChange >= 0 ? '+' : ''}{monthlyChange.toFixed(1)}%
+                    <CountUp end={monthlyChange} duration={1000} decimals={1} prefix={monthlyChange >= 0 ? "+" : ""} suffix="%" />
                   </p>
                 ) : (
                   <p className="text-4xl font-bold text-gray-500 leading-none">--</p>
@@ -367,7 +368,7 @@ export default function SupplierHome() {
               <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
                 <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Niedriger Bestand" : "Scorte basse"}</span>
                 <div className="flex items-end justify-between mt-auto">
-                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-low-stock">{lowStockLoading ? "..." : (lowStockProducts?.length || 0)}</p>
+                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-low-stock">{lowStockLoading ? "..." : <CountUp end={lowStockProducts?.length || 0} duration={800} />}</p>
                   <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-rose-500/20">
                     <AlertTriangle className="h-5 w-5 text-rose-400" />
                   </div>
