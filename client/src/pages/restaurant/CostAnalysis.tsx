@@ -222,35 +222,35 @@ export default function CostAnalysis() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 md:p-6 space-y-4 md:space-y-6 pb-24 md:pb-6 overflow-y-auto">
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold" data-testid="cost-analysis-title">
-              {t("costAnalysis", "title")}
-            </h1>
+      <div className="space-y-4 md:space-y-6 pb-24 md:pb-6 overflow-y-auto">
+        <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl space-y-4" data-testid="cost-analysis-hero">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="cost-analysis-title">
+                {t("costAnalysis", "title")}
+              </h1>
+            </div>
+            <Button
+              size="sm"
+              className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15"
+              onClick={() => {
+                setShowSettings(!showSettings);
+                if (!showSettings && settings) {
+                  setTargetInput(settings.targetCostPerGuest || "");
+                }
+              }}
+              data-testid="button-settings"
+            >
+              <Settings className="w-4 h-4 mr-1" />
+              {t("costAnalysis", "settings")}
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setShowSettings(!showSettings);
-              if (!showSettings && settings) {
-                setTargetInput(settings.targetCostPerGuest || "");
-              }
-            }}
-            data-testid="button-settings"
-          >
-            <Settings className="w-4 h-4 mr-1" />
-            {t("costAnalysis", "settings")}
-          </Button>
-        </div>
 
-        {showSettings && (
-          <Card data-testid="settings-card">
-            <CardContent className="p-4">
+          {showSettings && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4" data-testid="settings-card">
               <div className="flex items-end gap-3">
                 <div className="flex-1">
-                  <Label className="text-sm font-medium">{t("costAnalysis", "targetPerGuest")}</Label>
+                  <Label className="text-sm font-medium text-white/70">{t("costAnalysis", "targetPerGuest")}</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -258,7 +258,7 @@ export default function CostAnalysis() {
                     value={targetInput}
                     onChange={e => setTargetInput(e.target.value)}
                     placeholder="0.00"
-                    className="mt-1"
+                    className="mt-1 bg-white/10 border-white/20 text-white placeholder:text-white/30"
                     data-testid="input-target-cost"
                   />
                 </div>
@@ -266,107 +266,96 @@ export default function CostAnalysis() {
                   onClick={handleSaveTarget}
                   disabled={saveSettingsMutation.isPending}
                   size="sm"
+                  className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15"
                   data-testid="button-save-target"
                 >
                   {t("costAnalysis", "save")}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          )}
 
-        <div className="flex items-center justify-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigateMonth(-1)} data-testid="button-prev-month">
-            <ChevronLeft className="w-5 h-5" />
-          </Button>
-          <span className="text-lg font-semibold min-w-[120px] text-center" data-testid="text-current-month">
-            {formatMonth(currentMonth)}
-          </span>
-          <Button variant="ghost" size="icon" onClick={() => navigateMonth(1)} data-testid="button-next-month">
-            <ChevronRight className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center justify-center gap-4">
+            <button className="p-1.5 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors" onClick={() => navigateMonth(-1)} data-testid="button-prev-month">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="text-lg font-semibold min-w-[120px] text-center text-white" data-testid="text-current-month">
+              {formatMonth(currentMonth)}
+            </span>
+            <button className="p-1.5 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors" onClick={() => navigateMonth(1)} data-testid="button-next-month">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          {analysisLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
+                  <div className="h-16 animate-pulse bg-white/10 rounded" />
+                </div>
+              ))}
+            </div>
+          ) : analysis && analysis.totalOvernights > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+              <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4" data-testid="card-cost-per-guest">
+                <div className="flex items-center gap-2 text-sm text-white/50 mb-1">
+                  <Calculator className="w-4 h-4" />
+                  {t("costAnalysis", "costPerGuest")}
+                </div>
+                <div className="text-2xl font-bold text-white">{Number(analysis.costPerGuest).toFixed(2)} EUR</div>
+                {target > 0 && (
+                  <div className={`flex items-center gap-1 text-xs mt-1 ${difference > 0 ? "text-red-400" : difference < 0 ? "text-green-400" : "text-white/40"}`}>
+                    {getStatusIcon()}
+                    {getStatusLabel()} ({deviation > 0 ? "+" : ""}{deviation.toFixed(1)}%)
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4" data-testid="card-target">
+                <div className="flex items-center gap-2 text-sm text-white/50 mb-1">
+                  <Target className="w-4 h-4" />
+                  {t("costAnalysis", "targetCost")}
+                </div>
+                <div className="text-2xl font-bold text-white">{target > 0 ? `${target.toFixed(2)} EUR` : "--"}</div>
+                {target > 0 && (
+                  <div className={`text-xs mt-1 ${difference > 0 ? "text-red-400" : difference < 0 ? "text-green-400" : "text-white/40"}`}>
+                    {difference > 0 ? "+" : ""}{difference.toFixed(2)} EUR
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4" data-testid="card-total-costs">
+                <div className="flex items-center gap-2 text-sm text-white/50 mb-1">
+                  <Euro className="w-4 h-4" />
+                  {t("costAnalysis", "totalCosts")}
+                </div>
+                <div className="text-2xl font-bold text-white">{Number(analysis.totalCosts).toFixed(2)}</div>
+                <div className="text-xs text-white/40 mt-1">
+                  {analysis.orderCount} {t("costAnalysis", "orderCount")}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4" data-testid="card-overnights">
+                <div className="flex items-center gap-2 text-sm text-white/50 mb-1">
+                  <Users className="w-4 h-4" />
+                  {t("costAnalysis", "totalOvernights")}
+                </div>
+                <div className="text-2xl font-bold text-white">{analysis.totalOvernights}</div>
+                <div className="text-xs text-white/40 mt-1">
+                  {analysis.daysWithData} {t("costAnalysis", "daysRecorded")}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-white/10 bg-white/[0.07] p-8 text-center" data-testid="card-no-data">
+              <Users className="w-12 h-12 mx-auto text-white/30 mb-3" />
+              <h3 className="font-semibold text-lg text-white">{t("costAnalysis", "noData")}</h3>
+              <p className="text-white/50 text-sm mt-1">{t("costAnalysis", "noDataDesc")}</p>
+            </div>
+          )}
         </div>
 
-        {analysisLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[1, 2, 3, 4].map(i => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <div className="h-16 animate-pulse bg-gray-100 rounded" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : analysis && analysis.totalOvernights > 0 ? (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Card data-testid="card-cost-per-guest">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <Calculator className="w-4 h-4" />
-                    {t("costAnalysis", "costPerGuest")}
-                  </div>
-                  <div className="text-2xl font-bold">{Number(analysis.costPerGuest).toFixed(2)} EUR</div>
-                  {target > 0 && (
-                    <div className={`flex items-center gap-1 text-xs mt-1 ${getStatusColor()}`}>
-                      {getStatusIcon()}
-                      {getStatusLabel()} ({deviation > 0 ? "+" : ""}{deviation.toFixed(1)}%)
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card data-testid="card-target">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <Target className="w-4 h-4" />
-                    {t("costAnalysis", "targetCost")}
-                  </div>
-                  <div className="text-2xl font-bold">{target > 0 ? `${target.toFixed(2)} EUR` : "--"}</div>
-                  {target > 0 && (
-                    <div className={`text-xs mt-1 ${difference > 0 ? "text-red-600" : difference < 0 ? "text-green-600" : "text-gray-500"}`}>
-                      {difference > 0 ? "+" : ""}{difference.toFixed(2)} EUR
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card data-testid="card-total-costs">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <Euro className="w-4 h-4" />
-                    {t("costAnalysis", "totalCosts")}
-                  </div>
-                  <div className="text-2xl font-bold">{Number(analysis.totalCosts).toFixed(2)}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {analysis.orderCount} {t("costAnalysis", "orderCount")}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card data-testid="card-overnights">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <Users className="w-4 h-4" />
-                    {t("costAnalysis", "totalOvernights")}
-                  </div>
-                  <div className="text-2xl font-bold">{analysis.totalOvernights}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {analysis.daysWithData} {t("costAnalysis", "daysRecorded")}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </>
-        ) : (
-          <Card data-testid="card-no-data">
-            <CardContent className="p-8 text-center">
-              <Users className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-              <h3 className="font-semibold text-lg">{t("costAnalysis", "noData")}</h3>
-              <p className="text-muted-foreground text-sm mt-1">{t("costAnalysis", "noDataDesc")}</p>
-            </CardContent>
-          </Card>
-        )}
+        <div className="px-4 md:px-6 space-y-4 md:space-y-6">
 
         {chartData.length > 1 && (
           <Card data-testid="card-chart">
@@ -483,6 +472,7 @@ export default function CostAnalysis() {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );
