@@ -38,6 +38,7 @@ export default function SupplierOrders() {
   const initialStatus = searchParams.get("status");
   const highlightRef = useRef<HTMLDivElement>(null);
 
+  const [activeStatusTab, setActiveStatusTab] = useState<string>(initialStatus || (highlightOrderId ? "all" : "pending"));
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
   const [filterRestaurant, setFilterRestaurant] = useState<string>(initialRestaurantId || "all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
@@ -499,103 +500,124 @@ export default function SupplierOrders() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{lang === "de" ? "Aufträge" : "Ordini"}</h1>
-        <p className="text-sm md:text-base text-muted-foreground">{t("supplierOrders", "incomingOrders")}</p>
-      </div>
+      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="orders-hero">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{lang === "de" ? "Aufträge" : "Ordini"}</h1>
+          <p className="text-sm text-white/50 mt-1">{t("supplierOrders", "incomingOrders")}</p>
+        </div>
 
-      {uniqueRestaurants.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-          <button
-            onClick={() => setFilterRestaurant("all")}
-            className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all shrink-0 ${
-              filterRestaurant === "all"
-                ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                : "border-border bg-background text-foreground hover:bg-muted"
-            }`}
-            data-testid="filter-restaurant-all"
-          >
-            <Store className="h-4 w-4 shrink-0" />
-            <span className="text-xs font-medium whitespace-nowrap">{t("common", "all")}</span>
-            <Badge variant={filterRestaurant === "all" ? "secondary" : "outline"} className={`text-[10px] px-1.5 py-0 h-5 ${filterRestaurant === "all" ? "bg-white/20 text-primary-foreground border-0" : ""}`}>
-              {orders?.length || 0}
-            </Badge>
-          </button>
-          {uniqueRestaurants.map(restaurant => {
-            const isActive = filterRestaurant === restaurant.id;
+        {uniqueRestaurants.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => setFilterRestaurant("all")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
+                filterRestaurant === "all"
+                  ? "border-white/40 bg-white/20 text-white shadow-sm"
+                  : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
+              }`}
+              data-testid="filter-restaurant-all"
+            >
+              <Store className="h-3 w-3" />
+              <span>{t("common", "all")}</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{orders?.length || 0}</span>
+            </button>
+            {uniqueRestaurants.map(restaurant => {
+              const isActive = filterRestaurant === restaurant.id;
+              return (
+                <button
+                  key={restaurant.id}
+                  onClick={() => setFilterRestaurant(restaurant.id)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
+                    isActive
+                      ? "border-white/40 bg-white/20 text-white shadow-sm"
+                      : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
+                  }`}
+                  data-testid={`filter-restaurant-${restaurant.id}`}
+                >
+                  <Avatar className="h-4 w-4">
+                    <AvatarImage src={restaurant.profileImageUrl || undefined} />
+                    <AvatarFallback className="text-[7px] font-semibold bg-white/20 text-white">
+                      {restaurant.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="max-w-[80px] truncate">{restaurant.name}</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{restaurant.orderCount}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          {([
+            { key: "pending", dotColor: "bg-yellow-500" },
+            { key: "confirmed", dotColor: "bg-blue-500" },
+            { key: "partially_confirmed", dotColor: "bg-orange-500" },
+            { key: "in_delivery", dotColor: "bg-purple-500" },
+            { key: "delivered", dotColor: "bg-green-500" },
+            { key: "cancelled", dotColor: "bg-red-500" },
+            { key: "all", dotColor: "bg-gray-400" },
+          ] as const).map(({ key, dotColor }) => {
+            const count = filterOrders(key === "all" ? null : key).length;
             return (
               <button
-                key={restaurant.id}
-                onClick={() => setFilterRestaurant(restaurant.id)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all shrink-0 ${
-                  isActive
-                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "border-border bg-background text-foreground hover:bg-muted"
+                key={key}
+                onClick={() => setActiveStatusTab(key)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
+                  activeStatusTab === key
+                    ? "border-white/40 bg-white/20 text-white shadow-sm"
+                    : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
                 }`}
-                data-testid={`filter-restaurant-${restaurant.id}`}
+                data-testid={`filter-status-${key}`}
               >
-                <Avatar className="h-5 w-5 shrink-0">
-                  <AvatarImage src={restaurant.profileImageUrl || undefined} />
-                  <AvatarFallback className={`text-[9px] font-semibold ${isActive ? "bg-white/20 text-primary-foreground" : "bg-primary/10 text-primary"}`}>
-                    {restaurant.name.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xs font-medium whitespace-nowrap max-w-[100px] truncate">{restaurant.name}</span>
-                <Badge variant={isActive ? "secondary" : "outline"} className={`text-[10px] px-1.5 py-0 h-5 ${isActive ? "bg-white/20 text-primary-foreground border-0" : ""}`}>
-                  {restaurant.orderCount}
-                </Badge>
+                <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
+                <span className="whitespace-nowrap">
+                  {key === "all" ? t("common", "all") : key === "in_delivery" ? (lang === "de" ? "Lieferung" : "Consegna") : getOrderStatus(key, lang, true)}
+                </span>
+                {count > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{count}</span>
+                )}
               </button>
             );
           })}
         </div>
-      )}
 
-      <div className="flex flex-row gap-2 md:gap-3 items-end">
-        <div className="w-full sm:w-auto">
-          <label className="text-xs text-muted-foreground mb-1 block">{t("common", "from")}</label>
-          <Input
-            type="date"
-            value={filterDateFrom}
-            onChange={e => setFilterDateFrom(e.target.value)}
-            className="h-9 text-xs md:text-sm w-full sm:w-[150px]"
-            data-testid="filter-date-from"
-          />
+        <div className="flex flex-row gap-2 md:gap-3 items-end">
+          <div className="w-full sm:w-auto">
+            <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "from")}</label>
+            <Input
+              type="date"
+              value={filterDateFrom}
+              onChange={e => setFilterDateFrom(e.target.value)}
+              className="h-9 text-xs md:text-sm w-full sm:w-[150px] bg-white/10 border-white/20 text-white"
+              data-testid="filter-date-from"
+            />
+          </div>
+          <div className="w-full sm:w-auto">
+            <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "to")}</label>
+            <Input
+              type="date"
+              value={filterDateTo}
+              onChange={e => setFilterDateTo(e.target.value)}
+              className="h-9 text-xs md:text-sm w-full sm:w-[150px] bg-white/10 border-white/20 text-white"
+              data-testid="filter-date-to"
+            />
+          </div>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="text-xs text-white/60 hover:text-white rounded-md px-2 py-1.5 flex items-center gap-1 transition-colors shrink-0"
+              data-testid="button-clear-filters"
+            >
+              <X className="h-3 w-3" />
+              {t("common", "reset")}
+            </button>
+          )}
         </div>
-        <div className="w-full sm:w-auto">
-          <label className="text-xs text-muted-foreground mb-1 block">{t("common", "to")}</label>
-          <Input
-            type="date"
-            value={filterDateTo}
-            onChange={e => setFilterDateTo(e.target.value)}
-            className="h-9 text-xs md:text-sm w-full sm:w-[150px]"
-            data-testid="filter-date-to"
-          />
-        </div>
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0" data-testid="button-clear-filters">
-            <X className="h-3.5 w-3.5 mr-1" />
-            {t("common", "reset")}
-          </Button>
-        )}
       </div>
 
-      <Tabs defaultValue={initialStatus || (highlightOrderId ? "all" : "pending")} className="w-full">
-        <TabsList className="w-full overflow-x-auto flex md:grid md:grid-cols-6 lg:w-auto lg:inline-flex">
-          <TabsTrigger value="pending" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-pending">
-            {getOrderStatus("pending", lang, true)}
-            {filterOrders("pending").length > 0 && (
-              <Badge variant="secondary" className="ml-1 md:ml-2 text-[10px] md:text-xs px-1.5">
-                {filterOrders("pending").length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="confirmed" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-confirmed">{getOrderStatus("confirmed", lang, true)}</TabsTrigger>
-          <TabsTrigger value="partially_confirmed" className="text-xs md:text-sm px-2 md:px-3 whitespace-nowrap" data-testid="tab-partially-confirmed">{getOrderStatus("partially_confirmed", lang, true)}</TabsTrigger>
-          <TabsTrigger value="in_delivery" className="text-xs md:text-sm px-2 md:px-3 whitespace-nowrap" data-testid="tab-delivery">{lang === "de" ? "Lieferung" : "Consegna"}</TabsTrigger>
-          <TabsTrigger value="delivered" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-delivered">{getOrderStatus("delivered", lang, true)}</TabsTrigger>
-          <TabsTrigger value="cancelled" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-cancelled">{getOrderStatus("cancelled", lang, true)}</TabsTrigger>
-          <TabsTrigger value="all" className="text-xs md:text-sm px-2 md:px-3" data-testid="tab-all">{t("common", "all")}</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeStatusTab} className="w-full">
+        <div className="hidden"></div>
 
         {["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled", "all"].map((tab) => (
           <TabsContent key={tab} value={tab} className="mt-4 md:mt-6">
