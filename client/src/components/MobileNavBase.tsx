@@ -332,26 +332,24 @@ export function MobileNavBase({
 
   return (
     <>
-      <svg width="0" height="0" className="absolute" aria-hidden="true" style={{ position: "absolute", pointerEvents: "none" }}>
+      <svg width="0" height="0" aria-hidden="true" style={{ position: "absolute", overflow: "hidden" }}>
         <defs>
-          <filter id="liquid-glass-distortion" x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
+          <filter id="liquid-glass-refraction" x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
             <feTurbulence
               type="fractalNoise"
-              baseFrequency="0.015 0.02"
-              numOctaves="3"
-              seed="5"
+              baseFrequency="0.008 0.008"
+              numOctaves="2"
+              seed="42"
               result="noise"
             />
+            <feGaussianBlur in="noise" stdDeviation="2" result="smoothNoise" />
             <feDisplacementMap
               in="SourceGraphic"
-              in2="noise"
-              scale="2.5"
+              in2="smoothNoise"
+              scale="18"
               xChannelSelector="R"
               yChannelSelector="G"
-              result="displaced"
             />
-            <feGaussianBlur in="displaced" stdDeviation="0.3" result="softened" />
-            <feComposite in="softened" in2="SourceGraphic" operator="atop" />
           </filter>
         </defs>
       </svg>
@@ -420,14 +418,19 @@ export function MobileNavBase({
         style={navStyle}
         data-testid={`${testIdPrefix}-mobile-nav`}
       >
+        <div className="lg-blur-layer" />
+        <div className="lg-tint-layer" />
+        <div className="lg-specular-layer" />
+        <div className="lg-rim-highlight" />
+
         <div
-          className="flex items-stretch relative"
+          className="flex items-stretch relative overflow-hidden"
           ref={containerRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          style={{ touchAction: "none" }}
+          style={{ touchAction: "none", zIndex: 10, borderRadius: "inherit" }}
         >
           {activeIndex >= 0 && (
             <>
