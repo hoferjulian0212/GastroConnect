@@ -254,7 +254,7 @@ export default function ProductDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="product-detail-hero">
+      <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="product-detail-hero">
         <h1 className="text-xl md:text-2xl font-bold text-white" data-testid="text-product-name">{product.name}</h1>
         <div className="flex items-center gap-2">
           <Avatar className="h-5 w-5">

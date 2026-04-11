@@ -287,11 +287,11 @@ export default function SupplierPromotions() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl space-y-4" data-testid="promotions-hero">
+      <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl space-y-4" data-testid="promotions-hero">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "promotions")}</h1>
-            <p className="text-sm text-white/50 mt-1">{lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti"}</p>
+            <p className="hidden md:block text-sm text-white/50 mt-1">{lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti"}</p>
           </div>
           <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5" size="sm" data-testid="button-create-promotion">
             <Plus className="h-4 w-4" />

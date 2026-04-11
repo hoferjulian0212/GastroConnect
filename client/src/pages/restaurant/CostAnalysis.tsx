@@ -222,8 +222,8 @@ export default function CostAnalysis() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="space-y-4 md:space-y-6 pb-24 md:pb-6 overflow-y-auto">
-        <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl space-y-4" data-testid="cost-analysis-hero">
+      <div className="space-y-4 md:space-y-6 pb-28 md:pb-6 overflow-y-auto">
+        <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl space-y-4" data-testid="cost-analysis-hero">
           <div className="flex items-center justify-between gap-2">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="cost-analysis-title">

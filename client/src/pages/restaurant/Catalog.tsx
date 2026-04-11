@@ -321,12 +321,12 @@ export default function RestaurantCatalog() {
     <div className="space-y-4 md:space-y-6">
       {!selectedCategory ? (
         <>
-          <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="catalog-hero">
+          <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="catalog-hero">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
                 {lang === "de" ? "Produktkatalog" : "Catalogo prodotti"}
               </h1>
-              <p className="text-sm text-white/50 mt-1">
+              <p className="hidden md:block text-sm text-white/50 mt-1">
                 {lang === "de"
                   ? "Durchsuchen Sie verfügbare Produkte Ihrer Lieferanten."
                   : "Esplora i prodotti disponibili dei tuoi fornitori."}
@@ -431,7 +431,7 @@ export default function RestaurantCatalog() {
         </>
       ) : (
         <>
-          <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="catalog-category-hero">
+          <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="catalog-category-hero">
             <div className="flex items-center gap-2">
               {(() => {
                 const conf = categoryConfig[selectedCategory];

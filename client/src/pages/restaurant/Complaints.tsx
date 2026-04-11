@@ -411,11 +411,11 @@ export default function Complaints() {
 
   return (
     <div className="space-y-3 md:space-y-4">
-      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl mb-4 space-y-3" data-testid="complaints-hero">
+      <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="complaints-hero">
         <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "complaints")}</h1>
-            <p className="text-sm text-white/50 mt-1">{lang === "de" ? "Verwalten Sie Ihre Reklamationen" : "Gestisci i tuoi reclami"}</p>
+            <p className="hidden md:block text-sm text-white/50 mt-1">{lang === "de" ? "Verwalten Sie Ihre Reklamationen" : "Gestisci i tuoi reclami"}</p>
           </div>
           <Button size="sm" onClick={() => setShowCreateDialog(true)} className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15" data-testid="button-new-complaint">
             <AlertCircle className="h-3.5 w-3.5 mr-1.5" />

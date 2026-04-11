@@ -531,61 +531,61 @@ export default function RestaurantHome() {
   return (
     <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
       <div>
-        <div className="bg-[#161921] px-4 md:px-6 pt-6 pb-6 rounded-b-3xl">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-5" data-testid="text-page-title">
+        <div className="bg-[#161921] px-3 md:px-6 pt-4 md:pt-6 pb-4 md:pb-6 rounded-b-3xl">
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 md:mb-5" data-testid="text-page-title">
             {currentUser?.companyName || ""}
           </h1>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
             <Link href="/restaurant/inbox" data-testid="kpi-card-messages">
-              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
-                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span>
+              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Nachrichten" : "Messaggi"}</span><span className="hidden md:inline">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
-                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : <CountUp end={totalUnread} duration={800} />}</p>
-                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-blue-500/20">
-                    <MessageSquare className="h-5 w-5 text-blue-400" />
+                  <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : <CountUp end={totalUnread} duration={800} />}</p>
+                  <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-blue-500/20">
+                    <MessageSquare className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
                   </div>
                 </div>
               </div>
             </Link>
-            <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 flex flex-col justify-between min-h-[120px]" data-testid="kpi-card-cost-per-guest">
-              <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Wareneinsatz/Gast" : "Costo/ospite"}</span>
+            <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 flex flex-col justify-between min-h-[100px] md:min-h-[120px]" data-testid="kpi-card-cost-per-guest">
+              <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Kosten/Gast" : "Costo/ospite"}</span><span className="hidden md:inline">{lang === "de" ? "Wareneinsatz/Gast" : "Costo per ospite"}</span></span>
               <div className="flex items-end justify-between mt-auto">
                 {costLoading ? (
-                  <Skeleton className="h-10 w-20 bg-white/10" />
+                  <Skeleton className="h-8 w-16 md:h-10 md:w-20 bg-white/10" />
                 ) : costAnalysis?.costPerGuest && parseFloat(costAnalysis.costPerGuest) > 0 ? (
-                  <p className="text-3xl md:text-4xl font-bold text-white leading-none" data-testid="kpi-cost-per-guest"><CountUp end={parseFloat(costAnalysis.costPerGuest)} duration={1000} decimals={2} suffix="€" /></p>
+                  <p className="text-2xl md:text-4xl font-bold text-white leading-none" data-testid="kpi-cost-per-guest"><CountUp end={parseFloat(costAnalysis.costPerGuest)} duration={1000} decimals={2} suffix="€" /></p>
                 ) : (
-                  <p className="text-4xl font-bold text-gray-500 leading-none" data-testid="kpi-cost-per-guest">--</p>
+                  <p className="text-3xl md:text-4xl font-bold text-gray-500 leading-none" data-testid="kpi-cost-per-guest">--</p>
                 )}
-                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-emerald-500/20">
-                  <Calculator className="h-5 w-5 text-emerald-400" />
+                <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-emerald-500/20">
+                  <Calculator className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
                 </div>
               </div>
             </div>
             <Link href="/restaurant/orders" data-testid="kpi-card-active-orders">
-              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
-                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Offene Bestellungen" : "Ordini attivi"}</span>
+              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Offen" : "Attivi"}</span><span className="hidden md:inline">{lang === "de" ? "Offene Bestellungen" : "Ordini attivi"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
-                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-active-orders">{ordersLoading ? "..." : <CountUp end={pendingOrdersCount} duration={800} />}</p>
-                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-orange-500/20">
-                    <ShoppingBag className="h-5 w-5 text-orange-400" />
+                  <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-active-orders">{ordersLoading ? "..." : <CountUp end={pendingOrdersCount} duration={800} />}</p>
+                  <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-orange-500/20">
+                    <ShoppingBag className="h-4 w-4 md:h-5 md:w-5 text-orange-400" />
                   </div>
                 </div>
               </div>
             </Link>
             <Link href="/restaurant/cost-analysis" data-testid="kpi-card-monthly-spending">
-              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
-                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Monatsausgaben" : "Spese mensili"}</span>
+              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Monat" : "Mese"}</span><span className="hidden md:inline">{lang === "de" ? "Monatsausgaben" : "Spese mensili"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
                   {costLoading ? (
-                    <Skeleton className="h-10 w-20 bg-white/10" />
+                    <Skeleton className="h-8 w-16 md:h-10 md:w-20 bg-white/10" />
                   ) : costAnalysis?.totalCosts && parseFloat(costAnalysis.totalCosts) > 0 ? (
-                    <p className="text-3xl md:text-4xl font-bold text-white leading-none" data-testid="kpi-monthly-spending"><CountUp end={parseFloat(costAnalysis.totalCosts)} duration={1200} suffix="€" formatter={(v) => Math.round(v).toLocaleString(lang === "de" ? "de-DE" : "it-IT")} /></p>
+                    <p className="text-2xl md:text-4xl font-bold text-white leading-none" data-testid="kpi-monthly-spending"><CountUp end={parseFloat(costAnalysis.totalCosts)} duration={1200} suffix="€" formatter={(v) => Math.round(v).toLocaleString(lang === "de" ? "de-DE" : "it-IT")} /></p>
                   ) : (
-                    <p className="text-4xl font-bold text-gray-500 leading-none" data-testid="kpi-monthly-spending">--</p>
+                    <p className="text-3xl md:text-4xl font-bold text-gray-500 leading-none" data-testid="kpi-monthly-spending">--</p>
                   )}
-                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-amber-500/20">
-                    <Euro className="h-5 w-5 text-amber-400" />
+                  <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-amber-500/20">
+                    <Euro className="h-4 w-4 md:h-5 md:w-5 text-amber-400" />
                   </div>
                 </div>
               </div>
@@ -603,7 +603,7 @@ export default function RestaurantHome() {
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
             <div>
-              <h2 className="text-lg md:text-xl font-bold" data-testid="text-upcoming-deliveries-title">
+              <h2 className="text-base md:text-xl font-bold" data-testid="text-upcoming-deliveries-title">
                 {t("restaurantHome", "upcomingDeliveries")}
               </h2>
               <p className="text-xs text-muted-foreground hidden md:block">
@@ -890,7 +890,7 @@ export default function RestaurantHome() {
               <div className="flex items-center gap-2.5">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg md:text-xl font-bold" data-testid="text-unread-messages-title">
+                    <h2 className="text-base md:text-xl font-bold" data-testid="text-unread-messages-title">
                       {t("restaurantHome", "unreadMessages")}
                     </h2>
                     {totalUnread > 0 && (
@@ -1039,7 +1039,7 @@ export default function RestaurantHome() {
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div>
-                  <h2 className="text-lg md:text-xl font-bold" data-testid="text-active-promotions-title">
+                  <h2 className="text-base md:text-xl font-bold" data-testid="text-active-promotions-title">
                     {t("restaurantHome", "activePromotions")}
                   </h2>
                   <p className="text-xs text-muted-foreground hidden md:block">
@@ -1213,7 +1213,7 @@ export default function RestaurantHome() {
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div>
-                  <h2 className="text-lg md:text-xl font-bold" data-testid="text-templates-title">
+                  <h2 className="text-base md:text-xl font-bold" data-testid="text-templates-title">
                     {lang === "de" ? "Bestellvorlagen" : "Modelli d'ordine"}
                   </h2>
                   <p className="text-xs text-muted-foreground hidden md:block">
@@ -1402,7 +1402,7 @@ export default function RestaurantHome() {
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div>
-                  <h2 className="text-lg md:text-xl font-bold" data-testid="text-cost-analysis-title">
+                  <h2 className="text-base md:text-xl font-bold" data-testid="text-cost-analysis-title">
                     {t("costAnalysis", "title")}
                   </h2>
                   <p className="text-xs text-muted-foreground hidden md:block">

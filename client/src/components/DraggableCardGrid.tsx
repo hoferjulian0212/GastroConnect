@@ -70,9 +70,10 @@ interface SortableCardProps {
   editMode: boolean;
   onToggleSize: (id: string) => void;
   isLg: boolean;
+  isMd: boolean;
 }
 
-function SortableCard({ item, section, editMode, onToggleSize, isLg }: SortableCardProps) {
+function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd }: SortableCardProps) {
   const {
     attributes,
     listeners,
@@ -103,28 +104,30 @@ function SortableCard({ item, section, editMode, onToggleSize, isLg }: SortableC
     >
       {editMode && (
         <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleSize(item.id); }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-sm text-xs font-medium transition-all ${
-              isFull
-                ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
-                : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
-            }`}
-            data-testid={`toggle-size-${item.id}`}
-            title={isFull ? "Halbe Breite" : "Volle Breite"}
-          >
-            {isFull ? (
-              <>
-                <Columns2 className="h-3.5 w-3.5" />
-                <span>Halb</span>
-              </>
-            ) : (
-              <>
-                <Maximize2 className="h-3.5 w-3.5" />
-                <span>Voll</span>
-              </>
-            )}
-          </button>
+          {isMd && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleSize(item.id); }}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-sm text-xs font-medium transition-all ${
+                isFull
+                  ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+                  : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+              }`}
+              data-testid={`toggle-size-${item.id}`}
+              title={isFull ? "Halbe Breite" : "Volle Breite"}
+            >
+              {isFull ? (
+                <>
+                  <Columns2 className="h-3.5 w-3.5" />
+                  <span>Halb</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="h-3.5 w-3.5" />
+                  <span>Voll</span>
+                </>
+              )}
+            </button>
+          )}
           <div
             className="flex items-center justify-center w-8 h-8 rounded-full bg-background/90 backdrop-blur border shadow-sm text-muted-foreground cursor-grab active:cursor-grabbing touch-none select-none"
             {...attributes}
@@ -145,11 +148,20 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const [editMode, setEditMode] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isLg, setIsLg] = useState(false);
+  const [isMd, setIsMd] = useState(false);
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1024px)");
     setIsLg(mql.matches);
     const handler = (e: MediaQueryListEvent) => setIsLg(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 768px)");
+    setIsMd(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMd(e.matches);
     mql.addEventListener("change", handler);
     return () => mql.removeEventListener("change", handler);
   }, []);
@@ -257,6 +269,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
                   editMode={editMode}
                   onToggleSize={toggleSize}
                   isLg={isLg}
+                  isMd={isMd}
                 />
               );
             })}

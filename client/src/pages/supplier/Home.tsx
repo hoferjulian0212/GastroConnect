@@ -320,57 +320,57 @@ export default function SupplierHome() {
   return (
     <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
       <div>
-        <div className="bg-[#161921] px-4 md:px-6 pt-6 pb-6 rounded-b-3xl">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-5" data-testid="text-page-title">
+        <div className="bg-[#161921] px-3 md:px-6 pt-4 md:pt-6 pb-4 md:pb-6 rounded-b-3xl">
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 md:mb-5" data-testid="text-page-title">
             {currentUser?.companyName || ""}
           </h1>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
             <Link href="/supplier/inbox" data-testid="kpi-card-messages">
-              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
-                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span>
+              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Nachrichten" : "Messaggi"}</span><span className="hidden md:inline">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
-                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : <CountUp end={totalUnread} duration={800} />}</p>
-                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-blue-500/20">
-                    <MessageSquare className="h-5 w-5 text-blue-400" />
+                  <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : <CountUp end={totalUnread} duration={800} />}</p>
+                  <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-blue-500/20">
+                    <MessageSquare className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
                   </div>
                 </div>
               </div>
             </Link>
             <Link href="/supplier/orders" data-testid="kpi-card-orders">
-              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
-                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Neue Bestellungen" : "Nuovi ordini"}</span>
+              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Bestellungen" : "Ordini"}</span><span className="hidden md:inline">{lang === "de" ? "Neue Bestellungen" : "Nuovi ordini"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
-                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-new-orders">{ordersLoading ? "..." : <CountUp end={recentOrders?.length || 0} duration={800} />}</p>
-                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-amber-500/20">
-                    <ClipboardList className="h-5 w-5 text-amber-400" />
+                  <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-new-orders">{ordersLoading ? "..." : <CountUp end={recentOrders?.length || 0} duration={800} />}</p>
+                  <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-amber-500/20">
+                    <ClipboardList className="h-4 w-4 md:h-5 md:w-5 text-amber-400" />
                   </div>
                 </div>
               </div>
             </Link>
-            <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 flex flex-col justify-between min-h-[120px]" data-testid="kpi-card-stats">
-              <span className="text-xs md:text-sm text-gray-400 font-medium">{t("supplierHome", "statistics")}</span>
+            <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 flex flex-col justify-between min-h-[100px] md:min-h-[120px]" data-testid="kpi-card-stats">
+              <span className="text-[11px] md:text-sm text-gray-400 font-medium">{t("supplierHome", "statistics")}</span>
               <div className="flex items-end justify-between mt-auto">
                 {statsLoading ? (
-                  <Skeleton className="h-10 w-20 bg-white/10" />
+                  <Skeleton className="h-8 w-16 md:h-10 md:w-20 bg-white/10" />
                 ) : monthlyChange !== null ? (
-                  <p className={`text-3xl md:text-4xl font-bold leading-none ${monthlyChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`} data-testid="kpi-stats-change">
+                  <p className={`text-2xl md:text-4xl font-bold leading-none ${monthlyChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`} data-testid="kpi-stats-change">
                     <CountUp end={monthlyChange} duration={1000} decimals={1} prefix={monthlyChange >= 0 ? "+" : ""} suffix="%" />
                   </p>
                 ) : (
-                  <p className="text-4xl font-bold text-gray-500 leading-none">--</p>
+                  <p className="text-3xl md:text-4xl font-bold text-gray-500 leading-none">--</p>
                 )}
-                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-emerald-500/20">
-                  <BarChart3 className="h-5 w-5 text-emerald-400" />
+                <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-emerald-500/20">
+                  <BarChart3 className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
                 </div>
               </div>
             </div>
             <Link href="/supplier/products" data-testid="kpi-card-low-stock">
-              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] p-4 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[120px]">
-                <span className="text-xs md:text-sm text-gray-400 font-medium">{lang === "de" ? "Niedriger Bestand" : "Scorte basse"}</span>
+              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Bestand" : "Scorte"}</span><span className="hidden md:inline">{lang === "de" ? "Niedriger Bestand" : "Scorte basse"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
-                  <p className="text-4xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-low-stock">{lowStockLoading ? "..." : <CountUp end={lowStockProducts?.length || 0} duration={800} />}</p>
-                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-rose-500/20">
-                    <AlertTriangle className="h-5 w-5 text-rose-400" />
+                  <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-low-stock">{lowStockLoading ? "..." : <CountUp end={lowStockProducts?.length || 0} duration={800} />}</p>
+                  <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-rose-500/20">
+                    <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 text-rose-400" />
                   </div>
                 </div>
               </div>
@@ -388,7 +388,7 @@ export default function SupplierHome() {
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
             <div>
-              <h2 className="text-lg md:text-xl font-bold" data-testid="text-upcoming-deliveries-title">
+              <h2 className="text-base md:text-xl font-bold" data-testid="text-upcoming-deliveries-title">
                 {t("supplierHome", "upcomingDeliveries")}
               </h2>
               <p className="text-xs text-muted-foreground hidden md:block">
@@ -591,7 +591,7 @@ export default function SupplierHome() {
               <div className="flex items-center gap-2.5">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg md:text-xl font-bold" data-testid="text-unread-messages-title">
+                    <h2 className="text-base md:text-xl font-bold" data-testid="text-unread-messages-title">
                       {t("supplierHome", "unreadMessages")}
                     </h2>
                     {totalUnread > 0 && (
@@ -739,7 +739,7 @@ export default function SupplierHome() {
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div>
-                  <h2 className="text-lg md:text-xl font-bold">{t("supplierHome", "newOrders")}</h2>
+                  <h2 className="text-base md:text-xl font-bold">{t("supplierHome", "newOrders")}</h2>
                   <p className="text-xs text-muted-foreground hidden md:block">{lang === "de" ? "Bestellungen der letzten 24 Stunden" : "Ordini delle ultime 24 ore"}</p>
                 </div>
               </div>
@@ -853,7 +853,7 @@ export default function SupplierHome() {
                 <div className="flex items-center gap-2.5">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-lg md:text-xl font-bold" data-testid="text-action-required-title">
+                      <h2 className="text-base md:text-xl font-bold" data-testid="text-action-required-title">
                         {lang === "de" ? "Erforderliche Aktionen" : "Azioni richieste"}
                       </h2>
                       <Badge className="bg-red-600 text-white text-[10px] px-1.5 py-0 min-w-[20px] flex items-center justify-center">
@@ -1031,7 +1031,7 @@ export default function SupplierHome() {
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div>
-                  <h2 className="text-lg md:text-xl font-bold" data-testid="text-low-stock-title">
+                  <h2 className="text-base md:text-xl font-bold" data-testid="text-low-stock-title">
                     {t("supplierHome", "lowStockAlerts")}
                   </h2>
                   <p className="text-xs text-muted-foreground hidden md:block">
@@ -1133,7 +1133,7 @@ export default function SupplierHome() {
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
             <div>
-              <h2 className="text-lg md:text-xl font-bold" data-testid="text-statistics-title">
+              <h2 className="text-base md:text-xl font-bold" data-testid="text-statistics-title">
                 {t("supplierHome", "statistics")}
               </h2>
               <p className="text-xs text-muted-foreground hidden md:block">
@@ -1158,7 +1158,7 @@ export default function SupplierHome() {
                   <Euro className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
                   <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "totalRevenue")}</span>
                 </div>
-                <p className="text-lg md:text-xl font-bold text-foreground truncate" data-testid="text-total-revenue">
+                <p className="text-base md:text-xl font-bold text-foreground truncate" data-testid="text-total-revenue">
                   {detailedStats.totalRevenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
                 </p>
               </div>
@@ -1167,7 +1167,7 @@ export default function SupplierHome() {
                   <Hash className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                   <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "totalOrders")}</span>
                 </div>
-                <p className="text-lg md:text-xl font-bold text-foreground" data-testid="text-total-orders">
+                <p className="text-base md:text-xl font-bold text-foreground" data-testid="text-total-orders">
                   {detailedStats.totalOrders}
                 </p>
               </div>
@@ -1176,7 +1176,7 @@ export default function SupplierHome() {
                   <TrendingUp className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                   <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "avgOrderValue")}</span>
                 </div>
-                <p className="text-lg md:text-xl font-bold text-foreground truncate" data-testid="text-avg-order-value">
+                <p className="text-base md:text-xl font-bold text-foreground truncate" data-testid="text-avg-order-value">
                   {detailedStats.avgOrderValue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
                 </p>
               </div>

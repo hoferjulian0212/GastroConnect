@@ -170,7 +170,7 @@ export default function PriceComparison() {
   if (isLoading) {
     return (
       <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
-        <div className="bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl space-y-3">
+        <div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl space-y-3">
           <Skeleton className="h-8 w-48 bg-white/10" />
           <Skeleton className="h-4 w-72 bg-white/10" />
         </div>
@@ -185,12 +185,12 @@ export default function PriceComparison() {
 
   return (
     <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
-      <div className="dark bg-[#161921] px-4 md:px-6 pt-4 pb-5 rounded-b-3xl space-y-4" data-testid="price-comparison-hero">
+      <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl space-y-4" data-testid="price-comparison-hero">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
             {lang === "de" ? "Preisvergleich" : "Confronto prezzi"}
           </h1>
-          <p className="text-sm text-white/50 mt-1">
+          <p className="hidden md:block text-sm text-white/50 mt-1">
             {lang === "de"
               ? "Vergleichen Sie Preise gleicher Produkte von verschiedenen Lieferanten"
               : "Confronta i prezzi degli stessi prodotti da diversi fornitori"}
