@@ -328,11 +328,34 @@ export function MobileNavBase({
     right: 12,
     zIndex: 50,
     borderRadius: "9999px",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
   };
 
   return (
     <>
+      <svg width="0" height="0" className="absolute" aria-hidden="true" style={{ position: "absolute", pointerEvents: "none" }}>
+        <defs>
+          <filter id="liquid-glass-distortion" x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.015 0.02"
+              numOctaves="3"
+              seed="5"
+              result="noise"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="noise"
+              scale="2.5"
+              xChannelSelector="R"
+              yChannelSelector="G"
+              result="displaced"
+            />
+            <feGaussianBlur in="displaced" stdDeviation="0.3" result="softened" />
+            <feComposite in="softened" in2="SourceGraphic" operator="atop" />
+          </filter>
+        </defs>
+      </svg>
+
       <AnimatePresence>
         {isMoreOpen && (
           <motion.div
@@ -418,6 +441,7 @@ export function MobileNavBase({
               >
                 <div className="liquid-metaball-glow" />
                 <div className="liquid-metaball-shine" />
+                <div className="liquid-metaball-rim" />
               </motion.div>
 
               <motion.div

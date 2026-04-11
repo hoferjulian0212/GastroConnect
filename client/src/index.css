@@ -521,36 +521,110 @@ html, body, #root {
 }
 
 .floating-nav {
-  background: rgba(255, 255, 255, 0.55);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
-  backdrop-filter: blur(24px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.58) 100%
+  );
+  -webkit-backdrop-filter: blur(40px) saturate(210%) brightness(1.08);
+  backdrop-filter: blur(40px) saturate(210%) brightness(1.08);
+  border: 0.5px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.04),
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 6px 24px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.03);
+  filter: url(#liquid-glass-distortion);
 }
+.floating-nav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    transparent 40%,
+    transparent 60%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+.floating-nav::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 0.5px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.9),
+    transparent
+  );
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 2;
+}
+
 .dark .floating-nav {
-  background: rgba(23, 23, 23, 0.50);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
-  backdrop-filter: blur(24px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(
+    180deg,
+    rgba(38, 38, 42, 0.65) 0%,
+    rgba(28, 28, 32, 0.55) 100%
+  );
+  -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(0.95);
+  backdrop-filter: blur(40px) saturate(200%) brightness(0.95);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.2),
+    0 1px 3px rgba(0, 0, 0, 0.15),
+    0 6px 24px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.15);
+}
+.dark .floating-nav::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    transparent 40%,
+    transparent 60%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+}
+.dark .floating-nav::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.12),
+    transparent
+  );
 }
 
 .liquid-metaball {
   position: absolute;
-  top: 4px;
-  bottom: 4px;
+  top: 5px;
+  bottom: 5px;
   left: 0;
   pointer-events: none;
   z-index: 0;
-  -webkit-backdrop-filter: blur(50px) saturate(220%);
-  backdrop-filter: blur(50px) saturate(220%);
-  background: radial-gradient(
-    ellipse at 50% 35%,
-    rgba(255, 255, 255, 0.55),
-    rgba(255, 255, 255, 0.15)
+  -webkit-backdrop-filter: blur(2px) saturate(140%) brightness(1.06);
+  backdrop-filter: blur(2px) saturate(140%) brightness(1.06);
+  background: linear-gradient(
+    170deg,
+    rgba(255, 255, 255, 0.65) 0%,
+    rgba(255, 255, 255, 0.30) 50%,
+    rgba(255, 255, 255, 0.18) 100%
   );
+  border: 0.5px solid rgba(255, 255, 255, 0.55);
   box-shadow:
-    inset 0 1px 6px rgba(255, 255, 255, 0.55),
-    inset 0 -1px 4px rgba(255, 255, 255, 0.2),
-    0 2px 8px rgba(0, 0, 0, 0.04);
+    inset 0 1.5px 4px rgba(255, 255, 255, 0.65),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.03),
+    0 1px 4px rgba(0, 0, 0, 0.05),
+    0 0 12px rgba(255, 255, 255, 0.1);
   will-change: transform, width, clip-path;
   clip-path: inset(0 round 9999px);
   transform-origin: center center;
@@ -567,61 +641,115 @@ html, body, #root {
   clip-path: inset(0 round 9999px);
   overflow: hidden;
 }
+
 .liquid-metaball-glow {
   position: absolute;
   inset: 0;
+  border-radius: inherit;
   background: radial-gradient(
-    circle at 50% 25%,
-    rgba(255, 255, 255, 0.4),
-    transparent 65%
+    ellipse 120% 80% at 50% 15%,
+    rgba(255, 255, 255, 0.55),
+    transparent 60%
   );
   pointer-events: none;
 }
 .liquid-metaball-shine {
   position: absolute;
   top: 0;
-  left: -20%;
-  width: 50%;
+  left: -25%;
+  width: 55%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
-  transform: skewX(-20deg);
+  background: linear-gradient(
+    100deg,
+    transparent 10%,
+    rgba(255, 255, 255, 0.35) 45%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 90%
+  );
+  transform: skewX(-18deg);
   pointer-events: none;
 }
+.liquid-metaball-rim {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 0.5px solid transparent;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.1) 30%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.05) 80%,
+    rgba(255, 255, 255, 0.15) 100%
+  ) border-box;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) padding-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) padding-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
 .dark .liquid-metaball {
-  background: radial-gradient(
-    ellipse at 50% 35%,
-    rgba(255, 255, 255, 0.14),
-    rgba(255, 255, 255, 0.04)
+  background: linear-gradient(
+    170deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.07) 50%,
+    rgba(255, 255, 255, 0.03) 100%
   );
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
   box-shadow:
-    inset 0 1px 4px rgba(255, 255, 255, 0.15),
-    inset 0 -1px 4px rgba(255, 255, 255, 0.05),
-    0 2px 8px rgba(0, 0, 0, 0.12);
+    inset 0 1.5px 4px rgba(255, 255, 255, 0.12),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 4px rgba(0, 0, 0, 0.15),
+    0 0 12px rgba(255, 255, 255, 0.03);
 }
 .dark .liquid-metaball-glow {
   background: radial-gradient(
-    circle at 50% 25%,
-    rgba(255, 255, 255, 0.12),
-    transparent 65%
+    ellipse 120% 80% at 50% 15%,
+    rgba(255, 255, 255, 0.1),
+    transparent 60%
   );
 }
 .dark .liquid-metaball-shine {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  background: linear-gradient(
+    100deg,
+    transparent 10%,
+    rgba(255, 255, 255, 0.06) 45%,
+    rgba(255, 255, 255, 0.02) 55%,
+    transparent 90%
+  );
+}
+.dark .liquid-metaball-rim {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.03) 30%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.01) 80%,
+    rgba(255, 255, 255, 0.05) 100%
+  ) border-box;
 }
 
 .nav-item-active {
   color: #000;
-  font-weight: 500;
+  font-weight: 600;
+  text-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.04);
 }
 .dark .nav-item-active {
   color: #fff;
+  text-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.2);
 }
 .nav-item-inactive {
   color: #8E8E93;
-  opacity: 0.6;
+  opacity: 0.65;
+  transition: opacity 0.2s ease;
 }
 .nav-item-inactive:hover {
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 @media (max-width: 767px) {
