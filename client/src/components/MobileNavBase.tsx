@@ -332,28 +332,6 @@ export function MobileNavBase({
 
   return (
     <>
-      <svg width="0" height="0" aria-hidden="true" style={{ position: "absolute", overflow: "hidden" }}>
-        <defs>
-          <filter id="liquid-glass-refraction" x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.008 0.008"
-              numOctaves="2"
-              seed="42"
-              result="noise"
-            />
-            <feGaussianBlur in="noise" stdDeviation="2" result="smoothNoise" />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="smoothNoise"
-              scale="18"
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-        </defs>
-      </svg>
-
       <AnimatePresence>
         {isMoreOpen && (
           <motion.div
@@ -418,11 +396,6 @@ export function MobileNavBase({
         style={navStyle}
         data-testid={`${testIdPrefix}-mobile-nav`}
       >
-        <div className="lg-blur-layer" />
-        <div className="lg-tint-layer" />
-        <div className="lg-specular-layer" />
-        <div className="lg-rim-highlight" />
-
         <div
           className="flex items-stretch relative overflow-hidden"
           ref={containerRef}
@@ -441,11 +414,7 @@ export function MobileNavBase({
                   x: springX,
                   width: springW,
                 }}
-              >
-                <div className="liquid-metaball-glow" />
-                <div className="liquid-metaball-shine" />
-                <div className="liquid-metaball-rim" />
-              </motion.div>
+              />
 
               <motion.div
                 ref={activeOverlayRef}
