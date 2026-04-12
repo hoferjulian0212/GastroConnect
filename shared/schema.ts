@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, pgEnum, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -41,7 +41,10 @@ export const products = pgTable("products", {
   minOrderQuantity: integer("min_order_quantity").default(1).notNull(),
   imageUrl: text("image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_products_supplier_id").on(table.supplierId),
+  index("idx_products_category").on(table.category),
+]);
 
 export const customMinOrderQuantities = pgTable("custom_min_order_quantities", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -50,7 +53,10 @@ export const customMinOrderQuantities = pgTable("custom_min_order_quantities", {
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   minOrderQuantity: integer("min_order_quantity").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_custom_moq_product_restaurant").on(table.productId, table.restaurantId),
+  index("idx_custom_moq_supplier").on(table.supplierId),
+]);
 
 export const customPrices = pgTable("custom_prices", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -59,7 +65,10 @@ export const customPrices = pgTable("custom_prices", {
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   customPrice: decimal("custom_price", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_custom_prices_product_restaurant").on(table.productId, table.restaurantId),
+  index("idx_custom_prices_supplier").on(table.supplierId),
+]);
 
 export const orders = pgTable("orders", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -73,7 +82,12 @@ export const orders = pgTable("orders", {
   originalDeliveryDate: text("original_delivery_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_orders_restaurant_id").on(table.restaurantId),
+  index("idx_orders_supplier_id").on(table.supplierId),
+  index("idx_orders_status").on(table.status),
+  index("idx_orders_created_at").on(table.createdAt),
+]);
 
 export const orderItems = pgTable("order_items", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -85,7 +99,10 @@ export const orderItems = pgTable("order_items", {
   rejectedQuantity: integer("rejected_quantity"),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
-});
+}, (table) => [
+  index("idx_order_items_order_id").on(table.orderId),
+  index("idx_order_items_product_id").on(table.productId),
+]);
 
 export const cartItems = pgTable("cart_items", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -94,7 +111,10 @@ export const cartItems = pgTable("cart_items", {
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   quantity: integer("quantity").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_cart_items_restaurant_id").on(table.restaurantId),
+  index("idx_cart_items_product_id").on(table.productId),
+]);
 
 export const conversations = pgTable("conversations", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -102,7 +122,11 @@ export const conversations = pgTable("conversations", {
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_conversations_restaurant_id").on(table.restaurantId),
+  index("idx_conversations_supplier_id").on(table.supplierId),
+  index("idx_conversations_restaurant_supplier").on(table.restaurantId, table.supplierId),
+]);
 
 export const messages = pgTable("messages", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -116,7 +140,12 @@ export const messages = pgTable("messages", {
   isRead: boolean("is_read").default(false).notNull(),
   dismissed: boolean("dismissed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_messages_conversation_id").on(table.conversationId),
+  index("idx_messages_conversation_created").on(table.conversationId, table.createdAt),
+  index("idx_messages_sender_id").on(table.senderId),
+  index("idx_messages_is_read").on(table.conversationId, table.senderId, table.isRead),
+]);
 
 export const orderStatusHistory = pgTable("order_status_history", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -125,7 +154,9 @@ export const orderStatusHistory = pgTable("order_status_history", {
   toStatus: text("to_status").notNull(),
   changedBy: varchar("changed_by", { length: 36 }).references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_order_status_history_order_id").on(table.orderId),
+]);
 
 export const complaints = pgTable("complaints", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -140,7 +171,11 @@ export const complaints = pgTable("complaints", {
   priority: text("priority").default("standard").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_complaints_restaurant_id").on(table.restaurantId),
+  index("idx_complaints_supplier_id").on(table.supplierId),
+  index("idx_complaints_order_id").on(table.orderId),
+]);
 
 export const complaintComments = pgTable("complaint_comments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -148,7 +183,9 @@ export const complaintComments = pgTable("complaint_comments", {
   userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_complaint_comments_complaint_id").on(table.complaintId),
+]);
 
 export const complaintStatusHistory = pgTable("complaint_status_history", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -157,7 +194,9 @@ export const complaintStatusHistory = pgTable("complaint_status_history", {
   toStatus: text("to_status").notNull(),
   changedBy: varchar("changed_by", { length: 36 }).references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_complaint_status_history_complaint_id").on(table.complaintId),
+]);
 
 export const notifications = pgTable("notifications", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -168,7 +207,10 @@ export const notifications = pgTable("notifications", {
   referenceId: varchar("reference_id", { length: 36 }),
   isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_notifications_user_id").on(table.userId),
+  index("idx_notifications_user_read").on(table.userId, table.isRead),
+]);
 
 export const documents = pgTable("documents", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -179,7 +221,11 @@ export const documents = pgTable("documents", {
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_documents_order_id").on(table.orderId),
+  index("idx_documents_restaurant_id").on(table.restaurantId),
+  index("idx_documents_supplier_id").on(table.supplierId),
+]);
 
 export const deliverySchedules = pgTable("delivery_schedules", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -189,7 +235,9 @@ export const deliverySchedules = pgTable("delivery_schedules", {
   deliveryTimeFrom: varchar("delivery_time_from", { length: 5 }),
   deliveryTimeTo: varchar("delivery_time_to", { length: 5 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_delivery_schedules_supplier_restaurant").on(table.supplierId, table.restaurantId),
+]);
 
 export const promotions = pgTable("promotions", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -204,7 +252,11 @@ export const promotions = pgTable("promotions", {
   groupId: varchar("group_id", { length: 36 }),
   targetRestaurantIds: text("target_restaurant_ids").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_promotions_supplier_id").on(table.supplierId),
+  index("idx_promotions_product_id").on(table.productId),
+  index("idx_promotions_active").on(table.isActive),
+]);
 
 export const stockMovements = pgTable("stock_movements", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -217,7 +269,11 @@ export const stockMovements = pgTable("stock_movements", {
   newStock: integer("new_stock").notNull(),
   note: text("note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_stock_movements_product_id").on(table.productId),
+  index("idx_stock_movements_supplier_id").on(table.supplierId),
+  index("idx_stock_movements_order_id").on(table.orderId),
+]);
 
 export const orderTemplates = pgTable("order_templates", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -225,14 +281,18 @@ export const orderTemplates = pgTable("order_templates", {
   name: text("name").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_order_templates_restaurant_id").on(table.restaurantId),
+]);
 
 export const orderTemplateItems = pgTable("order_template_items", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   templateId: varchar("template_id", { length: 36 }).notNull().references(() => orderTemplates.id, { onDelete: "cascade" }),
   productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
   quantity: integer("quantity").notNull().default(1),
-});
+}, (table) => [
+  index("idx_order_template_items_template_id").on(table.templateId),
+]);
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
@@ -264,7 +324,9 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_push_subscriptions_user_id").on(table.userId),
+]);
 
 export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true, createdAt: true });
 
@@ -275,7 +337,9 @@ export const overnightStays = pgTable("overnight_stays", {
   overnightStays: integer("overnight_stays").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_overnight_stays_restaurant_date").on(table.restaurantId, table.date),
+]);
 
 export const insertOvernightStaysSchema = createInsertSchema(overnightStays).omit({ id: true, createdAt: true, updatedAt: true });
 
@@ -285,7 +349,9 @@ export const costSettings = pgTable("cost_settings", {
   targetCostPerGuest: decimal("target_cost_per_guest", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_cost_settings_restaurant_id").on(table.restaurantId),
+]);
 
 export const insertCostSettingsSchema = createInsertSchema(costSettings).omit({ id: true, createdAt: true, updatedAt: true });
 
@@ -296,7 +362,9 @@ export const minimumOrderValues = pgTable("minimum_order_values", {
   minimumValue: decimal("minimum_value", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_minimum_order_values_supplier_id").on(table.supplierId),
+]);
 
 export const insertMinimumOrderValueSchema = createInsertSchema(minimumOrderValues).omit({ id: true, createdAt: true, updatedAt: true });
 

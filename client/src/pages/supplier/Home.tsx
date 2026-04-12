@@ -38,8 +38,6 @@ export default function SupplierHome() {
       return res.json();
     },
     enabled: !!currentUser?.id,
-    staleTime: 0,
-    refetchOnMount: "always",
   });
 
   const { data: upcomingDeliveries, isLoading: deliveriesLoading } = useQuery<OrderWithDetails[]>({
@@ -50,8 +48,6 @@ export default function SupplierHome() {
       return res.json();
     },
     enabled: !!currentUser?.id,
-    staleTime: 0,
-    refetchOnMount: "always",
   });
 
   const { data: lowStockProducts, isLoading: lowStockLoading } = useQuery<Product[]>({
@@ -62,15 +58,11 @@ export default function SupplierHome() {
       return res.json();
     },
     enabled: !!currentUser?.id,
-    staleTime: 0,
-    refetchOnMount: "always",
   });
 
   const { data: conversations, isLoading: convLoading } = useQuery<ConversationWithUser[]>({
     queryKey: [`/api/conversations?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
-    staleTime: 0,
-    refetchOnMount: "always",
   });
 
   const { data: actionRequired, isLoading: actionRequiredLoading } = useQuery<{
@@ -84,8 +76,6 @@ export default function SupplierHome() {
       return res.json();
     },
     enabled: !!currentUser?.id,
-    staleTime: 0,
-    refetchOnMount: "always",
   });
 
   const { data: detailedStats, isLoading: statsLoading } = useQuery<{
@@ -98,7 +88,6 @@ export default function SupplierHome() {
   }>({
     queryKey: [`/api/supplier/detailed-stats?supplierId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
-    staleTime: 5000,
   });
 
   const monthNames: Record<string, Record<string, string>> = {

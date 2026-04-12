@@ -419,9 +419,8 @@ export default function SupplierInbox() {
   const { data: conversations, isLoading: conversationsLoading } = useQuery<ConversationWithUser[]>({
     queryKey: [`/api/conversations?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchInterval: 3000,
+    staleTime: 2000,
+    refetchInterval: 5000,
     refetchIntervalInBackground: false,
   });
 

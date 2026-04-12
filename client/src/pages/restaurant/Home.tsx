@@ -44,15 +44,11 @@ export default function RestaurantHome() {
       return res.json();
     },
     enabled: !!currentUser?.id,
-    staleTime: 0,
-    refetchOnMount: "always",
   });
 
   const { data: conversations, isLoading: convLoading } = useQuery<ConversationWithUser[]>({
     queryKey: [`/api/conversations?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
-    staleTime: 0,
-    refetchOnMount: "always",
   });
 
   const { data: products, isLoading: productsLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
@@ -63,8 +59,6 @@ export default function RestaurantHome() {
   const { data: allOrders, isLoading: ordersLoading } = useQuery<OrderWithDetails[]>({
     queryKey: [`/api/orders?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
-    staleTime: 0,
-    refetchOnMount: "always",
   });
 
   const { data: templates, isLoading: templatesLoading } = useQuery<OrderTemplateWithItems[]>({

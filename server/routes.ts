@@ -906,14 +906,27 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/orders/pending-count", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) {
+        return res.json({ count: 0 });
+      }
+      const count = await storage.getPendingOrderCount(supplierId);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pending count" });
+    }
+  });
+
   app.get("/api/orders/history", async (req, res) => {
     try {
       const restaurantId = req.query.restaurantId as string;
       if (!restaurantId) {
         return res.json([]);
       }
-      const orders = await storage.getOrdersByRestaurant(restaurantId);
-      res.json(orders.filter(o => o.status === "delivered"));
+      const orders = await storage.getOrdersByRestaurant(restaurantId, { status: "delivered" });
+      res.json(orders);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch order history" });
     }
@@ -1128,7 +1141,7 @@ export async function registerRoutes(
       const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
       const productImages: Record<string, string | null> = {};
       for (const item of items) {
-        const prod = await storage.getProduct(item.productId);
+        const prod = productMap.get(item.productId);
         if (prod) productImages[item.productId] = prod.imageUrl || null;
       }
       const orderContent = JSON.stringify({
@@ -1862,17 +1875,13 @@ export async function registerRoutes(
     try {
       const supplierId = req.query.supplierId as string;
       if (!supplierId) return res.json([]);
-      const allOrders = await storage.getOrdersBySupplier(supplierId);
+      const inDeliveryOrders = await storage.getOrdersBySupplier(supplierId, { status: "in_delivery" });
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const endOfTomorrow = new Date(today);
+      endOfTomorrow.setDate(endOfTomorrow.getDate() + 2);
 
-      const endOfTomorrow = new Date(tomorrow);
-      endOfTomorrow.setDate(endOfTomorrow.getDate() + 1);
-
-      const relevant = allOrders.filter(o => {
-        if (o.status !== "in_delivery") return false;
+      const relevant = inDeliveryOrders.filter(o => {
         if (!o.requestedDeliveryDate) return true;
         const dd = new Date(o.requestedDeliveryDate + "T00:00:00");
         return dd >= today && dd < endOfTomorrow;
@@ -1982,19 +1991,6 @@ export async function registerRoutes(
       res.json(orders);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch order history" });
-    }
-  });
-
-  app.get("/api/orders/pending-count", async (req, res) => {
-    try {
-      const supplierId = req.query.supplierId as string;
-      if (!supplierId) {
-        return res.json({ count: 0 });
-      }
-      const count = await storage.getPendingOrderCount(supplierId);
-      res.json({ count });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch pending count" });
     }
   });
 
@@ -2230,21 +2226,20 @@ export async function registerRoutes(
     try {
       const restaurantId = req.query.restaurantId as string;
       if (!restaurantId) return res.json([]);
-      const allOrders = await storage.getOrdersByRestaurant(restaurantId);
+      const relevantOrders = await storage.getOrdersByRestaurant(restaurantId, { status: ["confirmed", "in_delivery", "delivered"] });
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const relevant = allOrders.filter(o => {
+      const relevant = relevantOrders.filter(o => {
         if (o.status === "delivered") {
           const updatedAt = o.updatedAt ? new Date(o.updatedAt) : null;
           if (!updatedAt) return false;
           return updatedAt >= today && updatedAt < tomorrow;
         }
         if (o.status === "confirmed" || o.status === "in_delivery") {
-          if (!o.requestedDeliveryDate) return false;
-          return true;
+          return !!o.requestedDeliveryDate;
         }
         return false;
       });
@@ -3424,18 +3419,27 @@ export async function registerRoutes(
       if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
       if (!month || !monthParamSchema.safeParse(month).success) return res.status(400).json({ error: "Valid month (YYYY-MM) required" });
 
-      const staysData = await db.select().from(overnightStays)
-        .where(eq(overnightStays.restaurantId, restaurantId));
-      const monthStays = staysData.filter(s => s.date.startsWith(month));
-      const totalOvernights = monthStays.reduce((sum, s) => sum + s.overnightStays, 0);
+      const monthPrefix = month + "%";
+      const [staysAgg] = await db.select({
+        totalOvernights: sql<number>`COALESCE(SUM(${overnightStays.overnightStays}), 0)`,
+        daysWithData: sql<number>`COUNT(*)`,
+      }).from(overnightStays).where(and(
+        eq(overnightStays.restaurantId, restaurantId),
+        sql`${overnightStays.date} LIKE ${monthPrefix}`
+      ));
+      const totalOvernights = Number(staysAgg.totalOvernights);
+      const daysWithData = Number(staysAgg.daysWithData);
 
-      const deliveredOrders = await db.select().from(orders)
-        .where(and(
-          eq(orders.restaurantId, restaurantId),
-          eq(orders.status, "delivered"),
-        ));
-      const monthOrders = deliveredOrders.filter(o => getOrderMonth(o.createdAt) === month);
-      const totalCosts = monthOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+      const [ordersAgg] = await db.select({
+        totalCosts: sql<number>`COALESCE(SUM(${orders.totalAmount}::numeric), 0)`,
+        orderCount: sql<number>`COUNT(*)`,
+      }).from(orders).where(and(
+        eq(orders.restaurantId, restaurantId),
+        eq(orders.status, "delivered"),
+        sql`to_char(${orders.createdAt}, 'YYYY-MM') = ${month}`
+      ));
+      const totalCosts = Number(ordersAgg.totalCosts);
+      const orderCount = Number(ordersAgg.orderCount);
 
       const costPerGuest = totalOvernights > 0 ? totalCosts / totalOvernights : 0;
 
@@ -3452,8 +3456,8 @@ export async function registerRoutes(
         targetCost: targetCost.toFixed(2),
         difference: difference.toFixed(2),
         percentageDeviation: percentageDeviation.toFixed(1),
-        orderCount: monthOrders.length,
-        daysWithData: monthStays.length,
+        orderCount,
+        daysWithData,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to calculate cost analysis" });
@@ -3465,23 +3469,30 @@ export async function registerRoutes(
       const restaurantId = req.query.restaurantId as string;
       if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
 
-      const allStays = await db.select().from(overnightStays)
-        .where(eq(overnightStays.restaurantId, restaurantId));
-      const allOrders = await db.select().from(orders)
-        .where(and(eq(orders.restaurantId, restaurantId), eq(orders.status, "delivered")));
+      const staysByMonth = await db.select({
+        month: sql<string>`SUBSTRING(${overnightStays.date}, 1, 7)`,
+        overnights: sql<number>`SUM(${overnightStays.overnightStays})`,
+      }).from(overnightStays)
+        .where(eq(overnightStays.restaurantId, restaurantId))
+        .groupBy(sql`SUBSTRING(${overnightStays.date}, 1, 7)`);
+
+      const ordersByMonth = await db.select({
+        month: sql<string>`to_char(${orders.createdAt}, 'YYYY-MM')`,
+        costs: sql<number>`SUM(${orders.totalAmount}::numeric)`,
+      }).from(orders)
+        .where(and(eq(orders.restaurantId, restaurantId), eq(orders.status, "delivered")))
+        .groupBy(sql`to_char(${orders.createdAt}, 'YYYY-MM')`);
+
       const [settings] = await db.select().from(costSettings).where(eq(costSettings.restaurantId, restaurantId));
       const targetCost = settings ? Number(settings.targetCostPerGuest) : 0;
 
       const months: Record<string, { overnights: number; costs: number }> = {};
-      for (const stay of allStays) {
-        const m = stay.date.slice(0, 7);
-        if (!months[m]) months[m] = { overnights: 0, costs: 0 };
-        months[m].overnights += stay.overnightStays;
+      for (const s of staysByMonth) {
+        months[s.month] = { overnights: Number(s.overnights), costs: 0 };
       }
-      for (const order of allOrders) {
-        const m = getOrderMonth(order.createdAt);
-        if (!months[m]) months[m] = { overnights: 0, costs: 0 };
-        months[m].costs += Number(order.totalAmount || 0);
+      for (const o of ordersByMonth) {
+        if (!months[o.month]) months[o.month] = { overnights: 0, costs: 0 };
+        months[o.month].costs = Number(o.costs);
       }
 
       const history = Object.entries(months)
@@ -3509,10 +3520,10 @@ export async function registerRoutes(
       }
 
       const allOrders = role === "restaurant"
-        ? await storage.getOrdersByRestaurant(userId)
-        : await storage.getOrdersBySupplier(userId);
+        ? await storage.getOrdersByRestaurant(userId, { status: ["delivered", "confirmed", "in_delivery", "partially_confirmed", "cancelled"] })
+        : await storage.getOrdersBySupplier(userId, { status: ["delivered", "confirmed", "in_delivery", "partially_confirmed", "cancelled"] });
 
-      let filtered = allOrders.filter(o => ["delivered", "confirmed", "in_delivery", "partially_confirmed", "cancelled"].includes(o.status));
+      let filtered = allOrders;
 
       if (dateFrom) {
         const from = new Date(dateFrom);

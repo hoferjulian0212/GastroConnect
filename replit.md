@@ -48,6 +48,13 @@ The application features a dark dashboard-style UI. The header uses a dark `bg-[
 - **Read Receipt Animation**: The double-check icon (CheckCheck) for sent messages animates with a fade-in only when transitioning from unread→read (not on initial load). Uses `knownReadIdsRef` to track previously-read state and `newlyReadIds` state for animation gating. Applied in both restaurant and supplier Inbox.
 - **Confirmation Dialogs**: All destructive cancel actions across restaurant Orders, supplier Orders (single + batch), supplier Inbox, and OrderDetail now require explicit confirmation before proceeding.
 
+### Performance Optimizations
+- **Database Indexes**: All foreign key columns have indexes defined in schema.ts (products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, documents, deliverySchedules, promotions, stockMovements, orderTemplates, pushSubscriptions, overnightStays, costSettings, minimumOrderValues, customPrices, customMinOrderQuantities). Composite indexes on frequently queried column pairs (e.g., messages.conversationId+createdAt, notifications.userId+isRead).
+- **N+1 Query Fixes**: `getConversations` batches user lookups and unread counts in single queries, parallelizes last-message fetches. Direct-order route reuses productMap instead of re-fetching.
+- **SQL Filter Pushdown**: Order history/upcoming deliveries use status filters in SQL WHERE clauses instead of fetching all orders and filtering in memory. Cost analysis uses SQL SUM/GROUP BY aggregation instead of loading all rows.
+- **Polling & Cache**: Default `refetchInterval` raised from 5s→30s, `staleTime` from 3s→15s. Chat pages keep 3-5s fast polling. Dashboard/nav badge queries use defaults instead of aggressive `staleTime:0`.
+- **Route Ordering**: `/api/orders/pending-count` and `/api/orders/history` registered before `/api/orders/:id` to prevent param shadowing.
+
 ### Core Data Models
 Users, Products, Orders, Cart Items, Conversations/Messages, Delivery Schedules, Promotions, Documents, Custom MOQ, Order Templates, Push Subscriptions, Overnight Stays, Cost Settings, Stock Movements.
 

@@ -42,8 +42,8 @@ export interface IStorage {
   deleteProduct(id: string): Promise<void>;
 
   // Orders
-  getOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]>;
-  getOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]>;
+  getOrdersByRestaurant(restaurantId: string, opts?: { status?: string | string[]; limit?: number }): Promise<OrderWithDetails[]>;
+  getOrdersBySupplier(supplierId: string, opts?: { status?: string | string[]; limit?: number }): Promise<OrderWithDetails[]>;
   getRecentOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]>;
   getRecentOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]>;
   getOrder(id: string): Promise<OrderWithDetails | undefined>;
@@ -266,24 +266,28 @@ export class DatabaseStorage implements IStorage {
     return { ...order, items, restaurant, supplier, createdByUser };
   }
 
-  async getOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]> {
-    const ordersResult = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.restaurantId, restaurantId))
-      .orderBy(desc(orders.createdAt));
+  async getOrdersByRestaurant(restaurantId: string, opts?: { status?: string | string[]; limit?: number }): Promise<OrderWithDetails[]> {
+    const conditions = [eq(orders.restaurantId, restaurantId)];
+    if (opts?.status) {
+      const statuses = Array.isArray(opts.status) ? opts.status : [opts.status];
+      conditions.push(inArray(orders.status, statuses as any));
+    }
+    let query = db.select().from(orders).where(and(...conditions)).orderBy(desc(orders.createdAt));
+    const ordersResult = opts?.limit ? await (query as any).limit(opts.limit) : await query;
 
-    return Promise.all(ordersResult.map(order => this.enrichOrderWithDetails(order)));
+    return Promise.all(ordersResult.map((order: Order) => this.enrichOrderWithDetails(order)));
   }
 
-  async getOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]> {
-    const ordersResult = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.supplierId, supplierId))
-      .orderBy(desc(orders.createdAt));
+  async getOrdersBySupplier(supplierId: string, opts?: { status?: string | string[]; limit?: number }): Promise<OrderWithDetails[]> {
+    const conditions = [eq(orders.supplierId, supplierId)];
+    if (opts?.status) {
+      const statuses = Array.isArray(opts.status) ? opts.status : [opts.status];
+      conditions.push(inArray(orders.status, statuses as any));
+    }
+    let query = db.select().from(orders).where(and(...conditions)).orderBy(desc(orders.createdAt));
+    const ordersResult = opts?.limit ? await (query as any).limit(opts.limit) : await query;
 
-    return Promise.all(ordersResult.map(order => this.enrichOrderWithDetails(order)));
+    return Promise.all(ordersResult.map((order: Order) => this.enrichOrderWithDetails(order)));
   }
 
   async getRecentOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]> {
@@ -449,35 +453,45 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(conversations.lastMessageAt));
 
-    const result: ConversationWithUser[] = [];
-    for (const conv of convs) {
-      const otherUserId = role === "restaurant" ? conv.supplierId : conv.restaurantId;
-      const [otherUser] = await db.select().from(users).where(eq(users.id, otherUserId));
-      
-      const [lastMessage] = await db
-        .select()
-        .from(messages)
-        .where(eq(messages.conversationId, conv.id))
+    if (convs.length === 0) return [];
+
+    const otherUserIds = [...new Set(convs.map(c => role === "restaurant" ? c.supplierId : c.restaurantId))];
+    const otherUsers = await db.select().from(users).where(inArray(users.id, otherUserIds));
+    const userMap = new Map(otherUsers.map(u => [u.id, u]));
+
+    const convIds = convs.map(c => c.id);
+
+    const lastMsgResults = await Promise.all(
+      convIds.map(convId => db.select().from(messages)
+        .where(eq(messages.conversationId, convId))
         .orderBy(desc(messages.createdAt))
-        .limit(1);
-
-      const unreadResult = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(messages)
-        .where(and(
-          eq(messages.conversationId, conv.id),
-          ne(messages.senderId, userId),
-          eq(messages.isRead, false)
-        ));
-
-      result.push({
-        ...conv,
-        otherUser,
-        lastMessage,
-        unreadCount: Number(unreadResult[0]?.count) || 0
-      });
+        .limit(1))
+    );
+    const lastMsgMap = new Map<string, Message>();
+    for (const [i, rows] of lastMsgResults.entries()) {
+      if (rows.length > 0) lastMsgMap.set(convIds[i], rows[0]);
     }
-    return result;
+
+    const unreadCounts = await db
+      .select({ conversationId: messages.conversationId, count: sql<number>`count(*)` })
+      .from(messages)
+      .where(and(
+        inArray(messages.conversationId, convIds),
+        ne(messages.senderId, userId),
+        eq(messages.isRead, false)
+      ))
+      .groupBy(messages.conversationId);
+    const unreadMap = new Map(unreadCounts.map(u => [u.conversationId, Number(u.count)]));
+
+    return convs.map(conv => {
+      const otherUserId = role === "restaurant" ? conv.supplierId : conv.restaurantId;
+      return {
+        ...conv,
+        otherUser: userMap.get(otherUserId)!,
+        lastMessage: lastMsgMap.get(conv.id),
+        unreadCount: unreadMap.get(conv.id) || 0
+      };
+    });
   }
 
   async getConversation(conversationId: string): Promise<Conversation | undefined> {
