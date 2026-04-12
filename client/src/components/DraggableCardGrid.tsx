@@ -72,10 +72,9 @@ interface SortableCardProps {
   onToggleSize: (id: string) => void;
   isLg: boolean;
   isMd: boolean;
-  onMeasure: (id: string, el: HTMLDivElement | null) => void;
 }
 
-function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd, onMeasure }: SortableCardProps) {
+function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd }: SortableCardProps) {
   const {
     attributes,
     listeners,
@@ -95,11 +94,6 @@ function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd, onMea
   const isFull = item.size === "full";
   const widthPercent = (!isLg || isFull) ? "100%" : "calc(50% - 12px)";
 
-  const combinedRef = useCallback((el: HTMLDivElement | null) => {
-    setNodeRef(el);
-    onMeasure(item.id, el);
-  }, [setNodeRef, onMeasure, item.id]);
-
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? "none" : (transition || "transform 350ms cubic-bezier(0.25, 1, 0.5, 1)"),
@@ -109,7 +103,7 @@ function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd, onMea
 
   return (
     <div
-      ref={combinedRef}
+      ref={setNodeRef}
       style={style}
       className={`relative ${editMode ? "ring-1 ring-border/40 rounded-xl" : ""}`}
       data-testid={`draggable-card-${item.id}`}
@@ -170,7 +164,6 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const [isLg, setIsLg] = useState(false);
   const [isMd, setIsMd] = useState(false);
   const layoutBeforeDrag = useRef<LayoutItem[]>([]);
-  const cardWidths = useRef<Map<string, number>>(new Map());
   const [dragWidth, setDragWidth] = useState<number>(0);
 
   useEffect(() => {
@@ -187,12 +180,6 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     const handler = (e: MediaQueryListEvent) => setIsMd(e.matches);
     mql.addEventListener("change", handler);
     return () => mql.removeEventListener("change", handler);
-  }, []);
-
-  const handleMeasure = useCallback((id: string, el: HTMLDivElement | null) => {
-    if (el) {
-      cardWidths.current.set(id, el.offsetWidth);
-    }
   }, []);
 
   const pointerSensor = useSensor(PointerSensor, {
@@ -232,8 +219,8 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const id = event.active.id as string;
     layoutBeforeDrag.current = layout;
-    const measured = cardWidths.current.get(id);
-    setDragWidth(measured || 0);
+    const el = document.querySelector(`[data-testid="draggable-card-${id}"]`) as HTMLElement | null;
+    setDragWidth(el ? el.offsetWidth : 0);
     setActiveId(id);
   }, [layout]);
 
@@ -304,7 +291,6 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
                   onToggleSize={toggleSize}
                   isLg={isLg}
                   isMd={isMd}
-                  onMeasure={handleMeasure}
                 />
               );
             })}
