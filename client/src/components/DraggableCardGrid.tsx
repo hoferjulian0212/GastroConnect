@@ -163,8 +163,12 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isLg, setIsLg] = useState(false);
   const [isMd, setIsMd] = useState(false);
-  const layoutBeforeDrag = useRef<LayoutItem[]>([]);
+  const layoutRef = useRef<LayoutItem[]>(layout);
   const [dragWidth, setDragWidth] = useState<number>(0);
+
+  useEffect(() => {
+    layoutRef.current = layout;
+  }, [layout]);
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1024px)");
@@ -216,13 +220,15 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     saveLayout(newLayout);
   }, [layout, saveLayout]);
 
+  const dragStartLayoutRef = useRef<LayoutItem[]>([]);
+
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const id = event.active.id as string;
-    layoutBeforeDrag.current = layout;
+    dragStartLayoutRef.current = layoutRef.current;
     const el = document.querySelector(`[data-testid="draggable-card-${id}"]`) as HTMLElement | null;
     setDragWidth(el ? el.offsetWidth : 0);
     setActiveId(id);
-  }, [layout]);
+  }, []);
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
@@ -238,12 +244,13 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
 
   const handleDragEnd = useCallback((_event: DragEndEvent) => {
     setActiveId(null);
-    saveLayout(layout);
-  }, [layout, saveLayout]);
+    const currentLayout = layoutRef.current;
+    saveLayout(currentLayout);
+  }, [saveLayout]);
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
-    setLayout(layoutBeforeDrag.current);
+    setLayout(dragStartLayoutRef.current);
   }, []);
 
   const sectionMap = useMemo(() => new Map(sections.map(s => [s.id, s])), [sections]);
