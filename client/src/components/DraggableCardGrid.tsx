@@ -72,10 +72,10 @@ interface SortableCardProps {
   onToggleSize: (id: string) => void;
   isLg: boolean;
   isMd: boolean;
-  isDragActive: boolean;
+  onMeasure: (id: string, el: HTMLDivElement | null) => void;
 }
 
-function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd, isDragActive }: SortableCardProps) {
+function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd, onMeasure }: SortableCardProps) {
   const {
     attributes,
     listeners,
@@ -95,59 +95,70 @@ function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd, isDra
   const isFull = item.size === "full";
   const widthPercent = (!isLg || isFull) ? "100%" : "calc(50% - 12px)";
 
+  const combinedRef = useCallback((el: HTMLDivElement | null) => {
+    setNodeRef(el);
+    onMeasure(item.id, el);
+  }, [setNodeRef, onMeasure, item.id]);
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? "none" : (transition || "transform 350ms cubic-bezier(0.25, 1, 0.5, 1)"),
-    opacity: isDragging ? 0 : 1,
-    zIndex: isDragging ? 0 : "auto",
     width: widthPercent,
     flexShrink: 0,
   };
 
   return (
     <div
-      ref={setNodeRef}
+      ref={combinedRef}
       style={style}
       className={`relative ${editMode ? "ring-1 ring-border/40 rounded-xl" : ""}`}
       data-testid={`draggable-card-${item.id}`}
     >
-      {editMode && (
-        <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
-          {isMd && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onToggleSize(item.id); }}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-sm text-xs font-medium transition-all ${
-                isFull
-                  ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
-                  : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
-              }`}
-              data-testid={`toggle-size-${item.id}`}
-              title={isFull ? "Halbe Breite" : "Volle Breite"}
-            >
-              {isFull ? (
-                <>
-                  <Columns2 className="h-3.5 w-3.5" />
-                  <span>Halb</span>
-                </>
-              ) : (
-                <>
-                  <Maximize2 className="h-3.5 w-3.5" />
-                  <span>Voll</span>
-                </>
-              )}
-            </button>
-          )}
-          <div
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-background/90 backdrop-blur border shadow-sm text-muted-foreground cursor-grab active:cursor-grabbing touch-none select-none"
-            {...attributes}
-            {...listeners}
-            data-testid={`drag-handle-${item.id}`}
-          >
-            <GripVertical className="h-4 w-4" />
-          </div>
-        </div>
+      {isDragging && (
+        <div
+          className="absolute inset-0 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5"
+          style={{ zIndex: 0 }}
+        />
       )}
-      <CardContent content={section.content} editMode={editMode} />
+      <div style={{ opacity: isDragging ? 0 : 1, transition: "opacity 150ms ease" }}>
+        {editMode && (
+          <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
+            {isMd && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleSize(item.id); }}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-sm text-xs font-medium transition-all ${
+                  isFull
+                    ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+                    : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                }`}
+                data-testid={`toggle-size-${item.id}`}
+                title={isFull ? "Halbe Breite" : "Volle Breite"}
+              >
+                {isFull ? (
+                  <>
+                    <Columns2 className="h-3.5 w-3.5" />
+                    <span>Halb</span>
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    <span>Voll</span>
+                  </>
+                )}
+              </button>
+            )}
+            <div
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-background/90 backdrop-blur border shadow-sm text-muted-foreground cursor-grab active:cursor-grabbing touch-none select-none"
+              {...attributes}
+              {...listeners}
+              data-testid={`drag-handle-${item.id}`}
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+          </div>
+        )}
+        <CardContent content={section.content} editMode={editMode} />
+      </div>
     </div>
   );
 }
@@ -159,6 +170,8 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const [isLg, setIsLg] = useState(false);
   const [isMd, setIsMd] = useState(false);
   const layoutBeforeDrag = useRef<LayoutItem[]>([]);
+  const cardWidths = useRef<Map<string, number>>(new Map());
+  const [dragWidth, setDragWidth] = useState<number>(0);
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1024px)");
@@ -174,6 +187,12 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     const handler = (e: MediaQueryListEvent) => setIsMd(e.matches);
     mql.addEventListener("change", handler);
     return () => mql.removeEventListener("change", handler);
+  }, []);
+
+  const handleMeasure = useCallback((id: string, el: HTMLDivElement | null) => {
+    if (el) {
+      cardWidths.current.set(id, el.offsetWidth);
+    }
   }, []);
 
   const pointerSensor = useSensor(PointerSensor, {
@@ -211,8 +230,11 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   }, [layout, saveLayout]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    const id = event.active.id as string;
     layoutBeforeDrag.current = layout;
-    setActiveId(event.active.id as string);
+    const measured = cardWidths.current.get(id);
+    setDragWidth(measured || 0);
+    setActiveId(id);
   }, [layout]);
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
@@ -242,10 +264,6 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
 
   const activeItem = activeId ? layout.find(l => l.id === activeId) : null;
   const activeSection = activeItem ? sectionMap.get(activeItem.id) : null;
-
-  const activeWidth = activeItem
-    ? (!isLg || activeItem.size === "full") ? "100%" : "calc(50% - 12px)"
-    : "100%";
 
   return (
     <div className="relative">
@@ -286,7 +304,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
                   onToggleSize={toggleSize}
                   isLg={isLg}
                   isMd={isMd}
-                  isDragActive={!!activeId}
+                  onMeasure={handleMeasure}
                 />
               );
             })}
@@ -301,9 +319,9 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
         >
           {activeItem && activeSection ? (
             <div
-              className="rounded-xl overflow-hidden"
+              className="rounded-xl overflow-hidden ring-2 ring-primary/20"
               style={{
-                width: activeWidth,
+                width: dragWidth > 0 ? dragWidth : undefined,
                 opacity: 0.95,
                 boxShadow: "0 20px 60px rgba(0,0,0,0.25), 0 8px 20px rgba(0,0,0,0.15)",
                 transform: "scale(1.02)",
