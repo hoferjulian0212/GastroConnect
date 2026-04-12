@@ -18,7 +18,6 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 type CardSize = "full" | "half";
 
@@ -38,6 +37,14 @@ interface LayoutItem {
   id: string;
   size: CardSize;
 }
+
+interface MasonryPosition {
+  top: number;
+  left: number;
+  width: number;
+}
+
+const GAP = 24;
 
 function getStorageKey(userId: string, role: string) {
   return `dashboard-grid-${userId}-${role}`;
@@ -70,42 +77,49 @@ interface SortableCardProps {
   section: CardSection;
   editMode: boolean;
   onToggleSize: (id: string) => void;
-  isLg: boolean;
   isMd: boolean;
+  masonryPos?: MasonryPosition;
+  targetWidth?: number;
+  isReady: boolean;
+  onRefChange: (id: string, el: HTMLDivElement | null) => void;
 }
 
-function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd }: SortableCardProps) {
+function SortableCard({ item, section, editMode, onToggleSize, isMd, masonryPos, targetWidth, isReady, onRefChange }: SortableCardProps) {
   const {
     attributes,
     listeners,
     setNodeRef,
-    transform,
-    transition,
     isDragging,
   } = useSortable({
     id: item.id,
     disabled: !editMode,
-    transition: {
-      duration: 350,
-      easing: "cubic-bezier(0.25, 1, 0.5, 1)",
-    },
   });
 
+  const mergedRef = useCallback((node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    onRefChange(item.id, node);
+  }, [setNodeRef, item.id, onRefChange]);
+
   const isFull = item.size === "full";
-  const widthPercent = (!isLg || isFull) ? "100%" : "calc(50% - 12px)";
+  const width = masonryPos?.width ?? targetWidth ?? '100%';
 
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition: isDragging ? "none" : (transition || "transform 350ms cubic-bezier(0.25, 1, 0.5, 1)"),
-    width: widthPercent,
-    flexShrink: 0,
+    position: 'absolute',
+    top: masonryPos?.top ?? 0,
+    left: masonryPos?.left ?? 0,
+    width,
+    opacity: isReady ? (isDragging ? 0 : 1) : 0,
+    transition: isReady
+      ? 'top 350ms cubic-bezier(0.25,1,0.5,1), left 350ms cubic-bezier(0.25,1,0.5,1), width 350ms cubic-bezier(0.25,1,0.5,1), opacity 200ms ease'
+      : 'none',
+    zIndex: isDragging ? 0 : 1,
   };
 
   return (
     <div
-      ref={setNodeRef}
+      ref={mergedRef}
       style={style}
-      className={`relative ${editMode ? "ring-1 ring-border/40 rounded-xl" : ""}`}
+      className={`${editMode ? "ring-1 ring-border/40 rounded-xl" : ""}`}
       data-testid={`draggable-card-${item.id}`}
     >
       {isDragging && (
@@ -161,14 +175,20 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const [layout, setLayout] = useState<LayoutItem[]>(() => loadLayout(userId, role, sections));
   const [editMode, setEditMode] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [isLg, setIsLg] = useState(false);
-  const [isMd, setIsMd] = useState(false);
+  const [isLg, setIsLg] = useState(() => window.matchMedia("(min-width: 1024px)").matches);
+  const [isMd, setIsMd] = useState(() => window.matchMedia("(min-width: 768px)").matches);
   const layoutRef = useRef<LayoutItem[]>(layout);
   const [dragWidth, setDragWidth] = useState<number>(0);
 
-  useEffect(() => {
-    layoutRef.current = layout;
-  }, [layout]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef(new Map<string, HTMLDivElement>());
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [masonryPositions, setMasonryPositions] = useState(new Map<string, MasonryPosition>());
+  const [containerHeight, setContainerHeight] = useState(0);
+  const [isReady, setIsReady] = useState(false);
+  const rafId = useRef(0);
+
+  useEffect(() => { layoutRef.current = layout; }, [layout]);
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1024px)");
@@ -193,6 +213,82 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     activationConstraint: { delay: 150, tolerance: 5 },
   });
   const sensors = useSensors(pointerSensor, touchSensor);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width ?? 0;
+      if (w > 0) setContainerWidth(w);
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
+
+  const cols = isLg && containerWidth > 0 ? 2 : 1;
+  const colWidth = cols === 1 ? containerWidth : (containerWidth - GAP) / 2;
+
+  const targetWidths = useMemo(() => {
+    if (containerWidth === 0) return new Map<string, number>();
+    return new Map(layout.map(item => [
+      item.id,
+      (item.size === "full" || cols === 1) ? containerWidth : colWidth
+    ]));
+  }, [layout, containerWidth, cols, colWidth]);
+
+  const recalcPositions = useCallback(() => {
+    if (containerWidth === 0) return;
+    const currentLayout = layoutRef.current;
+    const numCols = isLg ? 2 : 1;
+    const cw = numCols === 1 ? containerWidth : (containerWidth - GAP) / 2;
+    const colTops = Array(numCols).fill(0);
+    const pos = new Map<string, MasonryPosition>();
+
+    for (const item of currentLayout) {
+      const el = cardRefs.current.get(item.id);
+      const h = el ? el.offsetHeight : 200;
+      const isFull = item.size === "full" || numCols === 1;
+      const w = isFull ? containerWidth : cw;
+
+      if (isFull && numCols > 1) {
+        const top = Math.max(colTops[0], colTops[1]);
+        pos.set(item.id, { top, left: 0, width: w });
+        colTops[0] = colTops[1] = top + h + GAP;
+      } else {
+        const col = colTops[0] <= colTops[1] ? 0 : 1;
+        pos.set(item.id, { top: colTops[col], left: col * (cw + GAP), width: w });
+        colTops[col] += h + GAP;
+      }
+    }
+
+    setMasonryPositions(pos);
+    setContainerHeight(Math.max(colTops[0] || 0, colTops[1] || 0));
+    setIsReady(true);
+  }, [containerWidth, isLg]);
+
+  useEffect(() => {
+    if (containerWidth === 0) return;
+    cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(recalcPositions);
+  }, [layout, containerWidth, isLg, recalcPositions]);
+
+  useEffect(() => {
+    if (containerWidth === 0) return;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(recalcPositions);
+    });
+    cardRefs.current.forEach(el => ro.observe(el));
+    return () => ro.disconnect();
+  }, [layout.map(l => l.id).join(','), containerWidth, recalcPositions]);
+
+  const handleRefChange = useCallback((id: string, el: HTMLDivElement | null) => {
+    if (el) {
+      cardRefs.current.set(id, el);
+    } else {
+      cardRefs.current.delete(id);
+    }
+  }, []);
 
   useEffect(() => {
     const defaultIds = sections.map(s => s.id);
@@ -244,8 +340,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
 
   const handleDragEnd = useCallback((_event: DragEndEvent) => {
     setActiveId(null);
-    const currentLayout = layoutRef.current;
-    saveLayout(currentLayout);
+    saveLayout(layoutRef.current);
   }, [saveLayout]);
 
   const handleDragCancel = useCallback(() => {
@@ -285,7 +380,11 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
         onDragCancel={handleDragCancel}
       >
         <SortableContext items={layoutIds} strategy={verticalListSortingStrategy}>
-          <div className="flex flex-wrap gap-6">
+          <div
+            ref={containerRef}
+            className="relative"
+            style={{ minHeight: containerHeight || 'auto' }}
+          >
             {layout.map((item) => {
               const section = sectionMap.get(item.id);
               if (!section) return null;
@@ -296,8 +395,11 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
                   section={section}
                   editMode={editMode}
                   onToggleSize={toggleSize}
-                  isLg={isLg}
                   isMd={isMd}
+                  masonryPos={masonryPositions.get(item.id)}
+                  targetWidth={targetWidths.get(item.id)}
+                  isReady={isReady}
+                  onRefChange={handleRefChange}
                 />
               );
             })}
