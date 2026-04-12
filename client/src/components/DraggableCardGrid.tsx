@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, memo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef, memo } from "react";
 import { GripVertical, Maximize2, Columns2 } from "lucide-react";
 import {
   DndContext,
@@ -10,11 +10,12 @@ import {
   DragOverlay,
   type DragStartEvent,
   type DragEndEvent,
+  type DragOverEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   useSortable,
-  rectSortingStrategy,
+  verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -71,9 +72,10 @@ interface SortableCardProps {
   onToggleSize: (id: string) => void;
   isLg: boolean;
   isMd: boolean;
+  isDragActive: boolean;
 }
 
-function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd }: SortableCardProps) {
+function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd, isDragActive }: SortableCardProps) {
   const {
     attributes,
     listeners,
@@ -81,15 +83,22 @@ function SortableCard({ item, section, editMode, onToggleSize, isLg, isMd }: Sor
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id, disabled: !editMode });
+  } = useSortable({
+    id: item.id,
+    disabled: !editMode,
+    transition: {
+      duration: 350,
+      easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+    },
+  });
 
   const isFull = item.size === "full";
   const widthPercent = (!isLg || isFull) ? "100%" : "calc(50% - 12px)";
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition: transition || undefined,
-    opacity: isDragging ? 0.4 : 1,
+    transition: isDragging ? "none" : (transition || "transform 350ms cubic-bezier(0.25, 1, 0.5, 1)"),
+    opacity: isDragging ? 0 : 1,
     zIndex: isDragging ? 0 : "auto",
     width: widthPercent,
     flexShrink: 0,
@@ -149,6 +158,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isLg, setIsLg] = useState(false);
   const [isMd, setIsMd] = useState(false);
+  const layoutBeforeDrag = useRef<LayoutItem[]>([]);
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1024px)");
@@ -201,25 +211,30 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   }, [layout, saveLayout]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    layoutBeforeDrag.current = layout;
     setActiveId(event.active.id as string);
+  }, [layout]);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setLayout((prev) => {
+      const oldIndex = prev.findIndex(l => l.id === active.id);
+      const newIndex = prev.findIndex(l => l.id === over.id);
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
+    });
   }, []);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
+  const handleDragEnd = useCallback((_event: DragEndEvent) => {
     setActiveId(null);
-
-    if (over && active.id !== over.id) {
-      const oldIndex = layout.findIndex(l => l.id === active.id);
-      const newIndex = layout.findIndex(l => l.id === over.id);
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newLayout = arrayMove(layout, oldIndex, newIndex);
-        saveLayout(newLayout);
-      }
-    }
+    saveLayout(layout);
   }, [layout, saveLayout]);
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
+    setLayout(layoutBeforeDrag.current);
   }, []);
 
   const sectionMap = useMemo(() => new Map(sections.map(s => [s.id, s])), [sections]);
@@ -253,10 +268,11 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <SortableContext items={layoutIds} strategy={rectSortingStrategy}>
+        <SortableContext items={layoutIds} strategy={verticalListSortingStrategy}>
           <div className="flex flex-wrap gap-6">
             {layout.map((item) => {
               const section = sectionMap.get(item.id);
@@ -270,6 +286,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
                   onToggleSize={toggleSize}
                   isLg={isLg}
                   isMd={isMd}
+                  isDragActive={!!activeId}
                 />
               );
             })}
@@ -278,7 +295,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
 
         <DragOverlay
           dropAnimation={{
-            duration: 250,
+            duration: 300,
             easing: "cubic-bezier(0.25, 1, 0.5, 1)",
           }}
         >
@@ -287,9 +304,9 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
               className="rounded-xl overflow-hidden"
               style={{
                 width: activeWidth,
-                opacity: 0.92,
-                boxShadow: "0 25px 80px rgba(0,0,0,0.28), 0 10px 24px rgba(0,0,0,0.18)",
-                transform: "scale(1.03) rotate(1deg)",
+                opacity: 0.95,
+                boxShadow: "0 20px 60px rgba(0,0,0,0.25), 0 8px 20px rgba(0,0,0,0.15)",
+                transform: "scale(1.02)",
               }}
             >
               <div className="pointer-events-none select-none">
