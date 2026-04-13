@@ -727,34 +727,34 @@ export default function RestaurantCart() {
       )}
 
       <Dialog open={!!preConfirmDialog} onOpenChange={(open) => { if (!open) setPreConfirmDialog(null); }}>
-        <DialogContent className="!max-w-xl w-[calc(100vw-2rem)]" data-testid="dialog-order-confirm">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle className="flex items-center gap-2 text-lg">
+        <DialogContent className="!max-w-2xl w-[calc(100vw-2rem)]" data-testid="dialog-order-confirm">
+          <DialogHeader className="px-8 pt-8 pb-3">
+            <DialogTitle className="flex items-center gap-2.5 text-xl">
               <ShoppingBag className="h-5 w-5 text-primary" />
               {lang === "de" ? "Bestellung bestätigen" : "Conferma ordine"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="mt-1">
               {lang === "de" ? "Bitte überprüfen Sie Ihre Bestellung vor dem Absenden." : "Controlla il tuo ordine prima di inviarlo."}
             </DialogDescription>
           </DialogHeader>
           {preConfirmDialog && (
-            <div className="space-y-5 px-6">
-              <div className="rounded-xl bg-muted/40 p-4 space-y-3">
+            <div className="space-y-5 px-8">
+              <div className="rounded-xl bg-muted/40 p-5 space-y-3">
                 <div className="flex items-center gap-3 text-sm">
                   <Package className="h-4 w-4 text-muted-foreground shrink-0" />
                   <span className="text-muted-foreground shrink-0">{lang === "de" ? "Lieferant" : "Fornitore"}</span>
-                  <span className="font-medium ml-auto text-right">{preConfirmDialog.supplierName}</span>
+                  <span className="font-semibold ml-auto text-right">{preConfirmDialog.supplierName}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
                   <span className="text-muted-foreground shrink-0">{lang === "de" ? "Lieferung" : "Consegna"}</span>
-                  <span className="font-medium ml-auto text-right">{preConfirmDialog.deliveryDate || (lang === "de" ? "Schnellstmöglich" : "Il prima possibile")}</span>
+                  <span className="font-semibold ml-auto text-right">{preConfirmDialog.deliveryDate || (lang === "de" ? "Schnellstmöglich" : "Il prima possibile")}</span>
                 </div>
               </div>
 
-              <div className="max-h-64 overflow-y-auto space-y-2.5">
+              <div className="max-h-72 overflow-y-auto space-y-3">
                 {preConfirmDialog.items.map((item, i) => (
-                  <div key={i} className="flex justify-between items-center text-sm gap-4 py-0.5">
+                  <div key={i} className="flex justify-between items-center text-sm gap-4 py-1">
                     <span className="text-muted-foreground">{item.quantity}x {item.name}</span>
                     <span className="font-medium shrink-0 tabular-nums">{item.price}€</span>
                   </div>
@@ -762,20 +762,20 @@ export default function RestaurantCart() {
               </div>
 
               {preConfirmDialog.notes && (
-                <div className="flex items-start gap-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 px-3.5 py-2.5">
+                <div className="flex items-start gap-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 px-4 py-3">
                   <StickyNote className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-800 dark:text-amber-300">{preConfirmDialog.notes}</p>
                 </div>
               )}
 
               <Separator />
-              <div className="flex justify-between items-center font-bold text-lg">
+              <div className="flex justify-between items-center font-bold text-xl py-1">
                 <span>{lang === "de" ? "Gesamt" : "Totale"}</span>
                 <span data-testid="confirm-total" className="tabular-nums">{preConfirmDialog.total}€</span>
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2 sm:gap-0 px-6 pb-6 pt-4">
+          <DialogFooter className="gap-2 sm:gap-0 px-8 pb-8 pt-5">
             <Button variant="outline" onClick={() => setPreConfirmDialog(null)} data-testid="button-confirm-cancel">
               {lang === "de" ? "Zurück" : "Indietro"}
             </Button>
