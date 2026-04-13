@@ -3,14 +3,17 @@ import { GripVertical, Maximize2, Columns2 } from "lucide-react";
 import {
   DndContext,
   closestCenter,
+  pointerWithin,
   PointerSensor,
   TouchSensor,
   useSensor,
   useSensors,
   DragOverlay,
+  MeasuringStrategy,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
+  type CollisionDetection,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -64,6 +67,15 @@ function loadLayout(userId: string, role: string, sections: CardSection[]): Layo
   return sections.map(s => ({ id: s.id, size: s.defaultSize || "full" }));
 }
 
+const customCollision: CollisionDetection = (args) => {
+  const pw = pointerWithin(args);
+  const filtered = pw.filter(({ id }) => id !== args.active.id);
+  if (filtered.length > 0) return filtered;
+
+  const cc = closestCenter(args);
+  return cc.filter(({ id }) => id !== args.active.id);
+};
+
 const CardContent = memo(function CardContent({ content, editMode }: { content: React.ReactNode; editMode: boolean }) {
   return (
     <div className={editMode ? "pointer-events-none select-none" : ""}>
@@ -108,7 +120,7 @@ function SortableCard({ item, section, editMode, onToggleSize, isMd, masonryPos,
     top: masonryPos?.top ?? 0,
     left: masonryPos?.left ?? 0,
     width,
-    opacity: isReady ? (isDragging ? 0 : 1) : 0,
+    opacity: isReady ? 1 : 0,
     transition: isReady
       ? 'top 350ms cubic-bezier(0.25,1,0.5,1), left 350ms cubic-bezier(0.25,1,0.5,1), width 350ms cubic-bezier(0.25,1,0.5,1), opacity 200ms ease'
       : 'none',
@@ -125,11 +137,11 @@ function SortableCard({ item, section, editMode, onToggleSize, isMd, masonryPos,
       {isDragging && (
         <div
           className="absolute inset-0 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5"
-          style={{ zIndex: 0 }}
+          style={{ zIndex: 10 }}
         />
       )}
-      <div style={{ opacity: isDragging ? 0 : 1, transition: "opacity 150ms ease" }}>
-        {editMode && (
+      <div style={{ opacity: isDragging ? 0.06 : 1, transition: "opacity 150ms ease" }}>
+        {editMode && !isDragging && (
           <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
             {isMd && (
               <button
@@ -170,6 +182,12 @@ function SortableCard({ item, section, editMode, onToggleSize, isMd, masonryPos,
     </div>
   );
 }
+
+const measuringConfig = {
+  droppable: {
+    strategy: MeasuringStrategy.Always,
+  },
+};
 
 export default function DraggableCardGrid({ userId, role, sections }: DraggableCardGridProps) {
   const [layout, setLayout] = useState<LayoutItem[]>(() => loadLayout(userId, role, sections));
@@ -373,7 +391,8 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={customCollision}
+        measuring={measuringConfig}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
