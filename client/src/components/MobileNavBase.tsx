@@ -101,11 +101,9 @@ export function MobileNavBase({
   const glassRef = useRef<HTMLDivElement>(null);
   const activeOverlayRef = useRef<HTMLDivElement>(null);
   const chromaticRef = useRef<HTMLDivElement>(null);
-  const specularRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const totalItems = mainNavItems.length + 1;
   const cachedHeight = useRef(48);
-  const prevActiveIdx = useRef(-1);
 
   const blobX = useMotionValue(0);
   const blobW = useMotionValue(72);
@@ -189,21 +187,6 @@ export function MobileNavBase({
     });
   }, []);
 
-  const triggerSpecularSweep = useCallback(() => {
-    if (!specularRef.current) return;
-    specularRef.current.classList.remove("is-sweeping");
-    void specularRef.current.offsetWidth;
-    specularRef.current.classList.add("is-sweeping");
-  }, []);
-
-  const pillScale = useMotionValue(1);
-  const springScale = useSpring(pillScale, { stiffness: 500, damping: 18, mass: 0.4 });
-
-  const triggerScaleBounce = useCallback(() => {
-    pillScale.set(1.04);
-    setTimeout(() => pillScale.set(1), 60);
-  }, [pillScale]);
-
   const snapToIndex = useCallback((idx: number) => {
     const measurements = getItemMeasurements();
     if (idx < 0 || idx >= measurements.length) return;
@@ -232,13 +215,8 @@ export function MobileNavBase({
     const activeIdx = getActiveIndex();
     if (activeIdx >= 0 && !pointerDown.current) {
       requestAnimationFrame(() => snapToIndex(activeIdx));
-      if (prevActiveIdx.current >= 0 && prevActiveIdx.current !== activeIdx) {
-        triggerSpecularSweep();
-        triggerScaleBounce();
-      }
-      prevActiveIdx.current = activeIdx;
     }
-  }, [location, isMoreOpen, getActiveIndex, snapToIndex, triggerSpecularSweep, triggerScaleBounce]);
+  }, [location, isMoreOpen, getActiveIndex, snapToIndex]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -443,11 +421,9 @@ export function MobileNavBase({
                 style={{
                   x: springX,
                   width: springW,
-                  scale: springScale,
                 }}
               >
                 <div ref={chromaticRef} className="liquid-chromatic" />
-                <div ref={specularRef} className="liquid-specular" />
               </motion.div>
 
               <motion.div
