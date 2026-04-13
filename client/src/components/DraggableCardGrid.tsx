@@ -3,6 +3,7 @@ import { GripVertical, Maximize2, Columns2 } from "lucide-react";
 import {
   DndContext,
   closestCenter,
+  pointerWithin,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -12,11 +13,12 @@ import {
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
+  type CollisionDetection,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   useSortable,
-  rectSortingStrategy,
+  verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
 
@@ -39,7 +41,7 @@ interface LayoutItem {
   size: CardSize;
 }
 
-interface GridPosition {
+interface MasonryPosition {
   top: number;
   left: number;
   width: number;
@@ -65,6 +67,15 @@ function loadLayout(userId: string, role: string, sections: CardSection[]): Layo
   return sections.map(s => ({ id: s.id, size: s.defaultSize || "full" }));
 }
 
+const customCollision: CollisionDetection = (args) => {
+  const pw = pointerWithin(args);
+  const filtered = pw.filter(({ id }) => id !== args.active.id);
+  if (filtered.length > 0) return filtered;
+
+  const cc = closestCenter(args);
+  return cc.filter(({ id }) => id !== args.active.id);
+};
+
 const CardContent = memo(function CardContent({ content, editMode }: { content: React.ReactNode; editMode: boolean }) {
   return (
     <div className={editMode ? "pointer-events-none select-none" : ""}>
@@ -79,12 +90,13 @@ interface SortableCardProps {
   editMode: boolean;
   onToggleSize: (id: string) => void;
   isMd: boolean;
-  gridPos?: GridPosition;
+  masonryPos?: MasonryPosition;
+  targetWidth?: number;
   isReady: boolean;
   onRefChange: (id: string, el: HTMLDivElement | null) => void;
 }
 
-function SortableCard({ item, section, editMode, onToggleSize, isMd, gridPos, isReady, onRefChange }: SortableCardProps) {
+function SortableCard({ item, section, editMode, onToggleSize, isMd, masonryPos, targetWidth, isReady, onRefChange }: SortableCardProps) {
   const {
     attributes,
     listeners,
@@ -101,12 +113,12 @@ function SortableCard({ item, section, editMode, onToggleSize, isMd, gridPos, is
   }, [setNodeRef, item.id, onRefChange]);
 
   const isFull = item.size === "full";
-  const width = gridPos?.width ?? '100%';
+  const width = masonryPos?.width ?? targetWidth ?? '100%';
 
   const style: React.CSSProperties = {
     position: 'absolute',
-    top: gridPos?.top ?? 0,
-    left: gridPos?.left ?? 0,
+    top: masonryPos?.top ?? 0,
+    left: masonryPos?.left ?? 0,
     width,
     opacity: isReady ? 1 : 0,
     transition: isReady
@@ -189,7 +201,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef(new Map<string, HTMLDivElement>());
   const [containerWidth, setContainerWidth] = useState(0);
-  const [gridPositions, setGridPositions] = useState(new Map<string, GridPosition>());
+  const [masonryPositions, setMasonryPositions] = useState(new Map<string, MasonryPosition>());
   const [containerHeight, setContainerHeight] = useState(0);
   const [isReady, setIsReady] = useState(false);
   const rafId = useRef(0);
@@ -231,46 +243,44 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     return () => ro.disconnect();
   }, []);
 
+  const cols = isLg && containerWidth > 0 ? 2 : 1;
+  const colWidth = cols === 1 ? containerWidth : (containerWidth - GAP) / 2;
+
+  const targetWidths = useMemo(() => {
+    if (containerWidth === 0) return new Map<string, number>();
+    return new Map(layout.map(item => [
+      item.id,
+      (item.size === "full" || cols === 1) ? containerWidth : colWidth
+    ]));
+  }, [layout, containerWidth, cols, colWidth]);
+
   const recalcPositions = useCallback(() => {
     if (containerWidth === 0) return;
     const currentLayout = layoutRef.current;
     const numCols = isLg ? 2 : 1;
-    const colW = numCols === 1 ? containerWidth : (containerWidth - GAP) / 2;
-    const pos = new Map<string, GridPosition>();
-    let currentY = 0;
-    let i = 0;
+    const cw = numCols === 1 ? containerWidth : (containerWidth - GAP) / 2;
+    const colTops = Array(numCols).fill(0);
+    const pos = new Map<string, MasonryPosition>();
 
-    while (i < currentLayout.length) {
-      const item = currentLayout[i];
+    for (const item of currentLayout) {
+      const el = cardRefs.current.get(item.id);
+      const h = el ? el.offsetHeight : 200;
       const isFull = item.size === "full" || numCols === 1;
+      const w = isFull ? containerWidth : cw;
 
-      if (isFull) {
-        const el = cardRefs.current.get(item.id);
-        const h = el ? el.offsetHeight : 200;
-        pos.set(item.id, { top: currentY, left: 0, width: containerWidth });
-        currentY += h + GAP;
-        i++;
+      if (isFull && numCols > 1) {
+        const top = Math.max(colTops[0], colTops[1]);
+        pos.set(item.id, { top, left: 0, width: w });
+        colTops[0] = colTops[1] = top + h + GAP;
       } else {
-        const el1 = cardRefs.current.get(item.id);
-        const h1 = el1 ? el1.offsetHeight : 200;
-        pos.set(item.id, { top: currentY, left: 0, width: colW });
-
-        const next = i + 1 < currentLayout.length ? currentLayout[i + 1] : null;
-        if (next && next.size === "half" && numCols > 1) {
-          const el2 = cardRefs.current.get(next.id);
-          const h2 = el2 ? el2.offsetHeight : 200;
-          pos.set(next.id, { top: currentY, left: colW + GAP, width: colW });
-          currentY += Math.max(h1, h2) + GAP;
-          i += 2;
-        } else {
-          currentY += h1 + GAP;
-          i++;
-        }
+        const col = colTops[0] <= colTops[1] ? 0 : 1;
+        pos.set(item.id, { top: colTops[col], left: col * (cw + GAP), width: w });
+        colTops[col] += h + GAP;
       }
     }
 
-    setGridPositions(pos);
-    setContainerHeight(currentY);
+    setMasonryPositions(pos);
+    setContainerHeight(Math.max(colTops[0] || 0, colTops[1] || 0));
     setIsReady(true);
   }, [containerWidth, isLg]);
 
@@ -381,14 +391,14 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={customCollision}
         measuring={measuringConfig}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <SortableContext items={layoutIds} strategy={rectSortingStrategy}>
+        <SortableContext items={layoutIds} strategy={verticalListSortingStrategy}>
           <div
             ref={containerRef}
             className="relative"
@@ -405,7 +415,8 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
                   editMode={editMode}
                   onToggleSize={toggleSize}
                   isMd={isMd}
-                  gridPos={gridPositions.get(item.id)}
+                  masonryPos={masonryPositions.get(item.id)}
+                  targetWidth={targetWidths.get(item.id)}
                   isReady={isReady}
                   onRefChange={handleRefChange}
                 />
