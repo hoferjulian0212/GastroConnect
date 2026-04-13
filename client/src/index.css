@@ -609,18 +609,20 @@ html, body, #root {
   left: 0;
   pointer-events: none;
   z-index: 3;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.90);
+  background: rgba(255, 255, 255, 0.68);
+  border: none;
   box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.10),
-    0 1px 4px rgba(0, 0, 0, 0.06),
+    0 4px 20px rgba(0, 0, 0, 0.12),
+    0 1px 6px rgba(0, 0, 0, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 1),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
-  -webkit-backdrop-filter: blur(2px) brightness(1.15) saturate(140%);
-  backdrop-filter: blur(2px) brightness(1.15) saturate(140%);
+    inset 0 -0.5px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+  -webkit-backdrop-filter: blur(14px) brightness(1.12) saturate(160%);
+  backdrop-filter: blur(14px) brightness(1.12) saturate(160%);
   will-change: transform, width, clip-path;
   clip-path: inset(0 round 9999px);
   transform-origin: center center;
+  overflow: hidden;
 }
 .liquid-metaball::before {
   content: "";
@@ -647,8 +649,8 @@ html, body, #root {
   border-radius: 9999px;
   background: linear-gradient(
     175deg,
-    rgba(255, 255, 255, 0.22) 0%,
-    transparent 50%
+    rgba(255, 255, 255, 0.25) 0%,
+    transparent 45%
   );
   pointer-events: none;
 }
@@ -666,21 +668,23 @@ html, body, #root {
 }
 
 .dark .liquid-metaball {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.13);
   box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.30),
-    0 1px 4px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 4px 20px rgba(0, 0, 0, 0.35),
+    0 1px 6px rgba(0, 0, 0, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -0.5px 0 rgba(255, 255, 255, 0.08),
     inset 0 -1px 0 rgba(0, 0, 0, 0.10);
+  -webkit-backdrop-filter: blur(16px) brightness(1.05) saturate(170%);
+  backdrop-filter: blur(16px) brightness(1.05) saturate(170%);
 }
 .dark .liquid-metaball::before {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.18) 35%,
-    rgba(255, 255, 255, 0.28) 50%,
-    rgba(255, 255, 255, 0.18) 65%,
+    rgba(255, 255, 255, 0.15) 35%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.15) 65%,
     transparent 100%
   );
 }
@@ -688,7 +692,7 @@ html, body, #root {
   background: linear-gradient(
     175deg,
     rgba(255, 255, 255, 0.08) 0%,
-    transparent 50%
+    transparent 45%
   );
 }
 
@@ -711,72 +715,94 @@ html, body, #root {
 
 .liquid-chromatic {
   position: absolute;
-  inset: 0;
+  inset: -1px;
   border-radius: inherit;
   pointer-events: none;
-  z-index: 2;
+  z-index: 4;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.2s ease-out;
   will-change: opacity, background-position;
   background: linear-gradient(
     90deg,
-    rgba(255, 59, 48, 0.35) 0%,
-    rgba(255, 149, 0, 0.3) 15%,
-    rgba(255, 204, 0, 0.28) 28%,
-    rgba(52, 199, 89, 0.25) 42%,
-    rgba(0, 122, 255, 0.3) 58%,
-    rgba(88, 86, 214, 0.32) 72%,
-    rgba(175, 82, 222, 0.3) 85%,
-    rgba(255, 45, 85, 0.28) 100%
+    rgba(255, 59, 48, 0.55) 0%,
+    rgba(255, 149, 0, 0.45) 14%,
+    rgba(255, 214, 10, 0.4) 28%,
+    rgba(52, 199, 89, 0.35) 42%,
+    rgba(0, 122, 255, 0.45) 56%,
+    rgba(88, 86, 214, 0.5) 70%,
+    rgba(175, 82, 222, 0.45) 84%,
+    rgba(255, 45, 85, 0.4) 100%
   );
-  background-size: 200% 100%;
+  background-size: 250% 100%;
   mix-blend-mode: overlay;
-  -webkit-mask-image: linear-gradient(
-    180deg,
-    rgba(0,0,0,0.7) 0%,
-    rgba(0,0,0,0.3) 40%,
-    rgba(0,0,0,0.1) 70%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    180deg,
-    rgba(0,0,0,0.7) 0%,
-    rgba(0,0,0,0.3) 40%,
-    rgba(0,0,0,0.1) 70%,
-    transparent 100%
-  );
 }
 .liquid-chromatic.is-moving {
   opacity: 1;
 }
+
+.liquid-specular {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(255, 255, 255, 0.7) 45%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(255, 255, 255, 0.7) 55%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 300% 100%;
+}
+.liquid-specular.is-sweeping {
+  animation: specular-sweep 0.45s ease-out forwards;
+}
+@keyframes specular-sweep {
+  0% {
+    opacity: 0.8;
+    background-position: 100% 0%;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    background-position: -50% 0%;
+  }
+}
+
 .dark .liquid-chromatic {
   background: linear-gradient(
     90deg,
-    rgba(255, 69, 58, 0.4) 0%,
-    rgba(255, 159, 10, 0.35) 15%,
-    rgba(255, 214, 10, 0.3) 28%,
-    rgba(48, 209, 88, 0.3) 42%,
-    rgba(10, 132, 255, 0.4) 58%,
-    rgba(94, 92, 230, 0.4) 72%,
-    rgba(191, 90, 242, 0.38) 85%,
-    rgba(255, 55, 95, 0.35) 100%
+    rgba(255, 69, 58, 0.5) 0%,
+    rgba(255, 159, 10, 0.45) 14%,
+    rgba(255, 214, 10, 0.38) 28%,
+    rgba(48, 209, 88, 0.35) 42%,
+    rgba(10, 132, 255, 0.5) 56%,
+    rgba(94, 92, 230, 0.55) 70%,
+    rgba(191, 90, 242, 0.5) 84%,
+    rgba(255, 55, 95, 0.45) 100%
   );
-  background-size: 200% 100%;
+  background-size: 250% 100%;
   mix-blend-mode: screen;
-  -webkit-mask-image: linear-gradient(
-    180deg,
-    rgba(0,0,0,0.8) 0%,
-    rgba(0,0,0,0.4) 40%,
-    rgba(0,0,0,0.15) 70%,
+}
+.dark .liquid-specular {
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(255, 255, 255, 0.35) 45%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0.35) 55%,
+    transparent 65%,
     transparent 100%
   );
-  mask-image: linear-gradient(
-    180deg,
-    rgba(0,0,0,0.8) 0%,
-    rgba(0,0,0,0.4) 40%,
-    rgba(0,0,0,0.15) 70%,
-    transparent 100%
-  );
+  background-size: 300% 100%;
 }
 
 @media (max-width: 767px) {
