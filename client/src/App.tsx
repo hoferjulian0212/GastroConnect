@@ -465,7 +465,7 @@ function AppLayout() {
         </div>
       ) : (
         <div className="flex h-dvh w-full">
-          <div className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto'} ${isInChat || isDetailPage ? '' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
+          <div className={`flex flex-col flex-1 min-w-0 overflow-x-hidden ${isInboxPage ? 'overflow-hidden' : 'overflow-y-auto'} ${isInChat || isDetailPage ? '' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
             <header className={`dark flex items-center gap-3 md:gap-4 px-3 py-2.5 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
               <div className="flex items-center gap-3 shrink-0 md:flex-1 md:min-w-0">
                 <MobileProfileButton />
