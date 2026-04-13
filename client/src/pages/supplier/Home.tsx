@@ -18,6 +18,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import DraggableCardGrid from "@/components/DraggableCardGrid";
 import CountUp from "@/components/CountUp";
+import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
@@ -307,7 +308,17 @@ export default function SupplierHome() {
   }, [upcomingDeliveries, lang]);
 
   return (
-    <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
+    <PullToRefreshWrapper
+      onRefresh={async () => {
+        await queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === "string" && (key.startsWith("/api/supplier") || key.startsWith("/api/low-stock") || key.startsWith("/api/conversations"));
+          },
+        });
+      }}
+      className="space-y-4 md:space-y-6 pb-4 md:pb-6"
+    >
       <div>
         <div className="bg-[#161921] px-3 md:px-6 pt-4 md:pt-6 pb-4 md:pb-6 rounded-b-3xl">
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 md:mb-5" data-testid="text-page-title">
@@ -1273,6 +1284,6 @@ export default function SupplierHome() {
           isPending={updateStatusMutation.isPending || setDeliveryDateMutation.isPending}
         />
       )}
-    </div>
+    </PullToRefreshWrapper>
   );
 }

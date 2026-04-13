@@ -22,6 +22,7 @@ import { format, addDays, startOfDay, parse } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 
 export default function RestaurantCart() {
   const { currentUser } = useUser();
@@ -372,7 +373,17 @@ export default function RestaurantCart() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <PullToRefreshWrapper
+      onRefresh={async () => {
+        await queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === "string" && (key.startsWith("/api/cart") || key.startsWith("/api/minimum-order-values") || key.startsWith("/api/delivery-schedules"));
+          },
+        });
+      }}
+      className="space-y-4 md:space-y-6"
+    >
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (
@@ -716,8 +727,8 @@ export default function RestaurantCart() {
       )}
 
       <Dialog open={!!preConfirmDialog} onOpenChange={(open) => { if (!open) setPreConfirmDialog(null); }}>
-        <DialogContent className="max-w-lg w-[calc(100vw-2rem)]" data-testid="dialog-order-confirm">
-          <DialogHeader>
+        <DialogContent className="!max-w-xl w-[calc(100vw-2rem)]" data-testid="dialog-order-confirm">
+          <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="flex items-center gap-2 text-lg">
               <ShoppingBag className="h-5 w-5 text-primary" />
               {lang === "de" ? "Bestellung bestätigen" : "Conferma ordine"}
@@ -727,7 +738,7 @@ export default function RestaurantCart() {
             </DialogDescription>
           </DialogHeader>
           {preConfirmDialog && (
-            <div className="space-y-5 pt-1">
+            <div className="space-y-5 px-6">
               <div className="rounded-xl bg-muted/40 p-4 space-y-3">
                 <div className="flex items-center gap-3 text-sm">
                   <Package className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -741,7 +752,7 @@ export default function RestaurantCart() {
                 </div>
               </div>
 
-              <div className="max-h-60 overflow-y-auto space-y-2 px-1">
+              <div className="max-h-64 overflow-y-auto space-y-2.5">
                 {preConfirmDialog.items.map((item, i) => (
                   <div key={i} className="flex justify-between items-center text-sm gap-4 py-0.5">
                     <span className="text-muted-foreground">{item.quantity}x {item.name}</span>
@@ -758,13 +769,13 @@ export default function RestaurantCart() {
               )}
 
               <Separator />
-              <div className="flex justify-between items-center font-bold text-lg px-1">
+              <div className="flex justify-between items-center font-bold text-lg">
                 <span>{lang === "de" ? "Gesamt" : "Totale"}</span>
                 <span data-testid="confirm-total" className="tabular-nums">{preConfirmDialog.total}€</span>
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-0 px-6 pb-6 pt-4">
             <Button variant="outline" onClick={() => setPreConfirmDialog(null)} data-testid="button-confirm-cancel">
               {lang === "de" ? "Zurück" : "Indietro"}
             </Button>
@@ -791,6 +802,6 @@ export default function RestaurantCart() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PullToRefreshWrapper>
   );
 }

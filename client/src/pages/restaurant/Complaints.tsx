@@ -20,6 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { AlertCircle, CircleAlert, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw, Flame } from "lucide-react";
+import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import {
   Dialog,
   DialogContent,
@@ -410,7 +411,17 @@ export default function Complaints() {
   const canSubmit = selectedOrderId && selectedSupplierId && title.trim() && description.trim();
 
   return (
-    <div className="space-y-3 md:space-y-4">
+    <PullToRefreshWrapper
+      onRefresh={async () => {
+        await queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === "string" && (key.startsWith("/api/complaints") || key.startsWith("/api/suppliers-with-orders") || key.startsWith("/api/orders-by-supplier") || key.startsWith("/api/orders"));
+          },
+        });
+      }}
+      className="space-y-3 md:space-y-4"
+    >
       <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="complaints-hero">
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -1275,6 +1286,6 @@ export default function Complaints() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PullToRefreshWrapper>
   );
 }

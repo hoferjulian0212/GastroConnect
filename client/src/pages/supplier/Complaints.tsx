@@ -28,6 +28,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, X, Store, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw, Truck, Plus, Flame } from "lucide-react";
+import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import type { ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getComplaintStatus } from "@/lib/translations";
@@ -328,7 +329,17 @@ export default function SupplierComplaints() {
   }, [complaints, filterRestaurant, filterStatus, filterDateFrom, filterDateTo]);
 
   return (
-    <div className="space-y-3 md:space-y-4">
+    <PullToRefreshWrapper
+      onRefresh={async () => {
+        await queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === "string" && (key.startsWith("/api/complaints") || key.startsWith("/api/conversations"));
+          },
+        });
+      }}
+      className="space-y-3 md:space-y-4"
+    >
       <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="complaints-hero">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "complaints")}</h1>
@@ -1076,6 +1087,6 @@ export default function SupplierComplaints() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PullToRefreshWrapper>
   );
 }

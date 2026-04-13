@@ -23,6 +23,7 @@ import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { z } from "zod";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it as itLocale } from "date-fns/locale";
 
@@ -1096,7 +1097,17 @@ export default function SupplierProducts() {
     : [];
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <PullToRefreshWrapper
+      onRefresh={async () => {
+        await queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === "string" && (key.startsWith("/api/supplier/products") || key.startsWith("/api/promotions") || key.startsWith("/api/low-stock") || key.startsWith("/api/stock-movements"));
+          },
+        });
+      }}
+      className="space-y-4 md:space-y-6"
+    >
       <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="products-hero">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -1689,6 +1700,6 @@ export default function SupplierProducts() {
           )}
         </>
       )}
-    </div>
+    </PullToRefreshWrapper>
   );
 }

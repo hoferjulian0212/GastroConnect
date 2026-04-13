@@ -17,6 +17,8 @@ import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
+import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 
 interface DeliveryNotePreview {
   orderId: string;
@@ -268,7 +270,17 @@ export default function Documents() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <PullToRefreshWrapper
+      onRefresh={async () => {
+        await queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === "string" && (key.startsWith("/api/documents") || key.startsWith("/api/restaurant/supplier-order-stats"));
+          },
+        });
+      }}
+      className="space-y-4 md:space-y-6"
+    >
       <div>
         <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">
           {lang === "de" ? "Dokument-Center" : "Centro documenti"}
@@ -595,7 +607,7 @@ export default function Documents() {
           ) : null}
         </DialogContent>
       </Dialog>
-    </div>
+    </PullToRefreshWrapper>
   );
 }
 

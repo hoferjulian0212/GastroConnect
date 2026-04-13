@@ -76,6 +76,8 @@ export function usePullToRefresh({
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+    const isMobile = window.matchMedia("(max-width: 767px)").matches || window.matchMedia("(pointer: coarse)").matches;
+    if (!isMobile) return;
     el.addEventListener("touchstart", handleTouchStart, { passive: true });
     el.addEventListener("touchmove", handleTouchMove, { passive: false });
     el.addEventListener("touchend", handleTouchEnd);

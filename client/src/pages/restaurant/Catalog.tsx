@@ -11,6 +11,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import { queryClient } from "@/lib/queryClient";
+import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 
 
 const categoryConfig: Record<string, { de: string; it: string; icon: typeof Package; color: string }> = {
@@ -318,7 +320,17 @@ export default function RestaurantCatalog() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <PullToRefreshWrapper
+      onRefresh={async () => {
+        await queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === "string" && (key.startsWith("/api/products") || key.startsWith("/api/suppliers"));
+          },
+        });
+      }}
+      className="space-y-4 md:space-y-6"
+    >
       {!selectedCategory ? (
         <>
           <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="catalog-hero">
@@ -554,6 +566,6 @@ export default function RestaurantCatalog() {
         </>
       )}
 
-    </div>
+    </PullToRefreshWrapper>
   );
 }

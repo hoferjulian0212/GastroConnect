@@ -20,6 +20,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 import CountUp from "@/components/CountUp";
+import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 
 export default function RestaurantHome() {
   const { currentUser } = useUser();
@@ -523,7 +524,17 @@ export default function RestaurantHome() {
   }, [allOrders]);
 
   return (
-    <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
+    <PullToRefreshWrapper
+      onRefresh={async () => {
+        await queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === "string" && (key.startsWith("/api/restaurant") || key.startsWith("/api/orders") || key.startsWith("/api/products") || key.startsWith("/api/conversations") || key.startsWith("/api/order-templates"));
+          },
+        });
+      }}
+      className="space-y-4 md:space-y-6 pb-4 md:pb-6"
+    >
       <div>
         <div className="bg-[#161921] px-3 md:px-6 pt-4 md:pt-6 pb-4 md:pb-6 rounded-b-3xl">
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 md:mb-5" data-testid="text-page-title">
@@ -2004,6 +2015,6 @@ export default function RestaurantHome() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </PullToRefreshWrapper>
   );
 }
