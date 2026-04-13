@@ -11,7 +11,7 @@ export default function PullToRefreshWrapper({ onRefresh, children, className }:
   const { containerRef, pullDistance, isRefreshing, progress } = usePullToRefresh({ onRefresh });
 
   return (
-    <div ref={containerRef} className={`relative overflow-x-hidden ${className || ""}`}>
+    <div ref={containerRef} className={`relative ${className || ""}`}>
       {pullDistance > 0 && (
         <div
           className="absolute top-0 left-0 right-0 flex justify-center z-10 pointer-events-none md:hidden"

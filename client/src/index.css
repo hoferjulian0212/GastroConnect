@@ -107,8 +107,6 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
 html, body, #root {
   height: 100dvh;
   height: 100vh;
-  overflow-x: hidden;
-  max-width: 100vw;
 }
 
 @media (min-width: 768px) {
