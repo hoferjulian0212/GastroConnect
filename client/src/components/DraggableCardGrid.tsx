@@ -268,7 +268,10 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
       const isFull = item.size === "full" || numCols === 1;
       const w = isFull ? containerWidth : cw;
 
-      if (isFull && numCols > 1) {
+      if (numCols === 1) {
+        pos.set(item.id, { top: colTops[0], left: 0, width: containerWidth });
+        colTops[0] += h + GAP;
+      } else if (isFull) {
         const top = Math.max(colTops[0], colTops[1]);
         pos.set(item.id, { top, left: 0, width: w });
         colTops[0] = colTops[1] = top + h + GAP;
