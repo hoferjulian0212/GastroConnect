@@ -100,7 +100,6 @@ export function MobileNavBase({
   const containerRef = useRef<HTMLDivElement>(null);
   const glassRef = useRef<HTMLDivElement>(null);
   const activeOverlayRef = useRef<HTMLDivElement>(null);
-  const chromaticRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const totalItems = mainNavItems.length + 1;
   const cachedHeight = useRef(48);
@@ -132,13 +131,6 @@ export function MobileNavBase({
     if (glassRef.current) glassRef.current.style.clipPath = `path('${blobPath}')`;
     const overlayPath = generateDropletPath(w, h, vel, 4);
     if (activeOverlayRef.current) activeOverlayRef.current.style.clipPath = `path('${overlayPath}')`;
-    if (chromaticRef.current) {
-      const absVel = Math.abs(vel);
-      const moving = absVel > 8;
-      chromaticRef.current.classList.toggle("is-moving", moving);
-      const shift = clamp(vel / 4, -100, 100);
-      chromaticRef.current.style.backgroundPosition = `${50 + shift}% 0%`;
-    }
   }, [springW, smoothVelocity]);
 
   useEffect(() => {
@@ -422,9 +414,7 @@ export function MobileNavBase({
                   x: springX,
                   width: springW,
                 }}
-              >
-                <div ref={chromaticRef} className="liquid-chromatic" />
-              </motion.div>
+              />
 
               <motion.div
                 ref={activeOverlayRef}
