@@ -693,20 +693,30 @@ html, body, #root {
 }
 
 .nav-item-active {
-  color: rgba(10, 10, 20, 0.90);
+  color: hsl(var(--primary));
   font-weight: 600;
   -webkit-font-smoothing: antialiased;
 }
+.nav-item-active svg {
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.3));
+}
 .dark .nav-item-active {
-  color: rgba(255, 255, 255, 0.96);
+  color: hsl(var(--primary));
+}
+.dark .nav-item-active svg {
+  filter: drop-shadow(0 0 4px hsl(var(--primary) / 0.35));
 }
 .nav-item-inactive {
-  color: rgba(60, 60, 80, 0.55);
+  color: rgba(142, 142, 147, 0.6);
   transition: color 0.25s ease;
   -webkit-font-smoothing: antialiased;
 }
+.nav-item-inactive svg {
+  stroke-width: 1.75;
+}
 .dark .nav-item-inactive {
-  color: rgba(255, 255, 255, 0.40);
+  color: rgba(174, 174, 178, 0.5);
 }
 
 @media (max-width: 767px) {
