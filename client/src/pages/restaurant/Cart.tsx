@@ -716,9 +716,9 @@ export default function RestaurantCart() {
       )}
 
       <Dialog open={!!preConfirmDialog} onOpenChange={(open) => { if (!open) setPreConfirmDialog(null); }}>
-        <DialogContent className="max-w-md" data-testid="dialog-order-confirm">
+        <DialogContent className="max-w-lg w-[calc(100vw-2rem)]" data-testid="dialog-order-confirm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-lg">
               <ShoppingBag className="h-5 w-5 text-primary" />
               {lang === "de" ? "Bestellung bestätigen" : "Conferma ordine"}
             </DialogTitle>
@@ -727,40 +727,40 @@ export default function RestaurantCart() {
             </DialogDescription>
           </DialogHeader>
           {preConfirmDialog && (
-            <div className="space-y-4">
-              <div className="rounded-xl bg-muted/40 p-3 space-y-2">
-                <div className="flex items-center gap-2 text-sm">
+            <div className="space-y-5 pt-1">
+              <div className="rounded-xl bg-muted/40 p-4 space-y-3">
+                <div className="flex items-center gap-3 text-sm">
                   <Package className="h-4 w-4 text-muted-foreground shrink-0" />
                   <span className="text-muted-foreground shrink-0">{lang === "de" ? "Lieferant" : "Fornitore"}</span>
-                  <span className="font-medium ml-auto text-right truncate">{preConfirmDialog.supplierName}</span>
+                  <span className="font-medium ml-auto text-right">{preConfirmDialog.supplierName}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex items-center gap-3 text-sm">
                   <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
                   <span className="text-muted-foreground shrink-0">{lang === "de" ? "Lieferung" : "Consegna"}</span>
-                  <span className="font-medium ml-auto text-right truncate">{preConfirmDialog.deliveryDate || (lang === "de" ? "Schnellstmöglich" : "Il prima possibile")}</span>
+                  <span className="font-medium ml-auto text-right">{preConfirmDialog.deliveryDate || (lang === "de" ? "Schnellstmöglich" : "Il prima possibile")}</span>
                 </div>
               </div>
 
-              <div className="max-h-48 overflow-y-auto space-y-1.5">
+              <div className="max-h-60 overflow-y-auto space-y-2 px-1">
                 {preConfirmDialog.items.map((item, i) => (
-                  <div key={i} className="flex justify-between items-center text-sm px-1 gap-2">
-                    <span className="truncate text-muted-foreground">{item.quantity}x {item.name}</span>
-                    <span className="font-medium shrink-0">{item.price}€</span>
+                  <div key={i} className="flex justify-between items-center text-sm gap-4 py-0.5">
+                    <span className="text-muted-foreground">{item.quantity}x {item.name}</span>
+                    <span className="font-medium shrink-0 tabular-nums">{item.price}€</span>
                   </div>
                 ))}
               </div>
 
               {preConfirmDialog.notes && (
-                <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 px-3 py-2">
+                <div className="flex items-start gap-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 px-3.5 py-2.5">
                   <StickyNote className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-800 dark:text-amber-300">{preConfirmDialog.notes}</p>
                 </div>
               )}
 
               <Separator />
-              <div className="flex justify-between items-center font-bold text-lg">
+              <div className="flex justify-between items-center font-bold text-lg px-1">
                 <span>{lang === "de" ? "Gesamt" : "Totale"}</span>
-                <span data-testid="confirm-total">{preConfirmDialog.total}€</span>
+                <span data-testid="confirm-total" className="tabular-nums">{preConfirmDialog.total}€</span>
               </div>
             </div>
           )}
