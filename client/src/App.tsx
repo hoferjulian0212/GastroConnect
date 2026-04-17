@@ -143,10 +143,10 @@ function CartButton() {
   return (
     <button
       onClick={() => setLocation("/restaurant/cart")}
-      className="relative flex items-center justify-center h-9 w-9 rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 transition-colors"
+      className="relative flex items-center justify-center h-8 w-8 rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 transition-colors"
       data-testid="button-cart-header"
     >
-      <ShoppingCart className="h-4.5 w-4.5" />
+      <ShoppingCart className="h-4 w-4" />
       {count > 0 && (
         <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-medium">
           {count}
