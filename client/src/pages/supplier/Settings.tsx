@@ -42,30 +42,38 @@ export default function SupplierSettings() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "settings")}</h1>
-        <p className="text-sm md:text-base text-muted-foreground">{t("settings", "manageSettings")}</p>
-      </div>
-
-      <Link href="/supplier/profile" data-testid="link-profile-card" className="block max-w-md mx-auto">
-        <Card className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30">
-          <CardContent className="flex items-center gap-3 p-2.5">
-            <Avatar className="h-8 w-8 shrink-0">
-              {currentUser?.profileImageUrl ? (
-                <AvatarImage src={currentUser.profileImageUrl} alt={currentUser.name} />
-              ) : null}
-              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                {(currentUser?.companyName || currentUser?.name || "?").slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{currentUser?.companyName || currentUser?.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{currentUser?.email}</p>
+      <div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6 rounded-b-3xl">
+        <h1 className="text-xl md:text-3xl font-bold text-white mb-3 md:mb-4" data-testid="text-page-title">
+          {t("common", "settings")}
+        </h1>
+        <Link href="/supplier/profile" data-testid="link-profile-card" className="block group">
+          <div className="flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.10] hover:border-white/[0.15] transition-all duration-200 cursor-pointer">
+            <div className="relative shrink-0">
+              <Avatar className="h-12 w-12 md:h-14 md:w-14 ring-2 ring-white/10">
+                {currentUser?.profileImageUrl ? (
+                  <AvatarImage src={currentUser.profileImageUrl} alt={currentUser.name} />
+                ) : null}
+                <AvatarFallback className="bg-gradient-to-br from-primary/30 to-primary/10 text-white text-base md:text-lg font-semibold">
+                  {(currentUser?.companyName || currentUser?.name || "?").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 md:h-4 md:w-4 rounded-full bg-green-500 border-2 border-[#161921]" />
             </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-          </CardContent>
-        </Card>
-      </Link>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm md:text-base font-semibold text-white truncate" data-testid="text-profile-name">
+                {currentUser?.companyName || currentUser?.name}
+              </p>
+              <p className="text-xs md:text-sm text-white/50 truncate">{currentUser?.email}</p>
+              <p className="text-[11px] md:text-xs text-white/40 mt-0.5 group-hover:text-white/60 transition-colors">
+                {lang === "de" ? "Profil bearbeiten" : "Modifica profilo"}
+              </p>
+            </div>
+            <div className="h-9 w-9 rounded-full bg-white/[0.08] border border-white/[0.10] flex items-center justify-center shrink-0 group-hover:bg-white/[0.15] group-hover:translate-x-0.5 transition-all">
+              <ChevronRight className="h-4 w-4 text-white/70" />
+            </div>
+          </div>
+        </Link>
+      </div>
 
       <AccountSwitcher />
 
