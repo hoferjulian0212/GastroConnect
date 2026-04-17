@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw, User as UserIcon, SlidersHorizontal, ChevronUp, ChevronDown, Download, RefreshCw, Check } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, Store, AlertTriangle, RotateCcw, User as UserIcon, SlidersHorizontal, ChevronUp, ChevronDown, Download, RefreshCw, Check, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import type { OrderWithDetails, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
@@ -433,40 +434,62 @@ export default function SupplierOrders() {
             </div>
           </div>
         </div>
-        {order.status !== "delivered" && order.status !== "cancelled" && (
-          <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-2 gap-2 md:flex md:flex-wrap md:justify-end md:gap-2" onClick={(e) => e.stopPropagation()}>
-            {order.status === "pending" && (
-              <button className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/50 hover:bg-green-100 dark:hover:bg-green-950/60 transition-all active:scale-[0.97]" onClick={() => setConfirmOrder(order)} data-testid={`button-status-confirmed-${order.id}`}>
-                <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{lang === "de" ? "Bestätigen" : "Confermare"}</span>
-              </button>
-            )}
-            {(order.status === "confirmed" || order.status === "partially_confirmed") && (
-              <button className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900/50 hover:bg-purple-100 dark:hover:bg-purple-950/60 transition-all active:scale-[0.97] disabled:opacity-50" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-status-in_delivery-${order.id}`}>
-                <Truck className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{lang === "de" ? "In Lieferung" : "In consegna"}</span>
-              </button>
-            )}
-            {order.status === "in_delivery" && (
-              <button className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/50 hover:bg-green-100 dark:hover:bg-green-950/60 transition-all active:scale-[0.97] disabled:opacity-50" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-delivered-${order.id}`}>
-                <Package className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{lang === "de" ? "Geliefert" : "Consegnato"}</span>
-              </button>
-            )}
-            {!order.requestedDeliveryDate && order.status !== "pending" && (
-              <button className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-card text-foreground border-border hover:bg-accent transition-all active:scale-[0.97] disabled:opacity-50" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-set-date-${order.id}`}>
-                <CalendarDays className="h-3.5 w-3.5 shrink-0 text-purple-600 dark:text-purple-400" />
-                <span className="truncate">{lang === "de" ? "Datum setzen" : "Imposta data"}</span>
-              </button>
-            )}
-            {order.status !== "in_delivery" && (
-              <button className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-950/60 transition-all active:scale-[0.97] disabled:opacity-50" onClick={() => setCancelConfirmId(order.id)} disabled={updateStatusMutation.isPending} data-testid={`button-status-cancelled-${order.id}`}>
-                <XCircle className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{lang === "de" ? "Stornieren" : "Annullare"}</span>
-              </button>
-            )}
-          </div>
-        )}
+        {order.status !== "delivered" && order.status !== "cancelled" && (() => {
+          const primary = order.status === "pending"
+            ? { label: lang === "de" ? "Bestätigen" : "Confermare", icon: CheckCircle, color: "bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-600/20", action: () => setConfirmOrder(order), testId: `button-status-confirmed-${order.id}` }
+            : (order.status === "confirmed" || order.status === "partially_confirmed")
+            ? { label: lang === "de" ? "Lieferung starten" : "Avvia consegna", icon: Truck, color: "bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20", action: () => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId }), testId: `button-status-in_delivery-${order.id}` }
+            : order.status === "in_delivery"
+            ? { label: lang === "de" ? "Als geliefert markieren" : "Segna consegnato", icon: Package, color: "bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-600/20", action: () => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" }), testId: `button-status-delivered-${order.id}` }
+            : null;
+          const PrimaryIcon = primary?.icon;
+          const showSetDate = !order.requestedDeliveryDate && order.status !== "pending";
+          const showCancel = order.status !== "in_delivery";
+          return (
+            <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+              {primary && PrimaryIcon && (
+                <button
+                  className={`h-9 rounded-full text-sm font-semibold px-4 inline-flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] disabled:opacity-50 ${primary.color}`}
+                  onClick={primary.action}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid={primary.testId}
+                >
+                  <PrimaryIcon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{primary.label}</span>
+                </button>
+              )}
+              {(showSetDate || showCancel) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="h-9 w-9 rounded-full inline-flex items-center justify-center border border-border bg-card hover:bg-accent transition-colors shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                      data-testid={`button-more-actions-${order.id}`}
+                      aria-label={lang === "de" ? "Mehr Aktionen" : "Altre azioni"}
+                    >
+                      <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    {showSetDate && (
+                      <DropdownMenuItem onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} data-testid={`button-set-date-${order.id}`}>
+                        <CalendarDays className="h-4 w-4 mr-2 text-purple-600 dark:text-purple-400" />
+                        {lang === "de" ? "Lieferdatum setzen" : "Imposta data"}
+                      </DropdownMenuItem>
+                    )}
+                    {showSetDate && showCancel && <DropdownMenuSeparator />}
+                    {showCancel && (
+                      <DropdownMenuItem onClick={() => setCancelConfirmId(order.id)} className="text-red-600 dark:text-red-400 focus:text-red-700 dark:focus:text-red-300" data-testid={`button-status-cancelled-${order.id}`}>
+                        <XCircle className="h-4 w-4 mr-2" />
+                        {lang === "de" ? "Bestellung stornieren" : "Annulla ordine"}
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          );
+        })()}
 
         {order.status === "in_delivery" && order.requestedDeliveryDate && (
           <div className="mt-2 flex items-center gap-2 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 px-3 py-2" data-testid={`banner-delivery-date-${order.id}`}>

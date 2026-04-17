@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList, AlertTriangle, User as UserIcon, Download, FileText, RefreshCw } from "lucide-react";
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList, AlertTriangle, User as UserIcon, Download, FileText, RefreshCw, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import type { OrderWithDetails, Product, DeliverySchedule, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { format, addDays, startOfDay, formatDistanceToNow, isToday, isYesterday } from "date-fns";
@@ -741,56 +742,57 @@ export default function RestaurantOrders() {
               </span>
             )}
           </div>
-          {(canEditOrder(order) || canRequestChange(order) || order.status === "delivered") && (
-            <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-2 gap-2 w-full md:flex md:flex-wrap md:w-auto md:justify-end md:gap-2 md:mt-0 md:pt-0 md:border-0">
-              {canEditOrder(order) && (
-                <>
+          {(canEditOrder(order) || canRequestChange(order) || order.status === "delivered") && (() => {
+            const primary = canEditOrder(order)
+              ? { label: t("orders", "editOrder"), icon: Pencil, color: "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20", action: () => openEditDialog(order), testId: `button-edit-order-${order.id}` }
+              : canRequestChange(order)
+              ? { label: t("orders", "requestChange"), icon: MessageSquareText, color: "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20", action: () => setChangeRequestOrder(order), testId: `button-change-request-${order.id}` }
+              : order.status === "delivered"
+              ? { label: lang === "de" ? "Nachbestellen" : "Riordinare", icon: ClipboardList, color: "bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-600/20", action: () => reorderMutation.mutate(order.id), testId: `button-reorder-${order.id}`, isPending: reorderMutation.isPending }
+              : null;
+            const PrimaryIcon = primary?.icon;
+            const showCancel = canEditOrder(order);
+            return (
+              <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-end gap-2">
+                {primary && PrimaryIcon && (
                   <button
-                    className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-card text-foreground border-border hover:bg-accent transition-all active:scale-[0.97]"
-                    onClick={(e) => { e.stopPropagation(); openEditDialog(order); }}
-                    data-testid={`button-edit-order-${order.id}`}
+                    className={`h-9 rounded-full text-sm font-semibold px-4 inline-flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] disabled:opacity-50 ${primary.color}`}
+                    onClick={(e) => { e.stopPropagation(); primary.action(); }}
+                    disabled={primary.isPending}
+                    data-testid={primary.testId}
                   >
-                    <Pencil className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{t("orders", "editOrder")}</span>
+                    {primary.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PrimaryIcon className="h-4 w-4 shrink-0" />}
+                    <span className="truncate">{primary.label}</span>
                   </button>
-                  <button
-                    className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-950/60 transition-all active:scale-[0.97] disabled:opacity-50"
-                    onClick={(e) => { e.stopPropagation(); setCancelConfirmId(order.id); }}
-                    disabled={cancelOrderMutation.isPending}
-                    data-testid={`button-cancel-order-${order.id}`}
-                  >
-                    <XCircle className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{lang === "de" ? "Stornieren" : "Annullare"}</span>
-                  </button>
-                </>
-              )}
-              {canRequestChange(order) && (
-                <button
-                  className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-all active:scale-[0.97]"
-                  onClick={(e) => { e.stopPropagation(); setChangeRequestOrder(order); }}
-                  data-testid={`button-change-request-${order.id}`}
-                >
-                  <MessageSquareText className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{t("orders", "requestChange")}</span>
-                </button>
-              )}
-              {order.status === "delivered" && (
-                <button
-                  className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/50 hover:bg-green-100 dark:hover:bg-green-950/60 transition-all active:scale-[0.97] disabled:opacity-50"
-                  onClick={(e) => { e.stopPropagation(); reorderMutation.mutate(order.id); }}
-                  disabled={reorderMutation.isPending}
-                  data-testid={`button-reorder-${order.id}`}
-                >
-                  {reorderMutation.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <ClipboardList className="h-3.5 w-3.5 shrink-0" />
-                  )}
-                  <span className="truncate">{lang === "de" ? "Nachbestellen" : "Riordinare"}</span>
-                </button>
-              )}
-            </div>
-          )}
+                )}
+                {showCancel && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="h-9 w-9 rounded-full inline-flex items-center justify-center border border-border bg-card hover:bg-accent transition-colors shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                        data-testid={`button-more-actions-${order.id}`}
+                        aria-label={lang === "de" ? "Mehr Aktionen" : "Altre azioni"}
+                      >
+                        <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuItem
+                        onClick={() => setCancelConfirmId(order.id)}
+                        disabled={cancelOrderMutation.isPending}
+                        className="text-red-600 dark:text-red-400 focus:text-red-700 dark:focus:text-red-300"
+                        data-testid={`button-cancel-order-${order.id}`}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        {lang === "de" ? "Bestellung stornieren" : "Annulla ordine"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </CardContent>
     </Card>
