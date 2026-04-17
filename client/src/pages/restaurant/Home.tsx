@@ -528,6 +528,19 @@ export default function RestaurantHome() {
     return capped;
   }, [upcomingDeliveries, lang]);
 
+  const extraDeliveriesCount = useMemo(() => {
+    if (!upcomingDeliveries) return 0;
+    const shown = groupedDeliveries.reduce((sum, g) => sum + g.orders.length, 0);
+    const shownIds = new Set(
+      groupedDeliveries.flatMap(g => g.orders.map(o => o.id))
+    );
+    const totalRelevant = upcomingDeliveries.filter(o => {
+      const state = getOrderDeliveryState(o);
+      return state !== "delivered_today" || shownIds.has(o.id);
+    }).length;
+    return Math.max(0, totalRelevant - shown);
+  }, [upcomingDeliveries, groupedDeliveries]);
+
   const totalUnread = unreadConversations.length;
 
   const pendingOrdersCount = useMemo(() => {
@@ -886,6 +899,13 @@ export default function RestaurantHome() {
                 )}
               </div>
             ))}
+            {extraDeliveriesCount > 0 && (
+              <p className="text-xs text-muted-foreground text-center pt-1" data-testid="text-more-deliveries">
+                +{extraDeliveriesCount} {lang === "de"
+                  ? (extraDeliveriesCount === 1 ? "weitere anstehende Lieferung" : "weitere anstehende Lieferungen")
+                  : (extraDeliveriesCount === 1 ? "altra consegna in arrivo" : "altre consegne in arrivo")}
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-10 text-center">
