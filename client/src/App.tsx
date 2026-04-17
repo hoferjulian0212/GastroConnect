@@ -336,8 +336,9 @@ function PageHero() {
   const isCostAnalysisPage = location === "/restaurant/cost-analysis";
   const isPriceComparisonPage = location === "/restaurant/price-comparison";
   const isPromotionsPage = location === "/supplier/promotions";
+  const isSupplierRestaurantsPage = location === "/supplier/restaurants";
 
-  if (isHomePage || isDetailPage || isProductDetailPage || isOrdersPage || isComplaintsPage || isProductsPage || isCostAnalysisPage || isPriceComparisonPage || isPromotionsPage) return null;
+  if (isHomePage || isDetailPage || isProductDetailPage || isOrdersPage || isComplaintsPage || isProductsPage || isCostAnalysisPage || isPriceComparisonPage || isPromotionsPage || isSupplierRestaurantsPage) return null;
 
   const role = currentRole;
   const pages: Record<string, Record<string, { title: string; subtitle?: string }>> = {

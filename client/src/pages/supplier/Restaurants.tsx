@@ -55,28 +55,24 @@ export default function SupplierRestaurants() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">
-            {t("supplierRestaurants", "title")}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {t("supplierRestaurants", "subtitle")}
-          </p>
+    <div className="space-y-4 md:space-y-6">
+      <div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6 rounded-b-3xl">
+        <h1 className="text-xl md:text-3xl font-bold text-white mb-3 md:mb-4" data-testid="text-page-title">
+          {t("supplierRestaurants", "title")}
+        </h1>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+          <Input
+            placeholder={t("supplierRestaurants", "searchRestaurants")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-white/[0.07] border-white/[0.12] text-white placeholder:text-white/40 focus-visible:ring-white/20 focus-visible:border-white/30 rounded-full h-10"
+            data-testid="input-search-restaurants"
+          />
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder={t("supplierRestaurants", "searchRestaurants")}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-          data-testid="input-search-restaurants"
-        />
-      </div>
+      <div className="px-3 md:px-6 max-w-6xl mx-auto w-full">
 
       {isLoading ? (
         <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -169,6 +165,7 @@ export default function SupplierRestaurants() {
           </p>
         </div>
       )}
+      </div>
     </div>
   );
 }
