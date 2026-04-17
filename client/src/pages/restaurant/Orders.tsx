@@ -742,60 +742,52 @@ export default function RestaurantOrders() {
             )}
           </div>
           {(canEditOrder(order) || canRequestChange(order) || order.status === "delivered") && (
-            <div className="grid grid-cols-2 gap-1.5 w-full md:flex md:w-auto">
+            <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-2 gap-2 w-full md:flex md:flex-wrap md:w-auto md:justify-end md:gap-2 md:mt-0 md:pt-0 md:border-0">
               {canEditOrder(order) && (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
+                  <button
+                    className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-card text-foreground border-border hover:bg-accent transition-all active:scale-[0.97]"
                     onClick={(e) => { e.stopPropagation(); openEditDialog(order); }}
                     data-testid={`button-edit-order-${order.id}`}
                   >
-                    <Pencil className="h-3 w-3 mr-1 shrink-0" />
+                    <Pencil className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{t("orders", "editOrder")}</span>
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="text-xs"
+                  </button>
+                  <button
+                    className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-950/60 transition-all active:scale-[0.97] disabled:opacity-50"
                     onClick={(e) => { e.stopPropagation(); setCancelConfirmId(order.id); }}
                     disabled={cancelOrderMutation.isPending}
                     data-testid={`button-cancel-order-${order.id}`}
                   >
-                    <XCircle className="h-3 w-3 mr-1 shrink-0" />
+                    <XCircle className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{lang === "de" ? "Stornieren" : "Annullare"}</span>
-                  </Button>
+                  </button>
                 </>
               )}
               {canRequestChange(order) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
+                <button
+                  className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-all active:scale-[0.97]"
                   onClick={(e) => { e.stopPropagation(); setChangeRequestOrder(order); }}
                   data-testid={`button-change-request-${order.id}`}
                 >
-                  <MessageSquareText className="h-3 w-3 mr-1 shrink-0" />
+                  <MessageSquareText className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{t("orders", "requestChange")}</span>
-                </Button>
+                </button>
               )}
               {order.status === "delivered" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs gap-1 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30"
+                <button
+                  className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/50 hover:bg-green-100 dark:hover:bg-green-950/60 transition-all active:scale-[0.97] disabled:opacity-50"
                   onClick={(e) => { e.stopPropagation(); reorderMutation.mutate(order.id); }}
                   disabled={reorderMutation.isPending}
                   data-testid={`button-reorder-${order.id}`}
                 >
                   {reorderMutation.isPending ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <ClipboardList className="h-3 w-3 shrink-0" />
+                    <ClipboardList className="h-3.5 w-3.5 shrink-0" />
                   )}
                   <span className="truncate">{lang === "de" ? "Nachbestellen" : "Riordinare"}</span>
-                </Button>
+                </button>
               )}
             </div>
           )}

@@ -434,36 +434,36 @@ export default function SupplierOrders() {
           </div>
         </div>
         {order.status !== "delivered" && order.status !== "cancelled" && (
-          <div className="mt-2 grid grid-cols-2 gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-2 gap-2 md:flex md:flex-wrap md:justify-end md:gap-2" onClick={(e) => e.stopPropagation()}>
             {order.status === "pending" && (
-              <Button size="sm" className="text-xs" onClick={() => setConfirmOrder(order)} data-testid={`button-status-confirmed-${order.id}`}>
-                <CheckCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
+              <button className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/50 hover:bg-green-100 dark:hover:bg-green-950/60 transition-all active:scale-[0.97]" onClick={() => setConfirmOrder(order)} data-testid={`button-status-confirmed-${order.id}`}>
+                <CheckCircle className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{lang === "de" ? "Bestätigen" : "Confermare"}</span>
-              </Button>
+              </button>
             )}
             {(order.status === "confirmed" || order.status === "partially_confirmed") && (
-              <Button size="sm" className="text-xs" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-status-in_delivery-${order.id}`}>
-                <Truck className="h-3.5 w-3.5 mr-1 shrink-0" />
+              <button className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900/50 hover:bg-purple-100 dark:hover:bg-purple-950/60 transition-all active:scale-[0.97] disabled:opacity-50" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-status-in_delivery-${order.id}`}>
+                <Truck className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{lang === "de" ? "In Lieferung" : "In consegna"}</span>
-              </Button>
+              </button>
             )}
             {order.status === "in_delivery" && (
-              <Button size="sm" className="text-xs" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-delivered-${order.id}`}>
-                <Package className="h-3.5 w-3.5 mr-1 shrink-0" />
+              <button className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/50 hover:bg-green-100 dark:hover:bg-green-950/60 transition-all active:scale-[0.97] disabled:opacity-50" onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`button-status-delivered-${order.id}`}>
+                <Package className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{lang === "de" ? "Geliefert" : "Consegnato"}</span>
-              </Button>
-            )}
-            {order.status !== "in_delivery" && (
-              <Button size="sm" variant="destructive" className="text-xs" onClick={() => setCancelConfirmId(order.id)} disabled={updateStatusMutation.isPending} data-testid={`button-status-cancelled-${order.id}`}>
-                <XCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
-                <span className="truncate">{lang === "de" ? "Stornieren" : "Annullare"}</span>
-              </Button>
+              </button>
             )}
             {!order.requestedDeliveryDate && order.status !== "pending" && (
-              <Button size="sm" variant="outline" className="text-xs" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-set-date-${order.id}`}>
-                <CalendarDays className="h-3.5 w-3.5 mr-1 shrink-0 text-purple-600" />
+              <button className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-card text-foreground border-border hover:bg-accent transition-all active:scale-[0.97] disabled:opacity-50" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} disabled={updateStatusMutation.isPending} data-testid={`button-set-date-${order.id}`}>
+                <CalendarDays className="h-3.5 w-3.5 shrink-0 text-purple-600 dark:text-purple-400" />
                 <span className="truncate">{lang === "de" ? "Datum setzen" : "Imposta data"}</span>
-              </Button>
+              </button>
+            )}
+            {order.status !== "in_delivery" && (
+              <button className="h-8 rounded-full text-xs font-medium px-3.5 inline-flex items-center justify-center gap-1.5 border bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-950/60 transition-all active:scale-[0.97] disabled:opacity-50" onClick={() => setCancelConfirmId(order.id)} disabled={updateStatusMutation.isPending} data-testid={`button-status-cancelled-${order.id}`}>
+                <XCircle className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{lang === "de" ? "Stornieren" : "Annullare"}</span>
+              </button>
             )}
           </div>
         )}
