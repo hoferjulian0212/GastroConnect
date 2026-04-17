@@ -396,11 +396,11 @@ export default function OrderDetail() {
   const getButtonClasses = (style: "primary" | "secondary" | "destructive") => {
     switch (style) {
       case "primary":
-        return "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary";
+        return "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm";
       case "secondary":
-        return "bg-muted/60 text-foreground dark:bg-muted/40";
+        return "bg-card border border-border text-foreground hover:bg-accent";
       case "destructive":
-        return "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400";
+        return "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/50";
     }
   };
 
@@ -620,60 +620,66 @@ export default function OrderDetail() {
         )}
       </div>
 
-      {/* Action Buttons - Wise-style pill buttons at bottom */}
+      {/* Action Buttons */}
       {actions.length > 0 && (
-        <div className="px-6 pb-6 pt-2 space-y-2.5" data-testid="section-actions">
+        <div className="px-4 md:px-6 pb-6 pt-2 w-full max-w-xl mx-auto" data-testid="section-actions">
           {confirmAction === "cancelled" ? (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               <p className="text-sm font-medium text-center text-foreground">
                 {lang === "de" ? "Bestellung wirklich stornieren?" : "Annullare davvero l'ordine?"}
               </p>
-              <button
-                className="w-full py-3.5 rounded-full text-sm font-semibold bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400 transition-all active:scale-[0.98]"
-                onClick={() => updateStatusMutation.mutate({ status: "cancelled" })}
-                disabled={updateStatusMutation.isPending}
-                data-testid="confirm-cancel-order"
-              >
-                {updateStatusMutation.isPending
-                  ? (lang === "de" ? "Wird storniert..." : "Annullamento...")
-                  : (lang === "de" ? "Ja, stornieren" : "Si, annulla")}
-              </button>
-              <button
-                className="w-full py-3.5 rounded-full text-sm font-semibold bg-muted/60 text-foreground transition-all active:scale-[0.98]"
-                onClick={() => setConfirmAction(null)}
-                disabled={updateStatusMutation.isPending}
-                data-testid="cancel-cancel-order"
-              >
-                {lang === "de" ? "Abbrechen" : "Annulla"}
-              </button>
+              <div className="flex flex-col-reverse sm:flex-row gap-2.5">
+                <button
+                  className="flex-1 py-3 px-5 rounded-xl text-sm font-semibold bg-card border border-border text-foreground hover:bg-accent transition-all active:scale-[0.98]"
+                  onClick={() => setConfirmAction(null)}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="cancel-cancel-order"
+                >
+                  {lang === "de" ? "Abbrechen" : "Annulla"}
+                </button>
+                <button
+                  className="flex-1 py-3 px-5 rounded-xl text-sm font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                  onClick={() => updateStatusMutation.mutate({ status: "cancelled" })}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="confirm-cancel-order"
+                >
+                  <Ban className="h-4 w-4" />
+                  {updateStatusMutation.isPending
+                    ? (lang === "de" ? "Wird storniert..." : "Annullamento...")
+                    : (lang === "de" ? "Ja, stornieren" : "Si, annulla")}
+                </button>
+              </div>
             </div>
           ) : confirmAction === "delivered" ? (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               <p className="text-sm font-medium text-center text-foreground">
                 {lang === "de" ? "Bestellung als geliefert markieren?" : "Segnare l'ordine come consegnato?"}
               </p>
-              <button
-                className="w-full py-3.5 rounded-full text-sm font-semibold bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400 transition-all active:scale-[0.98]"
-                onClick={() => updateStatusMutation.mutate({ status: "delivered" })}
-                disabled={updateStatusMutation.isPending}
-                data-testid="confirm-mark-delivered"
-              >
-                {updateStatusMutation.isPending
-                  ? (lang === "de" ? "Wird aktualisiert..." : "Aggiornamento...")
-                  : (lang === "de" ? "Ja, als geliefert markieren" : "Si, segna come consegnato")}
-              </button>
-              <button
-                className="w-full py-3.5 rounded-full text-sm font-semibold bg-muted/60 text-foreground transition-all active:scale-[0.98]"
-                onClick={() => setConfirmAction(null)}
-                disabled={updateStatusMutation.isPending}
-                data-testid="cancel-mark-delivered"
-              >
-                {lang === "de" ? "Abbrechen" : "Annulla"}
-              </button>
+              <div className="flex flex-col-reverse sm:flex-row gap-2.5">
+                <button
+                  className="flex-1 py-3 px-5 rounded-xl text-sm font-semibold bg-card border border-border text-foreground hover:bg-accent transition-all active:scale-[0.98]"
+                  onClick={() => setConfirmAction(null)}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="cancel-mark-delivered"
+                >
+                  {lang === "de" ? "Abbrechen" : "Annulla"}
+                </button>
+                <button
+                  className="flex-1 py-3 px-5 rounded-xl text-sm font-semibold bg-green-600 hover:bg-green-700 text-white shadow-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                  onClick={() => updateStatusMutation.mutate({ status: "delivered" })}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="confirm-mark-delivered"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  {updateStatusMutation.isPending
+                    ? (lang === "de" ? "Wird aktualisiert..." : "Aggiornamento...")
+                    : (lang === "de" ? "Als geliefert markieren" : "Segna come consegnato")}
+                </button>
+              </div>
             </div>
           ) : confirmAction === "change_request" ? (
-            <div className="space-y-2.5">
-              <p className="text-sm font-medium text-center text-foreground">
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">
                 {lang === "de" ? "Änderung beschreiben" : "Descrivi la modifica"}
               </p>
               <textarea
@@ -684,40 +690,68 @@ export default function OrderDetail() {
                 onChange={(e) => setChangeRequestText(e.target.value)}
                 data-testid="input-change-request"
               />
-              <button
-                className="w-full py-3.5 rounded-full text-sm font-semibold bg-primary/10 text-primary dark:bg-primary/20 transition-all active:scale-[0.98] disabled:opacity-50"
-                onClick={() => changeRequestMutation.mutate(changeRequestText)}
-                disabled={!changeRequestText.trim() || changeRequestMutation.isPending}
-                data-testid="confirm-change-request"
-              >
-                {changeRequestMutation.isPending
-                  ? (lang === "de" ? "Wird gesendet..." : "Invio in corso...")
-                  : (lang === "de" ? "Anfrage senden" : "Invia richiesta")}
-              </button>
-              <button
-                className="w-full py-3.5 rounded-full text-sm font-semibold bg-muted/60 text-foreground transition-all active:scale-[0.98]"
-                onClick={() => { setConfirmAction(null); setChangeRequestText(""); }}
-                disabled={changeRequestMutation.isPending}
-                data-testid="cancel-change-request"
-              >
-                {lang === "de" ? "Abbrechen" : "Annulla"}
-              </button>
-            </div>
-          ) : (
-            actions.map((action) => {
-              const Icon = action.icon;
-              return (
+              <div className="flex flex-col-reverse sm:flex-row gap-2.5">
                 <button
-                  key={action.testId}
-                  className={`w-full py-3.5 rounded-full text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${getButtonClasses(action.style)}`}
-                  onClick={action.action}
-                  data-testid={action.testId}
+                  className="flex-1 py-3 px-5 rounded-xl text-sm font-semibold bg-card border border-border text-foreground hover:bg-accent transition-all active:scale-[0.98]"
+                  onClick={() => { setConfirmAction(null); setChangeRequestText(""); }}
+                  disabled={changeRequestMutation.isPending}
+                  data-testid="cancel-change-request"
                 >
-                  {action.label}
+                  {lang === "de" ? "Abbrechen" : "Annulla"}
                 </button>
-              );
-            })
-          )}
+                <button
+                  className="flex-1 py-3 px-5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                  onClick={() => changeRequestMutation.mutate(changeRequestText)}
+                  disabled={!changeRequestText.trim() || changeRequestMutation.isPending}
+                  data-testid="confirm-change-request"
+                >
+                  <Send className="h-4 w-4" />
+                  {changeRequestMutation.isPending
+                    ? (lang === "de" ? "Wird gesendet..." : "Invio in corso...")
+                    : (lang === "de" ? "Anfrage senden" : "Invia richiesta")}
+                </button>
+              </div>
+            </div>
+          ) : (() => {
+            const primary = actions.find((a) => a.style === "primary");
+            const others = actions.filter((a) => a !== primary);
+            return (
+              <div className="space-y-2.5">
+                {primary && (() => {
+                  const Icon = primary.icon;
+                  return (
+                    <button
+                      key={primary.testId}
+                      className={`w-full py-3.5 px-5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${getButtonClasses(primary.style)}`}
+                      onClick={primary.action}
+                      data-testid={primary.testId}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {primary.label}
+                    </button>
+                  );
+                })()}
+                {others.length > 0 && (
+                  <div className={`grid gap-2.5 ${others.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
+                    {others.map((action) => {
+                      const Icon = action.icon;
+                      return (
+                        <button
+                          key={action.testId}
+                          className={`w-full py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${getButtonClasses(action.style)}`}
+                          onClick={action.action}
+                          data-testid={action.testId}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {action.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
