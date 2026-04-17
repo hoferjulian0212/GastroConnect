@@ -31,6 +31,14 @@ export default function RestaurantHome() {
   const [, navigate] = useLocation();
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null);
+  const [expandedBundles, setExpandedBundles] = useState<Set<string>>(new Set());
+  const toggleBundle = (key: string) => {
+    setExpandedBundles(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
   const dateLocale = lang === "it" ? it : de;
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [addedProductIds, setAddedProductIds] = useState<Set<string>>(new Set());
@@ -549,6 +557,220 @@ export default function RestaurantHome() {
     return allOrders.filter(o => activeStatuses.includes(o.status)).length;
   }, [allOrders]);
 
+  const renderDeliveryCardMobile = (order: OrderWithDetails, isChild = false) => {
+    const deliveryState = getOrderDeliveryState(order);
+    const isDelivered = deliveryState === "delivered_today";
+    const isOverdue = deliveryState === "overdue";
+    const isDelayed = deliveryState === "delayed";
+    const supplierName = order.supplier?.companyName || order.supplier?.name || t("common", "unknown");
+    return (
+      <div
+        key={order.id}
+        className={`min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border p-4 cursor-pointer transition-all active:scale-[0.98] ${
+          isDelivered
+            ? "border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-950/20"
+            : isOverdue
+              ? "border-red-300 dark:border-red-700 bg-red-50/30 dark:bg-red-950/20"
+              : isDelayed
+                ? "border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/20"
+                : "border-border bg-card"
+        } ${isChild ? "ring-1 ring-primary/20" : ""}`}
+        onClick={() => navigate(`/restaurant/orders/${order.id}`)}
+        data-testid={`delivery-item-${order.id}`}
+      >
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className={`flex items-center justify-center h-10 w-10 rounded-xl shrink-0 ${
+            isDelivered
+              ? "bg-green-100 dark:bg-green-900/30"
+              : isOverdue
+                ? "bg-red-100 dark:bg-red-900/30"
+                : isDelayed
+                  ? "bg-amber-100 dark:bg-amber-900/30"
+                  : order.status === "in_delivery"
+                    ? "bg-purple-100 dark:bg-purple-900/30"
+                    : "bg-blue-100 dark:bg-blue-900/30"
+          }`}>
+            {isDelivered
+              ? <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+              : isOverdue
+                ? <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
+                : isDelayed
+                  ? <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  : order.status === "in_delivery"
+                    ? <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    : <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            }
+          </div>
+          {isDelivered ? (
+            <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1.5" variant="outline">
+              {lang === "de" ? "Geliefert" : "Consegnato"}
+            </Badge>
+          ) : isOverdue ? (
+            <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
+              {lang === "de" ? "Überfällig" : "Scaduto"}
+            </Badge>
+          ) : isDelayed ? (
+            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5" variant="outline">
+              {lang === "de" ? "In Verspätung" : "In ritardo"}
+            </Badge>
+          ) : (
+            <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
+              {getOrderStatus(order.status, lang)}
+            </Badge>
+          )}
+        </div>
+
+        <p className={`text-sm font-semibold truncate ${isOverdue ? "text-red-700 dark:text-red-400" : ""}`}>
+          {supplierName}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {order.items?.length || 0} {t("common", "items")}
+        </p>
+
+        {isDelayed && order.originalDeliveryDate && (
+          <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1.5">
+            {new Date(order.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+            {" → "}
+            {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+          </p>
+        )}
+        {isOverdue && (
+          <p className="text-[10px] text-red-500 dark:text-red-400 mt-1.5">
+            {lang === "de" ? "Erwartet" : "Previsto"}: {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
+          <span className="text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</span>
+          <span className="text-base font-bold">{order.totalAmount}€</span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDeliveryCardDesktop = (order: OrderWithDetails, isChild = false) => {
+    const deliveryState = getOrderDeliveryState(order);
+    const isDelivered = deliveryState === "delivered_today";
+    const isOverdue = deliveryState === "overdue";
+    const isDelayed = deliveryState === "delayed";
+    const supplierName = order.supplier?.companyName || order.supplier?.name || t("common", "unknown");
+    return (
+      <div
+        key={order.id}
+        className={`rounded-xl border transition-all duration-200 ${
+          isDelivered
+            ? "border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-950/20"
+            : isOverdue
+              ? "border-red-300 dark:border-red-700 bg-red-50/30 dark:bg-red-950/20"
+              : isDelayed
+                ? "border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/20"
+                : "border-border bg-card hover:shadow-md hover:border-primary/20"
+        } ${isChild ? "ml-4 border-l-2 border-l-primary/40" : ""}`}
+        data-testid={`delivery-item-${order.id}`}
+      >
+        <div
+          className="flex items-center gap-3 p-3 cursor-pointer"
+          onClick={() => navigate(`/restaurant/orders/${order.id}`)}
+        >
+          <div className={`flex items-center justify-center h-10 w-10 rounded-lg shrink-0 ${
+            isDelivered
+              ? "bg-green-100 dark:bg-green-900/30"
+              : isOverdue
+                ? "bg-red-100 dark:bg-red-900/30"
+                : isDelayed
+                  ? "bg-amber-100 dark:bg-amber-900/30"
+                  : order.status === "in_delivery"
+                    ? "bg-purple-100 dark:bg-purple-900/30"
+                    : "bg-blue-100 dark:bg-blue-900/30"
+          }`}>
+            {isDelivered
+              ? <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+              : isOverdue
+                ? <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
+                : isDelayed
+                  ? <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  : order.status === "in_delivery"
+                    ? <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    : <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            }
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`text-sm font-medium truncate ${isOverdue ? "text-red-700 dark:text-red-400" : ""}`}>
+                {supplierName}
+              </span>
+              {isDelivered ? (
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1.5" variant="outline">
+                  {lang === "de" ? "Geliefert" : "Consegnato"}
+                </Badge>
+              ) : isOverdue ? (
+                <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
+                  {lang === "de" ? "Überfällig" : "Scaduto"}
+                </Badge>
+              ) : isDelayed ? (
+                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5" variant="outline">
+                  {lang === "de" ? "In Verspätung" : "In ritardo"}
+                </Badge>
+              ) : (
+                <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
+                  {getOrderStatus(order.status, lang)}
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {order.items?.length || 0} {t("common", "items")} — #{order.id.slice(0, 8)}
+              {order.createdByUser && (
+                <span className="ml-1.5" data-testid={`text-created-by-${order.id}`}>— {order.createdByUser.name}</span>
+              )}
+            </p>
+            {isDelayed && order.originalDeliveryDate && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
+                {lang === "de" ? "Ursprünglich" : "Originale"}: {new Date(order.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+                {" → "}
+                {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
+              </p>
+            )}
+            {isOverdue && (
+              <p className="text-[11px] text-red-500 dark:text-red-400 mt-0.5">
+                {lang === "de" ? "Erwartet am" : "Previsto per il"} {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "short" })}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm font-bold">{order.totalAmount}€</span>
+          </div>
+        </div>
+        {isOverdue && (
+          <div className="px-3 pb-3 flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs bg-white dark:bg-background text-foreground border-border h-7 px-2.5 rounded-lg"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/restaurant/inbox?to=${order.supplierId}&orderRefId=${order.id}`);
+              }}
+              data-testid={`button-send-overdue-msg-${order.id}`}
+            >
+              <Send className="h-3 w-3 mr-1" />
+              {lang === "de" ? "Nachricht" : "Messaggio"}
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const buildDeliveryBundles = (orders: OrderWithDetails[]) => {
+    const map = new Map<string, OrderWithDetails[]>();
+    for (const o of orders) {
+      const k = o.supplierId;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(o);
+    }
+    return Array.from(map.entries()).map(([supplierId, list]) => ({ supplierId, orders: list }));
+  };
+
   return (
     <PullToRefreshWrapper
       onRefresh={async () => {
@@ -686,213 +908,94 @@ export default function RestaurantHome() {
                       className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
                       style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
                     >
-                      {group.orders.map((order) => {
-                        const deliveryState = getOrderDeliveryState(order);
-                        const isDelivered = deliveryState === "delivered_today";
-                        const isOverdue = deliveryState === "overdue";
-                        const isDelayed = deliveryState === "delayed";
-                        const supplierName = order.supplier?.companyName || order.supplier?.name || t("common", "unknown");
-
-                        return (
+                      {buildDeliveryBundles(group.orders).flatMap((bundle) => {
+                        const bundleKey = `${group.dateKey}::${bundle.supplierId}`;
+                        if (bundle.orders.length === 1) {
+                          return [renderDeliveryCardMobile(bundle.orders[0])];
+                        }
+                        const expanded = expandedBundles.has(bundleKey);
+                        const first = bundle.orders[0];
+                        const supplierName = first.supplier?.companyName || first.supplier?.name || t("common", "unknown");
+                        const totalAmount = bundle.orders.reduce((s, o) => s + parseFloat(o.totalAmount || "0"), 0);
+                        const totalItems = bundle.orders.reduce((s, o) => s + (o.items?.length || 0), 0);
+                        const header = (
                           <div
-                            key={order.id}
-                            className={`min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border p-4 cursor-pointer transition-all active:scale-[0.98] ${
-                              isDelivered
-                                ? "border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-950/20"
-                                : isOverdue
-                                  ? "border-red-300 dark:border-red-700 bg-red-50/30 dark:bg-red-950/20"
-                                  : isDelayed
-                                    ? "border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/20"
-                                    : "border-border bg-card"
-                            }`}
-                            onClick={() => navigate(`/restaurant/orders/${order.id}`)}
-                            data-testid={`delivery-item-${order.id}`}
+                            key={`bundle-${bundleKey}`}
+                            className="min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border-2 border-primary/30 bg-primary/5 p-4 cursor-pointer transition-all active:scale-[0.98]"
+                            onClick={() => toggleBundle(bundleKey)}
+                            data-testid={`bundle-${bundleKey}`}
                           >
                             <div className="flex items-center justify-between gap-2 mb-3">
-                              <div className={`flex items-center justify-center h-10 w-10 rounded-xl shrink-0 ${
-                                isDelivered
-                                  ? "bg-green-100 dark:bg-green-900/30"
-                                  : isOverdue
-                                    ? "bg-red-100 dark:bg-red-900/30"
-                                    : isDelayed
-                                      ? "bg-amber-100 dark:bg-amber-900/30"
-                                      : order.status === "in_delivery"
-                                        ? "bg-purple-100 dark:bg-purple-900/30"
-                                        : "bg-blue-100 dark:bg-blue-900/30"
-                              }`}>
-                                {isDelivered
-                                  ? <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                  : isOverdue
-                                    ? <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
-                                    : isDelayed
-                                      ? <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                                      : order.status === "in_delivery"
-                                        ? <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                        : <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                }
+                              <div className="flex items-center justify-center h-10 w-10 rounded-xl shrink-0 bg-primary/15">
+                                <Package className="h-5 w-5 text-primary" />
                               </div>
-                              {isDelivered ? (
-                                <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1.5" variant="outline">
-                                  {lang === "de" ? "Geliefert" : "Consegnato"}
-                                </Badge>
-                              ) : isOverdue ? (
-                                <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
-                                  {lang === "de" ? "Überfällig" : "Scaduto"}
-                                </Badge>
-                              ) : isDelayed ? (
-                                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5" variant="outline">
-                                  {lang === "de" ? "In Verspätung" : "In ritardo"}
-                                </Badge>
-                              ) : (
-                                <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
-                                  {getOrderStatus(order.status, lang)}
-                                </Badge>
-                              )}
+                              <Badge className="bg-primary/15 text-primary text-[10px] px-1.5" variant="outline">
+                                {bundle.orders.length}x
+                              </Badge>
                             </div>
-
-                            <p className={`text-sm font-semibold truncate ${isOverdue ? "text-red-700 dark:text-red-400" : ""}`}>
-                              {supplierName}
-                            </p>
+                            <p className="text-sm font-semibold truncate">{supplierName}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {order.items?.length || 0} {t("common", "items")}
+                              {totalItems} {t("common", "items")}
                             </p>
-
-                            {isDelayed && order.originalDeliveryDate && (
-                              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1.5">
-                                {new Date(order.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
-                                {" → "}
-                                {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
-                              </p>
-                            )}
-                            {isOverdue && (
-                              <p className="text-[10px] text-red-500 dark:text-red-400 mt-1.5">
-                                {lang === "de" ? "Erwartet" : "Previsto"}: {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
-                              </p>
-                            )}
-
-                            <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
-                              <span className="text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</span>
-                              <span className="text-base font-bold">{order.totalAmount}€</span>
+                            <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-primary/20">
+                              <span className="text-xs text-primary font-medium flex items-center gap-0.5">
+                                <ChevronRight className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-90" : ""}`} />
+                                {lang === "de" ? (expanded ? "Einklappen" : "Anzeigen") : (expanded ? "Riduci" : "Mostra")}
+                              </span>
+                              <span className="text-base font-bold">{totalAmount.toFixed(2)}€</span>
                             </div>
                           </div>
                         );
+                        const children = expanded ? bundle.orders.map(o => renderDeliveryCardMobile(o, true)) : [];
+                        return [header, ...children];
                       })}
                     </div>
 
                     {/* Desktop: stacked list */}
                     <div className="hidden md:block space-y-2">
-                      {group.orders.map((order) => {
-                        const deliveryState = getOrderDeliveryState(order);
-                        const isDelivered = deliveryState === "delivered_today";
-                        const isOverdue = deliveryState === "overdue";
-                        const isDelayed = deliveryState === "delayed";
-                        const supplierName = order.supplier?.companyName || order.supplier?.name || t("common", "unknown");
-
-                        return (
+                      {buildDeliveryBundles(group.orders).flatMap((bundle) => {
+                        const bundleKey = `${group.dateKey}::${bundle.supplierId}`;
+                        if (bundle.orders.length === 1) {
+                          return [renderDeliveryCardDesktop(bundle.orders[0])];
+                        }
+                        const expanded = expandedBundles.has(bundleKey);
+                        const first = bundle.orders[0];
+                        const supplierName = first.supplier?.companyName || first.supplier?.name || t("common", "unknown");
+                        const totalAmount = bundle.orders.reduce((s, o) => s + parseFloat(o.totalAmount || "0"), 0);
+                        const totalItems = bundle.orders.reduce((s, o) => s + (o.items?.length || 0), 0);
+                        const header = (
                           <div
-                            key={order.id}
-                            className={`rounded-xl border transition-all duration-200 ${
-                              isDelivered
-                                ? "border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-950/20"
-                                : isOverdue
-                                  ? "border-red-300 dark:border-red-700 bg-red-50/30 dark:bg-red-950/20"
-                                  : isDelayed
-                                    ? "border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/20"
-                                    : "border-border bg-card hover:shadow-md hover:border-primary/20"
-                            }`}
-                            data-testid={`delivery-item-${order.id}`}
+                            key={`bundle-${bundleKey}`}
+                            className="rounded-xl border-2 border-primary/30 bg-primary/5 transition-all duration-200"
+                            data-testid={`bundle-${bundleKey}`}
                           >
                             <div
                               className="flex items-center gap-3 p-3 cursor-pointer"
-                              onClick={() => navigate(`/restaurant/orders/${order.id}`)}
+                              onClick={() => toggleBundle(bundleKey)}
                             >
-                              <div className={`flex items-center justify-center h-10 w-10 rounded-lg shrink-0 ${
-                                isDelivered
-                                  ? "bg-green-100 dark:bg-green-900/30"
-                                  : isOverdue
-                                    ? "bg-red-100 dark:bg-red-900/30"
-                                    : isDelayed
-                                      ? "bg-amber-100 dark:bg-amber-900/30"
-                                      : order.status === "in_delivery"
-                                        ? "bg-purple-100 dark:bg-purple-900/30"
-                                        : "bg-blue-100 dark:bg-blue-900/30"
-                              }`}>
-                                {isDelivered
-                                  ? <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                  : isOverdue
-                                    ? <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
-                                    : isDelayed
-                                      ? <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                                      : order.status === "in_delivery"
-                                        ? <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                        : <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                }
+                              <div className="flex items-center justify-center h-10 w-10 rounded-lg shrink-0 bg-primary/15">
+                                <Package className="h-5 w-5 text-primary" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className={`text-sm font-medium truncate ${isOverdue ? "text-red-700 dark:text-red-400" : ""}`}>
-                                    {supplierName}
-                                  </span>
-                                  {isDelivered ? (
-                                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1.5" variant="outline">
-                                      {lang === "de" ? "Geliefert" : "Consegnato"}
-                                    </Badge>
-                                  ) : isOverdue ? (
-                                    <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
-                                      {lang === "de" ? "Überfällig" : "Scaduto"}
-                                    </Badge>
-                                  ) : isDelayed ? (
-                                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5" variant="outline">
-                                      {lang === "de" ? "In Verspätung" : "In ritardo"}
-                                    </Badge>
-                                  ) : (
-                                    <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
-                                      {getOrderStatus(order.status, lang)}
-                                    </Badge>
-                                  )}
+                                  <span className="text-sm font-medium truncate">{supplierName}</span>
+                                  <Badge className="bg-primary/15 text-primary text-[10px] px-1.5" variant="outline">
+                                    {bundle.orders.length}x {lang === "de" ? "Bestellungen" : "ordini"}
+                                  </Badge>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                  {order.items?.length || 0} {t("common", "items")} — #{order.id.slice(0, 8)}
-                                  {order.createdByUser && (
-                                    <span className="ml-1.5" data-testid={`text-created-by-${order.id}`}>— {order.createdByUser.name}</span>
-                                  )}
+                                  {totalItems} {t("common", "items")} — {lang === "de" ? "Gesamtsumme" : "Totale"}: {totalAmount.toFixed(2)}€
                                 </p>
-                                {isDelayed && order.originalDeliveryDate && (
-                                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
-                                    {lang === "de" ? "Ursprünglich" : "Originale"}: {new Date(order.originalDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
-                                    {" → "}
-                                    {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { day: "2-digit", month: "short" })}
-                                  </p>
-                                )}
-                                {isOverdue && (
-                                  <p className="text-[11px] text-red-500 dark:text-red-400 mt-0.5">
-                                    {lang === "de" ? "Erwartet am" : "Previsto per il"} {new Date((order.requestedDeliveryDate || "") + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "short" })}
-                                  </p>
-                                )}
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-sm font-bold">{order.totalAmount}€</span>
+                                <span className="text-sm font-bold">{totalAmount.toFixed(2)}€</span>
+                                <ChevronRight className={`h-4 w-4 text-primary transition-transform ${expanded ? "rotate-90" : ""}`} />
                               </div>
                             </div>
-                            {isOverdue && (
-                              <div className="px-3 pb-3 flex justify-end">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs bg-white dark:bg-background text-foreground border-border h-7 px-2.5 rounded-lg"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/restaurant/inbox?to=${order.supplierId}&orderRefId=${order.id}`);
-                                  }}
-                                  data-testid={`button-send-overdue-msg-${order.id}`}
-                                >
-                                  <Send className="h-3 w-3 mr-1" />
-                                  {lang === "de" ? "Nachricht" : "Messaggio"}
-                                </Button>
-                              </div>
-                            )}
                           </div>
                         );
+                        const children = expanded ? bundle.orders.map(o => renderDeliveryCardDesktop(o, true)) : [];
+                        return [header, ...children];
                       })}
                     </div>
                   </>
