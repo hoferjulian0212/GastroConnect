@@ -420,7 +420,7 @@ export default function SupplierHome() {
                     {group.label}
                   </span>
                   {group.isToday && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-black animate-pulse" />
                   )}
                 </div>
 
