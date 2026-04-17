@@ -415,8 +415,8 @@ export default function SupplierHome() {
             {groupedDeliveries.map((group) => (
               <div key={group.dateKey}>
                 <div className="flex items-center gap-2 mb-2">
-                  <Calendar className={`h-3.5 w-3.5 text-black dark:text-white`} />
-                  <span className={`text-xs font-semibold uppercase tracking-wide text-black dark:text-white`}>
+                  <Calendar className={`h-3.5 w-3.5 text-black`} />
+                  <span className={`text-xs font-semibold uppercase tracking-wide text-black`}>
                     {group.label}
                   </span>
                   {group.isToday && (
