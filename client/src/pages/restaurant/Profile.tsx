@@ -139,11 +139,6 @@ export default function RestaurantProfile() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("profile", "profileTitle")}</h1>
-        <p className="text-xs md:text-sm text-muted-foreground">{t("profile", "profileDesc")}</p>
-      </div>
-
       <div className="grid gap-3 md:gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card>

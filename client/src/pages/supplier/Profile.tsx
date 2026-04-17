@@ -139,11 +139,6 @@ export default function SupplierProfile() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "profile")}</h1>
-        <p className="text-sm md:text-base text-muted-foreground">{lang === "de" ? "Verwalten Sie Ihre Unternehmensdaten" : "Gestisci i dati della tua azienda"}</p>
-      </div>
-
       <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 order-2 lg:order-1">
           <Card>
