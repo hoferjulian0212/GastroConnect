@@ -512,7 +512,20 @@ export default function RestaurantHome() {
       else result.splice(insertIdx, 0, todayEntry);
     }
 
-    return result;
+    const MAX_TOTAL = 8;
+    const todayCount = result
+      .filter(g => g.isToday)
+      .reduce((sum, g) => sum + g.orders.length, 0);
+    let remaining = Math.max(0, MAX_TOTAL - todayCount);
+    const capped = result.map(g => {
+      if (g.isToday) return g;
+      if (remaining <= 0) return { ...g, orders: [] as OrderWithDetails[] };
+      const take = Math.min(g.orders.length, remaining);
+      remaining -= take;
+      return { ...g, orders: g.orders.slice(0, take) };
+    }).filter(g => g.isToday || g.orders.length > 0);
+
+    return capped;
   }, [upcomingDeliveries, lang]);
 
   const totalUnread = unreadConversations.length;
