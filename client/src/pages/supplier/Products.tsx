@@ -1213,7 +1213,7 @@ export default function SupplierProducts() {
                 </p>
               </div>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-5 pb-5">
                   <div className="space-y-2">
                     <FormLabel>{t("supplierProducts", "productImage")}</FormLabel>
                     <div className="flex flex-col gap-3">
@@ -1486,7 +1486,7 @@ export default function SupplierProducts() {
                     )}
                   />
 
-                  <div className="flex gap-2 px-5 pb-5">
+                  <div className="flex gap-2 pt-2">
                     <Button type="button" variant="outline" className="flex-1 rounded-lg" onClick={() => setIsDialogOpen(false)}>
                       {t("common", "cancel")}
                     </Button>
