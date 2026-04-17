@@ -3,7 +3,7 @@ import { eq, and, desc, or, sql, ne, inArray } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
-  orderTemplates, orderTemplateItems,
+  orderTemplates, orderTemplateItems, costSettings, overnightStays, minimumOrderValues,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -1039,144 +1039,385 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedData(): Promise<void> {
-    // Check if data already exists
-    const existingUsers = await db.select().from(users);
-    if (existingUsers.length > 0) return;
+    const DEMO_VERSION = "demo-v3";
+    const sentinelEmail = `${DEMO_VERSION}@gastroconnect.dev`;
+    const existing = await db.select().from(users).where(eq(users.email, sentinelEmail));
+    if (existing.length > 0) {
+      console.log(`Demo data ${DEMO_VERSION} already present, skipping seed.`);
+      return;
+    }
 
-    // Create restaurants
+    console.log(`Wiping existing data and seeding ${DEMO_VERSION}...`);
+    // Wipe in FK-safe reverse order
+    await db.delete(stockMovements);
+    await db.delete(complaintComments);
+    await db.delete(complaintStatusHistory);
+    await db.delete(complaints);
+    await db.delete(orderStatusHistory);
+    await db.delete(documents);
+    await db.delete(orderTemplateItems);
+    await db.delete(orderTemplates);
+    await db.delete(orderItems);
+    await db.delete(cartItems);
+    await db.delete(messages);
+    await db.delete(conversations);
+    await db.delete(orders);
+    await db.delete(notifications);
+    await db.delete(promotions);
+    await db.delete(customPrices);
+    await db.delete(customMinOrderQuantities);
+    await db.delete(deliverySchedules);
+    await db.delete(pushSubscriptions);
+    await db.delete(costSettings);
+    await db.delete(overnightStays);
+    await db.delete(minimumOrderValues);
+    await db.delete(products);
+    await db.delete(users);
+
+    const avatar = (n: number) => `https://i.pravatar.cc/300?img=${n}`;
+    const unsplash = (id: string, w = 600, h = 600) => `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format`;
+
+    // ===== USERS =====
     const restaurant1 = await this.createUser({
-      role: "restaurant",
-      name: "Thomas Weber",
-      email: "thomas@biergarten-muenchen.de",
-      phone: "+49 89 1234567",
-      companyName: "Biergarten München",
-      address: "Marienplatz 1",
-      city: "München",
-      postalCode: "80331",
-      description: "Traditioneller Biergarten im Herzen von München"
+      role: "restaurant", name: "Thomas Weber", email: "thomas@biergarten-muenchen.de",
+      phone: "+49 89 1234567", companyName: "Biergarten München",
+      address: "Marienplatz 1", city: "München", postalCode: "80331",
+      description: "Traditioneller Biergarten im Herzen von München mit 200 Plätzen",
+      profileImageUrl: avatar(12),
     });
-
     const restaurant2 = await this.createUser({
-      role: "restaurant",
-      name: "Maria Schmidt",
-      email: "maria@pizzeria-bella.de",
-      phone: "+49 30 9876543",
-      companyName: "Pizzeria Bella Italia",
-      address: "Friedrichstraße 45",
-      city: "Berlin",
-      postalCode: "10117",
-      description: "Authentische italienische Küche"
+      role: "restaurant", name: "Maria Schmidt", email: "maria@pizzeria-bella.de",
+      phone: "+49 30 9876543", companyName: "Pizzeria Bella Italia",
+      address: "Friedrichstraße 45", city: "Berlin", postalCode: "10117",
+      description: "Authentische italienische Küche, Steinofenpizza & hausgemachte Pasta",
+      profileImageUrl: avatar(45),
     });
-
     const restaurant3 = await this.createUser({
-      role: "restaurant",
-      name: "Klaus Fischer",
-      email: "klaus@gasthof-alpenblick.de",
-      phone: "+49 8821 12345",
-      companyName: "Gasthof Alpenblick",
-      address: "Bergstraße 12",
-      city: "Garmisch-Partenkirchen",
-      postalCode: "82467",
-      description: "Bayerische Spezialitäten mit Alpenblick"
+      role: "restaurant", name: "Klaus Fischer", email: "klaus@gasthof-alpenblick.de",
+      phone: "+49 8821 12345", companyName: "Gasthof Alpenblick",
+      address: "Bergstraße 12", city: "Garmisch-Partenkirchen", postalCode: "82467",
+      description: "Bayerische Spezialitäten mit Alpenblick, 4-Sterne Hotel mit 60 Zimmern",
+      profileImageUrl: avatar(53),
+    });
+    const restaurant4 = await this.createUser({
+      role: "restaurant", name: "Marco Bianchi", email: "marco@trattoria-roma.de",
+      phone: "+49 40 5544332", companyName: "Trattoria Roma",
+      address: "Hafenstraße 22", city: "Hamburg", postalCode: "20359",
+      description: "Familiengeführte Trattoria mit Blick auf den Hafen",
+      profileImageUrl: avatar(33),
+    });
+    const restaurant5 = await this.createUser({
+      role: "restaurant", name: "Sophie Laurent", email: "sophie@bistro-paris.de",
+      phone: "+49 221 6677889", companyName: "Bistro Paris",
+      address: "Hohe Straße 88", city: "Köln", postalCode: "50667",
+      description: "Französische Bistroküche, Weinkarte mit über 200 Positionen",
+      profileImageUrl: avatar(47),
     });
 
-    // Create suppliers
     const supplier1 = await this.createUser({
-      role: "supplier",
-      name: "Hans Müller",
-      email: "hans@frische-produkte.de",
-      phone: "+49 89 5555666",
-      companyName: "Frische Produkte GmbH",
-      address: "Industriestraße 23",
-      city: "München",
-      postalCode: "80939",
-      description: "Ihr Partner für frisches Obst und Gemüse"
+      role: "supplier", name: "Hans Müller", email: "hans@frische-produkte.de",
+      phone: "+49 89 5555666", companyName: "Frische Produkte GmbH",
+      address: "Industriestraße 23", city: "München", postalCode: "80939",
+      description: "Ihr Partner für frisches Obst und Gemüse — täglich vom Großmarkt",
+      profileImageUrl: avatar(13),
     });
-
     const supplier2 = await this.createUser({
-      role: "supplier",
-      name: "Anna Bauer",
-      email: "anna@metzgerei-bauer.de",
-      phone: "+49 89 7778899",
-      companyName: "Metzgerei Bauer",
-      address: "Fleischweg 5",
-      city: "München",
-      postalCode: "80469",
-      description: "Qualitätsfleisch aus der Region"
+      role: "supplier", name: "Anna Bauer", email: "anna@metzgerei-bauer.de",
+      phone: "+49 89 7778899", companyName: "Metzgerei Bauer",
+      address: "Fleischweg 5", city: "München", postalCode: "80469",
+      description: "Qualitätsfleisch aus der Region — Bio-zertifiziert seit 1985",
+      profileImageUrl: avatar(20),
     });
-
     const supplier3 = await this.createUser({
-      role: "supplier",
-      name: "Peter Klein",
-      email: "peter@getraenke-klein.de",
-      phone: "+49 89 3334455",
-      companyName: "Getränke Klein",
-      address: "Braustraße 88",
-      city: "München",
-      postalCode: "80337",
-      description: "Getränke-Großhandel für die Gastronomie"
+      role: "supplier", name: "Peter Klein", email: "peter@getraenke-klein.de",
+      phone: "+49 89 3334455", companyName: "Getränke Klein",
+      address: "Braustraße 88", city: "München", postalCode: "80337",
+      description: "Getränke-Großhandel für die Gastronomie — Bier, Wein, Spirituosen",
+      profileImageUrl: avatar(60),
+    });
+    const supplier4 = await this.createUser({
+      role: "supplier", name: "Julia Romano", email: "julia@italia-import.de",
+      phone: "+49 89 9988776", companyName: "Italia Import GmbH",
+      address: "Mailänder Straße 7", city: "München", postalCode: "80939",
+      description: "Italienische Spezialitäten — Olivenöl, Pasta, Käse direkt vom Erzeuger",
+      profileImageUrl: avatar(44),
+    });
+    const supplier5 = await this.createUser({
+      role: "supplier", name: "Erik Andersen", email: "erik@nordsee-fisch.de",
+      phone: "+49 471 112233", companyName: "Nordsee Fisch & Meer",
+      address: "Fischhafen 1", city: "Bremerhaven", postalCode: "27572",
+      description: "Frischfisch und Meeresfrüchte — täglich gefangen, schnell geliefert",
+      profileImageUrl: avatar(11),
     });
 
-    // Create products for supplier1 (Frische Produkte)
-    await this.createProduct({ supplierId: supplier1.id, name: "Bio Tomaten", description: "Frische Bio-Tomaten aus regionalem Anbau", price: "3.99", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 100 });
-    await this.createProduct({ supplierId: supplier1.id, name: "Eisbergsalat", description: "Knackiger Eisbergsalat", price: "1.49", unit: "Stück", category: "Gemüse", inStock: true, stockQuantity: 50 });
-    await this.createProduct({ supplierId: supplier1.id, name: "Karotten", description: "Frische Karotten im Bund", price: "2.29", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 80 });
-    await this.createProduct({ supplierId: supplier1.id, name: "Bio Äpfel", description: "Knackige Bio-Äpfel, Sorte Elstar", price: "4.49", unit: "kg", category: "Obst", inStock: true, stockQuantity: 60 });
-    await this.createProduct({ supplierId: supplier1.id, name: "Zitronen", description: "Frische Zitronen aus Sizilien", price: "3.29", unit: "kg", category: "Obst", inStock: true, stockQuantity: 40 });
+    // Sentinel marker user (hidden, just for version detection)
+    await this.createUser({
+      role: "supplier", name: "Demo Marker", email: sentinelEmail,
+      companyName: "Demo Marker (intern)",
+    });
 
-    // Create products for supplier2 (Metzgerei)
-    await this.createProduct({ supplierId: supplier2.id, name: "Schweineschnitzel", description: "Zartes Schweineschnitzel, panierfertig", price: "12.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 30 });
-    await this.createProduct({ supplierId: supplier2.id, name: "Rinderfilet", description: "Premium Rinderfilet vom Weiderind", price: "39.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 15 });
-    await this.createProduct({ supplierId: supplier2.id, name: "Hähnchenbrust", description: "Zarte Hähnchenbrust", price: "9.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 40 });
-    await this.createProduct({ supplierId: supplier2.id, name: "Bratwurst", description: "Original Nürnberger Bratwurst", price: "8.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 50 });
-    await this.createProduct({ supplierId: supplier2.id, name: "Hackfleisch gemischt", description: "Hackfleisch gemischt Rind/Schwein", price: "7.99", unit: "kg", category: "Fleisch", inStock: false, stockQuantity: 0 });
+    // ===== PRODUCTS =====
+    // Supplier 1 (Frische Produkte) — local images for the originals
+    const p_tomaten = await this.createProduct({ supplierId: supplier1.id, name: "Bio Tomaten", description: "Frische Bio-Tomaten aus regionalem Anbau", price: "3.99", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 100, lowStockThreshold: 20, imageUrl: "/images/products/bio-tomaten.png" });
+    const p_salat = await this.createProduct({ supplierId: supplier1.id, name: "Eisbergsalat", description: "Knackiger Eisbergsalat", price: "1.49", unit: "Stück", category: "Gemüse", inStock: true, stockQuantity: 50, lowStockThreshold: 10, imageUrl: "/images/products/eisbergsalat.png" });
+    const p_karotten = await this.createProduct({ supplierId: supplier1.id, name: "Karotten", description: "Frische Karotten im Bund", price: "2.29", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 80, lowStockThreshold: 15, imageUrl: "/images/products/karotten.png" });
+    const p_aepfel = await this.createProduct({ supplierId: supplier1.id, name: "Bio Äpfel", description: "Knackige Bio-Äpfel, Sorte Elstar", price: "4.49", unit: "kg", category: "Obst", inStock: true, stockQuantity: 60, lowStockThreshold: 12, imageUrl: "/images/products/bio-aepfel.png" });
+    const p_zitronen = await this.createProduct({ supplierId: supplier1.id, name: "Zitronen", description: "Frische Zitronen aus Sizilien", price: "3.29", unit: "kg", category: "Obst", inStock: true, stockQuantity: 40, lowStockThreshold: 8, imageUrl: unsplash("1582287014914-1db836ff8616") });
+    await this.createProduct({ supplierId: supplier1.id, name: "Bio Gurken", description: "Knackfrische Salatgurken aus Bio-Anbau", price: "1.99", unit: "Stück", category: "Gemüse", inStock: true, stockQuantity: 70, lowStockThreshold: 15, imageUrl: unsplash("1604977042946-1eecc30f269e") });
+    await this.createProduct({ supplierId: supplier1.id, name: "Paprika rot", description: "Süße rote Paprika", price: "4.79", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 35, lowStockThreshold: 10, imageUrl: unsplash("1525607551316-4a8e16d1f9ba") });
+    await this.createProduct({ supplierId: supplier1.id, name: "Champignons", description: "Frische Champignons, weiß", price: "5.49", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 25, lowStockThreshold: 5, imageUrl: unsplash("1607301406259-dfb186e15de8") });
+    await this.createProduct({ supplierId: supplier1.id, name: "Kartoffeln", description: "Festkochende Kartoffeln, Sorte Annabelle", price: "1.29", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 250, lowStockThreshold: 50, imageUrl: unsplash("1518977676601-b53f82aba655") });
+    await this.createProduct({ supplierId: supplier1.id, name: "Zwiebeln", description: "Gelbe Speisezwiebeln", price: "1.49", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 120, lowStockThreshold: 25, imageUrl: unsplash("1580201092675-a0a6a6cafbb1") });
+    await this.createProduct({ supplierId: supplier1.id, name: "Bananen", description: "Fairtrade Bananen aus Ecuador", price: "2.19", unit: "kg", category: "Obst", inStock: true, stockQuantity: 90, lowStockThreshold: 20, imageUrl: unsplash("1571771894821-ce9b6c11b08e") });
+    await this.createProduct({ supplierId: supplier1.id, name: "Erdbeeren", description: "Saisonale Erdbeeren, 500g Schale", price: "3.99", unit: "Schale", category: "Obst", inStock: false, stockQuantity: 0, lowStockThreshold: 10, imageUrl: unsplash("1464965911861-746a04b4bca6") });
 
-    // Create products for supplier3 (Getränke)
-    await this.createProduct({ supplierId: supplier3.id, name: "Augustiner Helles", description: "Münchner Augustiner Helles, Kiste 20x0,5l", price: "19.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 100 });
-    await this.createProduct({ supplierId: supplier3.id, name: "Mineralwasser", description: "Gerolsteiner Mineralwasser, Kiste 12x1l", price: "8.49", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 200 });
-    await this.createProduct({ supplierId: supplier3.id, name: "Apfelsaft", description: "Naturtrüber Apfelsaft, Kiste 6x1l", price: "11.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 80 });
-    await this.createProduct({ supplierId: supplier3.id, name: "Cola", description: "Coca-Cola Classic, Kiste 24x0,33l", price: "18.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 60 });
+    // Supplier 2 (Metzgerei) — local images
+    const p_schnitzel = await this.createProduct({ supplierId: supplier2.id, name: "Schweineschnitzel", description: "Zartes Schweineschnitzel, panierfertig", price: "12.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 30, lowStockThreshold: 8, imageUrl: "/images/products/schweineschnitzel.png" });
+    const p_filet = await this.createProduct({ supplierId: supplier2.id, name: "Rinderfilet", description: "Premium Rinderfilet vom Weiderind", price: "39.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 15, lowStockThreshold: 4, imageUrl: "/images/products/rinderfilet.png" });
+    const p_haehnchen = await this.createProduct({ supplierId: supplier2.id, name: "Hähnchenbrust", description: "Zarte Hähnchenbrust", price: "9.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 40, lowStockThreshold: 10, imageUrl: "/images/products/haehnchenbrust.png" });
+    const p_bratwurst = await this.createProduct({ supplierId: supplier2.id, name: "Bratwurst", description: "Original Nürnberger Bratwurst", price: "8.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 50, lowStockThreshold: 15, imageUrl: "/images/products/bratwurst.png" });
+    await this.createProduct({ supplierId: supplier2.id, name: "Hackfleisch gemischt", description: "Hackfleisch gemischt Rind/Schwein", price: "7.99", unit: "kg", category: "Fleisch", inStock: false, stockQuantity: 0, lowStockThreshold: 10, imageUrl: "/images/products/hackfleisch.png" });
+    await this.createProduct({ supplierId: supplier2.id, name: "Entenbrust", description: "Barbarie-Entenbrust, vakuumiert", price: "21.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 12, lowStockThreshold: 4, imageUrl: unsplash("1606728035253-49e8a23146de") });
+    await this.createProduct({ supplierId: supplier2.id, name: "Lammkarree", description: "Lammkarree french-trimmed", price: "32.50", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 8, lowStockThreshold: 3, imageUrl: unsplash("1602470520998-f4a52199a3d6") });
+    await this.createProduct({ supplierId: supplier2.id, name: "Rinderhüfte", description: "Rinderhüfte am Stück, dry-aged 21 Tage", price: "28.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 18, lowStockThreshold: 5, imageUrl: unsplash("1588168333986-5078d3ae3976") });
+    await this.createProduct({ supplierId: supplier2.id, name: "Salami Fenchel", description: "Hausgemachte Salami mit Fenchel", price: "24.50", unit: "kg", category: "Wurst", inStock: true, stockQuantity: 22, lowStockThreshold: 5, imageUrl: unsplash("1601001435957-74f0958a93c6") });
+    await this.createProduct({ supplierId: supplier2.id, name: "Schinken Speck", description: "Tiroler Speck, geschnitten", price: "29.99", unit: "kg", category: "Wurst", inStock: true, stockQuantity: 14, lowStockThreshold: 4, imageUrl: unsplash("1542901031-ec5eeb518e9d") });
 
-    // Create conversations and messages
+    // Supplier 3 (Getränke) — local images
+    const p_augustiner = await this.createProduct({ supplierId: supplier3.id, name: "Augustiner Helles", description: "Münchner Augustiner Helles, Kiste 20x0,5l", price: "19.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 100, lowStockThreshold: 20, imageUrl: "/images/products/augustiner-helles.png" });
+    const p_wasser = await this.createProduct({ supplierId: supplier3.id, name: "Mineralwasser", description: "Gerolsteiner Mineralwasser, Kiste 12x1l", price: "8.49", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 200, lowStockThreshold: 40, imageUrl: "/images/products/mineralwasser.png" });
+    const p_apfelsaft = await this.createProduct({ supplierId: supplier3.id, name: "Apfelsaft", description: "Naturtrüber Apfelsaft, Kiste 6x1l", price: "11.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 80, lowStockThreshold: 15, imageUrl: "/images/products/apfelsaft.png" });
+    await this.createProduct({ supplierId: supplier3.id, name: "Cola", description: "Coca-Cola Classic, Kiste 24x0,33l", price: "18.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 60, lowStockThreshold: 15, imageUrl: "/images/products/cola.png" });
+    await this.createProduct({ supplierId: supplier3.id, name: "Weizenbier", description: "Erdinger Weißbier, Kiste 20x0,5l", price: "21.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 75, lowStockThreshold: 15, imageUrl: unsplash("1535958636474-b021ee887b13") });
+    await this.createProduct({ supplierId: supplier3.id, name: "Riesling QbA", description: "Mosel Riesling, trocken, Kiste 6x0,75l", price: "44.99", unit: "Kiste", category: "Wein", inStock: true, stockQuantity: 40, lowStockThreshold: 10, imageUrl: unsplash("1510812431401-41d2bd2722f3") });
+    await this.createProduct({ supplierId: supplier3.id, name: "Chianti DOCG", description: "Toskanischer Chianti, Kiste 6x0,75l", price: "59.99", unit: "Kiste", category: "Wein", inStock: true, stockQuantity: 30, lowStockThreshold: 8, imageUrl: unsplash("1547595628-c61a29f496f0") });
+    await this.createProduct({ supplierId: supplier3.id, name: "Espresso Bohnen", description: "Premium Espresso, 1kg Beutel", price: "16.50", unit: "kg", category: "Kaffee", inStock: true, stockQuantity: 55, lowStockThreshold: 12, imageUrl: unsplash("1559056199-641a0ac8b55e") });
+    await this.createProduct({ supplierId: supplier3.id, name: "Orangensaft", description: "Direktsaft, Kiste 6x1l", price: "13.49", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 65, lowStockThreshold: 15, imageUrl: unsplash("1600271886742-f049cd451bba") });
+
+    // Supplier 4 (Italia Import) — Unsplash
+    const p_olivenoel = await this.createProduct({ supplierId: supplier4.id, name: "Olivenöl extra vergine", description: "Sizilianisches Olivenöl, 5L Kanister", price: "59.90", unit: "Kanister", category: "Öl & Essig", inStock: true, stockQuantity: 45, lowStockThreshold: 10, imageUrl: unsplash("1474979266404-7eaacbcd87c5") });
+    const p_pasta = await this.createProduct({ supplierId: supplier4.id, name: "Spaghetti N°5", description: "Bronze gezogene Spaghetti, 12x500g", price: "23.40", unit: "Karton", category: "Pasta", inStock: true, stockQuantity: 80, lowStockThreshold: 20, imageUrl: unsplash("1551183053-bf91a1d81141") });
+    const p_mozzarella = await this.createProduct({ supplierId: supplier4.id, name: "Mozzarella di Bufala", description: "Büffelmozzarella DOP, 125g Beutel", price: "3.50", unit: "Stück", category: "Käse", inStock: true, stockQuantity: 120, lowStockThreshold: 30, imageUrl: unsplash("1486297678162-eb2a19b0a32d") });
+    const p_parmesan = await this.createProduct({ supplierId: supplier4.id, name: "Parmigiano Reggiano", description: "24 Monate gereift, am Stück", price: "32.90", unit: "kg", category: "Käse", inStock: true, stockQuantity: 28, lowStockThreshold: 8, imageUrl: unsplash("1452195100486-9cc805987862") });
+    await this.createProduct({ supplierId: supplier4.id, name: "Prosciutto di Parma", description: "Parmaschinken DOP 18 Monate, am Stück", price: "39.90", unit: "kg", category: "Wurst", inStock: true, stockQuantity: 16, lowStockThreshold: 5, imageUrl: unsplash("1542901031-ec5eeb518e9d") });
+    await this.createProduct({ supplierId: supplier4.id, name: "Tomaten passata", description: "San Marzano Tomaten, 12x680g", price: "27.60", unit: "Karton", category: "Konserven", inStock: true, stockQuantity: 95, lowStockThreshold: 20, imageUrl: unsplash("1546470427-227e5a52e8d7") });
+    await this.createProduct({ supplierId: supplier4.id, name: "Pesto Genovese", description: "Original Pesto, 200g Glas", price: "5.90", unit: "Glas", category: "Saucen", inStock: true, stockQuantity: 60, lowStockThreshold: 15, imageUrl: unsplash("1473093226795-af9932fe5856") });
+    await this.createProduct({ supplierId: supplier4.id, name: "Balsamico Tradizionale", description: "12 Jahre gereift, 250ml", price: "29.90", unit: "Flasche", category: "Öl & Essig", inStock: true, stockQuantity: 35, lowStockThreshold: 10, imageUrl: unsplash("1505252585461-04db1eb84625") });
+
+    // Supplier 5 (Nordsee Fisch)
+    const p_lachs = await this.createProduct({ supplierId: supplier5.id, name: "Lachsfilet", description: "Norwegischer Lachs, Aquakultur, ohne Haut", price: "24.90", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 22, lowStockThreshold: 6, imageUrl: unsplash("1485921325833-c519f76c4927") });
+    await this.createProduct({ supplierId: supplier5.id, name: "Kabeljau Filet", description: "Wildfang aus der Nordsee", price: "19.50", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 18, lowStockThreshold: 5, imageUrl: unsplash("1535400875775-0928bcc2c1ac") });
+    await this.createProduct({ supplierId: supplier5.id, name: "Garnelen Black Tiger", description: "Geschält, IQF, 1kg Beutel", price: "32.90", unit: "kg", category: "Meeresfrüchte", inStock: true, stockQuantity: 24, lowStockThreshold: 6, imageUrl: unsplash("1565680018434-b513d5e5fd47") });
+    await this.createProduct({ supplierId: supplier5.id, name: "Miesmuscheln", description: "Frische Bouchot-Miesmuscheln, 5kg", price: "14.90", unit: "Sack", category: "Meeresfrüchte", inStock: true, stockQuantity: 12, lowStockThreshold: 4, imageUrl: unsplash("1565680018434-b513d5e5fd47") });
+    await this.createProduct({ supplierId: supplier5.id, name: "Thunfisch Sashimi", description: "Sashimi-Qualität, Loin", price: "54.90", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 8, lowStockThreshold: 3, imageUrl: unsplash("1583623025817-d180a2221d0a") });
+    await this.createProduct({ supplierId: supplier5.id, name: "Forellenfilet", description: "Geräucherte Lachsforelle", price: "22.50", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 15, lowStockThreshold: 5, imageUrl: unsplash("1559847844-5315695dadae") });
+
+    // ===== CONVERSATIONS & MESSAGES =====
     const conv1 = await this.getOrCreateConversation(restaurant1.id, supplier1.id);
-    await this.sendMessage({ conversationId: conv1.id, senderId: restaurant1.id, messageType: "text", content: "Hallo, haben Sie Bio Tomaten vorrätig?" });
-    await this.sendMessage({ conversationId: conv1.id, senderId: supplier1.id, messageType: "text", content: "Ja, wir haben frische Bio-Tomaten aus der Region. Wie viel benötigen Sie?" });
-    await this.sendMessage({ conversationId: conv1.id, senderId: restaurant1.id, messageType: "text", content: "10kg wären super, können Sie die morgen früh liefern?" });
+    await this.sendMessage({ conversationId: conv1.id, senderId: restaurant1.id, messageType: "text", content: "Hallo Hans, haben Sie Bio Tomaten vorrätig?" });
+    await this.sendMessage({ conversationId: conv1.id, senderId: supplier1.id, messageType: "text", content: "Ja, frisch eingetroffen! Wie viel benötigen Sie?" });
+    await this.sendMessage({ conversationId: conv1.id, senderId: restaurant1.id, messageType: "text", content: "10kg wären super, können Sie morgen früh liefern?" });
+    await this.sendMessage({ conversationId: conv1.id, senderId: supplier1.id, messageType: "text", content: "Klar, kommt morgen vor 8 Uhr. Beste Grüße!" });
 
     const conv2 = await this.getOrCreateConversation(restaurant1.id, supplier2.id);
-    await this.sendMessage({ conversationId: conv2.id, senderId: restaurant1.id, messageType: "text", content: "Guten Tag, ich würde gerne Schweineschnitzel bestellen." });
-    await this.sendMessage({ conversationId: conv2.id, senderId: supplier2.id, messageType: "text", content: "Gerne! Unsere Schnitzel sind heute frisch eingetroffen." });
+    await this.sendMessage({ conversationId: conv2.id, senderId: restaurant1.id, messageType: "text", content: "Guten Tag Anna, ich brauche 20kg Schweineschnitzel für Samstag." });
+    await this.sendMessage({ conversationId: conv2.id, senderId: supplier2.id, messageType: "text", content: "Notiert! Wir liefern Freitagnachmittag." });
 
-    const conv3 = await this.getOrCreateConversation(restaurant2.id, supplier1.id);
-    await this.sendMessage({ conversationId: conv3.id, senderId: restaurant2.id, messageType: "text", content: "Können Sie uns wöchentlich mit frischem Salat beliefern?" });
+    const conv3 = await this.getOrCreateConversation(restaurant2.id, supplier4.id);
+    await this.sendMessage({ conversationId: conv3.id, senderId: restaurant2.id, messageType: "text", content: "Ciao Julia! Brauchen 15kg Mozzarella und 5kg Parmigiano." });
+    await this.sendMessage({ conversationId: conv3.id, senderId: supplier4.id, messageType: "text", content: "Perfetto, geht raus mit der Tour morgen früh." });
+    await this.sendMessage({ conversationId: conv3.id, senderId: restaurant2.id, messageType: "text", content: "Danke! Auch noch 10L Olivenöl bitte." });
 
-    // Create some sample orders
-    const productList = await this.getProductsBySupplier(supplier1.id);
-    if (productList.length > 0) {
-      const order1Items = [
-        { productId: productList[0].id, productName: productList[0].name, quantity: 5, unitPrice: productList[0].price, totalPrice: (parseFloat(productList[0].price) * 5).toFixed(2) },
-        { productId: productList[1].id, productName: productList[1].name, quantity: 10, unitPrice: productList[1].price, totalPrice: (parseFloat(productList[1].price) * 10).toFixed(2) }
-      ];
-      const total1 = order1Items.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0).toFixed(2);
-      await this.createOrder({ restaurantId: restaurant1.id, supplierId: supplier1.id, totalAmount: total1, status: "delivered" }, order1Items as any);
+    const conv4 = await this.getOrCreateConversation(restaurant3.id, supplier3.id);
+    await this.sendMessage({ conversationId: conv4.id, senderId: restaurant3.id, messageType: "text", content: "Hallo Peter, brauche dringend 30 Kisten Augustiner für Samstag — Hochzeit." });
+    await this.sendMessage({ conversationId: conv4.id, senderId: supplier3.id, messageType: "text", content: "30 Kisten gehen klar. Liefere Samstag früh." });
 
-      const order2Items = [
-        { productId: productList[0].id, productName: productList[0].name, quantity: 8, unitPrice: productList[0].price, totalPrice: (parseFloat(productList[0].price) * 8).toFixed(2) }
-      ];
-      const total2 = order2Items.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0).toFixed(2);
-      await this.createOrder({ restaurantId: restaurant1.id, supplierId: supplier1.id, totalAmount: total2, status: "pending" }, order2Items as any);
-    }
+    const conv5 = await this.getOrCreateConversation(restaurant4.id, supplier5.id);
+    await this.sendMessage({ conversationId: conv5.id, senderId: restaurant4.id, messageType: "text", content: "Ciao Erik, was empfiehlst du heute frisch?" });
+    await this.sendMessage({ conversationId: conv5.id, senderId: supplier5.id, messageType: "text", content: "Heute kam Wildlachs aus Norwegen rein, top Qualität!" });
 
-    const meatProducts = await this.getProductsBySupplier(supplier2.id);
-    if (meatProducts.length > 0) {
-      const order3Items = [
-        { productId: meatProducts[0].id, productName: meatProducts[0].name, quantity: 3, unitPrice: meatProducts[0].price, totalPrice: (parseFloat(meatProducts[0].price) * 3).toFixed(2) }
-      ];
-      const total3 = order3Items.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0).toFixed(2);
-      await this.createOrder({ restaurantId: restaurant1.id, supplierId: supplier2.id, totalAmount: total3, status: "confirmed" }, order3Items as any);
-    }
+    // ===== HELPER for orders with offset dates =====
+    const createOrderWithDate = async (
+      data: { restaurantId: string; supplierId: string; status: any; totalAmount: string; notes?: string; requestedDeliveryDate?: string },
+      items: any[],
+      daysAgo: number,
+    ) => {
+      const [order] = await db.insert(orders).values({
+        ...data,
+        createdAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
+        updatedAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
+      }).returning();
+      for (const item of items) {
+        await db.insert(orderItems).values({ ...item, orderId: order.id });
+      }
+      return order;
+    };
 
-    console.log("Seed data created successfully!");
+    const itemFor = (p: any, qty: number, confirmedQty?: number) => ({
+      productId: p.id, productName: p.name, quantity: qty,
+      unitPrice: p.price, totalPrice: (parseFloat(p.price) * qty).toFixed(2),
+      confirmedQuantity: confirmedQty ?? null,
+    });
+    const sumOf = (items: any[]) => items.reduce((s, i) => s + parseFloat(i.totalPrice), 0).toFixed(2);
+
+    const futureDate = (days: number) => {
+      const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+      return d.toISOString().slice(0, 10);
+    };
+
+    // ===== ORDERS — every status, recent + historical =====
+    // Restaurant 1 + Supplier 1 — multiple historical
+    const o1items = [itemFor(p_tomaten, 10), itemFor(p_salat, 20), itemFor(p_karotten, 5)];
+    await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier1.id, status: "delivered", totalAmount: sumOf(o1items) }, o1items, 14);
+
+    const o2items = [itemFor(p_aepfel, 15), itemFor(p_zitronen, 4)];
+    await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier1.id, status: "delivered", totalAmount: sumOf(o2items) }, o2items, 9);
+
+    const o3items = [itemFor(p_tomaten, 8), itemFor(p_salat, 15)];
+    await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier1.id, status: "in_delivery", totalAmount: sumOf(o3items), requestedDeliveryDate: futureDate(0) }, o3items, 1);
+
+    const o4items = [itemFor(p_karotten, 6), itemFor(p_aepfel, 8)];
+    await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier1.id, status: "confirmed", totalAmount: sumOf(o4items), requestedDeliveryDate: futureDate(2) }, o4items, 0);
+
+    const o5items = [itemFor(p_tomaten, 12), itemFor(p_zitronen, 3)];
+    await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier1.id, status: "pending", totalAmount: sumOf(o5items), requestedDeliveryDate: futureDate(3) }, o5items, 0);
+
+    // Restaurant 1 + Supplier 2 (Metzgerei)
+    const o6items = [itemFor(p_schnitzel, 10), itemFor(p_haehnchen, 6)];
+    await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier2.id, status: "delivered", totalAmount: sumOf(o6items) }, o6items, 6);
+
+    const o7items = [itemFor(p_filet, 3, 2), itemFor(p_bratwurst, 5)];
+    const o7 = await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier2.id, status: "partially_confirmed", totalAmount: sumOf(o7items), requestedDeliveryDate: futureDate(1) }, o7items, 0);
+
+    // Restaurant 1 + Supplier 3 (Getränke)
+    const o8items = [itemFor(p_augustiner, 5), itemFor(p_wasser, 8), itemFor(p_apfelsaft, 4)];
+    const o8 = await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier3.id, status: "delivered", totalAmount: sumOf(o8items) }, o8items, 4);
+
+    const o9items = [itemFor(p_augustiner, 3), itemFor(p_wasser, 5)];
+    await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier3.id, status: "cancelled", totalAmount: sumOf(o9items), notes: "Kunde hat storniert wegen Lieferverspätung" }, o9items, 7);
+
+    // Restaurant 2 (Pizzeria) + Supplier 4 (Italia)
+    const o10items = [itemFor(p_mozzarella, 30), itemFor(p_parmesan, 4), itemFor(p_pasta, 6), itemFor(p_olivenoel, 2)];
+    const o10 = await createOrderWithDate({ restaurantId: restaurant2.id, supplierId: supplier4.id, status: "delivered", totalAmount: sumOf(o10items) }, o10items, 10);
+
+    const o11items = [itemFor(p_mozzarella, 25), itemFor(p_pasta, 4)];
+    await createOrderWithDate({ restaurantId: restaurant2.id, supplierId: supplier4.id, status: "delivered", totalAmount: sumOf(o11items) }, o11items, 5);
+
+    const o12items = [itemFor(p_mozzarella, 20), itemFor(p_olivenoel, 1)];
+    await createOrderWithDate({ restaurantId: restaurant2.id, supplierId: supplier4.id, status: "in_delivery", totalAmount: sumOf(o12items), requestedDeliveryDate: futureDate(0) }, o12items, 1);
+
+    // Restaurant 3 + Supplier 3 (Getränke, Hochzeit)
+    const o13items = [itemFor(p_augustiner, 30), itemFor(p_wasser, 20)];
+    await createOrderWithDate({ restaurantId: restaurant3.id, supplierId: supplier3.id, status: "confirmed", totalAmount: sumOf(o13items), requestedDeliveryDate: futureDate(2), notes: "Hochzeit Samstag — bitte vor 10 Uhr liefern" }, o13items, 0);
+
+    // Restaurant 4 + Supplier 5 (Fisch)
+    const o14items = [itemFor(p_lachs, 5)];
+    await createOrderWithDate({ restaurantId: restaurant4.id, supplierId: supplier5.id, status: "delivered", totalAmount: sumOf(o14items) }, o14items, 3);
+
+    const o15items = [itemFor(p_lachs, 8)];
+    await createOrderWithDate({ restaurantId: restaurant4.id, supplierId: supplier5.id, status: "pending", totalAmount: sumOf(o15items), requestedDeliveryDate: futureDate(1) }, o15items, 0);
+
+    // Restaurant 5 + Supplier 4
+    const o16items = [itemFor(p_pasta, 10), itemFor(p_olivenoel, 3), itemFor(p_parmesan, 2)];
+    await createOrderWithDate({ restaurantId: restaurant5.id, supplierId: supplier4.id, status: "delivered", totalAmount: sumOf(o16items) }, o16items, 11);
+
+    const o17items = [itemFor(p_pasta, 8)];
+    await createOrderWithDate({ restaurantId: restaurant5.id, supplierId: supplier4.id, status: "confirmed", totalAmount: sumOf(o17items), requestedDeliveryDate: futureDate(3) }, o17items, 0);
+
+    // ===== COMPLAINTS =====
+    await db.insert(complaints).values({
+      orderId: o7.id, restaurantId: restaurant1.id, supplierId: supplier2.id,
+      title: "Falsches Gewicht beim Rinderfilet",
+      description: "Bestellt: 3kg Rinderfilet. Geliefert: nur 2,1kg. Bitte um Klärung.",
+      status: "in_progress", priority: "high",
+    });
+    await db.insert(complaints).values({
+      orderId: o8.id, restaurantId: restaurant1.id, supplierId: supplier3.id,
+      title: "Eine Kiste Augustiner beschädigt",
+      description: "5 Flaschen waren bei der Lieferung gebrochen, Foto im Anhang.",
+      mediaUrls: [unsplash("1535958636474-b021ee887b13", 800, 600)],
+      status: "open", priority: "standard",
+    });
+    await db.insert(complaints).values({
+      orderId: o10.id, restaurantId: restaurant2.id, supplierId: supplier4.id,
+      title: "Mozzarella mit kurzem MHD",
+      description: "Die Mozzarella läuft schon in 2 Tagen ab, normalerweise haben wir 7+ Tage.",
+      status: "resolved", priority: "low",
+    });
+
+    // ===== PROMOTIONS =====
+    const now = new Date();
+    const inDays = (d: number) => new Date(now.getTime() + d * 24 * 60 * 60 * 1000);
+    await db.insert(promotions).values([
+      { productId: p_tomaten.id, supplierId: supplier1.id, discountPercent: 15, startDate: inDays(-1), endDate: inDays(7), isActive: true, name: "Sommer-Aktion", description: "15% Rabatt auf Bio Tomaten" },
+      { productId: p_salat.id, supplierId: supplier1.id, discountPercent: 20, startDate: inDays(-3), endDate: inDays(4), isActive: true, name: "Salat-Wochen", description: "20% Rabatt auf Eisbergsalat" },
+      { productId: p_augustiner.id, supplierId: supplier3.id, discountPercent: 10, startDate: inDays(0), endDate: inDays(14), isActive: true, name: "Biergarten-Saison", description: "10% Rabatt auf Augustiner Helles" },
+      { productId: p_mozzarella.id, supplierId: supplier4.id, discountPercent: 12, startDate: inDays(-2), endDate: inDays(10), isActive: true, name: "Pizza Mozzarella", description: "12% Rabatt für Pizzerien" },
+      { productId: p_lachs.id, supplierId: supplier5.id, discountPercent: 8, startDate: inDays(-1), endDate: inDays(5), isActive: true, name: "Frischer Wildlachs", description: "8% Rabatt auf Lachsfilet" },
+    ]);
+
+    // ===== CUSTOM PRICES =====
+    await db.insert(customPrices).values([
+      { productId: p_tomaten.id, supplierId: supplier1.id, restaurantId: restaurant1.id, customPrice: "3.49" },
+      { productId: p_schnitzel.id, supplierId: supplier2.id, restaurantId: restaurant1.id, customPrice: "11.99" },
+      { productId: p_mozzarella.id, supplierId: supplier4.id, restaurantId: restaurant2.id, customPrice: "3.20" },
+    ]);
+
+    // ===== CUSTOM MIN ORDER QUANTITIES =====
+    await db.insert(customMinOrderQuantities).values([
+      { productId: p_filet.id, supplierId: supplier2.id, restaurantId: restaurant1.id, minOrderQuantity: 2 },
+      { productId: p_olivenoel.id, supplierId: supplier4.id, restaurantId: restaurant2.id, minOrderQuantity: 1 },
+    ]);
+
+    // ===== DELIVERY SCHEDULES =====
+    await db.insert(deliverySchedules).values([
+      { supplierId: supplier1.id, restaurantId: restaurant1.id, dayOfWeek: 1, deliveryTimeFrom: "06:00", deliveryTimeTo: "08:00" },
+      { supplierId: supplier1.id, restaurantId: restaurant1.id, dayOfWeek: 3, deliveryTimeFrom: "06:00", deliveryTimeTo: "08:00" },
+      { supplierId: supplier1.id, restaurantId: restaurant1.id, dayOfWeek: 5, deliveryTimeFrom: "06:00", deliveryTimeTo: "08:00" },
+      { supplierId: supplier2.id, restaurantId: restaurant1.id, dayOfWeek: 2, deliveryTimeFrom: "07:00", deliveryTimeTo: "10:00" },
+      { supplierId: supplier2.id, restaurantId: restaurant1.id, dayOfWeek: 5, deliveryTimeFrom: "07:00", deliveryTimeTo: "10:00" },
+      { supplierId: supplier3.id, restaurantId: restaurant3.id, dayOfWeek: 4, deliveryTimeFrom: "08:00", deliveryTimeTo: "12:00" },
+      { supplierId: supplier4.id, restaurantId: restaurant2.id, dayOfWeek: 1, deliveryTimeFrom: "06:30", deliveryTimeTo: "09:00" },
+      { supplierId: supplier4.id, restaurantId: restaurant2.id, dayOfWeek: 4, deliveryTimeFrom: "06:30", deliveryTimeTo: "09:00" },
+      { supplierId: supplier5.id, restaurantId: restaurant4.id, dayOfWeek: 2, deliveryTimeFrom: "05:00", deliveryTimeTo: "07:00" },
+      { supplierId: supplier5.id, restaurantId: restaurant4.id, dayOfWeek: 5, deliveryTimeFrom: "05:00", deliveryTimeTo: "07:00" },
+    ]);
+
+    // ===== NOTIFICATIONS =====
+    await db.insert(notifications).values([
+      { userId: restaurant1.id, type: "order_status", title: "Lieferung unterwegs", message: "Ihre Bestellung von Frische Produkte GmbH ist in Auslieferung.", isRead: false },
+      { userId: restaurant1.id, type: "new_message", title: "Neue Nachricht", message: "Hans Müller hat Ihnen eine Nachricht gesendet.", isRead: false },
+      { userId: restaurant1.id, type: "order_status", title: "Bestellung bestätigt", message: "Metzgerei Bauer hat Ihre Bestellung bestätigt.", isRead: true },
+      { userId: supplier1.id, type: "new_order", title: "Neue Bestellung", message: "Biergarten München hat eine neue Bestellung aufgegeben.", isRead: false },
+      { userId: supplier1.id, type: "low_stock", title: "Niedriger Lagerbestand", message: "Erdbeeren sind ausverkauft.", isRead: false },
+      { userId: supplier2.id, type: "new_complaint", title: "Neue Reklamation", message: "Reklamation zu Bestellung erhalten.", isRead: false },
+      { userId: supplier3.id, type: "new_order", title: "Großbestellung", message: "Gasthof Alpenblick hat 30 Kisten Augustiner bestellt.", isRead: false },
+      { userId: supplier4.id, type: "new_message", title: "Neue Nachricht", message: "Pizzeria Bella Italia hat geschrieben.", isRead: true },
+    ]);
+
+    // ===== STOCK MOVEMENTS =====
+    await db.insert(stockMovements).values([
+      { productId: p_tomaten.id, supplierId: supplier1.id, type: "manual_in", quantity: 50, previousStock: 50, newStock: 100, note: "Wareneingang Großmarkt" },
+      { productId: p_tomaten.id, supplierId: supplier1.id, type: "order_confirmed", quantity: -10, previousStock: 100, newStock: 90, note: "Bestellung Biergarten München" },
+      { productId: p_schnitzel.id, supplierId: supplier2.id, type: "manual_in", quantity: 30, previousStock: 0, newStock: 30, note: "Wochenlieferung Schlachthof" },
+      { productId: p_augustiner.id, supplierId: supplier3.id, type: "manual_in", quantity: 100, previousStock: 0, newStock: 100, note: "Brauerei-Lieferung" },
+    ]);
+
+    // ===== ORDER TEMPLATES =====
+    const [tmpl1] = await db.insert(orderTemplates).values({ restaurantId: restaurant1.id, name: "Wöchentliche Gemüse-Bestellung" }).returning();
+    await db.insert(orderTemplateItems).values([
+      { templateId: tmpl1.id, productId: p_tomaten.id, quantity: 10 },
+      { templateId: tmpl1.id, productId: p_salat.id, quantity: 20 },
+      { templateId: tmpl1.id, productId: p_karotten.id, quantity: 5 },
+    ]);
+    const [tmpl2] = await db.insert(orderTemplates).values({ restaurantId: restaurant2.id, name: "Pizza-Standard Wochenende" }).returning();
+    await db.insert(orderTemplateItems).values([
+      { templateId: tmpl2.id, productId: p_mozzarella.id, quantity: 30 },
+      { templateId: tmpl2.id, productId: p_pasta.id, quantity: 6 },
+      { templateId: tmpl2.id, productId: p_olivenoel.id, quantity: 2 },
+    ]);
+
+    console.log(`Demo data ${DEMO_VERSION} seeded successfully!`);
   }
 
   // Notifications
