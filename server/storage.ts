@@ -1039,7 +1039,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedData(): Promise<void> {
-    const DEMO_VERSION = "demo-v3";
+    const DEMO_VERSION = "demo-v5";
     const sentinelEmail = `${DEMO_VERSION}@gastroconnect.dev`;
     const existing = await db.select().from(users).where(eq(users.email, sentinelEmail));
     if (existing.length > 0) {
@@ -1416,6 +1416,429 @@ export class DatabaseStorage implements IStorage {
       { templateId: tmpl2.id, productId: p_pasta.id, quantity: 6 },
       { templateId: tmpl2.id, productId: p_olivenoel.id, quantity: 2 },
     ]);
+
+    // ============================================================
+    // ===== MASSIVE EXPANSION (demo-v4) ==========================
+    // ============================================================
+    const restaurants = [restaurant1, restaurant2, restaurant3, restaurant4, restaurant5];
+    const suppliers = [supplier1, supplier2, supplier3, supplier4, supplier5];
+
+    // ===== ADDITIONAL PRODUCTS — full catalogs per supplier =====
+    const moreProducts: Array<{ s: any; name: string; desc: string; price: string; unit: string; cat: string; stock: number; low: number; img: string; moq?: number; }> = [
+      // Supplier 1: Frische Produkte
+      { s: supplier1, name: "Bio Spinat", desc: "Junger Babyspinat", price: "5.99", unit: "kg", cat: "Gemüse", stock: 30, low: 8, img: unsplash("1576045057995-568f588f82fb") },
+      { s: supplier1, name: "Brokkoli", desc: "Frischer Brokkoli", price: "3.49", unit: "kg", cat: "Gemüse", stock: 45, low: 10, img: unsplash("1459411552884-841db9b3cc2a") },
+      { s: supplier1, name: "Blumenkohl", desc: "Weißer Blumenkohl", price: "2.99", unit: "Stück", cat: "Gemüse", stock: 38, low: 10, img: unsplash("1568584711271-6c929fb49b60") },
+      { s: supplier1, name: "Zucchini", desc: "Grüne Zucchini", price: "2.79", unit: "kg", cat: "Gemüse", stock: 55, low: 12, img: unsplash("1583119912267-cc97c911e416") },
+      { s: supplier1, name: "Auberginen", desc: "Glänzende Auberginen", price: "3.49", unit: "kg", cat: "Gemüse", stock: 30, low: 8, img: unsplash("1659261200833-ec8761558af7") },
+      { s: supplier1, name: "Bio Knoblauch", desc: "Knoblauch im Netz", price: "8.99", unit: "kg", cat: "Gemüse", stock: 22, low: 5, img: unsplash("1542435503-956c469947f6") },
+      { s: supplier1, name: "Petersilie", desc: "Glatte Petersilie, Bund", price: "1.49", unit: "Bund", cat: "Kräuter", stock: 60, low: 15, img: unsplash("1591299177061-2151e53fcaba") },
+      { s: supplier1, name: "Basilikum", desc: "Frischer Basilikum, Topf", price: "2.49", unit: "Topf", cat: "Kräuter", stock: 40, low: 10, img: unsplash("1465310477141-6fb93167a273") },
+      { s: supplier1, name: "Rosmarin", desc: "Rosmarin, Bund", price: "1.99", unit: "Bund", cat: "Kräuter", stock: 35, low: 8, img: unsplash("1503787787348-17e7c3c75e15") },
+      { s: supplier1, name: "Trauben kernlos", desc: "Süße kernlose Trauben", price: "5.99", unit: "kg", cat: "Obst", stock: 25, low: 6, img: unsplash("1599819811279-d5ad9cccf838") },
+      { s: supplier1, name: "Birnen Williams", desc: "Williams Christ Birnen", price: "3.79", unit: "kg", cat: "Obst", stock: 40, low: 10, img: unsplash("1568702846914-96b305d2aaeb") },
+      { s: supplier1, name: "Avocado", desc: "Reife Hass Avocados", price: "2.49", unit: "Stück", cat: "Obst", stock: 80, low: 20, img: unsplash("1601039641847-7857b994d704") },
+      { s: supplier1, name: "Limetten", desc: "Frische Limetten", price: "5.49", unit: "kg", cat: "Obst", stock: 30, low: 8, img: unsplash("1622957461168-202e611c41fe") },
+      { s: supplier1, name: "Mango", desc: "Reife Mangos", price: "4.99", unit: "Stück", cat: "Obst", stock: 35, low: 10, img: unsplash("1605027990121-cbae9e0642db") },
+      { s: supplier1, name: "Heidelbeeren", desc: "Frische Heidelbeeren, 250g", price: "4.49", unit: "Schale", cat: "Obst", stock: 28, low: 8, img: unsplash("1498557850523-fd3d118b962e") },
+      { s: supplier1, name: "Marokk. Minze", desc: "Marokkanische Minze, Bund", price: "1.99", unit: "Bund", cat: "Kräuter", stock: 30, low: 8, img: unsplash("1556767576-cf0a4a80a4d6") },
+      { s: supplier1, name: "Lauch", desc: "Frischer Lauch", price: "3.29", unit: "kg", cat: "Gemüse", stock: 42, low: 10, img: unsplash("1611604548018-d56bbd85f681") },
+      { s: supplier1, name: "Spargel weiß", desc: "Weißer Spargel, Klasse 1", price: "12.99", unit: "kg", cat: "Gemüse", stock: 18, low: 5, img: unsplash("1626452636562-31fa3a89c0a0") },
+
+      // Supplier 2: Metzgerei
+      { s: supplier2, name: "Schweinebauch", desc: "Schweinebauch ohne Schwarte", price: "8.49", unit: "kg", cat: "Fleisch", stock: 25, low: 6, img: unsplash("1607623814075-e51df1bdc82f") },
+      { s: supplier2, name: "Kalbsschnitzel", desc: "Kalbsschnitzel zart", price: "32.50", unit: "kg", cat: "Fleisch", stock: 12, low: 4, img: unsplash("1546964124-0cce460f38ef") },
+      { s: supplier2, name: "Hackfleisch Rind", desc: "Reines Rinderhack", price: "12.99", unit: "kg", cat: "Fleisch", stock: 28, low: 8, img: unsplash("1602470521006-b1c7c5e60c98") },
+      { s: supplier2, name: "Wiener Würstchen", desc: "Im Saitling", price: "10.99", unit: "kg", cat: "Wurst", stock: 35, low: 10, img: unsplash("1599982130316-e15a91f60017") },
+      { s: supplier2, name: "Leberkäse", desc: "Bayerischer Leberkäse", price: "9.49", unit: "kg", cat: "Wurst", stock: 18, low: 5, img: unsplash("1565299585323-38d6b0865b47") },
+      { s: supplier2, name: "Weißwurst", desc: "Münchner Weißwurst, Paar", price: "0.99", unit: "Paar", cat: "Wurst", stock: 200, low: 50, img: unsplash("1599982131543-b6c2fcb91ea6") },
+      { s: supplier2, name: "Salami Mailand", desc: "Salami Milano, geschnitten", price: "26.50", unit: "kg", cat: "Wurst", stock: 16, low: 5, img: unsplash("1601001435957-74f0958a93c6") },
+      { s: supplier2, name: "Putenbrust", desc: "Putenbrust am Stück", price: "10.99", unit: "kg", cat: "Fleisch", stock: 22, low: 6, img: unsplash("1574781330855-d0db8cc6a79c") },
+      { s: supplier2, name: "Lammkeule", desc: "Lammkeule mit Knochen", price: "26.50", unit: "kg", cat: "Fleisch", stock: 9, low: 3, img: unsplash("1593030668939-ea5e8eecabfb") },
+      { s: supplier2, name: "Roastbeef", desc: "Roastbeef vom Weiderind", price: "34.90", unit: "kg", cat: "Fleisch", stock: 14, low: 4, img: unsplash("1607623814075-e51df1bdc82f") },
+      { s: supplier2, name: "Spareribs", desc: "Schweinerippchen, frisch", price: "11.50", unit: "kg", cat: "Fleisch", stock: 30, low: 8, img: unsplash("1544025162-d76694265947") },
+      { s: supplier2, name: "Bacon geräuchert", desc: "Bacon Streifen, vakuumiert", price: "16.50", unit: "kg", cat: "Wurst", stock: 25, low: 8, img: unsplash("1528607929212-2636ec44253e") },
+      { s: supplier2, name: "Bauchspeck", desc: "Geräucherter Bauchspeck", price: "18.90", unit: "kg", cat: "Wurst", stock: 20, low: 6, img: unsplash("1542901031-ec5eeb518e9d") },
+      { s: supplier2, name: "Mortadella", desc: "Mortadella Bologna IGP", price: "15.50", unit: "kg", cat: "Wurst", stock: 22, low: 6, img: unsplash("1601001435957-74f0958a93c6") },
+      { s: supplier2, name: "Kasseler", desc: "Kasseler Lachs", price: "13.50", unit: "kg", cat: "Fleisch", stock: 26, low: 7, img: unsplash("1607623814075-e51df1bdc82f") },
+
+      // Supplier 3: Getränke
+      { s: supplier3, name: "Pils Premium", desc: "Pils Premium, Kiste 24x0,33l", price: "16.99", unit: "Kiste", cat: "Getränke", stock: 90, low: 20, img: unsplash("1535958636474-b021ee887b13") },
+      { s: supplier3, name: "Hefeweizen Dunkel", desc: "Dunkles Hefeweizen, Kiste 20x0,5l", price: "23.49", unit: "Kiste", cat: "Getränke", stock: 50, low: 12, img: unsplash("1535958636474-b021ee887b13") },
+      { s: supplier3, name: "Radler", desc: "Radler 50/50, Kiste 20x0,5l", price: "18.49", unit: "Kiste", cat: "Getränke", stock: 70, low: 15, img: unsplash("1535958636474-b021ee887b13") },
+      { s: supplier3, name: "Alkoholfrei", desc: "Alkoholfreies Bier, Kiste 20x0,5l", price: "17.99", unit: "Kiste", cat: "Getränke", stock: 45, low: 12, img: unsplash("1535958636474-b021ee887b13") },
+      { s: supplier3, name: "Grüner Veltliner", desc: "Österr. Veltliner, Kiste 6x0,75l", price: "48.50", unit: "Kiste", cat: "Wein", stock: 35, low: 10, img: unsplash("1510812431401-41d2bd2722f3") },
+      { s: supplier3, name: "Pinot Grigio", desc: "Norditalienischer Pinot Grigio", price: "42.90", unit: "Kiste", cat: "Wein", stock: 38, low: 10, img: unsplash("1510812431401-41d2bd2722f3") },
+      { s: supplier3, name: "Spätburgunder", desc: "Deutscher Spätburgunder", price: "62.50", unit: "Kiste", cat: "Wein", stock: 28, low: 8, img: unsplash("1547595628-c61a29f496f0") },
+      { s: supplier3, name: "Prosecco DOC", desc: "Prosecco di Treviso", price: "54.90", unit: "Kiste", cat: "Wein", stock: 42, low: 10, img: unsplash("1547595628-c61a29f496f0") },
+      { s: supplier3, name: "Champagner Brut", desc: "Champagner Brut, 0,75l", price: "39.90", unit: "Flasche", cat: "Wein", stock: 24, low: 6, img: unsplash("1547595628-c61a29f496f0") },
+      { s: supplier3, name: "Aperol", desc: "Aperol, 1L Flasche", price: "16.50", unit: "Flasche", cat: "Spirituosen", stock: 35, low: 10, img: unsplash("1551024601-bec78aea704b") },
+      { s: supplier3, name: "Gin London Dry", desc: "Premium Gin, 0,7L", price: "28.90", unit: "Flasche", cat: "Spirituosen", stock: 22, low: 6, img: unsplash("1569529465841-dfecdab7503b") },
+      { s: supplier3, name: "Wodka Premium", desc: "Premium Vodka, 0,7L", price: "24.50", unit: "Flasche", cat: "Spirituosen", stock: 28, low: 8, img: unsplash("1569529465841-dfecdab7503b") },
+      { s: supplier3, name: "Whisky Single Malt", desc: "Single Malt 12 Jahre, 0,7L", price: "45.90", unit: "Flasche", cat: "Spirituosen", stock: 18, low: 5, img: unsplash("1569529465841-dfecdab7503b") },
+      { s: supplier3, name: "Grappa Riserva", desc: "Grappa Riserva, 0,5L", price: "32.90", unit: "Flasche", cat: "Spirituosen", stock: 14, low: 4, img: unsplash("1569529465841-dfecdab7503b") },
+      { s: supplier3, name: "Tonic Water", desc: "Premium Tonic, Kiste 24x0,2l", price: "28.50", unit: "Kiste", cat: "Getränke", stock: 50, low: 12, img: unsplash("1600271886742-f049cd451bba") },
+      { s: supplier3, name: "Espresso 250g", desc: "Premium Espresso Beutel", price: "5.99", unit: "Beutel", cat: "Kaffee", stock: 80, low: 20, img: unsplash("1559056199-641a0ac8b55e") },
+      { s: supplier3, name: "Cappuccino Bohnen", desc: "Cappuccino Mischung, 1kg", price: "14.90", unit: "kg", cat: "Kaffee", stock: 45, low: 12, img: unsplash("1559056199-641a0ac8b55e") },
+      { s: supplier3, name: "Earl Grey Tee", desc: "Earl Grey, 250g", price: "8.99", unit: "Packung", cat: "Kaffee", stock: 30, low: 8, img: unsplash("1576092768241-dec231879fc3") },
+      { s: supplier3, name: "Bio Limonade", desc: "Bio Zitronenlimonade, Kiste 24x0,33l", price: "21.50", unit: "Kiste", cat: "Getränke", stock: 60, low: 15, img: unsplash("1600271886742-f049cd451bba") },
+      { s: supplier3, name: "Tomatensaft", desc: "Tomatensaft, Kiste 6x1l", price: "10.90", unit: "Kiste", cat: "Getränke", stock: 45, low: 12, img: unsplash("1600271886742-f049cd451bba") },
+      { s: supplier3, name: "Sprudelwasser", desc: "Mineralwasser sprudelnd, 12x0,75l", price: "9.49", unit: "Kiste", cat: "Getränke", stock: 110, low: 25, img: unsplash("1600271886742-f049cd451bba") },
+
+      // Supplier 4: Italia Import
+      { s: supplier4, name: "Penne Rigate", desc: "Penne Rigate Bronze, 12x500g", price: "22.40", unit: "Karton", cat: "Pasta", stock: 75, low: 18, img: unsplash("1551183053-bf91a1d81141") },
+      { s: supplier4, name: "Tagliatelle", desc: "Tagliatelle all'uovo, 12x250g", price: "26.80", unit: "Karton", cat: "Pasta", stock: 50, low: 12, img: unsplash("1551183053-bf91a1d81141") },
+      { s: supplier4, name: "Lasagne Blätter", desc: "Lasagne all'uovo, 12x500g", price: "28.40", unit: "Karton", cat: "Pasta", stock: 42, low: 10, img: unsplash("1551183053-bf91a1d81141") },
+      { s: supplier4, name: "Ravioli Ricotta", desc: "Ravioli mit Ricotta, 6x500g", price: "32.50", unit: "Karton", cat: "Pasta", stock: 35, low: 10, img: unsplash("1551183053-bf91a1d81141") },
+      { s: supplier4, name: "Gnocchi Kartoffel", desc: "Hausgemachte Gnocchi, 6x500g", price: "18.50", unit: "Karton", cat: "Pasta", stock: 40, low: 12, img: unsplash("1551183053-bf91a1d81141") },
+      { s: supplier4, name: "Risotto Carnaroli", desc: "Carnaroli Reis, 12x1kg", price: "39.90", unit: "Karton", cat: "Pasta", stock: 30, low: 8, img: unsplash("1551183053-bf91a1d81141") },
+      { s: supplier4, name: "Burrata", desc: "Frische Burrata, 125g", price: "4.50", unit: "Stück", cat: "Käse", stock: 80, low: 20, img: unsplash("1486297678162-eb2a19b0a32d") },
+      { s: supplier4, name: "Gorgonzola DOP", desc: "Gorgonzola dolce, am Stück", price: "21.50", unit: "kg", cat: "Käse", stock: 18, low: 5, img: unsplash("1452195100486-9cc805987862") },
+      { s: supplier4, name: "Pecorino Romano", desc: "Pecorino Romano DOP", price: "26.90", unit: "kg", cat: "Käse", stock: 22, low: 6, img: unsplash("1452195100486-9cc805987862") },
+      { s: supplier4, name: "Ricotta", desc: "Frische Ricotta, 1kg", price: "7.50", unit: "kg", cat: "Käse", stock: 35, low: 10, img: unsplash("1486297678162-eb2a19b0a32d") },
+      { s: supplier4, name: "Olivenöl 1L", desc: "Extra vergine, 6x1L", price: "39.90", unit: "Karton", cat: "Öl & Essig", stock: 60, low: 15, img: unsplash("1474979266404-7eaacbcd87c5") },
+      { s: supplier4, name: "Aceto Balsamico", desc: "Balsamico di Modena, 6x500ml", price: "29.50", unit: "Karton", cat: "Öl & Essig", stock: 40, low: 10, img: unsplash("1505252585461-04db1eb84625") },
+      { s: supplier4, name: "Trüffelöl", desc: "Weißes Trüffelöl, 250ml", price: "18.90", unit: "Flasche", cat: "Öl & Essig", stock: 25, low: 6, img: unsplash("1474979266404-7eaacbcd87c5") },
+      { s: supplier4, name: "Sugo Arrabbiata", desc: "Arrabbiata Sauce, 12x400g", price: "29.40", unit: "Karton", cat: "Saucen", stock: 50, low: 12, img: unsplash("1546470427-227e5a52e8d7") },
+      { s: supplier4, name: "Sugo Bolognese", desc: "Bolognese Sauce, 12x400g", price: "32.90", unit: "Karton", cat: "Saucen", stock: 45, low: 12, img: unsplash("1546470427-227e5a52e8d7") },
+      { s: supplier4, name: "Taggiasche Oliven", desc: "Taggiasche Oliven, 1kg", price: "16.90", unit: "kg", cat: "Konserven", stock: 30, low: 8, img: unsplash("1525607551316-4a8e16d1f9ba") },
+      { s: supplier4, name: "Sardellen Filets", desc: "Sardellen in Olivenöl, 12x100g", price: "24.50", unit: "Karton", cat: "Konserven", stock: 35, low: 10, img: unsplash("1546470427-227e5a52e8d7") },
+      { s: supplier4, name: "Polenta Bramata", desc: "Polenta Bramata, 12x500g", price: "21.90", unit: "Karton", cat: "Pasta", stock: 28, low: 8, img: unsplash("1551183053-bf91a1d81141") },
+      { s: supplier4, name: "Cantucci Mandel", desc: "Cantucci mit Mandeln, 6x250g", price: "19.50", unit: "Karton", cat: "Konserven", stock: 32, low: 8, img: unsplash("1546470427-227e5a52e8d7") },
+      { s: supplier4, name: "Tiramisu Fertig", desc: "Tiramisu fertig, 6x500g", price: "29.90", unit: "Karton", cat: "Konserven", stock: 18, low: 5, img: unsplash("1546470427-227e5a52e8d7") },
+      { s: supplier4, name: "Lavazza Crema", desc: "Lavazza Crema e Aroma, 1kg", price: "18.90", unit: "kg", cat: "Kaffee", stock: 65, low: 15, img: unsplash("1559056199-641a0ac8b55e") },
+      { s: supplier4, name: "Polpa Tomate", desc: "Tomatenstücke, 12x400g", price: "22.50", unit: "Karton", cat: "Konserven", stock: 70, low: 18, img: unsplash("1546470427-227e5a52e8d7") },
+
+      // Supplier 5: Nordsee Fisch
+      { s: supplier5, name: "Seezunge", desc: "Frische Seezunge, ausgenommen", price: "38.90", unit: "kg", cat: "Fisch", stock: 10, low: 3, img: unsplash("1535400875775-0928bcc2c1ac") },
+      { s: supplier5, name: "Doradenfilet", desc: "Doradenfilet ohne Haut", price: "26.50", unit: "kg", cat: "Fisch", stock: 14, low: 4, img: unsplash("1535400875775-0928bcc2c1ac") },
+      { s: supplier5, name: "Wolfsbarsch", desc: "Wolfsbarsch ganz, 400-600g", price: "29.90", unit: "kg", cat: "Fisch", stock: 12, low: 4, img: unsplash("1535400875775-0928bcc2c1ac") },
+      { s: supplier5, name: "Heilbutt Steak", desc: "Heilbutt Steaks, ohne Haut", price: "42.50", unit: "kg", cat: "Fisch", stock: 8, low: 3, img: unsplash("1485921325833-c519f76c4927") },
+      { s: supplier5, name: "Rotbarsch", desc: "Rotbarschfilet", price: "21.90", unit: "kg", cat: "Fisch", stock: 16, low: 5, img: unsplash("1535400875775-0928bcc2c1ac") },
+      { s: supplier5, name: "Pulpo", desc: "Pulpo, gefroren, 2-4kg", price: "28.50", unit: "kg", cat: "Meeresfrüchte", stock: 12, low: 4, img: unsplash("1565680018434-b513d5e5fd47") },
+      { s: supplier5, name: "Calamari Ringe", desc: "Calamari Ringe, IQF, 1kg", price: "16.90", unit: "kg", cat: "Meeresfrüchte", stock: 25, low: 8, img: unsplash("1565680018434-b513d5e5fd47") },
+      { s: supplier5, name: "Jakobsmuscheln", desc: "St. Jakobsmuscheln, ohne Schale", price: "44.90", unit: "kg", cat: "Meeresfrüchte", stock: 8, low: 3, img: unsplash("1565680018434-b513d5e5fd47") },
+      { s: supplier5, name: "Hummerschwänze", desc: "Hummerschwänze, gefroren", price: "78.90", unit: "kg", cat: "Meeresfrüchte", stock: 6, low: 2, img: unsplash("1565680018434-b513d5e5fd47") },
+      { s: supplier5, name: "Krebsfleisch", desc: "Krebsfleisch weiß, 500g Dose", price: "32.50", unit: "Dose", cat: "Meeresfrüchte", stock: 15, low: 4, img: unsplash("1565680018434-b513d5e5fd47") },
+      { s: supplier5, name: "Räucherlachs", desc: "Räucherlachs Scheiben, vakuumiert", price: "39.90", unit: "kg", cat: "Fisch", stock: 18, low: 5, img: unsplash("1485921325833-c519f76c4927") },
+      { s: supplier5, name: "Matjes Filet", desc: "Matjes Filet in Öl, 1kg", price: "16.50", unit: "kg", cat: "Fisch", stock: 22, low: 6, img: unsplash("1535400875775-0928bcc2c1ac") },
+      { s: supplier5, name: "Nordseekrabben", desc: "Nordseekrabben frisch gepult", price: "62.50", unit: "kg", cat: "Meeresfrüchte", stock: 7, low: 2, img: unsplash("1565680018434-b513d5e5fd47") },
+      { s: supplier5, name: "Austern Fines", desc: "Austern Fines de Claire", price: "1.95", unit: "Stück", cat: "Meeresfrüchte", stock: 100, low: 24, img: unsplash("1565680018434-b513d5e5fd47") },
+    ];
+
+    for (const mp of moreProducts) {
+      await this.createProduct({
+        supplierId: mp.s.id, name: mp.name, description: mp.desc, price: mp.price,
+        unit: mp.unit, category: mp.cat, inStock: mp.stock > 0, stockQuantity: mp.stock,
+        lowStockThreshold: mp.low, imageUrl: mp.img,
+      });
+    }
+
+    // ===== Build product map per supplier (incl. originals) =====
+    const allProducts = await db.select().from(products);
+    const productsBySupplier: Record<string, any[]> = {};
+    for (const p of allProducts) {
+      (productsBySupplier[p.supplierId] = productsBySupplier[p.supplierId] || []).push(p);
+    }
+
+    // Deterministic PRNG so seed is repeatable
+    let _seed = 91827;
+    const rand = () => { _seed = (_seed * 9301 + 49297) % 233280; return _seed / 233280; };
+    const randInt = (min: number, max: number) => Math.floor(rand() * (max - min + 1)) + min;
+    const pick = <T,>(arr: T[]): T => arr[Math.floor(rand() * arr.length)];
+
+    // ===== ORDERS — many per restaurant-supplier pair =====
+    const statusBuckets: Array<{ status: string; weight: number; daysAgoMin: number; daysAgoMax: number; futureDays?: number }> = [
+      { status: "delivered", weight: 18, daysAgoMin: 5, daysAgoMax: 90 },
+      { status: "delivered", weight: 6, daysAgoMin: 1, daysAgoMax: 4 },
+      { status: "in_delivery", weight: 2, daysAgoMin: 0, daysAgoMax: 1, futureDays: 0 },
+      { status: "confirmed", weight: 3, daysAgoMin: 0, daysAgoMax: 1, futureDays: 2 },
+      { status: "partially_confirmed", weight: 2, daysAgoMin: 0, daysAgoMax: 2, futureDays: 1 },
+      { status: "pending", weight: 2, daysAgoMin: 0, daysAgoMax: 0, futureDays: 3 },
+      { status: "cancelled", weight: 2, daysAgoMin: 7, daysAgoMax: 35 },
+    ];
+    const totalWeight = statusBuckets.reduce((s, b) => s + b.weight, 0);
+    const generatedOrders: any[] = [];
+
+    for (const restaurant of restaurants) {
+      for (const supplier of suppliers) {
+        const supProducts = productsBySupplier[supplier.id] || [];
+        if (!supProducts.length) continue;
+        const numOrders = randInt(7, 11);
+        for (let i = 0; i < numOrders; i++) {
+          let r = rand() * totalWeight;
+          let chosen = statusBuckets[0];
+          for (const b of statusBuckets) { r -= b.weight; if (r <= 0) { chosen = b; break; } }
+          const numItems = randInt(2, 6);
+          const used = new Set<number>();
+          const items: any[] = [];
+          for (let j = 0; j < numItems && used.size < supProducts.length; j++) {
+            let idx; do { idx = randInt(0, supProducts.length - 1); } while (used.has(idx));
+            used.add(idx);
+            const p = supProducts[idx];
+            const qty = randInt(2, 18);
+            const confirmedQty = chosen.status === "partially_confirmed" ? Math.max(1, qty - randInt(1, 3)) : null;
+            items.push({
+              productId: p.id, productName: p.name, quantity: qty,
+              unitPrice: p.price, totalPrice: (parseFloat(p.price) * qty).toFixed(2),
+              confirmedQuantity: confirmedQty,
+            });
+          }
+          const total = items.reduce((s, it) => s + parseFloat(it.totalPrice), 0).toFixed(2);
+          const days = randInt(chosen.daysAgoMin, chosen.daysAgoMax);
+          const order = await createOrderWithDate({
+            restaurantId: restaurant.id, supplierId: supplier.id,
+            status: chosen.status as any, totalAmount: total,
+            requestedDeliveryDate: chosen.futureDays !== undefined ? futureDate(chosen.futureDays) : undefined,
+          }, items, days);
+          generatedOrders.push(order);
+        }
+      }
+    }
+
+    // ===== ADDITIONAL CONVERSATIONS — every restaurant-supplier pair =====
+    const convoStarters = [
+      "Hallo, brauchen wir noch was zur aktuellen Lieferung?",
+      "Können Sie kurz die Verfügbarkeit für nächste Woche bestätigen?",
+      "Danke für die letzte Lieferung — alles bestens angekommen.",
+      "Können wir den Liefertag fix auf Mittwoch verlegen?",
+      "Gibt es aktuell Sonderkonditionen bei Großbestellungen?",
+      "Brauche dringend Nachschub, geht das spontan?",
+      "Wann erhalte ich die Rechnung für letzte Woche?",
+      "Können Sie mir Ihren aktuellen Katalog mailen?",
+    ];
+    const convoReplies = [
+      "Klar, geht in Ordnung — melde mich gleich nochmal.",
+      "Ja, alles auf Lager. Wann brauchen Sie es?",
+      "Freut mich zu hören! Bis nächste Woche.",
+      "Mittwoch passt perfekt, ab nächster Woche.",
+      "Bei Mengen über 500€ gibt's 5% Rabatt — passt das?",
+      "Spontan ist eng, aber morgen früh ginge.",
+      "Rechnung kommt heute Abend per Mail.",
+      "Sende ich Ihnen gleich rüber, danke für die Anfrage!",
+    ];
+    for (const restaurant of restaurants) {
+      for (const supplier of suppliers) {
+        const conv = await this.getOrCreateConversation(restaurant.id, supplier.id);
+        const numMsgs = randInt(3, 8);
+        for (let i = 0; i < numMsgs; i++) {
+          const fromRestaurant = i % 2 === 0;
+          const senderId = fromRestaurant ? restaurant.id : supplier.id;
+          const text = fromRestaurant ? pick(convoStarters) : pick(convoReplies);
+          await this.sendMessage({ conversationId: conv.id, senderId, messageType: "text", content: text });
+        }
+      }
+    }
+
+    // ===== CUSTOM PRICES — many per restaurant-supplier pair =====
+    const customPriceRows: any[] = [];
+    for (const restaurant of restaurants) {
+      for (const supplier of suppliers) {
+        const supProducts = productsBySupplier[supplier.id] || [];
+        const sample = [...supProducts].sort(() => rand() - 0.5).slice(0, randInt(3, 6));
+        for (const p of sample) {
+          const discount = 0.85 + rand() * 0.1;
+          customPriceRows.push({
+            productId: p.id, supplierId: supplier.id, restaurantId: restaurant.id,
+            customPrice: (parseFloat(p.price) * discount).toFixed(2),
+          });
+        }
+      }
+    }
+    if (customPriceRows.length) await db.insert(customPrices).values(customPriceRows);
+
+    // ===== CUSTOM MOQs =====
+    const moqRows: any[] = [];
+    for (const restaurant of restaurants) {
+      for (const supplier of suppliers) {
+        const supProducts = productsBySupplier[supplier.id] || [];
+        const sample = [...supProducts].sort(() => rand() - 0.5).slice(0, randInt(1, 3));
+        for (const p of sample) {
+          moqRows.push({
+            productId: p.id, supplierId: supplier.id, restaurantId: restaurant.id,
+            minOrderQuantity: randInt(2, 5),
+          });
+        }
+      }
+    }
+    if (moqRows.length) await db.insert(customMinOrderQuantities).values(moqRows);
+
+    // ===== DELIVERY SCHEDULES — every pair gets 2-3 days =====
+    const scheduleRows: any[] = [];
+    for (const restaurant of restaurants) {
+      for (const supplier of suppliers) {
+        const days = [1, 2, 3, 4, 5].sort(() => rand() - 0.5).slice(0, randInt(2, 3));
+        for (const d of days) {
+          scheduleRows.push({
+            supplierId: supplier.id, restaurantId: restaurant.id, dayOfWeek: d,
+            deliveryTimeFrom: pick(["06:00", "07:00", "08:00"]),
+            deliveryTimeTo: pick(["09:00", "10:00", "11:00", "12:00"]),
+          });
+        }
+      }
+    }
+    if (scheduleRows.length) await db.insert(deliverySchedules).values(scheduleRows);
+
+    // ===== PROMOTIONS — 4-6 per supplier =====
+    const promoRows: any[] = [];
+    const promoNames = ["Wochen-Aktion", "Frischetage", "Saison-Sale", "Großkunden-Bonus", "Neukunden-Rabatt", "Best-Preis-Garantie", "Lager-Räumung"];
+    for (const supplier of suppliers) {
+      const supProducts = productsBySupplier[supplier.id] || [];
+      const sample = [...supProducts].sort(() => rand() - 0.5).slice(0, randInt(4, 6));
+      for (const p of sample) {
+        const startOffset = randInt(-7, 0);
+        const endOffset = startOffset + randInt(7, 30);
+        promoRows.push({
+          productId: p.id, supplierId: supplier.id,
+          discountPercent: randInt(5, 25),
+          startDate: inDays(startOffset), endDate: inDays(endOffset),
+          isActive: true,
+          name: pick(promoNames),
+          description: `Sonderpreis auf ${p.name}`,
+        });
+      }
+    }
+    if (promoRows.length) await db.insert(promotions).values(promoRows);
+
+    // ===== ADDITIONAL COMPLAINTS — programmatic =====
+    const deliveredOrders = generatedOrders.filter(o => o.status === "delivered");
+    const complaintTitles = [
+      { t: "Ware beschädigt geliefert", d: "Ein Teil der Ware wurde beschädigt geliefert. Bitte um Klärung.", p: "high" },
+      { t: "Falsche Menge", d: "Die gelieferte Menge stimmt nicht mit der Bestellung überein.", p: "standard" },
+      { t: "MHD zu kurz", d: "Das Mindesthaltbarkeitsdatum war beim Erhalt deutlich zu kurz.", p: "standard" },
+      { t: "Qualität nicht zufriedenstellend", d: "Die Qualität entspricht nicht den vereinbarten Standards.", p: "high" },
+      { t: "Lieferung verspätet", d: "Die Lieferung kam mehrere Stunden zu spät — Service stark beeinträchtigt.", p: "low" },
+      { t: "Falsches Produkt geliefert", d: "Statt des bestellten Produkts wurde ein anderes Produkt geliefert.", p: "standard" },
+    ];
+    const complaintStatuses = ["open", "in_progress", "resolved"];
+    const sampledForComplaints = [...deliveredOrders].sort(() => rand() - 0.5).slice(0, 12);
+    for (const o of sampledForComplaints) {
+      const c = pick(complaintTitles);
+      await db.insert(complaints).values({
+        orderId: o.id, restaurantId: o.restaurantId, supplierId: o.supplierId,
+        title: c.t, description: c.d, status: pick(complaintStatuses) as any, priority: c.p as any,
+      });
+    }
+
+    // ===== NOTIFICATIONS — many per user =====
+    const notifRows: any[] = [];
+    const restaurantNotifs = [
+      { type: "order_status", title: "Lieferung unterwegs", message: "Ihre Bestellung ist in Auslieferung." },
+      { type: "order_status", title: "Bestellung bestätigt", message: "Der Lieferant hat Ihre Bestellung bestätigt." },
+      { type: "order_status", title: "Lieferung abgeschlossen", message: "Ihre Bestellung wurde erfolgreich geliefert." },
+      { type: "new_message", title: "Neue Nachricht", message: "Sie haben eine neue Nachricht erhalten." },
+      { type: "new_message", title: "Neues Angebot", message: "Ein Lieferant hat ein neues Angebot veröffentlicht." },
+      { type: "complaint_comment", title: "Reklamation aktualisiert", message: "Ihre Reklamation wurde bearbeitet." },
+      { type: "order_status", title: "Teilbestätigung", message: "Ein Teil Ihrer Bestellung wurde bestätigt." },
+      { type: "new_message", title: "Antwort erhalten", message: "Antwort auf Ihre Anfrage eingetroffen." },
+    ];
+    const supplierNotifs = [
+      { type: "new_order", title: "Neue Bestellung", message: "Sie haben eine neue Bestellung erhalten." },
+      { type: "new_order", title: "Großbestellung", message: "Ein Restaurant hat eine Großbestellung aufgegeben." },
+      { type: "new_complaint", title: "Neue Reklamation", message: "Eine neue Reklamation wurde eingereicht." },
+      { type: "new_message", title: "Neue Nachricht", message: "Sie haben eine neue Nachricht erhalten." },
+      { type: "low_stock", title: "Niedriger Lagerbestand", message: "Ein Produkt nähert sich dem Mindestbestand." },
+      { type: "low_stock", title: "Produkt ausverkauft", message: "Ein Produkt ist nicht mehr auf Lager." },
+      { type: "order_status", title: "Stornierung", message: "Eine Bestellung wurde storniert." },
+      { type: "new_order", title: "Wiederholungsbestellung", message: "Stammkunde hat erneut bestellt." },
+    ];
+    for (const r of restaurants) {
+      const num = randInt(15, 22);
+      for (let i = 0; i < num; i++) {
+        const n = pick(restaurantNotifs);
+        notifRows.push({ userId: r.id, type: n.type, title: n.title, message: n.message, isRead: rand() > 0.5 });
+      }
+    }
+    for (const s of suppliers) {
+      const num = randInt(15, 22);
+      for (let i = 0; i < num; i++) {
+        const n = pick(supplierNotifs);
+        notifRows.push({ userId: s.id, type: n.type, title: n.title, message: n.message, isRead: rand() > 0.5 });
+      }
+    }
+    if (notifRows.length) await db.insert(notifications).values(notifRows);
+
+    // ===== STOCK MOVEMENTS — many per product =====
+    const stockRows: any[] = [];
+    for (const supplier of suppliers) {
+      const supProducts = productsBySupplier[supplier.id] || [];
+      for (const p of supProducts) {
+        let currentStock = randInt(0, 50);
+        const moves = randInt(4, 8);
+        for (let i = 0; i < moves; i++) {
+          const isIn = rand() > 0.4;
+          const delta = isIn ? randInt(20, 80) : -randInt(2, 20);
+          const newStock = Math.max(0, currentStock + delta);
+          stockRows.push({
+            productId: p.id, supplierId: supplier.id,
+            type: isIn ? "manual_in" : "order_confirmed",
+            quantity: delta,
+            previousStock: currentStock, newStock,
+            note: isIn ? "Wareneingang" : "Bestellabzug",
+          });
+          currentStock = newStock;
+        }
+      }
+    }
+    if (stockRows.length) {
+      // batch insert in chunks to avoid huge single insert
+      const chunkSize = 200;
+      for (let i = 0; i < stockRows.length; i += chunkSize) {
+        await db.insert(stockMovements).values(stockRows.slice(i, i + chunkSize));
+      }
+    }
+
+    // ===== ORDER TEMPLATES — 2-3 more per restaurant =====
+    const templateNames = [
+      "Tägliche Frischeware", "Wochenend-Großbestellung", "Standard-Wochenpaket",
+      "Notfall-Nachbestellung", "Monatliche Grundausstattung",
+    ];
+    for (const restaurant of restaurants) {
+      const numTmpls = randInt(2, 3);
+      for (let i = 0; i < numTmpls; i++) {
+        const supplier = pick(suppliers);
+        const supProducts = productsBySupplier[supplier.id] || [];
+        if (!supProducts.length) continue;
+        const [tmpl] = await db.insert(orderTemplates).values({
+          restaurantId: restaurant.id, name: pick(templateNames),
+        }).returning();
+        const items = [...supProducts].sort(() => rand() - 0.5).slice(0, randInt(3, 6));
+        await db.insert(orderTemplateItems).values(items.map(p => ({
+          templateId: tmpl.id, productId: p.id, quantity: randInt(2, 12),
+        })));
+      }
+    }
+
+    // ===== COST SETTINGS + OVERNIGHT STAYS per restaurant =====
+    const costRows: any[] = [];
+    const stayRows: any[] = [];
+    for (const restaurant of restaurants) {
+      costRows.push({ restaurantId: restaurant.id, targetCostPerGuest: (12 + rand() * 8).toFixed(2) });
+      // 60 days of overnight stays
+      for (let d = 0; d < 60; d++) {
+        const date = new Date(Date.now() - d * 24 * 60 * 60 * 1000);
+        const dateStr = date.toISOString().slice(0, 10);
+        const isWeekend = [0, 5, 6].includes(date.getDay());
+        const stays = isWeekend ? randInt(40, 80) : randInt(20, 55);
+        stayRows.push({ restaurantId: restaurant.id, date: dateStr, overnightStays: stays });
+      }
+    }
+    if (costRows.length) await db.insert(costSettings).values(costRows);
+    if (stayRows.length) {
+      const chunkSize = 200;
+      for (let i = 0; i < stayRows.length; i += chunkSize) {
+        await db.insert(overnightStays).values(stayRows.slice(i, i + chunkSize));
+      }
+    }
+
+    // ===== MINIMUM ORDER VALUES per supplier =====
+    const movRows: any[] = [];
+    for (const supplier of suppliers) {
+      movRows.push({ supplierId: supplier.id, zone: "Zone Stadt", minimumValue: (50 + randInt(0, 50)).toFixed(2) });
+      movRows.push({ supplierId: supplier.id, zone: "Zone Umland", minimumValue: (100 + randInt(0, 100)).toFixed(2) });
+      movRows.push({ supplierId: supplier.id, zone: null, minimumValue: (75 + randInt(0, 50)).toFixed(2) });
+    }
+    if (movRows.length) await db.insert(minimumOrderValues).values(movRows);
 
     console.log(`Demo data ${DEMO_VERSION} seeded successfully!`);
   }
