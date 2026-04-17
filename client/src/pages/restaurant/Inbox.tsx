@@ -1504,7 +1504,7 @@ export default function RestaurantInbox() {
                                               <Button
                                                 size="sm"
                                                 className="h-8 text-xs truncate"
-                                                onClick={() => setLocation(`/restaurant/catalog?supplierId=${promoData.supplierId}`)}
+                                                onClick={() => setLocation(`/restaurant/catalog?supplier=${promoData.supplierId}`)}
                                                 data-testid={`button-order-promo-${message.id}`}
                                               >
                                                 <ShoppingCart className="h-3.5 w-3.5 mr-1.5 shrink-0" />

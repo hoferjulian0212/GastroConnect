@@ -39,7 +39,20 @@ export default function RestaurantCatalog() {
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
+  const [selectedSupplier, setSelectedSupplierState] = useState<string>("all");
+
+  const setSelectedSupplier = (sup: string) => {
+    setSelectedSupplierState(sup);
+    const p = new URLSearchParams(window.location.search);
+    if (sup && sup !== "all") {
+      p.set("supplier", sup);
+    } else {
+      p.delete("supplier");
+    }
+    const qs = p.toString();
+    const newUrl = `/restaurant/catalog${qs ? `?${qs}` : ""}`;
+    window.history.pushState(null, "", newUrl);
+  };
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [onlyPromotions, setOnlyPromotions] = useState(false);
   const { lang } = useLanguage();
@@ -65,9 +78,7 @@ export default function RestaurantCatalog() {
       const p = new URLSearchParams(window.location.search);
       setSelectedCategoryState(p.get("category") || null);
       const supplierParam = p.get("supplier");
-      if (supplierParam) {
-        setSelectedSupplier(supplierParam);
-      }
+      setSelectedSupplierState(supplierParam || "all");
       const promotionsParam = p.get("promotions");
       setOnlyPromotions(promotionsParam === "true");
     };
