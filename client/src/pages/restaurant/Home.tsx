@@ -598,7 +598,6 @@ export default function RestaurantHome() {
           </div>
         </div>
       </div>
-
       <DraggableCardGrid
         userId={currentUser?.id || ""}
         role="restaurant"
@@ -632,7 +631,7 @@ export default function RestaurantHome() {
           <div className="space-y-4">
             {groupedDeliveries.map((group) => (
               <div key={group.dateKey}>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-2 text-[#000000]">
                   {group.type === "overdue" ? (
                     <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
                   ) : (
@@ -1546,7 +1545,6 @@ export default function RestaurantHome() {
           )},
         ]}
       />
-
       <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">
           <DialogHeader className="sr-only">
@@ -1628,7 +1626,6 @@ export default function RestaurantHome() {
           )}
         </DialogContent>
       </Dialog>
-
       <Dialog open={!!wizardTemplate} onOpenChange={(open) => { if (!open && wizardStep !== "done") setWizardTemplate(null); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0" data-testid="dialog-template-wizard">
           <DialogHeader className="sr-only">
