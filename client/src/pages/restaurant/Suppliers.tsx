@@ -45,15 +45,6 @@ export default function RestaurantSuppliers() {
 
   return (
     <div className="space-y-4 md:space-y-6 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold">{t("suppliers", "title")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t("suppliers", "allInDeliveryArea")}
-          </p>
-        </div>
-      </div>
-
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
