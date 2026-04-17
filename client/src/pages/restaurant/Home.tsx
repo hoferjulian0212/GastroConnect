@@ -633,13 +633,11 @@ export default function RestaurantHome() {
               <div key={group.dateKey}>
                 <div className="flex items-center gap-2 mb-2 text-[#000000]">
                   {group.type === "overdue" ? (
-                    <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                    <AlertTriangle className="h-3.5 w-3.5 text-black" />
                   ) : (
-                    <Calendar className={`h-3.5 w-3.5 ${group.isToday ? "text-primary" : "text-muted-foreground"}`} />
+                    <Calendar className="h-3.5 w-3.5 text-black" />
                   )}
-                  <span className={`text-xs font-semibold uppercase tracking-wide ${
-                    group.type === "overdue" ? "text-red-500" : group.isToday ? "text-primary" : "text-muted-foreground"
-                  }`}>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-black">
                     {group.label}
                   </span>
                   {group.isToday && group.type !== "overdue" && (
