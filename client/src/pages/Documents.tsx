@@ -281,15 +281,6 @@ export default function Documents() {
       }}
       className="space-y-4 md:space-y-6"
     >
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">
-          {lang === "de" ? "Dokument-Center" : "Centro documenti"}
-        </h1>
-        <p className="text-sm md:text-base text-muted-foreground">
-          {lang === "de" ? "Alle Ihre Dokumente nach Händler geordnet" : "Tutti i tuoi documenti ordinati per commerciante"}
-        </p>
-      </div>
-
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
