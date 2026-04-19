@@ -332,7 +332,7 @@ function PageHero() {
   const { currentRole } = useUser();
 
   const isHomePage = location === `/${currentRole}`;
-  const isDetailPage = /^\/(restaurant|supplier)\/(orders|complaints)\/[^/]+$/.test(location);
+  const isDetailPage = /^\/(restaurant|supplier)\/complaints\/[^/]+$/.test(location);
   const isProductDetailPage = /^\/restaurant\/product\/[^/]+$/.test(location);
 
   const isOrdersPage = /^\/(restaurant|supplier)\/orders$/.test(location);
@@ -443,7 +443,7 @@ function AppLayout() {
     return () => document.removeEventListener("click", handler, true);
   }, []);
 
-  const isDetailPage = /^\/(restaurant|supplier)\/(orders|complaints)\/[^/]+$/.test(location);
+  const isDetailPage = /^\/(restaurant|supplier)\/complaints\/[^/]+$/.test(location);
   const isHomePage = location === '/restaurant' || location === '/supplier';
   const isInboxPage = location === '/restaurant/inbox' || location === '/supplier/inbox';
 
