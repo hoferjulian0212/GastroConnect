@@ -106,7 +106,7 @@ export default function SupplierOrders() {
     const base: SupplierOrderColKey[] = batchMode ? ["select"] : [];
     return [...base, "orderNo", ...SUP_COLUMNS.filter((c) => visibleColumns.has(c)), "actions"];
   }, [visibleColumns, batchMode]);
-  const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths } = useResizableColumns<SupplierOrderColKey>(
+  const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths, containerRef: tableContainerRef } = useResizableColumns<SupplierOrderColKey>(
     SUPPLIER_ORDER_COLS_STORAGE_KEY,
     SUPPLIER_ORDER_COL_DEFAULTS,
     visibleResizableKeys,
@@ -1479,6 +1479,7 @@ export default function SupplierOrders() {
                 return (
                   <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="orders-table">
                     <div
+                      ref={tableContainerRef}
                       className={`hidden md:grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
                       style={{ gridTemplateColumns: gridTemplate }}
                     >

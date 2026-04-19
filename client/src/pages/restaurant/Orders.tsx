@@ -106,7 +106,7 @@ export default function RestaurantOrders() {
     () => ["orderNo", ...ALL_COLUMNS.filter((c) => visibleColumns.has(c)), "actions"],
     [visibleColumns],
   );
-  const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths } = useResizableColumns<RestaurantOrderColKey>(
+  const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths, containerRef: tableContainerRef } = useResizableColumns<RestaurantOrderColKey>(
     RESTAURANT_ORDER_COLS_STORAGE_KEY,
     RESTAURANT_ORDER_COL_DEFAULTS,
     visibleResizableKeys,
@@ -1626,6 +1626,7 @@ export default function RestaurantOrders() {
             <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="orders-table">
               {/* Desktop column header */}
               <div
+                ref={tableContainerRef}
                 className={`hidden md:grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
                 style={{ gridTemplateColumns: gridTemplate }}
               >

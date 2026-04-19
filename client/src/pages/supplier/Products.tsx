@@ -65,7 +65,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
 
   const INVENTORY_COLS: InventoryColKey[] = useMemo(() => ["product", "category", "stock", "threshold", "status", "actions"], []);
-  const { gridTemplate: inventoryGridTemplate, startResize: startInventoryResize } = useResizableColumns<InventoryColKey>(
+  const { gridTemplate: inventoryGridTemplate, startResize: startInventoryResize, containerRef: inventoryContainerRef } = useResizableColumns<InventoryColKey>(
     INVENTORY_COLS_STORAGE_KEY,
     INVENTORY_COL_DEFAULTS,
     INVENTORY_COLS,
@@ -220,6 +220,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
           {/* Desktop Excel-style table */}
           <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden" data-testid="inventory-table">
             <div
+              ref={inventoryContainerRef}
               className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
               style={{ gridTemplateColumns: inventoryGridTemplate }}
             >

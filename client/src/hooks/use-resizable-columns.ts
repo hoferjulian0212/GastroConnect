@@ -9,6 +9,7 @@ export interface UseResizableColumnsResult<K extends string> {
   startResize: (key: K) => (e: React.PointerEvent) => void;
   resetWidths: () => void;
   isResizing: boolean;
+  containerRef: React.RefObject<HTMLDivElement>;
 }
 
 export function useResizableColumns<K extends string>(
@@ -19,6 +20,7 @@ export function useResizableColumns<K extends string>(
 ): UseResizableColumnsResult<K> {
   const min = options?.minWidth ?? 60;
   const max = options?.maxWidth ?? 800;
+  const flexKey = options?.flexKey;
 
   const [widths, setWidths] = useState<ColumnWidths<K>>(() => {
     try {
@@ -38,6 +40,7 @@ export function useResizableColumns<K extends string>(
   }, [storageKey, widths]);
 
   const dragRef = useRef<{ key: K; startX: number; startWidth: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isResizing, setIsResizing] = useState(false);
 
   const startResize = useCallback(
@@ -48,10 +51,28 @@ export function useResizableColumns<K extends string>(
       dragRef.current = { key, startX: e.clientX, startWidth };
       setIsResizing(true);
 
+      const containerWidth = containerRef.current?.clientWidth ?? 0;
+      const sumOthers = visibleKeys.reduce((acc, k) => {
+        if (k === key) return acc;
+        return acc + (widths[k] ?? defaults[k]);
+      }, 0);
+      const flexMin =
+        flexKey && flexKey !== key ? widths[flexKey] ?? defaults[flexKey] : 0;
+      const upperByContainer =
+        containerWidth > 0
+          ? key === flexKey
+            ? containerWidth - sumOthers
+            : containerWidth - (sumOthers - flexMin) - flexMin
+          : Infinity;
+      const upperBound = Math.max(min, Math.min(max, upperByContainer));
+
       const onMove = (ev: PointerEvent) => {
         if (!dragRef.current) return;
         const dx = ev.clientX - dragRef.current.startX;
-        const next = Math.max(min, Math.min(max, dragRef.current.startWidth + dx));
+        const next = Math.max(
+          min,
+          Math.min(upperBound, dragRef.current.startWidth + dx),
+        );
         setWidths((prev) => ({ ...prev, [dragRef.current!.key]: next }));
       };
       const onUp = () => {
@@ -68,10 +89,9 @@ export function useResizableColumns<K extends string>(
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     },
-    [widths, defaults, min, max],
+    [widths, defaults, min, max, visibleKeys, flexKey],
   );
 
-  const flexKey = options?.flexKey;
   const gridTemplate = useMemo(
     () =>
       visibleKeys
@@ -86,5 +106,5 @@ export function useResizableColumns<K extends string>(
 
   const resetWidths = useCallback(() => setWidths(defaults), [defaults]);
 
-  return { widths, gridTemplate, startResize, resetWidths, isResizing };
+  return { widths, gridTemplate, startResize, resetWidths, isResizing, containerRef };
 }

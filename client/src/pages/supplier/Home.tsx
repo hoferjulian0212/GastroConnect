@@ -278,7 +278,7 @@ export default function SupplierHome() {
     () => ["orderNo", "status", "restaurant", "items", "deliveryDate", "createdAt", "total"],
     [],
   );
-  const { gridTemplate: deliveriesGridTemplate, startResize: startDeliveriesColResize } = useResizableColumns<SupplierOrderColKey>(
+  const { gridTemplate: deliveriesGridTemplate, startResize: startDeliveriesColResize, containerRef: deliveriesContainerRef } = useResizableColumns<SupplierOrderColKey>(
     SUPPLIER_ORDER_COLS_STORAGE_KEY,
     SUPPLIER_ORDER_COL_DEFAULTS,
     deliveriesTableKeys,
@@ -528,6 +528,7 @@ export default function SupplierHome() {
             <div className="hidden md:block">
               <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="deliveries-table">
                 <div
+                  ref={deliveriesContainerRef}
                   className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
                   style={{ gridTemplateColumns: deliveriesGridTemplate }}
                 >
