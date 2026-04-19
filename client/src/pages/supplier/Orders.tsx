@@ -31,6 +31,21 @@ import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialo
 import SwipeableRow from "@/components/SwipeableRow";
 import StaggeredList from "@/components/StaggeredList";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { useResizableColumns } from "@/hooks/use-resizable-columns";
+import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
+
+type SupplierResizableColKey = "select" | "orderNo" | "status" | "restaurant" | "items" | "deliveryDate" | "createdAt" | "total" | "actions";
+const SUPPLIER_COL_DEFAULTS: Record<SupplierResizableColKey, number> = {
+  select: 32,
+  orderNo: 150,
+  status: 140,
+  restaurant: 260,
+  items: 80,
+  deliveryDate: 160,
+  createdAt: 140,
+  total: 120,
+  actions: 48,
+};
 
 export default function SupplierOrders() {
   const { currentUser } = useUser();
@@ -95,19 +110,15 @@ export default function SupplierOrders() {
     };
     return map[k][lang === "de" ? "de" : "it"];
   };
-  const colWidth: Record<SupColKey, string> = {
-    status: "140px",
-    restaurant: "minmax(0,1fr)",
-    items: "70px",
-    deliveryDate: "150px",
-    createdAt: "130px",
-    total: "120px",
-  };
-  const gridTemplate = useMemo(() => {
-    const base = batchMode ? ["32px"] : [];
-    const cols = [...base, "150px", ...SUP_COLUMNS.filter(c => visibleColumns.has(c)).map(c => colWidth[c]), "40px"];
-    return cols.join(" ");
+  const visibleResizableKeys = useMemo<SupplierResizableColKey[]>(() => {
+    const base: SupplierResizableColKey[] = batchMode ? ["select"] : [];
+    return [...base, "orderNo", ...SUP_COLUMNS.filter((c) => visibleColumns.has(c)), "actions"];
   }, [visibleColumns, batchMode]);
+  const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths } = useResizableColumns<SupplierResizableColKey>(
+    "supplierOrdersColWidths",
+    SUPPLIER_COL_DEFAULTS,
+    visibleResizableKeys,
+  );
   type RowDensity = "compact" | "normal" | "comfortable";
   const [rowDensity, setRowDensity] = useState<RowDensity>(() => {
     try {
@@ -1513,19 +1524,19 @@ export default function SupplierOrders() {
                   groups.push({ label: "", orders: sorted });
                 }
                 return (
-                  <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="orders-table">
+                  <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="orders-table">
                     <div
                       className={`hidden md:grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold`}
                       style={{ gridTemplateColumns: gridTemplate }}
                     >
                       {batchMode && <div></div>}
-                      <div>{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
-                      {visibleColumns.has("status") && <div>Status</div>}
-                      {visibleColumns.has("restaurant") && <div>{lang === "de" ? "Kunde" : "Cliente"}</div>}
-                      {visibleColumns.has("items") && <div className="text-right">{lang === "de" ? "Artikel" : "Articoli"}</div>}
-                      {visibleColumns.has("deliveryDate") && <div>{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>}
-                      {visibleColumns.has("createdAt") && <div>{lang === "de" ? "Erstellt" : "Creato"}</div>}
-                      {visibleColumns.has("total") && <div className="text-right">{lang === "de" ? "Summe" : "Totale"}</div>}
+                      <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startColResize("orderNo")} testId="resize-orderNo" /></div>
+                      {visibleColumns.has("status") && <div className="relative pr-2">Status<ColumnResizeHandle onPointerDown={startColResize("status")} testId="resize-status" /></div>}
+                      {visibleColumns.has("restaurant") && <div className="relative pr-2">{lang === "de" ? "Kunde" : "Cliente"}<ColumnResizeHandle onPointerDown={startColResize("restaurant")} testId="resize-restaurant" /></div>}
+                      {visibleColumns.has("items") && <div className="relative pr-2 text-right">{lang === "de" ? "Artikel" : "Articoli"}<ColumnResizeHandle onPointerDown={startColResize("items")} testId="resize-items" /></div>}
+                      {visibleColumns.has("deliveryDate") && <div className="relative pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}<ColumnResizeHandle onPointerDown={startColResize("deliveryDate")} testId="resize-deliveryDate" /></div>}
+                      {visibleColumns.has("createdAt") && <div className="relative pr-2">{lang === "de" ? "Erstellt" : "Creato"}<ColumnResizeHandle onPointerDown={startColResize("createdAt")} testId="resize-createdAt" /></div>}
+                      {visibleColumns.has("total") && <div className="relative pr-2 text-right">{lang === "de" ? "Summe" : "Totale"}<ColumnResizeHandle onPointerDown={startColResize("total")} testId="resize-total" /></div>}
                       <div></div>
                     </div>
                     {groups.map((group, gIdx) => (

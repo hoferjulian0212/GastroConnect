@@ -1,0 +1,82 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
+
+export type ColumnWidths<K extends string> = Record<K, number>;
+
+export interface UseResizableColumnsResult<K extends string> {
+  widths: ColumnWidths<K>;
+  gridTemplate: string;
+  startResize: (key: K) => (e: React.PointerEvent) => void;
+  resetWidths: () => void;
+  isResizing: boolean;
+}
+
+export function useResizableColumns<K extends string>(
+  storageKey: string,
+  defaults: ColumnWidths<K>,
+  visibleKeys: readonly K[],
+  options?: { minWidth?: number; maxWidth?: number },
+): UseResizableColumnsResult<K> {
+  const min = options?.minWidth ?? 60;
+  const max = options?.maxWidth ?? 800;
+
+  const [widths, setWidths] = useState<ColumnWidths<K>>(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<ColumnWidths<K>>;
+        return { ...defaults, ...parsed };
+      }
+    } catch {}
+    return defaults;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(widths));
+    } catch {}
+  }, [storageKey, widths]);
+
+  const dragRef = useRef<{ key: K; startX: number; startWidth: number } | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResize = useCallback(
+    (key: K) => (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startWidth = widths[key] ?? defaults[key];
+      dragRef.current = { key, startX: e.clientX, startWidth };
+      setIsResizing(true);
+
+      const onMove = (ev: PointerEvent) => {
+        if (!dragRef.current) return;
+        const dx = ev.clientX - dragRef.current.startX;
+        const next = Math.max(min, Math.min(max, dragRef.current.startWidth + dx));
+        setWidths((prev) => ({ ...prev, [dragRef.current!.key]: next }));
+      };
+      const onUp = () => {
+        dragRef.current = null;
+        setIsResizing(false);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [widths, defaults, min, max],
+  );
+
+  const gridTemplate = useMemo(
+    () => visibleKeys.map((k) => `${widths[k] ?? defaults[k]}px`).join(" "),
+    [visibleKeys, widths, defaults],
+  );
+
+  const resetWidths = useCallback(() => setWidths(defaults), [defaults]);
+
+  return { widths, gridTemplate, startResize, resetWidths, isResizing };
+}
