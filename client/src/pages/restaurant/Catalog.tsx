@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich } from "lucide-react";
+import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, Coffee, Droplets } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
@@ -16,14 +16,25 @@ import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 
 
 const categoryConfig: Record<string, { de: string; it: string; icon: typeof Package; color: string }> = {
-  "Gemuese": { de: "Gemuese", it: "Verdura", icon: Carrot, color: "bg-green-600" },
+  "Gemüse": { de: "Gemüse", it: "Verdura", icon: Carrot, color: "bg-green-600" },
   "Obst": { de: "Obst", it: "Frutta", icon: Apple, color: "bg-red-500" },
+  "Kräuter": { de: "Kräuter", it: "Erbe", icon: Carrot, color: "bg-lime-600" },
   "Fleisch": { de: "Fleisch", it: "Carne", icon: Beef, color: "bg-rose-700" },
+  "Wurst": { de: "Wurst", it: "Salumi", icon: Beef, color: "bg-rose-800" },
   "Fisch": { de: "Fisch", it: "Pesce", icon: Fish, color: "bg-cyan-600" },
+  "Meeresfrüchte": { de: "Meeresfrüchte", it: "Frutti di mare", icon: Fish, color: "bg-blue-600" },
+  "Käse": { de: "Käse", it: "Formaggi", icon: Milk, color: "bg-yellow-500" },
   "Milchprodukte": { de: "Milchprodukte", it: "Latticini", icon: Milk, color: "bg-blue-400" },
-  "Getraenke": { de: "Getraenke", it: "Bevande", icon: Wine, color: "bg-purple-600" },
-  "Trockenwaren": { de: "Trockenwaren", it: "Prodotti secchi", icon: Wheat, color: "bg-amber-600" },
-  "Gewuerze": { de: "Gewuerze", it: "Spezie", icon: Flame, color: "bg-orange-500" },
+  "Wein": { de: "Wein", it: "Vino", icon: Wine, color: "bg-purple-700" },
+  "Spirituosen": { de: "Spirituosen", it: "Liquori", icon: Wine, color: "bg-indigo-700" },
+  "Getränke": { de: "Getränke", it: "Bevande", icon: Droplets, color: "bg-purple-600" },
+  "Kaffee": { de: "Kaffee", it: "Caffè", icon: Coffee, color: "bg-amber-800" },
+  "Pasta": { de: "Pasta", it: "Pasta", icon: Wheat, color: "bg-amber-500" },
+  "Trockenwaren": { de: "Trockenwaren", it: "Prodotti secchi", icon: Wheat, color: "bg-amber-700" },
+  "Konserven": { de: "Konserven", it: "Conserve", icon: Package, color: "bg-slate-600" },
+  "Saucen": { de: "Saucen", it: "Salse", icon: Droplets, color: "bg-red-700" },
+  "Öl & Essig": { de: "Öl & Essig", it: "Olio & Aceto", icon: Droplets, color: "bg-yellow-600" },
+  "Gewürze": { de: "Gewürze", it: "Spezie", icon: Flame, color: "bg-orange-500" },
   "Brot": { de: "Brot", it: "Pane", icon: Sandwich, color: "bg-yellow-700" },
   "Sonstiges": { de: "Sonstiges", it: "Altro", icon: MoreHorizontal, color: "bg-gray-500" },
 };
