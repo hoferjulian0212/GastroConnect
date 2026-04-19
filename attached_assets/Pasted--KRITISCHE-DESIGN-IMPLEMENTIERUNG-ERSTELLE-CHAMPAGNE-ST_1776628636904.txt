@@ -1,0 +1,49 @@
+"KRITISCHE DESIGN-IMPLEMENTIERUNG: ERSTELLE 'CHAMPAGNE STONE' LOOK REIN ÜBER CODE (KEINE BILDDATEI):
+
+Problem: Der aktuelle Hintergrund der Anwendung ist fehlerhaft (zu einheitliches, symmetrisches Rauschen) und muss auf ALLEN Seiten entfernt werden.
+
+Lösung: Erstelle einen neuen, organischen, asymmetrischen 'Champagne Stone' Look rein programmatisch über CSS und ein Inline-SVG. Folge diesen Anweisungen EXAKT:
+
+Vollständige Entfernung des alten Codes (GLOBAL):
+
+Lösche alle bestehenden CSS-Eigenschaften für background-image, background-color, background-blend-mode, background-size, background-position, background-repeat, radial-gradient, linear-gradient oder Rauschen (noise) auf dem body-Element und JEDEM Haupt-Container der Anwendung.
+
+Es darf kein Rest des alten, symmetrischen Designs übrig bleiben.
+
+Erstellung der 'Champagne Stone' Basis (CSS):
+
+Setze eine solide Hintergrundfarbe für den body in einem warmen Champagnerton, z.B. background-color: #f5f5f0;.
+
+Erstellung der asymmetrischen Steinstruktur (Inline-SVG & Filter):
+
+Nutze ein Inline-SVG als background-image für den body.
+
+SVG-Filter: Erstelle einen SVG-Filter (<filter id='stoneNoise'>), der prozedurales fraktales Rauschen erzeugt.
+
+Rausch-Typ: Verwende <feTurbulence type='fractalNoise' baseFrequency='0.03' numOctaves='4' stitchTiles='stitch'/>.
+
+Farb-Mapping: Nutze <feColorMatrix type='matrix' values='...'/>, um dieses Rauschen in Nuancen von Hellbraun, Tan und zartem Grau-Beige zu überführen.
+
+Asymmetrie: Die Kombination aus niedriger Basis-Frequenz (baseFrequency='0.03') und mehreren Oktaven (numOctaves='4') erzeugt großflächige, unregelmäßige, asymmetrische Formen, die wie natürliche Steinadern wirken.
+
+Deckkraft: Stelle sicher, dass die Textur sehr subtil ist (z.B. durch opacity='0.15' im SVG oder background-blend-mode: soft-light; im CSS).
+
+Erweiterte CSS-Konfiguration (FÜR HOCHWERTIGEN LOOK):
+
+Kachelbarkeit: Setze background-repeat: repeat; für das SVG-Hintergrundbild.
+
+Fixierung: Setze background-attachment: fixed;, damit der Hintergrund beim Scrollen stehen bleibt. Dies simuliert eine massive Steinfläche.
+
+Zusätzliche Tiefe: Staple einen weichen, transparenten radialen Gradienten (radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, rgba(245, 245, 240, 0) 100%)) über die SVG-Textur, um die Beleuchtung organischer zu machen und visuelle Tiefe zu erzeugen.
+
+Erhalt von Header & Cards:
+
+Der obere schwarze Header-Bereich MUSS unverändert bleiben.
+
+Alle weißen Inhalts-Cards MÜSSEN ihre reinweiße (#FFFFFF) Hintergrundfarbe behalten, damit sie sich klar vom neuen Steinhintergrund abheben.
+
+Card-Schatten-Optimierung:
+
+Passe die Schatten der weißen Cards an, damit sie auf dem neuen Steinhintergrund plastikartiger wirken. Verwende weichere, diffuse Schatten (z.B. box-shadow: 0 10px 30px rgba(0,0,0,0.05)).
+
+Ziel: Ein makelloses Ergebnis mit einem organischen, unregelmäßigen und edlen 'Champagne Stone' Look auf allen Seiten, rein programmatisch erzeugt, ohne digitales Rauschen."

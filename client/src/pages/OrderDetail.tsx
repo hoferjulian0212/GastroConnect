@@ -405,59 +405,68 @@ export default function OrderDetail() {
   };
 
   return (
-    <div className="min-h-dvh bg-background flex flex-col" data-testid="page-order-detail">
-      <div className="flex items-center justify-between p-4 pb-0">
-        <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
-          <ArrowLeft className="h-4 w-4" />
-          {lang === "de" ? "Zurück" : "Indietro"}
-        </button>
-        <button className="h-10 w-10 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors" data-testid="button-more-options">
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
-      </div>
+    <div className="min-h-dvh bg-background" data-testid="page-order-detail">
+      <div className="max-w-6xl mx-auto w-full">
+        <div className="flex items-center justify-between px-4 md:px-6 lg:px-8 pt-4">
+          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
+            <ArrowLeft className="h-4 w-4" />
+            {lang === "de" ? "Zurück" : "Indietro"}
+          </button>
+          <button className="h-10 w-10 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors" data-testid="button-more-options">
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+        </div>
 
-      <div className="flex flex-col items-center pt-6 pb-4 px-6">
-        <div className={`h-16 w-16 rounded-full ${getStatusBg(order.status)} flex items-center justify-center mb-3`}>
-          <div className={getStatusTextColor(order.status)}>
-            {getStatusIcon(order.status, "h-7 w-7")}
+        {/* Hero: centered on mobile, horizontal banner on desktop */}
+        <div className="px-4 md:px-6 lg:px-8 pt-6 pb-5 lg:pt-8 lg:pb-7">
+          <div className="flex flex-col items-center text-center lg:flex-row lg:items-center lg:text-left lg:gap-6">
+            <div className={`h-16 w-16 lg:h-20 lg:w-20 rounded-full ${getStatusBg(order.status)} flex items-center justify-center mb-3 lg:mb-0 shrink-0`}>
+              <div className={getStatusTextColor(order.status)}>
+                {getStatusIcon(order.status, "h-7 w-7 lg:h-9 lg:w-9")}
+              </div>
+            </div>
+            <div className="lg:flex-1 min-w-0">
+              <p className="text-sm text-muted-foreground mb-1">{counterpartyName}</p>
+              <div className="flex flex-col lg:flex-row lg:items-baseline lg:gap-3">
+                <p className="text-3xl lg:text-4xl font-bold tracking-tight" data-testid="text-order-total">{Number(order.totalAmount).toFixed(2)}€</p>
+                <p className="text-sm text-muted-foreground mt-1 lg:mt-0">
+                  {lang === "de" ? "Bestellung" : "Ordine"} #{order.id.slice(0, 8)}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 lg:mt-0 shrink-0">
+              <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1 text-xs font-medium`} variant="outline">
+                {getStatusIcon(order.status, "h-3.5 w-3.5 mr-1")}
+                {getOrderStatus(order.status, lang, isSupplier)}
+              </Badge>
+            </div>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground mb-1">{counterpartyName}</p>
-        <p className="text-3xl font-bold tracking-tight">{Number(order.totalAmount).toFixed(2)}€</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          {lang === "de" ? "Bestellung" : "Ordine"} #{order.id.slice(0, 8)}
-        </p>
 
-        <div className="mt-3">
-          <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1 text-xs font-medium`} variant="outline">
-            {getStatusIcon(order.status, "h-3.5 w-3.5 mr-1")}
-            {getOrderStatus(order.status, lang, isSupplier)}
-          </Badge>
-        </div>
-      </div>
+        <div className="border-b border-border/40 mx-4 md:mx-6 lg:mx-8" />
 
-      <div className="border-b border-border/40" />
-
-      <div className="px-6 pt-4">
-        <div className="flex bg-muted/50 rounded-full p-1">
-          <button
-            onClick={() => setActiveTab("updates")}
-            className={`flex-1 py-2 text-sm font-medium rounded-full transition-all ${activeTab === "updates" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
-            data-testid="tab-updates"
-          >
-            {lang === "de" ? "Updates" : "Aggiornamenti"}
-          </button>
-          <button
-            onClick={() => setActiveTab("details")}
-            className={`flex-1 py-2 text-sm font-medium rounded-full transition-all ${activeTab === "details" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
-            data-testid="tab-details"
-          >
-            {lang === "de" ? "Details" : "Dettagli"}
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 px-6 pt-5 pb-4 overflow-auto">
+        {/* Body: single column on mobile, 2-column on desktop with sticky sidebar */}
+        <div className="px-4 md:px-6 lg:px-8 pt-5 pb-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 lg:gap-10">
+          <div className="min-w-0">
+            <div className="mb-5">
+              <div className="flex bg-muted/50 rounded-full p-1 max-w-md">
+                <button
+                  onClick={() => setActiveTab("updates")}
+                  className={`flex-1 py-2 text-sm font-medium rounded-full transition-all ${activeTab === "updates" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
+                  data-testid="tab-updates"
+                >
+                  {lang === "de" ? "Updates" : "Aggiornamenti"}
+                </button>
+                <button
+                  onClick={() => setActiveTab("details")}
+                  className={`flex-1 py-2 text-sm font-medium rounded-full transition-all ${activeTab === "details" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
+                  data-testid="tab-details"
+                >
+                  {lang === "de" ? "Details" : "Dettagli"}
+                </button>
+              </div>
+            </div>
+            <div>
         {activeTab === "updates" && (
           <div className="space-y-0" data-testid="section-updates">
             {timeline.map((entry: any, index: number) => {
@@ -616,13 +625,15 @@ export default function OrderDetail() {
                 </div>
               </div>
             )}
+            </div>
+          )}
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Action Buttons */}
-      {actions.length > 0 && (
-        <div className="px-4 md:px-6 pb-6 pt-2 w-full max-w-xl mx-auto" data-testid="section-actions">
+          {/* Sidebar: action buttons (sticky on desktop, stacked under content on mobile) */}
+          <aside className="lg:sticky lg:top-6 lg:self-start">
+            {actions.length > 0 && (
+              <div className="rounded-2xl border border-border/50 bg-card/40 p-4 lg:p-5" data-testid="section-actions">
           {confirmAction === "cancelled" ? (
             <div className="space-y-3">
               <p className="text-sm font-medium text-center text-foreground">
@@ -752,8 +763,11 @@ export default function OrderDetail() {
               </div>
             );
           })()}
+              </div>
+            )}
+          </aside>
         </div>
-      )}
+      </div>
 
       {showDatePicker && (
         <DeliveryDatePicker
