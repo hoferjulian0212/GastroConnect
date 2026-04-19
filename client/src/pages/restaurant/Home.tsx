@@ -988,7 +988,7 @@ export default function RestaurantHome() {
             <div className="hidden md:block">
               <div className="rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_24px_-8px_rgba(15,23,42,0.12),0_24px_48px_-24px_rgba(15,23,42,0.16)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_12px_32px_-8px_rgba(0,0,0,0.5)] overflow-hidden md:overflow-x-auto" data-testid="deliveries-table">
                 <div
-                  className={`grid items-center gap-3 px-4 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border/50`}
+                  className={`grid items-center gap-3 px-4 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
                   style={{ gridTemplateColumns: deliveriesGridTemplate }}
                 >
                   <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("orderNo")} testId="resize-deliv-orderNo" /></div>
@@ -1001,7 +1001,7 @@ export default function RestaurantHome() {
                 </div>
                 {groupedDeliveries.map((group) => (
                   <div key={`d-${group.dateKey}`} data-testid={`deliveries-group-${group.dateKey}`}>
-                    <div className="px-4 py-2 bg-muted/20 border-b border-border/40 flex items-center gap-2">
+                    <div className="px-4 py-2 bg-muted/20 border-b border-border flex items-center gap-2">
                       {group.type === "overdue" ? (
                         <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
                       ) : (
@@ -1035,11 +1035,11 @@ export default function RestaurantHome() {
                           <Link
                             key={order.id}
                             href={`/restaurant/orders/${order.id}`}
-                            className="block group/row border-b border-border/40 last:border-b-0 hover:bg-muted/40 transition-colors"
+                            className="block group/row border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors"
                             data-testid={`delivery-row-${order.id}`}
                           >
                             <div
-                              className={`grid items-center gap-3 px-4 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border/30`}
+                              className={`grid items-center gap-3 px-4 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
                               style={{ gridTemplateColumns: deliveriesGridTemplate }}
                             >
                               <span className="font-mono text-[13px] text-primary truncate">#{order.id.slice(0, 8)}</span>

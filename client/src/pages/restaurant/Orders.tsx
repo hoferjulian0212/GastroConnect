@@ -919,11 +919,11 @@ export default function RestaurantOrders() {
     return (
       <div
         ref={isHighlighted ? highlightRef : undefined}
-        className={`group/row border-b border-border/40 last:border-b-0 transition-colors ${isHighlighted ? "bg-primary/5" : "hover:bg-muted/40"}`}
+        className={`group/row border-b border-border last:border-b-0 transition-colors ${isHighlighted ? "bg-primary/5" : "hover:bg-muted/40"}`}
         data-testid={`order-row-${order.id}`}
       >
         {/* Desktop row */}
-        <div className={`hidden md:grid items-center gap-3 px-4 ${densityRowClass} [&>*+*]:border-l [&>*+*]:border-border/30`} style={{ gridTemplateColumns: gridTemplate }}>
+        <div className={`hidden md:grid items-center gap-3 px-4 ${densityRowClass} [&>*+*]:border-l [&>*+*]:border-border`} style={{ gridTemplateColumns: gridTemplate }}>
           {/* Bestell-Nr — hyperlink */}
           <Link
             href={`/restaurant/orders/${order.id}`}
@@ -1579,7 +1579,7 @@ export default function RestaurantOrders() {
       {isLoading ? (
         <div className="rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_24px_-8px_rgba(15,23,42,0.12),0_24px_48px_-24px_rgba(15,23,42,0.16)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_12px_32px_-8px_rgba(0,0,0,0.5)] overflow-hidden">
           {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-12 w-full rounded-none border-b border-border/40 last:border-b-0" />
+            <Skeleton key={i} className="h-12 w-full rounded-none border-b border-border last:border-b-0" />
           ))}
         </div>
       ) : (
@@ -1626,7 +1626,7 @@ export default function RestaurantOrders() {
             <div className="rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_24px_-8px_rgba(15,23,42,0.12),0_24px_48px_-24px_rgba(15,23,42,0.16)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_12px_32px_-8px_rgba(0,0,0,0.5)] overflow-hidden md:overflow-x-auto" data-testid="orders-table">
               {/* Desktop column header */}
               <div
-                className={`hidden md:grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border/50`}
+                className={`hidden md:grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
                 style={{ gridTemplateColumns: gridTemplate }}
               >
                 <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startColResize("orderNo")} testId="resize-orderNo" /></div>
@@ -1641,7 +1641,7 @@ export default function RestaurantOrders() {
               {groups.map((group, gIdx) => (
                 <div key={group.label || `g-${gIdx}`} data-testid={`order-group-${group.label || 'all'}`}>
                   {group.label && (
-                    <div className="px-4 py-2 bg-muted/20 border-b border-border/40 flex items-center gap-2">
+                    <div className="px-4 py-2 bg-muted/20 border-b border-border flex items-center gap-2">
                       <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
                       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</h3>
                       <span className="text-[11px] text-muted-foreground/60">({group.orders.length})</span>
