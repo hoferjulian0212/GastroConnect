@@ -19,7 +19,7 @@ import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useSearch, useLocation } from "wouter";
+import { Link, useSearch, useLocation } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
@@ -621,6 +621,192 @@ export default function SupplierOrders() {
     );
   };
 
+  const OrderRow = ({ order }: { order: OrderWithDetails }) => {
+    const isHighlighted = order.id === highlightOrderId;
+    const restaurantName = order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown");
+    const isSelected = selectedOrders.has(order.id);
+    const isOverdue = !!(order.requestedDeliveryDate && new Date(order.requestedDeliveryDate + "T00:00:00") < new Date(new Date().toDateString()) && order.status !== "delivered" && order.status !== "cancelled");
+    const isDelayed = !!order.originalDeliveryDate;
+
+    const deliveryDateLabel = (() => {
+      if (order.requestedDeliveryDate) {
+        const d = new Date(order.requestedDeliveryDate + "T00:00:00");
+        if (isToday(d)) return lang === "de" ? "Heute" : "Oggi";
+        if (isYesterday(d)) return lang === "de" ? "Gestern" : "Ieri";
+        return format(d, "EEE dd.MM.", { locale: dateFnsLocale });
+      }
+      return "—";
+    })();
+
+    return (
+      <div
+        ref={isHighlighted ? highlightRef : undefined}
+        className={`group/row border-b border-border/40 last:border-b-0 transition-colors ${isHighlighted ? "bg-primary/5" : isSelected ? "bg-primary/10" : "hover:bg-muted/40"}`}
+        data-testid={`order-row-${order.id}`}
+      >
+        {/* Desktop row */}
+        <div className="hidden md:grid items-center gap-3 px-4 py-2.5 text-sm" style={{ gridTemplateColumns: `${batchMode ? "32px " : ""}150px 140px minmax(0,1fr) 70px 150px 130px 120px 40px` }}>
+          {batchMode && (
+            <div onClick={(e) => { e.stopPropagation(); if (order.status === "pending") toggleOrderSelection(order.id); }}>
+              {order.status === "pending" ? (
+                <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/40 bg-background"}`} data-testid={`row-checkbox-${order.id}`}>
+                  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                </div>
+              ) : (
+                <div className="h-5 w-5" />
+              )}
+            </div>
+          )}
+          <Link
+            href={`/supplier/orders/${order.id}`}
+            className="font-mono text-[13px] text-primary hover:underline truncate"
+            data-testid={`link-order-${order.id}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            #{order.id.slice(0, 8)}
+          </Link>
+          <div>
+            <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
+              <span className="inline-flex items-center gap-1">
+                {getStatusIcon(order.status)}
+                {getOrderStatus(order.status, lang, true)}
+              </span>
+            </Badge>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Avatar className="h-6 w-6 shrink-0">
+                <AvatarImage src={order.restaurant?.profileImageUrl || undefined} />
+                <AvatarFallback className="text-[9px] font-semibold">{restaurantName.substring(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span className="truncate font-medium" data-testid={`text-restaurant-${order.id}`}>{restaurantName}</span>
+            </div>
+          </div>
+          <div className="text-right tabular-nums text-muted-foreground">{order.items?.length || 0}</div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className={`truncate ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`} data-testid={`text-delivery-${order.id}`}>{deliveryDateLabel}</span>
+            {isOverdue && (
+              <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
+                {lang === "de" ? "Überfällig" : "Scaduto"}
+              </Badge>
+            )}
+            {!isOverdue && isDelayed && (
+              <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
+                {lang === "de" ? "Verspätet" : "Ritardo"}
+              </Badge>
+            )}
+          </div>
+          <div className="text-muted-foreground text-[12px] truncate" title={format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateFnsLocale })}>
+            {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateFnsLocale })}
+          </div>
+          <div className="text-right font-semibold tabular-nums" data-testid={`text-total-${order.id}`}>
+            {parseFloat(order.totalAmount).toFixed(2)}€
+          </div>
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="h-8 w-8 rounded-full inline-flex items-center justify-center hover:bg-muted transition-colors opacity-60 group-hover/row:opacity-100"
+                  onClick={(e) => e.stopPropagation()}
+                  data-testid={`button-row-actions-${order.id}`}
+                  aria-label={lang === "de" ? "Aktionen" : "Azioni"}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onClick={() => navTo(`/supplier/orders/${order.id}`)} data-testid={`action-open-${order.id}`}>
+                  <ShoppingBag className="h-4 w-4 mr-2" />
+                  {lang === "de" ? "Detail öffnen" : "Apri dettaglio"}
+                </DropdownMenuItem>
+                {order.status === "pending" && (
+                  <DropdownMenuItem onClick={() => setConfirmOrder(order)} data-testid={`action-confirm-${order.id}`}>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {lang === "de" ? "Bestätigen" : "Confermare"}
+                  </DropdownMenuItem>
+                )}
+                {(order.status === "confirmed" || order.status === "partially_confirmed") && (
+                  <DropdownMenuItem onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} data-testid={`action-deliver-${order.id}`}>
+                    <Truck className="h-4 w-4 mr-2" />
+                    {lang === "de" ? "Lieferung starten" : "Avvia consegna"}
+                  </DropdownMenuItem>
+                )}
+                {order.status === "in_delivery" && (
+                  <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`action-delivered-${order.id}`}>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {lang === "de" ? "Als geliefert markieren" : "Segna come consegnato"}
+                  </DropdownMenuItem>
+                )}
+                {!order.requestedDeliveryDate && order.status !== "pending" && order.status !== "delivered" && order.status !== "cancelled" && (
+                  <DropdownMenuItem onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} data-testid={`action-set-date-${order.id}`}>
+                    <CalendarDays className="h-4 w-4 mr-2" />
+                    {lang === "de" ? "Liefertermin setzen" : "Imposta data"}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => navTo(`/supplier/inbox?to=${order.restaurantId}&orderRefId=${order.id}`)} data-testid={`action-message-${order.id}`}>
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  {lang === "de" ? "Nachricht senden" : "Invia messaggio"}
+                </DropdownMenuItem>
+                {order.status !== "delivered" && order.status !== "cancelled" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setCancelConfirmId(order.id)}
+                      className="text-red-600 dark:text-red-400 focus:text-red-700 dark:focus:text-red-300"
+                      data-testid={`action-cancel-${order.id}`}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      {lang === "de" ? "Bestellung stornieren" : "Annulla ordine"}
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Mobile row */}
+        <div
+          className="md:hidden px-3 py-3 active:bg-muted/60 transition-colors cursor-pointer"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navTo(`/supplier/orders/${order.id}`); } }}
+          onClick={() => batchMode && order.status === "pending" ? toggleOrderSelection(order.id) : navTo(`/supplier/orders/${order.id}`)}
+          data-testid={`mobile-order-${order.id}`}
+        >
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 min-w-0">
+              {batchMode && order.status === "pending" && (
+                <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                  {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                </div>
+              )}
+              <Link
+                href={`/supplier/orders/${order.id}`}
+                className="font-mono text-[12px] text-primary hover:underline shrink-0"
+                onClick={(e) => e.stopPropagation()}
+                data-testid={`link-order-mobile-${order.id}`}
+              >
+                #{order.id.slice(0, 8)}
+              </Link>
+              <Badge className={`${getStatusColor(order.status)} text-[10px] rounded-full px-2 py-0 border-0 shrink-0`} variant="outline">
+                {getOrderStatus(order.status, lang, true)}
+              </Badge>
+            </div>
+            <span className="text-sm font-bold tabular-nums shrink-0">{parseFloat(order.totalAmount).toFixed(2)}€</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+            <span className="truncate font-medium text-foreground">{restaurantName}</span>
+            <span>·</span>
+            <span className="shrink-0">{order.items?.length || 0} {t("common", "items")}</span>
+            <span>·</span>
+            <span className={`shrink-0 ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`}>{deliveryDateLabel}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="orders-hero">
@@ -826,50 +1012,65 @@ export default function SupplierOrders() {
         {["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled", "all"].map((tab) => (
           <TabsContent key={tab} value={tab} className="mt-4 md:mt-6">
             {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-48" />
+              <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-none border-b border-border/40 last:border-b-0" />
                 ))}
               </div>
             ) : (
-              <div className="space-y-4">
-                {(() => {
-                  const filtered = filterOrders(tab === "all" ? null : tab);
-                  if (filtered.length === 0) {
-                    return (
-                      <Card>
-                        <CardContent className="flex flex-col items-center justify-center py-12">
-                          <ClipboardList className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                          <p className="text-muted-foreground">{lang === "de" ? "Keine Bestellungen gefunden" : "Nessun ordine trovato"}</p>
-                        </CardContent>
-                      </Card>
-                    );
-                  }
-                  const sorted = [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                  const groups: { label: string; orders: OrderWithDetails[] }[] = [];
-                  const groupMap = new Map<string, OrderWithDetails[]>();
-                  for (const order of sorted) {
-                    const d = new Date(order.createdAt);
-                    const key = format(d, "yyyy-MM-dd");
-                    if (!groupMap.has(key)) groupMap.set(key, []);
-                    groupMap.get(key)!.push(order);
-                  }
-                  for (const [key, ords] of groupMap.entries()) {
-                    const d = new Date(key + "T00:00:00");
-                    let label: string;
-                    if (isToday(d)) label = lang === "de" ? "Heute" : "Oggi";
-                    else if (isYesterday(d)) label = lang === "de" ? "Gestern" : "Ieri";
-                    else label = format(d, "dd. MMMM yyyy", { locale: dateFnsLocale });
-                    groups.push({ label, orders: ords });
-                  }
-                  return groups.map((group) => (
-                    <div key={group.label} data-testid={`order-group-${group.label}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                        <h3 className="text-sm font-semibold text-muted-foreground">{group.label}</h3>
-                        <span className="text-xs text-muted-foreground/60">({group.orders.length})</span>
-                      </div>
-                      <StaggeredList className="space-y-2 md:space-y-3" staggerDelay={40}>
+              (() => {
+                const filtered = filterOrders(tab === "all" ? null : tab);
+                if (filtered.length === 0) {
+                  return (
+                    <Card>
+                      <CardContent className="flex flex-col items-center justify-center py-12">
+                        <ClipboardList className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                        <p className="text-muted-foreground">{lang === "de" ? "Keine Bestellungen gefunden" : "Nessun ordine trovato"}</p>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+                const sorted = [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                const groups: { label: string; orders: OrderWithDetails[] }[] = [];
+                const groupMap = new Map<string, OrderWithDetails[]>();
+                for (const order of sorted) {
+                  const d = new Date(order.createdAt);
+                  const key = format(d, "yyyy-MM-dd");
+                  if (!groupMap.has(key)) groupMap.set(key, []);
+                  groupMap.get(key)!.push(order);
+                }
+                const groupEntries = Array.from(groupMap.entries());
+                for (const [key, ords] of groupEntries) {
+                  const d = new Date(key + "T00:00:00");
+                  let label: string;
+                  if (isToday(d)) label = lang === "de" ? "Heute" : "Oggi";
+                  else if (isYesterday(d)) label = lang === "de" ? "Gestern" : "Ieri";
+                  else label = format(d, "dd. MMMM yyyy", { locale: dateFnsLocale });
+                  groups.push({ label, orders: ords });
+                }
+                return (
+                  <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="orders-table">
+                    <div
+                      className="hidden md:grid items-center gap-3 px-4 py-3 bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold"
+                      style={{ gridTemplateColumns: `${batchMode ? "32px " : ""}150px 140px minmax(0,1fr) 70px 150px 130px 120px 40px` }}
+                    >
+                      {batchMode && <div></div>}
+                      <div>{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
+                      <div>Status</div>
+                      <div>{lang === "de" ? "Kunde" : "Cliente"}</div>
+                      <div className="text-right">{lang === "de" ? "Artikel" : "Articoli"}</div>
+                      <div>{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>
+                      <div>{lang === "de" ? "Erstellt" : "Creato"}</div>
+                      <div className="text-right">{lang === "de" ? "Summe" : "Totale"}</div>
+                      <div></div>
+                    </div>
+                    {groups.map((group) => (
+                      <div key={group.label} data-testid={`order-group-${group.label}`}>
+                        <div className="px-4 py-2 bg-muted/20 border-b border-border/40 flex items-center gap-2">
+                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</h3>
+                          <span className="text-[11px] text-muted-foreground/60">({group.orders.length})</span>
+                        </div>
                         {group.orders.map((order) => (
                           <SwipeableRow
                             key={order.id}
@@ -920,14 +1121,14 @@ export default function SupplierOrders() {
                                 : []
                             }
                           >
-                            <OrderCard order={order} />
+                            <OrderRow order={order} />
                           </SwipeableRow>
                         ))}
-                      </StaggeredList>
-                    </div>
-                  ));
-                })()}
-              </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
             )}
           </TabsContent>
         ))}
