@@ -528,7 +528,7 @@ export default function SupplierHome() {
             <div className="hidden md:block">
               <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="deliveries-table">
                 <div
-                  className={`grid items-center gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
+                  className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
                   style={{ gridTemplateColumns: deliveriesGridTemplate }}
                 >
                   <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("orderNo")} testId="resize-deliv-orderNo" /></div>
@@ -572,7 +572,7 @@ export default function SupplierHome() {
                             data-testid={`delivery-row-${order.id}`}
                           >
                             <div
-                              className={`grid items-center gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
+                              className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
                               style={{ gridTemplateColumns: deliveriesGridTemplate }}
                             >
                               <span className="font-mono text-[13px] text-primary truncate">#{order.id.slice(0, 8)}</span>
