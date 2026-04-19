@@ -108,6 +108,19 @@ export default function SupplierOrders() {
     const cols = [...base, "150px", ...SUP_COLUMNS.filter(c => visibleColumns.has(c)).map(c => colWidth[c]), "40px"];
     return cols.join(" ");
   }, [visibleColumns, batchMode]);
+  type RowDensity = "compact" | "normal" | "comfortable";
+  const [rowDensity, setRowDensity] = useState<RowDensity>(() => {
+    try {
+      const saved = localStorage.getItem("supplierOrdersRowDensity") as RowDensity | null;
+      if (saved === "compact" || saved === "normal" || saved === "comfortable") return saved;
+    } catch {}
+    return "normal";
+  });
+  useEffect(() => {
+    try { localStorage.setItem("supplierOrdersRowDensity", rowDensity); } catch {}
+  }, [rowDensity]);
+  const densityRowClass = rowDensity === "compact" ? "py-1 text-[12px]" : rowDensity === "comfortable" ? "py-4 text-sm" : "py-2.5 text-sm";
+  const densityHeaderClass = rowDensity === "compact" ? "py-1.5" : rowDensity === "comfortable" ? "py-4" : "py-3";
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [orderMessage, setOrderMessage] = useState("");
@@ -730,7 +743,7 @@ export default function SupplierOrders() {
         data-testid={`order-row-${order.id}`}
       >
         {/* Desktop row */}
-        <div className="hidden md:grid items-center gap-3 px-4 py-2.5 text-sm" style={{ gridTemplateColumns: gridTemplate }}>
+        <div className={`hidden md:grid items-center gap-3 px-4 ${densityRowClass}`} style={{ gridTemplateColumns: gridTemplate }}>
           {batchMode && (
             <div onClick={(e) => { e.stopPropagation(); if (order.status === "pending") toggleOrderSelection(order.id); }}>
               {order.status === "pending" ? (
@@ -1030,6 +1043,26 @@ export default function SupplierOrders() {
                   <Checkbox checked={groupByDate} onCheckedChange={(v) => setGroupByDate(!!v)} />
                   <span>{lang === "de" ? "Nach Datum gruppieren" : "Raggruppa per data"}</span>
                 </label>
+                <Separator className="my-1.5" />
+                <div className="px-2 pt-1 pb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  {lang === "de" ? "Zeilengröße" : "Densità righe"}
+                </div>
+                <div className="flex gap-1 px-2 pb-1">
+                  {([
+                    { key: "compact", de: "Kompakt", it: "Compatta" },
+                    { key: "normal", de: "Normal", it: "Normale" },
+                    { key: "comfortable", de: "Bequem", it: "Comoda" },
+                  ] as const).map((d) => (
+                    <button
+                      key={d.key}
+                      onClick={() => setRowDensity(d.key)}
+                      className={`flex-1 px-2 py-1 rounded-md text-xs transition-colors ${rowDensity === d.key ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80 text-foreground"}`}
+                      data-testid={`density-${d.key}`}
+                    >
+                      {lang === "de" ? d.de : d.it}
+                    </button>
+                  ))}
+                </div>
                 <Button variant="ghost" size="sm" className="h-7 text-xs w-full mt-1" onClick={() => setVisibleColumns(new Set(SUP_COLUMNS))}>
                   {lang === "de" ? "Alle anzeigen" : "Mostra tutte"}
                 </Button>
@@ -1242,7 +1275,7 @@ export default function SupplierOrders() {
                 return (
                   <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="orders-table">
                     <div
-                      className="hidden md:grid items-center gap-3 px-4 py-3 bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold"
+                      className={`hidden md:grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold`}
                       style={{ gridTemplateColumns: gridTemplate }}
                     >
                       {batchMode && <div></div>}
