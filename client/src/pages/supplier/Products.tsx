@@ -218,7 +218,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
       ) : (
         <>
           {/* Desktop Excel-style table */}
-          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden" data-testid="inventory-table">
+          <div className="hidden md:block rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(60,45,20,0.06),0_8px_24px_-8px_rgba(60,45,20,0.18),0_24px_48px_-24px_rgba(60,45,20,0.22)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_12px_32px_-8px_rgba(0,0,0,0.5)] overflow-hidden" data-testid="inventory-table">
             <div
               className={`grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border/50`}
               style={{ gridTemplateColumns: inventoryGridTemplate }}

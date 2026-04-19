@@ -485,7 +485,7 @@ export default function SupplierHome() {
                         return (
                           <div
                             key={order.id}
-                            className="min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border border-border bg-card p-4 cursor-pointer transition-all active:scale-[0.98]"
+                            className="min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(60,45,20,0.06),0_8px_24px_-8px_rgba(60,45,20,0.18),0_24px_48px_-24px_rgba(60,45,20,0.22)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_12px_32px_-8px_rgba(0,0,0,0.5)] p-4 cursor-pointer transition-all active:scale-[0.98]"
                             onClick={() => navigate(`/supplier/orders/${order.id}`)}
                             data-testid={`delivery-item-${order.id}`}
                           >
@@ -526,7 +526,7 @@ export default function SupplierHome() {
 
             {/* Desktop: Excel-style table (mirrors Bestellungen page) */}
             <div className="hidden md:block">
-              <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="deliveries-table">
+              <div className="rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(60,45,20,0.06),0_8px_24px_-8px_rgba(60,45,20,0.18),0_24px_48px_-24px_rgba(60,45,20,0.22)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_12px_32px_-8px_rgba(0,0,0,0.5)] overflow-hidden md:overflow-x-auto" data-testid="deliveries-table">
                 <div
                   className={`grid items-center gap-3 px-4 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border/50`}
                   style={{ gridTemplateColumns: deliveriesGridTemplate }}
@@ -804,7 +804,7 @@ export default function SupplierHome() {
                   {recentOrders.map((order) => (
                     <div
                       key={order.id}
-                      className="min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border border-border bg-card p-4 cursor-pointer transition-all active:scale-[0.98]"
+                      className="min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(60,45,20,0.06),0_8px_24px_-8px_rgba(60,45,20,0.18),0_24px_48px_-24px_rgba(60,45,20,0.22)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_12px_32px_-8px_rgba(0,0,0,0.5)] p-4 cursor-pointer transition-all active:scale-[0.98]"
                       onClick={() => navigate(`/supplier/orders/${order.id}`)}
                       data-testid={`order-item-${order.id}`}
                     >
