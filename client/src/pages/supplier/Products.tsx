@@ -187,29 +187,6 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2 md:gap-3">
-        <div className="rounded-xl bg-muted/30 p-3 text-center" data-testid="stat-total-products">
-          <p className="text-2xl md:text-3xl font-bold tabular-nums">{products.length}</p>
-          <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5">{lang === "de" ? "Produkte" : "Prodotti"}</p>
-        </div>
-        <div
-          className={`rounded-xl p-3 text-center cursor-pointer transition-colors ${statusFilter === "low" ? "bg-orange-100 dark:bg-orange-950/30 ring-1 ring-orange-300 dark:ring-orange-700" : "bg-muted/30 hover:bg-orange-50 dark:hover:bg-orange-950/10"}`}
-          onClick={() => setStatusFilter(statusFilter === "low" ? "all" : "low")}
-          data-testid="stat-low-stock"
-        >
-          <p className={`text-2xl md:text-3xl font-bold tabular-nums ${lowStockCount > 0 ? "text-orange-600 dark:text-orange-400" : ""}`}>{lowStockCount}</p>
-          <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5">{lang === "de" ? "Niedrig" : "Scorta bassa"}</p>
-        </div>
-        <div
-          className={`rounded-xl p-3 text-center cursor-pointer transition-colors ${statusFilter === "out" ? "bg-red-100 dark:bg-red-950/30 ring-1 ring-red-300 dark:ring-red-700" : "bg-muted/30 hover:bg-red-50 dark:hover:bg-red-950/10"}`}
-          onClick={() => setStatusFilter(statusFilter === "out" ? "all" : "out")}
-          data-testid="stat-out-of-stock"
-        >
-          <p className={`text-2xl md:text-3xl font-bold tabular-nums ${outOfStockCount > 0 ? "text-red-600 dark:text-red-400" : ""}`}>{outOfStockCount}</p>
-          <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5">{lang === "de" ? "Ausverkauft" : "Esaurito"}</p>
-        </div>
-      </div>
-
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
