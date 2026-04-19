@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Package, ClipboardList, AlertCircle, Settings, FileText, Store, Tag, User } from "lucide-react";
+import { Home, MessageSquare, Package, ClipboardList, AlertCircle, Settings, FileText, Store, Tag, User, Warehouse } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -19,6 +19,7 @@ export function SupplierMobileNav() {
 
   const moreMenuItems = [
     { title: t("common", "restaurants"), url: "/supplier/restaurants", icon: Store },
+    { title: lang === "de" ? "Bestandsverwaltung" : "Gestione magazzino", url: "/supplier/inventory", icon: Warehouse },
     { title: t("common", "promotions"), url: "/supplier/promotions", icon: Tag },
     { title: t("common", "complaints"), url: "/supplier/complaints", icon: AlertCircle },
     { title: t("common", "documents"), url: "/supplier/documents", icon: FileText },

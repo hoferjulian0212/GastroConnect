@@ -48,6 +48,7 @@ import SupplierProfile from "@/pages/supplier/Profile";
 import SupplierComplaints from "@/pages/supplier/Complaints";
 import SupplierRestaurants from "@/pages/supplier/Restaurants";
 import SupplierPromotions from "@/pages/supplier/Promotions";
+import SupplierInventory from "@/pages/supplier/Inventory";
 import About from "@/pages/About";
 import Documents from "@/pages/Documents";
 import OrderDetail from "@/pages/OrderDetail";
@@ -88,6 +89,7 @@ function SupplierRouter() {
       <Route path="/supplier/orders/:id" component={OrderDetail} />
       <Route path="/supplier/orders" component={SupplierOrders} />
       <Route path="/supplier/promotions" component={SupplierPromotions} />
+      <Route path="/supplier/inventory" component={SupplierInventory} />
       <Route path="/supplier/complaints/:id" component={ComplaintDetail} />
       <Route path="/supplier/complaints" component={SupplierComplaints} />
       <Route path="/supplier/settings" component={SupplierSettings} />
@@ -305,8 +307,9 @@ function HeaderNav() {
       label: lang === 'de' ? 'Produkte' : 'Prodotti',
       children: [
         { href: '/supplier/products', label: lang === 'de' ? 'Katalog' : 'Catalogo' },
-        { href: '/supplier/restaurants', label: lang === 'de' ? 'Kunden' : 'Clienti' },
+        { href: '/supplier/inventory', label: lang === 'de' ? 'Bestandsverwaltung' : 'Gestione magazzino' },
         { href: '/supplier/promotions', label: lang === 'de' ? 'Aktionen' : 'Promozioni' },
+        { href: '/supplier/restaurants', label: lang === 'de' ? 'Kunden' : 'Clienti' },
       ],
     },
     { href: '/supplier/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },

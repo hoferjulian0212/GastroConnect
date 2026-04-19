@@ -42,7 +42,7 @@ const productSchema = z.object({
 
 type ProductFormData = z.infer<typeof productSchema>;
 
-function InventoryView({ products, lang, t }: { products: Product[]; lang: string; t: ReturnType<typeof useT> }) {
+export function InventoryView({ products, lang, t }: { products: Product[]; lang: string; t: ReturnType<typeof useT> }) {
   const { currentUser } = useUser();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -829,15 +829,6 @@ export default function SupplierProducts() {
   const { toast } = useToast();
   const { lang } = useLanguage();
   const t = useT(lang);
-  const [searchStr, setSearchStr] = useState(window.location.search);
-  useEffect(() => {
-    const onPop = () => setSearchStr(window.location.search);
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
-  const tabParam = new URLSearchParams(searchStr).get("tab");
-  const activeTab: "products" | "inventory" | "promotions" = 
-    tabParam === "inventory" ? "inventory" : tabParam === "promotions" ? "promotions" : "products";
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -866,11 +857,6 @@ export default function SupplierProducts() {
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: [`/api/supplier/products?supplierId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
-  });
-
-  const { data: promotions } = useQuery<PromotionWithProduct[]>({
-    queryKey: [`/api/promotions?supplierId=${currentUser?.id}`],
-    enabled: !!currentUser?.id && activeTab === "promotions",
   });
 
   const createProductMutation = useMutation({
@@ -1102,7 +1088,7 @@ export default function SupplierProducts() {
         await queryClient.invalidateQueries({
           predicate: (query) => {
             const key = query.queryKey[0];
-            return typeof key === "string" && (key.startsWith("/api/supplier/products") || key.startsWith("/api/promotions") || key.startsWith("/api/low-stock") || key.startsWith("/api/stock-movements"));
+            return typeof key === "string" && key.startsWith("/api/supplier/products");
           },
         });
       }}
@@ -1112,91 +1098,18 @@ export default function SupplierProducts() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
-              {activeTab === "products"
-                ? (lang === "de" ? "Produkte" : "Prodotti")
-                : activeTab === "inventory"
-                  ? t("supplierProducts", "stockManagement")
-                  : t("common", "promotions")}
+              {lang === "de" ? "Produkte" : "Prodotti"}
             </h1>
             <p className="hidden md:block text-sm text-white/50 mt-1">
-              {activeTab === "products"
-                ? t("supplierProducts", "manageProducts")
-                : activeTab === "inventory"
-                  ? t("supplierProducts", "manageStock")
-                  : (lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti")}
+              {t("supplierProducts", "manageProducts")}
             </p>
           </div>
-          {activeTab === "products" && (
-            <Button className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}</span>
-              <span className="sm:hidden">{t("common", "add")}</span>
-            </Button>
-          )}
+          <Button className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}</span>
+            <span className="sm:hidden">{t("common", "add")}</span>
+          </Button>
         </div>
-
-        <div className="flex gap-1 p-1 bg-white/10 rounded-lg w-fit" data-testid="products-tab-switcher">
-          <button
-            onClick={() => { const p = new URLSearchParams(searchStr); p.delete("tab"); window.history.pushState(null, "", `/supplier/products${p.toString() ? `?${p}` : ""}`); window.dispatchEvent(new PopStateEvent("popstate")); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-              activeTab === "products" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"
-            }`}
-            data-testid="tab-products"
-          >
-            <Package className="h-4 w-4" />
-            {lang === "de" ? "Katalog" : "Catalogo"}
-          </button>
-          <button
-            onClick={() => { const p = new URLSearchParams(searchStr); p.set("tab", "inventory"); window.history.pushState(null, "", `/supplier/products?${p}`); window.dispatchEvent(new PopStateEvent("popstate")); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-              activeTab === "inventory" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"
-            }`}
-            data-testid="tab-inventory"
-          >
-            <Warehouse className="h-4 w-4" />
-            {t("supplierProducts", "stockManagement")}
-          </button>
-          <button
-            onClick={() => { const p = new URLSearchParams(searchStr); p.set("tab", "promotions"); window.history.pushState(null, "", `/supplier/products?${p}`); window.dispatchEvent(new PopStateEvent("popstate")); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-              activeTab === "promotions" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"
-            }`}
-            data-testid="tab-promotions"
-          >
-            <Tag className="h-4 w-4" />
-            {t("common", "promotions")}
-          </button>
-        </div>
-
-        {activeTab === "promotions" && (
-          <div className="grid gap-2 md:gap-3 grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
-              <div className="text-center">
-                <div className="text-xl md:text-2xl font-bold text-blue-400" data-testid="text-total-promotions">{promotions?.length || 0}</div>
-                <p className="text-[10px] md:text-xs text-white/50">{t("common", "total")}</p>
-              </div>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
-              <div className="text-center">
-                <div className="text-xl md:text-2xl font-bold text-green-400" data-testid="text-active-promotions">
-                  {promotions?.filter(p => {
-                    const now = new Date();
-                    return p.isActive && new Date(p.startDate) <= now && new Date(p.endDate) >= now;
-                  }).length || 0}
-                </div>
-                <p className="text-[10px] md:text-xs text-white/50">{t("promotionsPage", "active")}</p>
-              </div>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
-              <div className="text-center">
-                <div className="text-xl md:text-2xl font-bold text-white/40" data-testid="text-expired-promotions">
-                  {promotions?.filter(p => new Date(p.endDate) < new Date()).length || 0}
-                </div>
-                <p className="text-[10px] md:text-xs text-white/50">{t("promotionsPage", "expired")}</p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -1504,11 +1417,8 @@ export default function SupplierProducts() {
             </DialogContent>
       </Dialog>
 
-      {activeTab === "promotions" ? (
-        <PromotionsView lang={lang} t={t} />
-      ) : activeTab === "products" ? (
-        <>
-          {!selectedCategory ? (
+      <>
+        {!selectedCategory ? (
             <>
               {isLoading ? (
                 <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -1674,32 +1584,12 @@ export default function SupplierProducts() {
             </>
           )}
 
-          <ProductDetailDialog
-            product={detailProduct}
-            open={!!detailProduct}
-            onOpenChange={(open) => !open && setDetailProduct(null)}
-          />
-        </>
-      ) : (
-        <>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-24" />
-              ))}
-            </div>
-          ) : products && products.length > 0 ? (
-            <InventoryView products={products} lang={lang} t={t} />
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <Warehouse className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">{t("supplierProducts", "noProducts")}</p>
-              </CardContent>
-            </Card>
-          )}
-        </>
-      )}
+        <ProductDetailDialog
+          product={detailProduct}
+          open={!!detailProduct}
+          onOpenChange={(open) => !open && setDetailProduct(null)}
+        />
+      </>
     </PullToRefreshWrapper>
   );
 }

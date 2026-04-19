@@ -27,7 +27,7 @@ export function SupplierSidebar() {
   const [pulsingBadge, setPulsingBadge] = useState<string | null>(null);
   const prevCounts = useRef<Record<string, number>>({});
   const [currentSearch, setCurrentSearch] = useState(window.location.search);
-  const isProductsSection = location.startsWith("/supplier/products");
+  const isProductsSection = location.startsWith("/supplier/products") || location.startsWith("/supplier/inventory") || location.startsWith("/supplier/promotions");
   const [productsOpen, setProductsOpen] = useState(isProductsSection);
 
   useEffect(() => {
@@ -41,9 +41,9 @@ export function SupplierSidebar() {
   }, [isProductsSection]);
 
   const productSubItems = [
-    { title: lang === "de" ? "Katalog" : "Catalogo", url: "/supplier/products", tab: undefined as string | undefined, icon: Package },
-    { title: lang === "de" ? "Lagerbestand" : "Inventario", url: "/supplier/products?tab=inventory", tab: "inventory", icon: Warehouse },
-    { title: lang === "de" ? "Aktionen" : "Promozioni", url: "/supplier/products?tab=promotions", tab: "promotions", icon: Tag },
+    { title: lang === "de" ? "Katalog" : "Catalogo", url: "/supplier/products", icon: Package },
+    { title: lang === "de" ? "Bestandsverwaltung" : "Gestione magazzino", url: "/supplier/inventory", icon: Warehouse },
+    { title: lang === "de" ? "Aktionen" : "Promozioni", url: "/supplier/promotions", icon: Tag },
   ];
 
   const mainMenuItems = [
@@ -180,19 +180,13 @@ export function SupplierSidebar() {
               {productsOpen && (
                 <div className="ml-4 space-y-0.5">
                   {productSubItems.map((sub) => {
-                    const currentTab = new URLSearchParams(currentSearch).get("tab");
-                    const subTab = sub.tab;
-                    const isSubActive = location === "/supplier/products" && (subTab === (currentTab || undefined));
+                    const isSubActive = location === sub.url;
+                    const slug = sub.url.split("/").pop() || "catalog";
                     return (
-                      <SidebarMenuItem key={sub.tab || "catalog"}>
-                        <a
+                      <SidebarMenuItem key={sub.url}>
+                        <Link
                           href={sub.url}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            window.history.pushState({}, "", sub.url);
-                            window.dispatchEvent(new PopStateEvent("popstate"));
-                          }}
-                          data-testid={`link-products-${sub.tab || "catalog"}`}
+                          data-testid={`link-products-${slug}`}
                           className={`flex items-center h-9 rounded-lg px-2 gap-2.5 transition-all duration-200 text-left text-[12px] cursor-pointer ${
                             isSubActive
                               ? "text-primary font-semibold bg-primary/5"
@@ -201,7 +195,7 @@ export function SupplierSidebar() {
                         >
                           <sub.icon className="h-4 w-4" />
                           <span>{sub.title}</span>
-                        </a>
+                        </Link>
                       </SidebarMenuItem>
                     );
                   })}
