@@ -1360,7 +1360,7 @@ export default function RestaurantHome() {
                 </div>
               </div>
               <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
-                <Link href="/restaurant/orders?tab=templates" data-testid="link-view-all-templates">{t("common", "all")}</Link>
+                <Link href="/restaurant/templates" data-testid="link-view-all-templates">{t("common", "all")}</Link>
               </Button>
             </div>
             <div className="md:px-5 md:pb-5">
@@ -1506,7 +1506,7 @@ export default function RestaurantHome() {
                     })}
                     {templates.length > 3 && (
                       <Button variant="outline" className="w-full text-xs h-8" asChild>
-                        <Link href="/restaurant/orders?tab=templates" data-testid="link-more-templates">
+                        <Link href="/restaurant/templates" data-testid="link-more-templates">
                           {lang === "de" ? `Alle ${templates.length} Vorlagen anzeigen` : `Mostra tutti ${templates.length} i modelli`}
                           <ArrowRight className="h-3 w-3 ml-1" />
                         </Link>
@@ -1526,7 +1526,7 @@ export default function RestaurantHome() {
                     {lang === "de" ? "Erstellen Sie Vorlagen für wiederkehrende Bestellungen" : "Crea modelli per ordini ricorrenti"}
                   </p>
                   <Button variant="outline" size="sm" className="mt-3 text-xs" asChild>
-                    <Link href="/restaurant/orders?tab=templates" data-testid="link-create-template">
+                    <Link href="/restaurant/templates" data-testid="link-create-template">
                       {lang === "de" ? "Vorlage erstellen" : "Crea modello"}
                     </Link>
                   </Button>

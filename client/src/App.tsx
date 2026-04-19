@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation, Redirect } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -35,6 +35,7 @@ import RestaurantCart from "@/pages/restaurant/Cart";
 import RestaurantSettings from "@/pages/restaurant/Settings";
 import RestaurantProfile from "@/pages/restaurant/Profile";
 import RestaurantComplaints from "@/pages/restaurant/Complaints";
+import RestaurantTemplates from "@/pages/restaurant/Templates";
 import RestaurantSuppliers from "@/pages/restaurant/Suppliers";
 import RestaurantCostAnalysis from "@/pages/restaurant/CostAnalysis";
 import RestaurantPriceComparison from "@/pages/restaurant/PriceComparison";
@@ -63,7 +64,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/product/:id" component={RestaurantProductDetail} />
       <Route path="/restaurant/cart" component={RestaurantCart} />
 
-      <Route path="/restaurant/templates"><Redirect to="/restaurant/orders?tab=templates" /></Route>
+      <Route path="/restaurant/templates" component={RestaurantTemplates} />
       <Route path="/restaurant/complaints/:id" component={ComplaintDetail} />
       <Route path="/restaurant/complaints" component={RestaurantComplaints} />
       <Route path="/restaurant/suppliers" component={RestaurantSuppliers} />
@@ -269,6 +270,7 @@ function HeaderNav() {
       label: lang === 'de' ? 'Bestellungen' : 'Ordini',
       children: [
         { href: '/restaurant/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
+        { href: '/restaurant/templates', label: lang === 'de' ? 'Bestellvorlagen' : "Modelli d'ordine" },
         { href: '/restaurant/complaints', label: lang === 'de' ? 'Reklamationen' : 'Reclami' },
         { href: '/restaurant/documents', label: lang === 'de' ? 'Dokumente' : 'Documenti' },
       ],

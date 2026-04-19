@@ -25,7 +25,6 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
-import RestaurantTemplates from "./Templates";
 import SwipeableRow from "@/components/SwipeableRow";
 import StaggeredList from "@/components/StaggeredList";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
@@ -50,23 +49,13 @@ export default function RestaurantOrders() {
   const searchParams = new URLSearchParams(searchString);
   const highlightOrderId = searchParams.get("orderId");
   const initialSupplierId = searchParams.get("supplierId");
-  const tabParam = searchParams.get("tab");
   const highlightRef = useRef<HTMLDivElement>(null);
-
-  const activeTab = tabParam === "templates" ? "templates" : "orders";
 
   const { containerRef: pullRefreshRef, pullDistance, isRefreshing, progress: pullProgress } = usePullToRefresh({
     onRefresh: async () => {
       await queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
     },
   });
-  const setActiveTab = (tab: "orders" | "templates") => {
-    if (tab === "templates") {
-      navigate("/restaurant/orders?tab=templates");
-    } else {
-      navigate("/restaurant/orders");
-    }
-  };
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSupplier, setFilterSupplier] = useState<string>(initialSupplierId || "all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
@@ -1096,38 +1085,6 @@ export default function RestaurantOrders() {
     }
   };
 
-  if (activeTab === "templates") {
-    return (
-      <div className="space-y-4 md:space-y-6">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">{t("common", "orders")}</h1>
-          <p className="text-xs md:text-sm text-muted-foreground">{t("orders", "allOrdersOverview")}</p>
-        </div>
-
-        <div className="flex gap-1 p-1 bg-muted/50 rounded-lg w-fit" data-testid="orders-tab-switcher">
-          <button
-            onClick={() => setActiveTab("orders")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all text-muted-foreground hover:text-foreground"
-            data-testid="tab-orders"
-          >
-            <ShoppingBag className="h-4 w-4" />
-            {t("common", "orders")}
-          </button>
-          <button
-            onClick={() => setActiveTab("templates")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all bg-background text-foreground shadow-sm"
-            data-testid="tab-templates"
-          >
-            <ClipboardList className="h-4 w-4" />
-            {t("templates", "orderTemplates")}
-          </button>
-        </div>
-
-        <RestaurantTemplates embedded />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="orders-hero">
@@ -1166,29 +1123,6 @@ export default function RestaurantOrders() {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="flex gap-1 p-1 bg-white/10 rounded-lg w-fit" data-testid="orders-tab-switcher">
-          <button
-            onClick={() => setActiveTab("orders")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-              activeTab === "orders" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"
-            }`}
-            data-testid="tab-orders"
-          >
-            <ShoppingBag className="h-4 w-4" />
-            {t("common", "orders")}
-          </button>
-          <button
-            onClick={() => setActiveTab("templates")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-              activeTab === "templates" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"
-            }`}
-            data-testid="tab-templates"
-          >
-            <ClipboardList className="h-4 w-4" />
-            {t("templates", "orderTemplates")}
-          </button>
         </div>
 
         {/* Toolbar moved out of hero — rendered above the orders table on the page content */}
