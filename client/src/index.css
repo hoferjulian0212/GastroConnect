@@ -308,7 +308,7 @@ html, body, #root {
      No image file — fully generated via CSS + SVG. Fixed attachment so the surface
      stays put while content scrolls, like a massive piece of stone. */
   html:not(.dark) body {
-    background-color: #ecebe6;
+    background-color: #ededea;
     background-image:
       radial-gradient(ellipse 60% 50% at 15% 10%, rgba(255, 253, 248, 0.85) 0%, rgba(255, 253, 248, 0) 70%),
       radial-gradient(ellipse 70% 60% at 85% 25%, rgba(218, 215, 206, 0.55) 0%, rgba(218, 215, 206, 0) 70%),
