@@ -30,18 +30,11 @@ import StaggeredList from "@/components/StaggeredList";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
-
-type RestaurantResizableColKey = "orderNo" | "status" | "supplier" | "items" | "deliveryDate" | "createdAt" | "total" | "actions";
-const RESTAURANT_COL_DEFAULTS: Record<RestaurantResizableColKey, number> = {
-  orderNo: 150,
-  status: 140,
-  supplier: 260,
-  items: 80,
-  deliveryDate: 160,
-  createdAt: 140,
-  total: 120,
-  actions: 48,
-};
+import {
+  RESTAURANT_ORDER_COL_DEFAULTS,
+  RESTAURANT_ORDER_COLS_STORAGE_KEY,
+  type RestaurantOrderColKey,
+} from "@/lib/orderTableConfig";
 
 interface EditableItem {
   id: string;
@@ -109,13 +102,13 @@ export default function RestaurantOrders() {
     };
     return map[k][lang === "de" ? "de" : "it"];
   };
-  const visibleResizableKeys = useMemo<RestaurantResizableColKey[]>(
+  const visibleResizableKeys = useMemo<RestaurantOrderColKey[]>(
     () => ["orderNo", ...ALL_COLUMNS.filter((c) => visibleColumns.has(c)), "actions"],
     [visibleColumns],
   );
-  const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths } = useResizableColumns<RestaurantResizableColKey>(
-    "restaurantOrdersColWidths",
-    RESTAURANT_COL_DEFAULTS,
+  const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths } = useResizableColumns<RestaurantOrderColKey>(
+    RESTAURANT_ORDER_COLS_STORAGE_KEY,
+    RESTAURANT_ORDER_COL_DEFAULTS,
     visibleResizableKeys,
   );
   type RowDensity = "compact" | "normal" | "comfortable";

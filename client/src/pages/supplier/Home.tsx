@@ -8,6 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format, formatDistanceToNow, isToday, isTomorrow } from "date-fns";
+import { useResizableColumns } from "@/hooks/use-resizable-columns";
+import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
+import {
+  SUPPLIER_ORDER_COL_DEFAULTS,
+  SUPPLIER_ORDER_COLS_STORAGE_KEY,
+  SUPPLIER_ORDER_DENSITY_STORAGE_KEY,
+  type SupplierOrderColKey,
+  type RowDensity,
+  densityRowClass,
+  densityHeaderClass,
+} from "@/lib/orderTableConfig";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
@@ -251,6 +262,35 @@ export default function SupplierHome() {
     return format(date, "EEEE, dd.MM.", { locale: dateLocale });
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "pending": return <Clock className="h-3.5 w-3.5" />;
+      case "confirmed": return <Package className="h-3.5 w-3.5" />;
+      case "partially_confirmed": return <AlertTriangle className="h-3.5 w-3.5" />;
+      case "in_delivery": return <Truck className="h-3.5 w-3.5" />;
+      case "delivered": return <CheckCircle className="h-3.5 w-3.5" />;
+      case "cancelled": return <XCircle className="h-3.5 w-3.5" />;
+      default: return <ShoppingBag className="h-3.5 w-3.5" />;
+    }
+  };
+
+  const deliveriesTableKeys = useMemo<SupplierOrderColKey[]>(
+    () => ["orderNo", "status", "restaurant", "items", "deliveryDate", "createdAt", "total"],
+    [],
+  );
+  const { gridTemplate: deliveriesGridTemplate, startResize: startDeliveriesColResize } = useResizableColumns<SupplierOrderColKey>(
+    SUPPLIER_ORDER_COLS_STORAGE_KEY,
+    SUPPLIER_ORDER_COL_DEFAULTS,
+    deliveriesTableKeys,
+  );
+  const [deliveriesRowDensity] = useState<RowDensity>(() => {
+    try {
+      const saved = localStorage.getItem(SUPPLIER_ORDER_DENSITY_STORAGE_KEY) as RowDensity | null;
+      if (saved === "compact" || saved === "normal" || saved === "comfortable") return saved;
+    } catch {}
+    return "normal";
+  });
+
   const groupedDeliveries = useMemo(() => {
     if (!upcomingDeliveries) return [];
 
@@ -412,31 +452,31 @@ export default function SupplierHome() {
           </div>
         ) : groupedDeliveries.length > 0 ? (
           <div className="space-y-4">
-            {groupedDeliveries.map((group) => (
-              <div key={group.dateKey}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Calendar className={`h-3.5 w-3.5 text-black`} />
-                  <span className={`text-xs font-semibold uppercase tracking-wide text-black`}>
-                    {group.label}
-                  </span>
-                  {group.isToday && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-black animate-pulse" />
-                  )}
-                </div>
-
-                {group.orders.length === 0 && group.isToday && (
-                  <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center" data-testid="today-no-deliveries">
-                    <p className="text-sm text-muted-foreground">
-                      {lang === "de" ? "Keine Lieferungen geplant für heute" : "Nessuna consegna prevista per oggi"}
-                    </p>
+            {/* Mobile: per-group horizontal scroll cards (preserved) */}
+            <div className="space-y-4 md:hidden">
+              {groupedDeliveries.map((group) => (
+                <div key={`m-${group.dateKey}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className={`h-3.5 w-3.5 text-black`} />
+                    <span className={`text-xs font-semibold uppercase tracking-wide text-black`}>
+                      {group.label}
+                    </span>
+                    {group.isToday && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-black animate-pulse" />
+                    )}
                   </div>
-                )}
 
-                {group.orders.length > 0 && (
-                  <>
-                    {/* Mobile: horizontal scroll cards */}
+                  {group.orders.length === 0 && group.isToday && (
+                    <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center" data-testid="today-no-deliveries">
+                      <p className="text-sm text-muted-foreground">
+                        {lang === "de" ? "Keine Lieferungen geplant für heute" : "Nessuna consegna prevista per oggi"}
+                      </p>
+                    </div>
+                  )}
+
+                  {group.orders.length > 0 && (
                     <div
-                      className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
+                      className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
                       style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
                     >
                       {group.orders.map((order) => {
@@ -478,98 +518,97 @@ export default function SupplierHome() {
                         );
                       })}
                     </div>
+                  )}
+                </div>
+              ))}
+            </div>
 
-                    {/* Desktop: stacked list */}
-                    <div className="hidden md:block space-y-2">
-                      {group.orders.map((order) => {
+            {/* Desktop: Excel-style table (mirrors Bestellungen page) */}
+            <div className="hidden md:block">
+              <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="deliveries-table">
+                <div
+                  className={`grid items-center gap-3 px-4 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold`}
+                  style={{ gridTemplateColumns: deliveriesGridTemplate }}
+                >
+                  <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("orderNo")} testId="resize-deliv-orderNo" /></div>
+                  <div className="relative pr-2">Status<ColumnResizeHandle onPointerDown={startDeliveriesColResize("status")} testId="resize-deliv-status" /></div>
+                  <div className="relative pr-2">{lang === "de" ? "Restaurant" : "Ristorante"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("restaurant")} testId="resize-deliv-restaurant" /></div>
+                  <div className="relative pr-2 text-right">{lang === "de" ? "Artikel" : "Articoli"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("items")} testId="resize-deliv-items" /></div>
+                  <div className="relative pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("deliveryDate")} testId="resize-deliv-deliveryDate" /></div>
+                  <div className="relative pr-2">{lang === "de" ? "Erstellt" : "Creato"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("createdAt")} testId="resize-deliv-createdAt" /></div>
+                  <div className="text-right">{lang === "de" ? "Summe" : "Totale"}</div>
+                </div>
+                {groupedDeliveries.map((group) => (
+                  <div key={`d-${group.dateKey}`} data-testid={`deliveries-group-${group.dateKey}`}>
+                    <div className="px-4 py-2 bg-muted/20 border-b border-border/40 flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</h3>
+                      {group.isToday && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                      )}
+                      <span className="text-[11px] text-muted-foreground/60">({group.orders.length})</span>
+                    </div>
+                    {group.orders.length === 0 && group.isToday ? (
+                      <div className="px-4 py-6 text-center text-sm text-muted-foreground" data-testid="desk-today-no-deliveries">
+                        {lang === "de" ? "Keine Lieferungen geplant für heute" : "Nessuna consegna prevista per oggi"}
+                      </div>
+                    ) : (
+                      group.orders.map((order) => {
                         const restaurantName = order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown");
+                        const deliveryDateLabel = order.requestedDeliveryDate
+                          ? (() => {
+                              const d = new Date(order.requestedDeliveryDate + "T00:00:00");
+                              if (isToday(d)) return lang === "de" ? "Heute" : "Oggi";
+                              if (isTomorrow(d)) return lang === "de" ? "Morgen" : "Domani";
+                              return format(d, "EEE dd.MM.", { locale: dateLocale });
+                            })()
+                          : "—";
                         return (
-                          <div
+                          <Link
                             key={order.id}
-                            className="rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all duration-200"
-                            data-testid={`delivery-item-${order.id}`}
+                            href={`/supplier/orders/${order.id}`}
+                            className="block group/row border-b border-border/40 last:border-b-0 hover:bg-muted/40 transition-colors"
+                            data-testid={`delivery-row-${order.id}`}
                           >
-                            <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => navigate(`/supplier/orders/${order.id}`)}>
-                              <div className={`flex items-center justify-center h-10 w-10 rounded-lg shrink-0 ${
-                                order.status === "in_delivery"
-                                  ? "bg-purple-100 dark:bg-purple-900/30"
-                                  : "bg-blue-100 dark:bg-blue-900/30"
-                              }`}>
-                                {order.status === "in_delivery" ? (
-                                  <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                ) : (
-                                  <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                )}
+                            <div
+                              className={`grid items-center gap-3 px-4 ${densityRowClass(deliveriesRowDensity)}`}
+                              style={{ gridTemplateColumns: deliveriesGridTemplate }}
+                            >
+                              <span className="font-mono text-[13px] text-primary truncate">#{order.id.slice(0, 8)}</span>
+                              <div>
+                                <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
+                                  <span className="inline-flex items-center gap-1">
+                                    {getStatusIcon(order.status)}
+                                    {getOrderStatus(order.status, lang, true)}
+                                  </span>
+                                </Badge>
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium truncate">{restaurantName}</p>
-                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                  <span className="text-xs text-muted-foreground">#{order.id.slice(0, 8)}</span>
-                                  <span className="text-xs text-muted-foreground">·</span>
-                                  <span className="text-xs font-medium">{order.totalAmount}€</span>
-                                  {order.createdByUser && (
-                                    <>
-                                      <span className="text-xs text-muted-foreground">·</span>
-                                      <span className="text-xs text-muted-foreground" data-testid={`text-created-by-${order.id}`}>{order.createdByUser.name}</span>
-                                    </>
-                                  )}
-                                </div>
+                              <div className="min-w-0 flex items-center gap-2">
+                                <Avatar className="h-6 w-6 shrink-0">
+                                  <AvatarImage src={order.restaurant?.profileImageUrl || undefined} />
+                                  <AvatarFallback className="text-[9px] font-semibold">{restaurantName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <span className="truncate font-medium" data-testid={`text-restaurant-${order.id}`}>{restaurantName}</span>
                               </div>
-                              <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                {cardWizard?.orderId === order.id ? (
-                                  <div className="flex flex-col items-end gap-1">
-                                    <p className="text-[10px] md:text-xs font-medium text-foreground">
-                                      {cardWizard.action === "delivered" && (lang === "de" ? "Als geliefert markieren?" : "Contrassegnare come consegnato?")}
-                                      {cardWizard.action === "cancelled" && (lang === "de" ? "Bestellung stornieren?" : "Annullare l'ordine?")}
-                                    </p>
-                                    <div className="flex items-center gap-1">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 px-2 text-[10px] md:text-xs"
-                                        onClick={() => setCardWizard(null)}
-                                        disabled={updateStatusMutation.isPending}
-                                        data-testid={`cancel-wizard-${order.id}`}
-                                      >
-                                        <X className="h-3 w-3 mr-0.5" />
-                                        {t("common", "cancel")}
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        className={`h-7 px-2 text-[10px] md:text-xs ${cardWizard.action === "cancelled" ? "bg-red-600 hover:bg-red-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"}`}
-                                        onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: cardWizard.action })}
-                                        disabled={updateStatusMutation.isPending}
-                                        data-testid={`confirm-wizard-${order.id}`}
-                                      >
-                                        <Check className="h-3 w-3 mr-0.5" />
-                                        {t("supplierHome", "confirm")}
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-wrap gap-1 justify-end">
-                                    <Button size="sm" className="h-7 px-2 text-[10px] md:text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/30" variant="outline" onClick={() => setCardWizard({ orderId: order.id, action: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`home-delivered-${order.id}`}>
-                                      <Package className="h-3 w-3 mr-0.5" />
-                                      {lang === "de" ? "Geliefert" : "Consegnato"}
-                                    </Button>
-                                    {!order.requestedDeliveryDate && (
-                                      <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] md:text-xs border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950/30" onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} data-testid={`home-set-date-${order.id}`}>
-                                        <CalendarDays className="h-3 w-3 mr-0.5" />
-                                        {lang === "de" ? "Datum setzen" : "Imposta data"}
-                                      </Button>
-                                    )}
-                                  </div>
-                                )}
+                              <div className="text-right tabular-nums text-muted-foreground">{order.items?.length || 0}</div>
+                              <div className="min-w-0">
+                                <span className="truncate" data-testid={`text-delivery-${order.id}`}>{deliveryDateLabel}</span>
+                              </div>
+                              <div className="text-muted-foreground text-[12px] truncate" title={format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}>
+                                {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+                              </div>
+                              <div className="text-right font-semibold tabular-nums" data-testid={`text-total-${order.id}`}>
+                                {parseFloat(order.totalAmount).toFixed(2)}€
                               </div>
                             </div>
-                          </div>
+                          </Link>
                         );
-                      })}
-                    </div>
-                  </>
-                )}
+                      })
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-10 text-center">

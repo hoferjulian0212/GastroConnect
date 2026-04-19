@@ -33,19 +33,11 @@ import StaggeredList from "@/components/StaggeredList";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
-
-type SupplierResizableColKey = "select" | "orderNo" | "status" | "restaurant" | "items" | "deliveryDate" | "createdAt" | "total" | "actions";
-const SUPPLIER_COL_DEFAULTS: Record<SupplierResizableColKey, number> = {
-  select: 32,
-  orderNo: 150,
-  status: 140,
-  restaurant: 260,
-  items: 80,
-  deliveryDate: 160,
-  createdAt: 140,
-  total: 120,
-  actions: 48,
-};
+import {
+  SUPPLIER_ORDER_COL_DEFAULTS,
+  SUPPLIER_ORDER_COLS_STORAGE_KEY,
+  type SupplierOrderColKey,
+} from "@/lib/orderTableConfig";
 
 export default function SupplierOrders() {
   const { currentUser } = useUser();
@@ -110,13 +102,13 @@ export default function SupplierOrders() {
     };
     return map[k][lang === "de" ? "de" : "it"];
   };
-  const visibleResizableKeys = useMemo<SupplierResizableColKey[]>(() => {
-    const base: SupplierResizableColKey[] = batchMode ? ["select"] : [];
+  const visibleResizableKeys = useMemo<SupplierOrderColKey[]>(() => {
+    const base: SupplierOrderColKey[] = batchMode ? ["select"] : [];
     return [...base, "orderNo", ...SUP_COLUMNS.filter((c) => visibleColumns.has(c)), "actions"];
   }, [visibleColumns, batchMode]);
-  const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths } = useResizableColumns<SupplierResizableColKey>(
-    "supplierOrdersColWidths",
-    SUPPLIER_COL_DEFAULTS,
+  const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths } = useResizableColumns<SupplierOrderColKey>(
+    SUPPLIER_ORDER_COLS_STORAGE_KEY,
+    SUPPLIER_ORDER_COL_DEFAULTS,
     visibleResizableKeys,
   );
   type RowDensity = "compact" | "normal" | "comfortable";

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Link, useLocation } from "wouter";
-import { format, isToday, isTomorrow, differenceInDays, differenceInHours } from "date-fns";
+import { format, isToday, isTomorrow, differenceInDays, differenceInHours, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
@@ -21,6 +21,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
+import { useResizableColumns } from "@/hooks/use-resizable-columns";
+import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
+import {
+  RESTAURANT_ORDER_COL_DEFAULTS,
+  RESTAURANT_ORDER_COLS_STORAGE_KEY,
+  RESTAURANT_ORDER_DENSITY_STORAGE_KEY,
+  type RestaurantOrderColKey,
+  type RowDensity,
+  densityRowClass,
+  densityHeaderClass,
+} from "@/lib/orderTableConfig";
 
 export default function RestaurantHome() {
   const { currentUser } = useUser();
@@ -438,6 +449,23 @@ export default function RestaurantHome() {
     if (isTomorrow(date)) return t("restaurantHome", "tomorrow");
     return format(date, "EEEE, dd.MM.", { locale: dateLocale });
   };
+
+  const deliveriesTableKeys = useMemo<RestaurantOrderColKey[]>(
+    () => ["orderNo", "status", "supplier", "items", "deliveryDate", "createdAt", "total"],
+    [],
+  );
+  const { gridTemplate: deliveriesGridTemplate, startResize: startDeliveriesColResize } = useResizableColumns<RestaurantOrderColKey>(
+    RESTAURANT_ORDER_COLS_STORAGE_KEY,
+    RESTAURANT_ORDER_COL_DEFAULTS,
+    deliveriesTableKeys,
+  );
+  const [deliveriesRowDensity] = useState<RowDensity>(() => {
+    try {
+      const saved = localStorage.getItem(RESTAURANT_ORDER_DENSITY_STORAGE_KEY) as RowDensity | null;
+      if (saved === "compact" || saved === "normal" || saved === "comfortable") return saved;
+    } catch {}
+    return "normal";
+  });
 
   const getOrderDeliveryState = (order: OrderWithDetails): "delivered_today" | "overdue" | "delayed" | "upcoming" => {
     if (order.status === "delivered") {
@@ -877,35 +905,35 @@ export default function RestaurantHome() {
           </div>
         ) : groupedDeliveries.length > 0 ? (
           <div className="space-y-4">
-            {groupedDeliveries.map((group) => (
-              <div key={group.dateKey}>
-                <div className="flex items-center gap-2 mb-2 text-[#000000]">
-                  {group.type === "overdue" ? (
-                    <AlertTriangle className="h-3.5 w-3.5 text-black" />
-                  ) : (
-                    <Calendar className="h-3.5 w-3.5 text-black" />
-                  )}
-                  <span className="text-xs font-semibold uppercase tracking-wide text-black">
-                    {group.label}
-                  </span>
-                  {group.isToday && group.type !== "overdue" && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-black animate-pulse" />
-                  )}
-                </div>
-
-                {group.orders.length === 0 && group.isToday && (
-                  <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center" data-testid="today-no-deliveries">
-                    <p className="text-sm text-muted-foreground">
-                      {lang === "de" ? "Keine Lieferungen geplant f\u00FCr heute" : "Nessuna consegna prevista per oggi"}
-                    </p>
+            {/* Mobile: per-group horizontal scroll cards (preserved) */}
+            <div className="space-y-4 md:hidden">
+              {groupedDeliveries.map((group) => (
+                <div key={`m-${group.dateKey}`}>
+                  <div className="flex items-center gap-2 mb-2 text-[#000000]">
+                    {group.type === "overdue" ? (
+                      <AlertTriangle className="h-3.5 w-3.5 text-black" />
+                    ) : (
+                      <Calendar className="h-3.5 w-3.5 text-black" />
+                    )}
+                    <span className="text-xs font-semibold uppercase tracking-wide text-black">
+                      {group.label}
+                    </span>
+                    {group.isToday && group.type !== "overdue" && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-black animate-pulse" />
+                    )}
                   </div>
-                )}
 
-                {group.orders.length > 0 && (
-                  <>
-                    {/* Mobile: horizontal scroll cards */}
+                  {group.orders.length === 0 && group.isToday && (
+                    <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center" data-testid="today-no-deliveries">
+                      <p className="text-sm text-muted-foreground">
+                        {lang === "de" ? "Keine Lieferungen geplant f\u00FCr heute" : "Nessuna consegna prevista per oggi"}
+                      </p>
+                    </div>
+                  )}
+
+                  {group.orders.length > 0 && (
                     <div
-                      className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
+                      className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
                       style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
                     >
                       {buildDeliveryBundles(group.orders).flatMap((bundle) => {
@@ -950,58 +978,117 @@ export default function RestaurantHome() {
                         return [header, ...children];
                       })}
                     </div>
+                  )}
+                </div>
+              ))}
+            </div>
 
-                    {/* Desktop: stacked list */}
-                    <div className="hidden md:block space-y-2">
-                      {buildDeliveryBundles(group.orders).flatMap((bundle) => {
-                        const bundleKey = `${group.dateKey}::${bundle.supplierId}`;
-                        if (bundle.orders.length === 1) {
-                          return [renderDeliveryCardDesktop(bundle.orders[0])];
-                        }
-                        const expanded = expandedBundles.has(bundleKey);
-                        const first = bundle.orders[0];
-                        const supplierName = first.supplier?.companyName || first.supplier?.name || t("common", "unknown");
-                        const totalAmount = bundle.orders.reduce((s, o) => s + parseFloat(o.totalAmount || "0"), 0);
-                        const totalItems = bundle.orders.reduce((s, o) => s + (o.items?.length || 0), 0);
-                        const header = (
-                          <div
-                            key={`bundle-${bundleKey}`}
-                            className="rounded-xl border-2 border-primary/30 bg-primary/5 transition-all duration-200"
-                            data-testid={`bundle-${bundleKey}`}
+            {/* Desktop: Excel-style table (mirrors Bestellungen page) */}
+            <div className="hidden md:block">
+              <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="deliveries-table">
+                <div
+                  className={`grid items-center gap-3 px-4 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold`}
+                  style={{ gridTemplateColumns: deliveriesGridTemplate }}
+                >
+                  <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("orderNo")} testId="resize-deliv-orderNo" /></div>
+                  <div className="relative pr-2">Status<ColumnResizeHandle onPointerDown={startDeliveriesColResize("status")} testId="resize-deliv-status" /></div>
+                  <div className="relative pr-2">{lang === "de" ? "Lieferant" : "Fornitore"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("supplier")} testId="resize-deliv-supplier" /></div>
+                  <div className="relative pr-2 text-right">{lang === "de" ? "Artikel" : "Articoli"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("items")} testId="resize-deliv-items" /></div>
+                  <div className="relative pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("deliveryDate")} testId="resize-deliv-deliveryDate" /></div>
+                  <div className="relative pr-2">{lang === "de" ? "Erstellt" : "Creato"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("createdAt")} testId="resize-deliv-createdAt" /></div>
+                  <div className="text-right">{lang === "de" ? "Summe" : "Totale"}</div>
+                </div>
+                {groupedDeliveries.map((group) => (
+                  <div key={`d-${group.dateKey}`} data-testid={`deliveries-group-${group.dateKey}`}>
+                    <div className="px-4 py-2 bg-muted/20 border-b border-border/40 flex items-center gap-2">
+                      {group.type === "overdue" ? (
+                        <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                      ) : (
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                      <h3 className={`text-xs font-semibold uppercase tracking-wide ${group.type === "overdue" ? "text-red-700 dark:text-red-400" : "text-muted-foreground"}`}>{group.label}</h3>
+                      {group.isToday && group.type !== "overdue" && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                      )}
+                      <span className="text-[11px] text-muted-foreground/60">({group.orders.length})</span>
+                    </div>
+                    {group.orders.length === 0 && group.isToday ? (
+                      <div className="px-4 py-6 text-center text-sm text-muted-foreground" data-testid="desk-today-no-deliveries">
+                        {lang === "de" ? "Keine Lieferungen geplant für heute" : "Nessuna consegna prevista per oggi"}
+                      </div>
+                    ) : (
+                      group.orders.map((order) => {
+                        const state = getOrderDeliveryState(order);
+                        const isOverdue = state === "overdue";
+                        const isDelayed = state === "delayed";
+                        const supplierName = order.supplier?.companyName || order.supplier?.name || t("common", "unknown");
+                        const deliveryDateLabel = order.requestedDeliveryDate
+                          ? (() => {
+                              const d = new Date(order.requestedDeliveryDate + "T00:00:00");
+                              if (isToday(d)) return lang === "de" ? "Heute" : "Oggi";
+                              if (isTomorrow(d)) return lang === "de" ? "Morgen" : "Domani";
+                              return format(d, "EEE dd.MM.", { locale: dateLocale });
+                            })()
+                          : "—";
+                        return (
+                          <Link
+                            key={order.id}
+                            href={`/restaurant/orders/${order.id}`}
+                            className="block group/row border-b border-border/40 last:border-b-0 hover:bg-muted/40 transition-colors"
+                            data-testid={`delivery-row-${order.id}`}
                           >
                             <div
-                              className="flex items-center gap-3 p-3 cursor-pointer"
-                              onClick={() => toggleBundle(bundleKey)}
+                              className={`grid items-center gap-3 px-4 ${densityRowClass(deliveriesRowDensity)}`}
+                              style={{ gridTemplateColumns: deliveriesGridTemplate }}
                             >
-                              <div className="flex items-center justify-center h-10 w-10 rounded-lg shrink-0 bg-primary/15">
-                                <Package className="h-5 w-5 text-primary" />
+                              <span className="font-mono text-[13px] text-primary truncate">#{order.id.slice(0, 8)}</span>
+                              <div>
+                                <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
+                                  <span className="inline-flex items-center gap-1">
+                                    {getStatusIcon(order.status)}
+                                    {getOrderStatus(order.status, lang)}
+                                  </span>
+                                </Badge>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-sm font-medium truncate">{supplierName}</span>
-                                  <Badge className="bg-primary/15 text-primary text-[10px] px-1.5" variant="outline">
-                                    {bundle.orders.length}x {lang === "de" ? "Bestellungen" : "ordini"}
+                              <div className="min-w-0 flex items-center gap-2">
+                                <Avatar className="h-6 w-6 shrink-0">
+                                  <AvatarImage src={order.supplier?.profileImageUrl || undefined} />
+                                  <AvatarFallback className="text-[9px] font-semibold">{supplierName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <span className="truncate font-medium" data-testid={`text-supplier-${order.id}`}>{supplierName}</span>
+                              </div>
+                              <div className="text-right tabular-nums text-muted-foreground">{order.items?.length || 0}</div>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className={`truncate ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`} data-testid={`text-delivery-${order.id}`}>
+                                  {deliveryDateLabel}
+                                </span>
+                                {isOverdue && (
+                                  <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
+                                    {lang === "de" ? "Überfällig" : "Scaduto"}
                                   </Badge>
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {totalItems} {t("common", "items")} — {lang === "de" ? "Gesamtsumme" : "Totale"}: {totalAmount.toFixed(2)}€
-                                </p>
+                                )}
+                                {!isOverdue && isDelayed && (
+                                  <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
+                                    {lang === "de" ? "Verspätet" : "Ritardo"}
+                                  </Badge>
+                                )}
                               </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-sm font-bold">{totalAmount.toFixed(2)}€</span>
-                                <ChevronRight className={`h-4 w-4 text-primary transition-transform ${expanded ? "rotate-90" : ""}`} />
+                              <div className="text-muted-foreground text-[12px] truncate" title={format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}>
+                                {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+                              </div>
+                              <div className="text-right font-semibold tabular-nums" data-testid={`text-total-${order.id}`}>
+                                {parseFloat(order.totalAmount).toFixed(2)}€
                               </div>
                             </div>
-                          </div>
+                          </Link>
                         );
-                        const children = expanded ? bundle.orders.map(o => renderDeliveryCardDesktop(o, true)) : [];
-                        return [header, ...children];
-                      })}
-                    </div>
-                  </>
-                )}
+                      })
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
             {extraDeliveriesCount > 0 && (
               <p className="text-xs text-muted-foreground text-center pt-1" data-testid="text-more-deliveries">
                 +{extraDeliveriesCount} {lang === "de"
