@@ -48,6 +48,26 @@ export const SUPPLIER_ORDER_COL_DEFAULTS: Record<SupplierOrderColKey, number> = 
 export const SUPPLIER_ORDER_COLS_STORAGE_KEY = "supplierOrdersColWidths";
 export const SUPPLIER_ORDER_DENSITY_STORAGE_KEY = "supplierOrdersRowDensity";
 
+export type InventoryColKey =
+  | "product"
+  | "category"
+  | "stock"
+  | "threshold"
+  | "status"
+  | "actions";
+
+export const INVENTORY_COL_DEFAULTS: Record<InventoryColKey, number> = {
+  product: 320,
+  category: 160,
+  stock: 110,
+  threshold: 110,
+  status: 140,
+  actions: 96,
+};
+
+export const INVENTORY_COLS_STORAGE_KEY = "supplierInventoryColWidths";
+export const INVENTORY_DENSITY_STORAGE_KEY = "supplierInventoryRowDensity";
+
 export type RowDensity = "compact" | "normal" | "comfortable";
 
 export const densityRowClass = (d: RowDensity): string =>

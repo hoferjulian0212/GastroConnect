@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,6 +26,17 @@ import { useT } from "@/lib/translations";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it as itLocale } from "date-fns/locale";
+import { useResizableColumns } from "@/hooks/use-resizable-columns";
+import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
+import {
+  INVENTORY_COL_DEFAULTS,
+  INVENTORY_COLS_STORAGE_KEY,
+  INVENTORY_DENSITY_STORAGE_KEY,
+  type InventoryColKey,
+  type RowDensity,
+  densityRowClass as densityRowClassFn,
+  densityHeaderClass as densityHeaderClassFn,
+} from "@/lib/orderTableConfig";
 
 const productSchema = z.object({
   name: z.string().min(1, "Name ist erforderlich"),
@@ -52,6 +63,25 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
   const [adjustQty, setAdjustQty] = useState(1);
   const [adjustNote, setAdjustNote] = useState("");
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
+
+  const INVENTORY_COLS: InventoryColKey[] = useMemo(() => ["product", "category", "stock", "threshold", "status", "actions"], []);
+  const { gridTemplate: inventoryGridTemplate, startResize: startInventoryResize } = useResizableColumns<InventoryColKey>(
+    INVENTORY_COLS_STORAGE_KEY,
+    INVENTORY_COL_DEFAULTS,
+    INVENTORY_COLS,
+  );
+  const [rowDensity, setRowDensity] = useState<RowDensity>(() => {
+    try {
+      const saved = localStorage.getItem(INVENTORY_DENSITY_STORAGE_KEY) as RowDensity | null;
+      if (saved === "compact" || saved === "normal" || saved === "comfortable") return saved;
+    } catch {}
+    return "normal";
+  });
+  useEffect(() => {
+    try { localStorage.setItem(INVENTORY_DENSITY_STORAGE_KEY, rowDensity); } catch {}
+  }, [rowDensity]);
+  const densityRowClass = densityRowClassFn(rowDensity);
+  const densityHeaderClass = densityHeaderClassFn(rowDensity);
 
   const { data: stockMovements, isLoading: stockMovementsLoading } = useQuery<StockMovement[]>({
     queryKey: [`/api/stock-movements?productId=${historyProduct?.id}`],
@@ -191,6 +221,27 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
         />
       </div>
 
+      {/* Toolbar (Desktop only): density picker */}
+      <div className="hidden md:flex items-center justify-end gap-2">
+        <span className="text-[11px] text-muted-foreground">{lang === "de" ? "Zeilengröße" : "Densità righe"}</span>
+        <div className="flex items-center gap-0.5 p-0.5 rounded-md border border-border bg-card">
+          {([
+            { key: "compact", label: lang === "de" ? "Kompakt" : "Compatto" },
+            { key: "normal", label: lang === "de" ? "Normal" : "Normale" },
+            { key: "comfortable", label: lang === "de" ? "Komfort" : "Comodo" },
+          ] as const).map((d) => (
+            <button
+              key={d.key}
+              onClick={() => setRowDensity(d.key)}
+              className={`px-2 py-1 rounded-sm text-[11px] transition-colors ${rowDensity === d.key ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground"}`}
+              data-testid={`density-${d.key}`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {filtered.length === 0 ? (
         <div className="text-center py-10">
           <Warehouse className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
@@ -208,8 +259,114 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
           )}
         </div>
       ) : (
-        <div className="space-y-1.5">
-          {filtered.map((product) => {
+        <>
+          {/* Desktop Excel-style table */}
+          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden" data-testid="inventory-table">
+            <div
+              className={`grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold`}
+              style={{ gridTemplateColumns: inventoryGridTemplate }}
+            >
+              <div className="relative pr-2">{lang === "de" ? "Produkt" : "Prodotto"}<ColumnResizeHandle onPointerDown={startInventoryResize("product")} testId="resize-inv-product" /></div>
+              <div className="relative pr-2">{lang === "de" ? "Kategorie" : "Categoria"}<ColumnResizeHandle onPointerDown={startInventoryResize("category")} testId="resize-inv-category" /></div>
+              <div className="relative pr-2 text-right">{lang === "de" ? "Bestand" : "Scorta"}<ColumnResizeHandle onPointerDown={startInventoryResize("stock")} testId="resize-inv-stock" /></div>
+              <div className="relative pr-2 text-right">{lang === "de" ? "Min" : "Min"}<ColumnResizeHandle onPointerDown={startInventoryResize("threshold")} testId="resize-inv-threshold" /></div>
+              <div className="relative pr-2">Status<ColumnResizeHandle onPointerDown={startInventoryResize("status")} testId="resize-inv-status" /></div>
+              <div></div>
+            </div>
+            {filtered.map((product) => {
+              const status = getStockStatus(product);
+              const currentStock = product.stockQuantity ?? 0;
+              return (
+                <div
+                  key={product.id}
+                  className={`grid items-center gap-3 px-4 ${densityRowClass} border-b border-border/40 last:border-b-0 cursor-pointer transition-colors ${
+                    status === "out" ? "bg-red-50/40 dark:bg-red-950/10 hover:bg-red-50/70 dark:hover:bg-red-950/20" :
+                    status === "low" ? "bg-orange-50/40 dark:bg-orange-950/10 hover:bg-orange-50/70 dark:hover:bg-orange-950/20" :
+                    "hover:bg-muted/40"
+                  }`}
+                  style={{ gridTemplateColumns: inventoryGridTemplate }}
+                  onClick={() => openAdjustDialog(product)}
+                  data-testid={`inventory-row-${product.id}`}
+                >
+                  {/* Product (image + name) */}
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    {product.imageUrl ? (
+                      <div className="w-8 h-8 shrink-0 rounded-md overflow-hidden bg-muted">
+                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 shrink-0 rounded-md bg-muted/60 flex items-center justify-center">
+                        <Package className="h-3.5 w-3.5 text-muted-foreground/40" />
+                      </div>
+                    )}
+                    <span className="font-medium truncate" data-testid={`text-name-${product.id}`}>{product.name}</span>
+                  </div>
+                  {/* Category */}
+                  <div className="truncate text-muted-foreground pr-2">
+                    {product.category || <span className="text-muted-foreground/40">—</span>}
+                  </div>
+                  {/* Stock */}
+                  <div className="text-right tabular-nums pr-2">
+                    <span className={`font-semibold ${
+                      status === "out" ? "text-red-600 dark:text-red-400" :
+                      status === "low" ? "text-orange-600 dark:text-orange-400" : ""
+                    }`}>{currentStock}</span>
+                    <span className="text-muted-foreground text-[11px] ml-1">{product.unit}</span>
+                  </div>
+                  {/* Threshold */}
+                  <div className="text-right tabular-nums text-muted-foreground pr-2">
+                    {product.lowStockThreshold && product.lowStockThreshold > 0
+                      ? product.lowStockThreshold
+                      : <span className="text-muted-foreground/40">—</span>}
+                  </div>
+                  {/* Status badge */}
+                  <div className="pr-2">
+                    {status === "out" ? (
+                      <Badge variant="outline" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800 text-[10px] rounded-full px-2 py-0.5 font-medium">
+                        {lang === "de" ? "Ausverkauft" : "Esaurito"}
+                      </Badge>
+                    ) : status === "low" ? (
+                      <Badge variant="outline" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800 text-[10px] rounded-full px-2 py-0.5 font-medium">
+                        <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                        {lang === "de" ? "Niedrig" : "Basso"}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 text-[10px] rounded-full px-2 py-0.5 font-medium">
+                        OK
+                      </Badge>
+                    )}
+                  </div>
+                  {/* Actions */}
+                  <div className="flex items-center justify-end gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-md"
+                      onClick={(e) => { e.stopPropagation(); openAdjustDialog(product); }}
+                      data-testid={`button-stock-adjust-${product.id}`}
+                      title={lang === "de" ? "Bestand anpassen" : "Regola scorta"}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-md"
+                      onClick={(e) => { e.stopPropagation(); setHistoryProduct(product); }}
+                      data-testid={`button-history-${product.id}`}
+                      title={lang === "de" ? "Verlauf" : "Cronologia"}
+                    >
+                      <History className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Mobile cards (unchanged) */}
+          <div className="md:hidden space-y-1.5">
+            {filtered.map((product) => {
             const status = getStockStatus(product);
             const currentStock = product.stockQuantity ?? 0;
 
@@ -294,7 +451,8 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
               </div>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
 
       <Dialog open={!!adjustProduct} onOpenChange={(open) => { if (!open) { setAdjustProduct(null); setAdjustQty(1); setAdjustNote(""); } }}>
