@@ -747,7 +747,7 @@ export default function SupplierOrders() {
         data-testid={`order-row-${order.id}`}
       >
         {/* Desktop row */}
-        <div className={`hidden md:grid items-center gap-3 px-4 ${densityRowClass} [&>*+*]:border-l [&>*+*]:border-border`} style={{ gridTemplateColumns: gridTemplate }}>
+        <div className={`hidden md:grid items-center gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass} [&>*+*]:border-l [&>*+*]:border-border`} style={{ gridTemplateColumns: gridTemplate }}>
           {batchMode && (
             <div onClick={(e) => { e.stopPropagation(); if (order.status === "pending") toggleOrderSelection(order.id); }}>
               {order.status === "pending" ? (
@@ -1479,7 +1479,7 @@ export default function SupplierOrders() {
                 return (
                   <div className="rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_24px_-8px_rgba(15,23,42,0.12),0_24px_48px_-24px_rgba(15,23,42,0.16)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_12px_32px_-8px_rgba(0,0,0,0.5)] overflow-hidden md:overflow-x-auto" data-testid="orders-table">
                     <div
-                      className={`hidden md:grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
+                      className={`hidden md:grid items-center gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
                       style={{ gridTemplateColumns: gridTemplate }}
                     >
                       {batchMode && <div></div>}

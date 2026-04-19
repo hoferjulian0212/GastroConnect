@@ -220,7 +220,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
           {/* Desktop Excel-style table */}
           <div className="hidden md:block rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_24px_-8px_rgba(15,23,42,0.12),0_24px_48px_-24px_rgba(15,23,42,0.16)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_12px_32px_-8px_rgba(0,0,0,0.5)] overflow-hidden" data-testid="inventory-table">
             <div
-              className={`grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
+              className={`grid items-center gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
               style={{ gridTemplateColumns: inventoryGridTemplate }}
             >
               <div className="relative pr-2">{lang === "de" ? "Produkt" : "Prodotto"}<ColumnResizeHandle onPointerDown={startInventoryResize("product")} testId="resize-inv-product" /></div>
@@ -236,7 +236,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
               return (
                 <div
                   key={product.id}
-                  className={`grid items-center gap-3 px-4 ${densityRowClass} border-b border-border last:border-b-0 cursor-pointer transition-colors [&>*+*]:border-l [&>*+*]:border-border ${
+                  className={`grid items-center gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass} border-b border-border last:border-b-0 cursor-pointer transition-colors [&>*+*]:border-l [&>*+*]:border-border ${
                     status === "out" ? "bg-red-50/40 dark:bg-red-950/10 hover:bg-red-50/70 dark:hover:bg-red-950/20" :
                     status === "low" ? "bg-orange-50/40 dark:bg-orange-950/10 hover:bg-orange-50/70 dark:hover:bg-orange-950/20" :
                     "hover:bg-muted/40"
