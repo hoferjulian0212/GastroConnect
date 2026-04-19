@@ -69,6 +69,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
     INVENTORY_COLS_STORAGE_KEY,
     INVENTORY_COL_DEFAULTS,
     INVENTORY_COLS,
+    { flexKey: "product" },
   );
   const [rowDensity, setRowDensity] = useState<RowDensity>(() => {
     try {

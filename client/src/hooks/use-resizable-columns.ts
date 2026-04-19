@@ -15,7 +15,7 @@ export function useResizableColumns<K extends string>(
   storageKey: string,
   defaults: ColumnWidths<K>,
   visibleKeys: readonly K[],
-  options?: { minWidth?: number; maxWidth?: number },
+  options?: { minWidth?: number; maxWidth?: number; flexKey?: K },
 ): UseResizableColumnsResult<K> {
   const min = options?.minWidth ?? 60;
   const max = options?.maxWidth ?? 800;
@@ -71,9 +71,17 @@ export function useResizableColumns<K extends string>(
     [widths, defaults, min, max],
   );
 
+  const flexKey = options?.flexKey;
   const gridTemplate = useMemo(
-    () => visibleKeys.map((k) => `${widths[k] ?? defaults[k]}px`).join(" "),
-    [visibleKeys, widths, defaults],
+    () =>
+      visibleKeys
+        .map((k) => {
+          const w = widths[k] ?? defaults[k];
+          if (flexKey && k === flexKey) return `minmax(${w}px, 1fr)`;
+          return `${w}px`;
+        })
+        .join(" "),
+    [visibleKeys, widths, defaults, flexKey],
   );
 
   const resetWidths = useCallback(() => setWidths(defaults), [defaults]);
