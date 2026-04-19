@@ -199,27 +199,6 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
         />
       </div>
 
-      {/* Toolbar (Desktop only): density picker */}
-      <div className="hidden md:flex items-center justify-end gap-2">
-        <span className="text-[11px] text-muted-foreground">{lang === "de" ? "Zeilengröße" : "Densità righe"}</span>
-        <div className="flex items-center gap-0.5 p-0.5 rounded-md border border-border bg-card">
-          {([
-            { key: "compact", label: lang === "de" ? "Kompakt" : "Compatto" },
-            { key: "normal", label: lang === "de" ? "Normal" : "Normale" },
-            { key: "comfortable", label: lang === "de" ? "Komfort" : "Comodo" },
-          ] as const).map((d) => (
-            <button
-              key={d.key}
-              onClick={() => setRowDensity(d.key)}
-              className={`px-2 py-1 rounded-sm text-[11px] transition-colors ${rowDensity === d.key ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground"}`}
-              data-testid={`density-${d.key}`}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {filtered.length === 0 ? (
         <div className="text-center py-10">
           <Warehouse className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />

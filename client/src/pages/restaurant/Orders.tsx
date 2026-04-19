@@ -1195,26 +1195,6 @@ export default function RestaurantOrders() {
                   <Checkbox checked={groupByDate} onCheckedChange={(v) => setGroupByDate(!!v)} />
                   <span>{lang === "de" ? "Nach Datum gruppieren" : "Raggruppa per data"}</span>
                 </label>
-                <Separator className="my-1.5" />
-                <div className="px-2 pt-1 pb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                  {lang === "de" ? "Zeilengröße" : "Densità righe"}
-                </div>
-                <div className="flex gap-1 px-2 pb-1">
-                  {([
-                    { key: "compact", de: "Kompakt", it: "Compatta" },
-                    { key: "normal", de: "Normal", it: "Normale" },
-                    { key: "comfortable", de: "Bequem", it: "Comoda" },
-                  ] as const).map((d) => (
-                    <button
-                      key={d.key}
-                      onClick={() => setRowDensity(d.key)}
-                      className={`flex-1 px-2 py-1 rounded-md text-xs transition-colors ${rowDensity === d.key ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80 text-foreground"}`}
-                      data-testid={`density-${d.key}`}
-                    >
-                      {lang === "de" ? d.de : d.it}
-                    </button>
-                  ))}
-                </div>
                 <Button variant="ghost" size="sm" className="h-7 text-xs w-full mt-1" onClick={() => setVisibleColumns(new Set(ALL_COLUMNS))}>
                   {lang === "de" ? "Alle anzeigen" : "Mostra tutte"}
                 </Button>
@@ -1452,26 +1432,6 @@ export default function RestaurantOrders() {
                 <Checkbox checked={groupByDate} onCheckedChange={(v) => setGroupByDate(!!v)} />
                 <span>{lang === "de" ? "Nach Datum gruppieren" : "Raggruppa per data"}</span>
               </label>
-              <Separator className="my-1.5" />
-              <div className="px-2 pt-1 pb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                {lang === "de" ? "Zeilengröße" : "Densità righe"}
-              </div>
-              <div className="flex gap-1 px-2 pb-1">
-                {([
-                  { key: "compact", de: "Kompakt", it: "Compatta" },
-                  { key: "normal", de: "Normal", it: "Normale" },
-                  { key: "comfortable", de: "Bequem", it: "Comoda" },
-                ] as const).map((d) => (
-                  <button
-                    key={d.key}
-                    onClick={() => setRowDensity(d.key)}
-                    className={`flex-1 px-2 py-1 rounded-md text-xs transition-colors ${rowDensity === d.key ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80 text-foreground"}`}
-                    data-testid={`density-content-${d.key}`}
-                  >
-                    {lang === "de" ? d.de : d.it}
-                  </button>
-                ))}
-              </div>
               <Button variant="ghost" size="sm" className="h-7 text-xs w-full mt-1" onClick={() => setVisibleColumns(new Set(ALL_COLUMNS))}>
                 {lang === "de" ? "Alle anzeigen" : "Mostra tutte"}
               </Button>
