@@ -241,7 +241,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
           {/* Desktop Excel-style table */}
           <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden" data-testid="inventory-table">
             <div
-              className={`grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold`}
+              className={`grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border/50`}
               style={{ gridTemplateColumns: inventoryGridTemplate }}
             >
               <div className="relative pr-2">{lang === "de" ? "Produkt" : "Prodotto"}<ColumnResizeHandle onPointerDown={startInventoryResize("product")} testId="resize-inv-product" /></div>
@@ -257,7 +257,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
               return (
                 <div
                   key={product.id}
-                  className={`grid items-center gap-3 px-4 ${densityRowClass} border-b border-border/40 last:border-b-0 cursor-pointer transition-colors ${
+                  className={`grid items-center gap-3 px-4 ${densityRowClass} border-b border-border/40 last:border-b-0 cursor-pointer transition-colors [&>*+*]:border-l [&>*+*]:border-border/30 ${
                     status === "out" ? "bg-red-50/40 dark:bg-red-950/10 hover:bg-red-50/70 dark:hover:bg-red-950/20" :
                     status === "low" ? "bg-orange-50/40 dark:bg-orange-950/10 hover:bg-orange-50/70 dark:hover:bg-orange-950/20" :
                     "hover:bg-muted/40"

@@ -988,7 +988,7 @@ export default function RestaurantHome() {
             <div className="hidden md:block">
               <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="deliveries-table">
                 <div
-                  className={`grid items-center gap-3 px-4 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold`}
+                  className={`grid items-center gap-3 px-4 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border/50`}
                   style={{ gridTemplateColumns: deliveriesGridTemplate }}
                 >
                   <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("orderNo")} testId="resize-deliv-orderNo" /></div>
@@ -1039,7 +1039,7 @@ export default function RestaurantHome() {
                             data-testid={`delivery-row-${order.id}`}
                           >
                             <div
-                              className={`grid items-center gap-3 px-4 ${densityRowClass(deliveriesRowDensity)}`}
+                              className={`grid items-center gap-3 px-4 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border/30`}
                               style={{ gridTemplateColumns: deliveriesGridTemplate }}
                             >
                               <span className="font-mono text-[13px] text-primary truncate">#{order.id.slice(0, 8)}</span>

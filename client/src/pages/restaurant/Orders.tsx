@@ -923,7 +923,7 @@ export default function RestaurantOrders() {
         data-testid={`order-row-${order.id}`}
       >
         {/* Desktop row */}
-        <div className={`hidden md:grid items-center gap-3 px-4 ${densityRowClass}`} style={{ gridTemplateColumns: gridTemplate }}>
+        <div className={`hidden md:grid items-center gap-3 px-4 ${densityRowClass} [&>*+*]:border-l [&>*+*]:border-border/30`} style={{ gridTemplateColumns: gridTemplate }}>
           {/* Bestell-Nr — hyperlink */}
           <Link
             href={`/restaurant/orders/${order.id}`}
@@ -1666,7 +1666,7 @@ export default function RestaurantOrders() {
             <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="orders-table">
               {/* Desktop column header */}
               <div
-                className={`hidden md:grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold`}
+                className={`hidden md:grid items-center gap-3 px-4 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border/50`}
                 style={{ gridTemplateColumns: gridTemplate }}
               >
                 <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startColResize("orderNo")} testId="resize-orderNo" /></div>
