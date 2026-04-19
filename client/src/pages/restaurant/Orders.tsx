@@ -110,7 +110,7 @@ export default function RestaurantOrders() {
     RESTAURANT_ORDER_COLS_STORAGE_KEY,
     RESTAURANT_ORDER_COL_DEFAULTS,
     visibleResizableKeys,
-    { flexKey: "supplier" },
+    { flexKey: "deliveryDate" },
   );
   type RowDensity = "compact" | "normal" | "comfortable";
   const [rowDensity, setRowDensity] = useState<RowDensity>(() => {

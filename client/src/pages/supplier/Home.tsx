@@ -282,7 +282,7 @@ export default function SupplierHome() {
     SUPPLIER_ORDER_COLS_STORAGE_KEY,
     SUPPLIER_ORDER_COL_DEFAULTS,
     deliveriesTableKeys,
-    { flexKey: "restaurant" },
+    { flexKey: "deliveryDate" },
   );
   const [deliveriesRowDensity] = useState<RowDensity>(() => {
     try {

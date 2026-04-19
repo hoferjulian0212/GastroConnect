@@ -11,7 +11,7 @@ export type RestaurantOrderColKey =
 export const RESTAURANT_ORDER_COL_DEFAULTS: Record<RestaurantOrderColKey, number> = {
   orderNo: 150,
   status: 140,
-  supplier: 260,
+  supplier: 180,
   items: 80,
   deliveryDate: 160,
   createdAt: 140,
@@ -37,7 +37,7 @@ export const SUPPLIER_ORDER_COL_DEFAULTS: Record<SupplierOrderColKey, number> = 
   select: 32,
   orderNo: 150,
   status: 140,
-  restaurant: 260,
+  restaurant: 180,
   items: 80,
   deliveryDate: 160,
   createdAt: 140,

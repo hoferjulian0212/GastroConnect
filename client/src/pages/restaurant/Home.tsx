@@ -458,7 +458,7 @@ export default function RestaurantHome() {
     RESTAURANT_ORDER_COLS_STORAGE_KEY,
     RESTAURANT_ORDER_COL_DEFAULTS,
     deliveriesTableKeys,
-    { flexKey: "supplier" },
+    { flexKey: "deliveryDate" },
   );
   const [deliveriesRowDensity] = useState<RowDensity>(() => {
     try {
