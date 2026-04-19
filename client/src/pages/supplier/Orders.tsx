@@ -979,7 +979,8 @@ export default function SupplierOrders() {
           </div>
         </div>
 
-        {/* Icon-Button Toolbar: Suchen · Spalten · Sortieren · Filter */}
+        {/* Toolbar moved out of hero — see below */}
+        {false && (
         <div className="flex items-center gap-2 flex-wrap">
           <div className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 p-1">
             {/* Suchen */}
@@ -1215,6 +1216,245 @@ export default function SupplierOrders() {
               <span>"{searchQuery}"</span><X className="h-3 w-3" />
             </button>
           )}
+        </div>
+        )}
+      </div>
+
+      {/* Toolbar (Suchen · Spalten · Sortieren · Filter) — page-content area, right-aligned */}
+      <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex items-center gap-2 flex-wrap mr-auto">
+          {activeStatusTab !== "pending" && (
+            <button onClick={() => setActiveStatusTab("pending")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-status-content">
+              <span>{activeStatusTab === "all" ? t("common", "all") : activeStatusTab === "in_delivery" ? (lang === "de" ? "Lieferung" : "Consegna") : getOrderStatus(activeStatusTab as any, lang, true)}</span><X className="h-3 w-3" />
+            </button>
+          )}
+          {filterRestaurant !== "all" && (
+            <button onClick={() => setFilterRestaurant("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-restaurant-content">
+              <span>{uniqueRestaurants.find(r => r.id === filterRestaurant)?.name || "—"}</span><X className="h-3 w-3" />
+            </button>
+          )}
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-search-content">
+              <span>"{searchQuery}"</span><X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+        <div className="inline-flex items-center gap-1 rounded-full bg-card border border-border p-1 shadow-sm">
+          {/* Suchen */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${searchQuery ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                title={lang === "de" ? "Suchen" : "Cerca"}
+                data-testid="button-toolbar-search-content"
+              >
+                <Search className="h-4 w-4" />
+                {searchQuery && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" />}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 p-3">
+              <div className="space-y-2">
+                <Label className="text-xs">{lang === "de" ? "Suchen in Bestellungen" : "Cerca negli ordini"}</Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    autoFocus
+                    placeholder={lang === "de" ? "Bestell-Nr, Restaurant, Artikel…" : "Ordine, ristorante, articolo…"}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-9 pl-8 text-sm"
+                    data-testid="input-toolbar-search-content"
+                  />
+                </div>
+                {searchQuery && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={() => setSearchQuery("")}>
+                    <X className="h-3 w-3 mr-1" />{lang === "de" ? "Suche zurücksetzen" : "Cancella ricerca"}
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Spalten */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className="relative inline-flex items-center justify-center h-9 w-9 rounded-full text-muted-foreground hover:text-foreground transition-colors hover-elevate"
+                title={lang === "de" ? "Spalten" : "Colonne"}
+                data-testid="button-toolbar-columns-content"
+              >
+                <Columns3 className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-2">
+              <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                {lang === "de" ? "Spalten" : "Colonne"}
+              </div>
+              {SUP_COLUMNS.map((c) => (
+                <label key={c} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm" data-testid={`toggle-col-content-${c}`}>
+                  <Checkbox checked={visibleColumns.has(c)} onCheckedChange={() => toggleColumn(c)} />
+                  <span>{columnLabel(c)}</span>
+                </label>
+              ))}
+              <Separator className="my-1.5" />
+              <label className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm" data-testid="toggle-group-by-date-content">
+                <Checkbox checked={groupByDate} onCheckedChange={(v) => setGroupByDate(!!v)} />
+                <span>{lang === "de" ? "Nach Datum gruppieren" : "Raggruppa per data"}</span>
+              </label>
+              <Separator className="my-1.5" />
+              <div className="px-2 pt-1 pb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                {lang === "de" ? "Zeilengröße" : "Densità righe"}
+              </div>
+              <div className="flex gap-1 px-2 pb-1">
+                {([
+                  { key: "compact", de: "Kompakt", it: "Compatta" },
+                  { key: "normal", de: "Normal", it: "Normale" },
+                  { key: "comfortable", de: "Bequem", it: "Comoda" },
+                ] as const).map((d) => (
+                  <button
+                    key={d.key}
+                    onClick={() => setRowDensity(d.key)}
+                    className={`flex-1 px-2 py-1 rounded-md text-xs transition-colors ${rowDensity === d.key ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80 text-foreground"}`}
+                    data-testid={`density-content-${d.key}`}
+                  >
+                    {lang === "de" ? d.de : d.it}
+                  </button>
+                ))}
+              </div>
+              <Button variant="ghost" size="sm" className="h-7 text-xs w-full mt-1" onClick={() => setVisibleColumns(new Set(SUP_COLUMNS))}>
+                {lang === "de" ? "Alle anzeigen" : "Mostra tutte"}
+              </Button>
+            </PopoverContent>
+          </Popover>
+
+          {/* Sortieren */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${sortBy !== "createdAt" || sortDir !== "desc" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                title={lang === "de" ? "Sortieren" : "Ordina"}
+                data-testid="button-toolbar-sort-content"
+              >
+                <ArrowUpDown className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-2">
+              <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                {lang === "de" ? "Sortieren nach" : "Ordina per"}
+              </div>
+              {([
+                { key: "createdAt", label: lang === "de" ? "Erstellt" : "Creato" },
+                { key: "deliveryDate", label: lang === "de" ? "Lieferdatum" : "Data consegna" },
+                { key: "totalAmount", label: lang === "de" ? "Summe" : "Totale" },
+                { key: "restaurant", label: lang === "de" ? "Restaurant" : "Ristorante" },
+                { key: "status", label: "Status" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setSortBy(opt.key)}
+                  className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm ${sortBy === opt.key ? "bg-muted font-medium" : "hover:bg-muted"}`}
+                  data-testid={`sort-by-content-${opt.key}`}
+                >
+                  <span>{opt.label}</span>
+                  {sortBy === opt.key && <Check className="h-3.5 w-3.5 text-primary" />}
+                </button>
+              ))}
+              <Separator className="my-1.5" />
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  onClick={() => setSortDir("asc")}
+                  className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs ${sortDir === "asc" ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
+                  data-testid="sort-dir-asc-content"
+                >
+                  <ArrowUp className="h-3 w-3" />{lang === "de" ? "Aufsteigend" : "Crescente"}
+                </button>
+                <button
+                  onClick={() => setSortDir("desc")}
+                  className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs ${sortDir === "desc" ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
+                  data-testid="sort-dir-desc-content"
+                >
+                  <ArrowDown className="h-3 w-3" />{lang === "de" ? "Absteigend" : "Decrescente"}
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${(activeStatusTab !== "pending" || filterRestaurant !== "all" || filterDateFrom || filterDateTo) ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                title="Filter"
+                data-testid="button-toolbar-filter-content"
+              >
+                <FilterIcon className="h-4 w-4" />
+                {(activeStatusTab !== "pending" || filterRestaurant !== "all" || filterDateFrom || filterDateTo) && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 inline-flex items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                    {(activeStatusTab !== "pending" ? 1 : 0) + (filterRestaurant !== "all" ? 1 : 0) + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-3">
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">Status</Label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {([
+                      { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
+                      { key: "pending", label: getOrderStatus("pending", lang, true), dot: "bg-yellow-500" },
+                      { key: "confirmed", label: getOrderStatus("confirmed", lang, true), dot: "bg-blue-500" },
+                      { key: "partially_confirmed", label: getOrderStatus("partially_confirmed", lang, true), dot: "bg-orange-500" },
+                      { key: "in_delivery", label: lang === "de" ? "Lieferung" : "Consegna", dot: "bg-purple-500" },
+                      { key: "delivered", label: getOrderStatus("delivered", lang, true), dot: "bg-green-500" },
+                      { key: "cancelled", label: getOrderStatus("cancelled", lang, true), dot: "bg-red-500" },
+                    ] as const).map(({ key, label, dot }) => (
+                      <button
+                        key={key}
+                        onClick={() => setActiveStatusTab(key)}
+                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${activeStatusTab === key ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
+                        data-testid={`filter-status-content-${key}`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
+                        <span className="truncate">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {uniqueRestaurants.length > 0 && (
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{lang === "de" ? "Restaurant" : "Ristorante"}</Label>
+                    <select
+                      value={filterRestaurant}
+                      onChange={(e) => setFilterRestaurant(e.target.value)}
+                      className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                      data-testid="filter-restaurant-select-content"
+                    >
+                      <option value="all">{lang === "de" ? "Alle Restaurants" : "Tutti i ristoranti"}</option>
+                      {uniqueRestaurants.map((r) => (
+                        <option key={r.id} value={r.id}>{r.name} ({r.orderCount})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{t("common", "from")}</Label>
+                    <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="h-9 text-xs" data-testid="filter-date-from-content" />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{t("common", "to")}</Label>
+                    <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="h-9 text-xs" data-testid="filter-date-to-content" />
+                  </div>
+                </div>
+                {(activeStatusTab !== "pending" || filterRestaurant !== "all" || filterDateFrom || filterDateTo || searchQuery) && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={clearFilters} data-testid="button-clear-filters-content">
+                    <X className="h-3 w-3 mr-1" />{t("common", "reset")}
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
