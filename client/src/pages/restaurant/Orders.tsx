@@ -12,8 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList, AlertTriangle, User as UserIcon, Download, FileText, RefreshCw, MoreVertical } from "lucide-react";
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList, AlertTriangle, User as UserIcon, Download, FileText, RefreshCw, MoreVertical, Columns3, ArrowUpDown, Filter as FilterIcon, ArrowUp, ArrowDown, Check } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { OrderWithDetails, Product, DeliverySchedule, ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { format, addDays, startOfDay, formatDistanceToNow, isToday, isYesterday } from "date-fns";
@@ -69,8 +71,53 @@ export default function RestaurantOrders() {
   const [filterSupplier, setFilterSupplier] = useState<string>(initialSupplierId || "all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
-  const [showSecondaryFilters, setShowSecondaryFilters] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"createdAt" | "deliveryDate" | "totalAmount" | "supplier" | "status">("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [groupByDate, setGroupByDate] = useState(true);
+  const ALL_COLUMNS = ["status", "supplier", "items", "deliveryDate", "createdAt", "total"] as const;
+  type ColKey = typeof ALL_COLUMNS[number];
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColKey>>(() => {
+    try {
+      const saved = localStorage.getItem("restaurantOrdersVisibleCols");
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set(ALL_COLUMNS);
+  });
+  useEffect(() => {
+    try { localStorage.setItem("restaurantOrdersVisibleCols", JSON.stringify(Array.from(visibleColumns))); } catch {}
+  }, [visibleColumns]);
+  const toggleColumn = (k: ColKey) => {
+    setVisibleColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return next;
+    });
+  };
+  const columnLabel = (k: ColKey): string => {
+    const map: Record<ColKey, { de: string; it: string }> = {
+      status: { de: "Status", it: "Stato" },
+      supplier: { de: "Lieferant", it: "Fornitore" },
+      items: { de: "Artikel", it: "Articoli" },
+      deliveryDate: { de: "Lieferdatum", it: "Data consegna" },
+      createdAt: { de: "Erstellt", it: "Creato" },
+      total: { de: "Summe", it: "Totale" },
+    };
+    return map[k][lang === "de" ? "de" : "it"];
+  };
+  const colWidth: Record<ColKey, string> = {
+    status: "140px",
+    supplier: "minmax(0,1fr)",
+    items: "70px",
+    deliveryDate: "150px",
+    createdAt: "130px",
+    total: "120px",
+  };
+  const gridTemplate = useMemo(() => {
+    const cols = ["150px", ...ALL_COLUMNS.filter(c => visibleColumns.has(c)).map(c => colWidth[c]), "40px"];
+    return cols.join(" ");
+  }, [visibleColumns]);
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderWithDetails | null>(null);
   const [editItems, setEditItems] = useState<EditableItem[]>([]);
@@ -375,9 +422,11 @@ export default function RestaurantOrders() {
   }, [orders, filterSupplier, filterDateFrom, filterDateTo]);
 
   const clearFilters = () => {
+    setFilterStatus("all");
     setFilterSupplier("all");
     setFilterDateFrom("");
     setFilterDateTo("");
+    setSearchQuery("");
   };
 
   const getStatusColor = (status: string) => {
@@ -447,6 +496,7 @@ export default function RestaurantOrders() {
 
   const filterOrders = (status: string | null) => {
     if (!orders) return [];
+    const q = searchQuery.trim().toLowerCase();
     return orders.filter(order => {
       if (status) {
         if (status === "confirmed") {
@@ -466,7 +516,42 @@ export default function RestaurantOrders() {
         to.setHours(23, 59, 59, 999);
         if (new Date(order.createdAt) > to) return false;
       }
+      if (q) {
+        const supplierName = (order.supplier?.companyName || order.supplier?.name || "").toLowerCase();
+        const idMatch = order.id.toLowerCase().includes(q);
+        const supMatch = supplierName.includes(q);
+        const itemMatch = order.items?.some((it: any) => it.productName?.toLowerCase().includes(q));
+        if (!idMatch && !supMatch && !itemMatch) return false;
+      }
       return true;
+    });
+  };
+
+  const sortOrders = (list: OrderWithDetails[]) => {
+    const dirMul = sortDir === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      let cmp = 0;
+      switch (sortBy) {
+        case "createdAt":
+          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case "deliveryDate": {
+          const ad = a.requestedDeliveryDate ? new Date(a.requestedDeliveryDate + "T00:00:00").getTime() : Number.MAX_SAFE_INTEGER;
+          const bd = b.requestedDeliveryDate ? new Date(b.requestedDeliveryDate + "T00:00:00").getTime() : Number.MAX_SAFE_INTEGER;
+          cmp = ad - bd;
+          break;
+        }
+        case "totalAmount":
+          cmp = parseFloat(a.totalAmount) - parseFloat(b.totalAmount);
+          break;
+        case "supplier":
+          cmp = (a.supplier?.companyName || a.supplier?.name || "").localeCompare(b.supplier?.companyName || b.supplier?.name || "");
+          break;
+        case "status":
+          cmp = a.status.localeCompare(b.status);
+          break;
+      }
+      return cmp * dirMul;
     });
   };
 
@@ -831,7 +916,7 @@ export default function RestaurantOrders() {
         data-testid={`order-row-${order.id}`}
       >
         {/* Desktop row */}
-        <div className="hidden md:grid items-center gap-3 px-4 py-2.5 text-sm" style={{ gridTemplateColumns: "150px 140px minmax(0,1fr) 70px 150px 130px 120px 40px" }}>
+        <div className="hidden md:grid items-center gap-3 px-4 py-2.5 text-sm" style={{ gridTemplateColumns: gridTemplate }}>
           {/* Bestell-Nr — hyperlink */}
           <Link
             href={`/restaurant/orders/${order.id}`}
@@ -841,51 +926,57 @@ export default function RestaurantOrders() {
           >
             #{order.id.slice(0, 8)}
           </Link>
-          {/* Status */}
-          <div>
-            <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
-              <span className="inline-flex items-center gap-1">
-                {getStatusIcon(order.status)}
-                {getStatusLabel(order.status)}
-              </span>
-            </Badge>
-          </div>
-          {/* Lieferant */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6 shrink-0">
-                <AvatarImage src={order.supplier?.profileImageUrl || undefined} />
-                <AvatarFallback className="text-[9px] font-semibold">{supplierName.substring(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <span className="truncate font-medium" data-testid={`text-supplier-${order.id}`}>{supplierName}</span>
+          {visibleColumns.has("status") && (
+            <div>
+              <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
+                <span className="inline-flex items-center gap-1">
+                  {getStatusIcon(order.status)}
+                  {getStatusLabel(order.status)}
+                </span>
+              </Badge>
             </div>
-          </div>
-          {/* Artikel */}
-          <div className="text-right tabular-nums text-muted-foreground">{order.items?.length || 0}</div>
-          {/* Lieferdatum */}
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className={`truncate ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`} data-testid={`text-delivery-${order.id}`}>
-              {deliveryDateLabel}
-            </span>
-            {isOverdue && (
-              <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
-                {lang === "de" ? "Überfällig" : "Scaduto"}
-              </Badge>
-            )}
-            {!isOverdue && isDelayed && (
-              <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
-                {lang === "de" ? "Verspätet" : "Ritardo"}
-              </Badge>
-            )}
-          </div>
-          {/* Erstellt */}
-          <div className="text-muted-foreground text-[12px] truncate" title={format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}>
-            {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
-          </div>
-          {/* Summe */}
-          <div className="text-right font-semibold tabular-nums" data-testid={`text-total-${order.id}`}>
-            {parseFloat(order.totalAmount).toFixed(2)}€
-          </div>
+          )}
+          {visibleColumns.has("supplier") && (
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-6 w-6 shrink-0">
+                  <AvatarImage src={order.supplier?.profileImageUrl || undefined} />
+                  <AvatarFallback className="text-[9px] font-semibold">{supplierName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="truncate font-medium" data-testid={`text-supplier-${order.id}`}>{supplierName}</span>
+              </div>
+            </div>
+          )}
+          {visibleColumns.has("items") && (
+            <div className="text-right tabular-nums text-muted-foreground">{order.items?.length || 0}</div>
+          )}
+          {visibleColumns.has("deliveryDate") && (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className={`truncate ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`} data-testid={`text-delivery-${order.id}`}>
+                {deliveryDateLabel}
+              </span>
+              {isOverdue && (
+                <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
+                  {lang === "de" ? "Überfällig" : "Scaduto"}
+                </Badge>
+              )}
+              {!isOverdue && isDelayed && (
+                <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
+                  {lang === "de" ? "Verspätet" : "Ritardo"}
+                </Badge>
+              )}
+            </div>
+          )}
+          {visibleColumns.has("createdAt") && (
+            <div className="text-muted-foreground text-[12px] truncate" title={format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}>
+              {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+            </div>
+          )}
+          {visibleColumns.has("total") && (
+            <div className="text-right font-semibold tabular-nums" data-testid={`text-total-${order.id}`}>
+              {parseFloat(order.totalAmount).toFixed(2)}€
+            </div>
+          )}
           {/* Aktionen */}
           <div className="flex justify-end">
             <DropdownMenu>
@@ -1087,131 +1178,222 @@ export default function RestaurantOrders() {
           </button>
         </div>
 
-        {uniqueSuppliers.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-            <button
-              onClick={() => setFilterSupplier("all")}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
-                filterSupplier === "all"
-                  ? "border-white/40 bg-white/20 text-white shadow-sm"
-                  : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
-              }`}
-              data-testid="filter-supplier-all"
-            >
-              <Store className="h-3 w-3" />
-              <span>{t("common", "all")}</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{orders?.length || 0}</span>
-            </button>
-            {uniqueSuppliers.map(supplier => {
-              const isActive = filterSupplier === supplier.id;
-              return (
+        {/* Icon-Button Toolbar: Suchen · Spalten · Sortieren · Filter */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 p-1">
+            {/* Suchen */}
+            <Popover>
+              <PopoverTrigger asChild>
                 <button
-                  key={supplier.id}
-                  onClick={() => setFilterSupplier(supplier.id)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
-                    isActive
-                      ? "border-white/40 bg-white/20 text-white shadow-sm"
-                      : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
-                  }`}
-                  data-testid={`filter-supplier-${supplier.id}`}
+                  className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${searchQuery ? "bg-white/15 text-white" : "text-white/70 hover:text-white"}`}
+                  title={lang === "de" ? "Suchen" : "Cerca"}
+                  data-testid="button-toolbar-search"
                 >
-                  <Avatar className="h-4 w-4">
-                    <AvatarImage src={supplier.profileImageUrl || undefined} />
-                    <AvatarFallback className="text-[7px] font-semibold bg-white/20 text-white">
-                      {supplier.name.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="max-w-[80px] truncate">{supplier.name}</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{supplier.orderCount}</span>
+                  <Search className="h-4 w-4" />
+                  {searchQuery && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" />}
                 </button>
-              );
-            })}
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-72 p-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">{lang === "de" ? "Suchen in Bestellungen" : "Cerca negli ordini"}</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      autoFocus
+                      placeholder={lang === "de" ? "Bestell-Nr, Lieferant, Artikel…" : "Ordine, fornitore, articolo…"}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-9 pl-8 text-sm"
+                      data-testid="input-toolbar-search"
+                    />
+                  </div>
+                  {searchQuery && (
+                    <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={() => setSearchQuery("")}>
+                      <X className="h-3 w-3 mr-1" />{lang === "de" ? "Suche zurücksetzen" : "Cancella ricerca"}
+                    </Button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Spalten */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="relative inline-flex items-center justify-center h-9 w-9 rounded-full text-white/70 hover:text-white transition-colors hover-elevate"
+                  title={lang === "de" ? "Spalten" : "Colonne"}
+                  data-testid="button-toolbar-columns"
+                >
+                  <Columns3 className="h-4 w-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 p-2">
+                <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  {lang === "de" ? "Spalten" : "Colonne"}
+                </div>
+                {ALL_COLUMNS.map((c) => (
+                  <label key={c} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm" data-testid={`toggle-col-${c}`}>
+                    <Checkbox checked={visibleColumns.has(c)} onCheckedChange={() => toggleColumn(c)} />
+                    <span>{columnLabel(c)}</span>
+                  </label>
+                ))}
+                <Separator className="my-1.5" />
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm" data-testid="toggle-group-by-date">
+                  <Checkbox checked={groupByDate} onCheckedChange={(v) => setGroupByDate(!!v)} />
+                  <span>{lang === "de" ? "Nach Datum gruppieren" : "Raggruppa per data"}</span>
+                </label>
+                <Button variant="ghost" size="sm" className="h-7 text-xs w-full mt-1" onClick={() => setVisibleColumns(new Set(ALL_COLUMNS))}>
+                  {lang === "de" ? "Alle anzeigen" : "Mostra tutte"}
+                </Button>
+              </PopoverContent>
+            </Popover>
+
+            {/* Sortieren */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${sortBy !== "createdAt" || sortDir !== "desc" ? "bg-white/15 text-white" : "text-white/70 hover:text-white"}`}
+                  title={lang === "de" ? "Sortieren" : "Ordina"}
+                  data-testid="button-toolbar-sort"
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 p-2">
+                <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  {lang === "de" ? "Sortieren nach" : "Ordina per"}
+                </div>
+                {([
+                  { key: "createdAt", label: lang === "de" ? "Erstellt" : "Creato" },
+                  { key: "deliveryDate", label: lang === "de" ? "Lieferdatum" : "Data consegna" },
+                  { key: "totalAmount", label: lang === "de" ? "Summe" : "Totale" },
+                  { key: "supplier", label: lang === "de" ? "Lieferant" : "Fornitore" },
+                  { key: "status", label: "Status" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setSortBy(opt.key)}
+                    className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm ${sortBy === opt.key ? "bg-muted font-medium" : "hover:bg-muted"}`}
+                    data-testid={`sort-by-${opt.key}`}
+                  >
+                    <span>{opt.label}</span>
+                    {sortBy === opt.key && <Check className="h-3.5 w-3.5 text-primary" />}
+                  </button>
+                ))}
+                <Separator className="my-1.5" />
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    onClick={() => setSortDir("asc")}
+                    className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs ${sortDir === "asc" ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
+                    data-testid="sort-dir-asc"
+                  >
+                    <ArrowUp className="h-3 w-3" />{lang === "de" ? "Aufsteigend" : "Crescente"}
+                  </button>
+                  <button
+                    onClick={() => setSortDir("desc")}
+                    className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs ${sortDir === "desc" ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
+                    data-testid="sort-dir-desc"
+                  >
+                    <ArrowDown className="h-3 w-3" />{lang === "de" ? "Absteigend" : "Decrescente"}
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${(filterStatus !== "all" || filterSupplier !== "all" || filterDateFrom || filterDateTo) ? "bg-white/15 text-white" : "text-white/70 hover:text-white"}`}
+                  title="Filter"
+                  data-testid="button-toolbar-filter"
+                >
+                  <FilterIcon className="h-4 w-4" />
+                  {(filterStatus !== "all" || filterSupplier !== "all" || filterDateFrom || filterDateTo) && (
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 inline-flex items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                      {(filterStatus !== "all" ? 1 : 0) + (filterSupplier !== "all" ? 1 : 0) + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-80 p-3">
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">Status</Label>
+                    <div className="grid grid-cols-3 gap-1">
+                      {([
+                        { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
+                        { key: "pending", label: getOrderStatus("pending", lang), dot: "bg-yellow-500" },
+                        { key: "confirmed", label: getOrderStatus("confirmed", lang), dot: "bg-blue-500" },
+                        { key: "in_delivery", label: getOrderStatus("in_delivery", lang), dot: "bg-purple-500" },
+                        { key: "delivered", label: getOrderStatus("delivered", lang), dot: "bg-green-500" },
+                        { key: "cancelled", label: getOrderStatus("cancelled", lang), dot: "bg-red-500" },
+                      ] as const).map(({ key, label, dot }) => (
+                        <button
+                          key={key}
+                          onClick={() => setFilterStatus(key)}
+                          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${filterStatus === key ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
+                          data-testid={`filter-status-${key}`}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
+                          <span className="truncate">{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {uniqueSuppliers.length > 0 && (
+                    <div>
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{lang === "de" ? "Lieferant" : "Fornitore"}</Label>
+                      <select
+                        value={filterSupplier}
+                        onChange={(e) => setFilterSupplier(e.target.value)}
+                        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                        data-testid="filter-supplier-select"
+                      >
+                        <option value="all">{lang === "de" ? "Alle Lieferanten" : "Tutti i fornitori"}</option>
+                        {uniqueSuppliers.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name} ({s.orderCount})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{t("common", "from")}</Label>
+                      <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="h-9 text-xs" data-testid="filter-date-from" />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{t("common", "to")}</Label>
+                      <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="h-9 text-xs" data-testid="filter-date-to" />
+                    </div>
+                  </div>
+                  {(filterStatus !== "all" || filterSupplier !== "all" || filterDateFrom || filterDateTo) && (
+                    <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={clearFilters} data-testid="button-clear-filters">
+                      <X className="h-3 w-3 mr-1" />{t("common", "reset")}
+                    </Button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
-        )}
 
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          {([
-            { key: "all", icon: ShoppingBag, dotColor: "bg-gray-400" },
-            { key: "pending", icon: Clock, dotColor: "bg-yellow-500" },
-            { key: "confirmed", icon: Package, dotColor: "bg-blue-500" },
-            { key: "in_delivery", icon: Truck, dotColor: "bg-purple-500" },
-            { key: "delivered", icon: CheckCircle, dotColor: "bg-green-500" },
-            { key: "cancelled", icon: XCircle, dotColor: "bg-red-500" },
-          ] as const).map(({ key, icon: Icon, dotColor }) => {
-            const isActive = filterStatus === key;
-            const count = (statusCounts as any)[key] || 0;
-            return (
-              <button
-                key={key}
-                onClick={() => setFilterStatus(key)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
-                  isActive
-                    ? "border-white/40 bg-white/20 text-white shadow-sm"
-                    : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
-                }`}
-                data-testid={`filter-status-${key}`}
-              >
-                <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
-                <span className="whitespace-nowrap">
-                  {key === "all" ? t("common", "all") : getOrderStatus(key, lang)}
-                </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{count}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowSecondaryFilters(!showSecondaryFilters)}
-            className="flex items-center gap-1.5 text-xs md:text-sm text-white/60 hover:text-white rounded-md px-2 py-1.5 transition-colors"
-            data-testid="button-toggle-filters"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span>{lang === "de" ? "Filter" : "Filtri"}</span>
-            {hasSecondaryFilters && (
-              <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
-                {(filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
-              </span>
-            )}
-            {showSecondaryFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="text-xs text-white/60 hover:text-white rounded-md px-2 py-1.5 flex items-center gap-1 transition-colors"
-              data-testid="button-clear-filters"
-            >
-              <X className="h-3 w-3" />
-              {t("common", "reset")}
+          {/* Aktive Filter Chips */}
+          {filterStatus !== "all" && (
+            <button onClick={() => setFilterStatus("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 border border-white/20 text-white text-[11px] hover:bg-white/15" data-testid="chip-status">
+              <span>{getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
+            </button>
+          )}
+          {filterSupplier !== "all" && (
+            <button onClick={() => setFilterSupplier("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 border border-white/20 text-white text-[11px] hover:bg-white/15" data-testid="chip-supplier">
+              <span>{uniqueSuppliers.find(s => s.id === filterSupplier)?.name || "—"}</span><X className="h-3 w-3" />
+            </button>
+          )}
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 border border-white/20 text-white text-[11px] hover:bg-white/15" data-testid="chip-search">
+              <span>"{searchQuery}"</span><X className="h-3 w-3" />
             </button>
           )}
         </div>
-
-        {showSecondaryFilters && (
-          <div className="flex gap-2 pt-1">
-            <div className="flex-1 min-w-0">
-              <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "from")}</label>
-              <Input
-                type="date"
-                value={filterDateFrom}
-                onChange={e => setFilterDateFrom(e.target.value)}
-                className={`h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white ${!filterDateFrom ? 'date-empty' : ''}`}
-                data-testid="filter-date-from"
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "to")}</label>
-              <Input
-                type="date"
-                value={filterDateTo}
-                onChange={e => setFilterDateTo(e.target.value)}
-                className={`h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white ${!filterDateTo ? 'date-empty' : ''}`}
-                data-testid="filter-date-to"
-              />
-            </div>
-          </div>
-        )}
       </div>
 
       <div ref={pullRefreshRef} className="relative">
@@ -1246,47 +1428,53 @@ export default function RestaurantOrders() {
               </Card>
             );
           }
-          const sorted = [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          const sorted = sortOrders(filtered);
           const groups: { label: string; orders: OrderWithDetails[] }[] = [];
-          const groupMap = new Map<string, OrderWithDetails[]>();
-          for (const order of sorted) {
-            const d = new Date(order.createdAt);
-            const key = format(d, "yyyy-MM-dd");
-            if (!groupMap.has(key)) groupMap.set(key, []);
-            groupMap.get(key)!.push(order);
-          }
-          const groupEntries = Array.from(groupMap.entries());
-          for (const [key, ords] of groupEntries) {
-            const d = new Date(key + "T00:00:00");
-            let label: string;
-            if (isToday(d)) label = lang === "de" ? "Heute" : "Oggi";
-            else if (isYesterday(d)) label = lang === "de" ? "Gestern" : "Ieri";
-            else label = format(d, "dd. MMMM yyyy", { locale: dateLocale });
-            groups.push({ label, orders: ords });
+          if (groupByDate) {
+            const groupMap = new Map<string, OrderWithDetails[]>();
+            for (const order of sorted) {
+              const d = new Date(order.createdAt);
+              const key = format(d, "yyyy-MM-dd");
+              if (!groupMap.has(key)) groupMap.set(key, []);
+              groupMap.get(key)!.push(order);
+            }
+            const groupEntries = Array.from(groupMap.entries());
+            for (const [key, ords] of groupEntries) {
+              const d = new Date(key + "T00:00:00");
+              let label: string;
+              if (isToday(d)) label = lang === "de" ? "Heute" : "Oggi";
+              else if (isYesterday(d)) label = lang === "de" ? "Gestern" : "Ieri";
+              else label = format(d, "dd. MMMM yyyy", { locale: dateLocale });
+              groups.push({ label, orders: ords });
+            }
+          } else {
+            groups.push({ label: "", orders: sorted });
           }
           return (
             <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="orders-table">
               {/* Desktop column header */}
               <div
                 className="hidden md:grid items-center gap-3 px-4 py-3 bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold"
-                style={{ gridTemplateColumns: "150px 140px minmax(0,1fr) 70px 150px 130px 120px 40px" }}
+                style={{ gridTemplateColumns: gridTemplate }}
               >
                 <div>{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
-                <div>Status</div>
-                <div>{lang === "de" ? "Lieferant" : "Fornitore"}</div>
-                <div className="text-right">{lang === "de" ? "Artikel" : "Articoli"}</div>
-                <div>{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>
-                <div>{lang === "de" ? "Erstellt" : "Creato"}</div>
-                <div className="text-right">{lang === "de" ? "Summe" : "Totale"}</div>
+                {visibleColumns.has("status") && <div>Status</div>}
+                {visibleColumns.has("supplier") && <div>{lang === "de" ? "Lieferant" : "Fornitore"}</div>}
+                {visibleColumns.has("items") && <div className="text-right">{lang === "de" ? "Artikel" : "Articoli"}</div>}
+                {visibleColumns.has("deliveryDate") && <div>{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>}
+                {visibleColumns.has("createdAt") && <div>{lang === "de" ? "Erstellt" : "Creato"}</div>}
+                {visibleColumns.has("total") && <div className="text-right">{lang === "de" ? "Summe" : "Totale"}</div>}
                 <div></div>
               </div>
-              {groups.map((group) => (
-                <div key={group.label} data-testid={`order-group-${group.label}`}>
-                  <div className="px-4 py-2 bg-muted/20 border-b border-border/40 flex items-center gap-2">
-                    <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</h3>
-                    <span className="text-[11px] text-muted-foreground/60">({group.orders.length})</span>
-                  </div>
+              {groups.map((group, gIdx) => (
+                <div key={group.label || `g-${gIdx}`} data-testid={`order-group-${group.label || 'all'}`}>
+                  {group.label && (
+                    <div className="px-4 py-2 bg-muted/20 border-b border-border/40 flex items-center gap-2">
+                      <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</h3>
+                      <span className="text-[11px] text-muted-foreground/60">({group.orders.length})</span>
+                    </div>
+                  )}
                   {group.orders.map((order) => (
                     <SwipeableRow
                       key={order.id}
