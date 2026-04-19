@@ -944,7 +944,7 @@ export default function RestaurantOrders() {
             </div>
           )}
           {visibleColumns.has("supplier") && (
-            <div className="min-w-0">
+            <div className="min-w-0 !justify-start !text-left">
               <div className="flex items-center gap-2">
                 <Avatar className="h-6 w-6 shrink-0">
                   <AvatarImage src={order.supplier?.profileImageUrl || undefined} />
@@ -1631,7 +1631,7 @@ export default function RestaurantOrders() {
               >
                 <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startColResize("orderNo")} testId="resize-orderNo" /></div>
                 {visibleColumns.has("status") && <div className="relative pr-2">Status<ColumnResizeHandle onPointerDown={startColResize("status")} testId="resize-status" /></div>}
-                {visibleColumns.has("supplier") && <div className="relative pr-2">{lang === "de" ? "Lieferant" : "Fornitore"}<ColumnResizeHandle onPointerDown={startColResize("supplier")} testId="resize-supplier" /></div>}
+                {visibleColumns.has("supplier") && <div className="relative pr-2 !justify-start !text-left">{lang === "de" ? "Lieferant" : "Fornitore"}<ColumnResizeHandle onPointerDown={startColResize("supplier")} testId="resize-supplier" /></div>}
                 {visibleColumns.has("items") && <div className="relative pr-2 text-right">{lang === "de" ? "Artikel" : "Articoli"}<ColumnResizeHandle onPointerDown={startColResize("items")} testId="resize-items" /></div>}
                 {visibleColumns.has("deliveryDate") && <div className="relative pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}<ColumnResizeHandle onPointerDown={startColResize("deliveryDate")} testId="resize-deliveryDate" /></div>}
                 {visibleColumns.has("createdAt") && <div className="relative pr-2">{lang === "de" ? "Erstellt" : "Creato"}<ColumnResizeHandle onPointerDown={startColResize("createdAt")} testId="resize-createdAt" /></div>}

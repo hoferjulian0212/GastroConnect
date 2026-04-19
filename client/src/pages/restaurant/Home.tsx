@@ -993,7 +993,7 @@ export default function RestaurantHome() {
                 >
                   <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("orderNo")} testId="resize-deliv-orderNo" /></div>
                   <div className="relative pr-2">Status<ColumnResizeHandle onPointerDown={startDeliveriesColResize("status")} testId="resize-deliv-status" /></div>
-                  <div className="relative pr-2">{lang === "de" ? "Lieferant" : "Fornitore"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("supplier")} testId="resize-deliv-supplier" /></div>
+                  <div className="relative pr-2 !justify-start !text-left">{lang === "de" ? "Lieferant" : "Fornitore"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("supplier")} testId="resize-deliv-supplier" /></div>
                   <div className="relative pr-2 text-right">{lang === "de" ? "Artikel" : "Articoli"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("items")} testId="resize-deliv-items" /></div>
                   <div className="relative pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("deliveryDate")} testId="resize-deliv-deliveryDate" /></div>
                   <div className="relative pr-2">{lang === "de" ? "Erstellt" : "Creato"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("createdAt")} testId="resize-deliv-createdAt" /></div>
@@ -1051,7 +1051,7 @@ export default function RestaurantHome() {
                                   </span>
                                 </Badge>
                               </div>
-                              <div className="min-w-0 flex items-center gap-2">
+                              <div className="min-w-0 flex items-center gap-2 !justify-start !text-left">
                                 <Avatar className="h-6 w-6 shrink-0">
                                   <AvatarImage src={order.supplier?.profileImageUrl || undefined} />
                                   <AvatarFallback className="text-[9px] font-semibold">{supplierName.substring(0, 2).toUpperCase()}</AvatarFallback>
