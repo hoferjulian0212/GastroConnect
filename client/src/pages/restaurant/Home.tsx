@@ -880,7 +880,7 @@ export default function RestaurantHome() {
         role="restaurant"
         sections={[
           { id: "upcoming-deliveries", defaultSize: "full" as const, content: (
-      <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_2px_4px_rgba(15,23,42,0.04),0_10px_24px_-8px_rgba(15,23,42,0.12),0_24px_40px_-20px_rgba(15,23,42,0.18)]">
+      <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
             <div>
@@ -1111,7 +1111,7 @@ export default function RestaurantHome() {
       </div>
           )},
           { id: "unread-messages", defaultSize: "half" as const, content: (
-          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_2px_4px_rgba(15,23,42,0.04),0_10px_24px_-8px_rgba(15,23,42,0.12),0_24px_40px_-20px_rgba(15,23,42,0.18)]">
+          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div>
@@ -1261,7 +1261,7 @@ export default function RestaurantHome() {
           </div>
           )},
           { id: "active-promotions", defaultSize: "half" as const, content: (
-          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_2px_4px_rgba(15,23,42,0.04),0_10px_24px_-8px_rgba(15,23,42,0.12),0_24px_40px_-20px_rgba(15,23,42,0.18)]">
+          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div>
@@ -1435,7 +1435,7 @@ export default function RestaurantHome() {
           </div>
           )},
           { id: "order-templates", defaultSize: "half" as const, content: (
-          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_2px_4px_rgba(15,23,42,0.04),0_10px_24px_-8px_rgba(15,23,42,0.12),0_24px_40px_-20px_rgba(15,23,42,0.18)]">
+          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div>
@@ -1624,7 +1624,7 @@ export default function RestaurantHome() {
           </div>
           )},
           { id: "cost-analysis", defaultSize: "half" as const, content: (
-          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_2px_4px_rgba(15,23,42,0.04),0_10px_24px_-8px_rgba(15,23,42,0.12),0_24px_40px_-20px_rgba(15,23,42,0.18)]" data-testid="card-cost-analysis-home">
+          <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]" data-testid="card-cost-analysis-home">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div>
