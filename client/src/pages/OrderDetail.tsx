@@ -419,22 +419,22 @@ export default function OrderDetail() {
 
         {/* Hero: centered on mobile, horizontal banner on desktop */}
         <div className="px-4 md:px-6 lg:px-8 pt-6 pb-5 lg:pt-8 lg:pb-7">
-          <div className="flex flex-col items-center text-center lg:flex-row lg:items-center lg:text-left lg:gap-6">
-            <div className={`h-16 w-16 lg:h-20 lg:w-20 rounded-full ${getStatusBg(order.status)} flex items-center justify-center mb-3 lg:mb-0 shrink-0`}>
+          <div className="flex flex-col items-center text-center lg:flex-row lg:items-center lg:text-left lg:gap-5">
+            <div className={`h-16 w-16 lg:h-16 lg:w-16 rounded-full ${getStatusBg(order.status)} flex items-center justify-center mb-3 lg:mb-0 shrink-0`}>
               <div className={getStatusTextColor(order.status)}>
-                {getStatusIcon(order.status, "h-7 w-7 lg:h-9 lg:w-9")}
+                {getStatusIcon(order.status, "h-7 w-7")}
               </div>
             </div>
-            <div className="lg:flex-1 min-w-0">
+            <div className="min-w-0 lg:flex lg:flex-col">
               <p className="text-sm text-muted-foreground mb-1">{counterpartyName}</p>
               <div className="flex flex-col lg:flex-row lg:items-baseline lg:gap-3">
-                <p className="text-3xl lg:text-4xl font-bold tracking-tight" data-testid="text-order-total">{Number(order.totalAmount).toFixed(2)}€</p>
+                <p className="text-3xl lg:text-4xl font-bold tracking-tight leading-none" data-testid="text-order-total">{Number(order.totalAmount).toFixed(2)}€</p>
                 <p className="text-sm text-muted-foreground mt-1 lg:mt-0">
                   {lang === "de" ? "Bestellung" : "Ordine"} #{order.id.slice(0, 8)}
                 </p>
               </div>
             </div>
-            <div className="mt-3 lg:mt-0 shrink-0">
+            <div className="mt-3 lg:mt-0 lg:ml-auto shrink-0">
               <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1 text-xs font-medium`} variant="outline">
                 {getStatusIcon(order.status, "h-3.5 w-3.5 mr-1")}
                 {getOrderStatus(order.status, lang, isSupplier)}
@@ -743,7 +743,7 @@ export default function OrderDetail() {
                   );
                 })()}
                 {others.length > 0 && (
-                  <div className={`grid gap-2.5 ${others.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
+                  <div className={`grid gap-2.5 ${others.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-1"}`}>
                     {others.map((action) => {
                       const Icon = action.icon;
                       return (
