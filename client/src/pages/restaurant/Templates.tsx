@@ -162,24 +162,35 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        {!embedded && (
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">
-              {t("templates", "orderTemplates")}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {t("templates", "orderTemplatesDesc")}
-            </p>
+      {!embedded ? (
+        <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4" data-testid="templates-hero">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
+                {t("templates", "orderTemplates")}
+              </h1>
+              <p className="hidden md:block text-sm text-white/50 mt-1">
+                {t("templates", "orderTemplatesDesc")}
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowCreate(true)}
+              className="bg-white text-[#161921] hover:bg-white/90"
+              data-testid="button-create-template"
+            >
+              <Plus className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">{t("templates", "newTemplate")}</span>
+            </Button>
           </div>
-        )}
-        <div className={embedded ? "ml-auto" : ""}>
+        </div>
+      ) : (
+        <div className="flex items-center justify-end gap-3">
           <Button onClick={() => setShowCreate(true)} data-testid="button-create-template">
             <Plus className="h-4 w-4 sm:mr-1.5" />
             <span className="hidden sm:inline">{t("templates", "newTemplate")}</span>
           </Button>
         </div>
-      </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-4">
