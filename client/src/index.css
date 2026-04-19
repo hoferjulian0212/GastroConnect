@@ -308,10 +308,10 @@ html, body, #root {
      No image file — fully generated via CSS + SVG. Fixed attachment so the surface
      stays put while content scrolls, like a massive piece of stone. */
   html:not(.dark) body {
-    background-color: #f1e8d4;
+    background-color: #f2f3f5;
     background-image:
-      radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.22) 0%, rgba(245, 240, 230, 0) 65%),
-      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'><filter id='stoneNoise' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='0.012 0.018' numOctaves='4' seed='7' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 0.84  0 0 0 0 0.76  0 0 0 0 0.62  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' fill='%23f1e8d4'/><rect width='100%25' height='100%25' filter='url(%23stoneNoise)' opacity='0.85'/></svg>");
+      radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.35) 0%, rgba(242, 243, 245, 0) 65%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'><filter id='stoneNoise' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='0.012 0.018' numOctaves='4' seed='7' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 0.78  0 0 0 0 0.79  0 0 0 0 0.81  0 0 0 0.35 0'/></filter><rect width='100%25' height='100%25' fill='%23f2f3f5'/><rect width='100%25' height='100%25' filter='url(%23stoneNoise)' opacity='0.7'/></svg>");
     background-attachment: fixed, fixed;
     background-repeat: no-repeat, repeat;
     background-size: 100% 100%, 600px 600px;
