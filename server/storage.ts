@@ -1039,7 +1039,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedData(): Promise<void> {
-    const DEMO_VERSION = "demo-v6";
+    const DEMO_VERSION = "demo-v7";
     const sentinelEmail = `${DEMO_VERSION}@gastroconnect.dev`;
     const existing = await db.select().from(users).where(eq(users.email, sentinelEmail));
     if (existing.length > 0) {
@@ -1839,6 +1839,265 @@ export class DatabaseStorage implements IStorage {
       movRows.push({ supplierId: supplier.id, zone: null, minimumValue: (75 + randInt(0, 50)).toFixed(2) });
     }
     if (movRows.length) await db.insert(minimumOrderValues).values(movRows);
+
+    // ============================================================
+    // ===== PIRI'S JAGDHOF — vollständiger Test-Betrieb ==========
+    // ============================================================
+    const piri = await this.createUser({
+      role: "restaurant", name: "Pirmin Hofer", email: "piri@jagdhof.de",
+      phone: "+49 8022 887766", companyName: "Piri's Jagdhof",
+      address: "Wildbachweg 7", city: "Tegernsee", postalCode: "83684",
+      description: "Traditioneller Jagdhof mit Wildküche, Hotel mit 28 Zimmern und Restaurant für 90 Gäste",
+      profileImageUrl: avatar(67),
+    });
+
+    const piriSuppliers = [supplier1, supplier2, supplier3, supplier4, supplier5];
+
+    // ----- Konversationen mit allen Lieferanten -----
+    const piriConvs: Record<string, string> = {};
+    for (const s of piriSuppliers) {
+      const c = await this.getOrCreateConversation(piri.id, s.id);
+      piriConvs[s.id] = c.id;
+    }
+    const piriMessages: Array<{ supId: string; from: "r" | "s"; text: string; daysAgo: number }> = [
+      { supId: supplier1.id, from: "r", text: "Servus Hans, brauchen ab nächster Woche jeden Mo/Mi/Fr Frischeware. Können wir das fix vereinbaren?", daysAgo: 75 },
+      { supId: supplier1.id, from: "s", text: "Servus Piri, klar — drei Touren die Woche, jeweils zwischen 06:00 und 08:00.", daysAgo: 75 },
+      { supId: supplier1.id, from: "r", text: "Perfekt, danke! Dann fangen wir Anfang Februar an.", daysAgo: 75 },
+      { supId: supplier1.id, from: "s", text: "Spinat und Wurzelgemüse für Wildgerichte hab ich diese Woche besonders günstig.", daysAgo: 21 },
+      { supId: supplier1.id, from: "r", text: "Top, schick mir ein Angebot über 30kg Spinat und 50kg Karotten.", daysAgo: 21 },
+      { supId: supplier1.id, from: "s", text: "Geht heute Abend per Mail raus, beste Grüße!", daysAgo: 21 },
+      { supId: supplier1.id, from: "r", text: "Hans, kannst Du Freitag noch 10kg Steinpilze besorgen?", daysAgo: 4 },
+      { supId: supplier1.id, from: "s", text: "Pilze sind eingeplant, kommen mit der Freitagstour.", daysAgo: 4 },
+
+      { supId: supplier2.id, from: "r", text: "Anna, brauche regelmäßig Wildbret-Begleiter: Speck, Bauchfleisch, Bratwürste. Standardrhythmus 14-tägig?", daysAgo: 70 },
+      { supId: supplier2.id, from: "s", text: "Geht klar, alle 2 Wochen am Dienstag. Pass ich auf Dich zu.", daysAgo: 70 },
+      { supId: supplier2.id, from: "r", text: "Für Ostern brauch ich 8kg Lammkarree und 5kg Lammkeule.", daysAgo: 26 },
+      { supId: supplier2.id, from: "s", text: "Notiert, kommt eine Woche vorher.", daysAgo: 26 },
+      { supId: supplier2.id, from: "r", text: "Anna, das letzte Rinderfilet war zu fettreich, bitte beim nächsten Mal genauer trimmen.", daysAgo: 9 },
+      { supId: supplier2.id, from: "s", text: "Sorry, kümmer mich drum. Nächste Lieferung wird Premium-Trim.", daysAgo: 9 },
+
+      { supId: supplier3.id, from: "r", text: "Peter, für die Saison brauche ich 20 Kisten Augustiner pro Woche fix.", daysAgo: 68 },
+      { supId: supplier3.id, from: "s", text: "Mach ich Dir, jeden Donnerstag 20 Kisten. Wein dazu?", daysAgo: 68 },
+      { supId: supplier3.id, from: "r", text: "Ja, 6 Kisten Riesling und 4 Chianti monatlich.", daysAgo: 68 },
+      { supId: supplier3.id, from: "s", text: "Eingetragen. Kannst Dich drauf verlassen.", daysAgo: 68 },
+      { supId: supplier3.id, from: "r", text: "Peter, hast Du was günstiges in Roten zur Wildsaison?", daysAgo: 12 },
+      { supId: supplier3.id, from: "s", text: "Spätburgunder hab ich gerade zum Aktionspreis, sehr passend zum Wild.", daysAgo: 12 },
+
+      { supId: supplier4.id, from: "r", text: "Ciao Julia, bitte 5kg Parmigiano und 4L Olivenöl monatlich.", daysAgo: 60 },
+      { supId: supplier4.id, from: "s", text: "Ciao Piri, geht klar! Ab Mitte Februar dann mit Stammkundenrabatt.", daysAgo: 60 },
+      { supId: supplier4.id, from: "r", text: "Trüffelöl bitte zur Saisonkarte mit reinpacken.", daysAgo: 18 },
+      { supId: supplier4.id, from: "s", text: "Trüffelöl 250ml liegt bei.", daysAgo: 18 },
+
+      { supId: supplier5.id, from: "r", text: "Erik, einmal die Woche frischen Fisch wäre top — am liebsten Forelle und Lachs.", daysAgo: 65 },
+      { supId: supplier5.id, from: "s", text: "Mittwoch ist mein Tag für die Region — passt das?", daysAgo: 65 },
+      { supId: supplier5.id, from: "r", text: "Mittwoch passt. Lieferung bitte vor 10 Uhr.", daysAgo: 65 },
+      { supId: supplier5.id, from: "s", text: "Geht klar. Sag Bescheid wenn Du Sondersachen brauchst.", daysAgo: 65 },
+      { supId: supplier5.id, from: "r", text: "Brauche kommende Woche 4kg Jakobsmuscheln für Tasting-Menü.", daysAgo: 6 },
+      { supId: supplier5.id, from: "s", text: "Jakobsmuscheln frisch eingetroffen, sind reserviert.", daysAgo: 6 },
+    ];
+    for (const m of piriMessages) {
+      const senderId = m.from === "r" ? piri.id : m.supId;
+      const ts = new Date(Date.now() - m.daysAgo * 24 * 60 * 60 * 1000);
+      await db.insert(messages).values({
+        conversationId: piriConvs[m.supId], senderId, messageType: "text", content: m.text, createdAt: ts,
+      });
+    }
+
+    // ----- Bestellungen Feb-Apr 2026 (heute = 2026-04-20) -----
+    const piriProducts: Record<string, any[]> = {};
+    for (const s of piriSuppliers) piriProducts[s.id] = productsBySupplier[s.id] || [];
+
+    // Deterministischer PRNG nur für Piri (separater seed)
+    let _ps = 42424;
+    const prand = () => { _ps = (_ps * 9301 + 49297) % 233280; return _ps / 233280; };
+    const prandInt = (mn: number, mx: number) => Math.floor(prand() * (mx - mn + 1)) + mn;
+    const ppick = <T,>(arr: T[]): T => arr[Math.floor(prand() * arr.length)];
+
+    type PiriOrderSpec = { supplier: any; daysAgo: number; status: string; items: number; futureDays?: number; notes?: string };
+    const piriOrderSpecs: PiriOrderSpec[] = [];
+
+    // Wöchentlicher Frische-Rhythmus (Supplier 1) — Mo/Mi/Fr, 11 Wochen
+    for (let week = 0; week < 11; week++) {
+      const baseDays = week * 7;
+      // Mo
+      if (baseDays + 4 <= 78) piriOrderSpecs.push({ supplier: supplier1, daysAgo: 78 - baseDays, status: "delivered", items: prandInt(3, 6) });
+      // Mi
+      if (baseDays + 2 <= 78) piriOrderSpecs.push({ supplier: supplier1, daysAgo: 76 - baseDays, status: "delivered", items: prandInt(3, 5) });
+      // Fr
+      if (baseDays <= 78) piriOrderSpecs.push({ supplier: supplier1, daysAgo: 74 - baseDays, status: "delivered", items: prandInt(3, 6) });
+    }
+    // Metzgerei (Supplier 2) — alle 2 Wochen
+    for (let i = 0; i < 6; i++) {
+      const d = 75 - i * 14;
+      if (d > 0) piriOrderSpecs.push({ supplier: supplier2, daysAgo: d, status: "delivered", items: prandInt(3, 5) });
+    }
+    // Getränke (Supplier 3) — wöchentlich Augustiner
+    for (let i = 0; i < 11; i++) {
+      const d = 73 - i * 7;
+      if (d > 0) piriOrderSpecs.push({ supplier: supplier3, daysAgo: d, status: "delivered", items: prandInt(2, 4) });
+    }
+    // Italia Import (Supplier 4) — monatlich
+    piriOrderSpecs.push({ supplier: supplier4, daysAgo: 70, status: "delivered", items: 4 });
+    piriOrderSpecs.push({ supplier: supplier4, daysAgo: 42, status: "delivered", items: 5 });
+    piriOrderSpecs.push({ supplier: supplier4, daysAgo: 14, status: "delivered", items: 4 });
+    // Fisch (Supplier 5) — wöchentlich Mittwochs
+    for (let i = 0; i < 10; i++) {
+      const d = 72 - i * 7;
+      if (d > 0) piriOrderSpecs.push({ supplier: supplier5, daysAgo: d, status: "delivered", items: prandInt(2, 4) });
+    }
+
+    // Aktuelle Bestellungen (offene Pipeline)
+    piriOrderSpecs.push({ supplier: supplier1, daysAgo: 1, status: "in_delivery", items: 5, futureDays: 0, notes: "Tour heute Vormittag" });
+    piriOrderSpecs.push({ supplier: supplier2, daysAgo: 0, status: "confirmed", items: 4, futureDays: 2, notes: "Wildbegleiter für Wochenende" });
+    piriOrderSpecs.push({ supplier: supplier3, daysAgo: 0, status: "pending", items: 3, futureDays: 3 });
+    piriOrderSpecs.push({ supplier: supplier4, daysAgo: 1, status: "partially_confirmed", items: 4, futureDays: 1, notes: "Trüffelöl evtl. nicht verfügbar" });
+    piriOrderSpecs.push({ supplier: supplier5, daysAgo: 0, status: "confirmed", items: 3, futureDays: 1, notes: "Jakobsmuscheln Tasting-Menü" });
+    // Eine Stornierung
+    piriOrderSpecs.push({ supplier: supplier3, daysAgo: 19, status: "cancelled", items: 2, notes: "Falsche Bestellung — wurde manuell storniert" });
+    piriOrderSpecs.push({ supplier: supplier1, daysAgo: 38, status: "cancelled", items: 3, notes: "Veranstaltung abgesagt" });
+
+    const piriDeliveredOrders: any[] = [];
+    for (const spec of piriOrderSpecs) {
+      const supProds = piriProducts[spec.supplier.id];
+      if (!supProds || !supProds.length) continue;
+      const used = new Set<number>();
+      const items: any[] = [];
+      for (let j = 0; j < spec.items && used.size < supProds.length; j++) {
+        let idx; do { idx = prandInt(0, supProds.length - 1); } while (used.has(idx));
+        used.add(idx);
+        const p = supProds[idx];
+        const qty = prandInt(2, 14);
+        const confirmedQty = spec.status === "partially_confirmed" ? Math.max(1, qty - prandInt(1, 3)) : null;
+        items.push({
+          productId: p.id, productName: p.name, quantity: qty,
+          unitPrice: p.price, totalPrice: (parseFloat(p.price) * qty).toFixed(2),
+          confirmedQuantity: confirmedQty,
+        });
+      }
+      const total = items.reduce((s, it) => s + parseFloat(it.totalPrice), 0).toFixed(2);
+      const order = await createOrderWithDate({
+        restaurantId: piri.id, supplierId: spec.supplier.id,
+        status: spec.status as any, totalAmount: total,
+        notes: spec.notes,
+        requestedDeliveryDate: spec.futureDays !== undefined ? futureDate(spec.futureDays) : undefined,
+      }, items, spec.daysAgo);
+      if (spec.status === "delivered") piriDeliveredOrders.push(order);
+    }
+
+    // ----- Reklamationen (4 Stück, gemischter Status) -----
+    const piriComplaintSpecs = [
+      { idx: 0, title: "Forelle nicht sashimi-frisch", desc: "Lieferung am Mittwoch kam, Forelle hatte bereits leichten Geruch. Ware musste weggeworfen werden — bitte Gutschrift.", status: "in_progress", priority: "high" },
+      { idx: 1, title: "Augustiner-Kiste mit 3 zerbrochenen Flaschen", desc: "Beim Abladen waren 3 von 20 Flaschen gebrochen. Kartonboden war durchnässt.", status: "resolved", priority: "standard" },
+      { idx: 2, title: "Falsche Spaghetti-Sorte", desc: "Bestellt war Spaghetti N°5, geliefert wurde N°7. Bitte beim nächsten Mal beachten.", status: "open", priority: "low" },
+      { idx: 3, title: "Rinderfilet zu fettreich", desc: "Das gelieferte Rinderfilet hatte deutlich mehr Fett als üblich. Mussten viel wegtrimmen.", status: "resolved", priority: "standard" },
+    ];
+    for (const cs of piriComplaintSpecs) {
+      if (cs.idx >= piriDeliveredOrders.length) continue;
+      const o = piriDeliveredOrders[cs.idx * 3];
+      if (!o) continue;
+      await db.insert(complaints).values({
+        orderId: o.id, restaurantId: piri.id, supplierId: o.supplierId,
+        title: cs.title, description: cs.desc, status: cs.status as any, priority: cs.priority as any,
+      });
+    }
+
+    // ----- Sonderpreise (Stammkunden-Konditionen) -----
+    const piriCustomPriceRows: any[] = [];
+    for (const s of piriSuppliers) {
+      const sample = [...piriProducts[s.id]].sort(() => prand() - 0.5).slice(0, 4);
+      for (const p of sample) {
+        const discount = 0.85 + prand() * 0.08;
+        piriCustomPriceRows.push({
+          productId: p.id, supplierId: s.id, restaurantId: piri.id,
+          customPrice: (parseFloat(p.price) * discount).toFixed(2),
+        });
+      }
+    }
+    if (piriCustomPriceRows.length) await db.insert(customPrices).values(piriCustomPriceRows);
+
+    // ----- Mindestbestellmengen -----
+    const piriMoqRows: any[] = [];
+    for (const s of piriSuppliers) {
+      const sample = [...piriProducts[s.id]].sort(() => prand() - 0.5).slice(0, 2);
+      for (const p of sample) {
+        piriMoqRows.push({
+          productId: p.id, supplierId: s.id, restaurantId: piri.id,
+          minOrderQuantity: prandInt(2, 5),
+        });
+      }
+    }
+    if (piriMoqRows.length) await db.insert(customMinOrderQuantities).values(piriMoqRows);
+
+    // ----- Liefertage -----
+    await db.insert(deliverySchedules).values([
+      { supplierId: supplier1.id, restaurantId: piri.id, dayOfWeek: 1, deliveryTimeFrom: "06:00", deliveryTimeTo: "08:00" },
+      { supplierId: supplier1.id, restaurantId: piri.id, dayOfWeek: 3, deliveryTimeFrom: "06:00", deliveryTimeTo: "08:00" },
+      { supplierId: supplier1.id, restaurantId: piri.id, dayOfWeek: 5, deliveryTimeFrom: "06:00", deliveryTimeTo: "08:00" },
+      { supplierId: supplier2.id, restaurantId: piri.id, dayOfWeek: 2, deliveryTimeFrom: "07:00", deliveryTimeTo: "10:00" },
+      { supplierId: supplier3.id, restaurantId: piri.id, dayOfWeek: 4, deliveryTimeFrom: "08:00", deliveryTimeTo: "12:00" },
+      { supplierId: supplier4.id, restaurantId: piri.id, dayOfWeek: 1, deliveryTimeFrom: "07:00", deliveryTimeTo: "11:00" },
+      { supplierId: supplier5.id, restaurantId: piri.id, dayOfWeek: 3, deliveryTimeFrom: "07:00", deliveryTimeTo: "10:00" },
+    ]);
+
+    // ----- Bestellvorlagen -----
+    const piriTemplates = [
+      { name: "Wildküche Standard", supId: supplier2.id, productNames: ["Schweinebauch", "Bratwurst", "Bacon geräuchert", "Roastbeef"] },
+      { name: "Tägliche Frischeware", supId: supplier1.id, productNames: ["Karotten", "Bio Spinat", "Petersilie", "Lauch", "Bio Knoblauch"] },
+      { name: "Wochenend-Getränke", supId: supplier3.id, productNames: ["Augustiner Helles", "Mineralwasser", "Riesling QbA", "Apfelsaft"] },
+      { name: "Hochzeits-Menü Mai", supId: supplier5.id, productNames: ["Lachsfilet", "Jakobsmuscheln", "Forellenfilet"] },
+    ];
+    for (const t of piriTemplates) {
+      const supProds = piriProducts[t.supId];
+      const matched = t.productNames.map(n => supProds.find(p => p.name === n)).filter(Boolean);
+      if (!matched.length) continue;
+      const [tmpl] = await db.insert(orderTemplates).values({ restaurantId: piri.id, name: t.name }).returning();
+      await db.insert(orderTemplateItems).values(matched.map((p: any) => ({
+        templateId: tmpl.id, productId: p.id, quantity: prandInt(3, 10),
+      })));
+    }
+
+    // ----- Benachrichtigungen -----
+    const piriNotifs: any[] = [
+      { userId: piri.id, type: "order_status", title: "Lieferung unterwegs", message: "Frische Produkte GmbH liefert gerade Ihre Bestellung.", isRead: false },
+      { userId: piri.id, type: "order_status", title: "Bestellung bestätigt", message: "Metzgerei Bauer hat Ihre Wildbegleiter-Bestellung bestätigt.", isRead: false },
+      { userId: piri.id, type: "new_message", title: "Neue Nachricht", message: "Erik Andersen: Jakobsmuscheln frisch eingetroffen, sind reserviert.", isRead: false },
+      { userId: piri.id, type: "complaint_comment", title: "Reklamation aktualisiert", message: "Nordsee Fisch hat zur Reklamation 'Forelle nicht sashimi-frisch' geantwortet.", isRead: false },
+      { userId: piri.id, type: "order_status", title: "Teilbestätigung", message: "Italia Import hat Ihre Bestellung teilweise bestätigt — Trüffelöl evtl. nicht verfügbar.", isRead: false },
+      { userId: piri.id, type: "new_message", title: "Antwort erhalten", message: "Peter Klein: Spätburgunder hab ich zum Aktionspreis.", isRead: true },
+      { userId: piri.id, type: "order_status", title: "Lieferung abgeschlossen", message: "Ihre Bestellung von Getränke Klein wurde geliefert.", isRead: true },
+      { userId: piri.id, type: "order_status", title: "Lieferung abgeschlossen", message: "Ihre Bestellung von Frische Produkte GmbH wurde geliefert.", isRead: true },
+      { userId: piri.id, type: "new_message", title: "Neue Nachricht", message: "Anna Bauer hat geantwortet zu Ihrer Anfrage.", isRead: true },
+      { userId: piri.id, type: "complaint_comment", title: "Reklamation gelöst", message: "Ihre Reklamation 'Augustiner-Kiste' wurde als gelöst markiert.", isRead: true },
+      { userId: piri.id, type: "order_status", title: "Bestellung bestätigt", message: "Nordsee Fisch hat Ihre Bestellung bestätigt.", isRead: true },
+      { userId: piri.id, type: "order_status", title: "Bestellung storniert", message: "Eine Bestellung wurde manuell storniert.", isRead: true },
+    ];
+    await db.insert(notifications).values(piriNotifs);
+
+    // ----- Kosten-Einstellung + Übernachtungen Feb-Apr 2026 -----
+    await db.insert(costSettings).values({ restaurantId: piri.id, targetCostPerGuest: "16.50" });
+
+    // 79 Tage von Feb 1 (78 days ago) bis heute (Apr 20)
+    const piriStays: any[] = [];
+    for (let d = 0; d <= 78; d++) {
+      const date = new Date(Date.now() - d * 24 * 60 * 60 * 1000);
+      const dateStr = date.toISOString().slice(0, 10);
+      const dow = date.getDay(); // 0=So
+      // Hotel mit 28 Zimmern; Wochenende voller, Karwoche/Ostern Spitze
+      const isWeekend = dow === 5 || dow === 6;
+      // Ostern 2026: 5. April (Sonntag); Karwoche 30.03 - 05.04
+      const isEaster = d >= 15 && d <= 21;
+      let stays: number;
+      if (isEaster) stays = prandInt(48, 56);
+      else if (isWeekend) stays = prandInt(34, 50);
+      else stays = prandInt(14, 30);
+      piriStays.push({ restaurantId: piri.id, date: dateStr, overnightStays: stays });
+    }
+    const chunkSize = 200;
+    for (let i = 0; i < piriStays.length; i += chunkSize) {
+      await db.insert(overnightStays).values(piriStays.slice(i, i + chunkSize));
+    }
+
+    console.log(`Piri's Jagdhof: ${piriOrderSpecs.length} Bestellungen, ${piriStays.length} Übernachtungstage seeded.`);
 
     console.log(`Demo data ${DEMO_VERSION} seeded successfully!`);
   }
