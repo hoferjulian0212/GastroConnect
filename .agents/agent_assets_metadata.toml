@@ -1,0 +1,734 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "NXRswn8oGUGAcXNXbDgm-"
+uri = "file://client/public/images/products/zitronen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kgdLiGXXas_kCIJRJAeeV"
+uri = "file://client/public/images/products/bio-gurken.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "554JnlC1_svwWWzMljtUv"
+uri = "file://client/public/images/products/paprika-rot.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "2ABTjHcLX7NHl_mw0MO91"
+uri = "file://client/public/images/products/champignons.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "NgbxQTCHi7MJZSlgWj8I4"
+uri = "file://client/public/images/products/kartoffeln.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "n2T6nCCFRcFELUh_6d3fP"
+uri = "file://client/public/images/products/zwiebeln.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "zU2GFjViwasfLSqhsRcZn"
+uri = "file://client/public/images/products/bananen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "KcmUfMeMvH5_zac0Y7-29"
+uri = "file://client/public/images/products/erdbeeren.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "bqY0WXMHBHnhLmiNW4owv"
+uri = "file://client/public/images/products/entenbrust.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "MYwxPrhmdOpfs-84vccRa"
+uri = "file://client/public/images/products/lammkarree.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "iTAWetgvvWDPGG6H-p_hV"
+uri = "file://client/public/images/products/rinderhuefte.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "xLjbLEJecdaZ7hqhDKV-P"
+uri = "file://client/public/images/products/salami-fenchel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "XPYqCxNlrwfC3GbqJdY3u"
+uri = "file://client/public/images/products/schinken-speck.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "JvOWG5IewhFQtE-lXz4l7"
+uri = "file://client/public/images/products/weizenbier.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ytuDyyrAOiIGY9s79qVRJ"
+uri = "file://client/public/images/products/riesling.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ghxzK3AaJEnitzSg4ZCQj"
+uri = "file://client/public/images/products/chianti.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Rj-dJX_l-0CoF8qFbqPER"
+uri = "file://client/public/images/products/espresso-bohnen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "qIFjho3awrUnU3zEq1ZwJ"
+uri = "file://client/public/images/products/orangensaft.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Hf4JkQkZLGL3nWZ_Z8Adq"
+uri = "file://client/public/images/products/olivenoel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "swuh8B_aB5hXsqcsekcTf"
+uri = "file://client/public/images/products/spaghetti.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "HNYeNpU-kj8qKSitKQ3CX"
+uri = "file://client/public/images/products/mozzarella.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "L6Et6V6QxvrYA5W9YZ0K3"
+uri = "file://client/public/images/products/parmigiano.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "0KYBTr0VEUNMDW-DHMT4c"
+uri = "file://client/public/images/products/prosciutto.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "GTTdLxa9v7i0bcFXZPHB_"
+uri = "file://client/public/images/products/tomaten-passata.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "VylHn3shtloOPP3QVXVDH"
+uri = "file://client/public/images/products/pesto.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "K1oqywD0eL0gWgCr91yyh"
+uri = "file://client/public/images/products/balsamico.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "-O6-mCfe-ln674JzU4mxS"
+uri = "file://client/public/images/products/lachsfilet.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7f4oEPSAY-WwXeA5enlF3"
+uri = "file://client/public/images/products/kabeljau.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ndFE5h0qNp2ZBo-HMzvxF"
+uri = "file://client/public/images/products/garnelen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "6F4pxIOzznL4QNmYleAkS"
+uri = "file://client/public/images/products/miesmuscheln.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "SzxOR_1ZwrTrjp21PGjIv"
+uri = "file://client/public/images/products/thunfisch.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "FqXxS9LYsV9VJy8c7K96i"
+uri = "file://client/public/images/products/forellenfilet.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "vM6HubMXgu74-ythqHErF"
+uri = "file://client/public/images/products/bio-spinat.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ykG9NmxmiO6c33cx3_SXy"
+uri = "file://client/public/images/products/brokkoli.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "dL6-ubupjSTF8UGNfWmJH"
+uri = "file://client/public/images/products/blumenkohl.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "oNkQKPAdg_mrLm_3GCLUD"
+uri = "file://client/public/images/products/zucchini.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "lrW50OXIv-8FZFp535P-B"
+uri = "file://client/public/images/products/auberginen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "DDe7C_a_faJw9uzTYdevn"
+uri = "file://client/public/images/products/bio-knoblauch.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7LIOx9_rQY83_StTT5LWk"
+uri = "file://client/public/images/products/petersilie.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "EQzPXorJEb560bTRMWZce"
+uri = "file://client/public/images/products/basilikum.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "mRz9qINHGNmZDc_qhZI4w"
+uri = "file://client/public/images/products/rosmarin.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "NgMdObIjZ_uHJ2daxEVqx"
+uri = "file://client/public/images/products/trauben.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kfe9GzlOAlJqUFeOq0fdA"
+uri = "file://client/public/images/products/birnen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "zChrZrJm7VTY1t4rVZfRJ"
+uri = "file://client/public/images/products/avocado.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "gdWRPcij5f1Xt-IlzmoDn"
+uri = "file://client/public/images/products/limetten.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "LKMKZTGUb7VkVOli_9p4H"
+uri = "file://client/public/images/products/mango.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "_w4hzFS8O2bLiYkn9US3E"
+uri = "file://client/public/images/products/heidelbeeren.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "-B2WNd497E95MV-9ZCVjI"
+uri = "file://client/public/images/products/minze.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ogTytKHyuf6g4V9tFpww4"
+uri = "file://client/public/images/products/lauch.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3JrOyXvabQsmLSMVCtjKG"
+uri = "file://client/public/images/products/spargel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "yWH78S7c8dWsMp7-CK-iN"
+uri = "file://client/public/images/products/schweinebauch.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "gVLq218KK8bKkIUfLDXEM"
+uri = "file://client/public/images/products/kalbsschnitzel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "aFOR3Ykqfr8__fXmQogFu"
+uri = "file://client/public/images/products/hackfleisch-rind.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "HIts1eMvAX1HwsfKtpPoj"
+uri = "file://client/public/images/products/wiener-wuerstchen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "WC7aWUfHRqR13kdtuJ9Yo"
+uri = "file://client/public/images/products/leberkaese.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "I6AS-7d2bFYRwQVw1Zyeb"
+uri = "file://client/public/images/products/weisswurst.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "e6nVZfvR9WGugbLv2KS8H"
+uri = "file://client/public/images/products/salami-mailand.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "CiuAw0G2OD2UeyA8MmE_O"
+uri = "file://client/public/images/products/putenbrust.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "0Y1xypwFjPxHQNXNdPsvm"
+uri = "file://client/public/images/products/lammkeule.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "dKhBYX1GzWH3Ho-48p-Tz"
+uri = "file://client/public/images/products/roastbeef.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "MC4zCilPU7A9FDijvy_Z7"
+uri = "file://client/public/images/products/spareribs.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "WemwwCKXzrTFMlatvZ-hW"
+uri = "file://client/public/images/products/bacon.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "DlA6kpFR-rqf_wDeHlqNa"
+uri = "file://client/public/images/products/bauchspeck.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "XZPlxkYv4YNtBZgLxRr2v"
+uri = "file://client/public/images/products/mortadella.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "VCzTQddh9x4Hcw6MD9NDm"
+uri = "file://client/public/images/products/kasseler.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7YHtiW5Qfmkb8z5yMlRzM"
+uri = "file://client/public/images/products/pils.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "OFHRWOFiKKHXM9YLRZhM-"
+uri = "file://client/public/images/products/hefeweizen-dunkel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "C5tXJOHqh9HjkFRj5zAjk"
+uri = "file://client/public/images/products/radler.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "5Z7NQqOc-kO-0lyK-fjGr"
+uri = "file://client/public/images/products/bier-alkoholfrei.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "GTpLQlGRctk2m43IOadHL"
+uri = "file://client/public/images/products/veltliner.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "1h-CAczuHuKyZrVnQ-_w9"
+uri = "file://client/public/images/products/pinot-grigio.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "diFKOZ_RbTno4AjEEzuUa"
+uri = "file://client/public/images/products/spaetburgunder.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "bLNdqn1pXj-NzBEkIxDbg"
+uri = "file://client/public/images/products/prosecco.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "W6MEm3DzGnfd4r9M4pKmM"
+uri = "file://client/public/images/products/champagner.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "vNVKuaYrlHxZohbvVa2BN"
+uri = "file://client/public/images/products/aperol.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "K7twGCNc6lTTKevFfMRNC"
+uri = "file://client/public/images/products/gin.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Z3vme59tDehvI3Owr_9PG"
+uri = "file://client/public/images/products/wodka.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "jOskJS1hJGb6QCyfvuqxW"
+uri = "file://client/public/images/products/whisky.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kybNgSgJ8VVPetSajQ16E"
+uri = "file://client/public/images/products/grappa.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "56IASYDPfPflrUifUXRZb"
+uri = "file://client/public/images/products/tonic-water.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "FFvXKsKv2vn5JA8e4bcBh"
+uri = "file://client/public/images/products/espresso-250g.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "8D6DifXTF3iiwwk2_iAZG"
+uri = "file://client/public/images/products/cappuccino-bohnen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "d8Qvum25G4zc9sHEfpN2y"
+uri = "file://client/public/images/products/earl-grey.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7wq9Zdf2ALg7C2KGyDC8W"
+uri = "file://client/public/images/products/bio-limonade.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "DZZzlS8gxJcx8IYl3_xQr"
+uri = "file://client/public/images/products/tomatensaft.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "EmqBV1oCE5foCLTU-LjDB"
+uri = "file://client/public/images/products/sprudelwasser.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "phhiPCSL_jktCI4WRTnmB"
+uri = "file://client/public/images/products/penne.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "M1o231s6BPkM2cOCM19YU"
+uri = "file://client/public/images/products/tagliatelle.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "17iuNbUXGeZuHfkE1r7GT"
+uri = "file://client/public/images/products/lasagne.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "KzNlI0j_Qe0bR1_P7-LKS"
+uri = "file://client/public/images/products/ravioli.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "GyuXREzZUjGTadhKW9e65"
+uri = "file://client/public/images/products/gnocchi.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7smfHakFZPVBK-10rABfC"
+uri = "file://client/public/images/products/risotto.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7Vdj6RxkXcr9wY8XRsMML"
+uri = "file://client/public/images/products/burrata.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "l0XYYDYw0ySqOoOwraO19"
+uri = "file://client/public/images/products/gorgonzola.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "acR14q4oiQlVyGrqcm6s_"
+uri = "file://client/public/images/products/pecorino.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "BGe38bJ7pOD72npozrmc6"
+uri = "file://client/public/images/products/ricotta.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "R6pJ_qA8i8_0BMqO4Wdfs"
+uri = "file://client/public/images/products/olivenoel-1l.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "c5MlWGe5Y5yEH0viwE202"
+uri = "file://client/public/images/products/aceto-balsamico.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "X77iFcjlSwbHsJ_tnbgzD"
+uri = "file://client/public/images/products/trueffeloel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "NkCXJctE4eYzTgcA5rdW-"
+uri = "file://client/public/images/products/sugo-arrabbiata.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "lOdJcReD4kXnfVbg0PmN3"
+uri = "file://client/public/images/products/sugo-bolognese.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "eEucw0hnc1y9qwsiXNogc"
+uri = "file://client/public/images/products/oliven.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "JStcDlsc8Y4LEA-wI9Aby"
+uri = "file://client/public/images/products/rotbarsch.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Af6kb--5KrwUT4qiDpnk6"
+uri = "file://client/public/images/products/pulpo.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "GFXOEiYt4t0HCpi508MU6"
+uri = "file://client/public/images/products/calamari.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "0J4lCq10lekzCLfOC77Yh"
+uri = "file://client/public/images/products/jakobsmuscheln.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "hEocB6OMxpLfShEZDF2Iq"
+uri = "file://client/public/images/products/hummer.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "4VneUf356ILqHRH9E7Nm_"
+uri = "file://client/public/images/products/krebsfleisch.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "bexmhnHZjyK-IdGfHN1a5"
+uri = "file://client/public/images/products/raeucherlachs.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "yepQ_YlV-vI4dyMArdE8y"
+uri = "file://client/public/images/products/matjes.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "zd1xEAWbTFrBhuNW6sXly"
+uri = "file://client/public/images/products/nordseekrabben.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "nyf7k73J7o0m83p4XC6ep"
+uri = "file://client/public/images/products/austern.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "R2TVpg1sQ0GrkewGlVbVy"
+uri = "file://client/public/images/products/sardellen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "raP7cj8G-sRnY7bwpE5pX"
+uri = "file://client/public/images/products/polenta.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Z6UD-KWeqVAYs_hz5-ca5"
+uri = "file://client/public/images/products/cantucci.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "wLTewjx2aj1vaKEM0szrm"
+uri = "file://client/public/images/products/tiramisu.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "uvc8JGn0gPYVxZIpFrz-3"
+uri = "file://client/public/images/products/lavazza.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "t5wbPjkzLPEFp3hHJeNYF"
+uri = "file://client/public/images/products/polpa-tomate.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "nirjEFmJ6ZZf_J9H1O85X"
+uri = "file://client/public/images/products/seezunge.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "u90MkNI-IE_wXki-BHwCk"
+uri = "file://client/public/images/products/dorade.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "jVnXxy1uGCKOe_UXrkkdx"
+uri = "file://client/public/images/products/wolfsbarsch.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "EKkHEXPuDvEmXKeiT4Z62"
+uri = "file://client/public/images/products/heilbutt.png"
+type = "image"
+title = "generated_image"

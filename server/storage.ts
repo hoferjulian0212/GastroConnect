@@ -1039,7 +1039,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedData(): Promise<void> {
-    const DEMO_VERSION = "demo-v5";
+    const DEMO_VERSION = "demo-v6";
     const sentinelEmail = `${DEMO_VERSION}@gastroconnect.dev`;
     const existing = await db.select().from(users).where(eq(users.email, sentinelEmail));
     if (existing.length > 0) {
@@ -1162,14 +1162,14 @@ export class DatabaseStorage implements IStorage {
     const p_salat = await this.createProduct({ supplierId: supplier1.id, name: "Eisbergsalat", description: "Knackiger Eisbergsalat", price: "1.49", unit: "Stück", category: "Gemüse", inStock: true, stockQuantity: 50, lowStockThreshold: 10, imageUrl: "/images/products/eisbergsalat.png" });
     const p_karotten = await this.createProduct({ supplierId: supplier1.id, name: "Karotten", description: "Frische Karotten im Bund", price: "2.29", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 80, lowStockThreshold: 15, imageUrl: "/images/products/karotten.png" });
     const p_aepfel = await this.createProduct({ supplierId: supplier1.id, name: "Bio Äpfel", description: "Knackige Bio-Äpfel, Sorte Elstar", price: "4.49", unit: "kg", category: "Obst", inStock: true, stockQuantity: 60, lowStockThreshold: 12, imageUrl: "/images/products/bio-aepfel.png" });
-    const p_zitronen = await this.createProduct({ supplierId: supplier1.id, name: "Zitronen", description: "Frische Zitronen aus Sizilien", price: "3.29", unit: "kg", category: "Obst", inStock: true, stockQuantity: 40, lowStockThreshold: 8, imageUrl: unsplash("1582287014914-1db836ff8616") });
-    await this.createProduct({ supplierId: supplier1.id, name: "Bio Gurken", description: "Knackfrische Salatgurken aus Bio-Anbau", price: "1.99", unit: "Stück", category: "Gemüse", inStock: true, stockQuantity: 70, lowStockThreshold: 15, imageUrl: unsplash("1604977042946-1eecc30f269e") });
-    await this.createProduct({ supplierId: supplier1.id, name: "Paprika rot", description: "Süße rote Paprika", price: "4.79", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 35, lowStockThreshold: 10, imageUrl: unsplash("1525607551316-4a8e16d1f9ba") });
-    await this.createProduct({ supplierId: supplier1.id, name: "Champignons", description: "Frische Champignons, weiß", price: "5.49", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 25, lowStockThreshold: 5, imageUrl: unsplash("1607301406259-dfb186e15de8") });
-    await this.createProduct({ supplierId: supplier1.id, name: "Kartoffeln", description: "Festkochende Kartoffeln, Sorte Annabelle", price: "1.29", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 250, lowStockThreshold: 50, imageUrl: unsplash("1518977676601-b53f82aba655") });
-    await this.createProduct({ supplierId: supplier1.id, name: "Zwiebeln", description: "Gelbe Speisezwiebeln", price: "1.49", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 120, lowStockThreshold: 25, imageUrl: unsplash("1580201092675-a0a6a6cafbb1") });
-    await this.createProduct({ supplierId: supplier1.id, name: "Bananen", description: "Fairtrade Bananen aus Ecuador", price: "2.19", unit: "kg", category: "Obst", inStock: true, stockQuantity: 90, lowStockThreshold: 20, imageUrl: unsplash("1571771894821-ce9b6c11b08e") });
-    await this.createProduct({ supplierId: supplier1.id, name: "Erdbeeren", description: "Saisonale Erdbeeren, 500g Schale", price: "3.99", unit: "Schale", category: "Obst", inStock: false, stockQuantity: 0, lowStockThreshold: 10, imageUrl: unsplash("1464965911861-746a04b4bca6") });
+    const p_zitronen = await this.createProduct({ supplierId: supplier1.id, name: "Zitronen", description: "Frische Zitronen aus Sizilien", price: "3.29", unit: "kg", category: "Obst", inStock: true, stockQuantity: 40, lowStockThreshold: 8, imageUrl: "/images/products/zitronen.png" });
+    await this.createProduct({ supplierId: supplier1.id, name: "Bio Gurken", description: "Knackfrische Salatgurken aus Bio-Anbau", price: "1.99", unit: "Stück", category: "Gemüse", inStock: true, stockQuantity: 70, lowStockThreshold: 15, imageUrl: "/images/products/bio-gurken.png" });
+    await this.createProduct({ supplierId: supplier1.id, name: "Paprika rot", description: "Süße rote Paprika", price: "4.79", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 35, lowStockThreshold: 10, imageUrl: "/images/products/paprika-rot.png" });
+    await this.createProduct({ supplierId: supplier1.id, name: "Champignons", description: "Frische Champignons, weiß", price: "5.49", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 25, lowStockThreshold: 5, imageUrl: "/images/products/champignons.png" });
+    await this.createProduct({ supplierId: supplier1.id, name: "Kartoffeln", description: "Festkochende Kartoffeln, Sorte Annabelle", price: "1.29", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 250, lowStockThreshold: 50, imageUrl: "/images/products/kartoffeln.png" });
+    await this.createProduct({ supplierId: supplier1.id, name: "Zwiebeln", description: "Gelbe Speisezwiebeln", price: "1.49", unit: "kg", category: "Gemüse", inStock: true, stockQuantity: 120, lowStockThreshold: 25, imageUrl: "/images/products/zwiebeln.png" });
+    await this.createProduct({ supplierId: supplier1.id, name: "Bananen", description: "Fairtrade Bananen aus Ecuador", price: "2.19", unit: "kg", category: "Obst", inStock: true, stockQuantity: 90, lowStockThreshold: 20, imageUrl: "/images/products/bananen.png" });
+    await this.createProduct({ supplierId: supplier1.id, name: "Erdbeeren", description: "Saisonale Erdbeeren, 500g Schale", price: "3.99", unit: "Schale", category: "Obst", inStock: false, stockQuantity: 0, lowStockThreshold: 10, imageUrl: "/images/products/erdbeeren.png" });
 
     // Supplier 2 (Metzgerei) — local images
     const p_schnitzel = await this.createProduct({ supplierId: supplier2.id, name: "Schweineschnitzel", description: "Zartes Schweineschnitzel, panierfertig", price: "12.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 30, lowStockThreshold: 8, imageUrl: "/images/products/schweineschnitzel.png" });
@@ -1177,40 +1177,40 @@ export class DatabaseStorage implements IStorage {
     const p_haehnchen = await this.createProduct({ supplierId: supplier2.id, name: "Hähnchenbrust", description: "Zarte Hähnchenbrust", price: "9.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 40, lowStockThreshold: 10, imageUrl: "/images/products/haehnchenbrust.png" });
     const p_bratwurst = await this.createProduct({ supplierId: supplier2.id, name: "Bratwurst", description: "Original Nürnberger Bratwurst", price: "8.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 50, lowStockThreshold: 15, imageUrl: "/images/products/bratwurst.png" });
     await this.createProduct({ supplierId: supplier2.id, name: "Hackfleisch gemischt", description: "Hackfleisch gemischt Rind/Schwein", price: "7.99", unit: "kg", category: "Fleisch", inStock: false, stockQuantity: 0, lowStockThreshold: 10, imageUrl: "/images/products/hackfleisch.png" });
-    await this.createProduct({ supplierId: supplier2.id, name: "Entenbrust", description: "Barbarie-Entenbrust, vakuumiert", price: "21.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 12, lowStockThreshold: 4, imageUrl: unsplash("1606728035253-49e8a23146de") });
-    await this.createProduct({ supplierId: supplier2.id, name: "Lammkarree", description: "Lammkarree french-trimmed", price: "32.50", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 8, lowStockThreshold: 3, imageUrl: unsplash("1602470520998-f4a52199a3d6") });
-    await this.createProduct({ supplierId: supplier2.id, name: "Rinderhüfte", description: "Rinderhüfte am Stück, dry-aged 21 Tage", price: "28.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 18, lowStockThreshold: 5, imageUrl: unsplash("1588168333986-5078d3ae3976") });
-    await this.createProduct({ supplierId: supplier2.id, name: "Salami Fenchel", description: "Hausgemachte Salami mit Fenchel", price: "24.50", unit: "kg", category: "Wurst", inStock: true, stockQuantity: 22, lowStockThreshold: 5, imageUrl: unsplash("1601001435957-74f0958a93c6") });
-    await this.createProduct({ supplierId: supplier2.id, name: "Schinken Speck", description: "Tiroler Speck, geschnitten", price: "29.99", unit: "kg", category: "Wurst", inStock: true, stockQuantity: 14, lowStockThreshold: 4, imageUrl: unsplash("1542901031-ec5eeb518e9d") });
+    await this.createProduct({ supplierId: supplier2.id, name: "Entenbrust", description: "Barbarie-Entenbrust, vakuumiert", price: "21.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 12, lowStockThreshold: 4, imageUrl: "/images/products/entenbrust.png" });
+    await this.createProduct({ supplierId: supplier2.id, name: "Lammkarree", description: "Lammkarree french-trimmed", price: "32.50", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 8, lowStockThreshold: 3, imageUrl: "/images/products/lammkarree.png" });
+    await this.createProduct({ supplierId: supplier2.id, name: "Rinderhüfte", description: "Rinderhüfte am Stück, dry-aged 21 Tage", price: "28.99", unit: "kg", category: "Fleisch", inStock: true, stockQuantity: 18, lowStockThreshold: 5, imageUrl: "/images/products/rinderhuefte.png" });
+    await this.createProduct({ supplierId: supplier2.id, name: "Salami Fenchel", description: "Hausgemachte Salami mit Fenchel", price: "24.50", unit: "kg", category: "Wurst", inStock: true, stockQuantity: 22, lowStockThreshold: 5, imageUrl: "/images/products/salami-fenchel.png" });
+    await this.createProduct({ supplierId: supplier2.id, name: "Schinken Speck", description: "Tiroler Speck, geschnitten", price: "29.99", unit: "kg", category: "Wurst", inStock: true, stockQuantity: 14, lowStockThreshold: 4, imageUrl: "/images/products/schinken-speck.png" });
 
     // Supplier 3 (Getränke) — local images
     const p_augustiner = await this.createProduct({ supplierId: supplier3.id, name: "Augustiner Helles", description: "Münchner Augustiner Helles, Kiste 20x0,5l", price: "19.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 100, lowStockThreshold: 20, imageUrl: "/images/products/augustiner-helles.png" });
     const p_wasser = await this.createProduct({ supplierId: supplier3.id, name: "Mineralwasser", description: "Gerolsteiner Mineralwasser, Kiste 12x1l", price: "8.49", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 200, lowStockThreshold: 40, imageUrl: "/images/products/mineralwasser.png" });
     const p_apfelsaft = await this.createProduct({ supplierId: supplier3.id, name: "Apfelsaft", description: "Naturtrüber Apfelsaft, Kiste 6x1l", price: "11.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 80, lowStockThreshold: 15, imageUrl: "/images/products/apfelsaft.png" });
     await this.createProduct({ supplierId: supplier3.id, name: "Cola", description: "Coca-Cola Classic, Kiste 24x0,33l", price: "18.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 60, lowStockThreshold: 15, imageUrl: "/images/products/cola.png" });
-    await this.createProduct({ supplierId: supplier3.id, name: "Weizenbier", description: "Erdinger Weißbier, Kiste 20x0,5l", price: "21.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 75, lowStockThreshold: 15, imageUrl: unsplash("1535958636474-b021ee887b13") });
-    await this.createProduct({ supplierId: supplier3.id, name: "Riesling QbA", description: "Mosel Riesling, trocken, Kiste 6x0,75l", price: "44.99", unit: "Kiste", category: "Wein", inStock: true, stockQuantity: 40, lowStockThreshold: 10, imageUrl: unsplash("1510812431401-41d2bd2722f3") });
-    await this.createProduct({ supplierId: supplier3.id, name: "Chianti DOCG", description: "Toskanischer Chianti, Kiste 6x0,75l", price: "59.99", unit: "Kiste", category: "Wein", inStock: true, stockQuantity: 30, lowStockThreshold: 8, imageUrl: unsplash("1547595628-c61a29f496f0") });
-    await this.createProduct({ supplierId: supplier3.id, name: "Espresso Bohnen", description: "Premium Espresso, 1kg Beutel", price: "16.50", unit: "kg", category: "Kaffee", inStock: true, stockQuantity: 55, lowStockThreshold: 12, imageUrl: unsplash("1559056199-641a0ac8b55e") });
-    await this.createProduct({ supplierId: supplier3.id, name: "Orangensaft", description: "Direktsaft, Kiste 6x1l", price: "13.49", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 65, lowStockThreshold: 15, imageUrl: unsplash("1600271886742-f049cd451bba") });
+    await this.createProduct({ supplierId: supplier3.id, name: "Weizenbier", description: "Erdinger Weißbier, Kiste 20x0,5l", price: "21.99", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 75, lowStockThreshold: 15, imageUrl: "/images/products/weizenbier.png" });
+    await this.createProduct({ supplierId: supplier3.id, name: "Riesling QbA", description: "Mosel Riesling, trocken, Kiste 6x0,75l", price: "44.99", unit: "Kiste", category: "Wein", inStock: true, stockQuantity: 40, lowStockThreshold: 10, imageUrl: "/images/products/riesling.png" });
+    await this.createProduct({ supplierId: supplier3.id, name: "Chianti DOCG", description: "Toskanischer Chianti, Kiste 6x0,75l", price: "59.99", unit: "Kiste", category: "Wein", inStock: true, stockQuantity: 30, lowStockThreshold: 8, imageUrl: "/images/products/chianti.png" });
+    await this.createProduct({ supplierId: supplier3.id, name: "Espresso Bohnen", description: "Premium Espresso, 1kg Beutel", price: "16.50", unit: "kg", category: "Kaffee", inStock: true, stockQuantity: 55, lowStockThreshold: 12, imageUrl: "/images/products/espresso-bohnen.png" });
+    await this.createProduct({ supplierId: supplier3.id, name: "Orangensaft", description: "Direktsaft, Kiste 6x1l", price: "13.49", unit: "Kiste", category: "Getränke", inStock: true, stockQuantity: 65, lowStockThreshold: 15, imageUrl: "/images/products/orangensaft.png" });
 
     // Supplier 4 (Italia Import) — Unsplash
-    const p_olivenoel = await this.createProduct({ supplierId: supplier4.id, name: "Olivenöl extra vergine", description: "Sizilianisches Olivenöl, 5L Kanister", price: "59.90", unit: "Kanister", category: "Öl & Essig", inStock: true, stockQuantity: 45, lowStockThreshold: 10, imageUrl: unsplash("1474979266404-7eaacbcd87c5") });
-    const p_pasta = await this.createProduct({ supplierId: supplier4.id, name: "Spaghetti N°5", description: "Bronze gezogene Spaghetti, 12x500g", price: "23.40", unit: "Karton", category: "Pasta", inStock: true, stockQuantity: 80, lowStockThreshold: 20, imageUrl: unsplash("1551183053-bf91a1d81141") });
-    const p_mozzarella = await this.createProduct({ supplierId: supplier4.id, name: "Mozzarella di Bufala", description: "Büffelmozzarella DOP, 125g Beutel", price: "3.50", unit: "Stück", category: "Käse", inStock: true, stockQuantity: 120, lowStockThreshold: 30, imageUrl: unsplash("1486297678162-eb2a19b0a32d") });
-    const p_parmesan = await this.createProduct({ supplierId: supplier4.id, name: "Parmigiano Reggiano", description: "24 Monate gereift, am Stück", price: "32.90", unit: "kg", category: "Käse", inStock: true, stockQuantity: 28, lowStockThreshold: 8, imageUrl: unsplash("1452195100486-9cc805987862") });
-    await this.createProduct({ supplierId: supplier4.id, name: "Prosciutto di Parma", description: "Parmaschinken DOP 18 Monate, am Stück", price: "39.90", unit: "kg", category: "Wurst", inStock: true, stockQuantity: 16, lowStockThreshold: 5, imageUrl: unsplash("1542901031-ec5eeb518e9d") });
-    await this.createProduct({ supplierId: supplier4.id, name: "Tomaten passata", description: "San Marzano Tomaten, 12x680g", price: "27.60", unit: "Karton", category: "Konserven", inStock: true, stockQuantity: 95, lowStockThreshold: 20, imageUrl: unsplash("1546470427-227e5a52e8d7") });
-    await this.createProduct({ supplierId: supplier4.id, name: "Pesto Genovese", description: "Original Pesto, 200g Glas", price: "5.90", unit: "Glas", category: "Saucen", inStock: true, stockQuantity: 60, lowStockThreshold: 15, imageUrl: unsplash("1473093226795-af9932fe5856") });
-    await this.createProduct({ supplierId: supplier4.id, name: "Balsamico Tradizionale", description: "12 Jahre gereift, 250ml", price: "29.90", unit: "Flasche", category: "Öl & Essig", inStock: true, stockQuantity: 35, lowStockThreshold: 10, imageUrl: unsplash("1505252585461-04db1eb84625") });
+    const p_olivenoel = await this.createProduct({ supplierId: supplier4.id, name: "Olivenöl extra vergine", description: "Sizilianisches Olivenöl, 5L Kanister", price: "59.90", unit: "Kanister", category: "Öl & Essig", inStock: true, stockQuantity: 45, lowStockThreshold: 10, imageUrl: "/images/products/olivenoel.png" });
+    const p_pasta = await this.createProduct({ supplierId: supplier4.id, name: "Spaghetti N°5", description: "Bronze gezogene Spaghetti, 12x500g", price: "23.40", unit: "Karton", category: "Pasta", inStock: true, stockQuantity: 80, lowStockThreshold: 20, imageUrl: "/images/products/spaghetti.png" });
+    const p_mozzarella = await this.createProduct({ supplierId: supplier4.id, name: "Mozzarella di Bufala", description: "Büffelmozzarella DOP, 125g Beutel", price: "3.50", unit: "Stück", category: "Käse", inStock: true, stockQuantity: 120, lowStockThreshold: 30, imageUrl: "/images/products/mozzarella.png" });
+    const p_parmesan = await this.createProduct({ supplierId: supplier4.id, name: "Parmigiano Reggiano", description: "24 Monate gereift, am Stück", price: "32.90", unit: "kg", category: "Käse", inStock: true, stockQuantity: 28, lowStockThreshold: 8, imageUrl: "/images/products/parmigiano.png" });
+    await this.createProduct({ supplierId: supplier4.id, name: "Prosciutto di Parma", description: "Parmaschinken DOP 18 Monate, am Stück", price: "39.90", unit: "kg", category: "Wurst", inStock: true, stockQuantity: 16, lowStockThreshold: 5, imageUrl: "/images/products/prosciutto.png" });
+    await this.createProduct({ supplierId: supplier4.id, name: "Tomaten passata", description: "San Marzano Tomaten, 12x680g", price: "27.60", unit: "Karton", category: "Konserven", inStock: true, stockQuantity: 95, lowStockThreshold: 20, imageUrl: "/images/products/tomaten-passata.png" });
+    await this.createProduct({ supplierId: supplier4.id, name: "Pesto Genovese", description: "Original Pesto, 200g Glas", price: "5.90", unit: "Glas", category: "Saucen", inStock: true, stockQuantity: 60, lowStockThreshold: 15, imageUrl: "/images/products/pesto.png" });
+    await this.createProduct({ supplierId: supplier4.id, name: "Balsamico Tradizionale", description: "12 Jahre gereift, 250ml", price: "29.90", unit: "Flasche", category: "Öl & Essig", inStock: true, stockQuantity: 35, lowStockThreshold: 10, imageUrl: "/images/products/balsamico.png" });
 
     // Supplier 5 (Nordsee Fisch)
-    const p_lachs = await this.createProduct({ supplierId: supplier5.id, name: "Lachsfilet", description: "Norwegischer Lachs, Aquakultur, ohne Haut", price: "24.90", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 22, lowStockThreshold: 6, imageUrl: unsplash("1485921325833-c519f76c4927") });
-    await this.createProduct({ supplierId: supplier5.id, name: "Kabeljau Filet", description: "Wildfang aus der Nordsee", price: "19.50", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 18, lowStockThreshold: 5, imageUrl: unsplash("1535400875775-0928bcc2c1ac") });
-    await this.createProduct({ supplierId: supplier5.id, name: "Garnelen Black Tiger", description: "Geschält, IQF, 1kg Beutel", price: "32.90", unit: "kg", category: "Meeresfrüchte", inStock: true, stockQuantity: 24, lowStockThreshold: 6, imageUrl: unsplash("1565680018434-b513d5e5fd47") });
-    await this.createProduct({ supplierId: supplier5.id, name: "Miesmuscheln", description: "Frische Bouchot-Miesmuscheln, 5kg", price: "14.90", unit: "Sack", category: "Meeresfrüchte", inStock: true, stockQuantity: 12, lowStockThreshold: 4, imageUrl: unsplash("1565680018434-b513d5e5fd47") });
-    await this.createProduct({ supplierId: supplier5.id, name: "Thunfisch Sashimi", description: "Sashimi-Qualität, Loin", price: "54.90", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 8, lowStockThreshold: 3, imageUrl: unsplash("1583623025817-d180a2221d0a") });
-    await this.createProduct({ supplierId: supplier5.id, name: "Forellenfilet", description: "Geräucherte Lachsforelle", price: "22.50", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 15, lowStockThreshold: 5, imageUrl: unsplash("1559847844-5315695dadae") });
+    const p_lachs = await this.createProduct({ supplierId: supplier5.id, name: "Lachsfilet", description: "Norwegischer Lachs, Aquakultur, ohne Haut", price: "24.90", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 22, lowStockThreshold: 6, imageUrl: "/images/products/lachsfilet.png" });
+    await this.createProduct({ supplierId: supplier5.id, name: "Kabeljau Filet", description: "Wildfang aus der Nordsee", price: "19.50", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 18, lowStockThreshold: 5, imageUrl: "/images/products/kabeljau.png" });
+    await this.createProduct({ supplierId: supplier5.id, name: "Garnelen Black Tiger", description: "Geschält, IQF, 1kg Beutel", price: "32.90", unit: "kg", category: "Meeresfrüchte", inStock: true, stockQuantity: 24, lowStockThreshold: 6, imageUrl: "/images/products/garnelen.png" });
+    await this.createProduct({ supplierId: supplier5.id, name: "Miesmuscheln", description: "Frische Bouchot-Miesmuscheln, 5kg", price: "14.90", unit: "Sack", category: "Meeresfrüchte", inStock: true, stockQuantity: 12, lowStockThreshold: 4, imageUrl: "/images/products/miesmuscheln.png" });
+    await this.createProduct({ supplierId: supplier5.id, name: "Thunfisch Sashimi", description: "Sashimi-Qualität, Loin", price: "54.90", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 8, lowStockThreshold: 3, imageUrl: "/images/products/thunfisch.png" });
+    await this.createProduct({ supplierId: supplier5.id, name: "Forellenfilet", description: "Geräucherte Lachsforelle", price: "22.50", unit: "kg", category: "Fisch", inStock: true, stockQuantity: 15, lowStockThreshold: 5, imageUrl: "/images/products/forellenfilet.png" });
 
     // ===== CONVERSATIONS & MESSAGES =====
     const conv1 = await this.getOrCreateConversation(restaurant1.id, supplier1.id);
@@ -1426,104 +1426,104 @@ export class DatabaseStorage implements IStorage {
     // ===== ADDITIONAL PRODUCTS — full catalogs per supplier =====
     const moreProducts: Array<{ s: any; name: string; desc: string; price: string; unit: string; cat: string; stock: number; low: number; img: string; moq?: number; }> = [
       // Supplier 1: Frische Produkte
-      { s: supplier1, name: "Bio Spinat", desc: "Junger Babyspinat", price: "5.99", unit: "kg", cat: "Gemüse", stock: 30, low: 8, img: unsplash("1576045057995-568f588f82fb") },
-      { s: supplier1, name: "Brokkoli", desc: "Frischer Brokkoli", price: "3.49", unit: "kg", cat: "Gemüse", stock: 45, low: 10, img: unsplash("1459411552884-841db9b3cc2a") },
-      { s: supplier1, name: "Blumenkohl", desc: "Weißer Blumenkohl", price: "2.99", unit: "Stück", cat: "Gemüse", stock: 38, low: 10, img: unsplash("1568584711271-6c929fb49b60") },
-      { s: supplier1, name: "Zucchini", desc: "Grüne Zucchini", price: "2.79", unit: "kg", cat: "Gemüse", stock: 55, low: 12, img: unsplash("1583119912267-cc97c911e416") },
-      { s: supplier1, name: "Auberginen", desc: "Glänzende Auberginen", price: "3.49", unit: "kg", cat: "Gemüse", stock: 30, low: 8, img: unsplash("1659261200833-ec8761558af7") },
-      { s: supplier1, name: "Bio Knoblauch", desc: "Knoblauch im Netz", price: "8.99", unit: "kg", cat: "Gemüse", stock: 22, low: 5, img: unsplash("1542435503-956c469947f6") },
-      { s: supplier1, name: "Petersilie", desc: "Glatte Petersilie, Bund", price: "1.49", unit: "Bund", cat: "Kräuter", stock: 60, low: 15, img: unsplash("1591299177061-2151e53fcaba") },
-      { s: supplier1, name: "Basilikum", desc: "Frischer Basilikum, Topf", price: "2.49", unit: "Topf", cat: "Kräuter", stock: 40, low: 10, img: unsplash("1465310477141-6fb93167a273") },
-      { s: supplier1, name: "Rosmarin", desc: "Rosmarin, Bund", price: "1.99", unit: "Bund", cat: "Kräuter", stock: 35, low: 8, img: unsplash("1503787787348-17e7c3c75e15") },
-      { s: supplier1, name: "Trauben kernlos", desc: "Süße kernlose Trauben", price: "5.99", unit: "kg", cat: "Obst", stock: 25, low: 6, img: unsplash("1599819811279-d5ad9cccf838") },
-      { s: supplier1, name: "Birnen Williams", desc: "Williams Christ Birnen", price: "3.79", unit: "kg", cat: "Obst", stock: 40, low: 10, img: unsplash("1568702846914-96b305d2aaeb") },
-      { s: supplier1, name: "Avocado", desc: "Reife Hass Avocados", price: "2.49", unit: "Stück", cat: "Obst", stock: 80, low: 20, img: unsplash("1601039641847-7857b994d704") },
-      { s: supplier1, name: "Limetten", desc: "Frische Limetten", price: "5.49", unit: "kg", cat: "Obst", stock: 30, low: 8, img: unsplash("1622957461168-202e611c41fe") },
-      { s: supplier1, name: "Mango", desc: "Reife Mangos", price: "4.99", unit: "Stück", cat: "Obst", stock: 35, low: 10, img: unsplash("1605027990121-cbae9e0642db") },
-      { s: supplier1, name: "Heidelbeeren", desc: "Frische Heidelbeeren, 250g", price: "4.49", unit: "Schale", cat: "Obst", stock: 28, low: 8, img: unsplash("1498557850523-fd3d118b962e") },
-      { s: supplier1, name: "Marokk. Minze", desc: "Marokkanische Minze, Bund", price: "1.99", unit: "Bund", cat: "Kräuter", stock: 30, low: 8, img: unsplash("1556767576-cf0a4a80a4d6") },
-      { s: supplier1, name: "Lauch", desc: "Frischer Lauch", price: "3.29", unit: "kg", cat: "Gemüse", stock: 42, low: 10, img: unsplash("1611604548018-d56bbd85f681") },
-      { s: supplier1, name: "Spargel weiß", desc: "Weißer Spargel, Klasse 1", price: "12.99", unit: "kg", cat: "Gemüse", stock: 18, low: 5, img: unsplash("1626452636562-31fa3a89c0a0") },
+      { s: supplier1, name: "Bio Spinat", desc: "Junger Babyspinat", price: "5.99", unit: "kg", cat: "Gemüse", stock: 30, low: 8, img: "/images/products/bio-spinat.png" },
+      { s: supplier1, name: "Brokkoli", desc: "Frischer Brokkoli", price: "3.49", unit: "kg", cat: "Gemüse", stock: 45, low: 10, img: "/images/products/brokkoli.png" },
+      { s: supplier1, name: "Blumenkohl", desc: "Weißer Blumenkohl", price: "2.99", unit: "Stück", cat: "Gemüse", stock: 38, low: 10, img: "/images/products/blumenkohl.png" },
+      { s: supplier1, name: "Zucchini", desc: "Grüne Zucchini", price: "2.79", unit: "kg", cat: "Gemüse", stock: 55, low: 12, img: "/images/products/zucchini.png" },
+      { s: supplier1, name: "Auberginen", desc: "Glänzende Auberginen", price: "3.49", unit: "kg", cat: "Gemüse", stock: 30, low: 8, img: "/images/products/auberginen.png" },
+      { s: supplier1, name: "Bio Knoblauch", desc: "Knoblauch im Netz", price: "8.99", unit: "kg", cat: "Gemüse", stock: 22, low: 5, img: "/images/products/bio-knoblauch.png" },
+      { s: supplier1, name: "Petersilie", desc: "Glatte Petersilie, Bund", price: "1.49", unit: "Bund", cat: "Kräuter", stock: 60, low: 15, img: "/images/products/petersilie.png" },
+      { s: supplier1, name: "Basilikum", desc: "Frischer Basilikum, Topf", price: "2.49", unit: "Topf", cat: "Kräuter", stock: 40, low: 10, img: "/images/products/basilikum.png" },
+      { s: supplier1, name: "Rosmarin", desc: "Rosmarin, Bund", price: "1.99", unit: "Bund", cat: "Kräuter", stock: 35, low: 8, img: "/images/products/rosmarin.png" },
+      { s: supplier1, name: "Trauben kernlos", desc: "Süße kernlose Trauben", price: "5.99", unit: "kg", cat: "Obst", stock: 25, low: 6, img: "/images/products/trauben.png" },
+      { s: supplier1, name: "Birnen Williams", desc: "Williams Christ Birnen", price: "3.79", unit: "kg", cat: "Obst", stock: 40, low: 10, img: "/images/products/birnen.png" },
+      { s: supplier1, name: "Avocado", desc: "Reife Hass Avocados", price: "2.49", unit: "Stück", cat: "Obst", stock: 80, low: 20, img: "/images/products/avocado.png" },
+      { s: supplier1, name: "Limetten", desc: "Frische Limetten", price: "5.49", unit: "kg", cat: "Obst", stock: 30, low: 8, img: "/images/products/limetten.png" },
+      { s: supplier1, name: "Mango", desc: "Reife Mangos", price: "4.99", unit: "Stück", cat: "Obst", stock: 35, low: 10, img: "/images/products/mango.png" },
+      { s: supplier1, name: "Heidelbeeren", desc: "Frische Heidelbeeren, 250g", price: "4.49", unit: "Schale", cat: "Obst", stock: 28, low: 8, img: "/images/products/heidelbeeren.png" },
+      { s: supplier1, name: "Marokk. Minze", desc: "Marokkanische Minze, Bund", price: "1.99", unit: "Bund", cat: "Kräuter", stock: 30, low: 8, img: "/images/products/minze.png" },
+      { s: supplier1, name: "Lauch", desc: "Frischer Lauch", price: "3.29", unit: "kg", cat: "Gemüse", stock: 42, low: 10, img: "/images/products/lauch.png" },
+      { s: supplier1, name: "Spargel weiß", desc: "Weißer Spargel, Klasse 1", price: "12.99", unit: "kg", cat: "Gemüse", stock: 18, low: 5, img: "/images/products/spargel.png" },
 
       // Supplier 2: Metzgerei
-      { s: supplier2, name: "Schweinebauch", desc: "Schweinebauch ohne Schwarte", price: "8.49", unit: "kg", cat: "Fleisch", stock: 25, low: 6, img: unsplash("1607623814075-e51df1bdc82f") },
-      { s: supplier2, name: "Kalbsschnitzel", desc: "Kalbsschnitzel zart", price: "32.50", unit: "kg", cat: "Fleisch", stock: 12, low: 4, img: unsplash("1546964124-0cce460f38ef") },
-      { s: supplier2, name: "Hackfleisch Rind", desc: "Reines Rinderhack", price: "12.99", unit: "kg", cat: "Fleisch", stock: 28, low: 8, img: unsplash("1602470521006-b1c7c5e60c98") },
-      { s: supplier2, name: "Wiener Würstchen", desc: "Im Saitling", price: "10.99", unit: "kg", cat: "Wurst", stock: 35, low: 10, img: unsplash("1599982130316-e15a91f60017") },
-      { s: supplier2, name: "Leberkäse", desc: "Bayerischer Leberkäse", price: "9.49", unit: "kg", cat: "Wurst", stock: 18, low: 5, img: unsplash("1565299585323-38d6b0865b47") },
-      { s: supplier2, name: "Weißwurst", desc: "Münchner Weißwurst, Paar", price: "0.99", unit: "Paar", cat: "Wurst", stock: 200, low: 50, img: unsplash("1599982131543-b6c2fcb91ea6") },
-      { s: supplier2, name: "Salami Mailand", desc: "Salami Milano, geschnitten", price: "26.50", unit: "kg", cat: "Wurst", stock: 16, low: 5, img: unsplash("1601001435957-74f0958a93c6") },
-      { s: supplier2, name: "Putenbrust", desc: "Putenbrust am Stück", price: "10.99", unit: "kg", cat: "Fleisch", stock: 22, low: 6, img: unsplash("1574781330855-d0db8cc6a79c") },
-      { s: supplier2, name: "Lammkeule", desc: "Lammkeule mit Knochen", price: "26.50", unit: "kg", cat: "Fleisch", stock: 9, low: 3, img: unsplash("1593030668939-ea5e8eecabfb") },
-      { s: supplier2, name: "Roastbeef", desc: "Roastbeef vom Weiderind", price: "34.90", unit: "kg", cat: "Fleisch", stock: 14, low: 4, img: unsplash("1607623814075-e51df1bdc82f") },
-      { s: supplier2, name: "Spareribs", desc: "Schweinerippchen, frisch", price: "11.50", unit: "kg", cat: "Fleisch", stock: 30, low: 8, img: unsplash("1544025162-d76694265947") },
-      { s: supplier2, name: "Bacon geräuchert", desc: "Bacon Streifen, vakuumiert", price: "16.50", unit: "kg", cat: "Wurst", stock: 25, low: 8, img: unsplash("1528607929212-2636ec44253e") },
-      { s: supplier2, name: "Bauchspeck", desc: "Geräucherter Bauchspeck", price: "18.90", unit: "kg", cat: "Wurst", stock: 20, low: 6, img: unsplash("1542901031-ec5eeb518e9d") },
-      { s: supplier2, name: "Mortadella", desc: "Mortadella Bologna IGP", price: "15.50", unit: "kg", cat: "Wurst", stock: 22, low: 6, img: unsplash("1601001435957-74f0958a93c6") },
-      { s: supplier2, name: "Kasseler", desc: "Kasseler Lachs", price: "13.50", unit: "kg", cat: "Fleisch", stock: 26, low: 7, img: unsplash("1607623814075-e51df1bdc82f") },
+      { s: supplier2, name: "Schweinebauch", desc: "Schweinebauch ohne Schwarte", price: "8.49", unit: "kg", cat: "Fleisch", stock: 25, low: 6, img: "/images/products/schweinebauch.png" },
+      { s: supplier2, name: "Kalbsschnitzel", desc: "Kalbsschnitzel zart", price: "32.50", unit: "kg", cat: "Fleisch", stock: 12, low: 4, img: "/images/products/kalbsschnitzel.png" },
+      { s: supplier2, name: "Hackfleisch Rind", desc: "Reines Rinderhack", price: "12.99", unit: "kg", cat: "Fleisch", stock: 28, low: 8, img: "/images/products/hackfleisch-rind.png" },
+      { s: supplier2, name: "Wiener Würstchen", desc: "Im Saitling", price: "10.99", unit: "kg", cat: "Wurst", stock: 35, low: 10, img: "/images/products/wiener-wuerstchen.png" },
+      { s: supplier2, name: "Leberkäse", desc: "Bayerischer Leberkäse", price: "9.49", unit: "kg", cat: "Wurst", stock: 18, low: 5, img: "/images/products/leberkaese.png" },
+      { s: supplier2, name: "Weißwurst", desc: "Münchner Weißwurst, Paar", price: "0.99", unit: "Paar", cat: "Wurst", stock: 200, low: 50, img: "/images/products/weisswurst.png" },
+      { s: supplier2, name: "Salami Mailand", desc: "Salami Milano, geschnitten", price: "26.50", unit: "kg", cat: "Wurst", stock: 16, low: 5, img: "/images/products/salami-mailand.png" },
+      { s: supplier2, name: "Putenbrust", desc: "Putenbrust am Stück", price: "10.99", unit: "kg", cat: "Fleisch", stock: 22, low: 6, img: "/images/products/putenbrust.png" },
+      { s: supplier2, name: "Lammkeule", desc: "Lammkeule mit Knochen", price: "26.50", unit: "kg", cat: "Fleisch", stock: 9, low: 3, img: "/images/products/lammkeule.png" },
+      { s: supplier2, name: "Roastbeef", desc: "Roastbeef vom Weiderind", price: "34.90", unit: "kg", cat: "Fleisch", stock: 14, low: 4, img: "/images/products/roastbeef.png" },
+      { s: supplier2, name: "Spareribs", desc: "Schweinerippchen, frisch", price: "11.50", unit: "kg", cat: "Fleisch", stock: 30, low: 8, img: "/images/products/spareribs.png" },
+      { s: supplier2, name: "Bacon geräuchert", desc: "Bacon Streifen, vakuumiert", price: "16.50", unit: "kg", cat: "Wurst", stock: 25, low: 8, img: "/images/products/bacon.png" },
+      { s: supplier2, name: "Bauchspeck", desc: "Geräucherter Bauchspeck", price: "18.90", unit: "kg", cat: "Wurst", stock: 20, low: 6, img: "/images/products/bauchspeck.png" },
+      { s: supplier2, name: "Mortadella", desc: "Mortadella Bologna IGP", price: "15.50", unit: "kg", cat: "Wurst", stock: 22, low: 6, img: "/images/products/mortadella.png" },
+      { s: supplier2, name: "Kasseler", desc: "Kasseler Lachs", price: "13.50", unit: "kg", cat: "Fleisch", stock: 26, low: 7, img: "/images/products/kasseler.png" },
 
       // Supplier 3: Getränke
-      { s: supplier3, name: "Pils Premium", desc: "Pils Premium, Kiste 24x0,33l", price: "16.99", unit: "Kiste", cat: "Getränke", stock: 90, low: 20, img: unsplash("1535958636474-b021ee887b13") },
-      { s: supplier3, name: "Hefeweizen Dunkel", desc: "Dunkles Hefeweizen, Kiste 20x0,5l", price: "23.49", unit: "Kiste", cat: "Getränke", stock: 50, low: 12, img: unsplash("1535958636474-b021ee887b13") },
-      { s: supplier3, name: "Radler", desc: "Radler 50/50, Kiste 20x0,5l", price: "18.49", unit: "Kiste", cat: "Getränke", stock: 70, low: 15, img: unsplash("1535958636474-b021ee887b13") },
-      { s: supplier3, name: "Alkoholfrei", desc: "Alkoholfreies Bier, Kiste 20x0,5l", price: "17.99", unit: "Kiste", cat: "Getränke", stock: 45, low: 12, img: unsplash("1535958636474-b021ee887b13") },
-      { s: supplier3, name: "Grüner Veltliner", desc: "Österr. Veltliner, Kiste 6x0,75l", price: "48.50", unit: "Kiste", cat: "Wein", stock: 35, low: 10, img: unsplash("1510812431401-41d2bd2722f3") },
-      { s: supplier3, name: "Pinot Grigio", desc: "Norditalienischer Pinot Grigio", price: "42.90", unit: "Kiste", cat: "Wein", stock: 38, low: 10, img: unsplash("1510812431401-41d2bd2722f3") },
-      { s: supplier3, name: "Spätburgunder", desc: "Deutscher Spätburgunder", price: "62.50", unit: "Kiste", cat: "Wein", stock: 28, low: 8, img: unsplash("1547595628-c61a29f496f0") },
-      { s: supplier3, name: "Prosecco DOC", desc: "Prosecco di Treviso", price: "54.90", unit: "Kiste", cat: "Wein", stock: 42, low: 10, img: unsplash("1547595628-c61a29f496f0") },
-      { s: supplier3, name: "Champagner Brut", desc: "Champagner Brut, 0,75l", price: "39.90", unit: "Flasche", cat: "Wein", stock: 24, low: 6, img: unsplash("1547595628-c61a29f496f0") },
-      { s: supplier3, name: "Aperol", desc: "Aperol, 1L Flasche", price: "16.50", unit: "Flasche", cat: "Spirituosen", stock: 35, low: 10, img: unsplash("1551024601-bec78aea704b") },
-      { s: supplier3, name: "Gin London Dry", desc: "Premium Gin, 0,7L", price: "28.90", unit: "Flasche", cat: "Spirituosen", stock: 22, low: 6, img: unsplash("1569529465841-dfecdab7503b") },
-      { s: supplier3, name: "Wodka Premium", desc: "Premium Vodka, 0,7L", price: "24.50", unit: "Flasche", cat: "Spirituosen", stock: 28, low: 8, img: unsplash("1569529465841-dfecdab7503b") },
-      { s: supplier3, name: "Whisky Single Malt", desc: "Single Malt 12 Jahre, 0,7L", price: "45.90", unit: "Flasche", cat: "Spirituosen", stock: 18, low: 5, img: unsplash("1569529465841-dfecdab7503b") },
-      { s: supplier3, name: "Grappa Riserva", desc: "Grappa Riserva, 0,5L", price: "32.90", unit: "Flasche", cat: "Spirituosen", stock: 14, low: 4, img: unsplash("1569529465841-dfecdab7503b") },
-      { s: supplier3, name: "Tonic Water", desc: "Premium Tonic, Kiste 24x0,2l", price: "28.50", unit: "Kiste", cat: "Getränke", stock: 50, low: 12, img: unsplash("1600271886742-f049cd451bba") },
-      { s: supplier3, name: "Espresso 250g", desc: "Premium Espresso Beutel", price: "5.99", unit: "Beutel", cat: "Kaffee", stock: 80, low: 20, img: unsplash("1559056199-641a0ac8b55e") },
-      { s: supplier3, name: "Cappuccino Bohnen", desc: "Cappuccino Mischung, 1kg", price: "14.90", unit: "kg", cat: "Kaffee", stock: 45, low: 12, img: unsplash("1559056199-641a0ac8b55e") },
-      { s: supplier3, name: "Earl Grey Tee", desc: "Earl Grey, 250g", price: "8.99", unit: "Packung", cat: "Kaffee", stock: 30, low: 8, img: unsplash("1576092768241-dec231879fc3") },
-      { s: supplier3, name: "Bio Limonade", desc: "Bio Zitronenlimonade, Kiste 24x0,33l", price: "21.50", unit: "Kiste", cat: "Getränke", stock: 60, low: 15, img: unsplash("1600271886742-f049cd451bba") },
-      { s: supplier3, name: "Tomatensaft", desc: "Tomatensaft, Kiste 6x1l", price: "10.90", unit: "Kiste", cat: "Getränke", stock: 45, low: 12, img: unsplash("1600271886742-f049cd451bba") },
-      { s: supplier3, name: "Sprudelwasser", desc: "Mineralwasser sprudelnd, 12x0,75l", price: "9.49", unit: "Kiste", cat: "Getränke", stock: 110, low: 25, img: unsplash("1600271886742-f049cd451bba") },
+      { s: supplier3, name: "Pils Premium", desc: "Pils Premium, Kiste 24x0,33l", price: "16.99", unit: "Kiste", cat: "Getränke", stock: 90, low: 20, img: "/images/products/pils.png" },
+      { s: supplier3, name: "Hefeweizen Dunkel", desc: "Dunkles Hefeweizen, Kiste 20x0,5l", price: "23.49", unit: "Kiste", cat: "Getränke", stock: 50, low: 12, img: "/images/products/hefeweizen-dunkel.png" },
+      { s: supplier3, name: "Radler", desc: "Radler 50/50, Kiste 20x0,5l", price: "18.49", unit: "Kiste", cat: "Getränke", stock: 70, low: 15, img: "/images/products/radler.png" },
+      { s: supplier3, name: "Alkoholfrei", desc: "Alkoholfreies Bier, Kiste 20x0,5l", price: "17.99", unit: "Kiste", cat: "Getränke", stock: 45, low: 12, img: "/images/products/bier-alkoholfrei.png" },
+      { s: supplier3, name: "Grüner Veltliner", desc: "Österr. Veltliner, Kiste 6x0,75l", price: "48.50", unit: "Kiste", cat: "Wein", stock: 35, low: 10, img: "/images/products/veltliner.png" },
+      { s: supplier3, name: "Pinot Grigio", desc: "Norditalienischer Pinot Grigio", price: "42.90", unit: "Kiste", cat: "Wein", stock: 38, low: 10, img: "/images/products/pinot-grigio.png" },
+      { s: supplier3, name: "Spätburgunder", desc: "Deutscher Spätburgunder", price: "62.50", unit: "Kiste", cat: "Wein", stock: 28, low: 8, img: "/images/products/spaetburgunder.png" },
+      { s: supplier3, name: "Prosecco DOC", desc: "Prosecco di Treviso", price: "54.90", unit: "Kiste", cat: "Wein", stock: 42, low: 10, img: "/images/products/prosecco.png" },
+      { s: supplier3, name: "Champagner Brut", desc: "Champagner Brut, 0,75l", price: "39.90", unit: "Flasche", cat: "Wein", stock: 24, low: 6, img: "/images/products/champagner.png" },
+      { s: supplier3, name: "Aperol", desc: "Aperol, 1L Flasche", price: "16.50", unit: "Flasche", cat: "Spirituosen", stock: 35, low: 10, img: "/images/products/aperol.png" },
+      { s: supplier3, name: "Gin London Dry", desc: "Premium Gin, 0,7L", price: "28.90", unit: "Flasche", cat: "Spirituosen", stock: 22, low: 6, img: "/images/products/gin.png" },
+      { s: supplier3, name: "Wodka Premium", desc: "Premium Vodka, 0,7L", price: "24.50", unit: "Flasche", cat: "Spirituosen", stock: 28, low: 8, img: "/images/products/wodka.png" },
+      { s: supplier3, name: "Whisky Single Malt", desc: "Single Malt 12 Jahre, 0,7L", price: "45.90", unit: "Flasche", cat: "Spirituosen", stock: 18, low: 5, img: "/images/products/whisky.png" },
+      { s: supplier3, name: "Grappa Riserva", desc: "Grappa Riserva, 0,5L", price: "32.90", unit: "Flasche", cat: "Spirituosen", stock: 14, low: 4, img: "/images/products/grappa.png" },
+      { s: supplier3, name: "Tonic Water", desc: "Premium Tonic, Kiste 24x0,2l", price: "28.50", unit: "Kiste", cat: "Getränke", stock: 50, low: 12, img: "/images/products/tonic-water.png" },
+      { s: supplier3, name: "Espresso 250g", desc: "Premium Espresso Beutel", price: "5.99", unit: "Beutel", cat: "Kaffee", stock: 80, low: 20, img: "/images/products/espresso-250g.png" },
+      { s: supplier3, name: "Cappuccino Bohnen", desc: "Cappuccino Mischung, 1kg", price: "14.90", unit: "kg", cat: "Kaffee", stock: 45, low: 12, img: "/images/products/cappuccino-bohnen.png" },
+      { s: supplier3, name: "Earl Grey Tee", desc: "Earl Grey, 250g", price: "8.99", unit: "Packung", cat: "Kaffee", stock: 30, low: 8, img: "/images/products/earl-grey.png" },
+      { s: supplier3, name: "Bio Limonade", desc: "Bio Zitronenlimonade, Kiste 24x0,33l", price: "21.50", unit: "Kiste", cat: "Getränke", stock: 60, low: 15, img: "/images/products/bio-limonade.png" },
+      { s: supplier3, name: "Tomatensaft", desc: "Tomatensaft, Kiste 6x1l", price: "10.90", unit: "Kiste", cat: "Getränke", stock: 45, low: 12, img: "/images/products/tomatensaft.png" },
+      { s: supplier3, name: "Sprudelwasser", desc: "Mineralwasser sprudelnd, 12x0,75l", price: "9.49", unit: "Kiste", cat: "Getränke", stock: 110, low: 25, img: "/images/products/sprudelwasser.png" },
 
       // Supplier 4: Italia Import
-      { s: supplier4, name: "Penne Rigate", desc: "Penne Rigate Bronze, 12x500g", price: "22.40", unit: "Karton", cat: "Pasta", stock: 75, low: 18, img: unsplash("1551183053-bf91a1d81141") },
-      { s: supplier4, name: "Tagliatelle", desc: "Tagliatelle all'uovo, 12x250g", price: "26.80", unit: "Karton", cat: "Pasta", stock: 50, low: 12, img: unsplash("1551183053-bf91a1d81141") },
-      { s: supplier4, name: "Lasagne Blätter", desc: "Lasagne all'uovo, 12x500g", price: "28.40", unit: "Karton", cat: "Pasta", stock: 42, low: 10, img: unsplash("1551183053-bf91a1d81141") },
-      { s: supplier4, name: "Ravioli Ricotta", desc: "Ravioli mit Ricotta, 6x500g", price: "32.50", unit: "Karton", cat: "Pasta", stock: 35, low: 10, img: unsplash("1551183053-bf91a1d81141") },
-      { s: supplier4, name: "Gnocchi Kartoffel", desc: "Hausgemachte Gnocchi, 6x500g", price: "18.50", unit: "Karton", cat: "Pasta", stock: 40, low: 12, img: unsplash("1551183053-bf91a1d81141") },
-      { s: supplier4, name: "Risotto Carnaroli", desc: "Carnaroli Reis, 12x1kg", price: "39.90", unit: "Karton", cat: "Pasta", stock: 30, low: 8, img: unsplash("1551183053-bf91a1d81141") },
-      { s: supplier4, name: "Burrata", desc: "Frische Burrata, 125g", price: "4.50", unit: "Stück", cat: "Käse", stock: 80, low: 20, img: unsplash("1486297678162-eb2a19b0a32d") },
-      { s: supplier4, name: "Gorgonzola DOP", desc: "Gorgonzola dolce, am Stück", price: "21.50", unit: "kg", cat: "Käse", stock: 18, low: 5, img: unsplash("1452195100486-9cc805987862") },
-      { s: supplier4, name: "Pecorino Romano", desc: "Pecorino Romano DOP", price: "26.90", unit: "kg", cat: "Käse", stock: 22, low: 6, img: unsplash("1452195100486-9cc805987862") },
-      { s: supplier4, name: "Ricotta", desc: "Frische Ricotta, 1kg", price: "7.50", unit: "kg", cat: "Käse", stock: 35, low: 10, img: unsplash("1486297678162-eb2a19b0a32d") },
-      { s: supplier4, name: "Olivenöl 1L", desc: "Extra vergine, 6x1L", price: "39.90", unit: "Karton", cat: "Öl & Essig", stock: 60, low: 15, img: unsplash("1474979266404-7eaacbcd87c5") },
-      { s: supplier4, name: "Aceto Balsamico", desc: "Balsamico di Modena, 6x500ml", price: "29.50", unit: "Karton", cat: "Öl & Essig", stock: 40, low: 10, img: unsplash("1505252585461-04db1eb84625") },
-      { s: supplier4, name: "Trüffelöl", desc: "Weißes Trüffelöl, 250ml", price: "18.90", unit: "Flasche", cat: "Öl & Essig", stock: 25, low: 6, img: unsplash("1474979266404-7eaacbcd87c5") },
-      { s: supplier4, name: "Sugo Arrabbiata", desc: "Arrabbiata Sauce, 12x400g", price: "29.40", unit: "Karton", cat: "Saucen", stock: 50, low: 12, img: unsplash("1546470427-227e5a52e8d7") },
-      { s: supplier4, name: "Sugo Bolognese", desc: "Bolognese Sauce, 12x400g", price: "32.90", unit: "Karton", cat: "Saucen", stock: 45, low: 12, img: unsplash("1546470427-227e5a52e8d7") },
-      { s: supplier4, name: "Taggiasche Oliven", desc: "Taggiasche Oliven, 1kg", price: "16.90", unit: "kg", cat: "Konserven", stock: 30, low: 8, img: unsplash("1525607551316-4a8e16d1f9ba") },
-      { s: supplier4, name: "Sardellen Filets", desc: "Sardellen in Olivenöl, 12x100g", price: "24.50", unit: "Karton", cat: "Konserven", stock: 35, low: 10, img: unsplash("1546470427-227e5a52e8d7") },
-      { s: supplier4, name: "Polenta Bramata", desc: "Polenta Bramata, 12x500g", price: "21.90", unit: "Karton", cat: "Pasta", stock: 28, low: 8, img: unsplash("1551183053-bf91a1d81141") },
-      { s: supplier4, name: "Cantucci Mandel", desc: "Cantucci mit Mandeln, 6x250g", price: "19.50", unit: "Karton", cat: "Konserven", stock: 32, low: 8, img: unsplash("1546470427-227e5a52e8d7") },
-      { s: supplier4, name: "Tiramisu Fertig", desc: "Tiramisu fertig, 6x500g", price: "29.90", unit: "Karton", cat: "Konserven", stock: 18, low: 5, img: unsplash("1546470427-227e5a52e8d7") },
-      { s: supplier4, name: "Lavazza Crema", desc: "Lavazza Crema e Aroma, 1kg", price: "18.90", unit: "kg", cat: "Kaffee", stock: 65, low: 15, img: unsplash("1559056199-641a0ac8b55e") },
-      { s: supplier4, name: "Polpa Tomate", desc: "Tomatenstücke, 12x400g", price: "22.50", unit: "Karton", cat: "Konserven", stock: 70, low: 18, img: unsplash("1546470427-227e5a52e8d7") },
+      { s: supplier4, name: "Penne Rigate", desc: "Penne Rigate Bronze, 12x500g", price: "22.40", unit: "Karton", cat: "Pasta", stock: 75, low: 18, img: "/images/products/penne.png" },
+      { s: supplier4, name: "Tagliatelle", desc: "Tagliatelle all'uovo, 12x250g", price: "26.80", unit: "Karton", cat: "Pasta", stock: 50, low: 12, img: "/images/products/tagliatelle.png" },
+      { s: supplier4, name: "Lasagne Blätter", desc: "Lasagne all'uovo, 12x500g", price: "28.40", unit: "Karton", cat: "Pasta", stock: 42, low: 10, img: "/images/products/lasagne.png" },
+      { s: supplier4, name: "Ravioli Ricotta", desc: "Ravioli mit Ricotta, 6x500g", price: "32.50", unit: "Karton", cat: "Pasta", stock: 35, low: 10, img: "/images/products/ravioli.png" },
+      { s: supplier4, name: "Gnocchi Kartoffel", desc: "Hausgemachte Gnocchi, 6x500g", price: "18.50", unit: "Karton", cat: "Pasta", stock: 40, low: 12, img: "/images/products/gnocchi.png" },
+      { s: supplier4, name: "Risotto Carnaroli", desc: "Carnaroli Reis, 12x1kg", price: "39.90", unit: "Karton", cat: "Pasta", stock: 30, low: 8, img: "/images/products/risotto.png" },
+      { s: supplier4, name: "Burrata", desc: "Frische Burrata, 125g", price: "4.50", unit: "Stück", cat: "Käse", stock: 80, low: 20, img: "/images/products/burrata.png" },
+      { s: supplier4, name: "Gorgonzola DOP", desc: "Gorgonzola dolce, am Stück", price: "21.50", unit: "kg", cat: "Käse", stock: 18, low: 5, img: "/images/products/gorgonzola.png" },
+      { s: supplier4, name: "Pecorino Romano", desc: "Pecorino Romano DOP", price: "26.90", unit: "kg", cat: "Käse", stock: 22, low: 6, img: "/images/products/pecorino.png" },
+      { s: supplier4, name: "Ricotta", desc: "Frische Ricotta, 1kg", price: "7.50", unit: "kg", cat: "Käse", stock: 35, low: 10, img: "/images/products/ricotta.png" },
+      { s: supplier4, name: "Olivenöl 1L", desc: "Extra vergine, 6x1L", price: "39.90", unit: "Karton", cat: "Öl & Essig", stock: 60, low: 15, img: "/images/products/olivenoel-1l.png" },
+      { s: supplier4, name: "Aceto Balsamico", desc: "Balsamico di Modena, 6x500ml", price: "29.50", unit: "Karton", cat: "Öl & Essig", stock: 40, low: 10, img: "/images/products/aceto-balsamico.png" },
+      { s: supplier4, name: "Trüffelöl", desc: "Weißes Trüffelöl, 250ml", price: "18.90", unit: "Flasche", cat: "Öl & Essig", stock: 25, low: 6, img: "/images/products/trueffeloel.png" },
+      { s: supplier4, name: "Sugo Arrabbiata", desc: "Arrabbiata Sauce, 12x400g", price: "29.40", unit: "Karton", cat: "Saucen", stock: 50, low: 12, img: "/images/products/sugo-arrabbiata.png" },
+      { s: supplier4, name: "Sugo Bolognese", desc: "Bolognese Sauce, 12x400g", price: "32.90", unit: "Karton", cat: "Saucen", stock: 45, low: 12, img: "/images/products/sugo-bolognese.png" },
+      { s: supplier4, name: "Taggiasche Oliven", desc: "Taggiasche Oliven, 1kg", price: "16.90", unit: "kg", cat: "Konserven", stock: 30, low: 8, img: "/images/products/oliven.png" },
+      { s: supplier4, name: "Sardellen Filets", desc: "Sardellen in Olivenöl, 12x100g", price: "24.50", unit: "Karton", cat: "Konserven", stock: 35, low: 10, img: "/images/products/sardellen.png" },
+      { s: supplier4, name: "Polenta Bramata", desc: "Polenta Bramata, 12x500g", price: "21.90", unit: "Karton", cat: "Pasta", stock: 28, low: 8, img: "/images/products/polenta.png" },
+      { s: supplier4, name: "Cantucci Mandel", desc: "Cantucci mit Mandeln, 6x250g", price: "19.50", unit: "Karton", cat: "Konserven", stock: 32, low: 8, img: "/images/products/cantucci.png" },
+      { s: supplier4, name: "Tiramisu Fertig", desc: "Tiramisu fertig, 6x500g", price: "29.90", unit: "Karton", cat: "Konserven", stock: 18, low: 5, img: "/images/products/tiramisu.png" },
+      { s: supplier4, name: "Lavazza Crema", desc: "Lavazza Crema e Aroma, 1kg", price: "18.90", unit: "kg", cat: "Kaffee", stock: 65, low: 15, img: "/images/products/lavazza.png" },
+      { s: supplier4, name: "Polpa Tomate", desc: "Tomatenstücke, 12x400g", price: "22.50", unit: "Karton", cat: "Konserven", stock: 70, low: 18, img: "/images/products/polpa-tomate.png" },
 
       // Supplier 5: Nordsee Fisch
-      { s: supplier5, name: "Seezunge", desc: "Frische Seezunge, ausgenommen", price: "38.90", unit: "kg", cat: "Fisch", stock: 10, low: 3, img: unsplash("1535400875775-0928bcc2c1ac") },
-      { s: supplier5, name: "Doradenfilet", desc: "Doradenfilet ohne Haut", price: "26.50", unit: "kg", cat: "Fisch", stock: 14, low: 4, img: unsplash("1535400875775-0928bcc2c1ac") },
-      { s: supplier5, name: "Wolfsbarsch", desc: "Wolfsbarsch ganz, 400-600g", price: "29.90", unit: "kg", cat: "Fisch", stock: 12, low: 4, img: unsplash("1535400875775-0928bcc2c1ac") },
-      { s: supplier5, name: "Heilbutt Steak", desc: "Heilbutt Steaks, ohne Haut", price: "42.50", unit: "kg", cat: "Fisch", stock: 8, low: 3, img: unsplash("1485921325833-c519f76c4927") },
-      { s: supplier5, name: "Rotbarsch", desc: "Rotbarschfilet", price: "21.90", unit: "kg", cat: "Fisch", stock: 16, low: 5, img: unsplash("1535400875775-0928bcc2c1ac") },
-      { s: supplier5, name: "Pulpo", desc: "Pulpo, gefroren, 2-4kg", price: "28.50", unit: "kg", cat: "Meeresfrüchte", stock: 12, low: 4, img: unsplash("1565680018434-b513d5e5fd47") },
-      { s: supplier5, name: "Calamari Ringe", desc: "Calamari Ringe, IQF, 1kg", price: "16.90", unit: "kg", cat: "Meeresfrüchte", stock: 25, low: 8, img: unsplash("1565680018434-b513d5e5fd47") },
-      { s: supplier5, name: "Jakobsmuscheln", desc: "St. Jakobsmuscheln, ohne Schale", price: "44.90", unit: "kg", cat: "Meeresfrüchte", stock: 8, low: 3, img: unsplash("1565680018434-b513d5e5fd47") },
-      { s: supplier5, name: "Hummerschwänze", desc: "Hummerschwänze, gefroren", price: "78.90", unit: "kg", cat: "Meeresfrüchte", stock: 6, low: 2, img: unsplash("1565680018434-b513d5e5fd47") },
-      { s: supplier5, name: "Krebsfleisch", desc: "Krebsfleisch weiß, 500g Dose", price: "32.50", unit: "Dose", cat: "Meeresfrüchte", stock: 15, low: 4, img: unsplash("1565680018434-b513d5e5fd47") },
-      { s: supplier5, name: "Räucherlachs", desc: "Räucherlachs Scheiben, vakuumiert", price: "39.90", unit: "kg", cat: "Fisch", stock: 18, low: 5, img: unsplash("1485921325833-c519f76c4927") },
-      { s: supplier5, name: "Matjes Filet", desc: "Matjes Filet in Öl, 1kg", price: "16.50", unit: "kg", cat: "Fisch", stock: 22, low: 6, img: unsplash("1535400875775-0928bcc2c1ac") },
-      { s: supplier5, name: "Nordseekrabben", desc: "Nordseekrabben frisch gepult", price: "62.50", unit: "kg", cat: "Meeresfrüchte", stock: 7, low: 2, img: unsplash("1565680018434-b513d5e5fd47") },
-      { s: supplier5, name: "Austern Fines", desc: "Austern Fines de Claire", price: "1.95", unit: "Stück", cat: "Meeresfrüchte", stock: 100, low: 24, img: unsplash("1565680018434-b513d5e5fd47") },
+      { s: supplier5, name: "Seezunge", desc: "Frische Seezunge, ausgenommen", price: "38.90", unit: "kg", cat: "Fisch", stock: 10, low: 3, img: "/images/products/seezunge.png" },
+      { s: supplier5, name: "Doradenfilet", desc: "Doradenfilet ohne Haut", price: "26.50", unit: "kg", cat: "Fisch", stock: 14, low: 4, img: "/images/products/dorade.png" },
+      { s: supplier5, name: "Wolfsbarsch", desc: "Wolfsbarsch ganz, 400-600g", price: "29.90", unit: "kg", cat: "Fisch", stock: 12, low: 4, img: "/images/products/wolfsbarsch.png" },
+      { s: supplier5, name: "Heilbutt Steak", desc: "Heilbutt Steaks, ohne Haut", price: "42.50", unit: "kg", cat: "Fisch", stock: 8, low: 3, img: "/images/products/heilbutt.png" },
+      { s: supplier5, name: "Rotbarsch", desc: "Rotbarschfilet", price: "21.90", unit: "kg", cat: "Fisch", stock: 16, low: 5, img: "/images/products/rotbarsch.png" },
+      { s: supplier5, name: "Pulpo", desc: "Pulpo, gefroren, 2-4kg", price: "28.50", unit: "kg", cat: "Meeresfrüchte", stock: 12, low: 4, img: "/images/products/pulpo.png" },
+      { s: supplier5, name: "Calamari Ringe", desc: "Calamari Ringe, IQF, 1kg", price: "16.90", unit: "kg", cat: "Meeresfrüchte", stock: 25, low: 8, img: "/images/products/calamari.png" },
+      { s: supplier5, name: "Jakobsmuscheln", desc: "St. Jakobsmuscheln, ohne Schale", price: "44.90", unit: "kg", cat: "Meeresfrüchte", stock: 8, low: 3, img: "/images/products/jakobsmuscheln.png" },
+      { s: supplier5, name: "Hummerschwänze", desc: "Hummerschwänze, gefroren", price: "78.90", unit: "kg", cat: "Meeresfrüchte", stock: 6, low: 2, img: "/images/products/hummer.png" },
+      { s: supplier5, name: "Krebsfleisch", desc: "Krebsfleisch weiß, 500g Dose", price: "32.50", unit: "Dose", cat: "Meeresfrüchte", stock: 15, low: 4, img: "/images/products/krebsfleisch.png" },
+      { s: supplier5, name: "Räucherlachs", desc: "Räucherlachs Scheiben, vakuumiert", price: "39.90", unit: "kg", cat: "Fisch", stock: 18, low: 5, img: "/images/products/raeucherlachs.png" },
+      { s: supplier5, name: "Matjes Filet", desc: "Matjes Filet in Öl, 1kg", price: "16.50", unit: "kg", cat: "Fisch", stock: 22, low: 6, img: "/images/products/matjes.png" },
+      { s: supplier5, name: "Nordseekrabben", desc: "Nordseekrabben frisch gepult", price: "62.50", unit: "kg", cat: "Meeresfrüchte", stock: 7, low: 2, img: "/images/products/nordseekrabben.png" },
+      { s: supplier5, name: "Austern Fines", desc: "Austern Fines de Claire", price: "1.95", unit: "Stück", cat: "Meeresfrüchte", stock: 100, low: 24, img: "/images/products/austern.png" },
     ];
 
     for (const mp of moreProducts) {
