@@ -1,0 +1,91 @@
+Überarbeite die Seite "Preisvergleich" für Betriebs-User.
+Nutze ausschließlich bereits bestehende Endpoints und Daten 
+(Produkte, kundenspezifische Preise, Promotions, Wareneinsatz-Analyse, 
+Zielwerte). Keine neuen Backend-Endpoints. Berechnung komplett im Frontend.
+
+Die Seite bekommt drei aufeinander aufbauende Ebenen:
+
+---
+
+EBENE 1 — GESAMTKONTEXT
+Die bereits bestehende Darstellung oben (Wareneinsatz pro Gast vs. Zielwert, 
+Einsparpotenzial gesamt und pro Gast) bleibt unverändert erhalten.
+
+---
+
+EBENE 2 — KATEGORIEN-DIAGNOSE (neu)
+
+Ziel: dem Betrieb zeigen, welche Produktkategorien den Wareneinsatz belasten 
+und wo realistisch Einsparungen möglich sind.
+
+Darstellung:
+- Visualisierung der Ausgabenverteilung nach Kategorie 
+  (Fleisch, Fisch, Gemüse, Molkerei, Gewürze etc.)
+- Pro Kategorie eine Card mit Ampelbewertung
+
+Ampellogik (kombiniert zwei Faktoren):
+- Grün: Kategorie-Anteil < 20% UND Ø Einsparpotenzial < 5%
+- Rot: Kategorie-Anteil > 30% ODER Ø Einsparpotenzial > 15%
+- Orange: alles dazwischen
+
+Eine große Kategorie ohne günstigere Alternativen wird NICHT rot — 
+es geht darum wo der Betrieb handeln kann, nicht nur wo viel Geld hingeht.
+
+Jede Card zeigt: Kategoriename, Anteil in %, Anzahl vergleichbarer Produkte, 
+und bei relevantem Einsparpotenzial den Hinweis "Ø X% günstiger möglich".
+
+Klick auf eine Card filtert automatisch die Liste in Ebene 3 
+nach dieser Kategorie.
+
+---
+
+EBENE 3 — PRODUKTLISTE (erweitert)
+
+Die bestehende Liste wird neu sortiert und erweitert.
+
+Sortierung: Standardmäßig nach größtem absoluten Euro-Einsparpotenzial 
+zuerst — nicht mehr nach Prozent. Der Betrieb soll zuerst die Produkte 
+sehen die den größten Hebel haben.
+
+Kompakte Zeile pro Produktgruppe:
+- Produktname, Einheit, Kategorie
+- Aktueller Preis beim meistgenutzten Lieferanten
+- Bester Alternativpreis + Lieferantenname
+- Differenz in Euro UND Prozent
+- Aktive Promotion als Badge sichtbar
+
+Aufgeklappter Zustand:
+- Alle Lieferanten die dieses Produkt anbieten, aufsteigend nach Preis
+- Pro Anbieter: Preis, Differenz zum Günstigsten in Euro UND Prozent
+- Günstigster Anbieter hervorgehoben
+- Aktive Promotions als Badge pro Anbieter
+
+---
+
+BERECHNUNGSLOGIK
+
+Effektivpreis = (customPrice falls vorhanden, sonst Listenpreis) 
+                × (1 - aktiver Promo-Rabatt)
+
+Vergleichsgruppen: Produkte gruppiert nach normalisiertem Name 
+(lowercase, getrimmt) + Einheit. Nur Gruppen mit ≥ 2 Lieferanten.
+
+Einsparpotenzial pro Gruppe: Differenz zwischen teuerstem und 
+günstigstem Effektivpreis.
+
+Kategorie-Anteil: Summe der teuersten Effektivpreise pro Gruppe 
+als Proxy für Ist-Ausgaben, aufgeteilt pro Kategorie.
+
+Ø Einsparpotenzial pro Kategorie: Durchschnitt der prozentualen 
+Einsparungen aller Gruppen in dieser Kategorie.
+
+---
+
+VERHALTEN
+
+Suche, Kategorie-Chips und Sortierung wirken nur auf Ebene 3. 
+Ebene 1 und 2 bleiben beim Filtern als Gesamtüberblick erhalten. 
+Klick auf eine Kategorie-Card in Ebene 2 setzt den Filter in Ebene 3.
+
+Bestehendes Dark-Theme und die vorhandenen UI-Komponenten beibehalten. 
+Keine neuen Dependencies.
