@@ -192,33 +192,31 @@ export default function ComplaintDetail() {
   return (
     <div className="min-h-dvh bg-background flex flex-col" data-testid="page-complaint-detail">
       <div className="w-full">
-        <div className="px-4 md:px-6 lg:px-8 pt-4">
-          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
+        {/* Dark hero: matches design used on list pages */}
+        <div className="dark bg-[#161921] px-4 md:px-6 lg:px-8 pt-4 pb-6 rounded-b-3xl mb-4" data-testid="complaint-detail-hero">
+          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-white/60 hover:text-white transition-colors mb-3 px-1" data-testid="button-back">
             <ArrowLeft className="h-4 w-4" />
             {lang === "de" ? "Zurück" : "Indietro"}
           </button>
-        </div>
 
-        {/* Hero: counterparty header + status — same layout as OrderDetail */}
-        <div className="px-4 md:px-6 lg:px-8 pt-5 pb-6">
-          <div className="relative flex items-start justify-between gap-4 mb-5">
+          <div className="relative flex items-start justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-100 dark:bg-red-900/40" : getStatusBg(complaint.status)} flex items-center justify-center shrink-0`}>
-                <div className={isUrgent ? "text-red-600 dark:text-red-400" : getStatusTextColor(complaint.status)}>
+              <div className={`h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-500/15" : "bg-white/10"} flex items-center justify-center shrink-0`}>
+                <div className={isUrgent ? "text-red-400" : "text-white"}>
                   {isUrgent ? <Flame className="h-6 w-6" /> : getStatusIcon(complaint.status, "h-6 w-6")}
                 </div>
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider" data-testid="text-complaint-id">
+                <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider" data-testid="text-complaint-id">
                   {lang === "de" ? "Reklamation" : "Reclamo"} · #{complaint.id.slice(0, 8)}
                 </p>
-                <p className="text-xl md:text-2xl font-semibold truncate" data-testid="text-complaint-title">{complaint.title}</p>
-                <p className="text-xs text-muted-foreground truncate mt-0.5" data-testid="text-counterparty">{counterpartyName}</p>
+                <p className="text-xl md:text-2xl font-semibold text-white truncate" data-testid="text-complaint-title">{complaint.title}</p>
+                <p className="text-xs text-white/60 truncate mt-0.5" data-testid="text-counterparty">{counterpartyName}</p>
               </div>
             </div>
             {/* Status badge: centered horizontally on the page on md+ */}
             <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-              <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium pointer-events-auto`} variant="outline">
+              <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium pointer-events-auto border-0`} variant="outline">
                 <span className="inline-flex items-center gap-1">
                   {getStatusIcon(complaint.status, "h-3.5 w-3.5")}
                   {getComplaintStatus(complaint.status, lang)}
@@ -226,24 +224,27 @@ export default function ComplaintDetail() {
               </Badge>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Badge className={`md:hidden ${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium`} variant="outline">
+              <Badge className={`md:hidden ${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
                 <span className="inline-flex items-center gap-1">
                   {getStatusIcon(complaint.status, "h-3.5 w-3.5")}
                   {getComplaintStatus(complaint.status, lang)}
                 </span>
               </Badge>
               {isUrgent && (
-                <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded-full px-2.5 py-1 text-[11px] font-medium" variant="outline">
+                <Badge className="bg-red-500/15 text-red-400 rounded-full px-2.5 py-1 text-[11px] font-medium border-0" variant="outline">
                   <Flame className="h-3 w-3 mr-1" />
                   {lang === "de" ? "Dringend" : "Urgente"}
                 </Badge>
               )}
-              <button className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors" data-testid="button-more-options">
+              <button className="h-9 w-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors" data-testid="button-more-options">
                 <MoreHorizontal className="h-4 w-4" />
               </button>
             </div>
           </div>
+        </div>
 
+        {/* KPI strip + body */}
+        <div className="px-4 md:px-6 lg:px-8 pb-6">
           {/* KPI tiles */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-status">
