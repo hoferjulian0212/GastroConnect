@@ -542,8 +542,9 @@ export default function OrderDetail() {
               </div>
             )}
 
-            {/* Products list — visible directly on detail view */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm" data-testid="section-products">
+            {/* Two-column layout: Products spans full height, Meta + History stack on the right */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm md:row-span-2 min-w-0" data-testid="section-products">
               <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
                 <p className="text-sm font-semibold">{lang === "de" ? "Produkte" : "Prodotti"}</p>
                 <p className="text-[11px] text-muted-foreground">
@@ -586,39 +587,8 @@ export default function OrderDetail() {
               </div>
             </div>
 
-            {/* Detailed history list */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-              <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
-                <p className="text-sm font-semibold">{lang === "de" ? "Verlauf" : "Cronologia"}</p>
-                <p className="text-[11px] text-muted-foreground">{timeline.length} {lang === "de" ? (timeline.length === 1 ? "Eintrag" : "Einträge") : (timeline.length === 1 ? "voce" : "voci")}</p>
-              </div>
-              <div className="divide-y divide-border/20">
-                {timeline.map((entry: any, index: number) => (
-                  <div key={entry.id} className="flex items-start gap-3 px-4 py-3" data-testid={`timeline-entry-${index}`}>
-                    <div className={`h-9 w-9 rounded-full ${getStatusBg(entry.toStatus)} flex items-center justify-center shrink-0`}>
-                      <div className={getStatusTextColor(entry.toStatus)}>
-                        {getStatusIcon(entry.toStatus, "h-4 w-4")}
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">
-                        {getTimelineDescription(entry.toStatus)}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {format(new Date(entry.createdAt), "EEE, dd.MM.yyyy · HH:mm", { locale: dateLocale })}
-                        {entry.changedByUser && <span> · {lang === "de" ? "von" : "da"} {entry.changedByUser.name}</span>}
-                      </p>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground/70 shrink-0 whitespace-nowrap mt-0.5">
-                      {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true, locale: dateLocale })}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Meta details — shown directly on the detail view */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm" data-testid="section-meta">
+            {/* Meta details — top right of grid */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0" data-testid="section-meta">
               <div className="px-4 py-3 border-b border-border/30">
                 <p className="text-sm font-semibold">{lang === "de" ? "Bestelldetails" : "Dettagli ordine"}</p>
               </div>
@@ -656,6 +626,39 @@ export default function OrderDetail() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Detailed history list — bottom right of grid */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0">
+              <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
+                <p className="text-sm font-semibold">{lang === "de" ? "Verlauf" : "Cronologia"}</p>
+                <p className="text-[11px] text-muted-foreground">{timeline.length} {lang === "de" ? (timeline.length === 1 ? "Eintrag" : "Einträge") : (timeline.length === 1 ? "voce" : "voci")}</p>
+              </div>
+              <div className="divide-y divide-border/20">
+                {timeline.map((entry: any, index: number) => (
+                  <div key={entry.id} className="flex items-start gap-3 px-4 py-3" data-testid={`timeline-entry-${index}`}>
+                    <div className={`h-9 w-9 rounded-full ${getStatusBg(entry.toStatus)} flex items-center justify-center shrink-0`}>
+                      <div className={getStatusTextColor(entry.toStatus)}>
+                        {getStatusIcon(entry.toStatus, "h-4 w-4")}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {getTimelineDescription(entry.toStatus)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {format(new Date(entry.createdAt), "EEE, dd.MM.yyyy · HH:mm", { locale: dateLocale })}
+                        {entry.changedByUser && <span> · {lang === "de" ? "von" : "da"} {entry.changedByUser.name}</span>}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/70 shrink-0 whitespace-nowrap mt-0.5">
+                      {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true, locale: dateLocale })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             </div>
           </div>
             </div>
