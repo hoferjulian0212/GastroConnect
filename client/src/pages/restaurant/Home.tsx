@@ -445,6 +445,36 @@ export default function RestaurantHome() {
     }
   };
 
+  const getStatusBg = (status: string) => {
+    switch (status) {
+      case "pending": return "bg-yellow-100 dark:bg-yellow-900/40";
+      case "confirmed": return "bg-blue-100 dark:bg-blue-900/40";
+      case "partially_confirmed": return "bg-orange-100 dark:bg-orange-900/40";
+      case "in_delivery": return "bg-purple-100 dark:bg-purple-900/40";
+      case "delivered": return "bg-green-100 dark:bg-green-900/40";
+      case "cancelled": return "bg-red-100 dark:bg-red-900/40";
+      default: return "bg-primary/15";
+    }
+  };
+
+  const getStatusTextColor = (status: string) => {
+    switch (status) {
+      case "pending": return "text-yellow-700 dark:text-yellow-400";
+      case "confirmed": return "text-blue-700 dark:text-blue-400";
+      case "partially_confirmed": return "text-orange-700 dark:text-orange-400";
+      case "in_delivery": return "text-purple-700 dark:text-purple-400";
+      case "delivered": return "text-green-700 dark:text-green-400";
+      case "cancelled": return "text-red-700 dark:text-red-400";
+      default: return "text-primary";
+    }
+  };
+
+  const getCommonStatus = (orders: OrderWithDetails[]) => {
+    if (orders.length === 0) return null;
+    const first = orders[0].status;
+    return orders.every(o => o.status === first) ? first : null;
+  };
+
   const getDeliveryDateLabel = (dateStr: string) => {
     const date = new Date(dateStr + "T00:00:00");
     if (isToday(date)) return t("restaurantHome", "today");
@@ -949,6 +979,12 @@ export default function RestaurantHome() {
                         const supplierName = first.supplier?.companyName || first.supplier?.name || t("common", "unknown");
                         const totalAmount = bundle.orders.reduce((s, o) => s + parseFloat(o.totalAmount || "0"), 0);
                         const totalItems = bundle.orders.reduce((s, o) => s + (o.items?.length || 0), 0);
+                        const commonStatus = getCommonStatus(bundle.orders);
+                        const iconBg = commonStatus ? getStatusBg(commonStatus) : "bg-primary/15";
+                        const iconText = commonStatus ? getStatusTextColor(commonStatus) : "text-primary";
+                        const badgeCls = commonStatus
+                          ? `${getStatusColor(commonStatus)} border-0`
+                          : "bg-primary/15 text-primary";
                         const header = (
                           <div
                             key={`bundle-${bundleKey}`}
@@ -957,10 +993,12 @@ export default function RestaurantHome() {
                             data-testid={`bundle-${bundleKey}`}
                           >
                             <div className="flex items-center justify-between gap-2 mb-3">
-                              <div className="flex items-center justify-center h-10 w-10 rounded-xl shrink-0 bg-primary/15">
-                                <Package className="h-5 w-5 text-primary" />
+                              <div className={`flex items-center justify-center h-10 w-10 rounded-xl shrink-0 ${iconBg}`}>
+                                <div className={iconText}>
+                                  {commonStatus ? getStatusIcon(commonStatus) : <Package className="h-5 w-5" />}
+                                </div>
                               </div>
-                              <Badge className="bg-primary/15 text-primary text-[10px] px-1.5" variant="outline">
+                              <Badge className={`${badgeCls} text-[10px] px-1.5`} variant="outline">
                                 {bundle.orders.length}x
                               </Badge>
                             </div>
@@ -1129,9 +1167,21 @@ export default function RestaurantHome() {
                                 ×{bundle.orders.length}
                               </span>
                               <div>
-                                <Badge className="bg-primary/15 text-primary text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0" variant="outline">
-                                  {lang === "de" ? "Bündel" : "Gruppo"}
-                                </Badge>
+                                {(() => {
+                                  const commonStatus = getCommonStatus(bundle.orders);
+                                  const cls = commonStatus
+                                    ? `${getStatusColor(commonStatus)} border-0`
+                                    : "bg-primary/15 text-primary border-0";
+                                  return (
+                                    <Badge className={`${cls} text-[11px] rounded-full px-2.5 py-0.5 font-medium`} variant="outline">
+                                      <span className="inline-flex items-center gap-1">
+                                        {commonStatus
+                                          ? <>{getStatusIcon(commonStatus)}{getOrderStatus(commonStatus, lang)}</>
+                                          : (lang === "de" ? "Bündel" : "Gruppo")}
+                                      </span>
+                                    </Badge>
+                                  );
+                                })()}
                               </div>
                               <div className="min-w-0 flex items-center gap-2 !justify-start !text-left">
                                 <Avatar className="h-6 w-6 shrink-0">
