@@ -482,8 +482,8 @@ export default function OrderDetail() {
 
         <div className="border-b border-border/40 mx-4 md:mx-6 lg:mx-8" />
 
-        {/* Body: single column on mobile, 2-column on desktop with sticky sidebar */}
-        <div className="px-4 md:px-6 lg:px-8 pt-5 pb-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 lg:gap-10">
+        {/* Body: single column — content cards stacked, actions row at bottom */}
+        <div className="px-4 md:px-6 lg:px-8 pt-5 pb-8">
           <div className="min-w-0">
             <div>
           <div className="space-y-5" data-testid="section-updates">
@@ -664,10 +664,9 @@ export default function OrderDetail() {
             </div>
           </div>
 
-          {/* Sidebar: action buttons (sticky on desktop, stacked under content on mobile) */}
-          <aside className="lg:sticky lg:top-6 lg:self-start">
-            {actions.length > 0 && (
-              <div className="rounded-xl border border-border bg-card p-4 lg:p-5 shadow-sm" data-testid="section-actions">
+          {/* Action buttons row — placed below all cards, side by side on desktop */}
+          {actions.length > 0 && (
+            <div className="mt-5 rounded-xl border border-border bg-card p-4 lg:p-5 shadow-sm" data-testid="section-actions">
           {confirmAction === "cancelled" ? (
             <div className="space-y-3">
               <p className="text-sm font-medium text-center text-foreground">
@@ -757,84 +756,30 @@ export default function OrderDetail() {
                 </button>
               </div>
             </div>
-          ) : (() => {
-            const primaryActions = actions.filter((a) => a.category === "primary");
-            const fulfillmentActions = actions.filter((a) => a.category === "fulfillment");
-            const communicationActions = actions.filter((a) => a.category === "communication");
-            const destructiveActions = actions.filter((a) => a.category === "destructive");
-
-            const renderButton = (action: ActionButton, big = false) => {
-              const Icon = action.icon;
-              const sizeCls = big ? "py-3.5 px-5 text-sm" : "py-2.5 px-4 text-sm";
-              return (
-                <button
-                  key={action.testId}
-                  className={`w-full ${sizeCls} rounded-xl font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${getButtonClasses(action.style)}`}
-                  onClick={action.action}
-                  data-testid={action.testId}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="truncate">{action.label}</span>
-                </button>
-              );
-            };
-
-            return (
-              <div className="space-y-3">
-                {/* 1. Primary state-driven action */}
-                {primaryActions.length > 0 && (
-                  <div className="space-y-2">
-                    {primaryActions.map((a) => renderButton(a, true))}
-                  </div>
-                )}
-
-                {/* 2. Fulfillment-related secondary actions */}
-                {fulfillmentActions.length > 0 && (
-                  <div className="space-y-2">
-                    {fulfillmentActions.map((a) => renderButton(a))}
-                  </div>
-                )}
-
-                {/* 3. Communication — separated by subtle divider */}
-                {communicationActions.length > 0 && (
-                  <>
-                    {(primaryActions.length > 0 || fulfillmentActions.length > 0) && (
-                      <div className="h-px bg-border/40 my-1" />
-                    )}
-                    <div className="space-y-2">
-                      {communicationActions.map((a) => renderButton(a))}
-                    </div>
-                  </>
-                )}
-
-                {/* 4. Destructive — clearly separated, smaller, muted */}
-                {destructiveActions.length > 0 && (
-                  <>
-                    <div className="h-px bg-border/40 my-1" />
-                    <div className="space-y-2">
-                      {destructiveActions.map((action) => {
-                        const Icon = action.icon;
-                        return (
-                          <button
-                            key={action.testId}
-                            className="w-full py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
-                            onClick={action.action}
-                            data-testid={action.testId}
-                          >
-                            <Icon className="h-3.5 w-3.5" />
-                            {action.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })()}
-              </div>
-            )}
-          </aside>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5" data-testid="actions-row">
+              {actions.map((action) => {
+                const Icon = action.icon;
+                const isDestructive = action.category === "destructive";
+                const cls = isDestructive
+                  ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/50"
+                  : getButtonClasses(action.style);
+                return (
+                  <button
+                    key={action.testId}
+                    className={`w-full py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${cls}`}
+                    onClick={action.action}
+                    data-testid={action.testId}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{action.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+            </div>
+          )}
         </div>
       </div>
 
