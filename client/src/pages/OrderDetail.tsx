@@ -486,26 +486,7 @@ export default function OrderDetail() {
         {/* Body: single column on mobile, 2-column on desktop with sticky sidebar */}
         <div className="px-4 md:px-6 lg:px-8 pt-5 pb-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 lg:gap-10">
           <div className="min-w-0">
-            <div className="mb-5">
-              <div className="flex bg-muted/50 rounded-full p-1 max-w-md">
-                <button
-                  onClick={() => setActiveTab("updates")}
-                  className={`flex-1 py-2 text-sm font-medium rounded-full transition-all ${activeTab === "updates" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
-                  data-testid="tab-updates"
-                >
-                  {lang === "de" ? "Updates" : "Aggiornamenti"}
-                </button>
-                <button
-                  onClick={() => setActiveTab("details")}
-                  className={`flex-1 py-2 text-sm font-medium rounded-full transition-all ${activeTab === "details" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
-                  data-testid="tab-details"
-                >
-                  {lang === "de" ? "Details" : "Dettagli"}
-                </button>
-              </div>
-            </div>
             <div>
-        {activeTab === "updates" && (
           <div className="space-y-5" data-testid="section-updates">
             {/* Horizontal stepper showing the overall journey */}
             {order.status !== "cancelled" && (
@@ -561,6 +542,50 @@ export default function OrderDetail() {
                 </div>
               </div>
             )}
+
+            {/* Products list — visible directly on detail view */}
+            <div className="rounded-2xl border border-border/40 bg-card/40 overflow-hidden" data-testid="section-products">
+              <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
+                <p className="text-sm font-semibold">{lang === "de" ? "Produkte" : "Prodotti"}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {order.items?.length || 0} {lang === "de" ? ((order.items?.length || 0) === 1 ? "Artikel" : "Artikel") : ((order.items?.length || 0) === 1 ? "articolo" : "articoli")}
+                </p>
+              </div>
+              <div className="divide-y divide-border/20">
+                {order.items?.map((item: any) => {
+                  const hasPartial = item.confirmedQuantity !== null && item.confirmedQuantity !== undefined && item.confirmedQuantity !== item.quantity;
+                  return (
+                    <div key={item.id} className="flex items-center gap-3 px-4 py-3" data-testid={`detail-item-${item.id}`}>
+                      {item.productImageUrl ? (
+                        <img src={item.productImageUrl} alt="" className="h-11 w-11 rounded-xl object-cover shrink-0" />
+                      ) : (
+                        <div className="h-11 w-11 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                          <Package className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.productName}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.quantity}{item.productUnit ? ` ${item.productUnit}` : "x"} · {Number(item.unitPrice).toFixed(2)}€ {lang === "de" ? "pro Einheit" : "per unità"}
+                        </p>
+                        {hasPartial && (
+                          <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
+                            {lang === "de" ? "Bestätigt" : "Confermato"}: {item.confirmedQuantity} / {item.quantity}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold tabular-nums">{Number(item.totalPrice).toFixed(2)}€</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="px-4 py-3 border-t border-border/30 flex justify-between items-center bg-muted/20">
+                <p className="text-sm font-semibold">{lang === "de" ? "Gesamt" : "Totale"}</p>
+                <p className="text-base font-bold tabular-nums">{Number(order.totalAmount).toFixed(2)}€</p>
+              </div>
+            </div>
 
             {/* Detailed history list */}
             <div className="rounded-2xl border border-border/40 bg-card/40 overflow-hidden">
