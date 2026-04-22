@@ -19,7 +19,9 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, CircleAlert, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw, Flame } from "lucide-react";
+import { AlertCircle, CircleAlert, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter as FilterIcon, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw, Flame, Search, ArrowUpDown, ArrowUp, ArrowDown, Check } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import {
   Dialog,
@@ -61,7 +63,9 @@ export default function Complaints() {
   const [filterComplaintStatus, setFilterComplaintStatus] = useState<string>("all");
   const [filterComplaintDateFrom, setFilterComplaintDateFrom] = useState<string>("");
   const [filterComplaintDateTo, setFilterComplaintDateTo] = useState<string>("");
-  const [showSecondaryFilters, setShowSecondaryFilters] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortBy, setSortBy] = useState<"createdAt" | "status" | "supplier" | "title">("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   
   // Edit state
   const [editingComplaint, setEditingComplaint] = useState<ComplaintWithDetails | null>(null);
@@ -381,7 +385,8 @@ export default function Complaints() {
 
   const filteredComplaints = useMemo(() => {
     if (!existingComplaints) return [];
-    return existingComplaints.filter(c => {
+    const search = searchQuery.trim().toLowerCase();
+    const filtered = existingComplaints.filter(c => {
       if (filterComplaintSupplier !== "all" && c.supplier?.id !== filterComplaintSupplier) return false;
       if (filterComplaintStatus !== "all" && c.status !== filterComplaintStatus) return false;
       if (filterComplaintDateFrom) {
@@ -394,18 +399,50 @@ export default function Complaints() {
         to.setHours(23, 59, 59, 999);
         if (new Date(c.createdAt) > to) return false;
       }
+      if (search) {
+        const haystack = [
+          c.title,
+          c.description,
+          c.supplier?.name,
+          c.id,
+          (c as any).orderId,
+        ].filter(Boolean).join(" ").toLowerCase();
+        if (!haystack.includes(search)) return false;
+      }
       return true;
     });
-  }, [existingComplaints, filterComplaintSupplier, filterComplaintStatus, filterComplaintDateFrom, filterComplaintDateTo]);
 
-  const hasActiveFilters = filterComplaintSupplier !== "all" || filterComplaintDateFrom || filterComplaintDateTo;
-  const hasSecondaryFilters = filterComplaintDateFrom || filterComplaintDateTo;
+    const sorted = [...filtered].sort((a, b) => {
+      let cmp = 0;
+      switch (sortBy) {
+        case "createdAt":
+          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case "status":
+          cmp = (a.status || "").localeCompare(b.status || "");
+          break;
+        case "supplier":
+          cmp = (a.supplier?.name || "").localeCompare(b.supplier?.name || "");
+          break;
+        case "title":
+          cmp = (a.title || "").localeCompare(b.title || "");
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+    return sorted;
+  }, [existingComplaints, filterComplaintSupplier, filterComplaintStatus, filterComplaintDateFrom, filterComplaintDateTo, searchQuery, sortBy, sortDir]);
+
+  const hasActiveFilters = filterComplaintStatus !== "all" || filterComplaintSupplier !== "all" || !!filterComplaintDateFrom || !!filterComplaintDateTo;
+  const activeFilterCount = (filterComplaintStatus !== "all" ? 1 : 0) + (filterComplaintSupplier !== "all" ? 1 : 0) + (filterComplaintDateFrom ? 1 : 0) + (filterComplaintDateTo ? 1 : 0);
 
   const clearFilters = () => {
     setFilterComplaintSupplier("all");
     setFilterComplaintStatus("all");
     setFilterComplaintDateFrom("");
     setFilterComplaintDateTo("");
+    setSearchQuery("");
   };
 
   const canSubmit = selectedOrderId && selectedSupplierId && title.trim() && description.trim();
@@ -423,7 +460,7 @@ export default function Complaints() {
       className="space-y-3 md:space-y-4"
     >
       <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="complaints-hero">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "complaints")}</h1>
             <p className="hidden md:block text-sm text-white/50 mt-1">{lang === "de" ? "Verwalten Sie Ihre Reklamationen" : "Gestisci i tuoi reclami"}</p>
@@ -433,119 +470,190 @@ export default function Complaints() {
             {t("complaints", "newComplaint")}
           </Button>
         </div>
+      </div>
 
-        {uniqueSuppliers.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-            <button
-              onClick={() => setFilterComplaintSupplier("all")}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
-                filterComplaintSupplier === "all"
-                  ? "border-white/40 bg-white/20 text-white shadow-sm"
-                  : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
-              }`}
-              data-testid="filter-complaint-supplier-all"
-            >
-              <Store className="h-3.5 w-3.5" />
-              <span>{t("common", "all")}</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{existingComplaints?.length || 0}</span>
+      {/* Toolbar (Suchen · Sortieren · Filter) — page-content area, right-aligned */}
+      <div className="flex items-center gap-2 flex-wrap justify-start">
+        {/* Active filter chips (right of toolbar) */}
+        <div className="flex items-center gap-2 flex-wrap ml-auto order-last">
+          {filterComplaintStatus !== "all" && (
+            <button onClick={() => setFilterComplaintStatus("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-complaint-status">
+              <span>{getComplaintStatus(filterComplaintStatus as any, lang)}</span><X className="h-3 w-3" />
             </button>
-            {uniqueSuppliers.map(supplier => {
-              const isActive = filterComplaintSupplier === supplier.id;
-              return (
-                <button
-                  key={supplier.id}
-                  onClick={() => setFilterComplaintSupplier(supplier.id)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
-                    isActive
-                      ? "border-white/40 bg-white/20 text-white shadow-sm"
-                      : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
-                  }`}
-                  data-testid={`filter-complaint-supplier-${supplier.id}`}
-                >
-                  <Avatar className="h-4 w-4">
-                    <AvatarImage src={supplier.profileImageUrl || undefined} />
-                    <AvatarFallback className="text-[7px] font-semibold bg-white/20 text-white">
-                      {supplier.name.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="max-w-[80px] truncate">{supplier.name}</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{supplier.complaintCount}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          {([
-            { key: "all", dotColor: "bg-gray-400" },
-            { key: "open", dotColor: "bg-yellow-500" },
-            { key: "in_progress", dotColor: "bg-blue-500" },
-            { key: "resolved", dotColor: "bg-green-500" },
-            { key: "closed", dotColor: "bg-gray-500" },
-          ] as const).map(({ key, dotColor }) => {
-            const isActive = filterComplaintStatus === key;
-            const count = (statusCounts as any)[key] || 0;
-            return (
-              <button
-                key={key}
-                onClick={() => setFilterComplaintStatus(key)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
-                  isActive
-                    ? "border-white/40 bg-white/20 text-white shadow-sm"
-                    : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
-                }`}
-                data-testid={`filter-complaint-status-${key}`}
-              >
-                <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
-                <span className="whitespace-nowrap">
-                  {key === "all" ? t("common", "all") : getComplaintStatus(key, lang)}
-                </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15">{count}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowSecondaryFilters(!showSecondaryFilters)}
-            className="flex items-center gap-1.5 text-xs md:text-sm text-white/60 hover:text-white rounded-md px-2 py-1.5 transition-colors"
-            data-testid="button-toggle-complaint-filters"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span>{lang === "de" ? "Filter" : "Filtri"}</span>
-            {hasSecondaryFilters && (
-              <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
-                {(filterComplaintDateFrom ? 1 : 0) + (filterComplaintDateTo ? 1 : 0)}
-              </span>
-            )}
-            {showSecondaryFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="text-xs text-white/60 hover:text-white rounded-md px-2 py-1.5 flex items-center gap-1 transition-colors"
-              data-testid="button-clear-complaint-filters"
-            >
-              <X className="h-3 w-3" />
-              {t("common", "reset")}
+          )}
+          {filterComplaintSupplier !== "all" && (
+            <button onClick={() => setFilterComplaintSupplier("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-complaint-supplier">
+              <span>{uniqueSuppliers.find(s => s.id === filterComplaintSupplier)?.name || "—"}</span><X className="h-3 w-3" />
+            </button>
+          )}
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-complaint-search">
+              <span>"{searchQuery}"</span><X className="h-3 w-3" />
             </button>
           )}
         </div>
+        <div className="inline-flex items-center gap-1 rounded-full bg-card border border-border p-1 shadow-sm">
+          {/* Suchen */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${searchQuery ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                title={lang === "de" ? "Suchen" : "Cerca"}
+                data-testid="button-toolbar-complaint-search"
+              >
+                <Search className="h-4 w-4" />
+                {searchQuery && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" />}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 p-3">
+              <div className="space-y-2">
+                <Label className="text-xs">{lang === "de" ? "Suchen in Reklamationen" : "Cerca nei reclami"}</Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    autoFocus
+                    placeholder={lang === "de" ? "Titel, Lieferant, Bestellung…" : "Titolo, fornitore, ordine…"}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-9 pl-8 text-sm"
+                    data-testid="input-toolbar-complaint-search"
+                  />
+                </div>
+                {searchQuery && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={() => setSearchQuery("")}>
+                    <X className="h-3 w-3 mr-1" />{lang === "de" ? "Suche zurücksetzen" : "Cancella ricerca"}
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
 
-        {showSecondaryFilters && (
-          <div className="flex gap-2 pt-1">
-            <div className="flex-1 min-w-0">
-              <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "from")}</label>
-              <Input type="date" value={filterComplaintDateFrom} onChange={e => setFilterComplaintDateFrom(e.target.value)} className={`h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white ${!filterComplaintDateFrom ? 'date-empty' : ''}`} data-testid="filter-complaint-date-from" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <label className="text-[10px] md:text-xs text-white/50 mb-1 block">{t("common", "to")}</label>
-              <Input type="date" value={filterComplaintDateTo} onChange={e => setFilterComplaintDateTo(e.target.value)} className={`h-9 text-xs md:text-sm w-full bg-white/10 border-white/20 text-white ${!filterComplaintDateTo ? 'date-empty' : ''}`} data-testid="filter-complaint-date-to" />
-            </div>
-          </div>
-        )}
+          {/* Sortieren */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${sortBy !== "createdAt" || sortDir !== "desc" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                title={lang === "de" ? "Sortieren" : "Ordina"}
+                data-testid="button-toolbar-complaint-sort"
+              >
+                <ArrowUpDown className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-2">
+              <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                {lang === "de" ? "Sortieren nach" : "Ordina per"}
+              </div>
+              {([
+                { key: "createdAt", label: lang === "de" ? "Erstellt" : "Creato" },
+                { key: "status", label: "Status" },
+                { key: "supplier", label: lang === "de" ? "Lieferant" : "Fornitore" },
+                { key: "title", label: lang === "de" ? "Titel" : "Titolo" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setSortBy(opt.key)}
+                  className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm ${sortBy === opt.key ? "bg-muted font-medium" : "hover:bg-muted"}`}
+                  data-testid={`sort-by-complaint-${opt.key}`}
+                >
+                  <span>{opt.label}</span>
+                  {sortBy === opt.key && <Check className="h-3.5 w-3.5 text-primary" />}
+                </button>
+              ))}
+              <Separator className="my-1.5" />
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  onClick={() => setSortDir("asc")}
+                  className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs ${sortDir === "asc" ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
+                  data-testid="sort-dir-complaint-asc"
+                >
+                  <ArrowUp className="h-3 w-3" />{lang === "de" ? "Aufsteigend" : "Crescente"}
+                </button>
+                <button
+                  onClick={() => setSortDir("desc")}
+                  className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs ${sortDir === "desc" ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
+                  data-testid="sort-dir-complaint-desc"
+                >
+                  <ArrowDown className="h-3 w-3" />{lang === "de" ? "Absteigend" : "Decrescente"}
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${hasActiveFilters ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                title="Filter"
+                data-testid="button-toolbar-complaint-filter"
+              >
+                <FilterIcon className="h-4 w-4" />
+                {hasActiveFilters && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 inline-flex items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-3">
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">Status</Label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {([
+                      { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
+                      { key: "open", label: getComplaintStatus("open", lang), dot: "bg-yellow-500" },
+                      { key: "in_progress", label: getComplaintStatus("in_progress", lang), dot: "bg-blue-500" },
+                      { key: "resolved", label: getComplaintStatus("resolved", lang), dot: "bg-green-500" },
+                      { key: "closed", label: getComplaintStatus("closed", lang), dot: "bg-gray-500" },
+                    ] as const).map(({ key, label, dot }) => (
+                      <button
+                        key={key}
+                        onClick={() => setFilterComplaintStatus(key)}
+                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${filterComplaintStatus === key ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
+                        data-testid={`filter-complaint-status-${key}`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
+                        <span className="truncate">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {uniqueSuppliers.length > 0 && (
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{lang === "de" ? "Lieferant" : "Fornitore"}</Label>
+                    <select
+                      value={filterComplaintSupplier}
+                      onChange={(e) => setFilterComplaintSupplier(e.target.value)}
+                      className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                      data-testid="filter-complaint-supplier-select"
+                    >
+                      <option value="all">{lang === "de" ? "Alle Lieferanten" : "Tutti i fornitori"}</option>
+                      {uniqueSuppliers.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name} ({s.complaintCount})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{t("common", "from")}</Label>
+                    <Input type="date" value={filterComplaintDateFrom} onChange={(e) => setFilterComplaintDateFrom(e.target.value)} className="h-9 text-xs" data-testid="filter-complaint-date-from" />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{t("common", "to")}</Label>
+                    <Input type="date" value={filterComplaintDateTo} onChange={(e) => setFilterComplaintDateTo(e.target.value)} className="h-9 text-xs" data-testid="filter-complaint-date-to" />
+                  </div>
+                </div>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={clearFilters} data-testid="button-clear-complaint-filters">
+                    <X className="h-3 w-3 mr-1" />{t("common", "reset")}
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
       <div className="rounded-md border border-border bg-card shadow-sm overflow-hidden" data-testid="complaints-table">
