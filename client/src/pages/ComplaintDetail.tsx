@@ -244,28 +244,13 @@ export default function ComplaintDetail() {
 
       <div className="border-b border-border/40" />
 
-      <div className="px-6 pt-4">
-        <div className="flex bg-muted/50 rounded-full p-1">
-          <button
-            onClick={() => setActiveTab("updates")}
-            className={`flex-1 py-2 text-sm font-medium rounded-full transition-all ${activeTab === "updates" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
-            data-testid="tab-updates"
-          >
-            {lang === "de" ? "Updates" : "Aggiornamenti"}
-          </button>
-          <button
-            onClick={() => setActiveTab("details")}
-            className={`flex-1 py-2 text-sm font-medium rounded-full transition-all ${activeTab === "details" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
-            data-testid="tab-details"
-          >
-            {lang === "de" ? "Details" : "Dettagli"}
-          </button>
-        </div>
-      </div>
-
       <div className="flex-1 px-6 pt-5 pb-8 overflow-auto">
-        {activeTab === "updates" && (
-          <div className="space-y-0" data-testid="section-updates">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+          <div className="rounded-2xl border border-border bg-card shadow-sm p-5" data-testid="card-updates">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-semibold">{lang === "de" ? "Updates" : "Aggiornamenti"}</p>
+            </div>
+            <div className="space-y-0" data-testid="section-updates">
             {timeline.map((entry: any, index: number) => {
               const isLast = index === timeline.length - 1 && (!comments || comments.length === 0);
 
@@ -328,11 +313,14 @@ export default function ComplaintDetail() {
                 })}
               </>
             )}
+            </div>
           </div>
-        )}
 
-        {activeTab === "details" && (
-          <div className="space-y-5" data-testid="section-details">
+          <div className="rounded-2xl border border-border bg-card shadow-sm p-5" data-testid="card-details">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-semibold">{lang === "de" ? "Details" : "Dettagli"}</p>
+            </div>
+            <div className="space-y-5" data-testid="section-details">
             <div className="rounded-2xl bg-muted/30 overflow-hidden">
               <div className="px-4 py-3 border-b border-border/30">
                 <p className="text-sm font-semibold">{lang === "de" ? "Beschreibung" : "Descrizione"}</p>
@@ -403,8 +391,9 @@ export default function ComplaintDetail() {
                 </div>
               </div>
             </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
