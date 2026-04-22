@@ -2,10 +2,9 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Search, TrendingDown, Package, ChevronDown, ChevronUp, Tag } from "lucide-react";
+import { TrendingDown, Package, ChevronDown, ChevronUp, Tag } from "lucide-react";
 import type { ProductWithSupplierAndPromotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -68,7 +67,6 @@ const ampelStyles = {
 export default function PriceComparison() {
   const { currentUser } = useUser();
   const { lang } = useLanguage();
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"savings_abs" | "savings_pct" | "name" | "price">("savings_abs");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -180,10 +178,6 @@ export default function PriceComparison() {
   const filtered = useMemo(() => {
     let items = grouped;
     if (selectedCategory !== "all") items = items.filter(g => g.category === selectedCategory);
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      items = items.filter(g => g.name.toLowerCase().includes(q) || g.category.toLowerCase().includes(q));
-    }
     if (sortBy === "savings_abs") items = [...items].sort((a, b) => b.savingsAbs - a.savingsAbs);
     else if (sortBy === "savings_pct") items = [...items].sort((a, b) => b.savingsPercent - a.savingsPercent);
     else if (sortBy === "name") items = [...items].sort((a, b) => a.name.localeCompare(b.name, "de"));
@@ -250,17 +244,6 @@ export default function PriceComparison() {
             <div className="text-xl font-bold text-emerald-400 mt-0.5">{totalSavingsAbs.toFixed(0)}€</div>
             <div className="text-xs text-white/40">{lang === "de" ? "pro Einheit" : "per unità"}</div>
           </div>
-        </div>
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-          <Input
-            placeholder={lang === "de" ? "Produkt suchen..." : "Cerca prodotto..."}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-white/[0.07] border-white/10 text-white pl-9 placeholder:text-white/30 rounded-xl h-10"
-            data-testid="input-search"
-          />
         </div>
 
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
@@ -372,11 +355,9 @@ export default function PriceComparison() {
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Package className="h-12 w-12 text-muted-foreground/30 mb-3" />
             <p className="text-sm text-muted-foreground">
-              {searchQuery
-                ? (lang === "de" ? "Keine Ergebnisse gefunden" : "Nessun risultato trovato")
-                : (lang === "de"
-                  ? "Keine vergleichbaren Produkte verfügbar. Vergleiche erscheinen, wenn mehrere Lieferanten das gleiche Produkt anbieten."
-                  : "Nessun prodotto confrontabile.")}
+              {lang === "de"
+                ? "Keine vergleichbaren Produkte verfügbar. Vergleiche erscheinen, wenn mehrere Lieferanten das gleiche Produkt anbieten."
+                : "Nessun prodotto confrontabile."}
             </p>
           </div>
         ) : (
