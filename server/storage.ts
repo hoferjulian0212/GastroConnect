@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, desc, or, sql, ne, inArray } from "drizzle-orm";
+import { eq, and, desc, or, sql, ne, inArray, gte } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
@@ -71,6 +71,15 @@ export interface IStorage {
   sendMessage(message: InsertMessage): Promise<Message>;
   getUnreadCount(userId: string): Promise<number>;
   markMessagesAsRead(conversationId: string, userId: string): Promise<void>;
+
+  // Product Volumes (for price-comparison projections)
+  getProductVolumesForRestaurant(restaurantId: string, days: number): Promise<Array<{
+    productId: string;
+    supplierId: string;
+    totalQuantity: number;
+    orderCount: number;
+    lastOrderedAt: Date | null;
+  }>>;
 
   // Stats
   getRestaurantStats(restaurantId: string): Promise<{
@@ -151,6 +160,7 @@ export interface IStorage {
 
   // Custom Prices
   getCustomPrices(supplierId: string): Promise<(CustomPrice & { product: Product; restaurant: User })[]>;
+  getCustomPricesByRestaurant(restaurantId: string): Promise<(CustomPrice & { product: Product; restaurant: User })[]>;
   getCustomPrice(productId: string, restaurantId: string): Promise<CustomPrice | undefined>;
   setCustomPrice(data: InsertCustomPrice): Promise<CustomPrice>;
   deleteCustomPrice(id: string): Promise<void>;
@@ -288,6 +298,39 @@ export class DatabaseStorage implements IStorage {
     const ordersResult = opts?.limit ? await (query as any).limit(opts.limit) : await query;
 
     return Promise.all(ordersResult.map((order: Order) => this.enrichOrderWithDetails(order)));
+  }
+
+  async getProductVolumesForRestaurant(restaurantId: string, days: number): Promise<Array<{
+    productId: string;
+    supplierId: string;
+    totalQuantity: number;
+    orderCount: number;
+    lastOrderedAt: Date | null;
+  }>> {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({
+        productId: orderItems.productId,
+        supplierId: orders.supplierId,
+        totalQuantity: sql<number>`COALESCE(SUM(COALESCE(${orderItems.confirmedQuantity}, ${orderItems.quantity})), 0)::int`,
+        orderCount: sql<number>`COUNT(DISTINCT ${orders.id})::int`,
+        lastOrderedAt: sql<Date | null>`MAX(${orders.createdAt})`,
+      })
+      .from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(and(
+        eq(orders.restaurantId, restaurantId),
+        gte(orders.createdAt, since),
+        ne(orders.status, "cancelled"),
+      ))
+      .groupBy(orderItems.productId, orders.supplierId);
+    return rows.map(r => ({
+      productId: r.productId,
+      supplierId: r.supplierId,
+      totalQuantity: Number(r.totalQuantity) || 0,
+      orderCount: Number(r.orderCount) || 0,
+      lastOrderedAt: r.lastOrderedAt,
+    }));
   }
 
   async getRecentOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]> {
@@ -2364,6 +2407,17 @@ export class DatabaseStorage implements IStorage {
     const productMap = Object.fromEntries(productList.map(p => [p.id, p]));
     const restaurantMap = Object.fromEntries(restaurantList.map(r => [r.id, r]));
     return rows.map(r => ({ ...r, product: productMap[r.productId], restaurant: restaurantMap[r.restaurantId] }));
+  }
+
+  async getCustomPricesByRestaurant(restaurantId: string): Promise<(CustomPrice & { product: Product; restaurant: User })[]> {
+    const rows = await db.select().from(customPrices)
+      .where(eq(customPrices.restaurantId, restaurantId));
+    if (rows.length === 0) return [];
+    const productIds = [...new Set(rows.map(r => r.productId))];
+    const productList = await db.select().from(products).where(inArray(products.id, productIds));
+    const productMap = Object.fromEntries(productList.map(p => [p.id, p]));
+    const [restaurant] = await db.select().from(users).where(eq(users.id, restaurantId));
+    return rows.map(r => ({ ...r, product: productMap[r.productId], restaurant }));
   }
 
   async getCustomPrice(productId: string, restaurantId: string): Promise<CustomPrice | undefined> {

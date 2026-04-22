@@ -1,12 +1,49 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { TrendingDown, Package, ChevronDown, ChevronUp, Tag, Users, Euro, Target, Lightbulb } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  TrendingDown, Package, ChevronDown, ChevronUp, Tag, ShoppingCart, Search,
+  ArrowUpDown, ArrowUp, ArrowDown, Filter as FilterIcon, X, Check, Sparkles,
+  AlertTriangle, Truck, Clock, CheckCircle2,
+} from "lucide-react";
 import type { ProductWithSupplierAndPromotion } from "@shared/schema";
-import { useLanguage } from "@/context/LanguageContext";
+
+interface OrderItemLite {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+}
+interface OrderLite {
+  id: string;
+  supplierId: string;
+  status: string;
+  createdAt: string;
+  items?: OrderItemLite[];
+}
+
+interface VolumeRow {
+  productId: string;
+  supplierId: string;
+  totalQuantity: number;
+  orderCount: number;
+  lastOrderedAt: string | null;
+}
 
 interface Offer {
   product: ProductWithSupplierAndPromotion;
@@ -14,63 +51,58 @@ interface Offer {
   originalPrice: number;
   hasPromo: boolean;
   promoPercent: number;
+  promoEndsAt?: string | null;
 }
 
 interface GroupedProduct {
+  key: string;
   name: string;
   category: string;
   unit: string;
   offers: Offer[];
-  cheapest: number;
-  mostExpensive: number;
-  savingsPercent: number;
-  savingsAbs: number;
+  cheapestOffer: Offer;
+  currentOffer: Offer | null; // The offer the restaurant is currently using
+  monthlyVolume: number; // estimated units per 30 days
+  unitDiff: number; // current - cheapest, per unit
+  unitDiffPercent: number;
+  monthlySaving: number; // unitDiff * monthlyVolume
+  isAlreadyBest: boolean;
 }
 
-interface CategoryStat {
-  name: string;
-  spend: number;
-  sharePercent: number;
-  groupCount: number;
-  avgSavings: number;
-  totalSavingsAbs: number;
-  ampel: "green" | "orange" | "red";
-}
+const DAYS_WINDOW = 90;
 
-function getAmpel(sharePercent: number, avgSavings: number): "green" | "orange" | "red" {
-  if (sharePercent < 20 && avgSavings < 5) return "green";
-  if (sharePercent > 30 || avgSavings > 15) return "red";
-  return "orange";
+function formatEuro(n: number): string {
+  return n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-
-const ampelStyles = {
-  green: {
-    dot: "bg-emerald-500",
-    border: "border-emerald-200 dark:border-emerald-900/40",
-    bg: "bg-emerald-50/40 dark:bg-emerald-950/10",
-    text: "text-emerald-700 dark:text-emerald-400",
-  },
-  orange: {
-    dot: "bg-orange-500",
-    border: "border-orange-200 dark:border-orange-900/40",
-    bg: "bg-orange-50/40 dark:bg-orange-950/10",
-    text: "text-orange-700 dark:text-orange-400",
-  },
-  red: {
-    dot: "bg-red-500",
-    border: "border-red-200 dark:border-red-900/40",
-    bg: "bg-red-50/40 dark:bg-red-950/10",
-    text: "text-red-700 dark:text-red-400",
-  },
-};
+function formatEuroCompact(n: number): string {
+  return n.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function daysUntil(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime() - Date.now();
+  if (Number.isNaN(ms)) return null;
+  return Math.ceil(ms / (1000 * 60 * 60 * 24));
+}
 
 export default function PriceComparison() {
   const { currentUser } = useUser();
   const { lang } = useLanguage();
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"savings_abs" | "savings_pct" | "name" | "price">("savings_abs");
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
 
+  // ── UI state ──────────────────────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"saving" | "saving_pct" | "name" | "price">("saving");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
+  const [onlyWithSavings, setOnlyWithSavings] = useState(true);
+  const [showAll, setShowAll] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [wechselplanOpen, setWechselplanOpen] = useState(false);
+  const [wechselplanSelected, setWechselplanSelected] = useState<Set<string>>(new Set());
+  const [wechselplanQuantities, setWechselplanQuantities] = useState<Record<string, number>>({});
+
+  // ── Data ──────────────────────────────────────────────────────────────────
   const { data: products, isLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
     queryKey: [`/api/products?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
@@ -81,31 +113,76 @@ export default function PriceComparison() {
     enabled: !!currentUser?.id,
   });
 
+  const { data: volumesResponse } = useQuery<{ days: number; volumes: VolumeRow[] }>({
+    queryKey: [`/api/restaurant/product-volumes?restaurantId=${currentUser?.id}&days=${DAYS_WINDOW}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const { data: ordersHistory } = useQuery<OrderLite[]>({
+    queryKey: [`/api/orders?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const { data: movMap } = useQuery<Record<string, { minimumValue: string; zone: string | null }>>({
+    queryKey: [`/api/minimum-order-values/for-restaurant?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
   const currentMonth = useMemo(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   }, []);
 
   const { data: costAnalysis } = useQuery<{
-    month: string; totalOvernights: number; totalCosts: string; costPerGuest: string;
-    targetCost: string; difference: string; percentageDeviation: string; orderCount: number; daysWithData: number;
+    totalOvernights: number; totalCosts: string; costPerGuest: string;
+    targetCost: string; difference: string;
   }>({
     queryKey: [`/api/restaurant/cost-analysis?restaurantId=${currentUser?.id}&month=${currentMonth}`],
     enabled: !!currentUser?.id,
   });
 
+  // ── Lookup maps ───────────────────────────────────────────────────────────
   const customPriceMap = useMemo(() => {
-    const map = new Map<string, number>();
-    if (customPrices) {
-      customPrices.forEach(cp => {
-        if (cp.restaurantId === currentUser?.id) {
-          map.set(cp.productId, parseFloat(cp.customPrice));
-        }
-      });
-    }
-    return map;
+    const m = new Map<string, number>();
+    customPrices?.forEach(cp => {
+      if (cp.restaurantId === currentUser?.id) m.set(cp.productId, parseFloat(cp.customPrice));
+    });
+    return m;
   }, [customPrices, currentUser?.id]);
 
+  // Per (productId, supplierId) → volume row
+  const volumeBySupplier = useMemo(() => {
+    const m = new Map<string, VolumeRow>();
+    volumesResponse?.volumes.forEach(v => m.set(`${v.productId}__${v.supplierId}`, v));
+    return m;
+  }, [volumesResponse]);
+
+  // Per productId → total volume across all suppliers (90d)
+  const volumeByProduct = useMemo(() => {
+    const m = new Map<string, number>();
+    volumesResponse?.volumes.forEach(v => {
+      m.set(v.productId, (m.get(v.productId) || 0) + v.totalQuantity);
+    });
+    return m;
+  }, [volumesResponse]);
+
+  // For each productId, the timestamp of the most recent order in which it appeared.
+  // Used to resolve "Du nutzt heute" when 90d volume data is empty.
+  const lastOrderedAtByProduct = useMemo(() => {
+    const m = new Map<string, number>(); // productId -> ms timestamp
+    if (!ordersHistory) return m;
+    for (const order of ordersHistory) {
+      const ts = new Date(order.createdAt).getTime();
+      if (!order.items) continue;
+      for (const item of order.items) {
+        const prev = m.get(item.productId) ?? 0;
+        if (ts > prev) m.set(item.productId, ts);
+      }
+    }
+    return m;
+  }, [ordersHistory]);
+
+  // ── Build product groups ──────────────────────────────────────────────────
   const grouped = useMemo<GroupedProduct[]>(() => {
     if (!products) return [];
     const inStock = products.filter(p => p.inStock);
@@ -118,9 +195,11 @@ export default function PriceComparison() {
       let effectivePrice = customPrice ?? basePrice;
       let promoPercent = 0;
       const hasPromo = !!product.activePromotion;
+      let promoEndsAt: string | null = null;
       if (product.activePromotion) {
         promoPercent = product.activePromotion.discountPercent;
         effectivePrice = effectivePrice * (1 - promoPercent / 100);
+        promoEndsAt = (product.activePromotion as any).endDate ?? null;
       }
       const offer: Offer = {
         product,
@@ -128,75 +207,127 @@ export default function PriceComparison() {
         originalPrice: customPrice ?? basePrice,
         hasPromo,
         promoPercent,
+        promoEndsAt,
       };
-      if (groups.has(key)) groups.get(key)!.offers.push(offer);
+      const g = groups.get(key);
+      if (g) g.offers.push(offer);
       else groups.set(key, {
+        key,
         name: product.name,
         category: product.category || (lang === "de" ? "Sonstige" : "Altro"),
         unit: product.unit,
         offers: [offer],
-        cheapest: 0,
-        mostExpensive: 0,
-        savingsPercent: 0,
-        savingsAbs: 0,
+        cheapestOffer: offer,
+        currentOffer: null,
+        monthlyVolume: 0,
+        unitDiff: 0,
+        unitDiffPercent: 0,
+        monthlySaving: 0,
+        isAlreadyBest: false,
       });
     }
 
     const result: GroupedProduct[] = [];
     groups.forEach(g => {
-      if (g.offers.length < 2) return;
+      if (g.offers.length < 2) return; // need ≥2 suppliers to compare
       g.offers.sort((a, b) => a.effectivePrice - b.effectivePrice);
-      g.cheapest = g.offers[0].effectivePrice;
-      g.mostExpensive = g.offers[g.offers.length - 1].effectivePrice;
-      g.savingsAbs = Math.round((g.mostExpensive - g.cheapest) * 100) / 100;
-      g.savingsPercent = g.mostExpensive > 0
-        ? Math.round(((g.mostExpensive - g.cheapest) / g.mostExpensive) * 100)
+      g.cheapestOffer = g.offers[0];
+
+      // Determine "current" offer: pick the offer in this group whose product
+      // shows the most volume in last 90d for this restaurant. Fallback: most-
+      // recently ordered offer within group (by timestamp). If none ordered → null.
+      let bestVolume = 0;
+      let chosen: Offer | null = null;
+      for (const o of g.offers) {
+        const v = volumeBySupplier.get(`${o.product.id}__${o.product.supplierId}`)?.totalQuantity ?? 0;
+        if (v > bestVolume) {
+          bestVolume = v;
+          chosen = o;
+        }
+      }
+      if (!chosen) {
+        // Fallback: pick the offer ordered most recently
+        let bestTs = 0;
+        for (const o of g.offers) {
+          const ts = lastOrderedAtByProduct.get(o.product.id) ?? 0;
+          if (ts > bestTs) {
+            bestTs = ts;
+            chosen = o;
+          }
+        }
+      }
+      g.currentOffer = chosen;
+
+      // Monthly volume = sum of 90d volumes across the group / 3
+      const total90d = g.offers.reduce((s, o) => s + (volumeBySupplier.get(`${o.product.id}__${o.product.supplierId}`)?.totalQuantity ?? 0), 0);
+      g.monthlyVolume = Math.round((total90d / 3) * 10) / 10;
+
+      const reference = g.currentOffer ?? g.offers[g.offers.length - 1];
+      g.unitDiff = Math.round((reference.effectivePrice - g.cheapestOffer.effectivePrice) * 100) / 100;
+      g.unitDiffPercent = reference.effectivePrice > 0
+        ? Math.round((g.unitDiff / reference.effectivePrice) * 100)
         : 0;
+      g.monthlySaving = Math.round(g.unitDiff * g.monthlyVolume * 100) / 100;
+      g.isAlreadyBest = !!g.currentOffer && g.currentOffer.product.id === g.cheapestOffer.product.id;
+
       result.push(g);
     });
     return result;
-  }, [products, customPriceMap, lang]);
+  }, [products, customPriceMap, volumeBySupplier, lastOrderedAtByProduct, lang]);
 
-  const categoryStats = useMemo<CategoryStat[]>(() => {
-    if (grouped.length === 0) return [];
-    const totalSpend = grouped.reduce((s, g) => s + g.mostExpensive, 0);
-    const map = new Map<string, { spend: number; groupCount: number; sumSavings: number; totalSavingsAbs: number }>();
-    grouped.forEach(g => {
-      const e = map.get(g.category) ?? { spend: 0, groupCount: 0, sumSavings: 0, totalSavingsAbs: 0 };
-      e.spend += g.mostExpensive;
-      e.groupCount += 1;
-      e.sumSavings += g.savingsPercent;
-      e.totalSavingsAbs += g.savingsAbs;
-      map.set(g.category, e);
-    });
-    const out: CategoryStat[] = [];
-    map.forEach((e, name) => {
-      const sharePercent = totalSpend > 0 ? Math.round((e.spend / totalSpend) * 100) : 0;
-      const avgSavings = e.groupCount > 0 ? Math.round(e.sumSavings / e.groupCount) : 0;
-      out.push({
-        name,
-        spend: e.spend,
-        sharePercent,
-        groupCount: e.groupCount,
-        avgSavings,
-        totalSavingsAbs: Math.round(e.totalSavingsAbs * 100) / 100,
-        ampel: getAmpel(sharePercent, avgSavings),
-      });
-    });
-    return out.sort((a, b) => b.sharePercent - a.sharePercent);
-  }, [grouped]);
+  // ── Aggregations ──────────────────────────────────────────────────────────
+  const switchable = useMemo(() => grouped.filter(g => !g.isAlreadyBest && g.unitDiff > 0), [grouped]);
+  const switchableWithVolume = useMemo(() => switchable.filter(g => g.monthlyVolume > 0), [switchable]);
+  const totalMonthlySaving = useMemo(() => switchableWithVolume.reduce((s, g) => s + g.monthlySaving, 0), [switchableWithVolume]);
+  const totalUnitSaving = useMemo(() => switchable.reduce((s, g) => s + g.unitDiff, 0), [switchable]);
 
   const categories = useMemo(() => Array.from(new Set(grouped.map(g => g.category))).sort(), [grouped]);
+  const allSuppliers = useMemo(() => {
+    const m = new Map<string, string>();
+    grouped.forEach(g => g.offers.forEach(o => {
+      const sid = o.product.supplierId;
+      const sname = o.product.supplier?.companyName || o.product.supplier?.name || "—";
+      if (!m.has(sid)) m.set(sid, sname);
+    }));
+    return Array.from(m.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "de"));
+  }, [grouped]);
 
+  // ── Filter + sort ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let items = grouped;
+    if (onlyWithSavings) items = items.filter(g => g.unitDiff > 0);
     if (selectedCategory !== "all") items = items.filter(g => g.category === selectedCategory);
-    if (sortBy === "savings_abs") items = [...items].sort((a, b) => b.savingsAbs - a.savingsAbs);
-    else if (sortBy === "savings_pct") items = [...items].sort((a, b) => b.savingsPercent - a.savingsPercent);
-    else if (sortBy === "name") items = [...items].sort((a, b) => a.name.localeCompare(b.name, "de"));
-    else if (sortBy === "price") items = [...items].sort((a, b) => a.cheapest - b.cheapest);
+    if (selectedSupplier !== "all") items = items.filter(g => g.offers.some(o => o.product.supplierId === selectedSupplier));
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      items = items.filter(g =>
+        g.name.toLowerCase().includes(q) ||
+        g.category.toLowerCase().includes(q) ||
+        g.offers.some(o => (o.product.supplier?.companyName || o.product.supplier?.name || "").toLowerCase().includes(q))
+      );
+    }
+    const dir = sortDir === "asc" ? 1 : -1;
+    items = [...items].sort((a, b) => {
+      switch (sortBy) {
+        case "saving": return (a.monthlySaving - b.monthlySaving) * dir || (a.unitDiff - b.unitDiff) * dir;
+        case "saving_pct": return (a.unitDiffPercent - b.unitDiffPercent) * dir;
+        case "price": return (a.cheapestOffer.effectivePrice - b.cheapestOffer.effectivePrice) * dir;
+        case "name": return a.name.localeCompare(b.name, "de") * (sortDir === "asc" ? 1 : -1);
+      }
+    });
     return items;
-  }, [grouped, selectedCategory, sortBy]);
+  }, [grouped, onlyWithSavings, selectedCategory, selectedSupplier, searchQuery, sortBy, sortDir]);
+
+  const visible = showAll ? filtered : filtered.slice(0, 8);
+  const hasActiveFilters = selectedCategory !== "all" || selectedSupplier !== "all" || !onlyWithSavings;
+  const activeFilterCount = (selectedCategory !== "all" ? 1 : 0) + (selectedSupplier !== "all" ? 1 : 0) + (!onlyWithSavings ? 1 : 0);
+
+  const clearFilters = () => {
+    setSelectedCategory("all");
+    setSelectedSupplier("all");
+    setOnlyWithSavings(true);
+    setSearchQuery("");
+  };
 
   const toggleExpand = (key: string) => {
     setExpandedGroups(prev => {
@@ -206,18 +337,111 @@ export default function PriceComparison() {
     });
   };
 
-  const totalComparisons = grouped.length;
-  const avgSavings = grouped.length > 0
-    ? Math.round(grouped.reduce((s, g) => s + g.savingsPercent, 0) / grouped.length)
-    : 0;
-  const totalSavingsAbs = grouped.reduce((s, g) => s + g.savingsAbs, 0);
+  // ── Wechselplan ───────────────────────────────────────────────────────────
+  const wechselplanCandidates = useMemo(
+    () => [...switchableWithVolume].sort((a, b) => b.monthlySaving - a.monthlySaving),
+    [switchableWithVolume]
+  );
 
+  const openWechselplan = () => {
+    const top = wechselplanCandidates.slice(0, 10);
+    setWechselplanSelected(new Set(top.map(g => g.key)));
+    const qs: Record<string, number> = {};
+    top.forEach(g => {
+      const monthlyQty = Math.max(1, Math.round(g.monthlyVolume));
+      qs[g.key] = monthlyQty;
+    });
+    setWechselplanQuantities(qs);
+    setWechselplanOpen(true);
+  };
+
+  const wechselplanSelectedTotal = useMemo(() => {
+    return wechselplanCandidates
+      .filter(g => wechselplanSelected.has(g.key))
+      .reduce((s, g) => {
+        const qty = wechselplanQuantities[g.key] ?? Math.round(g.monthlyVolume);
+        return s + g.unitDiff * qty;
+      }, 0);
+  }, [wechselplanCandidates, wechselplanSelected, wechselplanQuantities]);
+
+  const addToCartMutation = useMutation({
+    mutationFn: async (payload: { productId: string; supplierId: string; quantity: number }) => {
+      return apiRequest("POST", "/api/cart", {
+        restaurantId: currentUser?.id,
+        productId: payload.productId,
+        supplierId: payload.supplierId,
+        quantity: payload.quantity,
+        mode: "add",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+    },
+  });
+
+  const wechselplanSubmitMutation = useMutation({
+    mutationFn: async () => {
+      const selected = wechselplanCandidates.filter(g => wechselplanSelected.has(g.key));
+      let added = 0;
+      let failed = 0;
+      for (const g of selected) {
+        const moq = g.cheapestOffer.product.minOrderQuantity ?? 1;
+        const desired = Math.round(wechselplanQuantities[g.key] ?? g.monthlyVolume);
+        const qty = Math.max(1, moq, desired);
+        try {
+          await apiRequest("POST", "/api/cart", {
+            restaurantId: currentUser?.id,
+            productId: g.cheapestOffer.product.id,
+            supplierId: g.cheapestOffer.product.supplierId,
+            quantity: qty,
+            mode: "add",
+          });
+          added++;
+        } catch {
+          failed++;
+        }
+      }
+      return { added, failed };
+    },
+    onSuccess: ({ added, failed }) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+      setWechselplanOpen(false);
+      toast({
+        title: lang === "de" ? `${added} Produkte übernommen` : `${added} prodotti aggiunti`,
+        description: failed > 0
+          ? (lang === "de" ? `${failed} konnten nicht hinzugefügt werden (Mindestmenge?).` : `${failed} non aggiunti (quantità min?).`)
+          : (lang === "de" ? "Im Warenkorb beim besten Anbieter." : "Nel carrello presso il miglior fornitore."),
+      });
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+    },
+  });
+
+  const handleQuickSwap = (g: GroupedProduct) => {
+    const moq = g.cheapestOffer.product.minOrderQuantity ?? 1;
+    const qty = Math.max(1, moq, Math.round(g.monthlyVolume) || 1);
+    addToCartMutation.mutate(
+      { productId: g.cheapestOffer.product.id, supplierId: g.cheapestOffer.product.supplierId, quantity: qty },
+      {
+        onSuccess: () => toast({
+          title: lang === "de" ? "In Warenkorb übernommen" : "Aggiunto al carrello",
+          description: `${g.name} · ${qty} ${g.unit} · ${g.cheapestOffer.product.supplier?.companyName || g.cheapestOffer.product.supplier?.name}`,
+        }),
+        onError: () => toast({ title: lang === "de" ? "Fehler beim Hinzufügen" : "Errore", variant: "destructive" }),
+      }
+    );
+  };
+
+  // ── Loading skeleton ──────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
-        <div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl space-y-3">
+        <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3">
           <Skeleton className="h-8 w-48 bg-white/10" />
-          <Skeleton className="h-4 w-72 bg-white/10" />
+          <Skeleton className="h-12 w-72 bg-white/10" />
         </div>
         <div className="px-4 md:px-6 space-y-4">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
@@ -226,397 +450,705 @@ export default function PriceComparison() {
     );
   }
 
+  const hasRealVolume = switchableWithVolume.length > 0 && totalMonthlySaving > 0;
+  const costPerGuestNum = costAnalysis ? Number(costAnalysis.costPerGuest) : 0;
+  const costDifferenceNum = costAnalysis ? Number(costAnalysis.difference) : 0;
+
   return (
     <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
-      {/* EBENE 1 — Gesamtkontext (Hero, unverändert) */}
-      <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl space-y-4" data-testid="price-comparison-hero">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
-            {lang === "de" ? "Preisvergleich" : "Confronto prezzi"}
-          </h1>
-          <p className="hidden md:block text-sm text-white/50 mt-1">
-            {lang === "de"
-              ? "Vergleichen Sie Preise gleicher Produkte von verschiedenen Lieferanten"
-              : "Confronta i prezzi degli stessi prodotti da diversi fornitori"}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2.5" data-testid="stat-comparisons">
-            <div className="text-xs text-white/50">{lang === "de" ? "Vergleichbar" : "Confrontabili"}</div>
-            <div className="text-xl font-bold text-white mt-0.5">{totalComparisons}</div>
-            <div className="text-xs text-white/40">{lang === "de" ? "Produkte" : "Prodotti"}</div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2.5" data-testid="stat-savings-pct">
-            <div className="text-xs text-white/50">{lang === "de" ? "Ø Ersparnis" : "Ø Risparmio"}</div>
-            <div className="text-xl font-bold text-emerald-400 mt-0.5">{avgSavings}%</div>
-            <div className="text-xs text-white/40">{lang === "de" ? "Preisunterschied" : "Differenza"}</div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2.5" data-testid="stat-savings-abs">
-            <div className="text-xs text-white/50">{lang === "de" ? "Hebel gesamt" : "Leva totale"}</div>
-            <div className="text-xl font-bold text-emerald-400 mt-0.5">{totalSavingsAbs.toFixed(0)}€</div>
-            <div className="text-xs text-white/40">{lang === "de" ? "pro Einheit" : "per unità"}</div>
+      {/* ─── HERO (slim, single headline) ─────────────────────────────── */}
+      <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-1 md:mb-2" data-testid="price-comparison-hero">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
+              {lang === "de" ? "Preisvergleich" : "Confronto prezzi"}
+            </h1>
+            <p className="hidden md:block text-sm text-white/50 mt-1">
+              {lang === "de"
+                ? "Hochrechnung auf dein Bestellvolumen der letzten 90 Tage."
+                : "Proiezione sul tuo volume ordini degli ultimi 90 giorni."}
+            </p>
           </div>
         </div>
 
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          <button
-            onClick={() => setSelectedCategory("all")}
-            className={`px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
-              selectedCategory === "all"
-                ? "border-white/40 bg-white/20 text-white shadow-sm"
-                : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
-            }`}
-            data-testid="filter-category-all"
-          >
-            {lang === "de" ? "Alle" : "Tutti"}
-          </button>
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
-                selectedCategory === cat
-                  ? "border-white/40 bg-white/20 text-white shadow-sm"
-                  : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
-              }`}
-              data-testid={`filter-category-${cat}`}
+        {/* Headline savings card */}
+        <div className="rounded-2xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-400/20 px-4 py-4 md:px-5 md:py-5">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <div className="text-[11px] uppercase tracking-wider text-emerald-300/80 font-semibold flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3" />
+                {lang === "de" ? "Möglicher Hebel" : "Risparmio potenziale"}
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-3xl md:text-4xl font-bold text-emerald-300 tabular-nums" data-testid="hero-monthly-saving">
+                  {hasRealVolume ? formatEuroCompact(totalMonthlySaving) : formatEuroCompact(totalUnitSaving)}€
+                </span>
+                <span className="text-sm text-white/60">
+                  {hasRealVolume
+                    ? (lang === "de" ? "/ Monat" : "/ mese")
+                    : (lang === "de" ? "pro Einheit (theoretisch)" : "per unità (teorico)")}
+                </span>
+              </div>
+              <div className="text-xs text-white/60 mt-1.5">
+                {hasRealVolume ? (
+                  lang === "de"
+                    ? <>bei <span className="text-white font-medium">{switchableWithVolume.length}</span> möglichen Lieferantenwechseln · {switchable.length - switchableWithVolume.length > 0 && <>{switchable.length - switchableWithVolume.length} weitere ohne Bestellhistorie · </>}{grouped.filter(g => g.isAlreadyBest).length} bereits optimal</>
+                    : <>con <span className="text-white font-medium">{switchableWithVolume.length}</span> cambi possibili · {grouped.filter(g => g.isAlreadyBest).length} già ottimali</>
+                ) : (
+                  lang === "de"
+                    ? <>{switchable.length} Produkte günstiger verfügbar · noch keine Bestellhistorie für Hochrechnung</>
+                    : <>{switchable.length} prodotti più convenienti · cronologia ordini insufficiente</>
+                )}
+              </div>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={openWechselplan}
+              disabled={wechselplanCandidates.length === 0}
+              className="bg-emerald-500 hover:bg-emerald-400 text-white shrink-0 shadow-md"
+              data-testid="button-open-wechselplan"
             >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* EBENE 1.5 — Wareneinsatz pro Gast Breakdown */}
-      {costAnalysis && (Number(costAnalysis.totalOvernights) > 0 || Number(costAnalysis.totalCosts) > 0) && (
-        <div className="px-4 md:px-6" data-testid="section-cost-per-guest">
-          <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-base font-semibold flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              {lang === "de" ? "Wareneinsatz pro Gast" : "Costo merci per ospite"}
-            </h2>
-            <span className="text-xs text-muted-foreground">
-              {lang === "de" ? "Aktueller Monat" : "Mese corrente"}
-            </span>
+              <ShoppingCart className="h-4 w-4 mr-1.5" />
+              {lang === "de" ? "Wechselplan öffnen" : "Apri piano"}
+            </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* KPI: Aktuell */}
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm" data-testid="kpi-current">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                  {lang === "de" ? "Aktuell" : "Attuale"}
-                </span>
-                <Euro className="h-3.5 w-3.5 text-muted-foreground/60" />
-              </div>
-              <div className="text-2xl font-bold tabular-nums">
-                {Number(costAnalysis.costPerGuest).toFixed(2)}€
-              </div>
-              <div className="text-[11px] text-muted-foreground mt-1">
-                {Number(costAnalysis.totalCosts).toFixed(0)}€ / {costAnalysis.totalOvernights} {lang === "de" ? "Gäste" : "ospiti"}
-              </div>
-            </div>
-
-            {/* KPI: Ziel */}
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm" data-testid="kpi-target">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                  {lang === "de" ? "Zielwert" : "Obiettivo"}
-                </span>
-                <Target className="h-3.5 w-3.5 text-muted-foreground/60" />
-              </div>
-              <div className="text-2xl font-bold tabular-nums">
-                {Number(costAnalysis.targetCost).toFixed(2)}€
-              </div>
-              <div className={`text-[11px] mt-1 font-medium ${
-                Number(costAnalysis.difference) > 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
-              }`}>
-                {Number(costAnalysis.difference) > 0 ? "+" : ""}{Number(costAnalysis.difference).toFixed(2)}€ {lang === "de" ? "vs. Ziel" : "vs. obiettivo"}
-              </div>
-            </div>
-
-            {/* KPI: Hebel */}
-            <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/10 p-4 shadow-sm" data-testid="kpi-potential">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-medium">
-                  {lang === "de" ? "Hebel" : "Leva"}
-                </span>
-                <TrendingDown className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div className="text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-                -{avgSavings}%
-              </div>
-              <div className="text-[11px] text-muted-foreground mt-1">
-                {lang === "de"
-                  ? `${totalComparisons} vergleichbare Produkte`
-                  : `${totalComparisons} prodotti confrontabili`}
-              </div>
-            </div>
-          </div>
-
-          {/* Empfehlungen */}
-          {totalComparisons > 0 && avgSavings > 0 && (
-            <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3.5 flex gap-3 items-start" data-testid="savings-recommendation">
-              <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center shrink-0">
-                <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div className="flex-1 text-sm">
-                <div className="font-semibold mb-0.5">
-                  {lang === "de" ? "So senken Sie Ihren Wareneinsatz" : "Come ridurre il costo merci"}
-                </div>
-                <div className="text-muted-foreground text-[13px] leading-relaxed">
-                  {lang === "de" ? (
-                    <>Wenn Sie bei vergleichbaren Produkten konsequent zum besten Anbieter wechseln, sparen Sie pro Bestelleinheit insgesamt <span className="font-semibold text-emerald-700 dark:text-emerald-400">{totalSavingsAbs.toFixed(0)}€</span>. Das entspricht bei aktuellem Volumen einer geschätzten Einsparung von <span className="font-semibold text-emerald-700 dark:text-emerald-400">{(Number(costAnalysis.costPerGuest) * avgSavings / 100).toFixed(2)}€ pro Gast</span>.</>
-                  ) : (
-                    <>Passando ai migliori fornitori per i prodotti confrontabili, risparmi <span className="font-semibold text-emerald-700 dark:text-emerald-400">{totalSavingsAbs.toFixed(0)}€</span> per unità. Risparmio stimato per ospite: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{(Number(costAnalysis.costPerGuest) * avgSavings / 100).toFixed(2)}€</span>.</>
-                  )}
-                </div>
-              </div>
+          {/* Optional cost-per-guest one-liner */}
+          {costAnalysis && Number(costAnalysis.totalOvernights) > 0 && (
+            <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs flex-wrap gap-2">
+              <span className="text-white/50">
+                {lang === "de" ? "Wareneinsatz aktueller Monat" : "Costo merci mese corrente"}
+              </span>
+              <span className="text-white/80 tabular-nums">
+                <span className="font-semibold text-white">{formatEuro(costPerGuestNum)}€</span>
+                <span className="text-white/50"> / {lang === "de" ? "Gast" : "ospite"}</span>
+                {Number(costAnalysis.targetCost) > 0 && (
+                  <span className={`ml-2 ${costDifferenceNum > 0 ? "text-orange-300" : "text-emerald-300"}`}>
+                    {costDifferenceNum > 0 ? "+" : ""}{formatEuro(costDifferenceNum)}€ {lang === "de" ? "vs. Ziel" : "vs. obiettivo"}
+                  </span>
+                )}
+              </span>
             </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* EBENE 2 — Kategorie-Diagnose */}
-      {categoryStats.length > 0 && (
-        <div className="px-4 md:px-6" data-testid="section-category-diagnosis">
-          <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-base font-semibold">{lang === "de" ? "Kategorie-Diagnose" : "Diagnosi categorie"}</h2>
-            <span className="text-xs text-muted-foreground">
-              {lang === "de" ? "Wo sich Handeln am meisten lohnt" : "Dove conviene agire di più"}
-            </span>
+      {/* ─── TOOLBAR (Suchen · Sortieren · Filter) ────────────────────── */}
+      <div className="px-4 md:px-6">
+        <div className="flex items-center gap-2 flex-wrap justify-start">
+          {/* Active filter chips (right) */}
+          <div className="flex items-center gap-2 flex-wrap ml-auto order-last">
+            {selectedCategory !== "all" && (
+              <button onClick={() => setSelectedCategory("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-category">
+                <span>{selectedCategory}</span><X className="h-3 w-3" />
+              </button>
+            )}
+            {selectedSupplier !== "all" && (
+              <button onClick={() => setSelectedSupplier("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-supplier">
+                <span>{allSuppliers.find(s => s.id === selectedSupplier)?.name || "—"}</span><X className="h-3 w-3" />
+              </button>
+            )}
+            {!onlyWithSavings && (
+              <button onClick={() => setOnlyWithSavings(true)} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-show-all">
+                <span>{lang === "de" ? "Alle Vergleiche" : "Tutti i confronti"}</span><X className="h-3 w-3" />
+              </button>
+            )}
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-search">
+                <span>"{searchQuery}"</span><X className="h-3 w-3" />
+              </button>
+            )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {categoryStats.map(cat => {
-              const styles = ampelStyles[cat.ampel];
-              const isActive = selectedCategory === cat.name;
-              return (
+
+          <div className="inline-flex items-center gap-1 rounded-full bg-card border border-border p-1 shadow-sm">
+            {/* Search */}
+            <Popover>
+              <PopoverTrigger asChild>
                 <button
-                  key={cat.name}
-                  onClick={() => setSelectedCategory(isActive ? "all" : cat.name)}
-                  className={`rounded-xl border ${styles.border} ${styles.bg} p-3 text-left transition-all hover:shadow-sm ${
-                    isActive ? "ring-2 ring-primary/40 shadow-sm" : ""
-                  }`}
-                  data-testid={`category-card-${cat.name}`}
+                  className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${searchQuery ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                  title={lang === "de" ? "Suchen" : "Cerca"}
+                  data-testid="button-toolbar-search"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${styles.dot}`} aria-hidden />
-                    <span className="text-[11px] font-medium text-muted-foreground">{cat.sharePercent}%</span>
+                  <Search className="h-4 w-4" />
+                  {searchQuery && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" />}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 p-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">{lang === "de" ? "Produkt, Lieferant, Kategorie" : "Prodotto, fornitore, categoria"}</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      autoFocus
+                      placeholder={lang === "de" ? "Suchen…" : "Cerca…"}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-9 pl-8 text-sm"
+                      data-testid="input-toolbar-search"
+                    />
                   </div>
-                  <div className="text-sm font-semibold truncate" title={cat.name}>{cat.name}</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">
-                    {cat.groupCount} {lang === "de" ? (cat.groupCount === 1 ? "Vergleich" : "Vergleiche") : (cat.groupCount === 1 ? "confronto" : "confronti")}
-                  </div>
-                  {cat.avgSavings >= 5 ? (
-                    <div className={`text-[11px] mt-1.5 font-medium ${styles.text}`}>
-                      Ø {cat.avgSavings}% {lang === "de" ? "günstiger möglich" : "più conveniente"}
-                    </div>
-                  ) : (
-                    <div className="text-[11px] mt-1.5 text-muted-foreground/70">
-                      {lang === "de" ? "Preise im Rahmen" : "Prezzi nella norma"}
-                    </div>
+                  {searchQuery && (
+                    <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={() => setSearchQuery("")}>
+                      <X className="h-3 w-3 mr-1" />{lang === "de" ? "Suche zurücksetzen" : "Cancella"}
+                    </Button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Sort */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${sortBy !== "saving" || sortDir !== "desc" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                  title={lang === "de" ? "Sortieren" : "Ordina"}
+                  data-testid="button-toolbar-sort"
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56 p-2">
+                <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  {lang === "de" ? "Sortieren nach" : "Ordina per"}
+                </div>
+                {([
+                  { key: "saving", label: lang === "de" ? "Ersparnis €/Monat" : "Risparmio €/mese" },
+                  { key: "saving_pct", label: lang === "de" ? "Ersparnis %" : "Risparmio %" },
+                  { key: "price", label: lang === "de" ? "Bester Preis" : "Miglior prezzo" },
+                  { key: "name", label: lang === "de" ? "Name" : "Nome" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setSortBy(opt.key)}
+                    className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm ${sortBy === opt.key ? "bg-muted font-medium" : "hover:bg-muted"}`}
+                    data-testid={`sort-by-${opt.key}`}
+                  >
+                    <span>{opt.label}</span>
+                    {sortBy === opt.key && <Check className="h-3.5 w-3.5 text-primary" />}
+                  </button>
+                ))}
+                <Separator className="my-1.5" />
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    onClick={() => setSortDir("asc")}
+                    className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs ${sortDir === "asc" ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
+                    data-testid="sort-dir-asc"
+                  >
+                    <ArrowUp className="h-3 w-3" />{lang === "de" ? "Aufsteigend" : "Crescente"}
+                  </button>
+                  <button
+                    onClick={() => setSortDir("desc")}
+                    className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs ${sortDir === "desc" ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
+                    data-testid="sort-dir-desc"
+                  >
+                    <ArrowDown className="h-3 w-3" />{lang === "de" ? "Absteigend" : "Decrescente"}
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${hasActiveFilters ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                  title="Filter"
+                  data-testid="button-toolbar-filter"
+                >
+                  <FilterIcon className="h-4 w-4" />
+                  {hasActiveFilters && (
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 inline-flex items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                      {activeFilterCount}
+                    </span>
                   )}
                 </button>
-              );
-            })}
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-3">
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">
+                      {lang === "de" ? "Anzeige" : "Visualizza"}
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="only-savings" checked={onlyWithSavings} onCheckedChange={(c) => setOnlyWithSavings(!!c)} data-testid="filter-only-savings" />
+                      <Label htmlFor="only-savings" className="text-sm cursor-pointer">
+                        {lang === "de" ? "Nur Produkte mit Ersparnis" : "Solo prodotti con risparmio"}
+                      </Label>
+                    </div>
+                  </div>
+                  {categories.length > 0 && (
+                    <div>
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">
+                        {lang === "de" ? "Kategorie" : "Categoria"}
+                      </Label>
+                      <select
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                        data-testid="filter-category-select"
+                      >
+                        <option value="all">{lang === "de" ? "Alle Kategorien" : "Tutte le categorie"}</option>
+                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {allSuppliers.length > 0 && (
+                    <div>
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">
+                        {lang === "de" ? "Lieferant beteiligt" : "Fornitore coinvolto"}
+                      </Label>
+                      <select
+                        value={selectedSupplier}
+                        onChange={(e) => setSelectedSupplier(e.target.value)}
+                        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                        data-testid="filter-supplier-select"
+                      >
+                        <option value="all">{lang === "de" ? "Alle Lieferanten" : "Tutti i fornitori"}</option>
+                        {allSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {(hasActiveFilters || searchQuery) && (
+                    <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={clearFilters}>
+                      <X className="h-3 w-3 mr-1" />{lang === "de" ? "Alle Filter zurücksetzen" : "Reset"}
+                    </Button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
-        </div>
-      )}
 
-      {/* EBENE 3 — Produktliste */}
-      <div className="px-4 md:px-6">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-muted-foreground">
-            {filtered.length} {lang === "de" ? "Vergleiche" : "Confronti"}
-            {selectedCategory !== "all" && (
-              <span className="ml-1.5 text-xs text-primary">· {selectedCategory}</span>
-            )}
+          <span className="text-xs text-muted-foreground" data-testid="text-result-count">
+            {filtered.length} {lang === "de" ? (filtered.length === 1 ? "Vergleich" : "Vergleiche") : (filtered.length === 1 ? "confronto" : "confronti")}
           </span>
-          <div className="flex gap-1 flex-wrap justify-end">
-            {([
-              { key: "savings_abs", label: lang === "de" ? "€ Hebel" : "€ Leva" },
-              { key: "savings_pct", label: "%" },
-              { key: "price", label: lang === "de" ? "Preis" : "Prezzo" },
-              { key: "name", label: lang === "de" ? "Name" : "Nome" },
-            ] as const).map(s => (
-              <button
-                key={s.key}
-                onClick={() => setSortBy(s.key)}
-                className={`px-2 py-1 rounded-md text-xs font-medium transition-all ${
-                  sortBy === s.key ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50"
-                }`}
-                data-testid={`sort-${s.key}`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
         </div>
+      </div>
 
+      {/* ─── PRODUCT LIST ─────────────────────────────────────────────── */}
+      <div className="px-4 md:px-6">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Package className="h-12 w-12 text-muted-foreground/30 mb-3" />
-            <p className="text-sm text-muted-foreground">
-              {lang === "de"
-                ? "Keine vergleichbaren Produkte verfügbar. Vergleiche erscheinen, wenn mehrere Lieferanten das gleiche Produkt anbieten."
-                : "Nessun prodotto confrontabile."}
+            <p className="text-sm text-muted-foreground max-w-md">
+              {grouped.length === 0
+                ? (lang === "de"
+                    ? "Keine vergleichbaren Produkte verfügbar. Vergleiche erscheinen, wenn mehrere Lieferanten das gleiche Produkt anbieten."
+                    : "Nessun prodotto confrontabile.")
+                : (lang === "de"
+                    ? "Keine Vergleiche entsprechen den aktuellen Filtern."
+                    : "Nessun confronto corrisponde ai filtri.")}
             </p>
+            {grouped.length > 0 && (
+              <Button variant="outline" size="sm" className="mt-3" onClick={clearFilters}>
+                {lang === "de" ? "Filter zurücksetzen" : "Reset filtri"}
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
-            {filtered.map((group) => {
-              const groupKey = `${group.name}__${group.unit}`;
-              const isExpanded = expandedGroups.has(groupKey);
-              const cheapest = group.offers[0];
-              const mostExpensive = group.offers[group.offers.length - 1];
-              const anyPromo = group.offers.some(o => o.hasPromo);
+            {visible.map((g, idx) => (
+              <ComparisonCard
+                key={g.key}
+                group={g}
+                rank={idx + 1}
+                lang={lang}
+                expanded={expandedGroups.has(g.key)}
+                onToggle={() => toggleExpand(g.key)}
+                onQuickSwap={() => handleQuickSwap(g)}
+                isSwapping={addToCartMutation.isPending}
+                movMap={movMap}
+              />
+            ))}
 
-              return (
-                <div
-                  key={groupKey}
-                  className="rounded-xl border border-border bg-card overflow-hidden shadow-sm"
-                  data-testid={`comparison-card-${group.name}`}
-                >
-                  <button
-                    onClick={() => toggleExpand(groupKey)}
-                    className="w-full text-left hover:bg-muted/30 transition-colors"
-                    data-testid={`toggle-comparison-${group.name}`}
-                  >
-                    <div className="px-3.5 md:px-4 py-3.5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="font-semibold text-sm">{group.name}</span>
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{group.unit}</Badge>
-                            <span className="text-[11px] text-muted-foreground">{group.category}</span>
-                            <span className="text-[11px] text-muted-foreground">· {group.offers.length} {lang === "de" ? "Anbieter" : "Fornitori"}</span>
-                            {anyPromo && (
-                              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
-                                <Tag className="h-2.5 w-2.5" />
-                                {lang === "de" ? "Aktion" : "Promo"}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <div className="shrink-0 mt-0.5">
-                          {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                        </div>
-                      </div>
-
-                      <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-2 sm:gap-3 items-center">
-                        {/* Aktuell (höchster) */}
-                        <div className="min-w-0">
-                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                            {lang === "de" ? "Aktuell" : "Attuale"}
-                          </div>
-                          <div className="text-sm font-semibold truncate">
-                            {mostExpensive.effectivePrice.toFixed(2)}€
-                            <span className="text-xs font-normal text-muted-foreground"> / {group.unit}</span>
-                          </div>
-                          <div className="text-[11px] text-muted-foreground truncate">
-                            {mostExpensive.product.supplier?.companyName || mostExpensive.product.supplier?.name || "—"}
-                          </div>
-                        </div>
-
-                        {/* Differenz */}
-                        <div className="text-center px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 self-stretch flex flex-col justify-center">
-                          <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400 leading-tight tabular-nums">
-                            -{group.savingsAbs.toFixed(2)}€
-                          </div>
-                          <div className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 leading-tight">
-                            -{group.savingsPercent}%
-                          </div>
-                        </div>
-
-                        {/* Bester */}
-                        <div className="min-w-0 sm:text-right">
-                          <div className="text-[10px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-medium">
-                            {lang === "de" ? "Bester Preis" : "Miglior prezzo"}
-                          </div>
-                          <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 truncate">
-                            {cheapest.effectivePrice.toFixed(2)}€
-                            <span className="text-xs font-normal text-muted-foreground"> / {group.unit}</span>
-                          </div>
-                          <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1 sm:justify-end">
-                            <TrendingDown className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            {cheapest.product.supplier?.companyName || cheapest.product.supplier?.name || "—"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-
-                  {isExpanded && (
-                    <div className="border-t border-border/60 divide-y divide-border/40">
-                      {group.offers.map((offer, idx) => {
-                        const isCheapest = idx === 0;
-                        const priceDiffAbs = offer.effectivePrice - group.cheapest;
-                        const priceDiffPercent = group.cheapest > 0 ? Math.round((priceDiffAbs / group.cheapest) * 100) : 0;
-                        return (
-                          <div
-                            key={offer.product.id}
-                            className={`flex items-center gap-3 px-3.5 md:px-4 py-3 ${isCheapest ? "bg-emerald-50/50 dark:bg-emerald-950/20" : ""}`}
-                            data-testid={`offer-${offer.product.id}`}
-                          >
-                            <Avatar className="h-8 w-8 shrink-0">
-                              {offer.product.supplier?.profileImageUrl ? (
-                                <AvatarImage src={offer.product.supplier.profileImageUrl} />
-                              ) : null}
-                              <AvatarFallback className="text-xs bg-muted">
-                                {(offer.product.supplier?.companyName || offer.product.supplier?.name || "?").charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium truncate">
-                                {offer.product.supplier?.companyName || offer.product.supplier?.name}
-                              </div>
-                              {offer.hasPromo && (
-                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 mt-0.5 gap-0.5">
-                                  <Tag className="h-2.5 w-2.5" />
-                                  -{offer.promoPercent}%
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <div className="text-right">
-                                {offer.hasPromo && (
-                                  <div className="text-xs text-muted-foreground line-through">
-                                    {offer.originalPrice.toFixed(2)}€
-                                  </div>
-                                )}
-                                <div className={`text-sm font-bold tabular-nums ${
-                                  isCheapest ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
-                                }`}>
-                                  {offer.effectivePrice.toFixed(2)}€
-                                </div>
-                              </div>
-                              {isCheapest ? (
-                                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 text-[10px] px-1.5 py-0.5 shrink-0">
-                                  {lang === "de" ? "Günstigster" : "Migliore"}
-                                </Badge>
-                              ) : (
-                                <div className="text-right shrink-0 min-w-[64px]">
-                                  <div className="text-[11px] font-medium text-orange-600 dark:text-orange-400 tabular-nums">
-                                    +{priceDiffAbs.toFixed(2)}€
-                                  </div>
-                                  <div className="text-[10px] text-orange-600/80 dark:text-orange-400/80">
-                                    +{priceDiffPercent}%
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {filtered.length > visible.length && !showAll && (
+              <Button variant="outline" className="w-full" onClick={() => setShowAll(true)} data-testid="button-show-all">
+                <ChevronDown className="h-4 w-4 mr-1" />
+                {lang === "de"
+                  ? `Weitere ${filtered.length - visible.length} Vergleiche anzeigen`
+                  : `Mostra altri ${filtered.length - visible.length}`}
+              </Button>
+            )}
+            {showAll && filtered.length > 8 && (
+              <Button variant="ghost" className="w-full" onClick={() => setShowAll(false)} data-testid="button-show-less">
+                <ChevronUp className="h-4 w-4 mr-1" />
+                {lang === "de" ? "Weniger anzeigen" : "Mostra meno"}
+              </Button>
+            )}
           </div>
         )}
       </div>
+
+      {/* ─── WECHSELPLAN DIALOG ───────────────────────────────────────── */}
+      <Dialog open={wechselplanOpen} onOpenChange={setWechselplanOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-emerald-500" />
+              {lang === "de" ? "Wechselplan" : "Piano di switch"}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === "de"
+                ? "Wähle die Produkte, die du beim besten Anbieter in den Warenkorb legen willst. Mengen sind auf deinen Monatsbedarf vorausgefüllt."
+                : "Seleziona i prodotti da aggiungere al carrello presso il miglior fornitore."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+            {wechselplanCandidates.length === 0 ? (
+              <div className="text-center py-12 text-sm text-muted-foreground">
+                <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
+                {lang === "de" ? "Du holst bei allen Produkten bereits den besten Preis raus." : "Stai già ottenendo il miglior prezzo."}
+              </div>
+            ) : (
+              wechselplanCandidates.map(g => {
+                const checked = wechselplanSelected.has(g.key);
+                const qty = wechselplanQuantities[g.key] ?? Math.round(g.monthlyVolume);
+                const lineSaving = g.unitDiff * qty;
+                const supName = g.cheapestOffer.product.supplier?.companyName || g.cheapestOffer.product.supplier?.name || "—";
+                return (
+                  <div
+                    key={g.key}
+                    className={`rounded-lg border p-3 transition-colors ${checked ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/10" : "border-border"}`}
+                    data-testid={`wechselplan-item-${g.key}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(c) => {
+                          setWechselplanSelected(prev => {
+                            const next = new Set(prev);
+                            if (c) next.add(g.key); else next.delete(g.key);
+                            return next;
+                          });
+                        }}
+                        className="mt-0.5"
+                        data-testid={`wechselplan-checkbox-${g.key}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                          <div className="font-medium text-sm truncate">{g.name}</div>
+                          <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                            −{formatEuro(lineSaving)}€
+                          </div>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                          → {supName} · {formatEuro(g.cheapestOffer.effectivePrice)}€/{g.unit}
+                          {g.currentOffer && !g.isAlreadyBest && (
+                            <> · {lang === "de" ? "statt" : "invece di"} {formatEuro(g.currentOffer.effectivePrice)}€</>
+                          )}
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Label className="text-[11px] text-muted-foreground shrink-0">
+                            {lang === "de" ? "Menge" : "Quantità"}
+                          </Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={qty}
+                            onChange={(e) => setWechselplanQuantities(prev => ({ ...prev, [g.key]: Math.max(1, parseInt(e.target.value) || 1) }))}
+                            className="h-7 w-20 text-xs"
+                            data-testid={`wechselplan-qty-${g.key}`}
+                          />
+                          <span className="text-[11px] text-muted-foreground">{g.unit}</span>
+                          <span className="text-[11px] text-muted-foreground/70 ml-auto">
+                            ~{Math.round(g.monthlyVolume)} {g.unit}/{lang === "de" ? "Mt" : "mese"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <DialogFooter className="px-5 py-3 border-t bg-muted/30 flex-row items-center justify-between">
+            <div className="text-sm">
+              <span className="text-muted-foreground">{lang === "de" ? "Geschätzte Ersparnis:" : "Risparmio stimato:"}</span>
+              <span className="ml-2 font-bold text-emerald-700 dark:text-emerald-400 tabular-nums" data-testid="wechselplan-total">
+                {formatEuro(wechselplanSelectedTotal)}€
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setWechselplanOpen(false)}>
+                {lang === "de" ? "Abbrechen" : "Annulla"}
+              </Button>
+              <Button
+                size="sm"
+                disabled={wechselplanSelected.size === 0 || wechselplanSubmitMutation.isPending}
+                onClick={() => wechselplanSubmitMutation.mutate()}
+                className="bg-emerald-500 hover:bg-emerald-400 text-white"
+                data-testid="button-wechselplan-submit"
+              >
+                <ShoppingCart className="h-4 w-4 mr-1.5" />
+                {lang === "de"
+                  ? `${wechselplanSelected.size} in Warenkorb`
+                  : `${wechselplanSelected.size} nel carrello`}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+//   ComparisonCard
+// ───────────────────────────────────────────────────────────────────────────
+interface ComparisonCardProps {
+  group: GroupedProduct;
+  rank: number;
+  lang: "de" | "it";
+  expanded: boolean;
+  onToggle: () => void;
+  onQuickSwap: () => void;
+  isSwapping: boolean;
+  movMap?: Record<string, { minimumValue: string; zone: string | null }>;
+}
+
+function ComparisonCard({ group, rank, lang, expanded, onToggle, onQuickSwap, isSwapping, movMap }: ComparisonCardProps) {
+  const cheapest = group.cheapestOffer;
+  const current = group.currentOffer;
+  const anyPromo = group.offers.some(o => o.hasPromo);
+  const promoEnding = group.offers.find(o => o.promoEndsAt);
+  const promoDays = daysUntil(promoEnding?.promoEndsAt || null);
+
+  const cheapestSupName = cheapest.product.supplier?.companyName || cheapest.product.supplier?.name || "—";
+  const currentSupName = current?.product.supplier?.companyName || current?.product.supplier?.name || "—";
+  const cheapestMov = movMap?.[cheapest.product.supplierId];
+
+  return (
+    <div
+      className="rounded-xl border border-border bg-card overflow-hidden shadow-sm hover-elevate"
+      data-testid={`comparison-card-${group.key}`}
+    >
+      {/* ── Header (always visible) ──────────────────────────────────── */}
+      <div className="px-3.5 md:px-4 pt-3 pb-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="font-semibold text-sm">{group.name}</span>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{group.unit}</Badge>
+              <span className="text-[11px] text-muted-foreground">{group.category}</span>
+              <span className="text-[11px] text-muted-foreground">· {group.offers.length} {lang === "de" ? "Anbieter" : "Fornitori"}</span>
+              {anyPromo && (
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
+                  <Tag className="h-2.5 w-2.5" />
+                  {promoDays !== null && promoDays >= 0
+                    ? (lang === "de" ? `Aktion · ${promoDays}T` : `Promo · ${promoDays}g`)
+                    : (lang === "de" ? "Aktion" : "Promo")}
+                </Badge>
+              )}
+              {group.isAlreadyBest && (
+                <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 gap-0.5">
+                  <CheckCircle2 className="h-2.5 w-2.5" />
+                  {lang === "de" ? "Bestpreis" : "Migliore"}
+                </Badge>
+              )}
+            </div>
+
+            {/* Aktuell vs. Bester */}
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-2 sm:gap-3 items-stretch mt-2">
+              {/* Aktuell */}
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                  {lang === "de" ? "Du nutzt heute" : "Stai usando"}
+                </div>
+                {current ? (
+                  <>
+                    <div className="text-sm font-semibold tabular-nums truncate">
+                      {formatEuro(current.effectivePrice)}€
+                      <span className="text-xs font-normal text-muted-foreground"> / {group.unit}</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">{currentSupName}</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-sm font-semibold text-muted-foreground/70 truncate">
+                      —
+                    </div>
+                    <div className="text-[11px] text-muted-foreground/60 truncate">
+                      {lang === "de" ? "Noch nicht bestellt" : "Mai ordinato"}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Differenz / Saving */}
+              {!group.isAlreadyBest ? (
+                <div className="text-center px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 self-stretch flex flex-col justify-center min-w-[90px]">
+                  {group.monthlyVolume > 0 ? (
+                    <>
+                      <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400 leading-tight tabular-nums">
+                        −{formatEuro(group.monthlySaving)}€
+                      </div>
+                      <div className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 leading-tight">
+                        / {lang === "de" ? "Monat" : "mese"} · −{group.unitDiffPercent}%
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400 leading-tight tabular-nums">
+                        −{formatEuro(group.unitDiff)}€
+                      </div>
+                      <div className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 leading-tight">
+                        / {group.unit} · −{group.unitDiffPercent}%
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center px-2.5 py-1.5 rounded-lg bg-muted/40 self-stretch flex flex-col justify-center min-w-[90px]">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" />
+                  <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                    {lang === "de" ? "optimal" : "ottimale"}
+                  </div>
+                </div>
+              )}
+
+              {/* Bester */}
+              <div className="min-w-0 sm:text-right">
+                <div className="text-[10px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-medium">
+                  {lang === "de" ? "Bester Preis" : "Miglior prezzo"}
+                </div>
+                <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 truncate tabular-nums">
+                  {formatEuro(cheapest.effectivePrice)}€
+                  <span className="text-xs font-normal text-muted-foreground"> / {group.unit}</span>
+                </div>
+                <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1 sm:justify-end">
+                  <TrendingDown className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  {cheapestSupName}
+                </div>
+              </div>
+            </div>
+
+            {/* Trust signals row */}
+            <div className="mt-2 flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
+              {group.monthlyVolume > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  ~{Math.round(group.monthlyVolume)} {group.unit}/{lang === "de" ? "Monat" : "mese"}
+                </span>
+              )}
+              {cheapestMov && (
+                <span className="inline-flex items-center gap-1">
+                  <Truck className="h-3 w-3" />
+                  {lang === "de" ? "MBW" : "Min."} {formatEuro(parseFloat(cheapestMov.minimumValue))}€
+                </span>
+              )}
+              {cheapest.product.minOrderQuantity && cheapest.product.minOrderQuantity > 1 && (
+                <span className="inline-flex items-center gap-1 text-orange-600 dark:text-orange-400">
+                  <AlertTriangle className="h-3 w-3" />
+                  MOQ {cheapest.product.minOrderQuantity} {group.unit}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Action row */}
+        {!group.isAlreadyBest && (
+          <div className="mt-3 flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); onQuickSwap(); }}
+              disabled={isSwapping}
+              className="bg-emerald-500 hover:bg-emerald-400 text-white h-8 text-xs"
+              data-testid={`button-quick-swap-${group.key}`}
+            >
+              <ShoppingCart className="h-3.5 w-3.5 mr-1" />
+              {lang === "de" ? "In Warenkorb" : "Nel carrello"}
+              {group.monthlyVolume > 0 && <span className="ml-1 opacity-80">({Math.round(group.monthlyVolume)} {group.unit})</span>}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggle}
+              className="h-8 text-xs ml-auto"
+              data-testid={`toggle-${group.key}`}
+            >
+              {expanded
+                ? <>{lang === "de" ? "Weniger" : "Meno"} <ChevronUp className="h-3.5 w-3.5 ml-1" /></>
+                : <>{lang === "de" ? `Alle ${group.offers.length} Anbieter` : `Tutti i ${group.offers.length}`} <ChevronDown className="h-3.5 w-3.5 ml-1" /></>
+              }
+            </Button>
+          </div>
+        )}
+        {group.isAlreadyBest && (
+          <div className="mt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggle}
+              className="h-7 text-xs"
+              data-testid={`toggle-${group.key}`}
+            >
+              {expanded
+                ? <>{lang === "de" ? "Weniger" : "Meno"} <ChevronUp className="h-3.5 w-3.5 ml-1" /></>
+                : <>{lang === "de" ? `Alle ${group.offers.length} Anbieter zeigen` : `Mostra ${group.offers.length}`} <ChevronDown className="h-3.5 w-3.5 ml-1" /></>
+              }
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Expanded supplier list ───────────────────────────────────── */}
+      {expanded && (
+        <div className="border-t border-border/60 divide-y divide-border/40">
+          {group.offers.map((offer) => {
+            const isCheapest = offer.product.id === cheapest.product.id;
+            const isCurrent = current && offer.product.id === current.product.id;
+            const diff = offer.effectivePrice - cheapest.effectivePrice;
+            const diffPct = cheapest.effectivePrice > 0 ? Math.round((diff / cheapest.effectivePrice) * 100) : 0;
+            const supName = offer.product.supplier?.companyName || offer.product.supplier?.name || "—";
+            return (
+              <div
+                key={offer.product.id}
+                className={`flex items-center gap-3 px-3.5 md:px-4 py-2.5 ${isCheapest ? "bg-emerald-50/50 dark:bg-emerald-950/20" : ""}`}
+                data-testid={`offer-${offer.product.id}`}
+              >
+                <Avatar className="h-8 w-8 shrink-0">
+                  {offer.product.supplier?.profileImageUrl ? <AvatarImage src={offer.product.supplier.profileImageUrl} /> : null}
+                  <AvatarFallback className="text-xs bg-muted">{supName.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate flex items-center gap-1.5">
+                    {supName}
+                    {isCurrent && <Badge variant="outline" className="text-[9px] px-1 py-0">{lang === "de" ? "Aktuell" : "Attuale"}</Badge>}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
+                    {offer.hasPromo && (
+                      <Badge variant="destructive" className="text-[9px] px-1 py-0 gap-0.5">
+                        <Tag className="h-2 w-2" />−{offer.promoPercent}%
+                      </Badge>
+                    )}
+                    {offer.product.minOrderQuantity && offer.product.minOrderQuantity > 1 && (
+                      <span>MOQ {offer.product.minOrderQuantity}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className={`text-sm font-bold tabular-nums ${isCheapest ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
+                    {formatEuro(offer.effectivePrice)}€
+                  </div>
+                  {!isCheapest && (
+                    <div className="text-[10px] text-orange-600 dark:text-orange-400 tabular-nums">
+                      +{formatEuro(diff)}€ · +{diffPct}%
+                    </div>
+                  )}
+                  {isCheapest && (
+                    <div className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80">
+                      {lang === "de" ? "Günstigster" : "Migliore"}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

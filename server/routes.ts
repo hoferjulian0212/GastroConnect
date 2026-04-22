@@ -635,11 +635,14 @@ export async function registerRoutes(
   // ===== CUSTOM PRICES =====
   app.get("/api/custom-prices", async (req, res) => {
     try {
-      const supplierId = req.query.supplierId as string;
-      if (!supplierId) {
-        return res.status(400).json({ error: "Supplier ID required" });
+      const supplierId = req.query.supplierId as string | undefined;
+      const restaurantId = req.query.restaurantId as string | undefined;
+      if (!supplierId && !restaurantId) {
+        return res.status(400).json({ error: "Supplier ID or Restaurant ID required" });
       }
-      const prices = await storage.getCustomPrices(supplierId);
+      const prices = supplierId
+        ? await storage.getCustomPrices(supplierId)
+        : await storage.getCustomPricesByRestaurant(restaurantId!);
       res.json(prices);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch custom prices" });
@@ -3409,6 +3412,19 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete overnight stay" });
+    }
+  });
+
+  app.get("/api/restaurant/product-volumes", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      const daysParam = parseInt((req.query.days as string) || "90", 10);
+      const days = Number.isFinite(daysParam) && daysParam > 0 && daysParam <= 365 ? daysParam : 90;
+      if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      const volumes = await storage.getProductVolumesForRestaurant(restaurantId, days);
+      res.json({ days, volumes });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch product volumes" });
     }
   });
 
