@@ -1023,71 +1023,146 @@ export default function RestaurantHome() {
                         {lang === "de" ? "Keine Lieferungen geplant für heute" : "Nessuna consegna prevista per oggi"}
                       </div>
                     ) : (
-                      group.orders.map((order) => {
-                        const state = getOrderDeliveryState(order);
-                        const isOverdue = state === "overdue";
-                        const isDelayed = state === "delayed";
-                        const supplierName = order.supplier?.companyName || order.supplier?.name || t("common", "unknown");
-                        const deliveryDateLabel = order.requestedDeliveryDate
+                      buildDeliveryBundles(group.orders).flatMap((bundle) => {
+                        const renderOrderRow = (order: OrderWithDetails, isChild = false) => {
+                          const state = getOrderDeliveryState(order);
+                          const isOverdue = state === "overdue";
+                          const isDelayed = state === "delayed";
+                          const supplierName = order.supplier?.companyName || order.supplier?.name || t("common", "unknown");
+                          const deliveryDateLabel = order.requestedDeliveryDate
+                            ? (() => {
+                                const d = new Date(order.requestedDeliveryDate + "T00:00:00");
+                                if (isToday(d)) return lang === "de" ? "Heute" : "Oggi";
+                                if (isTomorrow(d)) return lang === "de" ? "Morgen" : "Domani";
+                                return format(d, "EEE dd.MM.", { locale: dateLocale });
+                              })()
+                            : "—";
+                          return (
+                            <Link
+                              key={`${isChild ? "child-" : ""}${order.id}`}
+                              href={`/restaurant/orders/${order.id}`}
+                              className={`block group/row border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors ${isChild ? "bg-primary/[0.03] border-l-2 border-l-primary/40" : ""}`}
+                              data-testid={`delivery-row-${order.id}`}
+                            >
+                              <div
+                                className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
+                                style={{ gridTemplateColumns: deliveriesGridTemplate }}
+                              >
+                                <span className={`font-mono text-[13px] text-primary truncate ${isChild ? "pl-4" : ""}`}>#{order.id.slice(0, 8)}</span>
+                                <div>
+                                  <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
+                                    <span className="inline-flex items-center gap-1">
+                                      {getStatusIcon(order.status)}
+                                      {getOrderStatus(order.status, lang)}
+                                    </span>
+                                  </Badge>
+                                </div>
+                                <div className="min-w-0 flex items-center gap-2 !justify-start !text-left">
+                                  <Avatar className="h-6 w-6 shrink-0">
+                                    <AvatarImage src={order.supplier?.profileImageUrl || undefined} />
+                                    <AvatarFallback className="text-[9px] font-semibold">{supplierName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="truncate font-medium" data-testid={`text-supplier-${order.id}`}>{supplierName}</span>
+                                </div>
+                                <div className="text-right tabular-nums text-muted-foreground">{order.items?.length || 0}</div>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className={`truncate ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`} data-testid={`text-delivery-${order.id}`}>
+                                    {deliveryDateLabel}
+                                  </span>
+                                  {isOverdue && (
+                                    <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
+                                      {lang === "de" ? "Überfällig" : "Scaduto"}
+                                    </Badge>
+                                  )}
+                                  {!isOverdue && isDelayed && (
+                                    <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
+                                      {lang === "de" ? "Verspätet" : "Ritardo"}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-muted-foreground text-[12px] truncate" title={format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}>
+                                  {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+                                </div>
+                                <div className="text-right font-semibold tabular-nums" data-testid={`text-total-${order.id}`}>
+                                  {parseFloat(order.totalAmount).toFixed(2)}€
+                                </div>
+                              </div>
+                            </Link>
+                          );
+                        };
+
+                        if (bundle.orders.length === 1) {
+                          return [renderOrderRow(bundle.orders[0])];
+                        }
+
+                        const bundleKey = `desk::${group.dateKey}::${bundle.supplierId}`;
+                        const expanded = expandedBundles.has(bundleKey);
+                        const first = bundle.orders[0];
+                        const supplierName = first.supplier?.companyName || first.supplier?.name || t("common", "unknown");
+                        const totalItems = bundle.orders.reduce((s, o) => s + (o.items?.length || 0), 0);
+                        const totalAmount = bundle.orders.reduce((s, o) => s + parseFloat(o.totalAmount || "0"), 0);
+                        const earliestCreated = bundle.orders.reduce((min, o) => new Date(o.createdAt) < new Date(min.createdAt) ? o : min, first);
+                        const anyOverdue = bundle.orders.some(o => getOrderDeliveryState(o) === "overdue");
+                        const anyDelayed = bundle.orders.some(o => getOrderDeliveryState(o) === "delayed");
+                        const deliveryDateLabel = first.requestedDeliveryDate
                           ? (() => {
-                              const d = new Date(order.requestedDeliveryDate + "T00:00:00");
+                              const d = new Date(first.requestedDeliveryDate + "T00:00:00");
                               if (isToday(d)) return lang === "de" ? "Heute" : "Oggi";
                               if (isTomorrow(d)) return lang === "de" ? "Morgen" : "Domani";
                               return format(d, "EEE dd.MM.", { locale: dateLocale });
                             })()
                           : "—";
-                        return (
-                          <Link
-                            key={order.id}
-                            href={`/restaurant/orders/${order.id}`}
-                            className="block group/row border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors"
-                            data-testid={`delivery-row-${order.id}`}
+                        const header = (
+                          <button
+                            key={`bundle-${bundleKey}`}
+                            type="button"
+                            onClick={() => toggleBundle(bundleKey)}
+                            className="w-full text-left block group/row border-b border-border last:border-b-0 bg-primary/[0.04] hover:bg-primary/[0.08] transition-colors"
+                            data-testid={`button-bundle-toggle-${bundleKey}`}
                           >
                             <div
                               className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
                               style={{ gridTemplateColumns: deliveriesGridTemplate }}
                             >
-                              <span className="font-mono text-[13px] text-primary truncate">#{order.id.slice(0, 8)}</span>
+                              <span className="font-mono text-[12px] text-muted-foreground inline-flex items-center gap-1">
+                                <ChevronRight className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-90" : ""}`} />
+                                ×{bundle.orders.length}
+                              </span>
                               <div>
-                                <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
-                                  <span className="inline-flex items-center gap-1">
-                                    {getStatusIcon(order.status)}
-                                    {getOrderStatus(order.status, lang)}
-                                  </span>
+                                <Badge className="bg-primary/15 text-primary text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0" variant="outline">
+                                  {lang === "de" ? "Bündel" : "Gruppo"}
                                 </Badge>
                               </div>
                               <div className="min-w-0 flex items-center gap-2 !justify-start !text-left">
                                 <Avatar className="h-6 w-6 shrink-0">
-                                  <AvatarImage src={order.supplier?.profileImageUrl || undefined} />
+                                  <AvatarImage src={first.supplier?.profileImageUrl || undefined} />
                                   <AvatarFallback className="text-[9px] font-semibold">{supplierName.substring(0, 2).toUpperCase()}</AvatarFallback>
                                 </Avatar>
-                                <span className="truncate font-medium" data-testid={`text-supplier-${order.id}`}>{supplierName}</span>
+                                <span className="truncate font-semibold">{supplierName}</span>
                               </div>
-                              <div className="text-right tabular-nums text-muted-foreground">{order.items?.length || 0}</div>
+                              <div className="text-right tabular-nums text-muted-foreground">{totalItems}</div>
                               <div className="flex items-center gap-1.5 min-w-0">
-                                <span className={`truncate ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`} data-testid={`text-delivery-${order.id}`}>
-                                  {deliveryDateLabel}
-                                </span>
-                                {isOverdue && (
+                                <span className={`truncate ${anyOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`}>{deliveryDateLabel}</span>
+                                {anyOverdue && (
                                   <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
                                     {lang === "de" ? "Überfällig" : "Scaduto"}
                                   </Badge>
                                 )}
-                                {!isOverdue && isDelayed && (
+                                {!anyOverdue && anyDelayed && (
                                   <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
                                     {lang === "de" ? "Verspätet" : "Ritardo"}
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-muted-foreground text-[12px] truncate" title={format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}>
-                                {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+                              <div className="text-muted-foreground text-[12px] truncate" title={format(new Date(earliestCreated.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}>
+                                {formatDistanceToNow(new Date(earliestCreated.createdAt), { addSuffix: true, locale: dateLocale })}
                               </div>
-                              <div className="text-right font-semibold tabular-nums" data-testid={`text-total-${order.id}`}>
-                                {parseFloat(order.totalAmount).toFixed(2)}€
-                              </div>
+                              <div className="text-right font-semibold tabular-nums">{totalAmount.toFixed(2)}€</div>
                             </div>
-                          </Link>
+                          </button>
                         );
+                        const children = expanded ? bundle.orders.map((o) => renderOrderRow(o, true)) : [];
+                        return [header, ...children];
                       })
                     )}
                   </div>
