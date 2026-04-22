@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, Send, MessageSquare, ClipboardList, AlertTriangle, User as UserIcon, Download, FileText, RefreshCw, MoreVertical, Columns3, ArrowUpDown, Filter as FilterIcon, ArrowUp, ArrowDown, Check } from "lucide-react";
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, Store, X, Pencil, Minus, Plus, Trash2, MessageSquareText, Loader2, CalendarDays, Zap, Search, PackagePlus, ArrowRight, Timer, SlidersHorizontal, ChevronDown, ChevronUp, ChevronRight, Send, MessageSquare, ClipboardList, AlertTriangle, User as UserIcon, Download, FileText, RefreshCw, MoreVertical, Columns3, ArrowUpDown, Filter as FilterIcon, ArrowUp, ArrowDown, Check } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -89,6 +89,14 @@ export default function RestaurantOrders() {
   useEffect(() => {
     try { localStorage.setItem("restaurantOrdersVisibleCols", JSON.stringify(Array.from(visibleColumns))); } catch {}
   }, [visibleColumns]);
+  const [expandedBundles, setExpandedBundles] = useState<Set<string>>(new Set());
+  const toggleBundle = (key: string) => {
+    setExpandedBundles(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
   const toggleColumn = (k: ColKey) => {
     setVisibleColumns(prev => {
       const next = new Set(prev);
@@ -1083,6 +1091,159 @@ export default function RestaurantOrders() {
     );
   };
 
+  type BundleItem =
+    | { kind: "single"; order: OrderWithDetails }
+    | { kind: "bundle"; key: string; supplierId: string; deliveryDate: string; orders: OrderWithDetails[] };
+
+  const buildBundleItems = (ords: OrderWithDetails[]): BundleItem[] => {
+    const map = new Map<string, OrderWithDetails[]>();
+    for (const o of ords) {
+      if (!o.requestedDeliveryDate || !o.supplierId) continue;
+      const k = `${o.supplierId}|${o.requestedDeliveryDate}`;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(o);
+    }
+    const inBundle = new Set<string>();
+    for (const [, arr] of map) {
+      if (arr.length >= 2) arr.forEach(o => inBundle.add(o.id));
+    }
+    const out: BundleItem[] = [];
+    const seen = new Set<string>();
+    for (const o of ords) {
+      if (inBundle.has(o.id)) {
+        const k = `${o.supplierId}|${o.requestedDeliveryDate}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push({ kind: "bundle", key: k, supplierId: o.supplierId, deliveryDate: o.requestedDeliveryDate!, orders: map.get(k)! });
+      } else {
+        out.push({ kind: "single", order: o });
+      }
+    }
+    return out;
+  };
+
+  const BundleRow = ({ bundle }: { bundle: Extract<BundleItem, { kind: "bundle" }> }) => {
+    const expanded = expandedBundles.has(bundle.key);
+    const first = bundle.orders[0];
+    const supplierName = first.supplier?.companyName || first.supplier?.name || t("orders", "unknownSupplier");
+    const totalItems = bundle.orders.reduce((s, o) => s + (o.items?.length || 0), 0);
+    const totalAmount = bundle.orders.reduce((s, o) => s + parseFloat(o.totalAmount || "0"), 0);
+    const dateObj = new Date(bundle.deliveryDate + "T00:00:00");
+    const isOverdue = dateObj < startOfDay(new Date()) && bundle.orders.every(o => o.status !== "delivered" && o.status !== "cancelled");
+    const dateLabel = isToday(dateObj)
+      ? (lang === "de" ? "Heute" : "Oggi")
+      : isYesterday(dateObj)
+        ? (lang === "de" ? "Gestern" : "Ieri")
+        : format(dateObj, "EEE dd.MM.", { locale: dateLocale });
+    const includesLabel = lang === "de"
+      ? `Enthält ${bundle.orders.length} Bestellungen`
+      : `Include ${bundle.orders.length} ordini`;
+    const earliestCreated = bundle.orders.reduce((min, o) => new Date(o.createdAt) < new Date(min.createdAt) ? o : min, bundle.orders[0]);
+
+    return (
+      <div className="border-b border-border last:border-b-0" data-testid={`bundle-${bundle.key}`}>
+        {/* Desktop bundle header row */}
+        <button
+          type="button"
+          onClick={() => toggleBundle(bundle.key)}
+          className={`hidden md:grid w-full items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass} [&>*+*]:border-l [&>*+*]:border-border text-left transition-colors ${expanded ? "bg-primary/5" : "hover:bg-muted/40"}`}
+          style={{ gridTemplateColumns: gridTemplate }}
+          data-testid={`button-bundle-toggle-${bundle.key}`}
+          aria-expanded={expanded}
+        >
+          <div className="!justify-start !text-left gap-1.5">
+            {expanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+            <span className="font-mono text-[12px] text-muted-foreground truncate">×{bundle.orders.length}</span>
+          </div>
+          {visibleColumns.has("status") && (
+            <div>
+              <Badge className="bg-primary/10 text-primary text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0" variant="outline">
+                <span className="inline-flex items-center gap-1">
+                  <Package className="h-3 w-3" />
+                  {lang === "de" ? "Bündel" : "Gruppo"}
+                </span>
+              </Badge>
+            </div>
+          )}
+          {visibleColumns.has("supplier") && (
+            <div className="min-w-0 !justify-start !text-left">
+              <div className="flex items-center gap-2 min-w-0">
+                <Avatar className="h-6 w-6 shrink-0">
+                  <AvatarImage src={first.supplier?.profileImageUrl || undefined} />
+                  <AvatarFallback className="text-[9px] font-semibold">{supplierName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="truncate font-medium" title={supplierName}>{supplierName}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">{includesLabel}</div>
+                </div>
+              </div>
+            </div>
+          )}
+          {visibleColumns.has("items") && (
+            <div className="text-right tabular-nums text-muted-foreground">{totalItems}</div>
+          )}
+          {visibleColumns.has("deliveryDate") && (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className={`truncate font-medium ${isOverdue ? "text-red-600 dark:text-red-400" : ""}`}>{dateLabel}</span>
+              {isOverdue && (
+                <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
+                  {lang === "de" ? "Überfällig" : "Scaduto"}
+                </Badge>
+              )}
+            </div>
+          )}
+          {visibleColumns.has("createdAt") && (
+            <div className="text-muted-foreground text-[12px] truncate">
+              {formatDistanceToNow(new Date(earliestCreated.createdAt), { addSuffix: true, locale: dateLocale })}
+            </div>
+          )}
+          {visibleColumns.has("total") && (
+            <div className="text-right font-semibold tabular-nums">{totalAmount.toFixed(2)}€</div>
+          )}
+          <div></div>
+        </button>
+
+        {/* Mobile bundle header */}
+        <button
+          type="button"
+          onClick={() => toggleBundle(bundle.key)}
+          className={`md:hidden w-full px-3 py-3 text-left active:bg-muted/60 transition-colors ${expanded ? "bg-primary/5" : ""}`}
+          data-testid={`button-bundle-toggle-mobile-${bundle.key}`}
+          aria-expanded={expanded}
+        >
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 min-w-0">
+              {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+              <Badge className="bg-primary/10 text-primary text-[10px] rounded-full px-2 py-0 border-0 shrink-0" variant="outline">
+                <span className="inline-flex items-center gap-1">
+                  <Package className="h-3 w-3" />
+                  {lang === "de" ? "Bündel" : "Gruppo"} ×{bundle.orders.length}
+                </span>
+              </Badge>
+            </div>
+            <span className="text-sm font-bold tabular-nums shrink-0">{totalAmount.toFixed(2)}€</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0 pl-6">
+            <span className="truncate font-medium text-foreground">{supplierName}</span>
+            <span>·</span>
+            <span className="shrink-0">{totalItems} {t("common", "items")}</span>
+            <span>·</span>
+            <span className={`shrink-0 ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`}>{dateLabel}</span>
+          </div>
+          <div className="text-[10px] text-muted-foreground mt-0.5 pl-6">{includesLabel}</div>
+        </button>
+
+        {expanded && (
+          <div className="border-l-2 border-primary/40 bg-muted/20" data-testid={`bundle-children-${bundle.key}`}>
+            {bundle.orders.map((o) => (
+              <OrderRow key={`bundle-child-${o.id}`} order={o} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const getComplaintCardBg = (status: string) => {
     switch (status) {
       case "open": return "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40";
@@ -1648,7 +1809,9 @@ export default function RestaurantOrders() {
                     <div></div>
                   </div>
                   {/* Desktop body: group headers + rows live INSIDE the min-width wrapper so they scroll together */}
-                  {groups.map((group, gIdx) => (
+                  {groups.map((group, gIdx) => {
+                    const items = buildBundleItems(group.orders);
+                    return (
                     <div key={`d-${group.label || gIdx}`} data-testid={`order-group-desktop-${group.label || 'all'}`}>
                       {group.label && (
                         <GroupHeader
@@ -1660,15 +1823,19 @@ export default function RestaurantOrders() {
                           topOffset={groupTopOffset}
                         />
                       )}
-                      {group.orders.map((order) => (
-                        <OrderRow key={`d-${order.id}`} order={order} />
-                      ))}
+                      {items.map((it) => it.kind === "bundle"
+                        ? <BundleRow key={`d-bundle-${it.key}`} bundle={it} />
+                        : <OrderRow key={`d-${it.order.id}`} order={it.order} />
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
               {/* Mobile body uses card layout — no horizontal scroll needed */}
-              {groups.map((group, gIdx) => (
+              {groups.map((group, gIdx) => {
+                const items = buildBundleItems(group.orders);
+                return (
                 <div key={group.label || `g-${gIdx}`} className="md:hidden" data-testid={`order-group-${group.label || 'all'}`}>
                   {group.label && (
                     <GroupHeader
@@ -1679,7 +1846,9 @@ export default function RestaurantOrders() {
                       testId={`group-header-${group.label}`}
                     />
                   )}
-                  {group.orders.map((order) => (
+                  {items.map((it) => it.kind === "bundle" ? (
+                    <BundleRow key={`m-bundle-${it.key}`} bundle={it} />
+                  ) : (() => { const order = it.order; return (
                     <SwipeableRow
                       key={order.id}
                       leftActions={[
@@ -1707,9 +1876,10 @@ export default function RestaurantOrders() {
                     >
                       <OrderRow order={order} />
                     </SwipeableRow>
-                  ))}
+                  ); })())}
                 </div>
-              ))}
+                );
+              })}
             </div>
           );
         })()
