@@ -1,0 +1,51 @@
+In GastroConnect, update client/src/pages/restaurant/PriceComparison.tsx.
+
+Use the existing endpoint GET /api/products?restaurantId=… and 
+GET /api/custom-prices?restaurantId=… as data sources.
+Use recharts and existing shadcn/ui components only. 
+Do not create new backend endpoints.
+
+Build the page with these 4 sections:
+
+---
+
+SECTION 1 — WARENEINSATZ BREAKDOWN
+- Fetch GET /api/restaurant/cost-analysis?restaurantId=&month=YYYY-MM 
+  (already exists) for costPerGuest and targetCostPerGuest
+- Show a donut chart (recharts) breaking down current Wareneinsatz/Gast 
+  by product category, using orderItems joined to products by category
+- Each slice: category name, €/Gast, % of total
+- Add a reference line at targetCostPerGuest
+
+---
+
+SECTION 2 — CATEGORY TRAFFIC LIGHT
+- One card per category
+- Color: green if category is under 20% of total Wareneinsatz, 
+  orange if 20–30%, red if over 30%
+- Show: category name, €/Gast, % of total, and if cheaper 
+  alternatives exist for products in that category (from price 
+  comparison logic already in this file lines 60–122)
+
+---
+
+SECTION 3 — SAVINGS OPPORTUNITIES
+- For each product currently being ordered, compare unitPrice paid 
+  (from orderItems) against the cheapest effectivePrice across all 
+  suppliers for the same product name + unit 
+  (reuse existing effectivePrice logic: customPrice ?? basePrice, 
+  then × (1 - promoPercent/100))
+- Show: productName, current supplier + price, cheapest alternative 
+  supplier + price, difference in € and %, quantity ordered, totalOverpaid
+- Sort by totalOverpaid descending
+- Banner at top: "Gesamtes Einsparpotenzial: €___ / Monat — €___ / Gast"
+
+---
+
+SECTION 4 — AKTIONEN & RABATTE
+- From the promotions already attached to products in 
+  ProductWithSupplierAndPromotion, show only active promotions 
+  (isActive=true, endDate >= today) relevant to this restaurant
+- Card per promotion: product name, supplier, discount %, 
+  valid until date, estimated saving based on last order quantity
+- Sort by highest discount first

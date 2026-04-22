@@ -28,7 +28,6 @@ export default function OrderDetail() {
   const dateLocale = lang === "de" ? de : it;
   const isSupplier = currentRole === "supplier";
 
-  const [activeTab, setActiveTab] = useState<"updates" | "details">("updates");
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showPartialConfirm, setShowPartialConfirm] = useState(false);
@@ -456,11 +455,11 @@ export default function OrderDetail() {
 
           {/* KPI tiles: most important info big & scannable */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="rounded-2xl bg-muted/40 border border-border/40 p-4" data-testid="kpi-total">
+            <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-total">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Gesamt" : "Totale"}</p>
               <p className="text-2xl md:text-3xl font-bold tracking-tight mt-1.5 leading-none" data-testid="text-order-total">{Number(order.totalAmount).toFixed(2)}€</p>
             </div>
-            <div className="rounded-2xl bg-muted/40 border border-border/40 p-4" data-testid="kpi-delivery">
+            <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-delivery">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Lieferdatum" : "Data consegna"}</p>
               <p className="text-base md:text-lg font-semibold mt-1.5 truncate">
                 {order.requestedDeliveryDate
@@ -468,13 +467,13 @@ export default function OrderDetail() {
                   : <span className="text-muted-foreground">{lang === "de" ? "Offen" : "Aperto"}</span>}
               </p>
             </div>
-            <div className="rounded-2xl bg-muted/40 border border-border/40 p-4" data-testid="kpi-items">
+            <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-items">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Artikel" : "Articoli"}</p>
               <p className="text-base md:text-lg font-semibold mt-1.5">
                 {order.items?.length || 0} <span className="text-sm font-normal text-muted-foreground">{(order.items?.length || 0) === 1 ? (lang === "de" ? "Position" : "voce") : (lang === "de" ? "Positionen" : "voci")}</span>
               </p>
             </div>
-            <div className="rounded-2xl bg-muted/40 border border-border/40 p-4" data-testid="kpi-created">
+            <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-created">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Erstellt" : "Creato"}</p>
               <p className="text-base md:text-lg font-semibold mt-1.5 truncate">{format(new Date(order.createdAt), "dd.MM., HH:mm", { locale: dateLocale })}</p>
             </div>
@@ -490,7 +489,7 @@ export default function OrderDetail() {
           <div className="space-y-5" data-testid="section-updates">
             {/* Horizontal stepper showing the overall journey */}
             {order.status !== "cancelled" && (
-              <div className="rounded-2xl border border-border/40 bg-card/40 p-5" data-testid="status-stepper">
+              <div className="rounded-xl border border-border bg-card p-5 shadow-sm" data-testid="status-stepper">
                 <div className="flex items-start">
                   {statusSteps.map((step, i) => {
                     const completed = i <= currentStepIndex;
@@ -528,7 +527,7 @@ export default function OrderDetail() {
 
             {/* ETA banner */}
             {order.status === "in_delivery" && order.requestedDeliveryDate && (
-              <div className="rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 p-4 flex items-center gap-3" data-testid="eta-card">
+              <div className="rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 p-4 flex items-center gap-3" data-testid="eta-card">
                 <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0">
                   <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
@@ -544,7 +543,7 @@ export default function OrderDetail() {
             )}
 
             {/* Products list — visible directly on detail view */}
-            <div className="rounded-2xl border border-border/40 bg-card/40 overflow-hidden" data-testid="section-products">
+            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm" data-testid="section-products">
               <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
                 <p className="text-sm font-semibold">{lang === "de" ? "Produkte" : "Prodotti"}</p>
                 <p className="text-[11px] text-muted-foreground">
@@ -588,7 +587,7 @@ export default function OrderDetail() {
             </div>
 
             {/* Detailed history list */}
-            <div className="rounded-2xl border border-border/40 bg-card/40 overflow-hidden">
+            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
               <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
                 <p className="text-sm font-semibold">{lang === "de" ? "Verlauf" : "Cronologia"}</p>
                 <p className="text-[11px] text-muted-foreground">{timeline.length} {lang === "de" ? (timeline.length === 1 ? "Eintrag" : "Einträge") : (timeline.length === 1 ? "voce" : "voci")}</p>
@@ -617,53 +616,16 @@ export default function OrderDetail() {
                 ))}
               </div>
             </div>
-          </div>
-        )}
 
-        {activeTab === "details" && (
-          <div className="space-y-5" data-testid="section-details">
-            <div className="rounded-2xl bg-muted/30 overflow-hidden">
+            {/* Meta details — shown directly on the detail view */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm" data-testid="section-meta">
               <div className="px-4 py-3 border-b border-border/30">
-                <p className="text-sm font-semibold">{lang === "de" ? "Produkte" : "Prodotti"}</p>
+                <p className="text-sm font-semibold">{lang === "de" ? "Bestelldetails" : "Dettagli ordine"}</p>
               </div>
-              <div className="divide-y divide-border/20">
-                {order.items?.map((item: any) => (
-                  <div key={item.id} className="flex items-center gap-3 px-4 py-3" data-testid={`detail-item-${item.id}`}>
-                    {item.productImageUrl ? (
-                      <img src={item.productImageUrl} alt="" className="h-10 w-10 rounded-xl object-cover shrink-0" />
-                    ) : (
-                      <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                        <Package className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.productName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.quantity}x {Number(item.unitPrice).toFixed(2)}€
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold">{Number(item.totalPrice).toFixed(2)}€</p>
-                      {item.confirmedQuantity !== null && item.confirmedQuantity !== undefined && item.confirmedQuantity !== item.quantity && (
-                        <p className="text-xs text-orange-600 dark:text-orange-400">
-                          {lang === "de" ? "Bestätigt" : "Confermato"}: {item.confirmedQuantity}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="px-4 py-3 border-t border-border/30 flex justify-between items-center">
-                <p className="text-sm font-semibold">{lang === "de" ? "Gesamt" : "Totale"}</p>
-                <p className="text-base font-bold">{Number(order.totalAmount).toFixed(2)}€</p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-muted/30 overflow-hidden">
               <div className="divide-y divide-border/20">
                 <div className="flex justify-between items-center gap-2 px-4 py-3">
                   <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Bestell-Nr." : "Nr. Ordine"}</p>
-                  <p className="text-sm font-medium truncate text-right">#{order.id.slice(0, 8)}</p>
+                  <p className="text-sm font-medium truncate text-right tabular-nums">#{order.id.slice(0, 8).toUpperCase()}</p>
                 </div>
                 <div className="flex justify-between items-center gap-2 px-4 py-3">
                   <p className="text-sm text-muted-foreground shrink-0">{isSupplier ? (lang === "de" ? "Betrieb" : "Azienda") : (lang === "de" ? "Händler" : "Commerciante")}</p>
@@ -681,36 +643,28 @@ export default function OrderDetail() {
                     </p>
                   </div>
                 )}
+                {order.createdByUser && (
+                  <div className="flex justify-between items-center gap-2 px-4 py-3">
+                    <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Erstellt von" : "Creato da"}</p>
+                    <p className="text-sm font-medium truncate text-right">{order.createdByUser.name}</p>
+                  </div>
+                )}
                 {order.notes && (
                   <div className="px-4 py-3">
                     <p className="text-sm text-muted-foreground mb-1">{lang === "de" ? "Notizen" : "Note"}</p>
-                    <p className="text-sm">{order.notes}</p>
+                    <p className="text-sm whitespace-pre-wrap">{order.notes}</p>
                   </div>
                 )}
-                <div className="flex justify-between items-center gap-2 px-4 py-3">
-                  <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Artikel" : "Articoli"}</p>
-                  <p className="text-sm font-medium shrink-0">{order.items?.length || 0}</p>
-                </div>
               </div>
             </div>
-
-            {order.createdByUser && (
-              <div className="rounded-2xl bg-muted/30 overflow-hidden">
-                <div className="flex justify-between items-center gap-2 px-4 py-3">
-                  <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Erstellt von" : "Creato da"}</p>
-                  <p className="text-sm font-medium truncate text-right">{order.createdByUser.name}</p>
-                </div>
-              </div>
-            )}
-            </div>
-          )}
+          </div>
             </div>
           </div>
 
           {/* Sidebar: action buttons (sticky on desktop, stacked under content on mobile) */}
           <aside className="lg:sticky lg:top-6 lg:self-start">
             {actions.length > 0 && (
-              <div className="rounded-2xl border border-border/50 bg-card/40 p-4 lg:p-5" data-testid="section-actions">
+              <div className="rounded-xl border border-border bg-card p-4 lg:p-5 shadow-sm" data-testid="section-actions">
           {confirmAction === "cancelled" ? (
             <div className="space-y-3">
               <p className="text-sm font-medium text-center text-foreground">
