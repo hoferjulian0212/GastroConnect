@@ -6,7 +6,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, ShoppingBag, Check, MoreHorizontal, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays } from "lucide-react";
+import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -419,13 +419,10 @@ export default function OrderDetail() {
   return (
     <div className="min-h-dvh bg-background" data-testid="page-order-detail">
       <div className="w-full">
-        <div className="flex items-center justify-between px-4 md:px-6 lg:px-8 pt-4">
+        <div className="px-4 md:px-6 lg:px-8 pt-4">
           <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
             <ArrowLeft className="h-4 w-4" />
             {lang === "de" ? "Zurück" : "Indietro"}
-          </button>
-          <button className="h-10 w-10 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors" data-testid="button-more-options">
-            <MoreHorizontal className="h-5 w-5" />
           </button>
         </div>
 
