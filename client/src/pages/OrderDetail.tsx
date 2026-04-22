@@ -418,7 +418,7 @@ export default function OrderDetail() {
 
   return (
     <div className="min-h-dvh bg-background" data-testid="page-order-detail">
-      <div className="max-w-6xl mx-auto w-full">
+      <div className="w-full">
         <div className="flex items-center justify-between px-4 md:px-6 lg:px-8 pt-4">
           <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
             <ArrowLeft className="h-4 w-4" />

@@ -149,7 +149,7 @@ export default function ComplaintDetail() {
   if (!complaint) {
     return (
       <div className="min-h-dvh bg-background flex flex-col">
-        <div className="p-4">
+        <div className="px-4 md:px-6 lg:px-8 pt-4">
           <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
             <ArrowLeft className="h-4 w-4" />
             {lang === "de" ? "Zurück" : "Indietro"}
@@ -186,7 +186,7 @@ export default function ComplaintDetail() {
 
   return (
     <div className="min-h-dvh bg-background flex flex-col" data-testid="page-complaint-detail">
-      <div className="flex items-center justify-between p-4 pb-0">
+      <div className="flex items-center justify-between px-4 md:px-6 lg:px-8 pt-4">
         <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
           <ArrowLeft className="h-4 w-4" />
           {lang === "de" ? "Zurück" : "Indietro"}

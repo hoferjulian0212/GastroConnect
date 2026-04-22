@@ -267,14 +267,16 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      <button
-        onClick={() => window.history.back()}
-        className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-4 md:px-6"
-        data-testid="button-back"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        {lang === "de" ? "Zurück" : "Indietro"}
-      </button>
+      <div className="px-4 md:px-6 lg:px-8 pt-4">
+        <button
+          onClick={() => window.history.back()}
+          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1"
+          data-testid="button-back"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {lang === "de" ? "Zurück" : "Indietro"}
+        </button>
+      </div>
 
       <div className="max-w-3xl mx-auto">
         <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-6">
