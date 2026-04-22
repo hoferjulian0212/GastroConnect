@@ -548,15 +548,23 @@ export default function Complaints() {
         )}
       </div>
 
-      <div className="space-y-1.5 md:space-y-2">
+      <div className="rounded-md border border-border bg-card shadow-sm overflow-hidden" data-testid="complaints-table">
             {loadingComplaints ? (
-              <div className="space-y-1.5 md:space-y-2">
+              <div className="divide-y divide-border">
                 {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-14 md:h-16 w-full rounded-lg" />
+                  <div key={i} className="p-3"><Skeleton className="h-10 w-full rounded-md" /></div>
                 ))}
               </div>
             ) : filteredComplaints.length > 0 ? (
-              <div className="space-y-1.5 md:space-y-2">
+              <div className="divide-y divide-border">
+                <div className="hidden md:grid grid-cols-[minmax(0,2fr)_120px_minmax(0,1fr)_100px_120px_60px] items-center gap-3 px-3 py-2 bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  <div>{lang === "de" ? "Reklamation" : "Reclamo"}</div>
+                  <div>Status</div>
+                  <div>{lang === "de" ? "Lieferant" : "Fornitore"}</div>
+                  <div>{lang === "de" ? "Bestellung" : "Ordine"}</div>
+                  <div>{lang === "de" ? "Erstellt" : "Creato"}</div>
+                  <div></div>
+                </div>
                 {filteredComplaints.map((complaint) => {
                   const statusInfo = formatComplaintStatus(complaint.status);
                   const StatusIcon = statusInfo.icon;
@@ -565,18 +573,60 @@ export default function Complaints() {
                   return (
                     <div
                       key={complaint.id}
-                      className={`flex items-center gap-2.5 md:gap-3 p-2.5 md:p-3 rounded-lg border cursor-pointer hover-elevate transition-all ${(complaint as any).priority === "urgent" ? "border-red-300 dark:border-red-800 bg-red-50/60 dark:bg-red-950/15" : getComplaintCardBg(complaint.status)}`}
+                      className={`group/row cursor-pointer transition-colors ${(complaint as any).priority === "urgent" ? "bg-red-50/40 dark:bg-red-950/10 hover:bg-red-50/70 dark:hover:bg-red-950/20" : "hover:bg-muted/40"}`}
                       onClick={() => navigate(`/restaurant/complaints/${complaint.id}`)}
                       data-testid={`complaint-${complaint.id}`}
                     >
-                      <div className={`w-1 self-stretch rounded-full shrink-0 ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />
-
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-0.5">
+                      {/* Desktop row — grid matching header */}
+                      <div className="hidden md:grid grid-cols-[minmax(0,2fr)_120px_minmax(0,1fr)_100px_120px_60px] items-center gap-3 px-3 py-2.5 relative">
+                        <div className={`absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />
+                        <div className="min-w-0 pl-1.5">
                           <div className="flex items-center gap-1.5">
-                            {(complaint as any).priority === "urgent" && (
-                              <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                            )}
+                            {(complaint as any).priority === "urgent" && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+                            <span className={`font-medium text-sm truncate ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{complaint.description}</p>
+                        </div>
+                        <div>
+                          <Badge variant={statusInfo.variant} className="text-[10px] px-2 py-0 h-5 rounded-full">
+                            <StatusIcon className="h-2.5 w-2.5 mr-1" />
+                            {statusInfo.label}
+                          </Badge>
+                        </div>
+                        <div className="min-w-0 flex items-center gap-2">
+                          <Avatar className="h-6 w-6 shrink-0">
+                            <AvatarImage src={complaint.supplier?.profileImageUrl || undefined} />
+                            <AvatarFallback className="text-[9px] font-semibold">{(complaint.supplier?.companyName || complaint.supplier?.name || "??").substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm truncate">{complaint.supplier?.companyName || complaint.supplier?.name || t("orders", "unknownSupplier")}</span>
+                        </div>
+                        <div className="text-xs font-mono text-muted-foreground truncate" data-testid={`text-complaint-order-${complaint.id}`}>#{complaint.orderId.substring(0, 8)}</div>
+                        <div className="text-xs text-muted-foreground truncate">{formatDate(complaint.createdAt)}</div>
+                        <div className="flex items-center justify-end gap-0.5">
+                          {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground mr-1">
+                              <FileImage className="h-3 w-3" />{complaint.mediaUrls.length}
+                            </span>
+                          )}
+                          {canEdit && (
+                            <>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 opacity-60 group-hover/row:opacity-100" onClick={(e) => { e.stopPropagation(); openEditDialog(complaint); }} data-testid={`button-edit-complaint-${complaint.id}`}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 opacity-60 group-hover/row:opacity-100" onClick={(e) => { e.stopPropagation(); setWithdrawComplaintId(complaint.id); }} data-testid={`button-withdraw-complaint-${complaint.id}`}>
+                                <XCircle className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Mobile row — stacked card */}
+                      <div className="md:hidden flex items-center gap-2.5 p-2.5 relative">
+                        <div className={`w-1 self-stretch rounded-full shrink-0 ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            {(complaint as any).priority === "urgent" && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
                             <span className={`font-medium text-sm line-clamp-1 ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</span>
                           </div>
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -585,54 +635,32 @@ export default function Complaints() {
                               {statusInfo.label}
                             </Badge>
                           </div>
+                          <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{complaint.description}</p>
+                          <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground flex-wrap">
+                            <span className="font-mono font-semibold">#{complaint.orderId.substring(0, 8)}</span>
+                            <span>·</span>
+                            <span>{complaint.supplier?.companyName || t("orders", "unknownSupplier")}</span>
+                            <span>·</span>
+                            <span>{formatDate(complaint.createdAt)}</span>
+                            {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
+                              <>
+                                <span>·</span>
+                                <span className="flex items-center gap-0.5"><FileImage className="h-2.5 w-2.5" />{complaint.mediaUrls.length}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground line-clamp-1">{complaint.description}</p>
-                        <div className="flex items-center gap-2 mt-1 text-[10px] md:text-[11px] text-muted-foreground flex-wrap">
-                          <span className="font-mono font-semibold" data-testid={`text-complaint-order-${complaint.id}`}>#{complaint.orderId.substring(0, 8)}</span>
-                          <span>·</span>
-                          <span>{complaint.supplier?.companyName || t("orders", "unknownSupplier")}</span>
-                          <span>·</span>
-                          <span>{formatDate(complaint.createdAt)}</span>
-                          {complaint.order && (
-                            <>
-                              <span>·</span>
-                              <span>{parseFloat(complaint.order.totalAmount).toFixed(2)}€</span>
-                            </>
-                          )}
-                          {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
-                            <>
-                              <span>·</span>
-                              <span className="flex items-center gap-0.5">
-                                <FileImage className="h-2.5 w-2.5" />
-                                {complaint.mediaUrls.length}
-                              </span>
-                            </>
-                          )}
-                        </div>
+                        {canEdit && (
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEditDialog(complaint); }} data-testid={`button-edit-complaint-mobile-${complaint.id}`}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setWithdrawComplaintId(complaint.id); }} data-testid={`button-withdraw-complaint-mobile-${complaint.id}`}>
+                              <XCircle className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
-
-                      {canEdit && (
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            onClick={(e) => { e.stopPropagation(); openEditDialog(complaint); }}
-                            data-testid={`button-edit-complaint-${complaint.id}`}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            onClick={(e) => { e.stopPropagation(); setWithdrawComplaintId(complaint.id); }}
-                            data-testid={`button-withdraw-complaint-${complaint.id}`}
-                          >
-                            <XCircle className="h-3 w-3 text-destructive" />
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   );
                 })}

@@ -10,6 +10,7 @@ import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, 
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ProductImage } from "@/components/ProductImage";
 import type { ComplaintWithDetails, ComplaintStatusHistoryWithUser, ComplaintCommentWithUser } from "@shared/schema";
 
 export default function ComplaintDetail() {
@@ -186,39 +187,58 @@ export default function ComplaintDetail() {
 
   return (
     <div className="min-h-dvh bg-background flex flex-col" data-testid="page-complaint-detail">
-      <div className="flex items-center justify-between px-4 md:px-6 lg:px-8 pt-4">
-        <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
-          <ArrowLeft className="h-4 w-4" />
-          {lang === "de" ? "Zurück" : "Indietro"}
-        </button>
-        <button className="h-10 w-10 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors" data-testid="button-more-options">
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
-      </div>
-
-      <div className="flex flex-col items-center pt-6 pb-4 px-6">
-        <div className={`h-16 w-16 rounded-full ${isUrgent ? "bg-red-100 dark:bg-red-900/40" : getStatusBg(complaint.status)} flex items-center justify-center mb-3`}>
-          <div className={isUrgent ? "text-red-600 dark:text-red-400" : getStatusTextColor(complaint.status)}>
-            {isUrgent ? <Flame className="h-7 w-7" /> : getStatusIcon(complaint.status, "h-7 w-7")}
-          </div>
+      <div className="w-full">
+        <div className="px-4 md:px-6 lg:px-8 pt-4">
+          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
+            <ArrowLeft className="h-4 w-4" />
+            {lang === "de" ? "Zurück" : "Indietro"}
+          </button>
         </div>
-        <p className="text-sm text-muted-foreground mb-1">{counterpartyName}</p>
-        <p className="text-xl font-bold tracking-tight text-center px-4 line-clamp-2">{complaint.title}</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          {lang === "de" ? "Reklamation" : "Reclamo"} #{complaint.id.slice(0, 8)}
-        </p>
 
-        <div className="flex items-center gap-2 mt-3">
-          {isUrgent && (
-            <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded-full px-3 py-1 text-xs font-medium" variant="outline">
-              <Flame className="h-3.5 w-3.5 mr-1" />
-              {lang === "de" ? "Dringend" : "Urgente"}
-            </Badge>
-          )}
-          <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1 text-xs font-medium`} variant="outline">
-            {getStatusIcon(complaint.status, "h-3.5 w-3.5 mr-1")}
-            {getComplaintStatus(complaint.status, lang)}
-          </Badge>
+        {/* Hero: counterparty header + status — same layout as OrderDetail */}
+        <div className="px-4 md:px-6 lg:px-8 pt-5 pb-6">
+          <div className="relative flex items-start justify-between gap-4 mb-5">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-100 dark:bg-red-900/40" : getStatusBg(complaint.status)} flex items-center justify-center shrink-0`}>
+                <div className={isUrgent ? "text-red-600 dark:text-red-400" : getStatusTextColor(complaint.status)}>
+                  {isUrgent ? <Flame className="h-6 w-6" /> : getStatusIcon(complaint.status, "h-6 w-6")}
+                </div>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider" data-testid="text-complaint-id">
+                  {lang === "de" ? "Reklamation" : "Reclamo"} · #{complaint.id.slice(0, 8)}
+                </p>
+                <p className="text-xl md:text-2xl font-semibold truncate" data-testid="text-complaint-title">{complaint.title}</p>
+                <p className="text-xs text-muted-foreground truncate mt-0.5" data-testid="text-counterparty">{counterpartyName}</p>
+              </div>
+            </div>
+            {/* Status badge: centered horizontally on the page on md+ */}
+            <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+              <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium pointer-events-auto`} variant="outline">
+                <span className="inline-flex items-center gap-1">
+                  {getStatusIcon(complaint.status, "h-3.5 w-3.5")}
+                  {getComplaintStatus(complaint.status, lang)}
+                </span>
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Badge className={`md:hidden ${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium`} variant="outline">
+                <span className="inline-flex items-center gap-1">
+                  {getStatusIcon(complaint.status, "h-3.5 w-3.5")}
+                  {getComplaintStatus(complaint.status, lang)}
+                </span>
+              </Badge>
+              {isUrgent && (
+                <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded-full px-2.5 py-1 text-[11px] font-medium" variant="outline">
+                  <Flame className="h-3 w-3 mr-1" />
+                  {lang === "de" ? "Dringend" : "Urgente"}
+                </Badge>
+              )}
+              <button className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors" data-testid="button-more-options">
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
