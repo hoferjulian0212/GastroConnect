@@ -193,7 +193,7 @@ export default function ComplaintDetail() {
     <div className="min-h-dvh bg-background flex flex-col" data-testid="page-complaint-detail">
       <div className="w-full">
         {/* Dark hero: matches design used on list pages */}
-        <div className="dark bg-[#161921] px-4 md:px-6 lg:px-8 pt-4 pb-6 rounded-b-3xl mb-4" data-testid="complaint-detail-hero">
+        <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4" data-testid="complaint-detail-hero">
           <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-white/60 hover:text-white transition-colors mb-3 px-1" data-testid="button-back">
             <ArrowLeft className="h-4 w-4" />
             {lang === "de" ? "Zurück" : "Indietro"}
@@ -244,7 +244,7 @@ export default function ComplaintDetail() {
         </div>
 
         {/* KPI strip + body */}
-        <div className="px-4 md:px-6 lg:px-8 pb-6">
+        <div className="px-3 md:px-6 pb-6">
           {/* KPI tiles */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-status">
