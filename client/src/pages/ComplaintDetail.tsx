@@ -193,7 +193,7 @@ export default function ComplaintDetail() {
     <div className="min-h-dvh bg-background flex flex-col" data-testid="page-complaint-detail">
       <div className="w-full">
         {/* Dark hero: matches design used on list pages */}
-        <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-1 md:mb-2" data-testid="complaint-detail-hero">
+        <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4" data-testid="complaint-detail-hero">
           <div className="relative flex items-start justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className={`h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-500/15" : "bg-white/10"} flex items-center justify-center shrink-0`}>

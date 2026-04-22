@@ -420,16 +420,9 @@ export default function OrderDetail() {
   return (
     <div className="min-h-dvh bg-background" data-testid="page-order-detail">
       <div className="w-full">
-        <div className="px-4 md:px-6 lg:px-8 pt-4">
-          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
-            <ArrowLeft className="h-4 w-4" />
-            {lang === "de" ? "Zurück" : "Indietro"}
-          </button>
-        </div>
-
-        {/* Hero: counterparty header + status + KPI strip */}
-        <div className="px-4 md:px-6 lg:px-8 pt-5 pb-6">
-          <div className="relative flex items-start justify-between gap-4 mb-5">
+        {/* Dark hero: matches Reklamationsdetails design */}
+        <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4" data-testid="order-detail-hero">
+          <div className="relative flex items-start justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className={`h-12 w-12 rounded-2xl ${getStatusBg(order.status)} flex items-center justify-center shrink-0`}>
                 <div className={getStatusTextColor(order.status)}>
@@ -437,15 +430,15 @@ export default function OrderDetail() {
                 </div>
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider" data-testid="text-order-id">
+                <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider" data-testid="text-order-id">
                   {lang === "de" ? "Bestellung" : "Ordine"} · #{order.id.slice(0, 8)}
                 </p>
-                <p className="text-xl md:text-2xl font-semibold truncate" data-testid="text-counterparty">{counterpartyName}</p>
+                <p className="text-xl md:text-2xl font-semibold text-white truncate" data-testid="text-counterparty">{counterpartyName}</p>
               </div>
             </div>
-            {/* Status badge: centered horizontally on the page at the same vertical position as the row */}
+            {/* Status badge: centered horizontally on the page on md+ */}
             <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-              <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1.5 text-xs font-medium pointer-events-auto`} variant="outline">
+              <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1.5 text-xs font-medium pointer-events-auto border-0`} variant="outline">
                 <span className="inline-flex items-center gap-1">
                   {getStatusIcon(order.status, "h-3.5 w-3.5")}
                   {getOrderStatus(order.status, lang, isSupplier)}
@@ -454,7 +447,7 @@ export default function OrderDetail() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {/* Mobile-only: keep status badge inline (centered absolute would collide with the title on small screens) */}
-              <Badge className={`md:hidden ${getStatusBadgeColor(order.status)} rounded-full px-3 py-1.5 text-xs font-medium`} variant="outline">
+              <Badge className={`md:hidden ${getStatusBadgeColor(order.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
                 <span className="inline-flex items-center gap-1">
                   {getStatusIcon(order.status, "h-3.5 w-3.5")}
                   {getOrderStatus(order.status, lang, isSupplier)}
@@ -466,7 +459,7 @@ export default function OrderDetail() {
                     const Icon = action.icon;
                     const isDestructive = action.category === "destructive";
                     const cls = isDestructive
-                      ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/50"
+                      ? "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25"
                       : getButtonClasses(action.style);
                     return (
                       <button
@@ -484,7 +477,18 @@ export default function OrderDetail() {
               )}
             </div>
           </div>
+        </div>
 
+        {/* Back button: placed below the dark hero, matches Reklamationsdetails */}
+        <div className="px-4 md:px-6 lg:px-8 pt-3">
+          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
+            <ArrowLeft className="h-4 w-4" />
+            {lang === "de" ? "Zurück" : "Indietro"}
+          </button>
+        </div>
+
+        {/* Body: mobile actions, confirmation flows, KPIs, etc. */}
+        <div className="px-4 md:px-6 lg:px-8 pt-3 pb-6">
           {/* Mobile actions row — centered, fixed-size buttons that don't stretch */}
           {actions.length > 0 && !confirmAction && (
             <div className="md:hidden flex flex-wrap justify-center gap-2 mb-5" data-testid="actions-row-mobile">
