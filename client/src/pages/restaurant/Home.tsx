@@ -1335,7 +1335,11 @@ export default function RestaurantHome() {
                       return (
                         <div
                           key={product.id}
-                          className="min-w-[160px] w-[160px] md:min-w-[150px] md:w-[150px] shrink-0 snap-start rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:shadow-md hover:border-green-300/40 ring-1 ring-green-400/30"
+                          role="link"
+                          tabIndex={0}
+                          onClick={() => navigate(`/restaurant/product/${product.id}`)}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/restaurant/product/${product.id}`); } }}
+                          className="min-w-[160px] w-[160px] md:min-w-[150px] md:w-[150px] shrink-0 snap-start rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:shadow-md hover:border-green-300/40 ring-1 ring-green-400/30 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
                           data-testid={`promo-card-${product.id}`}
                         >
                           <div className="relative">
@@ -1565,7 +1569,15 @@ export default function RestaurantHome() {
                                       {group.items.map((item) => {
                                         const oos = item.product.inStock === false;
                                         return (
-                                          <div key={item.id} className={`flex items-center gap-2 text-xs ${oos ? "text-muted-foreground/50 line-through" : ""}`} data-testid={`template-item-${item.id}`}>
+                                          <div
+                                            key={item.id}
+                                            role="link"
+                                            tabIndex={0}
+                                            onClick={(e) => { e.stopPropagation(); navigate(`/restaurant/product/${item.product.id}`); }}
+                                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); navigate(`/restaurant/product/${item.product.id}`); } }}
+                                            className={`flex items-center gap-2 text-xs cursor-pointer rounded -mx-1 px-1 py-0.5 hover:bg-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${oos ? "text-muted-foreground/50 line-through" : ""}`}
+                                            data-testid={`template-item-${item.id}`}
+                                          >
                                             <ProductImage src={item.product.imageUrl} className="h-6 w-6 rounded" iconClassName="h-3 w-3" />
                                             <span className="truncate flex-1">
                                               <span className="font-medium">{item.quantity}x</span> {item.product.name}
