@@ -1205,8 +1205,8 @@ export default function SupplierOrders() {
       </div>
 
       {/* Toolbar (Suchen · Spalten · Sortieren · Filter) — page-content area, right-aligned */}
-      <div className="flex items-center gap-2 flex-wrap justify-end">
-        <div className="flex items-center gap-2 flex-wrap mr-auto">
+      <div className="flex items-center gap-2 flex-wrap justify-start">
+        <div className="flex items-center gap-2 flex-wrap ml-auto order-last">
           {activeStatusTab !== "pending" && (
             <button onClick={() => setActiveStatusTab("pending")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-status-content">
               <span>{activeStatusTab === "all" ? t("common", "all") : activeStatusTab === "in_delivery" ? (lang === "de" ? "Lieferung" : "Consegna") : getOrderStatus(activeStatusTab as any, lang, true)}</span><X className="h-3 w-3" />

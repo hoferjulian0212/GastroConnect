@@ -1355,9 +1355,9 @@ export default function RestaurantOrders() {
       </div>
 
       {/* Toolbar (Suchen · Spalten · Sortieren · Filter) — page-content area, right-aligned */}
-      <div className="flex items-center gap-2 flex-wrap justify-end">
-        {/* Active filter chips (left of toolbar) */}
-        <div className="flex items-center gap-2 flex-wrap mr-auto">
+      <div className="flex items-center gap-2 flex-wrap justify-start">
+        {/* Active filter chips (right of toolbar) */}
+        <div className="flex items-center gap-2 flex-wrap ml-auto order-last">
           {filterStatus !== "all" && (
             <button onClick={() => setFilterStatus("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-status-content">
               <span>{filterStatus === "upcoming" ? (lang === "de" ? "Anstehend" : "In arrivo") : getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
