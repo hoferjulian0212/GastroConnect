@@ -1039,7 +1039,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedData(): Promise<void> {
-    const DEMO_VERSION = "demo-v7";
+    const DEMO_VERSION = "demo-v8";
     const sentinelEmail = `${DEMO_VERSION}@gastroconnect.dev`;
     const existing = await db.select().from(users).where(eq(users.email, sentinelEmail));
     if (existing.length > 0) {
@@ -1524,6 +1524,61 @@ export class DatabaseStorage implements IStorage {
       { s: supplier5, name: "Matjes Filet", desc: "Matjes Filet in Öl, 1kg", price: "16.50", unit: "kg", cat: "Fisch", stock: 22, low: 6, img: "/images/products/matjes.png" },
       { s: supplier5, name: "Nordseekrabben", desc: "Nordseekrabben frisch gepult", price: "62.50", unit: "kg", cat: "Meeresfrüchte", stock: 7, low: 2, img: "/images/products/nordseekrabben.png" },
       { s: supplier5, name: "Austern Fines", desc: "Austern Fines de Claire", price: "1.95", unit: "Stück", cat: "Meeresfrüchte", stock: 100, low: 24, img: "/images/products/austern.png" },
+
+      // ====== CROSS-SUPPLIER OVERLAPS — same name+unit at different suppliers ======
+      // Diese Produkte liefern echte Vergleiche auf der Preisvergleich-Seite.
+      // Bio Tomaten kg (Original supplier1: 3.99)
+      { s: supplier4, name: "Bio Tomaten", desc: "Italienische Bio-Tomaten, Klasse 1", price: "4.79", unit: "kg", cat: "Gemüse", stock: 70, low: 15, img: "/images/products/bio-tomaten.png" },
+      { s: supplier2, name: "Bio Tomaten", desc: "Regionale Bio-Tomaten, Großhandel", price: "4.29", unit: "kg", cat: "Gemüse", stock: 50, low: 12, img: "/images/products/bio-tomaten.png" },
+      // Karotten kg (Original supplier1: 2.29)
+      { s: supplier4, name: "Karotten", desc: "Karotten Klasse 1, lose", price: "2.79", unit: "kg", cat: "Gemüse", stock: 60, low: 15, img: "/images/products/karotten.png" },
+      // Bio Äpfel kg (Original supplier1: 4.49)
+      { s: supplier4, name: "Bio Äpfel", desc: "Bio Äpfel Royal Gala", price: "5.20", unit: "kg", cat: "Obst", stock: 50, low: 12, img: "/images/products/bio-aepfel.png" },
+      // Zitronen kg (Original supplier1: 3.29)
+      { s: supplier4, name: "Zitronen", desc: "Bio-Zitronen aus Süditalien", price: "3.99", unit: "kg", cat: "Obst", stock: 35, low: 10, img: "/images/products/zitronen.png" },
+      // Eisbergsalat Stück (Original supplier1: 1.49)
+      { s: supplier4, name: "Eisbergsalat", desc: "Knackiger Eisbergsalat", price: "1.79", unit: "Stück", cat: "Gemüse", stock: 40, low: 10, img: "/images/products/eisbergsalat.png" },
+      // Hähnchenbrust kg (Original supplier2: 9.99)
+      { s: supplier1, name: "Hähnchenbrust", desc: "Hähnchenbrust frisch, Geflügelhof", price: "11.49", unit: "kg", cat: "Fleisch", stock: 25, low: 8, img: "/images/products/haehnchenbrust.png" },
+      // Bratwurst kg (Original supplier2: 8.99)
+      { s: supplier1, name: "Bratwurst", desc: "Hofmacher-Bratwurst", price: "10.49", unit: "kg", cat: "Fleisch", stock: 30, low: 8, img: "/images/products/bratwurst.png" },
+      // Schweineschnitzel kg (Original supplier2: 12.99)
+      { s: supplier1, name: "Schweineschnitzel", desc: "Schweineschnitzel ausgelöst", price: "14.49", unit: "kg", cat: "Fleisch", stock: 20, low: 6, img: "/images/products/schweineschnitzel.png" },
+      // Mineralwasser Kiste (Original supplier3: 8.49)
+      { s: supplier1, name: "Mineralwasser", desc: "Stilles Mineralwasser, Kiste 12x1l", price: "9.49", unit: "Kiste", cat: "Getränke", stock: 100, low: 25, img: "/images/products/mineralwasser.png" },
+      { s: supplier4, name: "Mineralwasser", desc: "San Pellegrino, Kiste 12x1l", price: "12.90", unit: "Kiste", cat: "Getränke", stock: 80, low: 20, img: "/images/products/mineralwasser.png" },
+      // Apfelsaft Kiste (Original supplier3: 11.99)
+      { s: supplier1, name: "Apfelsaft", desc: "Bio-Apfelsaft, Kiste 6x1l", price: "13.49", unit: "Kiste", cat: "Getränke", stock: 50, low: 12, img: "/images/products/apfelsaft.png" },
+      // Orangensaft Kiste (Original supplier3: 13.49)
+      { s: supplier4, name: "Orangensaft", desc: "Spremuta d'arancia, Kiste 6x1l", price: "15.90", unit: "Kiste", cat: "Getränke", stock: 40, low: 10, img: "/images/products/orangensaft.png" },
+      // Espresso Bohnen kg (Original supplier3: 16.50)
+      { s: supplier4, name: "Espresso Bohnen", desc: "Italienische Espresso-Mischung", price: "21.50", unit: "kg", cat: "Kaffee", stock: 35, low: 10, img: "/images/products/espresso-bohnen.png" },
+      // Olivenöl extra vergine Kanister (Original supplier4: 59.90)
+      { s: supplier1, name: "Olivenöl extra vergine", desc: "Spanisches Olivenöl, 5L Kanister", price: "64.90", unit: "Kanister", cat: "Öl & Essig", stock: 30, low: 8, img: "/images/products/olivenoel.png" },
+      // Mozzarella di Bufala Stück (Original supplier4: 3.50)
+      { s: supplier1, name: "Mozzarella di Bufala", desc: "Büffelmozzarella, 125g", price: "3.99", unit: "Stück", cat: "Käse", stock: 80, low: 20, img: "/images/products/mozzarella.png" },
+      // Parmigiano Reggiano kg (Original supplier4: 32.90)
+      { s: supplier3, name: "Parmigiano Reggiano", desc: "Parmigiano 18 Monate", price: "38.90", unit: "kg", cat: "Käse", stock: 18, low: 5, img: "/images/products/parmigiano.png" },
+      // Spaghetti N°5 Karton (Original supplier4: 23.40)
+      { s: supplier1, name: "Spaghetti N°5", desc: "Pasta lange, 12x500g", price: "26.90", unit: "Karton", cat: "Pasta", stock: 50, low: 12, img: "/images/products/spaghetti.png" },
+      // Lachsfilet kg (Original supplier5: 24.90)
+      { s: supplier2, name: "Lachsfilet", desc: "Lachsfilet, frisch ohne Haut", price: "27.90", unit: "kg", cat: "Fisch", stock: 18, low: 5, img: "/images/products/lachsfilet.png" },
+      // Riesling QbA Kiste (Original supplier3: 44.99)
+      { s: supplier4, name: "Riesling QbA", desc: "Italienischer Riesling, 6x0,75l", price: "49.90", unit: "Kiste", cat: "Wein", stock: 25, low: 8, img: "/images/products/riesling.png" },
+      // Burrata Stück (moreProducts supplier4: 4.50)
+      { s: supplier1, name: "Burrata", desc: "Frische Burrata, 125g", price: "5.20", unit: "Stück", cat: "Käse", stock: 50, low: 15, img: "/images/products/burrata.png" },
+      // Penne Rigate Karton (moreProducts supplier4: 22.40)
+      { s: supplier1, name: "Penne Rigate", desc: "Penne Rigate, 12x500g", price: "25.90", unit: "Karton", cat: "Pasta", stock: 45, low: 12, img: "/images/products/penne.png" },
+      // Olivenöl 1L Karton (moreProducts supplier4: 39.90)
+      { s: supplier1, name: "Olivenöl 1L", desc: "Olivenöl, 6x1L", price: "44.90", unit: "Karton", cat: "Öl & Essig", stock: 35, low: 10, img: "/images/products/olivenoel-1l.png" },
+      // Pils Premium Kiste (moreProducts supplier3: 16.99)
+      { s: supplier1, name: "Pils Premium", desc: "Premium Pils, Kiste 24x0,33l", price: "19.49", unit: "Kiste", cat: "Getränke", stock: 60, low: 15, img: "/images/products/pils.png" },
+      // Brokkoli kg (moreProducts supplier1: 3.49)
+      { s: supplier4, name: "Brokkoli", desc: "Brokkoli aus Italien", price: "4.20", unit: "kg", cat: "Gemüse", stock: 30, low: 8, img: "/images/products/brokkoli.png" },
+      // Zucchini kg (moreProducts supplier1: 2.79)
+      { s: supplier4, name: "Zucchini", desc: "Zucchini italienisch", price: "3.49", unit: "kg", cat: "Gemüse", stock: 35, low: 10, img: "/images/products/zucchini.png" },
+      // Avocado Stück (moreProducts supplier1: 2.49)
+      { s: supplier4, name: "Avocado", desc: "Avocado Hass, reif", price: "2.99", unit: "Stück", cat: "Obst", stock: 60, low: 15, img: "/images/products/avocado.png" },
     ];
 
     for (const mp of moreProducts) {

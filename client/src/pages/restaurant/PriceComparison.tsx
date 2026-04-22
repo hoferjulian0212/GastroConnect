@@ -4,7 +4,7 @@ import { useUser } from "@/context/UserContext";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { TrendingDown, Package, ChevronDown, ChevronUp, Tag } from "lucide-react";
+import { TrendingDown, Package, ChevronDown, ChevronUp, Tag, Users, Euro, Target, Lightbulb } from "lucide-react";
 import type { ProductWithSupplierAndPromotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -78,6 +78,19 @@ export default function PriceComparison() {
 
   const { data: customPrices } = useQuery<Array<{ productId: string; supplierId: string; restaurantId: string; customPrice: string }>>({
     queryKey: [`/api/custom-prices?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const currentMonth = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
+
+  const { data: costAnalysis } = useQuery<{
+    month: string; totalOvernights: number; totalCosts: string; costPerGuest: string;
+    targetCost: string; difference: string; percentageDeviation: string; orderCount: number; daysWithData: number;
+  }>({
+    queryKey: [`/api/restaurant/cost-analysis?restaurantId=${currentUser?.id}&month=${currentMonth}`],
     enabled: !!currentUser?.id,
   });
 
@@ -274,6 +287,96 @@ export default function PriceComparison() {
           ))}
         </div>
       </div>
+
+      {/* EBENE 1.5 — Wareneinsatz pro Gast Breakdown */}
+      {costAnalysis && (Number(costAnalysis.totalOvernights) > 0 || Number(costAnalysis.totalCosts) > 0) && (
+        <div className="px-4 md:px-6" data-testid="section-cost-per-guest">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              {lang === "de" ? "Wareneinsatz pro Gast" : "Costo merci per ospite"}
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              {lang === "de" ? "Aktueller Monat" : "Mese corrente"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* KPI: Aktuell */}
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm" data-testid="kpi-current">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  {lang === "de" ? "Aktuell" : "Attuale"}
+                </span>
+                <Euro className="h-3.5 w-3.5 text-muted-foreground/60" />
+              </div>
+              <div className="text-2xl font-bold tabular-nums">
+                {Number(costAnalysis.costPerGuest).toFixed(2)}€
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-1">
+                {Number(costAnalysis.totalCosts).toFixed(0)}€ / {costAnalysis.totalOvernights} {lang === "de" ? "Gäste" : "ospiti"}
+              </div>
+            </div>
+
+            {/* KPI: Ziel */}
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm" data-testid="kpi-target">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  {lang === "de" ? "Zielwert" : "Obiettivo"}
+                </span>
+                <Target className="h-3.5 w-3.5 text-muted-foreground/60" />
+              </div>
+              <div className="text-2xl font-bold tabular-nums">
+                {Number(costAnalysis.targetCost).toFixed(2)}€
+              </div>
+              <div className={`text-[11px] mt-1 font-medium ${
+                Number(costAnalysis.difference) > 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+              }`}>
+                {Number(costAnalysis.difference) > 0 ? "+" : ""}{Number(costAnalysis.difference).toFixed(2)}€ {lang === "de" ? "vs. Ziel" : "vs. obiettivo"}
+              </div>
+            </div>
+
+            {/* KPI: Hebel */}
+            <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/10 p-4 shadow-sm" data-testid="kpi-potential">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-medium">
+                  {lang === "de" ? "Hebel" : "Leva"}
+                </span>
+                <TrendingDown className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+                -{avgSavings}%
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-1">
+                {lang === "de"
+                  ? `${totalComparisons} vergleichbare Produkte`
+                  : `${totalComparisons} prodotti confrontabili`}
+              </div>
+            </div>
+          </div>
+
+          {/* Empfehlungen */}
+          {totalComparisons > 0 && avgSavings > 0 && (
+            <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3.5 flex gap-3 items-start" data-testid="savings-recommendation">
+              <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center shrink-0">
+                <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1 text-sm">
+                <div className="font-semibold mb-0.5">
+                  {lang === "de" ? "So senken Sie Ihren Wareneinsatz" : "Come ridurre il costo merci"}
+                </div>
+                <div className="text-muted-foreground text-[13px] leading-relaxed">
+                  {lang === "de" ? (
+                    <>Wenn Sie bei vergleichbaren Produkten konsequent zum besten Anbieter wechseln, sparen Sie pro Bestelleinheit insgesamt <span className="font-semibold text-emerald-700 dark:text-emerald-400">{totalSavingsAbs.toFixed(0)}€</span>. Das entspricht bei aktuellem Volumen einer geschätzten Einsparung von <span className="font-semibold text-emerald-700 dark:text-emerald-400">{(Number(costAnalysis.costPerGuest) * avgSavings / 100).toFixed(2)}€ pro Gast</span>.</>
+                  ) : (
+                    <>Passando ai migliori fornitori per i prodotti confrontabili, risparmi <span className="font-semibold text-emerald-700 dark:text-emerald-400">{totalSavingsAbs.toFixed(0)}€</span> per unità. Risparmio stimato per ospite: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{(Number(costAnalysis.costPerGuest) * avgSavings / 100).toFixed(2)}€</span>.</>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* EBENE 2 — Kategorie-Diagnose */}
       {categoryStats.length > 0 && (
