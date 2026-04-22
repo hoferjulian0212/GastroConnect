@@ -428,7 +428,7 @@ export default function OrderDetail() {
 
         {/* Hero: counterparty header + status + KPI strip */}
         <div className="px-4 md:px-6 lg:px-8 pt-5 pb-6">
-          <div className="flex items-start justify-between gap-4 mb-5">
+          <div className="relative flex items-start justify-between gap-4 mb-5">
             <div className="flex items-center gap-3 min-w-0">
               <div className={`h-12 w-12 rounded-2xl ${getStatusBg(order.status)} flex items-center justify-center shrink-0`}>
                 <div className={getStatusTextColor(order.status)}>
@@ -442,8 +442,18 @@ export default function OrderDetail() {
                 <p className="text-xl md:text-2xl font-semibold truncate" data-testid="text-counterparty">{counterpartyName}</p>
               </div>
             </div>
+            {/* Status badge: centered horizontally on the page at the same vertical position as the row */}
+            <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+              <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1.5 text-xs font-medium pointer-events-auto`} variant="outline">
+                <span className="inline-flex items-center gap-1">
+                  {getStatusIcon(order.status, "h-3.5 w-3.5")}
+                  {getOrderStatus(order.status, lang, isSupplier)}
+                </span>
+              </Badge>
+            </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1.5 text-xs font-medium`} variant="outline">
+              {/* Mobile-only: keep status badge inline (centered absolute would collide with the title on small screens) */}
+              <Badge className={`md:hidden ${getStatusBadgeColor(order.status)} rounded-full px-3 py-1.5 text-xs font-medium`} variant="outline">
                 <span className="inline-flex items-center gap-1">
                   {getStatusIcon(order.status, "h-3.5 w-3.5")}
                   {getOrderStatus(order.status, lang, isSupplier)}
@@ -685,8 +695,8 @@ export default function OrderDetail() {
               </div>
             )}
 
-            {/* Two-column layout: Products spans full height, Meta + History stack on the right */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+            {/* Two-column layout: Products spans full height, Meta + History stack on the right with minimal gap */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-1 items-start">
             <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm md:row-span-2 min-w-0" data-testid="section-products">
               <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
                 <p className="text-sm font-semibold">{lang === "de" ? "Produkte" : "Prodotti"}</p>
