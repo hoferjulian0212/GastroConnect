@@ -183,7 +183,7 @@ export default function PriceComparison() {
     else if (sortBy === "name") items = [...items].sort((a, b) => a.name.localeCompare(b.name, "de"));
     else if (sortBy === "price") items = [...items].sort((a, b) => a.cheapest - b.cheapest);
     return items;
-  }, [grouped, selectedCategory, searchQuery, sortBy]);
+  }, [grouped, selectedCategory, sortBy]);
 
   const toggleExpand = (key: string) => {
     setExpandedGroups(prev => {
