@@ -1139,6 +1139,9 @@ export default function RestaurantOrders() {
       ? `Enthält ${bundle.orders.length} Bestellungen`
       : `Include ${bundle.orders.length} ordini`;
     const earliestCreated = bundle.orders.reduce((min, o) => new Date(o.createdAt) < new Date(min.createdAt) ? o : min, bundle.orders[0]);
+    const statusSet = new Set(bundle.orders.map(o => o.status));
+    const bundleStatus = statusSet.size === 1 ? bundle.orders[0].status : "pending";
+    const bundleStatusColor = getStatusColor(bundleStatus);
 
     return (
       <div className="border-b border-border last:border-b-0" data-testid={`bundle-${bundle.key}`}>
@@ -1157,7 +1160,7 @@ export default function RestaurantOrders() {
           </div>
           {visibleColumns.has("status") && (
             <div>
-              <Badge className="bg-primary/10 text-primary text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0" variant="outline">
+              <Badge className={`${bundleStatusColor} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
                 <span className="inline-flex items-center gap-1">
                   <Package className="h-3 w-3" />
                   {lang === "de" ? "Bündel" : "Gruppo"}
@@ -1214,7 +1217,7 @@ export default function RestaurantOrders() {
           <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex items-center gap-2 min-w-0">
               {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
-              <Badge className="bg-primary/10 text-primary text-[10px] rounded-full px-2 py-0 border-0 shrink-0" variant="outline">
+              <Badge className={`${bundleStatusColor} text-[10px] rounded-full px-2 py-0 border-0 shrink-0`} variant="outline">
                 <span className="inline-flex items-center gap-1">
                   <Package className="h-3 w-3" />
                   {lang === "de" ? "Bündel" : "Gruppo"} ×{bundle.orders.length}
