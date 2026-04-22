@@ -290,23 +290,17 @@ export default function OrderDetail() {
   const st = order.status;
   const isTerminal = st === "delivered" || st === "cancelled";
 
+  type ActionCategory = "primary" | "fulfillment" | "communication" | "destructive";
   type ActionButton = {
     label: string;
     icon: typeof MessageSquare;
     style: "primary" | "secondary" | "destructive";
+    category: ActionCategory;
     action: () => void;
     testId: string;
   };
 
   const actions: ActionButton[] = [];
-
-  actions.push({
-    label: lang === "de" ? "Nachricht schreiben" : "Scrivi messaggio",
-    icon: MessageSquare,
-    style: "secondary",
-    action: navigateToChat,
-    testId: "action-write-message",
-  });
 
   if (isSupplier) {
     if (st === "pending") {
@@ -314,6 +308,7 @@ export default function OrderDetail() {
         label: lang === "de" ? "Bestellung bestätigen" : "Conferma ordine",
         icon: Check,
         style: "primary",
+        category: "primary",
         action: () => setShowPartialConfirm(true),
         testId: "action-confirm-order",
       });
@@ -323,6 +318,7 @@ export default function OrderDetail() {
         label: lang === "de" ? "Lieferung starten" : "Avvia consegna",
         icon: Truck,
         style: "primary",
+        category: "primary",
         action: () => setShowDatePicker(true),
         testId: "action-start-delivery",
       });
@@ -332,6 +328,7 @@ export default function OrderDetail() {
         label: lang === "de" ? "Als geliefert markieren" : "Segna come consegnato",
         icon: CheckCircle,
         style: "primary",
+        category: "primary",
         action: () => setConfirmAction("delivered"),
         testId: "action-mark-delivered",
       });
@@ -341,6 +338,7 @@ export default function OrderDetail() {
         label: lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna",
         icon: CalendarDays,
         style: "secondary",
+        category: "fulfillment",
         action: () => setShowDatePicker(true),
         testId: "action-set-delivery-date",
       });
@@ -350,6 +348,7 @@ export default function OrderDetail() {
         label: lang === "de" ? "Lieferschein erstellen" : "Crea bolla di consegna",
         icon: FileText,
         style: "secondary",
+        category: "fulfillment",
         action: () => deliveryNoteMutation.mutate(),
         testId: "action-create-delivery-note",
       });
@@ -359,6 +358,7 @@ export default function OrderDetail() {
         label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",
         icon: Ban,
         style: "destructive",
+        category: "destructive",
         action: () => setConfirmAction("cancelled"),
         testId: "action-cancel-order",
       });
@@ -369,6 +369,7 @@ export default function OrderDetail() {
         label: lang === "de" ? "Bestellung bearbeiten" : "Modifica ordine",
         icon: Pencil,
         style: "secondary",
+        category: "fulfillment",
         action: () => setLocation(`/restaurant/orders?edit=${order.id}`),
         testId: "action-edit-order",
       });
@@ -378,6 +379,7 @@ export default function OrderDetail() {
         label: lang === "de" ? "Änderung anfragen" : "Richiedi modifica",
         icon: Send,
         style: "secondary",
+        category: "fulfillment",
         action: () => setConfirmAction("change_request"),
         testId: "action-request-change",
       });
@@ -387,11 +389,22 @@ export default function OrderDetail() {
         label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",
         icon: Ban,
         style: "destructive",
+        category: "destructive",
         action: () => setConfirmAction("cancelled"),
         testId: "action-cancel-order",
       });
     }
   }
+
+  // Communication action — always available, placed between fulfillment and destructive
+  actions.push({
+    label: lang === "de" ? "Nachricht schreiben" : "Scrivi messaggio",
+    icon: MessageSquare,
+    style: "secondary",
+    category: "communication",
+    action: navigateToChat,
+    testId: "action-write-message",
+  });
 
   const getButtonClasses = (style: "primary" | "secondary" | "destructive") => {
     switch (style) {
@@ -417,28 +430,53 @@ export default function OrderDetail() {
           </button>
         </div>
 
-        {/* Hero: centered on mobile, horizontal banner on desktop */}
-        <div className="px-4 md:px-6 lg:px-8 pt-6 pb-5 lg:pt-8 lg:pb-7">
-          <div className="flex flex-col items-center text-center lg:flex-row lg:items-center lg:text-left lg:gap-5">
-            <div className={`h-16 w-16 lg:h-16 lg:w-16 rounded-full ${getStatusBg(order.status)} flex items-center justify-center mb-3 lg:mb-0 shrink-0`}>
-              <div className={getStatusTextColor(order.status)}>
-                {getStatusIcon(order.status, "h-7 w-7")}
+        {/* Hero: counterparty header + status + KPI strip */}
+        <div className="px-4 md:px-6 lg:px-8 pt-5 pb-6">
+          <div className="flex items-start justify-between gap-4 mb-5">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`h-12 w-12 rounded-2xl ${getStatusBg(order.status)} flex items-center justify-center shrink-0`}>
+                <div className={getStatusTextColor(order.status)}>
+                  {getStatusIcon(order.status, "h-6 w-6")}
+                </div>
               </div>
-            </div>
-            <div className="min-w-0 lg:flex lg:flex-col">
-              <p className="text-sm text-muted-foreground mb-1">{counterpartyName}</p>
-              <div className="flex flex-col lg:flex-row lg:items-baseline lg:gap-3">
-                <p className="text-3xl lg:text-4xl font-bold tracking-tight leading-none" data-testid="text-order-total">{Number(order.totalAmount).toFixed(2)}€</p>
-                <p className="text-sm text-muted-foreground mt-1 lg:mt-0">
-                  {lang === "de" ? "Bestellung" : "Ordine"} #{order.id.slice(0, 8)}
+              <div className="min-w-0">
+                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider" data-testid="text-order-id">
+                  {lang === "de" ? "Bestellung" : "Ordine"} · #{order.id.slice(0, 8)}
                 </p>
+                <p className="text-xl md:text-2xl font-semibold truncate" data-testid="text-counterparty">{counterpartyName}</p>
               </div>
             </div>
-            <div className="mt-3 lg:mt-0 lg:ml-auto shrink-0">
-              <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1 text-xs font-medium`} variant="outline">
-                {getStatusIcon(order.status, "h-3.5 w-3.5 mr-1")}
+            <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1.5 text-xs font-medium shrink-0`} variant="outline">
+              <span className="inline-flex items-center gap-1">
+                {getStatusIcon(order.status, "h-3.5 w-3.5")}
                 {getOrderStatus(order.status, lang, isSupplier)}
-              </Badge>
+              </span>
+            </Badge>
+          </div>
+
+          {/* KPI tiles: most important info big & scannable */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded-2xl bg-muted/40 border border-border/40 p-4" data-testid="kpi-total">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Gesamt" : "Totale"}</p>
+              <p className="text-2xl md:text-3xl font-bold tracking-tight mt-1.5 leading-none" data-testid="text-order-total">{Number(order.totalAmount).toFixed(2)}€</p>
+            </div>
+            <div className="rounded-2xl bg-muted/40 border border-border/40 p-4" data-testid="kpi-delivery">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Lieferdatum" : "Data consegna"}</p>
+              <p className="text-base md:text-lg font-semibold mt-1.5 truncate">
+                {order.requestedDeliveryDate
+                  ? format(new Date(order.requestedDeliveryDate + "T00:00:00"), "EEE, dd.MM.yyyy", { locale: dateLocale })
+                  : <span className="text-muted-foreground">{lang === "de" ? "Offen" : "Aperto"}</span>}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-muted/40 border border-border/40 p-4" data-testid="kpi-items">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Artikel" : "Articoli"}</p>
+              <p className="text-base md:text-lg font-semibold mt-1.5">
+                {order.items?.length || 0} <span className="text-sm font-normal text-muted-foreground">{(order.items?.length || 0) === 1 ? (lang === "de" ? "Position" : "voce") : (lang === "de" ? "Positionen" : "voci")}</span>
+              </p>
+            </div>
+            <div className="rounded-2xl bg-muted/40 border border-border/40 p-4" data-testid="kpi-created">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Erstellt" : "Creato"}</p>
+              <p className="text-base md:text-lg font-semibold mt-1.5 truncate">{format(new Date(order.createdAt), "dd.MM., HH:mm", { locale: dateLocale })}</p>
             </div>
           </div>
         </div>
@@ -468,78 +506,92 @@ export default function OrderDetail() {
             </div>
             <div>
         {activeTab === "updates" && (
-          <div className="space-y-0" data-testid="section-updates">
-            {timeline.map((entry: any, index: number) => {
-              const isLast = index === timeline.length - 1;
-              const isCompleted = true;
-
-              return (
-                <div key={entry.id} className="flex gap-3" data-testid={`timeline-entry-${index}`}>
-                  <div className="flex flex-col items-center">
-                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0 ${getTimelineDotColor(entry.toStatus, isCompleted)}`}>
-                      {isCompleted && <Check className="h-3 w-3 text-white" />}
-                    </div>
-                    {!isLast && (
-                      <div className="w-0.5 h-12 bg-border/60 my-1" />
-                    )}
-                  </div>
-                  <div className="pb-6">
-                    <p className={`text-sm font-medium ${getStatusTextColor(entry.toStatus)}`}>
-                      {getTimelineDescription(entry.toStatus)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {format(new Date(entry.createdAt), "EEEE, dd. MMMM yyyy, HH:mm", { locale: dateLocale })}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-                      {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true, locale: dateLocale })}
-                    </p>
-                    {entry.changedByUser && (
-                      <p className="text-xs text-muted-foreground/70 mt-0.5">
-                        {lang === "de" ? "von" : "da"} {entry.changedByUser.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-
-            {order.status === "in_delivery" && order.requestedDeliveryDate && (
-              <div className="mb-4 rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 p-4" data-testid="eta-card">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0">
-                    <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
-                      {lang === "de" ? "Voraussichtliche Lieferung" : "Consegna prevista"}
-                    </p>
-                    <p className="text-sm font-bold text-purple-700 dark:text-purple-300">
-                      {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-                    </p>
-                  </div>
+          <div className="space-y-5" data-testid="section-updates">
+            {/* Horizontal stepper showing the overall journey */}
+            {order.status !== "cancelled" && (
+              <div className="rounded-2xl border border-border/40 bg-card/40 p-5" data-testid="status-stepper">
+                <div className="flex items-start">
+                  {statusSteps.map((step, i) => {
+                    const completed = i <= currentStepIndex;
+                    const isCurrent = i === currentStepIndex;
+                    const stepLabels: Record<string, string> = lang === "de"
+                      ? { pending: "Bestellt", confirmed: "Bestätigt", in_delivery: "Unterwegs", delivered: "Geliefert" }
+                      : { pending: "Effettuato", confirmed: "Confermato", in_delivery: "In consegna", delivered: "Consegnato" };
+                    const stepEntry = timeline.find((e: any) => e.toStatus === step || (step === "confirmed" && e.toStatus === "partially_confirmed"));
+                    return (
+                      <div key={step} className="flex-1 flex items-start min-w-0" data-testid={`stepper-${step}`}>
+                        <div className="flex flex-col items-center gap-2 min-w-0 px-1">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center transition-all shrink-0 ${completed ? `${getStatusBg(step)} ${isCurrent ? 'ring-2 ring-offset-2 ring-offset-card ring-primary/40' : ''}` : 'bg-muted'}`}>
+                            <div className={completed ? getStatusTextColor(step) : 'text-muted-foreground/50'}>
+                              {completed && !isCurrent ? <Check className="h-4 w-4" /> : getStatusIcon(step, "h-4 w-4")}
+                            </div>
+                          </div>
+                          <p className={`text-[11px] font-medium text-center leading-tight truncate w-full ${completed ? 'text-foreground' : 'text-muted-foreground/60'}`}>{stepLabels[step]}</p>
+                          {stepEntry && completed && (
+                            <p className="text-[10px] text-muted-foreground/70 text-center leading-tight truncate w-full">
+                              {format(new Date(stepEntry.createdAt), "dd.MM., HH:mm", { locale: dateLocale })}
+                            </p>
+                          )}
+                        </div>
+                        {i < statusSteps.length - 1 && (
+                          <div className="flex-1 h-0.5 mt-5 mx-1 rounded-full bg-muted overflow-hidden">
+                            <div className={`h-full transition-all ${i < currentStepIndex ? 'bg-primary w-full' : 'w-0'}`} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {order.status !== "cancelled" && order.status !== "delivered" && (
-              <>
-                {statusSteps.slice(currentStepIndex + 1).map((step, i) => (
-                  <div key={step} className="flex gap-3" data-testid={`timeline-future-${step}`}>
-                    <div className="flex flex-col items-center">
-                      <div className="h-6 w-6 rounded-full border-2 border-muted-foreground/20 bg-background shrink-0" />
-                      {i < statusSteps.length - currentStepIndex - 2 && (
-                        <div className="w-0.5 h-12 bg-border/30 my-1" />
-                      )}
+            {/* ETA banner */}
+            {order.status === "in_delivery" && order.requestedDeliveryDate && (
+              <div className="rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 p-4 flex items-center gap-3" data-testid="eta-card">
+                <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0">
+                  <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                    {lang === "de" ? "Voraussichtliche Lieferung" : "Consegna prevista"}
+                  </p>
+                  <p className="text-sm font-bold text-purple-700 dark:text-purple-300 truncate">
+                    {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Detailed history list */}
+            <div className="rounded-2xl border border-border/40 bg-card/40 overflow-hidden">
+              <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
+                <p className="text-sm font-semibold">{lang === "de" ? "Verlauf" : "Cronologia"}</p>
+                <p className="text-[11px] text-muted-foreground">{timeline.length} {lang === "de" ? (timeline.length === 1 ? "Eintrag" : "Einträge") : (timeline.length === 1 ? "voce" : "voci")}</p>
+              </div>
+              <div className="divide-y divide-border/20">
+                {timeline.map((entry: any, index: number) => (
+                  <div key={entry.id} className="flex items-start gap-3 px-4 py-3" data-testid={`timeline-entry-${index}`}>
+                    <div className={`h-9 w-9 rounded-full ${getStatusBg(entry.toStatus)} flex items-center justify-center shrink-0`}>
+                      <div className={getStatusTextColor(entry.toStatus)}>
+                        {getStatusIcon(entry.toStatus, "h-4 w-4")}
+                      </div>
                     </div>
-                    <div className="pb-6">
-                      <p className="text-sm text-muted-foreground/50">
-                        {getTimelineDescription(step)}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {getTimelineDescription(entry.toStatus)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {format(new Date(entry.createdAt), "EEE, dd.MM.yyyy · HH:mm", { locale: dateLocale })}
+                        {entry.changedByUser && <span> · {lang === "de" ? "von" : "da"} {entry.changedByUser.name}</span>}
                       </p>
                     </div>
+                    <p className="text-[11px] text-muted-foreground/70 shrink-0 whitespace-nowrap mt-0.5">
+                      {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true, locale: dateLocale })}
+                    </p>
                   </div>
                 ))}
-              </>
-            )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -724,41 +776,76 @@ export default function OrderDetail() {
               </div>
             </div>
           ) : (() => {
-            const primary = actions.find((a) => a.style === "primary");
-            const others = actions.filter((a) => a !== primary);
+            const primaryActions = actions.filter((a) => a.category === "primary");
+            const fulfillmentActions = actions.filter((a) => a.category === "fulfillment");
+            const communicationActions = actions.filter((a) => a.category === "communication");
+            const destructiveActions = actions.filter((a) => a.category === "destructive");
+
+            const renderButton = (action: ActionButton, big = false) => {
+              const Icon = action.icon;
+              const sizeCls = big ? "py-3.5 px-5 text-sm" : "py-2.5 px-4 text-sm";
+              return (
+                <button
+                  key={action.testId}
+                  className={`w-full ${sizeCls} rounded-xl font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${getButtonClasses(action.style)}`}
+                  onClick={action.action}
+                  data-testid={action.testId}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="truncate">{action.label}</span>
+                </button>
+              );
+            };
+
             return (
-              <div className="space-y-2.5">
-                {primary && (() => {
-                  const Icon = primary.icon;
-                  return (
-                    <button
-                      key={primary.testId}
-                      className={`w-full py-3.5 px-5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${getButtonClasses(primary.style)}`}
-                      onClick={primary.action}
-                      data-testid={primary.testId}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {primary.label}
-                    </button>
-                  );
-                })()}
-                {others.length > 0 && (
-                  <div className={`grid gap-2.5 ${others.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-1"}`}>
-                    {others.map((action) => {
-                      const Icon = action.icon;
-                      return (
-                        <button
-                          key={action.testId}
-                          className={`w-full py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${getButtonClasses(action.style)}`}
-                          onClick={action.action}
-                          data-testid={action.testId}
-                        >
-                          <Icon className="h-4 w-4" />
-                          {action.label}
-                        </button>
-                      );
-                    })}
+              <div className="space-y-3">
+                {/* 1. Primary state-driven action */}
+                {primaryActions.length > 0 && (
+                  <div className="space-y-2">
+                    {primaryActions.map((a) => renderButton(a, true))}
                   </div>
+                )}
+
+                {/* 2. Fulfillment-related secondary actions */}
+                {fulfillmentActions.length > 0 && (
+                  <div className="space-y-2">
+                    {fulfillmentActions.map((a) => renderButton(a))}
+                  </div>
+                )}
+
+                {/* 3. Communication — separated by subtle divider */}
+                {communicationActions.length > 0 && (
+                  <>
+                    {(primaryActions.length > 0 || fulfillmentActions.length > 0) && (
+                      <div className="h-px bg-border/40 my-1" />
+                    )}
+                    <div className="space-y-2">
+                      {communicationActions.map((a) => renderButton(a))}
+                    </div>
+                  </>
+                )}
+
+                {/* 4. Destructive — clearly separated, smaller, muted */}
+                {destructiveActions.length > 0 && (
+                  <>
+                    <div className="h-px bg-border/40 my-1" />
+                    <div className="space-y-2">
+                      {destructiveActions.map((action) => {
+                        const Icon = action.icon;
+                        return (
+                          <button
+                            key={action.testId}
+                            className="w-full py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
+                            onClick={action.action}
+                            data-testid={action.testId}
+                          >
+                            <Icon className="h-3.5 w-3.5" />
+                            {action.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
             );
