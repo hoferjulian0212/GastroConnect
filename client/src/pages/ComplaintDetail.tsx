@@ -1,12 +1,11 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getComplaintStatus } from "@/lib/translations";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, Check, MoreHorizontal, Package, Image as ImageIcon, MessageSquare } from "lucide-react";
+import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, Check, MoreHorizontal, Image as ImageIcon, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -24,8 +23,6 @@ export default function ComplaintDetail() {
   const t = useT();
   const dateLocale = lang === "de" ? de : it;
   const isSupplier = currentRole === "supplier";
-
-  const [activeTab, setActiveTab] = useState<"updates" | "details">("updates");
 
   const { data: complaint, isLoading } = useQuery<ComplaintWithDetails>({
     queryKey: ["/api/complaints", complaintId],
@@ -185,6 +182,13 @@ export default function ComplaintDetail() {
     return `/objects/${url}`;
   };
 
+  const statusSteps = ["open", "in_progress", "resolved"];
+  const currentStepIndex = statusSteps.indexOf(complaint.status);
+  const isClosed = complaint.status === "closed";
+  const stepLabels: Record<string, string> = lang === "de"
+    ? { open: "Offen", in_progress: "In Bearbeitung", resolved: "Gelöst" }
+    : { open: "Aperto", in_progress: "In lavorazione", resolved: "Risolto" };
+
   return (
     <div className="min-h-dvh bg-background flex flex-col" data-testid="page-complaint-detail">
       <div className="w-full">
@@ -239,158 +243,240 @@ export default function ComplaintDetail() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="border-b border-border/40" />
-
-      <div className="flex-1 px-6 pt-5 pb-8 overflow-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
-          <div className="rounded-2xl border border-border bg-card shadow-sm p-5" data-testid="card-updates">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-semibold">{lang === "de" ? "Updates" : "Aggiornamenti"}</p>
+          {/* KPI tiles */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-status">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Status" : "Stato"}</p>
+              <p className={`text-base md:text-lg font-semibold mt-1.5 truncate ${getStatusTextColor(complaint.status)}`}>
+                {getComplaintStatus(complaint.status, lang)}
+              </p>
             </div>
-            <div className="space-y-0" data-testid="section-updates">
-            {timeline.map((entry: any, index: number) => {
-              const isLast = index === timeline.length - 1 && (!comments || comments.length === 0);
-
-              return (
-                <div key={entry.id} className="flex gap-3" data-testid={`timeline-entry-${index}`}>
-                  <div className="flex flex-col items-center">
-                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0 ${getTimelineDotColor(entry.toStatus)}`}>
-                      <Check className="h-3 w-3 text-white" />
-                    </div>
-                    {!isLast && (
-                      <div className="w-0.5 h-12 bg-border/60 my-1" />
-                    )}
-                  </div>
-                  <div className="pb-6">
-                    <p className={`text-sm font-medium ${getStatusTextColor(entry.toStatus)}`}>
-                      {format(new Date(entry.createdAt), "EEEE, dd. MMMM yyyy, HH:mm", { locale: dateLocale })}
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      {getTimelineDescription(entry.toStatus)}
-                    </p>
-                    {entry.changedByUser && (
-                      <p className="text-xs text-muted-foreground/70 mt-0.5">
-                        {lang === "de" ? "von" : "da"} {entry.changedByUser.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-
-            {comments && comments.length > 0 && (
-              <>
-                <div className="flex items-center gap-2 pb-4 pt-2">
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-semibold text-muted-foreground">
-                    {lang === "de" ? "Kommentare" : "Commenti"} ({comments.length})
-                  </p>
-                </div>
-                {comments.map((comment: ComplaintCommentWithUser, index: number) => {
-                  const initials = comment.user?.name
-                    ? comment.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                    : "?";
-                  return (
-                    <div key={comment.id} className="flex gap-3 pb-4" data-testid={`comment-${index}`}>
-                      <Avatar className="h-7 w-7 shrink-0">
-                        <AvatarImage src={comment.user?.profileImageUrl || undefined} />
-                        <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium truncate">{comment.user?.name}</p>
-                          <p className="text-xs text-muted-foreground shrink-0">
-                            {format(new Date(comment.createdAt), "dd.MM.yy HH:mm", { locale: dateLocale })}
-                          </p>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-0.5">{comment.content}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </>
-            )}
+            <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-created">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Erstellt" : "Creato"}</p>
+              <p className="text-base md:text-lg font-semibold mt-1.5 truncate">{format(new Date(complaint.createdAt), "dd.MM., HH:mm", { locale: dateLocale })}</p>
+            </div>
+            <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-order">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Bestellung" : "Ordine"}</p>
+              <button
+                onClick={() => setLocation(`/${currentRole}/orders/${complaint.orderId}`)}
+                className="text-base md:text-lg font-semibold mt-1.5 truncate tabular-nums hover:underline text-left w-full"
+                data-testid="link-order"
+              >
+                #{complaint.orderId.slice(0, 8).toUpperCase()}
+              </button>
+            </div>
+            <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-items">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Betroffen" : "Interessati"}</p>
+              <p className="text-base md:text-lg font-semibold mt-1.5">
+                {affectedItems.length} <span className="text-sm font-normal text-muted-foreground">{affectedItems.length === 1 ? (lang === "de" ? "Produkt" : "prodotto") : (lang === "de" ? "Produkte" : "prodotti")}</span>
+              </p>
             </div>
           </div>
+        </div>
 
-          <div className="rounded-2xl border border-border bg-card shadow-sm p-5" data-testid="card-details">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-semibold">{lang === "de" ? "Details" : "Dettagli"}</p>
-            </div>
-            <div className="space-y-5" data-testid="section-details">
-            <div className="rounded-2xl bg-muted/30 overflow-hidden">
-              <div className="px-4 py-3 border-b border-border/30">
-                <p className="text-sm font-semibold">{lang === "de" ? "Beschreibung" : "Descrizione"}</p>
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm leading-relaxed">{complaint.description}</p>
-              </div>
-            </div>
+        <div className="border-b border-border/40 mx-4 md:mx-6 lg:mx-8" />
 
-            {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
-              <div className="rounded-2xl bg-muted/30 overflow-hidden">
-                <div className="px-4 py-3 border-b border-border/30 flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-semibold">{lang === "de" ? "Anhänge" : "Allegati"} ({complaint.mediaUrls.length})</p>
-                </div>
-                <div className="p-3 flex gap-2 overflow-x-auto">
-                  {complaint.mediaUrls.map((url: string, i: number) => (
-                    <img
-                      key={i}
-                      src={getMediaSrc(url)}
-                      alt=""
-                      className="h-24 w-24 rounded-xl object-cover shrink-0"
-                      data-testid={`media-${i}`}
-                    />
-                  ))}
+        {/* Body */}
+        <div className="px-4 md:px-6 lg:px-8 pt-5 pb-8">
+          <div className="space-y-5">
+            {/* Horizontal stepper */}
+            {!isClosed && (
+              <div className="rounded-xl border border-border bg-card p-5 shadow-sm" data-testid="status-stepper">
+                <div className="flex items-start">
+                  {statusSteps.flatMap((step, i) => {
+                    const completed = i <= currentStepIndex;
+                    const isCurrent = i === currentStepIndex;
+                    const stepEntry = timeline.find((e: any) => e.toStatus === step);
+                    const nodes = [
+                      <div key={`step-${step}`} className="flex flex-col items-center gap-2 shrink-0 w-24" data-testid={`stepper-${step}`}>
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center transition-all shrink-0 ${completed ? `${getStatusBg(step)} ${isCurrent ? 'ring-2 ring-offset-2 ring-offset-card ring-primary/40' : ''}` : 'bg-muted'}`}>
+                          <div className={completed ? getStatusTextColor(step) : 'text-muted-foreground/50'}>
+                            {completed && !isCurrent ? <Check className="h-4 w-4" /> : getStatusIcon(step, "h-4 w-4")}
+                          </div>
+                        </div>
+                        <p className={`text-[11px] font-medium text-center leading-tight truncate w-full ${completed ? 'text-foreground' : 'text-muted-foreground/60'}`}>{stepLabels[step]}</p>
+                        {stepEntry && completed && (
+                          <p className="text-[10px] text-muted-foreground/70 text-center leading-tight truncate w-full">
+                            {format(new Date(stepEntry.createdAt), "dd.MM., HH:mm", { locale: dateLocale })}
+                          </p>
+                        )}
+                      </div>,
+                    ];
+                    if (i < statusSteps.length - 1) {
+                      nodes.push(
+                        <div key={`connector-${step}`} className="flex-1 h-0.5 mt-5 rounded-full bg-muted overflow-hidden">
+                          <div className={`h-full transition-all ${i < currentStepIndex ? 'bg-primary w-full' : 'w-0'}`} />
+                        </div>
+                      );
+                    }
+                    return nodes;
+                  })}
                 </div>
               </div>
             )}
 
-            {affectedItems.length > 0 && (
-              <div className="rounded-2xl bg-muted/30 overflow-hidden">
+            {/* Two-column grid: details left (spans 2 rows) + meta + history right */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-1 items-start">
+              {/* Left: Description + Media + Affected items as one continuous card */}
+              <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm md:row-span-2 min-w-0" data-testid="section-details">
                 <div className="px-4 py-3 border-b border-border/30">
-                  <p className="text-sm font-semibold">{lang === "de" ? "Betroffene Produkte" : "Prodotti interessati"}</p>
+                  <p className="text-sm font-semibold">{lang === "de" ? "Reklamationsdetails" : "Dettagli reclamo"}</p>
                 </div>
                 <div className="divide-y divide-border/20">
-                  {affectedItems.map((item: any, i: number) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-3" data-testid={`affected-item-${i}`}>
-                      <ProductImage src={item.imageUrl} className="h-10 w-10 rounded-xl" iconClassName="h-5 w-5" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.name || item.productName}</p>
-                        {item.quantity && (
-                          <p className="text-xs text-muted-foreground">{lang === "de" ? "Menge" : "Quantità"}: {item.quantity}</p>
-                        )}
+                  <div className="px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">{lang === "de" ? "Beschreibung" : "Descrizione"}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{complaint.description}</p>
+                  </div>
+
+                  {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
+                    <div className="px-4 py-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Anhänge" : "Allegati"} ({complaint.mediaUrls.length})</p>
+                      </div>
+                      <div className="flex gap-2 overflow-x-auto">
+                        {complaint.mediaUrls.map((url: string, i: number) => (
+                          <img
+                            key={i}
+                            src={getMediaSrc(url)}
+                            alt=""
+                            className="h-24 w-24 rounded-xl object-cover shrink-0"
+                            data-testid={`media-${i}`}
+                          />
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                  )}
 
-            <div className="rounded-2xl bg-muted/30 overflow-hidden">
-              <div className="divide-y divide-border/20">
-                <div className="flex justify-between items-center gap-2 px-4 py-3">
-                  <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Reklamations-Nr." : "Nr. Reclamo"}</p>
-                  <p className="text-sm font-medium truncate text-right">#{complaint.id.slice(0, 8)}</p>
-                </div>
-                <div className="flex justify-between items-center gap-2 px-4 py-3">
-                  <p className="text-sm text-muted-foreground shrink-0">{isSupplier ? (lang === "de" ? "Betrieb" : "Azienda") : (lang === "de" ? "Händler" : "Commerciante")}</p>
-                  <p className="text-sm font-medium truncate text-right">{counterpartyName}</p>
-                </div>
-                <div className="flex justify-between items-center gap-2 px-4 py-3">
-                  <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Bestellung" : "Ordine"}</p>
-                  <p className="text-sm font-medium truncate text-right">#{complaint.orderId.slice(0, 8)}</p>
-                </div>
-                <div className="flex justify-between items-center gap-2 px-4 py-3">
-                  <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Erstellt am" : "Creato il"}</p>
-                  <p className="text-sm font-medium shrink-0">{format(new Date(complaint.createdAt), "dd.MM.yyyy, HH:mm", { locale: dateLocale })}</p>
+                  {affectedItems.length > 0 && (
+                    <div>
+                      <div className="px-4 py-2.5 bg-muted/20">
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Betroffene Produkte" : "Prodotti interessati"}</p>
+                      </div>
+                      <div className="divide-y divide-border/20">
+                        {affectedItems.map((item: any, i: number) => (
+                          <div key={i} className="flex items-center gap-3 px-4 py-3" data-testid={`affected-item-${i}`}>
+                            <ProductImage src={item.imageUrl} className="h-11 w-11 rounded-xl" iconClassName="h-5 w-5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{item.name || item.productName}</p>
+                              {item.quantity && (
+                                <p className="text-xs text-muted-foreground mt-0.5">{lang === "de" ? "Menge" : "Quantità"}: {item.quantity}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+
+              {/* Right top: Meta */}
+              <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0" data-testid="section-meta">
+                <div className="px-4 py-3 border-b border-border/30">
+                  <p className="text-sm font-semibold">{lang === "de" ? "Übersicht" : "Panoramica"}</p>
+                </div>
+                <div className="divide-y divide-border/20">
+                  <div className="flex justify-between items-center gap-2 px-4 py-3">
+                    <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Reklamations-Nr." : "Nr. Reclamo"}</p>
+                    <p className="text-sm font-medium truncate text-right tabular-nums">#{complaint.id.slice(0, 8).toUpperCase()}</p>
+                  </div>
+                  <div className="flex justify-between items-center gap-2 px-4 py-3">
+                    <p className="text-sm text-muted-foreground shrink-0">{isSupplier ? (lang === "de" ? "Betrieb" : "Azienda") : (lang === "de" ? "Händler" : "Commerciante")}</p>
+                    <p className="text-sm font-medium truncate text-right">{counterpartyName}</p>
+                  </div>
+                  <div className="flex justify-between items-center gap-2 px-4 py-3">
+                    <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Bestellung" : "Ordine"}</p>
+                    <button
+                      onClick={() => setLocation(`/${currentRole}/orders/${complaint.orderId}`)}
+                      className="text-sm font-medium truncate text-right tabular-nums hover:underline"
+                      data-testid="link-order-meta"
+                    >
+                      #{complaint.orderId.slice(0, 8).toUpperCase()}
+                    </button>
+                  </div>
+                  <div className="flex justify-between items-center gap-2 px-4 py-3">
+                    <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Erstellt am" : "Creato il"}</p>
+                    <p className="text-sm font-medium shrink-0">{format(new Date(complaint.createdAt), "dd.MM.yyyy, HH:mm", { locale: dateLocale })}</p>
+                  </div>
+                  {isUrgent && (
+                    <div className="flex justify-between items-center gap-2 px-4 py-3">
+                      <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Priorität" : "Priorità"}</p>
+                      <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded-full px-2.5 py-1 text-[11px] font-medium" variant="outline">
+                        <Flame className="h-3 w-3 mr-1" />
+                        {lang === "de" ? "Dringend" : "Urgente"}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right bottom: Verlauf (timeline + comments) */}
+              <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0" data-testid="section-history">
+                <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
+                  <p className="text-sm font-semibold">{lang === "de" ? "Verlauf" : "Cronologia"}</p>
+                  <p className="text-[11px] text-muted-foreground">{timeline.length} {lang === "de" ? (timeline.length === 1 ? "Eintrag" : "Einträge") : (timeline.length === 1 ? "voce" : "voci")}</p>
+                </div>
+                <div className="divide-y divide-border/20">
+                  {timeline.map((entry: any, index: number) => (
+                    <div key={entry.id} className="flex items-start gap-3 px-4 py-3" data-testid={`timeline-entry-${index}`}>
+                      <div className={`h-9 w-9 rounded-full ${getStatusBg(entry.toStatus)} flex items-center justify-center shrink-0`}>
+                        <div className={getStatusTextColor(entry.toStatus)}>
+                          {getStatusIcon(entry.toStatus, "h-4 w-4")}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          {getTimelineDescription(entry.toStatus)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {format(new Date(entry.createdAt), "EEE, dd.MM.yyyy · HH:mm", { locale: dateLocale })}
+                          {entry.changedByUser && <span> · {lang === "de" ? "von" : "da"} {entry.changedByUser.name}</span>}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground/70 shrink-0 whitespace-nowrap mt-0.5">
+                        {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true, locale: dateLocale })}
+                      </p>
+                    </div>
+                  ))}
+
+                  {comments && comments.length > 0 && (
+                    <div>
+                      <div className="px-4 py-2.5 bg-muted/20 flex items-center gap-2">
+                        <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                          {lang === "de" ? "Kommentare" : "Commenti"} ({comments.length})
+                        </p>
+                      </div>
+                      <div className="divide-y divide-border/20">
+                        {comments.map((comment: ComplaintCommentWithUser, index: number) => {
+                          const initials = comment.user?.name
+                            ? comment.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                            : "?";
+                          return (
+                            <div key={comment.id} className="flex items-start gap-3 px-4 py-3" data-testid={`comment-${index}`}>
+                              <Avatar className="h-9 w-9 shrink-0">
+                                <AvatarImage src={comment.user?.profileImageUrl || undefined} />
+                                <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-sm font-medium truncate">{comment.user?.name}</p>
+                                  <p className="text-[11px] text-muted-foreground/70 shrink-0">
+                                    {format(new Date(comment.createdAt), "dd.MM.yy HH:mm", { locale: dateLocale })}
+                                  </p>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap">{comment.content}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
