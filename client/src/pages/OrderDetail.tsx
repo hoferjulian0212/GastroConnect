@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
@@ -643,36 +643,38 @@ export default function OrderDetail() {
             {/* Horizontal stepper showing the overall journey */}
             {order.status !== "cancelled" && (
               <div className="rounded-xl border border-border bg-card p-5 shadow-sm" data-testid="status-stepper">
+                {/* Steps + connectors are siblings so the first/last circle sit symmetrically inside the card padding */}
                 <div className="flex items-start">
-                  {statusSteps.map((step, i) => {
+                  {statusSteps.flatMap((step, i) => {
                     const completed = i <= currentStepIndex;
                     const isCurrent = i === currentStepIndex;
                     const stepLabels: Record<string, string> = lang === "de"
                       ? { pending: "Bestellt", confirmed: "Bestätigt", in_delivery: "Unterwegs", delivered: "Geliefert" }
                       : { pending: "Effettuato", confirmed: "Confermato", in_delivery: "In consegna", delivered: "Consegnato" };
                     const stepEntry = timeline.find((e: any) => e.toStatus === step || (step === "confirmed" && e.toStatus === "partially_confirmed"));
-                    return (
-                      <div key={step} className="flex-1 flex items-start min-w-0" data-testid={`stepper-${step}`}>
-                        <div className="flex flex-col items-center gap-2 min-w-0 px-1">
-                          <div className={`h-10 w-10 rounded-full flex items-center justify-center transition-all shrink-0 ${completed ? `${getStatusBg(step)} ${isCurrent ? 'ring-2 ring-offset-2 ring-offset-card ring-primary/40' : ''}` : 'bg-muted'}`}>
-                            <div className={completed ? getStatusTextColor(step) : 'text-muted-foreground/50'}>
-                              {completed && !isCurrent ? <Check className="h-4 w-4" /> : getStatusIcon(step, "h-4 w-4")}
-                            </div>
+                    const nodes = [
+                      <div key={`step-${step}`} className="flex flex-col items-center gap-2 shrink-0 w-20" data-testid={`stepper-${step}`}>
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center transition-all shrink-0 ${completed ? `${getStatusBg(step)} ${isCurrent ? 'ring-2 ring-offset-2 ring-offset-card ring-primary/40' : ''}` : 'bg-muted'}`}>
+                          <div className={completed ? getStatusTextColor(step) : 'text-muted-foreground/50'}>
+                            {completed && !isCurrent ? <Check className="h-4 w-4" /> : getStatusIcon(step, "h-4 w-4")}
                           </div>
-                          <p className={`text-[11px] font-medium text-center leading-tight truncate w-full ${completed ? 'text-foreground' : 'text-muted-foreground/60'}`}>{stepLabels[step]}</p>
-                          {stepEntry && completed && (
-                            <p className="text-[10px] text-muted-foreground/70 text-center leading-tight truncate w-full">
-                              {format(new Date(stepEntry.createdAt), "dd.MM., HH:mm", { locale: dateLocale })}
-                            </p>
-                          )}
                         </div>
-                        {i < statusSteps.length - 1 && (
-                          <div className="flex-1 h-0.5 mt-5 mx-1 rounded-full bg-muted overflow-hidden">
-                            <div className={`h-full transition-all ${i < currentStepIndex ? 'bg-primary w-full' : 'w-0'}`} />
-                          </div>
+                        <p className={`text-[11px] font-medium text-center leading-tight truncate w-full ${completed ? 'text-foreground' : 'text-muted-foreground/60'}`}>{stepLabels[step]}</p>
+                        {stepEntry && completed && (
+                          <p className="text-[10px] text-muted-foreground/70 text-center leading-tight truncate w-full">
+                            {format(new Date(stepEntry.createdAt), "dd.MM., HH:mm", { locale: dateLocale })}
+                          </p>
                         )}
-                      </div>
-                    );
+                      </div>,
+                    ];
+                    if (i < statusSteps.length - 1) {
+                      nodes.push(
+                        <div key={`connector-${step}`} className="flex-1 h-0.5 mt-5 rounded-full bg-muted overflow-hidden">
+                          <div className={`h-full transition-all ${i < currentStepIndex ? 'bg-primary w-full' : 'w-0'}`} />
+                        </div>
+                      );
+                    }
+                    return nodes;
                   })}
                 </div>
               </div>
