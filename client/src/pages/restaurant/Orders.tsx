@@ -56,6 +56,7 @@ export default function RestaurantOrders() {
   const searchParams = new URLSearchParams(searchString);
   const highlightOrderId = searchParams.get("orderId");
   const initialSupplierId = searchParams.get("supplierId");
+  const initialStatus = searchParams.get("status");
   const highlightRef = useRef<HTMLDivElement>(null);
 
   const { containerRef: pullRefreshRef, pullDistance, isRefreshing, progress: pullProgress } = usePullToRefresh({
@@ -63,7 +64,7 @@ export default function RestaurantOrders() {
       await queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
     },
   });
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>(initialStatus || "all");
   const [filterSupplier, setFilterSupplier] = useState<string>(initialSupplierId || "all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
@@ -506,7 +507,9 @@ export default function RestaurantOrders() {
     const q = searchQuery.trim().toLowerCase();
     return orders.filter(order => {
       if (status) {
-        if (status === "confirmed") {
+        if (status === "upcoming") {
+          if (order.status === "delivered" || order.status === "cancelled") return false;
+        } else if (status === "confirmed") {
           if (order.status !== "confirmed" && order.status !== "partially_confirmed") return false;
         } else {
           if (order.status !== status) return false;
@@ -1276,6 +1279,7 @@ export default function RestaurantOrders() {
                     <div className="grid grid-cols-3 gap-1">
                       {([
                         { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
+                        { key: "upcoming", label: lang === "de" ? "Anstehend" : "In arrivo", dot: "bg-primary" },
                         { key: "pending", label: getOrderStatus("pending", lang), dot: "bg-yellow-500" },
                         { key: "confirmed", label: getOrderStatus("confirmed", lang), dot: "bg-blue-500" },
                         { key: "in_delivery", label: getOrderStatus("in_delivery", lang), dot: "bg-purple-500" },
@@ -1333,7 +1337,7 @@ export default function RestaurantOrders() {
           {/* Aktive Filter Chips */}
           {filterStatus !== "all" && (
             <button onClick={() => setFilterStatus("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 border border-white/20 text-white text-[11px] hover:bg-white/15" data-testid="chip-status">
-              <span>{getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
+              <span>{filterStatus === "upcoming" ? (lang === "de" ? "Anstehend" : "In arrivo") : getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
             </button>
           )}
           {filterSupplier !== "all" && (
@@ -1356,7 +1360,7 @@ export default function RestaurantOrders() {
         <div className="flex items-center gap-2 flex-wrap mr-auto">
           {filterStatus !== "all" && (
             <button onClick={() => setFilterStatus("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-status-content">
-              <span>{getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
+              <span>{filterStatus === "upcoming" ? (lang === "de" ? "Anstehend" : "In arrivo") : getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
             </button>
           )}
           {filterSupplier !== "all" && (
@@ -1513,6 +1517,7 @@ export default function RestaurantOrders() {
                   <div className="grid grid-cols-3 gap-1">
                     {([
                       { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
+                      { key: "upcoming", label: lang === "de" ? "Anstehend" : "In arrivo", dot: "bg-primary" },
                       { key: "pending", label: getOrderStatus("pending", lang), dot: "bg-yellow-500" },
                       { key: "confirmed", label: getOrderStatus("confirmed", lang), dot: "bg-blue-500" },
                       { key: "in_delivery", label: getOrderStatus("in_delivery", lang), dot: "bg-purple-500" },

@@ -1092,11 +1092,16 @@ export default function RestaurantHome() {
             </div>
 
             {extraDeliveriesCount > 0 && (
-              <p className="text-xs text-muted-foreground text-center pt-1" data-testid="text-more-deliveries">
+              <Link
+                href="/restaurant/orders?status=upcoming"
+                className="mt-1 mx-auto inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-primary bg-primary/5 hover:bg-primary/10 hover-elevate active-elevate-2 transition-colors"
+                data-testid="link-more-deliveries"
+              >
                 +{extraDeliveriesCount} {lang === "de"
                   ? (extraDeliveriesCount === 1 ? "weitere anstehende Lieferung" : "weitere anstehende Lieferungen")
                   : (extraDeliveriesCount === 1 ? "altra consegna in arrivo" : "altre consegne in arrivo")}
-              </p>
+                <ArrowRight className="h-3 w-3" />
+              </Link>
             )}
           </div>
         ) : (
@@ -1243,9 +1248,14 @@ export default function RestaurantHome() {
                     );
                   })}
                   {totalUnread > 3 && (
-                    <p className="text-xs text-muted-foreground text-center pt-1" data-testid="text-more-unread">
+                    <Link
+                      href="/restaurant/inbox"
+                      className="mt-1 mx-auto inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-primary bg-primary/5 hover:bg-primary/10 hover-elevate active-elevate-2 transition-colors"
+                      data-testid="link-more-unread"
+                    >
                       +{totalUnread - 3} {t("restaurantHome", "moreUnread")}
-                    </p>
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
                   )}
                 </div>
               </>

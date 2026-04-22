@@ -757,9 +757,14 @@ export default function SupplierHome() {
                     );
                   })}
                   {totalUnread > 3 && (
-                    <p className="text-xs text-muted-foreground text-center pt-1" data-testid="text-more-unread">
+                    <Link
+                      href="/supplier/inbox"
+                      className="mt-1 mx-auto inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-primary bg-primary/5 hover:bg-primary/10 hover-elevate active-elevate-2 transition-colors"
+                      data-testid="link-more-unread"
+                    >
                       +{totalUnread - 3} {t("supplierHome", "moreUnread")}
-                    </p>
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
                   )}
                 </div>
               </>
