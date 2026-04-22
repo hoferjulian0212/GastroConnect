@@ -845,44 +845,77 @@ export default function SupplierHome() {
                   ))}
                 </div>
 
-                {/* Desktop: stacked list */}
-                <div className="hidden md:block space-y-2">
-                  {recentOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all duration-200 cursor-pointer"
-                      onClick={() => navigate(`/supplier/orders/${order.id}`)}
-                      data-testid={`order-item-${order.id}`}
-                    >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-                        <ShoppingBag className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                          <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5`} variant="outline">
-                            {getOrderStatus(order.status, lang, true)}
-                          </Badge>
+                {/* Desktop: Excel-style table (mirrors Anstehende Lieferungen) */}
+                <div className="hidden md:block">
+                  <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="new-orders-table">
+                    <div className="md:overflow-x-auto">
+                      <div style={{ minWidth: deliveriesTableMinWidth }}>
+                        <div
+                          className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border backdrop-blur-sm`}
+                          style={{ gridTemplateColumns: deliveriesGridTemplate }}
+                        >
+                          <div className="pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
+                          <div className="pr-2">Status</div>
+                          <div className="pr-2 !justify-start !text-left">{lang === "de" ? "Restaurant" : "Ristorante"}</div>
+                          <div className="pr-2 !text-right !justify-end">{lang === "de" ? "Artikel" : "Articoli"}</div>
+                          <div className="pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>
+                          <div className="pr-2">{lang === "de" ? "Erstellt" : "Creato"}</div>
+                          <div className="!text-right !justify-end">{lang === "de" ? "Summe" : "Totale"}</div>
                         </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <UserIcon className="h-3 w-3 text-muted-foreground shrink-0" />
-                          <p className="text-xs text-muted-foreground truncate">
-                            {order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown")}
-                          </p>
-                          <span className="text-xs text-muted-foreground">·</span>
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
-                        <span className="text-base font-bold">{order.totalAmount}€</span>
-                        <span className="text-xs text-muted-foreground">
-                          {order.items?.length || 0} {lang === "de" ? "Artikel" : "articoli"}
-                        </span>
+                        {recentOrders.map((order) => {
+                          const restaurantName = order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown");
+                          const deliveryDateLabel = order.requestedDeliveryDate
+                            ? (() => {
+                                const d = new Date(order.requestedDeliveryDate + "T00:00:00");
+                                if (isToday(d)) return lang === "de" ? "Heute" : "Oggi";
+                                if (isTomorrow(d)) return lang === "de" ? "Morgen" : "Domani";
+                                return format(d, "EEE dd.MM.", { locale: dateLocale });
+                              })()
+                            : "—";
+                          return (
+                            <Link
+                              key={order.id}
+                              href={`/supplier/orders/${order.id}`}
+                              className="block group/row border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors"
+                              data-testid={`order-row-${order.id}`}
+                            >
+                              <div
+                                className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
+                                style={{ gridTemplateColumns: deliveriesGridTemplate }}
+                              >
+                                <span className="font-mono text-[13px] text-primary truncate">#{order.id.slice(0, 8)}</span>
+                                <div>
+                                  <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
+                                    <span className="inline-flex items-center gap-1">
+                                      {getStatusIcon(order.status)}
+                                      {getOrderStatus(order.status, lang, true)}
+                                    </span>
+                                  </Badge>
+                                </div>
+                                <div className="min-w-0 flex items-center gap-2">
+                                  <Avatar className="h-6 w-6 shrink-0">
+                                    <AvatarImage src={order.restaurant?.profileImageUrl || undefined} />
+                                    <AvatarFallback className="text-[9px] font-semibold">{restaurantName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="truncate font-medium" data-testid={`text-order-restaurant-${order.id}`}>{restaurantName}</span>
+                                </div>
+                                <div className="text-right tabular-nums text-muted-foreground">{order.items?.length || 0}</div>
+                                <div className="min-w-0">
+                                  <span className="truncate" data-testid={`text-order-delivery-${order.id}`}>{deliveryDateLabel}</span>
+                                </div>
+                                <div className="text-muted-foreground text-[12px] truncate" title={format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}>
+                                  {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+                                </div>
+                                <div className="text-right font-semibold tabular-nums" data-testid={`text-order-total-${order.id}`}>
+                                  {parseFloat(order.totalAmount).toFixed(2)}€
+                                </div>
+                              </div>
+                            </Link>
+                          );
+                        })}
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
               </>
             ) : (
