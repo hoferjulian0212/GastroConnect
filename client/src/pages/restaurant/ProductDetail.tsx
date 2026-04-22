@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { useFlyToCart } from "@/hooks/use-fly-to-cart";
+import { ProductImage } from "@/components/ProductImage";
 
 export default function ProductDetail() {
   const [, params] = useRoute("/restaurant/product/:id");
@@ -164,15 +165,7 @@ export default function ProductDetail() {
       >
         <CardContent className="p-2.5 md:p-3 flex flex-col overflow-hidden">
           <div className="relative">
-            {p.imageUrl ? (
-              <div className="w-full aspect-square md:aspect-[4/3] rounded-lg overflow-hidden bg-muted">
-                <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <div className="w-full aspect-square md:aspect-[4/3] rounded-lg bg-muted flex items-center justify-center">
-                <Package className="h-8 w-8 text-muted-foreground/30" />
-              </div>
-            )}
+            <ProductImage src={p.imageUrl} alt={p.name} className="w-full aspect-square md:aspect-[4/3] rounded-lg" iconClassName="h-8 w-8" fallbackIconColor="text-muted-foreground/30" />
             {hasPromo && (
               <div className="absolute top-1.5 left-1.5 rounded-full bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 shadow-sm">
                 -{promo.discountPercent}%
@@ -281,15 +274,7 @@ export default function ProductDetail() {
       <div className="max-w-3xl mx-auto">
         <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-6">
           <div>
-            {product.imageUrl ? (
-              <div className="w-full aspect-[4/3] md:aspect-square rounded-xl overflow-hidden bg-muted">
-                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <div className="w-full aspect-[4/3] md:aspect-square rounded-xl bg-muted flex items-center justify-center">
-                <Package className="h-16 w-16 md:h-20 md:w-20 text-muted-foreground/20" />
-              </div>
-            )}
+            <ProductImage src={product.imageUrl} alt={product.name} className="w-full aspect-[4/3] md:aspect-square rounded-xl" iconClassName="h-16 w-16 md:h-20 md:w-20" fallbackIconColor="text-muted-foreground/20" />
           </div>
 
           <div className="space-y-3 md:space-y-4">

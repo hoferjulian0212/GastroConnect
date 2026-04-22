@@ -33,6 +33,7 @@ import { useT, getOrderStatus, getComplaintStatus } from "@/lib/translations";
 import SwipeableRow from "@/components/SwipeableRow";
 import StaggeredList from "@/components/StaggeredList";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { ProductImage } from "@/components/ProductImage";
 
 type ActionMode = "none" | "order" | "complaint";
 
@@ -1234,13 +1235,7 @@ export default function RestaurantInbox() {
                                           <div className="space-y-0.5">
                                             {order.items.slice(0, 3).map((item: any, idx: number) => (
                                               <div key={idx} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                                {item.productImageUrl ? (
-                                                  <img src={item.productImageUrl} alt="" className="h-4 w-4 rounded object-cover shrink-0" />
-                                                ) : (
-                                                  <div className="h-4 w-4 rounded bg-muted flex items-center justify-center shrink-0">
-                                                    <Package className="h-2 w-2 text-muted-foreground" />
-                                                  </div>
-                                                )}
+                                                <ProductImage src={item.productImageUrl} className="h-4 w-4 rounded" iconClassName="h-2 w-2" />
                                                 <span className="truncate flex-1">{item.quantity}x {item.productName}</span>
                                                 <span className="shrink-0 font-medium text-foreground">€{Number(item.totalPrice).toFixed(2)}</span>
                                               </div>
@@ -1480,15 +1475,7 @@ export default function RestaurantInbox() {
                                           <div className="space-y-1">
                                             {promoData.products?.map((prod: any) => (
                                               <div key={prod.id} className="flex items-center gap-2 text-xs bg-background/50 rounded-md px-2 py-1.5">
-                                                {prod.imageUrl ? (
-                                                  <div className="w-6 h-6 rounded overflow-hidden bg-muted shrink-0">
-                                                    <img src={prod.imageUrl} alt={prod.name} className="w-full h-full object-cover" />
-                                                  </div>
-                                                ) : (
-                                                  <div className="w-6 h-6 rounded bg-muted flex items-center justify-center shrink-0">
-                                                    <Package className="h-3 w-3 text-muted-foreground/30" />
-                                                  </div>
-                                                )}
+                                                <ProductImage src={prod.imageUrl} alt={prod.name} className="w-6 h-6 rounded" iconClassName="h-3 w-3" fallbackIconColor="text-muted-foreground/30" />
                                                 <span className="font-medium flex-1 min-w-0 truncate">{prod.name}</span>
                                                 <span className="text-muted-foreground line-through shrink-0">{prod.originalPrice}€</span>
                                                 <span className="font-semibold text-green-600 dark:text-green-400 shrink-0">{prod.discountedPrice}€/{prod.unit}</span>
@@ -1592,14 +1579,7 @@ export default function RestaurantInbox() {
                                             <div className="space-y-0">
                                               {orderData.items.map((item, idx) => (
                                                 <div key={idx} className="flex items-center gap-3 py-2" data-testid={`order-item-${message.id}-${idx}`}>
-                                                  <div className="w-11 h-11 rounded-full overflow-hidden bg-muted/60 flex-shrink-0">
-                                                    {item.imageUrl ? (
-                                                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
-                                                    ) : null}
-                                                    <div className={`w-full h-full flex items-center justify-center ${item.imageUrl ? 'hidden' : ''}`}>
-                                                      <Package className="h-4 w-4 text-muted-foreground" />
-                                                    </div>
-                                                  </div>
+                                                  <ProductImage src={item.imageUrl} alt={item.name} className="w-11 h-11 rounded-full" iconClassName="h-4 w-4" fallbackBg="bg-muted/60" />
                                                   <div className="flex-1 min-w-0">
                                                     <span className="text-[13px] font-medium truncate block">{item.name}</span>
                                                     <span className="text-[11px] text-muted-foreground">{item.quantity}x</span>
@@ -2172,15 +2152,9 @@ export default function RestaurantInbox() {
                       <div className="space-y-2 pb-4">
                         {supplierProducts?.filter(p => p.inStock).map((product) => (
                           <div key={product.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30">
-                            {product.imageUrl ? (
-                              <div className="w-12 h-12 rounded-md overflow-hidden bg-muted shrink-0 cursor-pointer" onClick={() => setInboxDetailProduct(product)} data-testid={`button-product-detail-${product.id}`}>
-                                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                              </div>
-                            ) : (
-                              <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center shrink-0 cursor-pointer" onClick={() => setInboxDetailProduct(product)} data-testid={`button-product-detail-${product.id}`}>
-                                <Package className="h-5 w-5 text-muted-foreground/50" />
-                              </div>
-                            )}
+                            <div className="w-12 h-12 shrink-0 cursor-pointer" onClick={() => setInboxDetailProduct(product)} data-testid={`button-product-detail-${product.id}`}>
+                              <ProductImage src={product.imageUrl} alt={product.name} className="w-12 h-12 rounded-md" iconClassName="h-5 w-5" fallbackIconColor="text-muted-foreground/50" />
+                            </div>
                             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setInboxDetailProduct(product)} data-testid={`text-product-info-${product.id}`}>
                               <p className="text-sm font-medium truncate">{product.name}</p>
                               <p className="text-xs text-muted-foreground">{product.price}€/{product.unit}</p>
@@ -2660,13 +2634,7 @@ export default function RestaurantInbox() {
                 <div className="rounded-xl border overflow-hidden">
                   {orderDetail.items.map((item: any, idx: number) => (
                     <div key={item.id} className={`flex items-center gap-2.5 px-3 py-2.5 ${idx < orderDetail.items.length - 1 ? "border-b" : ""}`} data-testid={`order-item-${item.id}`}>
-                      {item.productImageUrl ? (
-                        <img src={item.productImageUrl} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
-                      ) : (
-                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      )}
+                      <ProductImage src={item.productImageUrl} className="h-8 w-8 rounded-lg" iconClassName="h-4 w-4" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{item.productName}</p>
                         <p className="text-xs text-muted-foreground">
@@ -3079,13 +3047,7 @@ export default function RestaurantInbox() {
               <div className="space-y-2">
                 {editItemsInbox.map((item: any, index) => (
                   <div key={item.id} className="flex items-center gap-2.5 p-3 rounded-xl bg-muted/30" data-testid={`inbox-edit-item-${item.productId}`}>
-                    {item.productImageUrl ? (
-                      <img src={item.productImageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
-                    ) : (
-                      <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    )}
+                    <ProductImage src={item.productImageUrl} className="h-9 w-9 rounded" iconClassName="h-4 w-4" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{item.productName}</p>
                       <p className="text-xs text-muted-foreground">{parseFloat(item.unitPrice).toFixed(2)}€ {t("orders", "perUnit")}</p>

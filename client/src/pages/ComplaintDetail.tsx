@@ -350,13 +350,7 @@ export default function ComplaintDetail() {
                 <div className="divide-y divide-border/20">
                   {affectedItems.map((item: any, i: number) => (
                     <div key={i} className="flex items-center gap-3 px-4 py-3" data-testid={`affected-item-${i}`}>
-                      {item.imageUrl ? (
-                        <img src={item.imageUrl} alt="" className="h-10 w-10 rounded-xl object-cover shrink-0" />
-                      ) : (
-                        <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                          <Package className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                      )}
+                      <ProductImage src={item.imageUrl} className="h-10 w-10 rounded-xl" iconClassName="h-5 w-5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.name || item.productName}</p>
                         {item.quantity && (

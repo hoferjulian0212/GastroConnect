@@ -13,6 +13,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { queryClient } from "@/lib/queryClient";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
+import { ProductImage } from "@/components/ProductImage";
 
 
 const categoryConfig: Record<string, { de: string; it: string; icon: typeof Package; color: string }> = {
@@ -234,15 +235,7 @@ export default function RestaurantCatalog() {
                 onClick={() => handleSuggestionSelect(product)}
                 data-testid={`suggestion-${product.id}`}
               >
-                <div className="h-10 w-10 rounded-lg overflow-hidden bg-muted shrink-0">
-                  {product.imageUrl ? (
-                    <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center">
-                      <Package className={`h-4 w-4 ${isDark ? "text-white/20" : "text-muted-foreground/30"}`} />
-                    </div>
-                  )}
-                </div>
+                <ProductImage src={product.imageUrl} alt={product.name} className="h-10 w-10 rounded-lg" iconClassName="h-4 w-4" fallbackIconColor={isDark ? "text-white/20" : "text-muted-foreground/30"} />
                 <div className="flex-1 min-w-0">
                   <div className={`text-sm font-medium truncate ${isDark ? "text-white" : ""}`}>{product.name}</div>
                   <div className={`text-[11px] truncate ${isDark ? "text-white/40" : "text-muted-foreground"}`}>
@@ -292,14 +285,8 @@ export default function RestaurantCatalog() {
         onClick={() => setLocation(`/restaurant/product/${product.id}`)}
         data-testid={`product-card-${product.id}`}
       >
-        <div className="relative w-full aspect-[4/3] bg-muted overflow-hidden">
-          {product.imageUrl ? (
-            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Package className="h-8 w-8 text-muted-foreground/20" />
-            </div>
-          )}
+        <div className="relative w-full aspect-[4/3] overflow-hidden">
+          <ProductImage src={product.imageUrl} alt={product.name} className="w-full h-full" iconClassName="h-8 w-8" fallbackIconColor="text-muted-foreground/20" />
           {hasPromo && (
             <Badge className="absolute top-1 left-1 bg-green-600 text-white border-0 text-[9px] leading-tight px-1 py-0.5 max-w-[calc(100%-8px)] truncate">
               -{promo.discountPercent}%

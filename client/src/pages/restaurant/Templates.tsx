@@ -19,6 +19,7 @@ import {
 import QuantityInput from "@/components/QuantityInput";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
+import { ProductImage } from "@/components/ProductImage";
 
 type ProductWithSupplier = Product & { supplier: User };
 
@@ -339,13 +340,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
                                   className={`flex items-center gap-2 py-1.5 px-2 rounded-md ${isOutOfStock ? "bg-muted/30 opacity-60" : "bg-card"}`}
                                   data-testid={`template-item-${item.productId}`}
                                 >
-                                  {item.product.imageUrl ? (
-                                    <img src={item.product.imageUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
-                                  ) : (
-                                    <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
-                                      <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                                    </div>
-                                  )}
+                                  <ProductImage src={item.product.imageUrl} className="h-8 w-8 rounded" iconClassName="h-3.5 w-3.5" />
                                   <div className="flex-1 min-w-0">
                                     <p className={`text-xs md:text-sm font-medium truncate ${isOutOfStock ? "line-through" : ""}`}>
                                       {item.product.name}
@@ -779,13 +774,7 @@ function CreateEditDialog({
               <div className="space-y-1.5">
                 {selectedItems.map(item => (
                   <div key={item.productId} className="flex items-center gap-2 p-2 rounded-lg border bg-card" data-testid={`selected-product-${item.productId}`}>
-                    {item.product.imageUrl ? (
-                      <img src={item.product.imageUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
-                    ) : (
-                      <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
-                        <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                    )}
+                    <ProductImage src={item.product.imageUrl} className="h-8 w-8 rounded" iconClassName="h-3.5 w-3.5" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{item.product.name}</p>
                       <p className="text-[10px] text-muted-foreground">{item.product.supplier?.companyName} — {item.product.price}&euro;/{item.product.unit}</p>
@@ -864,13 +853,7 @@ function CreateEditDialog({
                     onClick={() => isSelected(product.id) ? removeProduct(product.id) : addProduct(product)}
                     data-testid={`button-add-product-${product.id}`}
                   >
-                    {product.imageUrl ? (
-                      <img src={product.imageUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
-                    ) : (
-                      <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
-                        <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                    )}
+                    <ProductImage src={product.imageUrl} className="h-8 w-8 rounded" iconClassName="h-3.5 w-3.5" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{product.name}</p>
                       <p className="text-[10px] text-muted-foreground truncate">{product.supplier?.companyName}</p>
@@ -997,13 +980,7 @@ function UseTemplateDialog({
         <div className="flex-1 overflow-y-auto space-y-2 px-5 pb-5 pr-4">
           {availableItems.map(item => (
             <div key={item.productId} className="flex items-center gap-2.5 p-2.5 rounded-lg border bg-card" data-testid={`use-item-${item.productId}`}>
-              {item.product.imageUrl ? (
-                <img src={item.product.imageUrl} alt="" className="h-10 w-10 rounded object-cover shrink-0" />
-              ) : (
-                <div className="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
-                  <Package className="h-5 w-5 text-muted-foreground" />
-                </div>
-              )}
+              <ProductImage src={item.product.imageUrl} className="h-10 w-10 rounded" iconClassName="h-5 w-5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{item.product.name}</p>
                 <p className="text-[10px] text-muted-foreground">

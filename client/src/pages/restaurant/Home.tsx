@@ -23,6 +23,7 @@ import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
+import { ProductImage } from "@/components/ProductImage";
 import {
   RESTAURANT_ORDER_COL_DEFAULTS,
   RESTAURANT_ORDER_COL_MIN_WIDTHS,
@@ -1338,15 +1339,7 @@ export default function RestaurantHome() {
                           data-testid={`promo-card-${product.id}`}
                         >
                           <div className="relative">
-                            {product.imageUrl ? (
-                              <div className="w-full aspect-[4/3] bg-muted">
-                                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                              </div>
-                            ) : (
-                              <div className="w-full aspect-[4/3] bg-muted flex items-center justify-center">
-                                <Package className="h-8 w-8 text-muted-foreground/30" />
-                              </div>
-                            )}
+                            <ProductImage src={product.imageUrl} alt={product.name} className="w-full aspect-[4/3]" iconClassName="h-8 w-8" fallbackIconColor="text-muted-foreground/30" />
                             <div className="absolute top-1.5 left-1.5 flex items-center justify-center rounded-full bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 shadow-sm">
                               -{promo.discountPercent}%
                             </div>
@@ -1573,13 +1566,7 @@ export default function RestaurantHome() {
                                         const oos = item.product.inStock === false;
                                         return (
                                           <div key={item.id} className={`flex items-center gap-2 text-xs ${oos ? "text-muted-foreground/50 line-through" : ""}`} data-testid={`template-item-${item.id}`}>
-                                            {item.product.imageUrl ? (
-                                              <img src={item.product.imageUrl} alt="" className="h-6 w-6 rounded object-cover shrink-0" />
-                                            ) : (
-                                              <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0">
-                                                <Package className="h-3 w-3 text-muted-foreground" />
-                                              </div>
-                                            )}
+                                            <ProductImage src={item.product.imageUrl} className="h-6 w-6 rounded" iconClassName="h-3 w-3" />
                                             <span className="truncate flex-1">
                                               <span className="font-medium">{item.quantity}x</span> {item.product.name}
                                             </span>
@@ -1823,13 +1810,7 @@ export default function RestaurantHome() {
                 <div className="space-y-2">
                   {detailOrder.items?.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-2.5 text-sm p-2 rounded-xl bg-muted/30" data-testid={`home-detail-item-${item.id}`}>
-                      {item.productImageUrl ? (
-                        <img src={item.productImageUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
-                      ) : (
-                        <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      )}
+                      <ProductImage src={item.productImageUrl} className="h-8 w-8 rounded" iconClassName="h-4 w-4" />
                       <div className="flex-1 min-w-0 truncate">
                         <span className="font-medium">{item.quantity}x</span>{" "}
                         <span>{item.productName}</span>
@@ -1929,13 +1910,7 @@ export default function RestaurantHome() {
                           className="flex items-center gap-2.5 p-2.5 rounded-lg border border-border bg-card"
                           data-testid={`wizard-item-${pid}`}
                         >
-                          {prod.imageUrl ? (
-                            <img src={prod.imageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
-                          ) : (
-                            <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
-                              <Package className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                          )}
+                          <ProductImage src={prod.imageUrl} className="h-9 w-9 rounded" iconClassName="h-4 w-4" />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium truncate">{prod.name}</p>
                             <p className="text-xs text-muted-foreground truncate">
@@ -2082,13 +2057,7 @@ export default function RestaurantHome() {
                           }`}
                           data-testid={`wizard-browse-item-${prod.id}`}
                         >
-                          {prod.imageUrl ? (
-                            <img src={prod.imageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
-                          ) : (
-                            <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
-                              <Package className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                          )}
+                          <ProductImage src={prod.imageUrl} className="h-9 w-9 rounded" iconClassName="h-4 w-4" />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5">
                               <p className="text-sm font-medium truncate">{prod.name}</p>

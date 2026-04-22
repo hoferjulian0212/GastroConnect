@@ -12,6 +12,7 @@ import QuantityInput from "@/components/QuantityInput";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { CartItemWithProduct, DeliverySchedule, Promotion } from "@shared/schema";
+import { ProductImage } from "@/components/ProductImage";
 
 type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion | null };
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -415,13 +416,7 @@ export default function RestaurantCart() {
                         data-testid={`cart-item-${item.id}`}
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {item.product.imageUrl ? (
-                            <img src={item.product.imageUrl} alt={item.product.name} className="h-10 w-10 md:h-12 md:w-12 rounded-md object-cover shrink-0" />
-                          ) : (
-                            <div className="flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-md bg-muted">
-                              <Package className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
-                            </div>
-                          )}
+                          <ProductImage src={item.product.imageUrl} alt={item.product.name} className="h-10 w-10 md:h-12 md:w-12 rounded-md" iconClassName="h-4 w-4 md:h-5 md:w-5" />
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-sm md:text-base truncate">{item.product.name}</p>
                             {item.activePromotion ? (

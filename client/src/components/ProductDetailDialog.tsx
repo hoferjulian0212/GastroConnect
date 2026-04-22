@@ -5,6 +5,7 @@ import { differenceInDays, differenceInHours, format } from "date-fns";
 import { de, it } from "date-fns/locale";
 import type { ProductWithSupplierAndPromotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
+import { ProductImage } from "@/components/ProductImage";
 
 interface ProductDetailDialogProps {
   product: ProductWithSupplierAndPromotion | null;
@@ -26,19 +27,7 @@ export default function ProductDetailDialog({ product, open, onOpenChange, suppl
         </DialogHeader>
 
         <div className="space-y-4 px-5 pt-5 pb-5">
-          {product.imageUrl ? (
-            <div className="w-full h-48 rounded-xl overflow-hidden bg-muted">
-              <img
-                src={product.imageUrl}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ) : (
-            <div className="w-full h-48 rounded-xl bg-muted flex items-center justify-center">
-              <Package className="h-16 w-16 text-muted-foreground/20" />
-            </div>
-          )}
+          <ProductImage src={product.imageUrl} alt={product.name} className="w-full h-48 rounded-xl" iconClassName="h-16 w-16" fallbackIconColor="text-muted-foreground/20" />
 
           <div>
             <h3 className="text-lg font-semibold" data-testid="text-product-name">{product.name}</h3>

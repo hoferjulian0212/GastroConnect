@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich } from "lucide-react";
+import { ProductImage } from "@/components/ProductImage";
 
 import type { Product, StockMovement, PromotionWithProduct } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -249,15 +250,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
                 >
                   {/* Product (image + name) */}
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    {product.imageUrl ? (
-                      <div className="w-8 h-8 shrink-0 rounded-md overflow-hidden bg-muted">
-                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 shrink-0 rounded-md bg-muted/60 flex items-center justify-center">
-                        <Package className="h-3.5 w-3.5 text-muted-foreground/40" />
-                      </div>
-                    )}
+                    <ProductImage src={product.imageUrl} alt={product.name} className="w-8 h-8 rounded-md" iconClassName="h-3.5 w-3.5" fallbackBg="bg-muted/60" fallbackIconColor="text-muted-foreground/40" />
                     <span className="font-medium truncate" data-testid={`text-name-${product.id}`}>{product.name}</span>
                   </div>
                   {/* Category */}
@@ -340,15 +333,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
                 data-testid={`inventory-card-${product.id}`}
               >
                 <div className="flex items-center gap-3">
-                  {product.imageUrl ? (
-                    <div className="w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-muted">
-                      <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 shrink-0 rounded-lg bg-muted/60 flex items-center justify-center">
-                      <Package className="h-4 w-4 text-muted-foreground/30" />
-                    </div>
-                  )}
+                  <ProductImage src={product.imageUrl} alt={product.name} className="w-10 h-10 rounded-lg" iconClassName="h-4 w-4" fallbackBg="bg-muted/60" fallbackIconColor="text-muted-foreground/30" />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
@@ -1631,15 +1616,7 @@ export default function SupplierProducts() {
                       {categoryFilteredProducts.map((product) => (
                         <Card key={product.id} className="cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-px hover:scale-[1.003]" data-testid={`product-card-${product.id}`} onClick={() => setDetailProduct(product)}>
                           <CardContent className="p-2 md:p-3 flex gap-2 md:gap-3">
-                            {product.imageUrl ? (
-                              <div className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-lg overflow-hidden bg-muted">
-                                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                              </div>
-                            ) : (
-                              <div className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-lg bg-muted flex items-center justify-center">
-                                <Package className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground/30" />
-                              </div>
-                            )}
+                            <ProductImage src={product.imageUrl} alt={product.name} className="w-12 h-12 md:w-16 md:h-16 rounded-lg" iconClassName="h-5 w-5 md:h-6 md:w-6" fallbackIconColor="text-muted-foreground/30" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-1 md:gap-2">
                                 <h3 className="font-medium text-sm md:text-base line-clamp-1">{product.name}</h3>

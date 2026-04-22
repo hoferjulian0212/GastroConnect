@@ -40,6 +40,7 @@ import {
   type SupplierOrderColKey,
 } from "@/lib/orderTableConfig";
 import { GroupHeader } from "@/components/orders/GroupHeader";
+import { ProductImage } from "@/components/ProductImage";
 
 export default function SupplierOrders() {
   const { currentUser } = useUser();
@@ -634,13 +635,7 @@ export default function SupplierOrders() {
             <div className="space-y-1">
               {order.items.map((item: any) => (
                 <div key={item.id} className="flex items-center gap-2 text-xs md:text-sm" data-testid={`card-item-${item.id}`}>
-                  {item.productImageUrl ? (
-                    <img src={item.productImageUrl} alt="" className="h-6 w-6 rounded object-cover shrink-0" />
-                  ) : (
-                    <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0">
-                      <Package className="h-3 w-3 text-muted-foreground" />
-                    </div>
-                  )}
+                  <ProductImage src={item.productImageUrl} className="h-6 w-6 rounded" iconClassName="h-3 w-3" />
                   <span className="text-muted-foreground flex-1 truncate">
                     <span className="font-medium text-foreground">{item.quantity}x</span> {item.productName}
                   </span>
@@ -1700,13 +1695,7 @@ export default function SupplierOrders() {
                         data-testid={`detail-item-${item.id}`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          {product?.imageUrl ? (
-                            <img src={product.imageUrl} alt={item.productName} className="h-8 w-8 rounded object-cover shrink-0" />
-                          ) : (
-                            <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
-                              <Package className="h-4 w-4 text-muted-foreground/40" />
-                            </div>
-                          )}
+                          <ProductImage src={product?.imageUrl} alt={item.productName} className="h-8 w-8 rounded" iconClassName="h-4 w-4" fallbackIconColor="text-muted-foreground/40" />
                           <div className="min-w-0 truncate">
                             <span className="font-medium">{item.quantity}x</span>{" "}
                             <span className={product ? "underline decoration-dotted underline-offset-2" : ""}>{item.productName}</span>

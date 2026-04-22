@@ -8,6 +8,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ProductImage } from "@/components/ProductImage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -711,13 +712,7 @@ export default function OrderDetail() {
                   const hasPartial = item.confirmedQuantity !== null && item.confirmedQuantity !== undefined && item.confirmedQuantity !== item.quantity;
                   return (
                     <div key={item.id} className="flex items-center gap-3 px-4 py-3" data-testid={`detail-item-${item.id}`}>
-                      {item.productImageUrl ? (
-                        <img src={item.productImageUrl} alt="" className="h-11 w-11 rounded-xl object-cover shrink-0" />
-                      ) : (
-                        <div className="h-11 w-11 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                          <Package className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                      )}
+                      <ProductImage src={item.productImageUrl} className="h-11 w-11 rounded-xl" iconClassName="h-5 w-5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.productName}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">

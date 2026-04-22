@@ -36,6 +36,7 @@ import { format } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import { ProductImage } from "@/components/ProductImage";
 
 type PromotionGroup = {
   groupId: string | null;
@@ -548,15 +549,7 @@ export default function SupplierPromotions() {
                         data-testid={`product-option-${product.id}`}
                       >
                         <Checkbox checked={isSelected} disabled={outOfStock} className="pointer-events-none" />
-                        {product.imageUrl ? (
-                          <div className="w-8 h-8 rounded-md overflow-hidden bg-muted shrink-0">
-                            <img src={product.imageUrl} alt={product.name} className={`w-full h-full object-cover ${outOfStock ? "grayscale" : ""}`} />
-                          </div>
-                        ) : (
-                          <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
-                            <Package className="h-3.5 w-3.5 text-muted-foreground/30" />
-                          </div>
-                        )}
+                        <ProductImage src={product.imageUrl} alt={product.name} className="w-8 h-8 rounded-md" iconClassName="h-3.5 w-3.5" fallbackIconColor="text-muted-foreground/30" imgClassName={outOfStock ? "grayscale" : undefined} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             <p className="text-sm font-medium truncate">{product.name}</p>

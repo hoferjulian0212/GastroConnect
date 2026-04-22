@@ -31,6 +31,7 @@ import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import DraggableCardGrid from "@/components/DraggableCardGrid";
 import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
+import { ProductImage } from "@/components/ProductImage";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
@@ -1116,13 +1117,7 @@ export default function SupplierHome() {
                       data-testid={`low-stock-item-${product.id}`}
                     >
                       <div className="flex items-center gap-2 mb-3">
-                        {product.imageUrl ? (
-                          <img src={product.imageUrl} alt="" className="h-10 w-10 rounded-xl object-cover shrink-0" />
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/30 shrink-0">
-                            <Package className="h-5 w-5 text-orange-600" />
-                          </div>
-                        )}
+                        <ProductImage src={product.imageUrl} className="h-10 w-10 rounded-xl" iconClassName="h-5 w-5" fallbackBg="bg-orange-100 dark:bg-orange-900/30" fallbackIconColor="text-orange-600" />
                       </div>
                       <p className="text-sm font-semibold truncate">{product.name}</p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -1146,13 +1141,7 @@ export default function SupplierHome() {
                       data-testid={`low-stock-item-desktop-${product.id}`}
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {product.imageUrl ? (
-                          <img src={product.imageUrl} alt="" className="h-9 w-9 rounded-lg object-cover shrink-0" />
-                        ) : (
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30 shrink-0">
-                            <Package className="h-4 w-4 text-orange-600" />
-                          </div>
-                        )}
+                        <ProductImage src={product.imageUrl} className="h-9 w-9 rounded-lg" iconClassName="h-4 w-4" fallbackBg="bg-orange-100 dark:bg-orange-900/30" fallbackIconColor="text-orange-600" />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{product.name}</p>
                           <p className="text-xs text-muted-foreground">

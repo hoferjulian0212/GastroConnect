@@ -38,6 +38,7 @@ import {
 } from "@/lib/orderTableConfig";
 import { Cell } from "@/components/orders/Cell";
 import { GroupHeader } from "@/components/orders/GroupHeader";
+import { ProductImage } from "@/components/ProductImage";
 
 interface EditableItem {
   id: string;
@@ -725,13 +726,7 @@ export default function RestaurantOrders() {
                 const isInlineEditing = inlineEditItem?.orderId === order.id && inlineEditItem?.itemId === item.id;
                 return (
                 <div key={item.id} className="flex items-center gap-2 text-xs md:text-sm" data-testid={`card-item-${item.id}`}>
-                  {item.productImageUrl ? (
-                    <img src={item.productImageUrl} alt="" className="h-6 w-6 rounded object-cover shrink-0" />
-                  ) : (
-                    <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0">
-                      <Package className="h-3 w-3 text-muted-foreground" />
-                    </div>
-                  )}
+                  <ProductImage src={item.productImageUrl} className="h-6 w-6 rounded" iconClassName="h-3 w-3" />
                   <span className="text-muted-foreground flex-1 truncate">
                     {order.status === "pending" && isInlineEditing ? (
                       <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -1775,13 +1770,7 @@ export default function RestaurantOrders() {
                         data-testid={`detail-item-${item.id}`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          {product?.imageUrl ? (
-                            <img src={product.imageUrl} alt={item.productName} className="h-8 w-8 rounded object-cover shrink-0" />
-                          ) : (
-                            <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
-                              <Package className="h-4 w-4 text-muted-foreground/40" />
-                            </div>
-                          )}
+                          <ProductImage src={product?.imageUrl} alt={item.productName} className="h-8 w-8 rounded" iconClassName="h-4 w-4" fallbackIconColor="text-muted-foreground/40" />
                           <div className="min-w-0 truncate">
                             <span className="font-medium">{item.quantity}x</span>{" "}
                             <span className={product ? "underline decoration-dotted underline-offset-2" : ""}>{item.productName}</span>
@@ -1939,13 +1928,7 @@ export default function RestaurantOrders() {
               <div className="space-y-2">
                 {editItems.map((item: any, index) => (
                   <div key={item.id} className="flex items-center gap-2.5 p-3 rounded-xl bg-muted/30" data-testid={`edit-item-${item.productId}`}>
-                    {item.productImageUrl ? (
-                      <img src={item.productImageUrl} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
-                    ) : (
-                      <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    )}
+                    <ProductImage src={item.productImageUrl} className="h-9 w-9 rounded" iconClassName="h-4 w-4" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{item.productName}</p>
                       <p className="text-xs text-muted-foreground">{parseFloat(item.unitPrice).toFixed(2)}€ {t("orders", "perUnit")}</p>
