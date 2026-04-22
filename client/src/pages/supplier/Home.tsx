@@ -12,6 +12,7 @@ import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
 import {
   SUPPLIER_ORDER_COL_DEFAULTS,
+  SUPPLIER_ORDER_COL_MIN_WIDTHS,
   SUPPLIER_ORDER_COLS_STORAGE_KEY,
   SUPPLIER_ORDER_DENSITY_STORAGE_KEY,
   type SupplierOrderColKey,
@@ -278,11 +279,11 @@ export default function SupplierHome() {
     () => ["orderNo", "status", "restaurant", "items", "deliveryDate", "createdAt", "total"],
     [],
   );
-  const { gridTemplate: deliveriesGridTemplate, startResize: startDeliveriesColResize, containerRef: deliveriesContainerRef } = useResizableColumns<SupplierOrderColKey>(
+  const { gridTemplate: deliveriesGridTemplate, startResize: startDeliveriesColResize, containerRef: deliveriesContainerRef, tableMinWidth: deliveriesTableMinWidth } = useResizableColumns<SupplierOrderColKey>(
     SUPPLIER_ORDER_COLS_STORAGE_KEY,
     SUPPLIER_ORDER_COL_DEFAULTS,
     deliveriesTableKeys,
-    { flexKey: "deliveryDate" },
+    { flexKey: "deliveryDate", minWidths: SUPPLIER_ORDER_COL_MIN_WIDTHS },
   );
   const [deliveriesRowDensity] = useState<RowDensity>(() => {
     try {
@@ -526,19 +527,21 @@ export default function SupplierHome() {
 
             {/* Desktop: Excel-style table (mirrors Bestellungen page) */}
             <div className="hidden md:block">
-              <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="deliveries-table">
+              <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="deliveries-table">
+              <div className="md:overflow-x-auto">
+              <div style={{ minWidth: deliveriesTableMinWidth }}>
                 <div
                   ref={deliveriesContainerRef}
-                  className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
+                  className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border backdrop-blur-sm`}
                   style={{ gridTemplateColumns: deliveriesGridTemplate }}
                 >
                   <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("orderNo")} testId="resize-deliv-orderNo" /></div>
                   <div className="relative pr-2">Status<ColumnResizeHandle onPointerDown={startDeliveriesColResize("status")} testId="resize-deliv-status" /></div>
-                  <div className="relative pr-2">{lang === "de" ? "Restaurant" : "Ristorante"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("restaurant")} testId="resize-deliv-restaurant" /></div>
-                  <div className="relative pr-2 text-right">{lang === "de" ? "Artikel" : "Articoli"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("items")} testId="resize-deliv-items" /></div>
+                  <div className="relative pr-2 !justify-start !text-left">{lang === "de" ? "Restaurant" : "Ristorante"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("restaurant")} testId="resize-deliv-restaurant" /></div>
+                  <div className="relative pr-2 !text-right !justify-end">{lang === "de" ? "Artikel" : "Articoli"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("items")} testId="resize-deliv-items" /></div>
                   <div className="relative pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("deliveryDate")} testId="resize-deliv-deliveryDate" /></div>
                   <div className="relative pr-2">{lang === "de" ? "Erstellt" : "Creato"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("createdAt")} testId="resize-deliv-createdAt" /></div>
-                  <div className="text-right">{lang === "de" ? "Summe" : "Totale"}</div>
+                  <div className="!text-right !justify-end">{lang === "de" ? "Summe" : "Totale"}</div>
                 </div>
                 {groupedDeliveries.map((group) => (
                   <div key={`d-${group.dateKey}`} data-testid={`deliveries-group-${group.dateKey}`}>
@@ -609,6 +612,8 @@ export default function SupplierHome() {
                     )}
                   </div>
                 ))}
+              </div>
+              </div>
               </div>
             </div>
           </div>

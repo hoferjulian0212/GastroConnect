@@ -10,34 +10,62 @@ export interface UseResizableColumnsResult<K extends string> {
   resetWidths: () => void;
   isResizing: boolean;
   containerRef: React.RefObject<HTMLDivElement>;
+  /** Sum of effective minimum widths of currently visible columns (use as table min-width). */
+  tableMinWidth: number;
+}
+
+export interface UseResizableColumnsOptions<K extends string> {
+  minWidth?: number;
+  maxWidth?: number;
+  flexKey?: K;
+  /** Per-column minimum widths. Falls back to `minWidth`. */
+  minWidths?: Partial<Record<K, number>>;
 }
 
 export function useResizableColumns<K extends string>(
   storageKey: string,
   defaults: ColumnWidths<K>,
   visibleKeys: readonly K[],
-  options?: { minWidth?: number; maxWidth?: number; flexKey?: K },
+  options?: UseResizableColumnsOptions<K>,
 ): UseResizableColumnsResult<K> {
   const min = options?.minWidth ?? 60;
   const max = options?.maxWidth ?? 800;
   const flexKey = options?.flexKey;
+  const perColMin = options?.minWidths;
+
+  const getMin = useCallback(
+    (k: K): number => Math.max(min, perColMin?.[k] ?? min),
+    [min, perColMin],
+  );
 
   const [widths, setWidths] = useState<ColumnWidths<K>>(() => {
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<ColumnWidths<K>>;
-        return { ...defaults, ...parsed };
+        // Sanitize: clamp persisted widths to per-col mins so old corrupt data can't break layout
+        const merged = { ...defaults, ...parsed };
+        for (const key of Object.keys(merged) as K[]) {
+          const m = Math.max(min, perColMin?.[key] ?? min);
+          if (typeof merged[key] !== "number" || merged[key] < m) merged[key] = Math.max(m, defaults[key] ?? m);
+        }
+        return merged;
       }
     } catch {}
     return defaults;
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Persist only currently-visible column widths so hidden columns don't drift the layout
   useEffect(() => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify(widths));
+      const subset: Partial<ColumnWidths<K>> = {};
+      for (const k of visibleKeys) subset[k] = widths[k] ?? defaults[k];
+      const raw = localStorage.getItem(storageKey);
+      const merged: Partial<ColumnWidths<K>> = raw ? { ...JSON.parse(raw), ...subset } : subset;
+      localStorage.setItem(storageKey, JSON.stringify(merged));
     } catch {}
-  }, [storageKey, widths]);
+  }, [storageKey, widths, visibleKeys, defaults]);
 
   const dragRef = useRef<{ key: K; startX: number; startWidth: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -52,27 +80,19 @@ export function useResizableColumns<K extends string>(
       setIsResizing(true);
 
       const containerWidth = containerRef.current?.clientWidth ?? 0;
-      const sumOthers = visibleKeys.reduce((acc, k) => {
+      // Use MIN widths of other columns for upper-bound math so flex can shrink them sensibly
+      const sumOtherMins = visibleKeys.reduce((acc, k) => {
         if (k === key) return acc;
-        return acc + (widths[k] ?? defaults[k]);
+        return acc + getMin(k);
       }, 0);
-      const flexMin =
-        flexKey && flexKey !== key ? widths[flexKey] ?? defaults[flexKey] : 0;
-      const upperByContainer =
-        containerWidth > 0
-          ? key === flexKey
-            ? containerWidth - sumOthers
-            : containerWidth - (sumOthers - flexMin) - flexMin
-          : Infinity;
-      const upperBound = Math.max(min, Math.min(max, upperByContainer));
+      const upperByContainer = containerWidth > 0 ? containerWidth - sumOtherMins : Infinity;
+      const colMin = getMin(key);
+      const upperBound = Math.max(colMin, Math.min(max, upperByContainer));
 
       const onMove = (ev: PointerEvent) => {
         if (!dragRef.current) return;
         const dx = ev.clientX - dragRef.current.startX;
-        const next = Math.max(
-          min,
-          Math.min(upperBound, dragRef.current.startWidth + dx),
-        );
+        const next = Math.max(colMin, Math.min(upperBound, dragRef.current.startWidth + dx));
         setWidths((prev) => ({ ...prev, [dragRef.current!.key]: next }));
       };
       const onUp = () => {
@@ -89,7 +109,7 @@ export function useResizableColumns<K extends string>(
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     },
-    [widths, defaults, min, max, visibleKeys, flexKey],
+    [widths, defaults, max, visibleKeys, getMin],
   );
 
   const gridTemplate = useMemo(
@@ -97,14 +117,21 @@ export function useResizableColumns<K extends string>(
       visibleKeys
         .map((k) => {
           const w = widths[k] ?? defaults[k];
-          if (flexKey && k === flexKey) return `minmax(${w}px, 1fr)`;
-          return `${w}px`;
+          const m = getMin(k);
+          // minmax(min, target) lets browser distribute space properly when grid total < container
+          if (flexKey && k === flexKey) return `minmax(${m}px, 1fr)`;
+          return `minmax(${m}px, ${Math.max(m, w)}px)`;
         })
         .join(" "),
-    [visibleKeys, widths, defaults, flexKey],
+    [visibleKeys, widths, defaults, flexKey, getMin],
+  );
+
+  const tableMinWidth = useMemo(
+    () => visibleKeys.reduce((sum, k) => sum + getMin(k), 0),
+    [visibleKeys, getMin],
   );
 
   const resetWidths = useCallback(() => setWidths(defaults), [defaults]);
 
-  return { widths, gridTemplate, startResize, resetWidths, isResizing, containerRef };
+  return { widths, gridTemplate, startResize, resetWidths, isResizing, containerRef, tableMinWidth };
 }

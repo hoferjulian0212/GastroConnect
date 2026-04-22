@@ -32,9 +32,12 @@ import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
 import {
   RESTAURANT_ORDER_COL_DEFAULTS,
+  RESTAURANT_ORDER_COL_MIN_WIDTHS,
   RESTAURANT_ORDER_COLS_STORAGE_KEY,
   type RestaurantOrderColKey,
 } from "@/lib/orderTableConfig";
+import { Cell } from "@/components/orders/Cell";
+import { GroupHeader } from "@/components/orders/GroupHeader";
 
 interface EditableItem {
   id: string;
@@ -107,11 +110,11 @@ export default function RestaurantOrders() {
     () => ["orderNo", ...ALL_COLUMNS.filter((c) => visibleColumns.has(c)), "actions"],
     [visibleColumns],
   );
-  const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths, containerRef: tableContainerRef } = useResizableColumns<RestaurantOrderColKey>(
+  const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths, containerRef: tableContainerRef, tableMinWidth } = useResizableColumns<RestaurantOrderColKey>(
     RESTAURANT_ORDER_COLS_STORAGE_KEY,
     RESTAURANT_ORDER_COL_DEFAULTS,
     visibleResizableKeys,
-    { flexKey: "deliveryDate" },
+    { flexKey: "deliveryDate", minWidths: RESTAURANT_ORDER_COL_MIN_WIDTHS },
   );
   type RowDensity = "compact" | "normal" | "comfortable";
   const [rowDensity, setRowDensity] = useState<RowDensity>(() => {
@@ -126,6 +129,8 @@ export default function RestaurantOrders() {
   }, [rowDensity]);
   const densityRowClass = rowDensity === "compact" ? "py-1 text-[12px]" : rowDensity === "comfortable" ? "py-4 text-sm" : "py-2.5 text-sm";
   const densityHeaderClass = rowDensity === "compact" ? "py-1.5" : rowDensity === "comfortable" ? "py-4" : "py-3";
+  // Approximate sticky-header height so day group labels stick BELOW the column header (avoids them hiding behind it)
+  const groupTopOffset = rowDensity === "compact" ? "30px" : rowDensity === "comfortable" ? "52px" : "40px";
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderWithDetails | null>(null);
   const [editItems, setEditItems] = useState<EditableItem[]>([]);
@@ -953,7 +958,7 @@ export default function RestaurantOrders() {
                   <AvatarImage src={order.supplier?.profileImageUrl || undefined} />
                   <AvatarFallback className="text-[9px] font-semibold">{supplierName.substring(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <span className="truncate font-medium" data-testid={`text-supplier-${order.id}`}>{supplierName}</span>
+                <span className="truncate font-medium" data-testid={`text-supplier-${order.id}`} title={supplierName}>{supplierName}</span>
               </div>
             </div>
           )}
@@ -1628,30 +1633,56 @@ export default function RestaurantOrders() {
             groups.push({ label: "", orders: sorted });
           }
           return (
-            <div className="rounded-md border border-border bg-card overflow-hidden md:overflow-x-auto shadow-sm" data-testid="orders-table">
-              {/* Desktop column header */}
-              <div
-                ref={tableContainerRef}
-                className={`hidden md:grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass} bg-muted border-b border-border text-[11px] text-foreground/80 font-medium [&>*+*]:border-l [&>*+*]:border-border`}
-                style={{ gridTemplateColumns: gridTemplate }}
-              >
-                <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</span><ColumnResizeHandle onPointerDown={startColResize("orderNo")} testId="resize-orderNo" /></div>
-                {visibleColumns.has("status") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">Status</span><ColumnResizeHandle onPointerDown={startColResize("status")} testId="resize-status" /></div>}
-                {visibleColumns.has("supplier") && <div className="relative pr-2 overflow-hidden !justify-start !text-left"><span className="block truncate min-w-0">{lang === "de" ? "Lieferant" : "Fornitore"}</span><ColumnResizeHandle onPointerDown={startColResize("supplier")} testId="resize-supplier" /></div>}
-                {visibleColumns.has("items") && <div className="relative pr-2 overflow-hidden text-right"><span className="block truncate min-w-0">{lang === "de" ? "Artikel" : "Articoli"}</span><ColumnResizeHandle onPointerDown={startColResize("items")} testId="resize-items" /></div>}
-                {visibleColumns.has("deliveryDate") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Lieferdatum" : "Data consegna"}</span><ColumnResizeHandle onPointerDown={startColResize("deliveryDate")} testId="resize-deliveryDate" /></div>}
-                {visibleColumns.has("createdAt") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Erstellt" : "Creato"}</span><ColumnResizeHandle onPointerDown={startColResize("createdAt")} testId="resize-createdAt" /></div>}
-                {visibleColumns.has("total") && <div className="relative pr-2 overflow-hidden text-right"><span className="block truncate min-w-0">{lang === "de" ? "Summe" : "Totale"}</span><ColumnResizeHandle onPointerDown={startColResize("total")} testId="resize-total" /></div>}
-                <div></div>
-              </div>
-              {groups.map((group, gIdx) => (
-                <div key={group.label || `g-${gIdx}`} data-testid={`order-group-${group.label || 'all'}`}>
-                  {group.label && (
-                    <div className="px-4 py-1.5 bg-muted/60 border-b border-border flex items-center gap-2">
-                      <CalendarDays className="h-3.5 w-3.5 text-foreground/60" />
-                      <h3 className="text-[11px] font-medium text-foreground/80">{group.label}</h3>
-                      <span className="text-[11px] text-foreground/50">({group.orders.length})</span>
+            <div className="rounded-md border border-border bg-card shadow-sm" data-testid="orders-table">
+              {/* Single horizontal scroll container so header + rows + group separators all share min-width */}
+              <div className="md:overflow-x-auto">
+                <div className="hidden md:block" style={{ minWidth: tableMinWidth }}>
+                  {/* Sticky desktop column header */}
+                  <div
+                    ref={tableContainerRef}
+                    className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass} bg-muted border-b border-border text-[11px] text-foreground/80 font-medium [&>*+*]:border-l [&>*+*]:border-border`}
+                    style={{ gridTemplateColumns: gridTemplate }}
+                  >
+                    <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</span><ColumnResizeHandle onPointerDown={startColResize("orderNo")} testId="resize-orderNo" /></div>
+                    {visibleColumns.has("status") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">Status</span><ColumnResizeHandle onPointerDown={startColResize("status")} testId="resize-status" /></div>}
+                    {visibleColumns.has("supplier") && <div className="relative pr-2 overflow-hidden !justify-start !text-left"><span className="block truncate min-w-0">{lang === "de" ? "Lieferant" : "Fornitore"}</span><ColumnResizeHandle onPointerDown={startColResize("supplier")} testId="resize-supplier" /></div>}
+                    {visibleColumns.has("items") && <div className="relative pr-2 overflow-hidden !text-right !justify-end"><span className="block truncate min-w-0">{lang === "de" ? "Artikel" : "Articoli"}</span><ColumnResizeHandle onPointerDown={startColResize("items")} testId="resize-items" /></div>}
+                    {visibleColumns.has("deliveryDate") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Lieferdatum" : "Data consegna"}</span><ColumnResizeHandle onPointerDown={startColResize("deliveryDate")} testId="resize-deliveryDate" /></div>}
+                    {visibleColumns.has("createdAt") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Erstellt" : "Creato"}</span><ColumnResizeHandle onPointerDown={startColResize("createdAt")} testId="resize-createdAt" /></div>}
+                    {visibleColumns.has("total") && <div className="relative pr-2 overflow-hidden !text-right !justify-end"><span className="block truncate min-w-0">{lang === "de" ? "Summe" : "Totale"}</span><ColumnResizeHandle onPointerDown={startColResize("total")} testId="resize-total" /></div>}
+                    <div></div>
+                  </div>
+                  {/* Desktop body: group headers + rows live INSIDE the min-width wrapper so they scroll together */}
+                  {groups.map((group, gIdx) => (
+                    <div key={`d-${group.label || gIdx}`} data-testid={`order-group-desktop-${group.label || 'all'}`}>
+                      {group.label && (
+                        <GroupHeader
+                          label={group.label}
+                          count={group.orders.length}
+                          countLabel={group.orders.length === 1 ? (lang === "de" ? "Bestellung" : "ordine") : (lang === "de" ? "Bestellungen" : "ordini")}
+                          highlight={group.label === (lang === "de" ? "Heute" : "Oggi")}
+                          testId={`group-header-desktop-${group.label}`}
+                          topOffset={groupTopOffset}
+                        />
+                      )}
+                      {group.orders.map((order) => (
+                        <OrderRow key={`d-${order.id}`} order={order} />
+                      ))}
                     </div>
+                  ))}
+                </div>
+              </div>
+              {/* Mobile body uses card layout — no horizontal scroll needed */}
+              {groups.map((group, gIdx) => (
+                <div key={group.label || `g-${gIdx}`} className="md:hidden" data-testid={`order-group-${group.label || 'all'}`}>
+                  {group.label && (
+                    <GroupHeader
+                      label={group.label}
+                      count={group.orders.length}
+                      countLabel={group.orders.length === 1 ? (lang === "de" ? "Bestellung" : "ordine") : (lang === "de" ? "Bestellungen" : "ordini")}
+                      highlight={group.label === (lang === "de" ? "Heute" : "Oggi")}
+                      testId={`group-header-${group.label}`}
+                    />
                   )}
                   {group.orders.map((order) => (
                     <SwipeableRow

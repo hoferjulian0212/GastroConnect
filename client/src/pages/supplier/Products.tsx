@@ -30,6 +30,7 @@ import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
 import {
   INVENTORY_COL_DEFAULTS,
+  INVENTORY_COL_MIN_WIDTHS,
   INVENTORY_COLS_STORAGE_KEY,
   INVENTORY_DENSITY_STORAGE_KEY,
   type InventoryColKey,
@@ -69,7 +70,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
     INVENTORY_COLS_STORAGE_KEY,
     INVENTORY_COL_DEFAULTS,
     INVENTORY_COLS,
-    { flexKey: "product" },
+    { flexKey: "product", minWidths: INVENTORY_COL_MIN_WIDTHS },
   );
   const [rowDensity, setRowDensity] = useState<RowDensity>(() => {
     try {

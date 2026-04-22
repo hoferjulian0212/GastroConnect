@@ -25,6 +25,7 @@ import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
 import {
   RESTAURANT_ORDER_COL_DEFAULTS,
+  RESTAURANT_ORDER_COL_MIN_WIDTHS,
   RESTAURANT_ORDER_COLS_STORAGE_KEY,
   RESTAURANT_ORDER_DENSITY_STORAGE_KEY,
   type RestaurantOrderColKey,
@@ -454,11 +455,11 @@ export default function RestaurantHome() {
     () => ["orderNo", "status", "supplier", "items", "deliveryDate", "createdAt", "total"],
     [],
   );
-  const { gridTemplate: deliveriesGridTemplate, startResize: startDeliveriesColResize, containerRef: deliveriesContainerRef } = useResizableColumns<RestaurantOrderColKey>(
+  const { gridTemplate: deliveriesGridTemplate, startResize: startDeliveriesColResize, containerRef: deliveriesContainerRef, tableMinWidth: deliveriesTableMinWidth } = useResizableColumns<RestaurantOrderColKey>(
     RESTAURANT_ORDER_COLS_STORAGE_KEY,
     RESTAURANT_ORDER_COL_DEFAULTS,
     deliveriesTableKeys,
-    { flexKey: "deliveryDate" },
+    { flexKey: "deliveryDate", minWidths: RESTAURANT_ORDER_COL_MIN_WIDTHS },
   );
   const [deliveriesRowDensity] = useState<RowDensity>(() => {
     try {
@@ -986,10 +987,12 @@ export default function RestaurantHome() {
 
             {/* Desktop: Excel-style table (mirrors Bestellungen page) */}
             <div className="hidden md:block">
-              <div className="rounded-2xl border border-border bg-card overflow-hidden md:overflow-x-auto" data-testid="deliveries-table">
+              <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="deliveries-table">
+              <div className="md:overflow-x-auto">
+              <div style={{ minWidth: deliveriesTableMinWidth }}>
                 <div
                   ref={deliveriesContainerRef}
-                  className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
+                  className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border backdrop-blur-sm`}
                   style={{ gridTemplateColumns: deliveriesGridTemplate }}
                 >
                   <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("orderNo")} testId="resize-deliv-orderNo" /></div>
@@ -1088,6 +1091,8 @@ export default function RestaurantHome() {
                     )}
                   </div>
                 ))}
+              </div>
+              </div>
               </div>
             </div>
 
