@@ -1596,12 +1596,14 @@ export default function RestaurantHome() {
                       );
                     })}
                     {templates.length > 3 && (
-                      <Button variant="outline" className="w-full text-xs h-8" asChild>
-                        <Link href="/restaurant/templates" data-testid="link-more-templates">
-                          {lang === "de" ? `Alle ${templates.length} Vorlagen anzeigen` : `Mostra tutti ${templates.length} i modelli`}
-                          <ArrowRight className="h-3 w-3 ml-1" />
-                        </Link>
-                      </Button>
+                      <Link
+                        href="/restaurant/templates"
+                        className="mt-1 mx-auto flex w-fit items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-primary bg-primary/5 hover:bg-primary/10 hover-elevate active-elevate-2 transition-colors"
+                        data-testid="link-more-templates"
+                      >
+                        {lang === "de" ? `Alle ${templates.length} Vorlagen anzeigen` : `Mostra tutti ${templates.length} i modelli`}
+                        <ArrowRight className="h-3 w-3" />
+                      </Link>
                     )}
                   </div>
                 </>
