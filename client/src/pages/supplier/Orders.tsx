@@ -1484,13 +1484,13 @@ export default function SupplierOrders() {
                       style={{ gridTemplateColumns: gridTemplate }}
                     >
                       {batchMode && <div></div>}
-                      <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startColResize("orderNo")} testId="resize-orderNo" /></div>
-                      {visibleColumns.has("status") && <div className="relative pr-2">Status<ColumnResizeHandle onPointerDown={startColResize("status")} testId="resize-status" /></div>}
-                      {visibleColumns.has("restaurant") && <div className="relative pr-2">{lang === "de" ? "Kunde" : "Cliente"}<ColumnResizeHandle onPointerDown={startColResize("restaurant")} testId="resize-restaurant" /></div>}
-                      {visibleColumns.has("items") && <div className="relative pr-2 text-right">{lang === "de" ? "Artikel" : "Articoli"}<ColumnResizeHandle onPointerDown={startColResize("items")} testId="resize-items" /></div>}
-                      {visibleColumns.has("deliveryDate") && <div className="relative pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}<ColumnResizeHandle onPointerDown={startColResize("deliveryDate")} testId="resize-deliveryDate" /></div>}
-                      {visibleColumns.has("createdAt") && <div className="relative pr-2">{lang === "de" ? "Erstellt" : "Creato"}<ColumnResizeHandle onPointerDown={startColResize("createdAt")} testId="resize-createdAt" /></div>}
-                      {visibleColumns.has("total") && <div className="relative pr-2 text-right">{lang === "de" ? "Summe" : "Totale"}<ColumnResizeHandle onPointerDown={startColResize("total")} testId="resize-total" /></div>}
+                      <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</span><ColumnResizeHandle onPointerDown={startColResize("orderNo")} testId="resize-orderNo" /></div>
+                      {visibleColumns.has("status") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">Status</span><ColumnResizeHandle onPointerDown={startColResize("status")} testId="resize-status" /></div>}
+                      {visibleColumns.has("restaurant") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Kunde" : "Cliente"}</span><ColumnResizeHandle onPointerDown={startColResize("restaurant")} testId="resize-restaurant" /></div>}
+                      {visibleColumns.has("items") && <div className="relative pr-2 overflow-hidden text-right"><span className="block truncate min-w-0">{lang === "de" ? "Artikel" : "Articoli"}</span><ColumnResizeHandle onPointerDown={startColResize("items")} testId="resize-items" /></div>}
+                      {visibleColumns.has("deliveryDate") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Lieferdatum" : "Data consegna"}</span><ColumnResizeHandle onPointerDown={startColResize("deliveryDate")} testId="resize-deliveryDate" /></div>}
+                      {visibleColumns.has("createdAt") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Erstellt" : "Creato"}</span><ColumnResizeHandle onPointerDown={startColResize("createdAt")} testId="resize-createdAt" /></div>}
+                      {visibleColumns.has("total") && <div className="relative pr-2 overflow-hidden text-right"><span className="block truncate min-w-0">{lang === "de" ? "Summe" : "Totale"}</span><ColumnResizeHandle onPointerDown={startColResize("total")} testId="resize-total" /></div>}
                       <div></div>
                     </div>
                     {groups.map((group, gIdx) => (
