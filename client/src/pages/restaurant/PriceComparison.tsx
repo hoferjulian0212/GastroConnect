@@ -19,7 +19,7 @@ import {
 import {
   TrendingDown, Package, ChevronDown, ChevronUp, Tag, ShoppingCart, Search,
   ArrowUpDown, ArrowUp, ArrowDown, Filter as FilterIcon, X, Check, Sparkles,
-  AlertTriangle, Truck, Clock, CheckCircle2,
+  AlertTriangle, Truck, Clock, CheckCircle2, ArrowRight,
 } from "lucide-react";
 import type { ProductWithSupplierAndPromotion } from "@shared/schema";
 
@@ -908,7 +908,7 @@ interface ComparisonCardProps {
   movMap?: Record<string, { minimumValue: string; zone: string | null }>;
 }
 
-function ComparisonCard({ group, rank, lang, expanded, onToggle, onQuickSwap, isSwapping, movMap }: ComparisonCardProps) {
+function ComparisonCard({ group, lang, expanded, onToggle, onQuickSwap, isSwapping, movMap }: ComparisonCardProps) {
   const cheapest = group.cheapestOffer;
   const current = group.currentOffer;
   const anyPromo = group.offers.some(o => o.hasPromo);
@@ -919,138 +919,150 @@ function ComparisonCard({ group, rank, lang, expanded, onToggle, onQuickSwap, is
   const currentSupName = current?.product.supplier?.companyName || current?.product.supplier?.name || "—";
   const cheapestMov = movMap?.[cheapest.product.supplierId];
 
+  const moq = cheapest.product.minOrderQuantity ?? 1;
+  const swapQty = Math.max(1, moq, Math.round(group.monthlyVolume) || 1);
+
   return (
     <div
-      className="rounded-xl border border-border bg-card overflow-hidden shadow-sm hover-elevate"
+      className="rounded-xl border border-border bg-card overflow-hidden shadow-sm"
       data-testid={`comparison-card-${group.key}`}
     >
-      {/* ── Header (always visible) ──────────────────────────────────── */}
-      <div className="px-3.5 md:px-4 pt-3 pb-3">
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="font-semibold text-sm">{group.name}</span>
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{group.unit}</Badge>
-              <span className="text-[11px] text-muted-foreground">{group.category}</span>
-              <span className="text-[11px] text-muted-foreground">· {group.offers.length} {lang === "de" ? "Anbieter" : "Fornitori"}</span>
-              {anyPromo && (
-                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
-                  <Tag className="h-2.5 w-2.5" />
-                  {promoDays !== null && promoDays >= 0
-                    ? (lang === "de" ? `Aktion · ${promoDays}T` : `Promo · ${promoDays}g`)
-                    : (lang === "de" ? "Aktion" : "Promo")}
-                </Badge>
-              )}
-              {group.isAlreadyBest && (
-                <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 gap-0.5">
-                  <CheckCircle2 className="h-2.5 w-2.5" />
-                  {lang === "de" ? "Bestpreis" : "Migliore"}
-                </Badge>
-              )}
+      {/* ── Header: product name + headline saving ───────────────────── */}
+      <div className="px-4 pt-3.5 pb-3 flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-base leading-tight truncate" data-testid={`text-product-name-${group.key}`}>
+            {group.name}
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
+            <span>{group.category}</span>
+            <span>·</span>
+            <span>{group.offers.length} {lang === "de" ? "Anbieter" : "fornitori"}</span>
+            <span>·</span>
+            <span>{lang === "de" ? "pro" : "per"} {group.unit}</span>
+            {anyPromo && (
+              <Badge variant="destructive" className="text-[9px] px-1.5 py-0 gap-0.5 ml-0.5">
+                <Tag className="h-2.5 w-2.5" />
+                {promoDays !== null && promoDays >= 0
+                  ? (lang === "de" ? `Aktion · ${promoDays}T` : `Promo · ${promoDays}g`)
+                  : (lang === "de" ? "Aktion" : "Promo")}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Headline saving / "already best" */}
+        {!group.isAlreadyBest ? (
+          <div className="text-right shrink-0">
+            <div className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold">
+              {lang === "de" ? "Du sparst" : "Risparmi"}
             </div>
-
-            {/* Aktuell vs. Bester */}
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-2 sm:gap-3 items-stretch mt-2">
-              {/* Aktuell */}
-              <div className="min-w-0">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                  {lang === "de" ? "Du nutzt heute" : "Stai usando"}
-                </div>
-                {current ? (
-                  <>
-                    <div className="text-sm font-semibold tabular-nums truncate">
-                      {formatEuro(current.effectivePrice)}€
-                      <span className="text-xs font-normal text-muted-foreground"> / {group.unit}</span>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground truncate">{currentSupName}</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-sm font-semibold text-muted-foreground/70 truncate">
-                      —
-                    </div>
-                    <div className="text-[11px] text-muted-foreground/60 truncate">
-                      {lang === "de" ? "Noch nicht bestellt" : "Mai ordinato"}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Differenz / Saving */}
-              {!group.isAlreadyBest ? (
-                <div className="text-center px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 self-stretch flex flex-col justify-center min-w-[90px]">
-                  {group.monthlyVolume > 0 ? (
-                    <>
-                      <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400 leading-tight tabular-nums">
-                        −{formatEuro(group.monthlySaving)}€
-                      </div>
-                      <div className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 leading-tight">
-                        / {lang === "de" ? "Monat" : "mese"} · −{group.unitDiffPercent}%
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400 leading-tight tabular-nums">
-                        −{formatEuro(group.unitDiff)}€
-                      </div>
-                      <div className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 leading-tight">
-                        / {group.unit} · −{group.unitDiffPercent}%
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center px-2.5 py-1.5 rounded-lg bg-muted/40 self-stretch flex flex-col justify-center min-w-[90px]">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" />
-                  <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-                    {lang === "de" ? "optimal" : "ottimale"}
-                  </div>
-                </div>
-              )}
-
-              {/* Bester */}
-              <div className="min-w-0 sm:text-right">
-                <div className="text-[10px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-medium">
-                  {lang === "de" ? "Bester Preis" : "Miglior prezzo"}
-                </div>
-                <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 truncate tabular-nums">
-                  {formatEuro(cheapest.effectivePrice)}€
-                  <span className="text-xs font-normal text-muted-foreground"> / {group.unit}</span>
-                </div>
-                <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1 sm:justify-end">
-                  <TrendingDown className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  {cheapestSupName}
-                </div>
-              </div>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums leading-none mt-0.5">
+              −{formatEuro(group.unitDiff)}€
             </div>
+            <div className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 mt-0.5">
+              −{group.unitDiffPercent}% / {group.unit}
+            </div>
+          </div>
+        ) : (
+          <Badge className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 gap-1 shrink-0">
+            <CheckCircle2 className="h-3 w-3" />
+            {lang === "de" ? "Bereits Bestpreis" : "Già miglior prezzo"}
+          </Badge>
+        )}
+      </div>
 
-            {/* Trust signals row */}
-            <div className="mt-2 flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
-              {group.monthlyVolume > 0 && (
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  ~{Math.round(group.monthlyVolume)} {group.unit}/{lang === "de" ? "Monat" : "mese"}
-                </span>
-              )}
-              {cheapestMov && (
-                <span className="inline-flex items-center gap-1">
-                  <Truck className="h-3 w-3" />
-                  {lang === "de" ? "MBW" : "Min."} {formatEuro(parseFloat(cheapestMov.minimumValue))}€
-                </span>
-              )}
-              {cheapest.product.minOrderQuantity && cheapest.product.minOrderQuantity > 1 && (
-                <span className="inline-flex items-center gap-1 text-orange-600 dark:text-orange-400">
-                  <AlertTriangle className="h-3 w-3" />
-                  MOQ {cheapest.product.minOrderQuantity} {group.unit}
-                </span>
-              )}
+      {/* ── Before → After comparison ────────────────────────────────── */}
+      <div className="px-4 pb-3">
+        <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-stretch">
+          {/* Heute / Aktuell */}
+          <div className="rounded-lg bg-muted/40 px-3 py-2.5 min-w-0">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
+              {lang === "de" ? "Heute" : "Oggi"}
+            </div>
+            {current ? (
+              <>
+                <div className="text-base font-semibold tabular-nums leading-tight">
+                  {formatEuro(current.effectivePrice)}€
+                </div>
+                <div className="text-[11px] text-muted-foreground truncate mt-1 flex items-center gap-1.5">
+                  <Avatar className="h-4 w-4 shrink-0">
+                    {current.product.supplier?.profileImageUrl ? <AvatarImage src={current.product.supplier.profileImageUrl} /> : null}
+                    <AvatarFallback className="text-[8px] bg-muted">{currentSupName.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{currentSupName}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-base font-semibold text-muted-foreground/60 leading-tight">—</div>
+                <div className="text-[11px] text-muted-foreground/60 mt-1">
+                  {lang === "de" ? "Noch nicht bestellt" : "Mai ordinato"}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Arrow */}
+          <div className="flex items-center justify-center px-0.5 text-emerald-500/70">
+            <ArrowRight className="h-4 w-4" />
+          </div>
+
+          {/* Bester Preis */}
+          <div className={`rounded-lg px-3 py-2.5 min-w-0 ${group.isAlreadyBest ? "bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40" : "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40"}`}>
+            <div className="text-[10px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-semibold mb-1 flex items-center gap-1">
+              <TrendingDown className="h-3 w-3" />
+              {lang === "de" ? "Bester Preis" : "Miglior prezzo"}
+            </div>
+            <div className="text-base font-bold text-emerald-700 dark:text-emerald-400 tabular-nums leading-tight">
+              {formatEuro(cheapest.effectivePrice)}€
+            </div>
+            <div className="text-[11px] text-muted-foreground truncate mt-1 flex items-center gap-1.5">
+              <Avatar className="h-4 w-4 shrink-0">
+                {cheapest.product.supplier?.profileImageUrl ? <AvatarImage src={cheapest.product.supplier.profileImageUrl} /> : null}
+                <AvatarFallback className="text-[8px] bg-emerald-200/50 dark:bg-emerald-900/40">{cheapestSupName.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span className="truncate font-medium text-foreground">{cheapestSupName}</span>
             </div>
           </div>
         </div>
 
-        {/* Action row */}
-        {!group.isAlreadyBest && (
-          <div className="mt-3 flex items-center gap-2">
+        {/* Monthly impact + trust signals (compact, single row) */}
+        {(group.monthlyVolume > 0 || cheapestMov || (moq > 1)) && (
+          <div className="mt-2.5 flex items-center gap-x-3 gap-y-1 flex-wrap text-[11px] text-muted-foreground">
+            {group.monthlyVolume > 0 && group.monthlySaving > 0 && !group.isAlreadyBest && (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {lang === "de"
+                  ? <>~{Math.round(group.monthlyVolume)} {group.unit}/Monat → <span className="font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">−{formatEuro(group.monthlySaving)}€/Monat</span></>
+                  : <>~{Math.round(group.monthlyVolume)} {group.unit}/mese → <span className="font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">−{formatEuro(group.monthlySaving)}€/mese</span></>}
+              </span>
+            )}
+            {group.monthlyVolume > 0 && (group.monthlySaving === 0 || group.isAlreadyBest) && (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                ~{Math.round(group.monthlyVolume)} {group.unit}/{lang === "de" ? "Monat" : "mese"}
+              </span>
+            )}
+            {cheapestMov && (
+              <span className="inline-flex items-center gap-1">
+                <Truck className="h-3 w-3" />
+                {lang === "de" ? "MBW" : "Min."} {formatEuro(parseFloat(cheapestMov.minimumValue))}€
+              </span>
+            )}
+            {moq > 1 && (
+              <span className="inline-flex items-center gap-1 text-orange-600 dark:text-orange-400">
+                <AlertTriangle className="h-3 w-3" />
+                {lang === "de" ? "Mindestmenge" : "Min."} {moq} {group.unit}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Action bar ───────────────────────────────────────────────── */}
+      <div className="border-t border-border/60 bg-muted/20 px-3 py-2.5 flex items-center gap-2 flex-wrap">
+        {!group.isAlreadyBest ? (
+          <>
             <Button
               size="sm"
               onClick={(e) => { e.stopPropagation(); onQuickSwap(); }}
@@ -1058,10 +1070,12 @@ function ComparisonCard({ group, rank, lang, expanded, onToggle, onQuickSwap, is
               className="bg-emerald-500 hover:bg-emerald-400 text-white h-8 text-xs"
               data-testid={`button-quick-swap-${group.key}`}
             >
-              <ShoppingCart className="h-3.5 w-3.5 mr-1" />
-              {lang === "de" ? "In Warenkorb" : "Nel carrello"}
-              {group.monthlyVolume > 0 && <span className="ml-1 opacity-80">({Math.round(group.monthlyVolume)} {group.unit})</span>}
+              <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+              {lang === "de" ? `Bei ${cheapestSupName} bestellen` : `Ordina da ${cheapestSupName}`}
             </Button>
+            <span className="text-[11px] text-muted-foreground">
+              {swapQty} {group.unit} → {lang === "de" ? "Warenkorb" : "carrello"}
+            </span>
             <Button
               variant="ghost"
               size="sm"
@@ -1074,23 +1088,20 @@ function ComparisonCard({ group, rank, lang, expanded, onToggle, onQuickSwap, is
                 : <>{lang === "de" ? `Alle ${group.offers.length} Anbieter` : `Tutti i ${group.offers.length}`} <ChevronDown className="h-3.5 w-3.5 ml-1" /></>
               }
             </Button>
-          </div>
-        )}
-        {group.isAlreadyBest && (
-          <div className="mt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onToggle}
-              className="h-7 text-xs"
-              data-testid={`toggle-${group.key}`}
-            >
-              {expanded
-                ? <>{lang === "de" ? "Weniger" : "Meno"} <ChevronUp className="h-3.5 w-3.5 ml-1" /></>
-                : <>{lang === "de" ? `Alle ${group.offers.length} Anbieter zeigen` : `Mostra ${group.offers.length}`} <ChevronDown className="h-3.5 w-3.5 ml-1" /></>
-              }
-            </Button>
-          </div>
+          </>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggle}
+            className="h-7 text-xs ml-auto"
+            data-testid={`toggle-${group.key}`}
+          >
+            {expanded
+              ? <>{lang === "de" ? "Weniger" : "Meno"} <ChevronUp className="h-3.5 w-3.5 ml-1" /></>
+              : <>{lang === "de" ? `Alle ${group.offers.length} Anbieter zeigen` : `Mostra ${group.offers.length}`} <ChevronDown className="h-3.5 w-3.5 ml-1" /></>
+            }
+          </Button>
         )}
       </div>
 
