@@ -106,11 +106,12 @@ export default function OrderDetail() {
   };
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ status, requestedDeliveryDate }: { status: string; requestedDeliveryDate?: string }) => {
+    mutationFn: async ({ status, requestedDeliveryDate, deliveryNotes }: { status: string; requestedDeliveryDate?: string; deliveryNotes?: string }) => {
       await apiRequest("PATCH", `/api/orders/${orderId}/status`, {
         status,
         changedBy: currentUser?.id,
         ...(requestedDeliveryDate ? { requestedDeliveryDate } : {}),
+        ...(deliveryNotes !== undefined ? { deliveryNotes } : {}),
       });
     },
     onSuccess: () => {
@@ -820,17 +821,22 @@ export default function OrderDetail() {
 
             {/* ETA banner */}
             {order.status === "in_delivery" && order.requestedDeliveryDate && (
-              <div className="rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 p-4 flex items-center gap-3" data-testid="eta-card">
+              <div className="rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 p-4 flex items-start gap-3" data-testid="eta-card">
                 <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0">
                   <Truck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
                     {lang === "de" ? "Voraussichtliche Lieferung" : "Consegna prevista"}
                   </p>
                   <p className="text-sm font-bold text-purple-700 dark:text-purple-300 truncate">
                     {new Date(order.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
                   </p>
+                  {order.deliveryNotes && (
+                    <p className="text-xs text-purple-700 dark:text-purple-300/90 mt-1.5 whitespace-pre-wrap" data-testid="text-delivery-notes">
+                      {order.deliveryNotes}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -1021,9 +1027,9 @@ export default function OrderDetail() {
           onOpenChange={(open) => { if (!open) setShowDatePicker(false); }}
           supplierId={isSupplier ? (currentUser?.id || "") : order.supplierId}
           restaurantId={isSupplier ? order.restaurantId : (currentUser?.id || "")}
-          onConfirm={(date) => {
+          onConfirm={(date, deliveryNotes) => {
             if (isSupplier && (st === "confirmed" || st === "partially_confirmed")) {
-              updateStatusMutation.mutate({ status: "in_delivery", requestedDeliveryDate: date });
+              updateStatusMutation.mutate({ status: "in_delivery", requestedDeliveryDate: date, deliveryNotes });
               setShowDatePicker(false);
             } else {
               reschedMutation.mutate(date);

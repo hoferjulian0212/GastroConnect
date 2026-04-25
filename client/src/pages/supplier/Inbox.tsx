@@ -239,8 +239,8 @@ export default function SupplierInbox() {
   });
 
   const updateOrderStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status, requestedDeliveryDate }: { orderId: string; status: string; requestedDeliveryDate?: string }) => {
-      return await apiRequest("PATCH", `/api/orders/${orderId}/status`, { status, changedBy: currentUser?.id, requestedDeliveryDate: requestedDeliveryDate || undefined });
+    mutationFn: async ({ orderId, status, requestedDeliveryDate, deliveryNotes }: { orderId: string; status: string; requestedDeliveryDate?: string; deliveryNotes?: string }) => {
+      return await apiRequest("PATCH", `/api/orders/${orderId}/status`, { status, changedBy: currentUser?.id, requestedDeliveryDate: requestedDeliveryDate || undefined, deliveryNotes: deliveryNotes || undefined });
     },
     onSuccess: (_, variables) => {
       toast({ title: "Status aktualisiert", description: "Der Bestellstatus wurde erfolgreich geändert." });
@@ -2687,11 +2687,11 @@ export default function SupplierInbox() {
         supplierId={currentUser?.id || ""}
         restaurantId={deliveryDatePicker?.restaurantId || ""}
         isPending={updateOrderStatusMutation.isPending}
-        onConfirm={(date) => {
+        onConfirm={(date, deliveryNotes) => {
           if (deliveryDatePicker) {
             if (cardWizard?.action === "in_delivery") {
               updateOrderStatusMutation.mutate(
-                { orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date },
+                { orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date, deliveryNotes },
                 { onSuccess: () => { setDeliveryDatePicker(null); setCardWizard(null); } }
               );
             } else {

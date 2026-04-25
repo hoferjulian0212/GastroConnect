@@ -183,11 +183,12 @@ export default function SupplierHome() {
   };
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status, requestedDeliveryDate }: { orderId: string; status: string; requestedDeliveryDate?: string }) => {
+    mutationFn: async ({ orderId, status, requestedDeliveryDate, deliveryNotes }: { orderId: string; status: string; requestedDeliveryDate?: string; deliveryNotes?: string }) => {
       await apiRequest("PATCH", `/api/orders/${orderId}/status`, {
         status,
         changedBy: currentUser?.id,
         ...(requestedDeliveryDate ? { requestedDeliveryDate } : {}),
+        ...(deliveryNotes !== undefined ? { deliveryNotes } : {}),
       });
     },
     onSuccess: () => {
@@ -1410,10 +1411,10 @@ export default function SupplierHome() {
           onOpenChange={(open) => { if (!open) setDeliveryDatePicker(null); }}
           supplierId={currentUser?.id || ""}
           restaurantId={deliveryDatePicker.restaurantId}
-          onConfirm={(date) => {
+          onConfirm={(date, deliveryNotes) => {
             const order = [...(upcomingDeliveries || []), ...(recentOrders || [])].find(o => o.id === deliveryDatePicker.orderId);
             if (order && order.status === "confirmed") {
-              updateStatusMutation.mutate({ orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date });
+              updateStatusMutation.mutate({ orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date, deliveryNotes });
             } else {
               setDeliveryDateMutation.mutate({ orderId: deliveryDatePicker.orderId, requestedDeliveryDate: date });
             }

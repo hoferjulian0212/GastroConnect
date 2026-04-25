@@ -81,6 +81,7 @@ export const orders = pgTable("orders", {
   status: orderStatusEnum("status").default("pending").notNull(),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   notes: text("notes"),
+  deliveryNotes: text("delivery_notes"),
   requestedDeliveryDate: text("requested_delivery_date"),
   originalDeliveryDate: text("original_delivery_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

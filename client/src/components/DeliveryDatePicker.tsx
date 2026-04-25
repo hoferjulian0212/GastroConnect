@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Truck, CalendarIcon, Info } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Truck, CalendarIcon, Info, StickyNote } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { addDays, isBefore, startOfDay, format } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -16,19 +17,22 @@ interface DeliveryDatePickerProps {
   onOpenChange: (open: boolean) => void;
   supplierId: string;
   restaurantId: string;
-  onConfirm: (date: string) => void;
+  onConfirm: (date: string, notes?: string) => void;
   isPending?: boolean;
+  showNotesField?: boolean;
 }
 
-export default function DeliveryDatePicker({ open, onOpenChange, supplierId, restaurantId, onConfirm, isPending }: DeliveryDatePickerProps) {
+export default function DeliveryDatePicker({ open, onOpenChange, supplierId, restaurantId, onConfirm, isPending, showNotesField = true }: DeliveryDatePickerProps) {
   const { lang } = useLanguage();
   const t = useT(lang);
   const dateLocale = lang === "it" ? it : de;
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [notes, setNotes] = useState("");
   const [prevOpen, setPrevOpen] = useState(false);
 
   if (open && !prevOpen) {
     setSelectedDate(undefined);
+    setNotes("");
   }
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -60,7 +64,8 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
   const handleConfirm = () => {
     if (selectedDate) {
       const dateStr = format(selectedDate, "yyyy-MM-dd");
-      onConfirm(dateStr);
+      const trimmedNotes = notes.trim();
+      onConfirm(dateStr, trimmedNotes ? trimmedNotes : undefined);
     }
   };
 
@@ -130,6 +135,25 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
               <span className="text-sm font-medium" data-testid="text-selected-delivery-date">
                 {format(selectedDate, "EEEE, dd. MMMM yyyy", { locale: dateLocale })}
               </span>
+            </div>
+          )}
+
+          {showNotesField && (
+            <div className="space-y-1.5">
+              <label htmlFor="delivery-notes-input" className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />
+                {lang === "it" ? "Note di consegna (opzionale)" : "Lieferhinweis (optional)"}
+              </label>
+              <Textarea
+                id="delivery-notes-input"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={lang === "it" ? "es. La consegna arriverà intorno alle 15:00" : "z. B. Lieferung kommt voraussichtlich um 15:00 Uhr"}
+                rows={2}
+                maxLength={500}
+                className="resize-none text-sm"
+                data-testid="textarea-delivery-notes"
+              />
             </div>
           )}
 

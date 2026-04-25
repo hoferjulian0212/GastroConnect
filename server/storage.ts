@@ -48,7 +48,7 @@ export interface IStorage {
   getRecentOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]>;
   getOrder(id: string): Promise<OrderWithDetails | undefined>;
   createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
-  updateOrderStatus(id: string, status: string, requestedDeliveryDate?: string): Promise<Order | undefined>;
+  updateOrderStatus(id: string, status: string, requestedDeliveryDate?: string, deliveryNotes?: string | null): Promise<Order | undefined>;
   updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string, requestedDeliveryDate?: string | null): Promise<Order | undefined>;
   updateOrderItemConfirmation(orderItemId: string, confirmedQuantity: number, rejectedQuantity: number): Promise<OrderItem | undefined>;
 
@@ -448,10 +448,13 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async updateOrderStatus(id: string, status: string, requestedDeliveryDate?: string): Promise<Order | undefined> {
+  async updateOrderStatus(id: string, status: string, requestedDeliveryDate?: string, deliveryNotes?: string | null): Promise<Order | undefined> {
     const setData: any = { status: status as any, updatedAt: new Date() };
     if (requestedDeliveryDate !== undefined) {
       setData.requestedDeliveryDate = requestedDeliveryDate;
+    }
+    if (deliveryNotes !== undefined) {
+      setData.deliveryNotes = deliveryNotes;
     }
     const [updated] = await db
       .update(orders)
