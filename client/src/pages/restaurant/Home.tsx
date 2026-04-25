@@ -20,7 +20,6 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 import CountUp from "@/components/CountUp";
-import { useSavingsPotential } from "@/hooks/use-savings-potential";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
@@ -38,7 +37,6 @@ import {
 
 export default function RestaurantHome() {
   const { currentUser } = useUser();
-  const { totalMonthlySaving, switchableCount, isLoading: savingsLoading } = useSavingsPotential(currentUser?.id);
   const { lang } = useLanguage();
   const t = useT(lang);
   const { toast } = useToast();
@@ -885,28 +883,6 @@ export default function RestaurantHome() {
                   <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-active-orders">{ordersLoading ? "..." : <CountUp end={pendingOrdersCount} duration={800} />}</p>
                   <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-orange-500/20">
                     <ShoppingBag className="h-4 w-4 md:h-5 md:w-5 text-orange-400" />
-                  </div>
-                </div>
-              </div>
-            </Link>
-            <Link href="/restaurant/price-comparison" data-testid="kpi-card-savings-potential">
-              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Wechselplan" : "Piano"}</span><span className="hidden md:inline">{lang === "de" ? "Sparpotential/Monat" : "Risparmio/mese"}</span></span>
-                  {switchableCount > 0 && (
-                    <span className="text-[10px] md:text-xs text-emerald-400 font-semibold" data-testid="kpi-savings-count">·{switchableCount}</span>
-                  )}
-                </div>
-                <div className="flex items-end justify-between mt-auto">
-                  {savingsLoading ? (
-                    <Skeleton className="h-8 w-16 md:h-10 md:w-20 bg-white/10" />
-                  ) : totalMonthlySaving > 0 ? (
-                    <p className="text-2xl md:text-4xl font-bold text-emerald-300 leading-none" data-testid="kpi-savings-potential"><CountUp end={totalMonthlySaving} duration={1200} suffix="€" formatter={(v) => Math.round(v).toLocaleString(lang === "de" ? "de-DE" : "it-IT")} /></p>
-                  ) : (
-                    <p className="text-3xl md:text-4xl font-bold text-gray-500 leading-none" data-testid="kpi-savings-potential">--</p>
-                  )}
-                  <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-emerald-500/20">
-                    <TrendingDown className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
                   </div>
                 </div>
               </div>
