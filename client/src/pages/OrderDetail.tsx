@@ -3,13 +3,17 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { useT, getOrderStatus } from "@/lib/translations";
+import { getOrderStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProductImage } from "@/components/ProductImage";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TONE, orderStatusTone } from "@/lib/status-colors";
+import { motion } from "framer-motion";
+import { ReorderSheet } from "@/components/ReorderSheet";
+import CountUp from "@/components/CountUp";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
@@ -24,13 +28,13 @@ export default function OrderDetail() {
   const orderId = params?.id;
   const { currentUser, currentRole } = useUser();
   const { lang } = useLanguage();
-  const t = useT();
   const { toast } = useToast();
   const dateLocale = lang === "de" ? de : it;
   const isSupplier = currentRole === "supplier";
 
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showReorderSheet, setShowReorderSheet] = useState(false);
   const [showPartialConfirm, setShowPartialConfirm] = useState(false);
   const [changeRequestText, setChangeRequestText] = useState("");
 
@@ -252,41 +256,9 @@ export default function OrderDetail() {
     }
   };
 
-  const getStatusBg = (status: string) => {
-    switch (status) {
-      case "pending": return "bg-yellow-100 dark:bg-yellow-900/40";
-      case "confirmed": return "bg-blue-100 dark:bg-blue-900/40";
-      case "partially_confirmed": return "bg-orange-100 dark:bg-orange-900/40";
-      case "in_delivery": return "bg-purple-100 dark:bg-purple-900/40";
-      case "delivered": return "bg-green-100 dark:bg-green-900/40";
-      case "cancelled": return "bg-red-100 dark:bg-red-900/40";
-      default: return "bg-muted";
-    }
-  };
-
-  const getStatusTextColor = (status: string) => {
-    switch (status) {
-      case "pending": return "text-yellow-700 dark:text-yellow-400";
-      case "confirmed": return "text-blue-700 dark:text-blue-400";
-      case "partially_confirmed": return "text-orange-700 dark:text-orange-400";
-      case "in_delivery": return "text-purple-700 dark:text-purple-400";
-      case "delivered": return "text-green-700 dark:text-green-400";
-      case "cancelled": return "text-red-700 dark:text-red-400";
-      default: return "text-muted-foreground";
-    }
-  };
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-      case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
-      case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
-      case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
-      case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
-      default: return "bg-muted text-muted-foreground";
-    }
-  };
+  const getStatusBg = (status: string) => TONE[orderStatusTone(status)].bg;
+  const getStatusTextColor = (status: string) => TONE[orderStatusTone(status)].text;
+  const getStatusBadgeColor = (status: string) => TONE[orderStatusTone(status)].badge;
 
   const getTimelineDotColor = (status: string, isCompleted: boolean) => {
     if (!isCompleted) return "border-muted-foreground/30 bg-background";
@@ -504,9 +476,9 @@ export default function OrderDetail() {
       icon: RefreshCw,
       style: "secondary",
       category: "fulfillment",
-      action: () => reorderMutation.mutate(),
+      action: () => setShowReorderSheet(true),
       testId: "action-reorder",
-      disabled: reorderMutation.isPending,
+      disabled: false,
     });
     actions.push({
       label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",
@@ -742,7 +714,9 @@ export default function OrderDetail() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-total">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Gesamt" : "Totale"}</p>
-              <p className="text-2xl md:text-3xl font-bold tracking-tight mt-1.5 leading-none" data-testid="text-order-total">{Number(order.totalAmount).toFixed(2)}€</p>
+              <p className="text-2xl md:text-3xl font-bold tracking-tight mt-1.5 leading-none tabular-nums" data-testid="text-order-total">
+                <CountUp end={Number(order.totalAmount)} duration={900} decimals={2} suffix="€" />
+              </p>
             </div>
             <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-delivery">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Lieferdatum" : "Data consegna"}</p>
@@ -786,11 +760,24 @@ export default function OrderDetail() {
                     const stepEntry = timeline.find((e: any) => e.toStatus === step || (step === "confirmed" && e.toStatus === "partially_confirmed"));
                     const nodes = [
                       <div key={`step-${step}`} className="flex flex-col items-center gap-2 shrink-0 w-20" data-testid={`stepper-${step}`}>
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center transition-all shrink-0 ${completed ? `${getStatusBg(step)} ${isCurrent ? 'ring-2 ring-offset-2 ring-offset-card ring-primary/40' : ''}` : 'bg-muted'}`}>
+                        <motion.div
+                          className={`relative h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${completed ? getStatusBg(step) : 'bg-muted'}`}
+                          initial={{ scale: 0.6, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: "spring", stiffness: 380, damping: 26, delay: i * 0.08 }}
+                        >
+                          {isCurrent && (
+                            <motion.span
+                              aria-hidden
+                              className="absolute inset-0 rounded-full ring-2 ring-primary/50"
+                              animate={{ scale: [1, 1.18, 1], opacity: [0.6, 0, 0.6] }}
+                              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                            />
+                          )}
                           <div className={completed ? getStatusTextColor(step) : 'text-muted-foreground/50'}>
                             {completed && !isCurrent ? <Check className="h-4 w-4" /> : getStatusIcon(step, "h-4 w-4")}
                           </div>
-                        </div>
+                        </motion.div>
                         <p className={`text-[11px] font-medium text-center leading-tight truncate w-full ${completed ? 'text-foreground' : 'text-muted-foreground/60'}`}>{stepLabels[step]}</p>
                         {stepEntry && completed && (
                           <p className="text-[10px] text-muted-foreground/70 text-center leading-tight truncate w-full">
@@ -800,9 +787,16 @@ export default function OrderDetail() {
                       </div>,
                     ];
                     if (i < statusSteps.length - 1) {
+                      const filled = i < currentStepIndex;
                       nodes.push(
                         <div key={`connector-${step}`} className="flex-1 h-0.5 mt-5 rounded-full bg-muted overflow-hidden">
-                          <div className={`h-full transition-all ${i < currentStepIndex ? 'bg-primary w-full' : 'w-0'}`} />
+                          <motion.div
+                            className="h-full bg-primary origin-left"
+                            initial={{ scaleX: 0 }}
+                            animate={{ scaleX: filled ? 1 : 0 }}
+                            transition={{ duration: 0.55, ease: "easeOut", delay: 0.15 + i * 0.12 }}
+                            style={{ width: "100%" }}
+                          />
                         </div>
                       );
                     }
@@ -1043,6 +1037,18 @@ export default function OrderDetail() {
             setShowPartialConfirm(false);
             invalidateAll();
           }}
+        />
+      )}
+
+      {!isSupplier && order && (
+        <ReorderSheet
+          open={showReorderSheet}
+          onOpenChange={setShowReorderSheet}
+          currentOrderId={order.id}
+          supplierId={order.supplierId}
+          supplierName={order.supplier?.companyName || order.supplier?.name || ""}
+          restaurantId={currentUser?.id || ""}
+          lang={lang as "de" | "it"}
         />
       )}
     </div>

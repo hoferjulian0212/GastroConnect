@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TONE, orderStatusTone } from "@/lib/status-colors";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -451,41 +452,9 @@ export default function RestaurantOrders() {
     setSearchQuery("");
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-      case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
-      case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
-      case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
-      case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
-      default: return "bg-muted text-muted-foreground";
-    }
-  };
-
-  const getStatusAccent = (status: string) => {
-    switch (status) {
-      case "pending": return "bg-yellow-400 dark:bg-yellow-500";
-      case "confirmed": return "bg-blue-400 dark:bg-blue-500";
-      case "partially_confirmed": return "bg-orange-400 dark:bg-orange-500";
-      case "in_delivery": return "bg-purple-400 dark:bg-purple-500";
-      case "delivered": return "bg-green-400 dark:bg-green-500";
-      case "cancelled": return "bg-red-400 dark:bg-red-500";
-      default: return "bg-muted-foreground";
-    }
-  };
-
-  const getStatusCardBg = (status: string) => {
-    switch (status) {
-      case "pending": return "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40";
-      case "confirmed": return "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40";
-      case "partially_confirmed": return "bg-orange-50/60 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40";
-      case "in_delivery": return "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40";
-      case "delivered": return "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40";
-      case "cancelled": return "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40";
-      default: return "";
-    }
-  };
+  const getStatusColor = (status: string) => TONE[orderStatusTone(status)].badge;
+  const getStatusAccent = (status: string) => TONE[orderStatusTone(status)].dot;
+  const getStatusCardBg = (status: string) => TONE[orderStatusTone(status)].soft;
 
   const getStatusLabel = (status: string) => getOrderStatus(status, lang);
 
@@ -970,7 +939,7 @@ export default function RestaurantOrders() {
           )}
           {visibleColumns.has("deliveryDate") && (
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className={`truncate ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`} data-testid={`text-delivery-${order.id}`}>
+              <span className={`truncate ${isOverdue ? "font-medium" : ""}`} data-testid={`text-delivery-${order.id}`}>
                 {deliveryDateLabel}
               </span>
               {isOverdue && (
@@ -1084,7 +1053,7 @@ export default function RestaurantOrders() {
             <span>·</span>
             <span className="shrink-0">{order.items?.length || 0} {t("common", "items")}</span>
             <span>·</span>
-            <span className={`shrink-0 ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`}>{deliveryDateLabel}</span>
+            <span className={`shrink-0 ${isOverdue ? "font-medium text-foreground" : ""}`}>{deliveryDateLabel}</span>
           </div>
         </div>
       </div>
@@ -1187,7 +1156,7 @@ export default function RestaurantOrders() {
           )}
           {visibleColumns.has("deliveryDate") && (
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className={`truncate font-medium ${isOverdue ? "text-red-600 dark:text-red-400" : ""}`}>{dateLabel}</span>
+              <span className="truncate font-medium">{dateLabel}</span>
               {isOverdue && (
                 <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[9px] rounded-full px-1.5 py-0 border-0 shrink-0">
                   {lang === "de" ? "Überfällig" : "Scaduto"}
@@ -1231,7 +1200,7 @@ export default function RestaurantOrders() {
             <span>·</span>
             <span className="shrink-0">{totalItems} {t("common", "items")}</span>
             <span>·</span>
-            <span className={`shrink-0 ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`}>{dateLabel}</span>
+            <span className={`shrink-0 ${isOverdue ? "font-medium text-foreground" : ""}`}>{dateLabel}</span>
           </div>
           <div className="text-[10px] text-muted-foreground mt-0.5 pl-6">{includesLabel}</div>
         </button>

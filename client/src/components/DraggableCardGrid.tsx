@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef, memo } from "react";
-import { GripVertical, Maximize2, Columns2 } from "lucide-react";
+import { GripVertical, Maximize2, Columns2, Settings2, Check } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -378,18 +378,27 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   return (
     <div className="relative">
       <div className="flex justify-end mb-3 md:mb-4">
-        <button
-          onClick={() => setEditMode(!editMode)}
-          className={`flex items-center gap-1.5 text-xs font-medium transition-all px-3 py-1.5 rounded-full ${
-            editMode
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-          }`}
-          data-testid="button-toggle-edit-mode"
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-          <span>{editMode ? "Fertig" : "Anordnen"}</span>
-        </button>
+        {editMode ? (
+          <button
+            onClick={() => setEditMode(false)}
+            className="flex items-center gap-1.5 text-xs font-semibold transition-all px-3 py-1.5 rounded-full bg-primary text-primary-foreground shadow-sm hover-elevate active-elevate-2"
+            data-testid="button-toggle-edit-mode"
+            title="Anordnen beenden"
+          >
+            <Check className="h-3.5 w-3.5" />
+            <span>Fertig</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => setEditMode(true)}
+            className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors"
+            data-testid="button-toggle-edit-mode"
+            title="Dashboard anpassen"
+            aria-label="Dashboard anpassen"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       <DndContext

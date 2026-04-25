@@ -3,19 +3,21 @@ import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { useT, getComplaintStatus } from "@/lib/translations";
+import { getComplaintStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, Check, Image as ImageIcon, MessageSquare, Play, RotateCcw, Ban, Send, Truck, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TONE, complaintStatusTone } from "@/lib/status-colors";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProductImage } from "@/components/ProductImage";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatComplaintNumber, formatOrderNumber, type ComplaintWithDetails, type ComplaintStatusHistoryWithUser, type ComplaintCommentWithUser } from "@shared/schema";
 
-type ConfirmAction = "in_progress" | "resolved" | "closed" | "reopen" | "follow_up" | "comment" | null;
+type ConfirmAction = "in_progress" | "resolved" | "closed" | "reopen" | "follow_up" | "comment" | "proposal" | null;
+type ProposalKind = "credit" | "redelivery" | "cancel";
 
 export default function ComplaintDetail() {
   const [, setLocation] = useLocation();
@@ -25,13 +27,13 @@ export default function ComplaintDetail() {
   const complaintId = params?.id;
   const { currentRole, currentUser } = useUser();
   const { lang } = useLanguage();
-  const t = useT();
   const { toast } = useToast();
   const dateLocale = lang === "de" ? de : it;
   const isSupplier = currentRole === "supplier";
 
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [commentText, setCommentText] = useState("");
+  const [proposalKind, setProposalKind] = useState<ProposalKind>("credit");
   const [followUpDate, setFollowUpDate] = useState(() => {
     const t = new Date();
     t.setDate(t.getDate() + 1);
@@ -188,43 +190,16 @@ export default function ComplaintDetail() {
     }
   };
 
-  const getStatusBg = (status: string) => {
-    switch (status) {
-      case "open": return "bg-yellow-100 dark:bg-yellow-900/40";
-      case "in_progress": return "bg-blue-100 dark:bg-blue-900/40";
-      case "resolved": return "bg-green-100 dark:bg-green-900/40";
-      case "closed": return "bg-muted";
-      default: return "bg-muted";
-    }
-  };
-
-  const getStatusTextColor = (status: string) => {
-    switch (status) {
-      case "open": return "text-yellow-700 dark:text-yellow-400";
-      case "in_progress": return "text-blue-700 dark:text-blue-400";
-      case "resolved": return "text-green-700 dark:text-green-400";
-      case "closed": return "text-muted-foreground";
-      default: return "text-muted-foreground";
-    }
-  };
-
+  const getStatusBg = (status: string) => TONE[complaintStatusTone(status)].bg;
+  const getStatusTextColor = (status: string) => TONE[complaintStatusTone(status)].text;
+  const getStatusBadgeColor = (status: string) => TONE[complaintStatusTone(status)].badge;
   const getTimelineDotColor = (status: string) => {
-    switch (status) {
-      case "open": return "border-yellow-500 bg-yellow-500";
-      case "in_progress": return "border-blue-500 bg-blue-500";
-      case "resolved": return "border-green-500 bg-green-500";
-      case "closed": return "border-muted-foreground bg-muted-foreground";
-      default: return "border-muted-foreground bg-muted-foreground";
-    }
-  };
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case "open": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "in_progress": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-      case "resolved": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
-      case "closed": return "bg-muted text-muted-foreground";
-      default: return "bg-muted text-muted-foreground";
+    switch (complaintStatusTone(status)) {
+      case "emerald": return "border-emerald-500 bg-emerald-500";
+      case "amber": return "border-amber-500 bg-amber-500";
+      case "red": return "border-red-500 bg-red-500";
+      case "indigo": return "border-indigo-500 bg-indigo-500";
+      default: return "border-slate-400 bg-slate-400";
     }
   };
 
@@ -313,6 +288,47 @@ export default function ComplaintDetail() {
 
   const hasOrderableItems = affectedItems.some((i: any) => !!i.productId);
 
+  const totalImpact = affectedItems.reduce((sum: number, i: any) => {
+    const qty = parseFloat(i.quantity) || 0;
+    const price = parseFloat(i.unitPrice) || 0;
+    return sum + qty * price;
+  }, 0);
+  const formatEuro = (n: number) =>
+    n.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const proposalLabels: Record<ProposalKind, { de: string; it: string; desc: { de: string; it: string }; impactSign: 1 | -1 | 0 }> = {
+    credit:     { de: "Gutschrift",    it: "Nota di credito",   desc: { de: "Wert wird auf nächste Rechnung gutgeschrieben.",      it: "L'importo verrà accreditato sulla prossima fattura." }, impactSign: -1 },
+    redelivery: { de: "Nachlieferung", it: "Riconsegna",        desc: { de: "Betroffene Artikel werden kostenfrei nachgeliefert.", it: "Gli articoli interessati verranno riconsegnati senza costi." }, impactSign: 0 },
+    cancel:     { de: "Storno",        it: "Storno",            desc: { de: "Position wird storniert und nicht berechnet.",        it: "La posizione verrà annullata e non addebitata." }, impactSign: -1 },
+  };
+
+  const sendProposalMutation = useMutation({
+    mutationFn: async (kind: ProposalKind) => {
+      const label = lang === "de" ? proposalLabels[kind].de : proposalLabels[kind].it;
+      const desc = lang === "de" ? proposalLabels[kind].desc.de : proposalLabels[kind].desc.it;
+      const impact = proposalLabels[kind].impactSign * totalImpact;
+      const impactLine = totalImpact > 0
+        ? (lang === "de"
+            ? `Geschätzte Auswirkung: ${impact >= 0 ? "+" : "−"}${formatEuro(Math.abs(impact))} €`
+            : `Impatto stimato: ${impact >= 0 ? "+" : "−"}${formatEuro(Math.abs(impact))} €`)
+        : "";
+      const headline = lang === "de" ? `Vorschlag: ${label}` : `Proposta: ${label}`;
+      const content = [headline, desc, impactLine].filter(Boolean).join("\n");
+      await apiRequest("POST", `/api/complaints/${complaintId}/comments`, {
+        userId: currentUser?.id,
+        content,
+      });
+    },
+    onSuccess: () => {
+      setConfirmAction(null);
+      invalidateAll();
+      toast({ title: lang === "de" ? "Vorschlag gesendet" : "Proposta inviata" });
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+    },
+  });
+
   type ActionCategory = "primary" | "fulfillment" | "communication" | "destructive";
   type ActionButton = {
     label: string;
@@ -388,6 +404,20 @@ export default function ComplaintDetail() {
     action: () => setConfirmAction("comment"),
     testId: "action-add-comment",
   });
+
+  // Vorschlag senden — only suppliers, while complaint is active
+  if (isSupplier) {
+    actions.push({
+      label: lang === "de" ? "Vorschlag senden" : "Invia proposta",
+      icon: Send,
+      style: "secondary",
+      category: "communication",
+      action: () => { setProposalKind("credit"); setConfirmAction("proposal"); },
+      testId: "action-send-proposal",
+      disabled: isTerminal,
+      disabledReason: lang === "de" ? "Reklamation abgeschlossen" : "Reclamo concluso",
+    });
+  }
 
   // Nachricht schreiben — beide Rollen, immer
   actions.push({
@@ -599,6 +629,82 @@ export default function ComplaintDetail() {
                       {addCommentMutation.isPending
                         ? (lang === "de" ? "Senden..." : "Invio...")
                         : (lang === "de" ? "Senden" : "Invia")}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {confirmAction === "proposal" && (
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-4" data-testid="section-proposal">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {lang === "de" ? "Vorschlag senden" : "Invia proposta"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {lang === "de"
+                        ? "Wähle einen Lösungsvorschlag — er wird als Kommentar gepostet."
+                        : "Scegli una proposta di risoluzione — verrà pubblicata come commento."}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {(Object.keys(proposalLabels) as ProposalKind[]).map((kind) => {
+                      const isActive = proposalKind === kind;
+                      const label = lang === "de" ? proposalLabels[kind].de : proposalLabels[kind].it;
+                      const desc = lang === "de" ? proposalLabels[kind].desc.de : proposalLabels[kind].desc.it;
+                      return (
+                        <button
+                          key={kind}
+                          type="button"
+                          onClick={() => setProposalKind(kind)}
+                          className={`text-left rounded-lg border p-3 transition-all hover-elevate active-elevate-2 ${
+                            isActive ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border bg-card"
+                          }`}
+                          data-testid={`proposal-option-${kind}`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                            <span className="text-sm font-semibold">{label}</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {totalImpact > 0 && (
+                    <div className="rounded-lg bg-muted/50 border border-border p-3 flex items-center justify-between" data-testid="proposal-impact">
+                      <span className="text-xs text-muted-foreground">
+                        {lang === "de" ? "Geschätzte Auswirkung" : "Impatto stimato"}
+                      </span>
+                      <span className={`text-sm font-bold tabular-nums ${
+                        proposalLabels[proposalKind].impactSign === -1 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
+                      }`} data-testid="text-proposal-impact">
+                        {proposalLabels[proposalKind].impactSign === -1 ? "−" : proposalLabels[proposalKind].impactSign === 1 ? "+" : "±"}
+                        {formatEuro(totalImpact)} €
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="h-9 px-4 rounded-lg text-xs font-semibold bg-card border border-border text-foreground hover:bg-accent transition-all active:scale-[0.97]"
+                      onClick={() => setConfirmAction(null)}
+                      disabled={sendProposalMutation.isPending}
+                      data-testid="cancel-proposal"
+                    >
+                      {lang === "de" ? "Abbrechen" : "Annulla"}
+                    </button>
+                    <button
+                      className="h-9 px-4 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-white shadow-sm transition-all active:scale-[0.97] inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => sendProposalMutation.mutate(proposalKind)}
+                      disabled={sendProposalMutation.isPending}
+                      data-testid="confirm-proposal"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      {sendProposalMutation.isPending
+                        ? (lang === "de" ? "Senden..." : "Invio...")
+                        : (lang === "de" ? "Vorschlag senden" : "Invia proposta")}
                     </button>
                   </div>
                 </div>

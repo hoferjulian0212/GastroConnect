@@ -15,6 +15,28 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
   color: rgba(0, 0, 0, 0.3);
 }
 
+/* Skeleton shimmer — sweeps a soft gradient across loading placeholders */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Spring physics for radix overlays (sheets, popovers, dropdowns, dialogs).
+   Override the default ease curve with a slight overshoot so panels settle
+   in with a tactile, physical feel. */
+[data-radix-popper-content-wrapper] > [data-state="open"],
+[role="dialog"][data-state="open"],
+[role="menu"][data-state="open"],
+[data-radix-menu-content][data-state="open"] {
+  animation-timing-function: cubic-bezier(0.32, 1.45, 0.58, 1) !important;
+}
+[data-radix-popper-content-wrapper] > [data-state="closed"],
+[role="dialog"][data-state="closed"],
+[role="menu"][data-state="closed"],
+[data-radix-menu-content][data-state="closed"] {
+  animation-timing-function: cubic-bezier(0.6, 0, 0.4, 1) !important;
+}
+
 @keyframes wizard-circle {
   0% { transform: scale(0); opacity: 0; }
   50% { transform: scale(1.15); opacity: 1; }
