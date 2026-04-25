@@ -805,7 +805,7 @@ export default function Landing() {
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button
               size="lg"
-              className="w-full sm:w-auto gap-2 text-base text-[#000000]"
+              className="w-full sm:w-auto gap-2 text-base bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => handleStart("supplier")}
               data-testid="button-cta-supplier"
             >
@@ -813,9 +813,8 @@ export default function Landing() {
               {t.ctaSupplier}
             </Button>
             <Button
-              variant="outline"
               size="lg"
-              className="w-full sm:w-auto gap-2 text-base"
+              className="w-full sm:w-auto gap-2 text-base bg-blue-600 hover:bg-blue-700 text-white"
               onClick={() => handleStart("restaurant")}
               data-testid="button-cta-restaurant"
             >
