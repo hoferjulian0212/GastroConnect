@@ -453,6 +453,18 @@ export default function PriceComparison() {
   const hasRealVolume = switchableWithVolume.length > 0 && totalMonthlySaving > 0;
   const costPerGuestNum = costAnalysis ? Number(costAnalysis.costPerGuest) : 0;
   const costDifferenceNum = costAnalysis ? Number(costAnalysis.difference) : 0;
+  const totalOvernightsNum = costAnalysis ? Number(costAnalysis.totalOvernights) : 0;
+  const projectedCostPerGuestDelta = totalOvernightsNum > 0 ? totalMonthlySaving / totalOvernightsNum : 0;
+  const projectedNewCostPerGuest = Math.max(0, costPerGuestNum - projectedCostPerGuestDelta);
+
+  // Stable "Top-Hebel #N" rank: by monthlySaving across all switchable products with volume
+  const rankByKey = (() => {
+    const m = new Map<string, number>();
+    [...switchableWithVolume]
+      .sort((a, b) => b.monthlySaving - a.monthlySaving)
+      .forEach((g, idx) => m.set(g.key, idx + 1));
+    return m;
+  })();
 
   return (
     <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
@@ -514,21 +526,37 @@ export default function PriceComparison() {
             </Button>
           </div>
 
-          {/* Optional cost-per-guest one-liner */}
-          {costAnalysis && Number(costAnalysis.totalOvernights) > 0 && (
-            <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs flex-wrap gap-2">
-              <span className="text-white/50">
-                {lang === "de" ? "Wareneinsatz aktueller Monat" : "Costo merci mese corrente"}
-              </span>
-              <span className="text-white/80 tabular-nums">
-                <span className="font-semibold text-white">{formatEuro(costPerGuestNum)}€</span>
-                <span className="text-white/50"> / {lang === "de" ? "Gast" : "ospite"}</span>
-                {Number(costAnalysis.targetCost) > 0 && (
-                  <span className={`ml-2 ${costDifferenceNum > 0 ? "text-orange-300" : "text-emerald-300"}`}>
-                    {costDifferenceNum > 0 ? "+" : ""}{formatEuro(costDifferenceNum)}€ {lang === "de" ? "vs. Ziel" : "vs. obiettivo"}
+          {/* Cost-per-guest projection */}
+          {costAnalysis && totalOvernightsNum > 0 && (
+            <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
+              <div className="flex items-center justify-between text-xs flex-wrap gap-2">
+                <span className="text-white/50">
+                  {lang === "de" ? "Wareneinsatz aktueller Monat" : "Costo merci mese corrente"}
+                </span>
+                <span className="text-white/80 tabular-nums">
+                  <span className="font-semibold text-white">{formatEuro(costPerGuestNum)}€</span>
+                  <span className="text-white/50"> / {lang === "de" ? "Gast" : "ospite"}</span>
+                  {Number(costAnalysis.targetCost) > 0 && (
+                    <span className={`ml-2 ${costDifferenceNum > 0 ? "text-orange-300" : "text-emerald-300"}`}>
+                      {costDifferenceNum > 0 ? "+" : ""}{formatEuro(costDifferenceNum)}€ {lang === "de" ? "vs. Ziel" : "vs. obiettivo"}
+                    </span>
+                  )}
+                </span>
+              </div>
+              {projectedCostPerGuestDelta > 0 && (
+                <div className="flex items-center justify-between text-xs flex-wrap gap-2" data-testid="hero-cost-per-guest-projection">
+                  <span className="text-emerald-300/80 inline-flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    {lang === "de" ? "Bei vollständigem Wechsel" : "A switch completo"}
                   </span>
-                )}
-              </span>
+                  <span className="tabular-nums">
+                    <span className="font-bold text-emerald-300">−{formatEuro(projectedCostPerGuestDelta)}€</span>
+                    <span className="text-white/60"> / {lang === "de" ? "Gast" : "ospite"}</span>
+                    <span className="text-white/40"> · {lang === "de" ? "neu" : "nuovo"} </span>
+                    <span className="text-white">{formatEuro(projectedNewCostPerGuest)}€</span>
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -747,17 +775,18 @@ export default function PriceComparison() {
           </div>
         ) : (
           <div className="space-y-3">
-            {visible.map((g, idx) => (
+            {visible.map((g) => (
               <ComparisonCard
                 key={g.key}
                 group={g}
-                rank={idx + 1}
+                rank={rankByKey.get(g.key) ?? null}
                 lang={lang}
                 expanded={expandedGroups.has(g.key)}
                 onToggle={() => toggleExpand(g.key)}
                 onQuickSwap={() => handleQuickSwap(g)}
                 isSwapping={addToCartMutation.isPending}
                 movMap={movMap}
+                totalOvernights={totalOvernightsNum}
               />
             ))}
 
@@ -899,16 +928,17 @@ export default function PriceComparison() {
 // ───────────────────────────────────────────────────────────────────────────
 interface ComparisonCardProps {
   group: GroupedProduct;
-  rank: number;
+  rank: number | null;
   lang: "de" | "it";
   expanded: boolean;
   onToggle: () => void;
   onQuickSwap: () => void;
   isSwapping: boolean;
   movMap?: Record<string, { minimumValue: string; zone: string | null }>;
+  totalOvernights: number;
 }
 
-function ComparisonCard({ group, lang, expanded, onToggle, onQuickSwap, isSwapping, movMap }: ComparisonCardProps) {
+function ComparisonCard({ group, rank, lang, expanded, onToggle, onQuickSwap, isSwapping, movMap, totalOvernights }: ComparisonCardProps) {
   const cheapest = group.cheapestOffer;
   const current = group.currentOffer;
   const anyPromo = group.offers.some(o => o.hasPromo);
@@ -922,16 +952,30 @@ function ComparisonCard({ group, lang, expanded, onToggle, onQuickSwap, isSwappi
   const moq = cheapest.product.minOrderQuantity ?? 1;
   const swapQty = Math.max(1, moq, Math.round(group.monthlyVolume) || 1);
 
+  const refPrice = current?.effectivePrice ?? cheapest.effectivePrice;
+  const monthlyCurrentSpend = refPrice * group.monthlyVolume;
+  const monthlyNewSpend = cheapest.effectivePrice * group.monthlyVolume;
+  const costPerGuestImpact = totalOvernights > 0 ? group.monthlySaving / totalOvernights : 0;
+  const isTopHebel = !group.isAlreadyBest && group.monthlySaving > 0 && rank !== null && rank <= 3;
+
   return (
     <div
-      className="rounded-xl border border-border bg-card overflow-hidden shadow-sm"
+      className={`rounded-xl border bg-card overflow-hidden shadow-sm ${isTopHebel ? "border-orange-300/60 dark:border-orange-700/40 ring-1 ring-orange-200/40 dark:ring-orange-900/20" : "border-border"}`}
       data-testid={`comparison-card-${group.key}`}
     >
       {/* ── Header: product name + headline saving ───────────────────── */}
       <div className="px-4 pt-3.5 pb-3 flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-base leading-tight truncate" data-testid={`text-product-name-${group.key}`}>
-            {group.name}
+          <div className="flex items-center gap-2 flex-wrap">
+            {isTopHebel && (
+              <Badge className="text-[10px] px-1.5 py-0 bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 gap-0.5 font-bold" data-testid={`badge-top-hebel-${group.key}`}>
+                <Sparkles className="h-2.5 w-2.5" />
+                {lang === "de" ? `Top-Hebel #${rank}` : `Top #${rank}`}
+              </Badge>
+            )}
+            <span className="font-semibold text-base leading-tight truncate" data-testid={`text-product-name-${group.key}`}>
+              {group.name}
+            </span>
           </div>
           <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
             <span>{group.category}</span>
@@ -1026,17 +1070,43 @@ function ComparisonCard({ group, lang, expanded, onToggle, onQuickSwap, isSwappi
           </div>
         </div>
 
-        {/* Monthly impact + trust signals (compact, single row) */}
-        {(group.monthlyVolume > 0 || cheapestMov || (moq > 1)) && (
-          <div className="mt-2.5 flex items-center gap-x-3 gap-y-1 flex-wrap text-[11px] text-muted-foreground">
-            {group.monthlyVolume > 0 && group.monthlySaving > 0 && !group.isAlreadyBest && (
-              <span className="inline-flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {lang === "de"
-                  ? <>~{Math.round(group.monthlyVolume)} {group.unit}/Monat → <span className="font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">−{formatEuro(group.monthlySaving)}€/Monat</span></>
-                  : <>~{Math.round(group.monthlyVolume)} {group.unit}/mese → <span className="font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">−{formatEuro(group.monthlySaving)}€/mese</span></>}
-              </span>
+        {/* Monthly purchase volume + cost-per-guest impact */}
+        {group.monthlyVolume > 0 && !group.isAlreadyBest && group.monthlySaving > 0 && (
+          <div className="mt-2.5 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/15 border border-emerald-200/50 dark:border-emerald-900/30 px-3 py-2" data-testid={`impact-panel-${group.key}`}>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 text-[11px] min-w-0">
+                <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground">{lang === "de" ? "Du kaufst" : "Acquisti"}</span>
+                <span className="font-semibold tabular-nums text-foreground">
+                  ~{Math.round(group.monthlyVolume)} {group.unit}
+                </span>
+                <span className="text-muted-foreground">/{lang === "de" ? "Mt" : "mese"}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] tabular-nums">
+                <span className="text-muted-foreground line-through">{formatEuro(monthlyCurrentSpend)}€</span>
+                <ArrowRight className="h-3 w-3 text-emerald-600/70" />
+                <span className="font-bold text-emerald-700 dark:text-emerald-400">{formatEuro(monthlyNewSpend)}€</span>
+                <span className="text-muted-foreground">/{lang === "de" ? "Mt" : "mese"}</span>
+              </div>
+            </div>
+            {totalOvernights > 0 && costPerGuestImpact > 0 && (
+              <div className="mt-1.5 pt-1.5 border-t border-emerald-200/40 dark:border-emerald-900/30 flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <TrendingDown className="h-3.5 w-3.5 text-emerald-600/80" />
+                  <span>{lang === "de" ? "Wirkung auf Wareneinsatz" : "Impatto su costo merci"}</span>
+                </div>
+                <div className="text-[12px] tabular-nums">
+                  <span className="font-bold text-emerald-700 dark:text-emerald-400">−{formatEuro(costPerGuestImpact)}€</span>
+                  <span className="text-muted-foreground"> / {lang === "de" ? "Gast" : "ospite"}</span>
+                </div>
+              </div>
             )}
+          </div>
+        )}
+
+        {/* Trust signals: only volume (when no savings) + MBW + MOQ */}
+        {((group.monthlyVolume > 0 && (group.monthlySaving === 0 || group.isAlreadyBest)) || cheapestMov || moq > 1) && (
+          <div className="mt-2 flex items-center gap-x-3 gap-y-1 flex-wrap text-[11px] text-muted-foreground">
             {group.monthlyVolume > 0 && (group.monthlySaving === 0 || group.isAlreadyBest) && (
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-3 w-3" />
