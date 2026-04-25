@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich } from "lucide-react";
+import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich, ChevronDown, ChevronRight } from "lucide-react";
 import { ProductImage } from "@/components/ProductImage";
 
 import type { Product, StockMovement, PromotionWithProduct } from "@shared/schema";
@@ -65,6 +65,8 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
   const [adjustQty, setAdjustQty] = useState(1);
   const [adjustNote, setAdjustNote] = useState("");
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const toggleCategory = (cat: string) => setCollapsedCategories((prev) => ({ ...prev, [cat]: !prev[cat] }));
 
   const INVENTORY_COLS: InventoryColKey[] = useMemo(() => ["product", "category", "stock", "threshold", "status", "actions"], []);
   const { gridTemplate: inventoryGridTemplate, startResize: startInventoryResize, containerRef: inventoryContainerRef } = useResizableColumns<InventoryColKey>(
@@ -188,6 +190,55 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
     return "ok";
   };
 
+  const inventoryCategoryMeta: Record<string, { de: string; it: string; icon: typeof Package; dot: string }> = {
+    "Gemüse": { de: "Gemüse", it: "Verdura", icon: Carrot, dot: "bg-green-600" },
+    "Obst": { de: "Obst", it: "Frutta", icon: Apple, dot: "bg-red-500" },
+    "Kräuter": { de: "Kräuter", it: "Erbe", icon: Carrot, dot: "bg-lime-600" },
+    "Fleisch": { de: "Fleisch", it: "Carne", icon: Beef, dot: "bg-rose-700" },
+    "Wurst": { de: "Wurst", it: "Salumi", icon: Beef, dot: "bg-rose-800" },
+    "Fisch": { de: "Fisch", it: "Pesce", icon: Fish, dot: "bg-cyan-600" },
+    "Meeresfrüchte": { de: "Meeresfrüchte", it: "Frutti di mare", icon: Fish, dot: "bg-blue-600" },
+    "Käse": { de: "Käse", it: "Formaggi", icon: Milk, dot: "bg-yellow-500" },
+    "Milchprodukte": { de: "Milchprodukte", it: "Latticini", icon: Milk, dot: "bg-blue-400" },
+    "Wein": { de: "Wein", it: "Vino", icon: Wine, dot: "bg-purple-700" },
+    "Spirituosen": { de: "Spirituosen", it: "Liquori", icon: Wine, dot: "bg-indigo-700" },
+    "Getränke": { de: "Getränke", it: "Bevande", icon: Droplets, dot: "bg-purple-600" },
+    "Kaffee": { de: "Kaffee", it: "Caffè", icon: Coffee, dot: "bg-amber-800" },
+    "Pasta": { de: "Pasta", it: "Pasta", icon: Wheat, dot: "bg-amber-500" },
+    "Trockenwaren": { de: "Trockenwaren", it: "Prodotti secchi", icon: Wheat, dot: "bg-amber-700" },
+    "Konserven": { de: "Konserven", it: "Conserve", icon: Package, dot: "bg-slate-600" },
+    "Saucen": { de: "Saucen", it: "Salse", icon: Droplets, dot: "bg-red-700" },
+    "Öl & Essig": { de: "Öl & Essig", it: "Olio & Aceto", icon: Droplets, dot: "bg-yellow-600" },
+    "Gewürze": { de: "Gewürze", it: "Spezie", icon: Flame, dot: "bg-orange-500" },
+    "Brot": { de: "Brot", it: "Pane", icon: Sandwich, dot: "bg-yellow-700" },
+    "Sonstiges": { de: "Sonstiges", it: "Altro", icon: MoreHorizontal, dot: "bg-gray-500" },
+  };
+  const knownInvCategories = Object.keys(inventoryCategoryMeta).filter(c => c !== "Sonstiges");
+  const getCategoryMeta = (cat: string) => inventoryCategoryMeta[cat] || inventoryCategoryMeta["Sonstiges"];
+  const slugifyCategory = (cat: string) =>
+    cat
+      .toLowerCase()
+      .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "category";
+
+  const groupedFiltered = useMemo(() => {
+    const map = new Map<string, Product[]>();
+    filtered.forEach(p => {
+      const rawCat = p.category && knownInvCategories.includes(p.category) ? p.category : "Sonstiges";
+      if (!map.has(rawCat)) map.set(rawCat, []);
+      map.get(rawCat)!.push(p);
+    });
+    const order = [...Object.keys(inventoryCategoryMeta)];
+    return Array.from(map.entries())
+      .sort((a, b) => {
+        const ai = order.indexOf(a[0]);
+        const bi = order.indexOf(b[0]);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      })
+      .map(([category, items]) => ({ category, items }));
+  }, [filtered]);
+
   return (
     <div className="space-y-4">
       <div className="relative w-full sm:max-w-xs">
@@ -219,7 +270,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
         </div>
       ) : (
         <>
-          {/* Desktop Excel-style table */}
+          {/* Desktop Excel-style table grouped by category */}
           <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden" data-testid="inventory-table">
             <div
               ref={inventoryContainerRef}
@@ -233,168 +284,249 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
               <div className="relative pr-2">Status<ColumnResizeHandle onPointerDown={startInventoryResize("status")} testId="resize-inv-status" /></div>
               <div></div>
             </div>
-            {filtered.map((product) => {
-              const status = getStockStatus(product);
-              const currentStock = product.stockQuantity ?? 0;
+            {groupedFiltered.map((group) => {
+              const meta = getCategoryMeta(group.category);
+              const Icon = meta.icon;
+              const collapsed = !!collapsedCategories[group.category];
+              const slug = slugifyCategory(group.category);
+              const groupOut = group.items.filter(p => (p.stockQuantity ?? 0) === 0).length;
+              const groupLow = group.items.filter(p => p.lowStockThreshold && p.lowStockThreshold > 0 && (p.stockQuantity ?? 0) <= p.lowStockThreshold && (p.stockQuantity ?? 0) > 0).length;
               return (
-                <div
-                  key={product.id}
-                  className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass} border-b border-border last:border-b-0 cursor-pointer transition-colors [&>*+*]:border-l [&>*+*]:border-border ${
-                    status === "out" ? "bg-red-50/40 dark:bg-red-950/10 hover:bg-red-50/70 dark:hover:bg-red-950/20" :
-                    status === "low" ? "bg-orange-50/40 dark:bg-orange-950/10 hover:bg-orange-50/70 dark:hover:bg-orange-950/20" :
-                    "hover:bg-muted/40"
-                  }`}
-                  style={{ gridTemplateColumns: inventoryGridTemplate }}
-                  onClick={() => openAdjustDialog(product)}
-                  data-testid={`inventory-row-${product.id}`}
-                >
-                  {/* Product (image + name) */}
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2 !justify-start !text-left">
-                    <ProductImage src={product.imageUrl} alt={product.name} className="w-8 h-8 rounded-md" iconClassName="h-3.5 w-3.5" fallbackBg="bg-muted/60" fallbackIconColor="text-muted-foreground/40" />
-                    <span className="font-medium truncate" data-testid={`text-name-${product.id}`}>{product.name}</span>
-                  </div>
-                  {/* Category */}
-                  <div className="truncate text-muted-foreground pr-2">
-                    {product.category || <span className="text-muted-foreground/40">—</span>}
-                  </div>
-                  {/* Stock */}
-                  <div className="text-right tabular-nums pr-2">
-                    <span className={`font-semibold ${
-                      status === "out" ? "text-red-600 dark:text-red-400" :
-                      status === "low" ? "text-orange-600 dark:text-orange-400" : ""
-                    }`}>{currentStock}</span>
-                    <span className="text-muted-foreground text-[11px] ml-1">{product.unit}</span>
-                  </div>
-                  {/* Threshold */}
-                  <div className="text-right tabular-nums text-muted-foreground pr-2">
-                    {product.lowStockThreshold && product.lowStockThreshold > 0
-                      ? product.lowStockThreshold
-                      : <span className="text-muted-foreground/40">—</span>}
-                  </div>
-                  {/* Status badge */}
-                  <div className="pr-2">
-                    {status === "out" ? (
-                      <Badge variant="outline" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800 text-[10px] rounded-full px-2 py-0.5 font-medium">
-                        {lang === "de" ? "Ausverkauft" : "Esaurito"}
-                      </Badge>
-                    ) : status === "low" ? (
-                      <Badge variant="outline" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800 text-[10px] rounded-full px-2 py-0.5 font-medium">
-                        <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
-                        {lang === "de" ? "Niedrig" : "Basso"}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 text-[10px] rounded-full px-2 py-0.5 font-medium">
-                        OK
-                      </Badge>
-                    )}
-                  </div>
-                  {/* Actions */}
-                  <div className="flex items-center justify-end gap-0.5">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 rounded-md"
-                      onClick={(e) => { e.stopPropagation(); openAdjustDialog(product); }}
-                      data-testid={`button-stock-adjust-${product.id}`}
-                      title={lang === "de" ? "Bestand anpassen" : "Regola scorta"}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 rounded-md"
-                      onClick={(e) => { e.stopPropagation(); setHistoryProduct(product); }}
-                      data-testid={`button-history-${product.id}`}
-                      title={lang === "de" ? "Verlauf" : "Cronologia"}
-                    >
-                      <History className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </div>
-                </div>
+                <Fragment key={group.category}>
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(group.category)}
+                    aria-expanded={!collapsed}
+                    aria-controls={`inventory-category-content-${slug}`}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 bg-muted/30 hover:bg-muted/50 border-b border-border text-left transition-colors"
+                    data-testid={`inventory-category-band-${slug}`}
+                  >
+                    {collapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${meta.dot}`} />
+                    <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs font-semibold text-foreground">{lang === "de" ? meta.de : meta.it}</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full ml-1 font-medium">
+                      {group.items.length}
+                    </Badge>
+                    <div className="ml-auto flex items-center gap-1.5 text-[10px]">
+                      {groupOut > 0 && (
+                        <Badge variant="outline" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800 rounded-full px-1.5 py-0 font-medium">
+                          {groupOut} {lang === "de" ? "ausverkauft" : "esaurito"}
+                        </Badge>
+                      )}
+                      {groupLow > 0 && (
+                        <Badge variant="outline" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800 rounded-full px-1.5 py-0 font-medium">
+                          {groupLow} {lang === "de" ? "niedrig" : "basso"}
+                        </Badge>
+                      )}
+                    </div>
+                  </button>
+                  {!collapsed && (
+                    <div id={`inventory-category-content-${slug}`} role="region" aria-label={lang === "de" ? meta.de : meta.it}>
+                  {group.items.map((product) => {
+                    const status = getStockStatus(product);
+                    const currentStock = product.stockQuantity ?? 0;
+                    return (
+                      <div
+                        key={product.id}
+                        className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass} border-b border-border last:border-b-0 cursor-pointer transition-colors [&>*+*]:border-l [&>*+*]:border-border ${
+                          status === "out" ? "bg-red-50/40 dark:bg-red-950/10 hover:bg-red-50/70 dark:hover:bg-red-950/20" :
+                          status === "low" ? "bg-orange-50/40 dark:bg-orange-950/10 hover:bg-orange-50/70 dark:hover:bg-orange-950/20" :
+                          "hover:bg-muted/40"
+                        }`}
+                        style={{ gridTemplateColumns: inventoryGridTemplate }}
+                        onClick={() => openAdjustDialog(product)}
+                        data-testid={`inventory-row-${product.id}`}
+                      >
+                        {/* Product (image + name) */}
+                        <div className="flex items-center gap-2.5 min-w-0 pr-2 !justify-start !text-left">
+                          <ProductImage src={product.imageUrl} alt={product.name} className="w-8 h-8 rounded-md" iconClassName="h-3.5 w-3.5" fallbackBg="bg-muted/60" fallbackIconColor="text-muted-foreground/40" />
+                          <span className="font-medium truncate" data-testid={`text-name-${product.id}`}>{product.name}</span>
+                        </div>
+                        {/* Category */}
+                        <div className="truncate text-muted-foreground pr-2">
+                          {product.category || <span className="text-muted-foreground/40">—</span>}
+                        </div>
+                        {/* Stock */}
+                        <div className="text-right tabular-nums pr-2">
+                          <span className={`font-semibold ${
+                            status === "out" ? "text-red-600 dark:text-red-400" :
+                            status === "low" ? "text-orange-600 dark:text-orange-400" : ""
+                          }`}>{currentStock}</span>
+                          <span className="text-muted-foreground text-[11px] ml-1">{product.unit}</span>
+                        </div>
+                        {/* Threshold */}
+                        <div className="text-right tabular-nums text-muted-foreground pr-2">
+                          {product.lowStockThreshold && product.lowStockThreshold > 0
+                            ? product.lowStockThreshold
+                            : <span className="text-muted-foreground/40">—</span>}
+                        </div>
+                        {/* Status badge */}
+                        <div className="pr-2">
+                          {status === "out" ? (
+                            <Badge variant="outline" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800 text-[10px] rounded-full px-2 py-0.5 font-medium">
+                              {lang === "de" ? "Ausverkauft" : "Esaurito"}
+                            </Badge>
+                          ) : status === "low" ? (
+                            <Badge variant="outline" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800 text-[10px] rounded-full px-2 py-0.5 font-medium">
+                              <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                              {lang === "de" ? "Niedrig" : "Basso"}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 text-[10px] rounded-full px-2 py-0.5 font-medium">
+                              OK
+                            </Badge>
+                          )}
+                        </div>
+                        {/* Actions */}
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-md"
+                            onClick={(e) => { e.stopPropagation(); openAdjustDialog(product); }}
+                            data-testid={`button-stock-adjust-${product.id}`}
+                            title={lang === "de" ? "Bestand anpassen" : "Regola scorta"}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-md"
+                            onClick={(e) => { e.stopPropagation(); setHistoryProduct(product); }}
+                            data-testid={`button-history-${product.id}`}
+                            title={lang === "de" ? "Verlauf" : "Cronologia"}
+                          >
+                            <History className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                    </div>
+                  )}
+                </Fragment>
               );
             })}
           </div>
 
-          {/* Mobile cards (unchanged) */}
-          <div className="md:hidden space-y-1.5">
-            {filtered.map((product) => {
-            const status = getStockStatus(product);
-            const currentStock = product.stockQuantity ?? 0;
-
-            return (
-              <div
-                key={product.id}
-                className={`rounded-xl border p-3 transition-colors ${
-                  status === "out" ? "border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-950/10" :
-                  status === "low" ? "border-orange-200 dark:border-orange-900/50 bg-orange-50/30 dark:bg-orange-950/10" :
-                  "border-border"
-                }`}
-                data-testid={`inventory-card-${product.id}`}
-              >
-                <div className="flex items-center gap-3">
-                  <ProductImage src={product.imageUrl} alt={product.name} className="w-10 h-10 rounded-lg" iconClassName="h-4 w-4" fallbackBg="bg-muted/60" fallbackIconColor="text-muted-foreground/30" />
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="font-semibold text-sm truncate">{product.name}</h3>
-                      {status === "out" && (
-                        <Badge variant="outline" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800 text-[9px] px-1.5 py-0 shrink-0">
-                          {lang === "de" ? "Ausverkauft" : "Esaurito"}
-                        </Badge>
+          {/* Mobile cards grouped by category */}
+          <div className="md:hidden space-y-3">
+            {groupedFiltered.map((group) => {
+              const meta = getCategoryMeta(group.category);
+              const Icon = meta.icon;
+              const collapsed = !!collapsedCategories[group.category];
+              const slug = slugifyCategory(group.category);
+              const groupOut = group.items.filter(p => (p.stockQuantity ?? 0) === 0).length;
+              const groupLow = group.items.filter(p => p.lowStockThreshold && p.lowStockThreshold > 0 && (p.stockQuantity ?? 0) <= p.lowStockThreshold && (p.stockQuantity ?? 0) > 0).length;
+              return (
+                <div key={group.category} data-testid={`inventory-mobile-group-${slug}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(group.category)}
+                    aria-expanded={!collapsed}
+                    aria-controls={`inventory-mobile-content-${slug}`}
+                    data-testid={`inventory-mobile-category-band-${slug}`}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 mb-1.5 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors"
+                  >
+                    {collapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${meta.dot}`} />
+                    <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs font-semibold text-foreground">{lang === "de" ? meta.de : meta.it}</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full ml-1 font-medium">{group.items.length}</Badge>
+                    <div className="ml-auto flex items-center gap-1 text-[10px]">
+                      {groupOut > 0 && (
+                        <Badge variant="outline" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800 rounded-full px-1.5 py-0 font-medium">{groupOut}</Badge>
                       )}
-                      {status === "low" && (
-                        <Badge variant="outline" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800 text-[9px] px-1.5 py-0 shrink-0">
-                          <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
-                          {lang === "de" ? "Niedrig" : "Basso"}
-                        </Badge>
+                      {groupLow > 0 && (
+                        <Badge variant="outline" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800 rounded-full px-1.5 py-0 font-medium">{groupLow}</Badge>
                       )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {product.category && <span>{product.category}</span>}
-                      {product.category && product.lowStockThreshold != null && product.lowStockThreshold > 0 && <span> · </span>}
-                      {product.lowStockThreshold != null && product.lowStockThreshold > 0 && (
-                        <span>{lang === "de" ? "Min" : "Min"}: {product.lowStockThreshold} {product.unit}</span>
-                      )}
-                    </p>
-                  </div>
+                  </button>
+                  {!collapsed && (
+                    <div id={`inventory-mobile-content-${slug}`} role="region" aria-label={lang === "de" ? meta.de : meta.it} className="space-y-1.5">
+                      {group.items.map((product) => {
+                        const status = getStockStatus(product);
+                        const currentStock = product.stockQuantity ?? 0;
+                        return (
+                          <div
+                            key={product.id}
+                            className={`rounded-xl border p-3 transition-colors ${
+                              status === "out" ? "border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-950/10" :
+                              status === "low" ? "border-orange-200 dark:border-orange-900/50 bg-orange-50/30 dark:bg-orange-950/10" :
+                              "border-border"
+                            }`}
+                            data-testid={`inventory-card-${product.id}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <ProductImage src={product.imageUrl} alt={product.name} className="w-10 h-10 rounded-lg" iconClassName="h-4 w-4" fallbackBg="bg-muted/60" fallbackIconColor="text-muted-foreground/30" />
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <div className="flex flex-col items-center min-w-[44px]">
-                      <span className={`text-lg font-bold tabular-nums leading-tight ${
-                        status === "out" ? "text-red-600 dark:text-red-400" :
-                        status === "low" ? "text-orange-600 dark:text-orange-400" : ""
-                      }`}>
-                        {currentStock}
-                      </span>
-                      <span className="text-[9px] text-muted-foreground leading-tight">{product.unit}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <h3 className="font-semibold text-sm truncate">{product.name}</h3>
+                                  {status === "out" && (
+                                    <Badge variant="outline" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800 text-[9px] px-1.5 py-0 shrink-0">
+                                      {lang === "de" ? "Ausverkauft" : "Esaurito"}
+                                    </Badge>
+                                  )}
+                                  {status === "low" && (
+                                    <Badge variant="outline" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800 text-[9px] px-1.5 py-0 shrink-0">
+                                      <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                                      {lang === "de" ? "Niedrig" : "Basso"}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                  {product.category && <span>{product.category}</span>}
+                                  {product.category && product.lowStockThreshold != null && product.lowStockThreshold > 0 && <span> · </span>}
+                                  {product.lowStockThreshold != null && product.lowStockThreshold > 0 && (
+                                    <span>{lang === "de" ? "Min" : "Min"}: {product.lowStockThreshold} {product.unit}</span>
+                                  )}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <div className="flex flex-col items-center min-w-[44px]">
+                                  <span className={`text-lg font-bold tabular-nums leading-tight ${
+                                    status === "out" ? "text-red-600 dark:text-red-400" :
+                                    status === "low" ? "text-orange-600 dark:text-orange-400" : ""
+                                  }`}>
+                                    {currentStock}
+                                  </span>
+                                  <span className="text-[9px] text-muted-foreground leading-tight">{product.unit}</span>
+                                </div>
+
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-8 w-8 rounded-lg"
+                                  onClick={() => openAdjustDialog(product)}
+                                  data-testid={`button-stock-adjust-${product.id}`}
+                                  title={lang === "de" ? "Bestand anpassen" : "Regola scorta"}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 rounded-lg ml-0.5"
+                                  onClick={() => setHistoryProduct(product)}
+                                  data-testid={`button-history-${product.id}`}
+                                >
+                                  <History className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-lg"
-                      onClick={() => openAdjustDialog(product)}
-                      data-testid={`button-stock-adjust-${product.id}`}
-                      title={lang === "de" ? "Bestand anpassen" : "Regola scorta"}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-lg ml-0.5"
-                      onClick={() => setHistoryProduct(product)}
-                      data-testid={`button-history-${product.id}`}
-                    >
-                      <History className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </div>
+                  )}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
           </div>
         </>
       )}
