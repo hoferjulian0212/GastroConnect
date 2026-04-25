@@ -489,7 +489,7 @@ function AppLayout() {
                 <MobileProfileButton />
                 <div className="hidden md:flex items-center gap-0 shrink-0 md:-ml-3">
                   <img src={logoImg} alt="GastroConnect Logo" className="h-[72px] w-[72px] object-contain invert" />
-                  <span className="text-lg font-bold text-white tracking-tight -ml-2">GastroConnect</span>
+                  <span className="text-lg font-bold text-white tracking-tight -ml-1">GastroConnect</span>
                 </div>
               </div>
               <HeaderNav />
