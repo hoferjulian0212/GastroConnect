@@ -464,7 +464,7 @@ export default function ComplaintDetail() {
                   {lang === "de" ? "Dringend" : "Urgente"}
                 </Badge>
               )}
-              {actions.length > 0 && !confirmAction && (
+              {actions.length > 0 && actions.length <= 1 && !confirmAction && (
                 <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-end max-w-[60vw]" data-testid="actions-row-inline">
                   {actions.map((action) => {
                     const Icon = action.icon;
@@ -503,9 +503,10 @@ export default function ComplaintDetail() {
           </button>
         </div>
 
-        {/* Mobile actions row */}
+        {/* Mobile actions row — also rendered on desktop when there are 2+ actions,
+            so the centered status badge in the header isn't overlapped by buttons. */}
         {actions.length > 0 && !confirmAction && (
-          <div className="md:hidden px-4 flex flex-wrap justify-center gap-2 pt-3" data-testid="actions-row-mobile">
+          <div className={`${actions.length >= 2 ? "flex" : "md:hidden flex"} px-4 flex-wrap justify-center gap-2 pt-3`} data-testid="actions-row-mobile">
             {actions.map((action) => {
               const Icon = action.icon;
               const isDestructive = action.category === "destructive";
