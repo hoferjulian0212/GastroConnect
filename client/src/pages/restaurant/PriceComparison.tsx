@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -88,6 +89,7 @@ export default function PriceComparison() {
   const { currentUser } = useUser();
   const { lang } = useLanguage();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
@@ -364,22 +366,6 @@ export default function PriceComparison() {
       }, 0);
   }, [wechselplanCandidates, wechselplanSelected, wechselplanQuantities]);
 
-  const addToCartMutation = useMutation({
-    mutationFn: async (payload: { productId: string; supplierId: string; quantity: number }) => {
-      return apiRequest("POST", "/api/cart", {
-        restaurantId: currentUser?.id,
-        productId: payload.productId,
-        supplierId: payload.supplierId,
-        quantity: payload.quantity,
-        mode: "add",
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
-    },
-  });
-
   const wechselplanSubmitMutation = useMutation({
     mutationFn: async () => {
       const selected = wechselplanCandidates.filter(g => wechselplanSelected.has(g.key));
@@ -420,19 +406,9 @@ export default function PriceComparison() {
     },
   });
 
-  const handleQuickSwap = (g: GroupedProduct) => {
-    const moq = g.cheapestOffer.product.minOrderQuantity ?? 1;
-    const qty = Math.max(1, moq, Math.round(g.monthlyVolume) || 1);
-    addToCartMutation.mutate(
-      { productId: g.cheapestOffer.product.id, supplierId: g.cheapestOffer.product.supplierId, quantity: qty },
-      {
-        onSuccess: () => toast({
-          title: lang === "de" ? "In Warenkorb übernommen" : "Aggiunto al carrello",
-          description: `${g.name} · ${qty} ${g.unit} · ${g.cheapestOffer.product.supplier?.companyName || g.cheapestOffer.product.supplier?.name}`,
-        }),
-        onError: () => toast({ title: lang === "de" ? "Fehler beim Hinzufügen" : "Errore", variant: "destructive" }),
-      }
-    );
+  const handleVisitSupplier = (g: GroupedProduct) => {
+    const supplierId = g.cheapestOffer.product.supplierId;
+    setLocation(`/restaurant/catalog?supplier=${supplierId}`);
   };
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
@@ -783,8 +759,7 @@ export default function PriceComparison() {
                 lang={lang}
                 expanded={expandedGroups.has(g.key)}
                 onToggle={() => toggleExpand(g.key)}
-                onQuickSwap={() => handleQuickSwap(g)}
-                isSwapping={addToCartMutation.isPending}
+                onVisitSupplier={() => handleVisitSupplier(g)}
                 movMap={movMap}
                 totalOvernights={totalOvernightsNum}
               />
@@ -932,13 +907,12 @@ interface ComparisonCardProps {
   lang: "de" | "it";
   expanded: boolean;
   onToggle: () => void;
-  onQuickSwap: () => void;
-  isSwapping: boolean;
+  onVisitSupplier: () => void;
   movMap?: Record<string, { minimumValue: string; zone: string | null }>;
   totalOvernights: number;
 }
 
-function ComparisonCard({ group, rank, lang, expanded, onToggle, onQuickSwap, isSwapping, movMap, totalOvernights }: ComparisonCardProps) {
+function ComparisonCard({ group, rank, lang, expanded, onToggle, onVisitSupplier, movMap, totalOvernights }: ComparisonCardProps) {
   const cheapest = group.cheapestOffer;
   const current = group.currentOffer;
   const anyPromo = group.offers.some(o => o.hasPromo);
@@ -1135,17 +1109,13 @@ function ComparisonCard({ group, rank, lang, expanded, onToggle, onQuickSwap, is
           <>
             <Button
               size="sm"
-              onClick={(e) => { e.stopPropagation(); onQuickSwap(); }}
-              disabled={isSwapping}
+              onClick={(e) => { e.stopPropagation(); onVisitSupplier(); }}
               className="bg-emerald-500 hover:bg-emerald-400 text-white h-8 text-xs"
-              data-testid={`button-quick-swap-${group.key}`}
+              data-testid={`button-visit-supplier-${group.key}`}
             >
-              <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
-              {lang === "de" ? `Bei ${cheapestSupName} bestellen` : `Ordina da ${cheapestSupName}`}
+              <Package className="h-3.5 w-3.5 mr-1.5" />
+              {lang === "de" ? `Bei ${cheapestSupName} einkaufen` : `Acquista da ${cheapestSupName}`}
             </Button>
-            <span className="text-[11px] text-muted-foreground">
-              {swapQty} {group.unit} → {lang === "de" ? "Warenkorb" : "carrello"}
-            </span>
             <Button
               variant="ghost"
               size="sm"
