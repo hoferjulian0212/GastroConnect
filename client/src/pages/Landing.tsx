@@ -436,14 +436,14 @@ export default function Landing() {
             {/* Supplier card */}
             <div className="rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-card dark:from-emerald-950/20 dark:to-card p-5 md:p-6 relative overflow-hidden" data-testid="bridge-supplier">
               <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500/10 blur-2xl" />
-              <div className="relative">
-                <div className="flex items-center gap-2 mb-3">
+              <div className="relative flex flex-col items-center text-center">
+                <div className="flex flex-col items-center gap-2 mb-3">
                   <div className="h-10 w-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/30">
                     <Store className="h-5 w-5" />
                   </div>
                   <h3 className="font-bold text-lg" data-testid="text-bridge-supplier-title">{t.bridgeSupplierTitle}</h3>
                 </div>
-                <ul className="space-y-1.5 text-sm">
+                <ul className="space-y-1.5 text-sm inline-block text-left">
                   {[t.bridgeSupplierLine1, t.bridgeSupplierLine2, t.bridgeSupplierLine3].map((line, idx) => (
                     <li key={idx} className="flex items-center gap-2 text-muted-foreground">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
@@ -462,10 +462,7 @@ export default function Landing() {
               </div>
 
               <div className="relative inline-flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse" />
-                <div className="relative h-20 w-20 md:h-24 md:w-24 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-xl shadow-primary/30">
-                  <img src={logoImg} alt="GastroConnect" className="h-12 w-12 md:h-14 md:w-14 object-contain invert" />
-                </div>
+                <img src={logoImg} alt="GastroConnect" className="h-20 w-20 md:h-24 md:w-24 object-contain dark:invert" />
               </div>
               <div className="text-center">
                 <div className="font-bold text-sm md:text-base" data-testid="text-bridge-middle">{t.bridgeMiddleLabel}</div>
@@ -485,14 +482,14 @@ export default function Landing() {
             {/* Restaurant card */}
             <div className="rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-card dark:from-blue-950/20 dark:to-card p-5 md:p-6 relative overflow-hidden" data-testid="bridge-restaurant">
               <div className="absolute -left-6 -top-6 h-24 w-24 rounded-full bg-blue-500/10 blur-2xl" />
-              <div className="relative">
-                <div className="flex items-center gap-2 mb-3">
+              <div className="relative flex flex-col items-center text-center">
+                <div className="flex flex-col items-center gap-2 mb-3">
                   <div className="h-10 w-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-500/30">
                     <Utensils className="h-5 w-5" />
                   </div>
                   <h3 className="font-bold text-lg" data-testid="text-bridge-restaurant-title">{t.bridgeRestaurantTitle}</h3>
                 </div>
-                <ul className="space-y-1.5 text-sm">
+                <ul className="space-y-1.5 text-sm inline-block text-left">
                   {[t.bridgeRestaurantLine1, t.bridgeRestaurantLine2, t.bridgeRestaurantLine3].map((line, idx) => (
                     <li key={idx} className="flex items-center gap-2 text-muted-foreground">
                       <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 shrink-0" />
