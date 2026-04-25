@@ -1296,7 +1296,16 @@ export default function SupplierHome() {
                   <Euro className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
                   <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "totalRevenue")}</span>
                 </div>
-                <p className="text-base md:text-xl font-bold text-foreground truncate" data-testid="text-total-revenue">
+                <p
+                  className={`font-bold text-foreground tabular-nums tracking-tight whitespace-nowrap ${
+                    detailedStats.totalRevenue >= 100000
+                      ? "text-xs md:text-base"
+                      : detailedStats.totalRevenue >= 10000
+                      ? "text-sm md:text-lg"
+                      : "text-base md:text-xl"
+                  }`}
+                  data-testid="text-total-revenue"
+                >
                   {detailedStats.totalRevenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
                 </p>
               </div>
@@ -1305,7 +1314,7 @@ export default function SupplierHome() {
                   <Hash className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                   <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "totalOrders")}</span>
                 </div>
-                <p className="text-base md:text-xl font-bold text-foreground" data-testid="text-total-orders">
+                <p className="text-base md:text-xl font-bold text-foreground tabular-nums tracking-tight whitespace-nowrap" data-testid="text-total-orders">
                   {detailedStats.totalOrders}
                 </p>
               </div>
@@ -1314,7 +1323,16 @@ export default function SupplierHome() {
                   <TrendingUp className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                   <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "avgOrderValue")}</span>
                 </div>
-                <p className="text-base md:text-xl font-bold text-foreground truncate" data-testid="text-avg-order-value">
+                <p
+                  className={`font-bold text-foreground tabular-nums tracking-tight whitespace-nowrap ${
+                    detailedStats.avgOrderValue >= 100000
+                      ? "text-xs md:text-base"
+                      : detailedStats.avgOrderValue >= 10000
+                      ? "text-sm md:text-lg"
+                      : "text-base md:text-xl"
+                  }`}
+                  data-testid="text-avg-order-value"
+                >
                   {detailedStats.avgOrderValue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
                 </p>
               </div>
@@ -1325,10 +1343,20 @@ export default function SupplierHome() {
                 <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "revenueOverview")}</p>
                 <div className="h-44 md:h-52">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                    <BarChart data={chartData} margin={{ top: 20, right: 4, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                       <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                      <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}€`} />
+                      <YAxis
+                        tick={{ fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={44}
+                        tickFormatter={(v) => {
+                          if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}M€`;
+                          if (v >= 1_000) return `${(v / 1_000).toFixed(v % 1_000 === 0 ? 0 : 1)}k€`;
+                          return `${v}€`;
+                        }}
+                      />
                       <Tooltip
                         cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
                         isAnimationActive={false}
