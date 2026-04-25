@@ -61,6 +61,7 @@ export default function Complaints() {
   
   const [filterComplaintSupplier, setFilterComplaintSupplier] = useState<string>(initialSupplierId || "all");
   const [filterComplaintStatus, setFilterComplaintStatus] = useState<string>("all");
+  const [filterComplaintPriority, setFilterComplaintPriority] = useState<"all" | "urgent" | "normal">("all");
   const [filterComplaintDateFrom, setFilterComplaintDateFrom] = useState<string>("");
   const [filterComplaintDateTo, setFilterComplaintDateTo] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -388,7 +389,16 @@ export default function Complaints() {
     const search = searchQuery.trim().toLowerCase();
     const filtered = existingComplaints.filter(c => {
       if (filterComplaintSupplier !== "all" && c.supplier?.id !== filterComplaintSupplier) return false;
-      if (filterComplaintStatus !== "all" && c.status !== filterComplaintStatus) return false;
+      if (filterComplaintStatus !== "all") {
+        if (filterComplaintStatus === "active") {
+          if (c.status !== "open" && c.status !== "in_progress") return false;
+        } else if (c.status !== filterComplaintStatus) return false;
+      }
+      if (filterComplaintPriority !== "all") {
+        const isUrgent = (c as any).priority === "urgent";
+        if (filterComplaintPriority === "urgent" && !isUrgent) return false;
+        if (filterComplaintPriority === "normal" && isUrgent) return false;
+      }
       if (filterComplaintDateFrom) {
         const from = new Date(filterComplaintDateFrom);
         from.setHours(0, 0, 0, 0);
@@ -432,14 +442,17 @@ export default function Complaints() {
     });
 
     return sorted;
-  }, [existingComplaints, filterComplaintSupplier, filterComplaintStatus, filterComplaintDateFrom, filterComplaintDateTo, searchQuery, sortBy, sortDir]);
+  }, [existingComplaints, filterComplaintSupplier, filterComplaintStatus, filterComplaintPriority, filterComplaintDateFrom, filterComplaintDateTo, searchQuery, sortBy, sortDir]);
 
-  const hasActiveFilters = filterComplaintStatus !== "all" || filterComplaintSupplier !== "all" || !!filterComplaintDateFrom || !!filterComplaintDateTo;
-  const activeFilterCount = (filterComplaintStatus !== "all" ? 1 : 0) + (filterComplaintSupplier !== "all" ? 1 : 0) + (filterComplaintDateFrom ? 1 : 0) + (filterComplaintDateTo ? 1 : 0);
+  const hasActiveFilters = filterComplaintStatus !== "all" || filterComplaintSupplier !== "all" || filterComplaintPriority !== "all" || !!filterComplaintDateFrom || !!filterComplaintDateTo;
+  const activeFilterCount = (filterComplaintStatus !== "all" ? 1 : 0) + (filterComplaintSupplier !== "all" ? 1 : 0) + (filterComplaintPriority !== "all" ? 1 : 0) + (filterComplaintDateFrom ? 1 : 0) + (filterComplaintDateTo ? 1 : 0);
+  const priorityLabel = (k: string) => k === "urgent" ? (lang === "de" ? "Dringend" : "Urgente") : k === "normal" ? (lang === "de" ? "Normal" : "Normale") : t("common", "all");
+  const statusFilterLabel = (k: string) => k === "active" ? (lang === "de" ? "Aktiv" : "Attivo") : getComplaintStatus(k as any, lang);
 
   const clearFilters = () => {
     setFilterComplaintSupplier("all");
     setFilterComplaintStatus("all");
+    setFilterComplaintPriority("all");
     setFilterComplaintDateFrom("");
     setFilterComplaintDateTo("");
     setSearchQuery("");
@@ -478,7 +491,12 @@ export default function Complaints() {
         <div className="flex items-center gap-2 flex-wrap ml-auto order-last">
           {filterComplaintStatus !== "all" && (
             <button onClick={() => setFilterComplaintStatus("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-complaint-status">
-              <span>{getComplaintStatus(filterComplaintStatus as any, lang)}</span><X className="h-3 w-3" />
+              <span>{statusFilterLabel(filterComplaintStatus)}</span><X className="h-3 w-3" />
+            </button>
+          )}
+          {filterComplaintPriority !== "all" && (
+            <button onClick={() => setFilterComplaintPriority("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-complaint-priority">
+              <span>{priorityLabel(filterComplaintPriority)}</span><X className="h-3 w-3" />
             </button>
           )}
           {filterComplaintSupplier !== "all" && (
@@ -602,6 +620,7 @@ export default function Complaints() {
                   <div className="grid grid-cols-3 gap-1">
                     {([
                       { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
+                      { key: "active", label: lang === "de" ? "Aktiv" : "Attivo", dot: "bg-primary" },
                       { key: "open", label: getComplaintStatus("open", lang), dot: "bg-yellow-500" },
                       { key: "in_progress", label: getComplaintStatus("in_progress", lang), dot: "bg-blue-500" },
                       { key: "resolved", label: getComplaintStatus("resolved", lang), dot: "bg-green-500" },
@@ -612,6 +631,26 @@ export default function Complaints() {
                         onClick={() => setFilterComplaintStatus(key)}
                         className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${filterComplaintStatus === key ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
                         data-testid={`filter-complaint-status-${key}`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
+                        <span className="truncate">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{lang === "de" ? "Priorität" : "Priorità"}</Label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {([
+                      { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
+                      { key: "urgent", label: priorityLabel("urgent"), dot: "bg-red-500" },
+                      { key: "normal", label: priorityLabel("normal"), dot: "bg-blue-400" },
+                    ] as const).map(({ key, label, dot }) => (
+                      <button
+                        key={key}
+                        onClick={() => setFilterComplaintPriority(key)}
+                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${filterComplaintPriority === key ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
+                        data-testid={`filter-complaint-priority-${key}`}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
                         <span className="truncate">{label}</span>
