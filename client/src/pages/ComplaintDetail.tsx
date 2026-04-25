@@ -1,16 +1,21 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getComplaintStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, Check, MoreHorizontal, Image as ImageIcon, MessageSquare } from "lucide-react";
+import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, Check, Image as ImageIcon, MessageSquare, Play, RotateCcw, Ban, Send, Truck, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProductImage } from "@/components/ProductImage";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ComplaintWithDetails, ComplaintStatusHistoryWithUser, ComplaintCommentWithUser } from "@shared/schema";
+
+type ConfirmAction = "in_progress" | "resolved" | "closed" | "reopen" | "follow_up" | "comment" | null;
 
 export default function ComplaintDetail() {
   const [, setLocation] = useLocation();
@@ -18,11 +23,20 @@ export default function ComplaintDetail() {
   const [matchSupplier, paramsS] = useRoute("/supplier/complaints/:id");
   const params = matchRestaurant ? paramsR : paramsS;
   const complaintId = params?.id;
-  const { currentRole } = useUser();
+  const { currentRole, currentUser } = useUser();
   const { lang } = useLanguage();
   const t = useT();
+  const { toast } = useToast();
   const dateLocale = lang === "de" ? de : it;
   const isSupplier = currentRole === "supplier";
+
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [commentText, setCommentText] = useState("");
+  const [followUpDate, setFollowUpDate] = useState(() => {
+    const t = new Date();
+    t.setDate(t.getDate() + 1);
+    return t.toISOString().split("T")[0];
+  });
 
   const { data: complaint, isLoading } = useQuery<ComplaintWithDetails>({
     queryKey: ["/api/complaints", complaintId],
@@ -53,6 +67,112 @@ export default function ComplaintDetail() {
     },
     enabled: !!complaintId,
   });
+
+  const { data: conversations } = useQuery<any[]>({
+    queryKey: [`/api/conversations?userId=${currentUser?.id}`],
+    enabled: !!currentUser?.id && !!complaint,
+  });
+
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/complaints", complaintId] });
+    queryClient.invalidateQueries({ queryKey: ["/api/complaints", complaintId, "status-history"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/complaints", complaintId, "comments"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/complaints"] });
+  };
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async (status: "open" | "in_progress" | "resolved" | "closed") => {
+      await apiRequest("PATCH", `/api/complaints/${complaintId}`, {
+        status,
+        changedBy: currentUser?.name || currentUser?.id,
+      });
+    },
+    onSuccess: () => {
+      setConfirmAction(null);
+      invalidateAll();
+      toast({ title: lang === "de" ? "Status aktualisiert" : "Stato aggiornato" });
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+    },
+  });
+
+  const addCommentMutation = useMutation({
+    mutationFn: async (content: string) => {
+      await apiRequest("POST", `/api/complaints/${complaintId}/comments`, {
+        userId: currentUser?.id,
+        content,
+      });
+    },
+    onSuccess: () => {
+      setConfirmAction(null);
+      setCommentText("");
+      invalidateAll();
+      toast({ title: lang === "de" ? "Kommentar hinzugefügt" : "Commento aggiunto" });
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+    },
+  });
+
+  const followUpMutation = useMutation({
+    mutationFn: async (date: string) => {
+      if (!complaint) return;
+      let items: any[] = [];
+      try {
+        items = JSON.parse((complaint.affectedItems as string) || "[]");
+      } catch {}
+      const orderItems = items
+        .filter((i: any) => i.productId)
+        .map((i: any) => ({
+          productId: i.productId,
+          productName: i.name || i.productName,
+          quantity: Math.max(1, Math.round(Number(i.quantity || 1))),
+          unitPrice: i.unitPrice,
+        }));
+      if (orderItems.length === 0) {
+        throw new Error("no-items");
+      }
+      await apiRequest("POST", `/api/complaints/${complaintId}/follow-up-order`, {
+        items: orderItems,
+        deliveryDate: date,
+        supplierId: complaint.supplierId,
+        notes: lang === "de"
+          ? `Nachlieferung zu Reklamation #${complaint.id.slice(0, 8).toUpperCase()}`
+          : `Riconsegna per reclamo #${complaint.id.slice(0, 8).toUpperCase()}`,
+      });
+    },
+    onSuccess: () => {
+      setConfirmAction(null);
+      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      toast({
+        title: lang === "de" ? "Nachlieferung erstellt" : "Riconsegna creata",
+        description: lang === "de" ? "Die Folgebestellung wurde erstellt und bestätigt." : "L'ordine successivo è stato creato e confermato.",
+      });
+    },
+    onError: (err: any) => {
+      const isNoItems = err?.message === "no-items";
+      toast({
+        title: lang === "de" ? "Fehler" : "Errore",
+        description: isNoItems
+          ? (lang === "de" ? "Keine Produkte mit IDs verfügbar." : "Nessun prodotto con ID disponibile.")
+          : undefined,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const navigateToChat = () => {
+    if (!complaint) return;
+    const counterpartyId = isSupplier ? complaint.restaurantId : complaint.supplierId;
+    const conv = conversations?.find((c: any) => c.otherUser?.id === counterpartyId);
+    if (conv) {
+      setLocation(`/${currentRole}/inbox?chat=${conv.id}`);
+    } else {
+      setLocation(`/${currentRole}/inbox`);
+    }
+  };
 
   const goBack = () => {
     setLocation(`/${currentRole}/complaints`);
@@ -185,9 +305,122 @@ export default function ComplaintDetail() {
   const statusSteps = ["open", "in_progress", "resolved"];
   const currentStepIndex = statusSteps.indexOf(complaint.status);
   const isClosed = complaint.status === "closed";
+  const isResolved = complaint.status === "resolved";
+  const isTerminal = isClosed || isResolved;
   const stepLabels: Record<string, string> = lang === "de"
     ? { open: "Offen", in_progress: "In Bearbeitung", resolved: "Gelöst" }
     : { open: "Aperto", in_progress: "In lavorazione", resolved: "Risolto" };
+
+  const hasOrderableItems = affectedItems.some((i: any) => !!i.productId);
+
+  type ActionCategory = "primary" | "fulfillment" | "communication" | "destructive";
+  type ActionButton = {
+    label: string;
+    icon: typeof MessageSquare;
+    style: "primary" | "secondary" | "destructive";
+    category: ActionCategory;
+    action: () => void;
+    testId: string;
+    disabled?: boolean;
+    disabledReason?: string;
+  };
+
+  const actions: ActionButton[] = [];
+
+  if (isSupplier) {
+    // In Bearbeitung nehmen
+    actions.push({
+      label: lang === "de" ? "In Bearbeitung nehmen" : "In lavorazione",
+      icon: Play,
+      style: complaint.status === "open" ? "primary" : "secondary",
+      category: "primary",
+      action: () => setConfirmAction("in_progress"),
+      testId: "action-set-in-progress",
+      disabled: complaint.status !== "open",
+      disabledReason: lang === "de" ? "Bereits gestartet" : "Già iniziato",
+    });
+    // Als gelöst markieren
+    actions.push({
+      label: lang === "de" ? "Als gelöst markieren" : "Segna come risolto",
+      icon: CheckCircle,
+      style: complaint.status === "in_progress" ? "primary" : "secondary",
+      category: "primary",
+      action: () => setConfirmAction("resolved"),
+      testId: "action-mark-resolved",
+      disabled: complaint.status === "resolved" || complaint.status === "closed",
+      disabledReason: complaint.status === "open"
+        ? (lang === "de" ? "Erst Bearbeitung starten" : "Avvia prima la lavorazione")
+        : (lang === "de" ? "Bereits abgeschlossen" : "Già completato"),
+    });
+    // Folgebestellung
+    actions.push({
+      label: lang === "de" ? "Folgebestellung" : "Riconsegna",
+      icon: Truck,
+      style: "secondary",
+      category: "fulfillment",
+      action: () => setConfirmAction("follow_up"),
+      testId: "action-create-follow-up",
+      disabled: isTerminal || !hasOrderableItems || followUpMutation.isPending,
+      disabledReason: !hasOrderableItems
+        ? (lang === "de" ? "Keine Produkte verknüpft" : "Nessun prodotto collegato")
+        : (lang === "de" ? "Reklamation abgeschlossen" : "Reclamo chiuso"),
+    });
+  } else {
+    // Restaurant: kann wieder öffnen wenn geschlossen/gelöst
+    actions.push({
+      label: lang === "de" ? "Wieder öffnen" : "Riapri",
+      icon: RotateCcw,
+      style: "secondary",
+      category: "primary",
+      action: () => setConfirmAction("reopen"),
+      testId: "action-reopen",
+      disabled: !isTerminal,
+      disabledReason: lang === "de" ? "Reklamation ist offen" : "Reclamo aperto",
+    });
+  }
+
+  // Kommentar hinzufügen — beide Rollen, immer
+  actions.push({
+    label: lang === "de" ? "Kommentar hinzufügen" : "Aggiungi commento",
+    icon: Plus,
+    style: "secondary",
+    category: "communication",
+    action: () => setConfirmAction("comment"),
+    testId: "action-add-comment",
+  });
+
+  // Nachricht schreiben — beide Rollen, immer
+  actions.push({
+    label: lang === "de" ? "Nachricht schreiben" : "Scrivi messaggio",
+    icon: MessageSquare,
+    style: "secondary",
+    category: "communication",
+    action: navigateToChat,
+    testId: "action-write-message",
+  });
+
+  // Schließen — beide Rollen
+  actions.push({
+    label: lang === "de" ? "Reklamation schließen" : "Chiudi reclamo",
+    icon: Ban,
+    style: "destructive",
+    category: "destructive",
+    action: () => setConfirmAction("closed"),
+    testId: "action-close",
+    disabled: complaint.status === "closed",
+    disabledReason: lang === "de" ? "Bereits geschlossen" : "Già chiuso",
+  });
+
+  const getButtonClasses = (style: "primary" | "secondary" | "destructive") => {
+    switch (style) {
+      case "primary":
+        return "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm";
+      case "secondary":
+        return "bg-card border border-border text-foreground hover:bg-accent";
+      case "destructive":
+        return "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/50";
+    }
+  };
 
   return (
     <div className="min-h-dvh bg-background flex flex-col" data-testid="page-complaint-detail">
@@ -231,9 +464,33 @@ export default function ComplaintDetail() {
                   {lang === "de" ? "Dringend" : "Urgente"}
                 </Badge>
               )}
-              <button className="h-9 w-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors" data-testid="button-more-options">
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
+              {actions.length > 0 && !confirmAction && (
+                <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-end max-w-[60vw]" data-testid="actions-row-inline">
+                  {actions.map((action) => {
+                    const Icon = action.icon;
+                    const isDestructive = action.category === "destructive";
+                    const baseCls = isDestructive
+                      ? "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25"
+                      : getButtonClasses(action.style);
+                    const disabledCls = action.disabled
+                      ? "bg-white/5 text-white/40 border border-white/10 cursor-not-allowed hover:bg-white/5"
+                      : baseCls;
+                    return (
+                      <button
+                        key={action.testId}
+                        className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
+                        onClick={action.disabled ? undefined : action.action}
+                        disabled={action.disabled}
+                        title={action.disabled ? action.disabledReason : undefined}
+                        data-testid={action.testId}
+                      >
+                        <Icon className="h-3.5 w-3.5 shrink-0" />
+                        <span>{action.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -245,6 +502,163 @@ export default function ComplaintDetail() {
             {lang === "de" ? "Zurück" : "Indietro"}
           </button>
         </div>
+
+        {/* Mobile actions row */}
+        {actions.length > 0 && !confirmAction && (
+          <div className="md:hidden px-4 flex flex-wrap justify-center gap-2 pt-3" data-testid="actions-row-mobile">
+            {actions.map((action) => {
+              const Icon = action.icon;
+              const isDestructive = action.category === "destructive";
+              const baseCls = isDestructive
+                ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/50"
+                : getButtonClasses(action.style);
+              const disabledCls = action.disabled
+                ? "bg-muted/40 text-muted-foreground/60 border border-border/60 cursor-not-allowed hover:bg-muted/40"
+                : baseCls;
+              return (
+                <button
+                  key={action.testId}
+                  className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
+                  onClick={action.disabled ? undefined : action.action}
+                  disabled={action.disabled}
+                  title={action.disabled ? action.disabledReason : undefined}
+                  data-testid={`${action.testId}-mobile`}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span>{action.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Confirmation flows */}
+        {confirmAction && (
+          <div className="px-4 md:px-6 lg:px-8 pt-3">
+            <div className="mx-auto max-w-md" data-testid="section-confirm">
+              {(confirmAction === "in_progress" || confirmAction === "resolved" || confirmAction === "closed" || confirmAction === "reopen") && (
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
+                  <p className="text-sm font-medium text-center text-foreground">
+                    {confirmAction === "in_progress" && (lang === "de" ? "Reklamation in Bearbeitung nehmen?" : "Prendere in lavorazione il reclamo?")}
+                    {confirmAction === "resolved" && (lang === "de" ? "Reklamation als gelöst markieren?" : "Segnare il reclamo come risolto?")}
+                    {confirmAction === "closed" && (lang === "de" ? "Reklamation wirklich schließen?" : "Chiudere davvero il reclamo?")}
+                    {confirmAction === "reopen" && (lang === "de" ? "Reklamation wieder öffnen?" : "Riaprire il reclamo?")}
+                  </p>
+                  <div className="flex justify-center gap-2">
+                    <button
+                      className="h-9 px-4 rounded-lg text-xs font-semibold bg-card border border-border text-foreground hover:bg-accent transition-all active:scale-[0.97]"
+                      onClick={() => setConfirmAction(null)}
+                      disabled={updateStatusMutation.isPending}
+                      data-testid="cancel-status-change"
+                    >
+                      {lang === "de" ? "Abbrechen" : "Annulla"}
+                    </button>
+                    <button
+                      className={`h-9 px-4 rounded-lg text-xs font-semibold text-white shadow-sm transition-all active:scale-[0.97] inline-flex items-center justify-center gap-1.5 ${
+                        confirmAction === "closed"
+                          ? "bg-red-600 hover:bg-red-700"
+                          : "bg-primary hover:bg-primary/90"
+                      }`}
+                      onClick={() => {
+                        const target = confirmAction === "reopen" ? "open" : (confirmAction as "in_progress" | "resolved" | "closed");
+                        updateStatusMutation.mutate(target);
+                      }}
+                      disabled={updateStatusMutation.isPending}
+                      data-testid="confirm-status-change"
+                    >
+                      {updateStatusMutation.isPending
+                        ? (lang === "de" ? "Wird gespeichert..." : "Salvataggio...")
+                        : (lang === "de" ? "Bestätigen" : "Conferma")}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {confirmAction === "comment" && (
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3" data-testid="section-comment">
+                  <p className="text-sm font-medium text-foreground">
+                    {lang === "de" ? "Neuer Kommentar" : "Nuovo commento"}
+                  </p>
+                  <textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder={lang === "de" ? "Schreibe einen Kommentar..." : "Scrivi un commento..."}
+                    className="w-full min-h-[88px] resize-y rounded-lg border border-border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    data-testid="input-comment"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="h-9 px-4 rounded-lg text-xs font-semibold bg-card border border-border text-foreground hover:bg-accent transition-all active:scale-[0.97]"
+                      onClick={() => { setConfirmAction(null); setCommentText(""); }}
+                      disabled={addCommentMutation.isPending}
+                      data-testid="cancel-comment"
+                    >
+                      {lang === "de" ? "Abbrechen" : "Annulla"}
+                    </button>
+                    <button
+                      className="h-9 px-4 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-white shadow-sm transition-all active:scale-[0.97] inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => addCommentMutation.mutate(commentText.trim())}
+                      disabled={!commentText.trim() || addCommentMutation.isPending}
+                      data-testid="confirm-comment"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      {addCommentMutation.isPending
+                        ? (lang === "de" ? "Senden..." : "Invio...")
+                        : (lang === "de" ? "Senden" : "Invia")}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {confirmAction === "follow_up" && (
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3" data-testid="section-follow-up">
+                  <p className="text-sm font-medium text-foreground">
+                    {lang === "de" ? "Folgebestellung erstellen" : "Crea riconsegna"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "de"
+                      ? `Eine Nachlieferung wird mit ${affectedItems.filter((i:any)=>i.productId).length} Produkt(en) erstellt und automatisch bestätigt.`
+                      : `Verrà creata una riconsegna con ${affectedItems.filter((i:any)=>i.productId).length} prodotto/i e confermata automaticamente.`}
+                  </p>
+                  <div>
+                    <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                      {lang === "de" ? "Lieferdatum" : "Data di consegna"}
+                    </label>
+                    <input
+                      type="date"
+                      value={followUpDate}
+                      min={new Date().toISOString().split("T")[0]}
+                      onChange={(e) => setFollowUpDate(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      data-testid="input-follow-up-date"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="h-9 px-4 rounded-lg text-xs font-semibold bg-card border border-border text-foreground hover:bg-accent transition-all active:scale-[0.97]"
+                      onClick={() => setConfirmAction(null)}
+                      disabled={followUpMutation.isPending}
+                      data-testid="cancel-follow-up"
+                    >
+                      {lang === "de" ? "Abbrechen" : "Annulla"}
+                    </button>
+                    <button
+                      className="h-9 px-4 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-white shadow-sm transition-all active:scale-[0.97] inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => followUpMutation.mutate(followUpDate)}
+                      disabled={!followUpDate || followUpMutation.isPending}
+                      data-testid="confirm-follow-up"
+                    >
+                      <Truck className="h-3.5 w-3.5" />
+                      {followUpMutation.isPending
+                        ? (lang === "de" ? "Wird erstellt..." : "Creazione...")
+                        : (lang === "de" ? "Erstellen" : "Crea")}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* KPI strip + body */}
         <div className="px-3 md:px-6 pb-6 pt-3">

@@ -6,7 +6,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays } from "lucide-react";
+import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProductImage } from "@/components/ProductImage";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,6 +58,32 @@ export default function OrderDetail() {
     queryKey: [`/api/conversations?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id && !!order,
   });
+
+  // Find the conversation between the two parties of this order
+  const orderConversation = order
+    ? conversations?.find((c: any) => c.otherUser?.id === (isSupplier ? order.restaurantId : order.supplierId))
+    : null;
+
+  // Query messages of that conversation to detect a pending change request for this order
+  const { data: convMessages } = useQuery<any[]>({
+    queryKey: [`/api/conversations/${orderConversation?.id}/messages`],
+    enabled: !!orderConversation?.id,
+  });
+
+  const hasPendingChangeRequest = (() => {
+    if (!convMessages || !orderId) return false;
+    let pending = false;
+    for (const m of convMessages) {
+      if (m.messageType !== "order_change_request") continue;
+      try {
+        const data = typeof m.content === "string" ? JSON.parse(m.content) : m.content;
+        if (data?.orderId !== orderId) continue;
+        if (data?.type === "change_request") pending = true;
+        else if (data?.type === "change_request_response") pending = false;
+      } catch {}
+    }
+    return pending;
+  })();
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/orders", orderId] });
@@ -139,6 +165,48 @@ export default function OrderDetail() {
     },
     onError: () => {
       setShowDatePicker(false);
+      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+    },
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/orders/${orderId}/reorder`, { restaurantId: currentUser?.id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+      toast({
+        title: lang === "de" ? "Artikel in den Warenkorb gelegt" : "Articoli aggiunti al carrello",
+        description: lang === "de" ? "Die Bestellung wurde in Ihren Warenkorb kopiert." : "L'ordine è stato copiato nel carrello.",
+      });
+      setLocation(`/restaurant/cart`);
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+    },
+  });
+
+  const changeRequestRespondMutation = useMutation({
+    mutationFn: async (approved: boolean) => {
+      await apiRequest("POST", `/api/orders/${orderId}/change-request/respond`, {
+        approved,
+        respondedBy: currentUser?.id,
+      });
+    },
+    onSuccess: (_data, approved) => {
+      setConfirmAction(null);
+      invalidateAll();
+      if (orderConversation?.id) {
+        queryClient.invalidateQueries({ queryKey: [`/api/conversations/${orderConversation.id}/messages`] });
+      }
+      toast({
+        title: approved
+          ? (lang === "de" ? "Änderung genehmigt" : "Modifica approvata")
+          : (lang === "de" ? "Änderung abgelehnt" : "Modifica rifiutata"),
+      });
+    },
+    onError: () => {
       toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
     },
   });
@@ -298,105 +366,147 @@ export default function OrderDetail() {
     category: ActionCategory;
     action: () => void;
     testId: string;
+    disabled?: boolean;
+    disabledReason?: string;
   };
 
   const actions: ActionButton[] = [];
 
   if (isSupplier) {
-    if (st === "pending") {
+    // Pending change request — highlighted approve/reject pair
+    if (hasPendingChangeRequest) {
       actions.push({
-        label: lang === "de" ? "Bestellung bestätigen" : "Conferma ordine",
-        icon: Check,
+        label: lang === "de" ? "Änderung genehmigen" : "Approva modifica",
+        icon: ThumbsUp,
         style: "primary",
         category: "primary",
-        action: () => setShowPartialConfirm(true),
-        testId: "action-confirm-order",
+        action: () => changeRequestRespondMutation.mutate(true),
+        testId: "action-approve-change-request",
       });
-    }
-    if (st === "confirmed" || st === "partially_confirmed") {
       actions.push({
-        label: lang === "de" ? "Lieferung starten" : "Avvia consegna",
-        icon: Truck,
-        style: "primary",
-        category: "primary",
-        action: () => setShowDatePicker(true),
-        testId: "action-start-delivery",
-      });
-    }
-    if (st === "in_delivery") {
-      actions.push({
-        label: lang === "de" ? "Als geliefert markieren" : "Segna come consegnato",
-        icon: CheckCircle,
-        style: "primary",
-        category: "primary",
-        action: () => setConfirmAction("delivered"),
-        testId: "action-mark-delivered",
-      });
-    }
-    if (!order.requestedDeliveryDate && !isTerminal) {
-      actions.push({
-        label: lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna",
-        icon: CalendarDays,
+        label: lang === "de" ? "Änderung ablehnen" : "Rifiuta modifica",
+        icon: ThumbsDown,
         style: "secondary",
-        category: "fulfillment",
-        action: () => setShowDatePicker(true),
-        testId: "action-set-delivery-date",
+        category: "primary",
+        action: () => changeRequestRespondMutation.mutate(false),
+        testId: "action-reject-change-request",
       });
     }
-    if ((st === "delivered" || st === "in_delivery") && !deliveryNoteMutation.isPending) {
-      actions.push({
-        label: lang === "de" ? "Lieferschein erstellen" : "Crea bolla di consegna",
-        icon: FileText,
-        style: "secondary",
-        category: "fulfillment",
-        action: () => deliveryNoteMutation.mutate(),
-        testId: "action-create-delivery-note",
-      });
-    }
-    if (st !== "delivered" && st !== "cancelled" && st !== "in_delivery") {
-      actions.push({
-        label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",
-        icon: Ban,
-        style: "destructive",
-        category: "destructive",
-        action: () => setConfirmAction("cancelled"),
-        testId: "action-cancel-order",
-      });
-    }
+    // Confirm
+    actions.push({
+      label: lang === "de" ? "Bestellung bestätigen" : "Conferma ordine",
+      icon: Check,
+      style: st === "pending" ? "primary" : "secondary",
+      category: "primary",
+      action: () => setShowPartialConfirm(true),
+      testId: "action-confirm-order",
+      disabled: st !== "pending",
+      disabledReason: lang === "de" ? "Bereits bestätigt" : "Già confermato",
+    });
+    // Start delivery
+    actions.push({
+      label: lang === "de" ? "Lieferung starten" : "Avvia consegna",
+      icon: Truck,
+      style: (st === "confirmed" || st === "partially_confirmed") ? "primary" : "secondary",
+      category: "primary",
+      action: () => setShowDatePicker(true),
+      testId: "action-start-delivery",
+      disabled: !(st === "confirmed" || st === "partially_confirmed"),
+      disabledReason: st === "pending"
+        ? (lang === "de" ? "Erst bestätigen" : "Conferma prima")
+        : (lang === "de" ? "Nicht verfügbar" : "Non disponibile"),
+    });
+    // Mark delivered
+    actions.push({
+      label: lang === "de" ? "Als geliefert markieren" : "Segna come consegnato",
+      icon: CheckCircle,
+      style: st === "in_delivery" ? "primary" : "secondary",
+      category: "primary",
+      action: () => setConfirmAction("delivered"),
+      testId: "action-mark-delivered",
+      disabled: st !== "in_delivery",
+      disabledReason: lang === "de" ? "Lieferung noch nicht gestartet" : "Consegna non avviata",
+    });
+    // Set delivery date — always shown when not terminal
+    actions.push({
+      label: lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna",
+      icon: CalendarDays,
+      style: "secondary",
+      category: "fulfillment",
+      action: () => setShowDatePicker(true),
+      testId: "action-set-delivery-date",
+      disabled: isTerminal,
+      disabledReason: lang === "de" ? "Bestellung abgeschlossen" : "Ordine completato",
+    });
+    // Delivery note
+    actions.push({
+      label: lang === "de" ? "Lieferschein erstellen" : "Crea bolla di consegna",
+      icon: FileText,
+      style: "secondary",
+      category: "fulfillment",
+      action: () => deliveryNoteMutation.mutate(),
+      testId: "action-create-delivery-note",
+      disabled: !(st === "in_delivery" || st === "delivered") || deliveryNoteMutation.isPending,
+      disabledReason: lang === "de" ? "Erst nach Lieferstart" : "Solo dopo l'avvio",
+    });
+    // Cancel
+    actions.push({
+      label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",
+      icon: Ban,
+      style: "destructive",
+      category: "destructive",
+      action: () => setConfirmAction("cancelled"),
+      testId: "action-cancel-order",
+      disabled: isTerminal || st === "in_delivery",
+      disabledReason: lang === "de" ? "Nicht mehr stornierbar" : "Non più annullabile",
+    });
   } else {
-    if (st === "pending") {
-      actions.push({
-        label: lang === "de" ? "Bestellung bearbeiten" : "Modifica ordine",
-        icon: Pencil,
-        style: "secondary",
-        category: "fulfillment",
-        action: () => setLocation(`/restaurant/orders?edit=${order.id}`),
-        testId: "action-edit-order",
-      });
-    }
-    if (st === "confirmed" || st === "partially_confirmed") {
-      actions.push({
-        label: lang === "de" ? "Änderung anfragen" : "Richiedi modifica",
-        icon: Send,
-        style: "secondary",
-        category: "fulfillment",
-        action: () => setConfirmAction("change_request"),
-        testId: "action-request-change",
-      });
-    }
-    if (!isTerminal) {
-      actions.push({
-        label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",
-        icon: Ban,
-        style: "destructive",
-        category: "destructive",
-        action: () => setConfirmAction("cancelled"),
-        testId: "action-cancel-order",
-      });
-    }
+    // Restaurant
+    actions.push({
+      label: lang === "de" ? "Bestellung bearbeiten" : "Modifica ordine",
+      icon: Pencil,
+      style: st === "pending" ? "primary" : "secondary",
+      category: "fulfillment",
+      action: () => setLocation(`/restaurant/orders?edit=${order.id}`),
+      testId: "action-edit-order",
+      disabled: st !== "pending",
+      disabledReason: lang === "de" ? "Nur vor Bestätigung" : "Solo prima della conferma",
+    });
+    actions.push({
+      label: lang === "de" ? "Änderung anfragen" : "Richiedi modifica",
+      icon: Send,
+      style: "secondary",
+      category: "fulfillment",
+      action: () => setConfirmAction("change_request"),
+      testId: "action-request-change",
+      disabled: !(st === "confirmed" || st === "partially_confirmed"),
+      disabledReason: st === "pending"
+        ? (lang === "de" ? "Direkt bearbeiten" : "Modifica direttamente")
+        : (lang === "de" ? "Nicht verfügbar" : "Non disponibile"),
+    });
+    // Folgebestellung — always visible for restaurant
+    actions.push({
+      label: lang === "de" ? "Folgebestellung" : "Riordina",
+      icon: RefreshCw,
+      style: "secondary",
+      category: "fulfillment",
+      action: () => reorderMutation.mutate(),
+      testId: "action-reorder",
+      disabled: reorderMutation.isPending,
+    });
+    actions.push({
+      label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",
+      icon: Ban,
+      style: "destructive",
+      category: "destructive",
+      action: () => setConfirmAction("cancelled"),
+      testId: "action-cancel-order",
+      disabled: isTerminal,
+      disabledReason: lang === "de" ? "Bestellung abgeschlossen" : "Ordine completato",
+    });
   }
 
-  // Communication action — always available, placed between fulfillment and destructive
+  // Communication action — always available
   actions.push({
     label: lang === "de" ? "Nachricht schreiben" : "Scrivi messaggio",
     icon: MessageSquare,
@@ -454,18 +564,23 @@ export default function OrderDetail() {
                 </span>
               </Badge>
               {actions.length > 0 && !confirmAction && (
-                <div className="hidden md:flex items-center gap-1.5" data-testid="actions-row-inline">
+                <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-end max-w-[60vw]" data-testid="actions-row-inline">
                   {actions.map((action) => {
                     const Icon = action.icon;
                     const isDestructive = action.category === "destructive";
-                    const cls = isDestructive
+                    const baseCls = isDestructive
                       ? "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25"
                       : getButtonClasses(action.style);
+                    const disabledCls = action.disabled
+                      ? "bg-white/5 text-white/40 border border-white/10 cursor-not-allowed hover:bg-white/5"
+                      : baseCls;
                     return (
                       <button
                         key={action.testId}
-                        className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] whitespace-nowrap ${cls}`}
-                        onClick={action.action}
+                        className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
+                        onClick={action.disabled ? undefined : action.action}
+                        disabled={action.disabled}
+                        title={action.disabled ? action.disabledReason : undefined}
                         data-testid={action.testId}
                       >
                         <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -495,14 +610,19 @@ export default function OrderDetail() {
               {actions.map((action) => {
                 const Icon = action.icon;
                 const isDestructive = action.category === "destructive";
-                const cls = isDestructive
+                const baseCls = isDestructive
                   ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/50"
                   : getButtonClasses(action.style);
+                const disabledCls = action.disabled
+                  ? "bg-muted/40 text-muted-foreground/60 border border-border/60 cursor-not-allowed hover:bg-muted/40"
+                  : baseCls;
                 return (
                   <button
                     key={action.testId}
-                    className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] whitespace-nowrap ${cls}`}
-                    onClick={action.action}
+                    className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
+                    onClick={action.disabled ? undefined : action.action}
+                    disabled={action.disabled}
+                    title={action.disabled ? action.disabledReason : undefined}
                     data-testid={`${action.testId}-mobile`}
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0" />
