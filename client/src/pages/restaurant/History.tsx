@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { History as HistoryIcon, Clock, RotateCcw, Search, Package } from "lucide-react";
-import type { OrderWithDetails } from "@shared/schema";
+import { formatOrderNumber, type OrderWithDetails } from "@shared/schema";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -107,7 +107,7 @@ export default function RestaurantHistory() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-1 md:gap-2">
-                            <p className="font-medium text-sm md:text-base">Bestellung #{order.id.slice(0, 8)}</p>
+                            <p className="font-medium text-sm md:text-base">Bestellung #{formatOrderNumber(order)}</p>
                             <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs">
                               {getStatusLabel(order.status)}
                             </Badge>

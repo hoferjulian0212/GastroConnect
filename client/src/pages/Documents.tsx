@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { FileText, Download, Building2, Clock, Eye, Pencil, ChevronDown, ChevronRight, BarChart3, Receipt, TrendingUp, ShoppingCart, Trash2 } from "lucide-react";
-import type { DocumentWithDetails } from "@shared/schema";
+import { formatOrderNumber, type DocumentWithDetails } from "@shared/schema";
 import { format } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
@@ -163,7 +163,7 @@ export default function Documents() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Lieferschein_${selectedDoc.orderId.slice(0, 8)}.pdf`;
+      a.download = `Lieferschein_${formatOrderNumber(selectedDoc.order ?? { id: selectedDoc.orderId })}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: lang === "de" ? "Lieferschein heruntergeladen" : "Bolla scaricata" });
@@ -389,7 +389,7 @@ export default function Documents() {
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium truncate">{doc.title}</p>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                      <span>#{doc.orderId.slice(0, 8)}</span>
+                                      <span>#{formatOrderNumber(doc.order ?? { id: doc.orderId })}</span>
                                       <span>{format(new Date(doc.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</span>
                                     </div>
                                   </div>

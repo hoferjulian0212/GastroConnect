@@ -19,7 +19,7 @@ import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { ConversationWithUser, Message, Product, Order, ComplaintWithDetails, ComplaintCommentWithUser, OrderStatusHistoryWithUser, ComplaintStatusHistoryWithUser, DeliverySchedule } from "@shared/schema";
+import { formatOrderNumber, formatComplaintNumber, type ConversationWithUser, type Message, type MessageWithOrderNumber, type Product, type Order, type ComplaintWithDetails, type ComplaintCommentWithUser, type OrderStatusHistoryWithUser, type ComplaintStatusHistoryWithUser, type DeliverySchedule } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay, addDays, startOfDay } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -223,7 +223,9 @@ export default function RestaurantInbox() {
     }
     const orderRefIdParam = params.get("orderRefId");
     if (orderRefIdParam) {
-      const label = `${lang === "de" ? "Bestellung" : "Ordine"} #${orderRefIdParam.slice(0, 8)}`;
+      const orderNumberParam = params.get("orderNumber");
+      const display = orderNumberParam || formatOrderNumber({ orderNumber: null, id: orderRefIdParam });
+      const label = `${lang === "de" ? "Bestellung" : "Ordine"} #${display}`;
       setAttachedOrderRef({ id: orderRefIdParam, label });
     }
     const conversationIdParam = params.get("conversationId") || params.get("chat");
@@ -489,7 +491,7 @@ export default function RestaurantInbox() {
     refetchIntervalInBackground: false,
   });
 
-  const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
+  const { data: messages, isLoading: messagesLoading } = useQuery<MessageWithOrderNumber[]>({
     queryKey: [`/api/conversations/${selectedConversation}/messages`],
     enabled: !!selectedConversation,
     refetchInterval: 3000,
@@ -1060,7 +1062,7 @@ export default function RestaurantInbox() {
                       if (conv.lastMessage?.messageType === "order") {
                         try { isFollowUpOrder = JSON.parse(conv.lastMessage.content)?.isFollowUp === true; } catch {}
                       }
-                      const lastOid = conv.lastMessage?.orderId ? ` #${conv.lastMessage.orderId.slice(0, 8)}` : "";
+                      const lastOid = conv.lastMessage?.orderId ? ` #${formatOrderNumber({orderNumber: conv.lastMessage.orderNumber, id: conv.lastMessage.orderId})}` : "";
                       const messagePreview = conv.lastMessage?.messageType === "order" 
                         ? (isFollowUpOrder ? (lang === "de" ? "Nachlieferung" : "Riconsegna") : (lang === "de" ? "Bestellung" : "Ordine")) + lastOid
                         : conv.lastMessage?.messageType === "complaint"
@@ -1225,7 +1227,7 @@ export default function RestaurantInbox() {
                                         <div className="flex items-center justify-between gap-2">
                                           <div className="flex items-center gap-1.5 min-w-0">
                                             <StatusIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                            <span className="text-xs font-mono truncate">Bestellung #{order.id.slice(0, 8)}</span>
+                                            <span className="text-xs font-mono truncate">Bestellung #{formatOrderNumber(order)}</span>
                                           </div>
                                           <Badge variant="secondary" className={`text-[10px] shrink-0 ${getStatusColor(order.status)}`}>
                                             {getOrderStatus(order.status, lang)}
@@ -1310,7 +1312,7 @@ export default function RestaurantInbox() {
                                           <p className="text-[10px] text-muted-foreground line-clamp-2">{complaint.description}</p>
                                         )}
                                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                          <span>Reklamation #{complaint.orderId?.slice(0, 8)}</span>
+                                          <span>Reklamation #{formatComplaintNumber(complaint)}</span>
                                           <span>•</span>
                                           <span>{format(new Date(complaint.createdAt), "dd.MM.yy", { locale: dateLocale })}</span>
                                         </div>
@@ -1529,7 +1531,7 @@ export default function RestaurantInbox() {
                                           <div className="flex items-center justify-between px-3 py-2 gap-2">
                                             <div className="flex items-center gap-2 min-w-0">
                                               <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                              <span className="text-xs text-muted-foreground truncate">{lang === "de" ? "Bestellung" : "Ordine"} {message.orderId ? `#${message.orderId.slice(0, 8)}` : ""}</span>
+                                              <span className="text-xs text-muted-foreground truncate">{lang === "de" ? "Bestellung" : "Ordine"} {message.orderId ? `#${formatOrderNumber({orderNumber: message.orderNumber, id: message.orderId})}` : ""}</span>
                                               {orderStatus && (
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${getStatusColor(orderStatus)}`}>
                                                   {getOrderStatus(orderStatus, lang)}
@@ -1561,7 +1563,7 @@ export default function RestaurantInbox() {
                                         <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <ClipboardList className={`h-3.5 w-3.5 ${statusStyle.icon}`} />
-                                            <span className={`text-xs font-semibold ${statusStyle.icon}`}>{lang === "de" ? "Bestellung" : "Ordine"} {message.orderId ? `#${message.orderId.slice(0, 8)}` : ""}</span>
+                                            <span className={`text-xs font-semibold ${statusStyle.icon}`}>{lang === "de" ? "Bestellung" : "Ordine"} {message.orderId ? `#${formatOrderNumber({orderNumber: message.orderNumber, id: message.orderId})}` : ""}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {orderStatus && (
@@ -1723,7 +1725,7 @@ export default function RestaurantInbox() {
                                           <div className="flex items-center justify-between px-3 py-2 gap-2">
                                             <div className="flex items-center gap-2 min-w-0">
                                               <AlertCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                              <span className="text-xs text-muted-foreground truncate">{t("inbox", "complaintMessage")} {complaintData?.orderId ? `#${complaintData.orderId.slice(0, 8)}` : ""}</span>
+                                              <span className="text-xs text-muted-foreground truncate">{t("inbox", "complaintMessage")} {complaintData?.orderId ? `#${(complaintData as any).complaintNumber || (complaintData as any).orderNumber || formatOrderNumber({orderNumber: null, id: complaintData.orderId})}` : ""}</span>
                                               {complaintStatus && (
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${getComplaintStatusColor(complaintStatus)}`}>
                                                   {getComplaintStatus(complaintStatus, lang)}
@@ -1760,7 +1762,7 @@ export default function RestaurantInbox() {
                                         <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                                            <span className="text-xs font-semibold text-red-600 dark:text-red-400">{t("inbox", "complaintMessage")} {complaintData?.orderId ? `#${complaintData.orderId.slice(0, 8)}` : ""}</span>
+                                            <span className="text-xs font-semibold text-red-600 dark:text-red-400">{t("inbox", "complaintMessage")} {complaintData?.orderId ? `#${(complaintData as any).complaintNumber || (complaintData as any).orderNumber || formatOrderNumber({orderNumber: null, id: complaintData.orderId})}` : ""}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {complaintStatus && (
@@ -1784,7 +1786,7 @@ export default function RestaurantInbox() {
                                                   <span className={`font-medium ${message.priority === "important" ? "text-red-700 dark:text-red-400" : ""}`}>{complaintData.title}</span>
                                                 </div>
                                                 <Badge variant="outline" className="text-xs">
-                                                  {t("orders", "order")} #{complaintData.orderId?.substring(0, 8)}
+                                                  {t("orders", "order")} #{complaintData.orderId ? ((complaintData as any).orderNumber || formatOrderNumber({orderNumber: null, id: complaintData.orderId})) : ""}
                                                 </Badge>
                                               </div>
                                               <p className="text-sm text-muted-foreground">{complaintData.description}</p>
@@ -1843,7 +1845,7 @@ export default function RestaurantInbox() {
                                         <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <FileText className="h-3.5 w-3.5 text-foreground" />
-                                            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t("inbox", "deliveryNote")} {docData.orderId ? `#${docData.orderId.slice(0, 8)}` : ""}</span>
+                                            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t("inbox", "deliveryNote")} {docData.orderId ? `#${(docData as any).orderNumber || formatOrderNumber({orderNumber: null, id: docData.orderId})}` : ""}</span>
                                           </div>
                                           <span className="text-[10px] text-muted-foreground">
                                             {format(messageDate, "HH:mm")}
@@ -1853,7 +1855,7 @@ export default function RestaurantInbox() {
                                           <p className="text-sm font-medium">{docData.title || t("inbox", "documentMessage")}</p>
                                           {docData.orderId && (
                                             <p className="text-xs text-muted-foreground mt-1">
-                                              {t("orders", "order")} #{docData.orderId.slice(0, 8)}
+                                              {t("orders", "order")} #{(docData as any).orderNumber || formatOrderNumber({orderNumber: null, id: docData.orderId})}
                                             </p>
                                           )}
                                         </div>
@@ -1891,7 +1893,7 @@ export default function RestaurantInbox() {
                                                 {pcData.status === "partially_confirmed"
                                                   ? (lang === "it" ? "Parzialmente confermato" : "Teilbestatigt")
                                                   : (lang === "it" ? "Confermato" : "Bestatigt")}
-                                                {pcData.orderId ? ` #${pcData.orderId.slice(0, 8)}` : ""}
+                                                {pcData.orderId ? ` #${(pcData as any).orderNumber || formatOrderNumber({orderNumber: null, id: pcData.orderId})}` : ""}
                                               </span>
                                             </div>
                                             <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
@@ -1899,7 +1901,7 @@ export default function RestaurantInbox() {
                                           <div className="px-3 py-2 space-y-1.5">
                                             {pcData.orderId && (
                                               <p className="text-xs text-muted-foreground">
-                                                {lang === "it" ? "Ordine" : "Bestellung"} #{pcData.orderId.slice(0, 8)}
+                                                {lang === "it" ? "Ordine" : "Bestellung"} #{(pcData as any).orderNumber || formatOrderNumber({orderNumber: null, id: pcData.orderId})}
                                               </p>
                                             )}
                                             {pcData.items?.map((item, idx) => (
@@ -1944,7 +1946,7 @@ export default function RestaurantInbox() {
                                               <Pencil className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                               <span className="text-xs text-muted-foreground truncate">{label}</span>
                                               {changeData.orderId && (
-                                                <span className="text-[10px] text-muted-foreground shrink-0">#{changeData.orderId.slice(0, 8)}</span>
+                                                <span className="text-[10px] text-muted-foreground shrink-0">#{(changeData as any).orderNumber || formatOrderNumber({orderNumber: null, id: changeData.orderId})}</span>
                                               )}
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
@@ -1971,7 +1973,7 @@ export default function RestaurantInbox() {
                                         <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <Pencil className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                                            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{label} {changeData.orderId ? `#${changeData.orderId.slice(0, 8)}` : ""}</span>
+                                            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{label} {changeData.orderId ? `#${(changeData as any).orderNumber || formatOrderNumber({orderNumber: null, id: changeData.orderId})}` : ""}</span>
                                           </div>
                                           <span className="text-[10px] text-muted-foreground">{format(messageDate, "HH:mm")}</span>
                                         </div>
@@ -2565,7 +2567,7 @@ export default function RestaurantInbox() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Bestellung" : "Ordine"}</p>
-                <h2 className="text-lg font-semibold tracking-tight" data-testid="text-order-id">#{orderDetail?.id.slice(0, 8)}</h2>
+                <h2 className="text-lg font-semibold tracking-tight" data-testid="text-order-id">#{formatOrderNumber(orderDetail)}</h2>
               </div>
               {orderDetail && (
                 <Badge className={getStatusColor(orderDetail.status)} data-testid="badge-order-status">
@@ -2768,7 +2770,7 @@ export default function RestaurantInbox() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Reklamation" : "Reclamo"}</p>
-                    <h2 className="text-lg font-semibold tracking-tight" data-testid="text-complaint-id">#{complaintDetail.id.slice(0, 8)}</h2>
+                    <h2 className="text-lg font-semibold tracking-tight" data-testid="text-complaint-id">#{formatComplaintNumber(complaintDetail)}</h2>
                   </div>
                   {(() => {
                     const statusInfo = formatComplaintStatus(complaintDetail.status);
@@ -2876,7 +2878,7 @@ export default function RestaurantInbox() {
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-sm text-muted-foreground">{t("complaints", "affectedOrder")}</span>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">#{complaintDetail.orderId.substring(0, 8)}</Badge>
+                    <Badge variant="outline">#{complaintDetail.order ? formatOrderNumber(complaintDetail.order) : formatOrderNumber({orderNumber: null, id: complaintDetail.orderId})}</Badge>
                     {complaintDetail.order && (
                       <span className="text-sm text-muted-foreground">{parseFloat(complaintDetail.order.totalAmount).toFixed(2)}€</span>
                     )}
@@ -3037,7 +3039,7 @@ export default function RestaurantInbox() {
               <h3 className="text-sm font-semibold">{t("orders", "editOrder")}</h3>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5 pl-6">
-              {t("orders", "order")} #{editingOrderInbox?.id.slice(0, 8)}
+              {t("orders", "order")} #{formatOrderNumber(editingOrderInbox)}
             </p>
           </div>
 

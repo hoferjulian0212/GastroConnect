@@ -74,6 +74,7 @@ export const customPrices = pgTable("custom_prices", {
 
 export const orders = pgTable("orders", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  orderNumber: text("order_number"),
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   createdByUserId: varchar("created_by_user_id", { length: 36 }).references(() => users.id),
@@ -89,6 +90,7 @@ export const orders = pgTable("orders", {
   index("idx_orders_supplier_id").on(table.supplierId),
   index("idx_orders_status").on(table.status),
   index("idx_orders_created_at").on(table.createdAt),
+  uniqueIndex("uniq_orders_order_number").on(table.orderNumber),
 ]);
 
 export const orderItems = pgTable("order_items", {
@@ -162,6 +164,7 @@ export const orderStatusHistory = pgTable("order_status_history", {
 
 export const complaints = pgTable("complaints", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  complaintNumber: text("complaint_number"),
   orderId: varchar("order_id", { length: 36 }).notNull().references(() => orders.id),
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
@@ -177,6 +180,7 @@ export const complaints = pgTable("complaints", {
   index("idx_complaints_restaurant_id").on(table.restaurantId),
   index("idx_complaints_supplier_id").on(table.supplierId),
   index("idx_complaints_order_id").on(table.orderId),
+  uniqueIndex("uniq_complaints_complaint_number").on(table.complaintNumber),
 ]);
 
 export const complaintComments = pgTable("complaint_comments", {
@@ -430,9 +434,10 @@ export type OrderWithDetails = Order & {
   supplier: User;
   createdByUser?: User | null;
 };
+export type MessageWithOrderNumber = Message & { orderNumber?: string | null };
 export type ConversationWithUser = Conversation & {
   otherUser: User;
-  lastMessage?: Message;
+  lastMessage?: MessageWithOrderNumber;
   unreadCount: number;
 };
 export type CartItemWithProduct = CartItem & { product: Product; supplier: User };
@@ -458,3 +463,20 @@ export type InsertCostSettings = z.infer<typeof insertCostSettingsSchema>;
 export type CostSettings = typeof costSettings.$inferSelect;
 export type InsertMinimumOrderValue = z.infer<typeof insertMinimumOrderValueSchema>;
 export type MinimumOrderValue = typeof minimumOrderValues.$inferSelect;
+
+
+// ─── Display helpers for business numbers ────────────────────────────────
+// Each order/complaint has ONE unique business-facing number that appears
+// everywhere in the UI so both parties (restaurant + supplier) reference the
+// exact same identifier in chats, documents, and across pages.
+export function formatOrderNumber(order: { orderNumber?: string | null; id: string } | null | undefined): string {
+  if (!order) return "";
+  if (order.orderNumber && order.orderNumber.length > 0) return order.orderNumber;
+  return "B-" + order.id.slice(0, 6).toUpperCase();
+}
+
+export function formatComplaintNumber(complaint: { complaintNumber?: string | null; id: string } | null | undefined): string {
+  if (!complaint) return "";
+  if (complaint.complaintNumber && complaint.complaintNumber.length > 0) return complaint.complaintNumber;
+  return "R-" + complaint.id.slice(0, 6).toUpperCase();
+}

@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialog";
-import type { OrderWithDetails, OrderStatusHistoryWithUser } from "@shared/schema";
+import { formatOrderNumber, type OrderWithDetails, type OrderStatusHistoryWithUser } from "@shared/schema";
 
 export default function OrderDetail() {
   const [, setLocation] = useLocation();
@@ -541,7 +541,7 @@ export default function OrderDetail() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider" data-testid="text-order-id">
-                  {lang === "de" ? "Bestellung" : "Ordine"} · #{order.id.slice(0, 8)}
+                  {lang === "de" ? "Bestellung" : "Ordine"} · #{formatOrderNumber(order)}
                 </p>
                 <p className="text-xl md:text-2xl font-semibold text-white truncate" data-testid="text-counterparty">{counterpartyName}</p>
               </div>
@@ -869,7 +869,7 @@ export default function OrderDetail() {
               <div className="divide-y divide-border/20">
                 <div className="flex justify-between items-center gap-2 px-4 py-3">
                   <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Bestell-Nr." : "Nr. Ordine"}</p>
-                  <p className="text-sm font-medium truncate text-right tabular-nums">#{order.id.slice(0, 8).toUpperCase()}</p>
+                  <p className="text-sm font-medium truncate text-right tabular-nums">#{formatOrderNumber(order)}</p>
                 </div>
                 <div className="flex justify-between items-center gap-2 px-4 py-3">
                   <p className="text-sm text-muted-foreground shrink-0">{isSupplier ? (lang === "de" ? "Betrieb" : "Azienda") : (lang === "de" ? "Händler" : "Commerciante")}</p>

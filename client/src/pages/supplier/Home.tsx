@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, TrendingDown, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert, ChevronRight, Flame } from "lucide-react";
-import type { OrderWithDetails, Product, ConversationWithUser, ComplaintWithDetails } from "@shared/schema";
+import { formatOrderNumber, formatComplaintNumber, type OrderWithDetails, type Product, type ConversationWithUser, type ComplaintWithDetails } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -146,7 +146,7 @@ export default function SupplierHome() {
     try {
       if (msg.messageType === "order") {
         const data = JSON.parse(msg.content);
-        const id = (data.orderId || msg.orderId || "")?.substring(0, 8);
+        const id = data.orderNumber || formatOrderNumber({orderNumber: msg.orderNumber, id: data.orderId || msg.orderId || ""});
         if (data.isFollowUp) {
           return id ? `${lang === "de" ? "Nachlieferung" : "Riconsegna"} #${id}` : (lang === "de" ? "Nachlieferung" : "Riconsegna");
         }
@@ -160,12 +160,12 @@ export default function SupplierHome() {
       }
       if (msg.messageType === "document") {
         const data = JSON.parse(msg.content);
-        const id = (data.orderId || "")?.substring(0, 8);
+        const id = data.orderNumber || formatOrderNumber({orderNumber: msg.orderNumber, id: data.orderId || ""});
         return id ? `${lang === "de" ? "Lieferschein" : "Bolla di consegna"} #${id}` : (lang === "de" ? "Neuer Lieferschein" : "Nuova bolla");
       }
       if (msg.messageType === "order_change_request") {
         const data = JSON.parse(msg.content);
-        const id = (data.orderId || msg.orderId || "")?.substring(0, 8);
+        const id = data.orderNumber || formatOrderNumber({orderNumber: msg.orderNumber, id: data.orderId || msg.orderId || ""});
         return id ? `${lang === "de" ? "Änderungsanfrage" : "Richiesta di modifica"} #${id}` : (lang === "de" ? "Änderungsanfrage" : "Richiesta di modifica");
       }
     } catch {}
@@ -514,7 +514,7 @@ export default function SupplierHome() {
                             </p>
 
                             <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
-                              <span className="text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</span>
+                              <span className="text-xs text-muted-foreground font-mono">#{formatOrderNumber(order)}</span>
                               <span className="text-base font-bold">{order.totalAmount}€</span>
                             </div>
                           </div>
@@ -580,7 +580,7 @@ export default function SupplierHome() {
                               className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
                               style={{ gridTemplateColumns: deliveriesGridTemplate }}
                             >
-                              <span className="font-mono text-[13px] text-primary truncate">#{order.id.slice(0, 8)}</span>
+                              <span className="font-mono text-[13px] text-primary truncate">#{formatOrderNumber(order)}</span>
                               <div>
                                 <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
                                   <span className="inline-flex items-center gap-1">
@@ -838,7 +838,7 @@ export default function SupplierHome() {
                       </p>
 
                       <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
-                        <span className="text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</span>
+                        <span className="text-xs text-muted-foreground font-mono">#{formatOrderNumber(order)}</span>
                         <span className="text-base font-bold">{order.totalAmount}€</span>
                       </div>
                     </div>
@@ -883,7 +883,7 @@ export default function SupplierHome() {
                                 className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
                                 style={{ gridTemplateColumns: deliveriesGridTemplate }}
                               >
-                                <span className="font-mono text-[13px] text-primary truncate">#{order.id.slice(0, 8)}</span>
+                                <span className="font-mono text-[13px] text-primary truncate">#{formatOrderNumber(order)}</span>
                                 <div>
                                   <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
                                     <span className="inline-flex items-center gap-1">
@@ -974,7 +974,7 @@ export default function SupplierHome() {
                     </div>
                     <p className="text-sm font-semibold truncate">{order.restaurant?.companyName || order.restaurant?.name}</p>
                     <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-red-200/50 dark:border-red-900/30">
-                      <span className="text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</span>
+                      <span className="text-xs text-muted-foreground font-mono">#{formatOrderNumber(order)}</span>
                       <span className="text-base font-bold">{order.totalAmount}€</span>
                     </div>
                   </div>
@@ -1002,7 +1002,7 @@ export default function SupplierHome() {
                       <p className={`text-sm font-semibold truncate ${complaint.priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</p>
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">{complaint.restaurant?.companyName || complaint.restaurant?.name}</p>
                       <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
-                        <span className="text-xs text-muted-foreground font-mono">#{complaint.id.slice(0, 8)}</span>
+                        <span className="text-xs text-muted-foreground font-mono">#{formatComplaintNumber(complaint)}</span>
                         <span className="text-[10px] text-muted-foreground">
                           {formatDistanceToNow(new Date(complaint.createdAt), { addSuffix: true, locale: dateLocale })}
                         </span>
@@ -1056,7 +1056,7 @@ export default function SupplierHome() {
                                   className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
                                   style={{ gridTemplateColumns: deliveriesGridTemplate }}
                                 >
-                                  <span className="font-mono text-[13px] text-primary truncate">#{order.id.slice(0, 8)}</span>
+                                  <span className="font-mono text-[13px] text-primary truncate">#{formatOrderNumber(order)}</span>
                                   <div>
                                     <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
                                       <span className="inline-flex items-center gap-1">
@@ -1154,7 +1154,7 @@ export default function SupplierHome() {
                                       <span className="truncate font-medium" data-testid={`text-complaint-restaurant-${complaint.id}`}>{restaurantName}</span>
                                     </div>
                                     <div className="font-mono text-[12px] text-primary truncate">
-                                      {complaint.order?.id ? `#${complaint.order.id.slice(0, 8)}` : "—"}
+                                      {complaint.order?.id ? `#${formatOrderNumber(complaint.order)}` : "—"}
                                     </div>
                                     <div className="text-muted-foreground text-[12px] truncate" title={format(new Date(complaint.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}>
                                       {formatDistanceToNow(new Date(complaint.createdAt), { addSuffix: true, locale: dateLocale })}

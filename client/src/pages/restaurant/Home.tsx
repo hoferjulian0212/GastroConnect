@@ -6,7 +6,7 @@ import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, Shopp
 import DraggableCardGrid from "@/components/DraggableCardGrid";
 import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
-import type { OrderWithDetails, ConversationWithUser, ProductWithSupplierAndPromotion, OrderTemplateWithItems } from "@shared/schema";
+import { formatOrderNumber, type OrderWithDetails, type ConversationWithUser, type ProductWithSupplierAndPromotion, type OrderTemplateWithItems } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -387,7 +387,7 @@ export default function RestaurantHome() {
     try {
       if (msg.messageType === "order") {
         const data = JSON.parse(msg.content);
-        const id = (data.orderId || msg.orderId || "")?.substring(0, 8);
+        const id = data.orderNumber || formatOrderNumber({orderNumber: msg.orderNumber, id: data.orderId || msg.orderId || ""});
         if (data.isFollowUp) {
           return id ? `${lang === "de" ? "Nachlieferung" : "Riconsegna"} #${id}` : (lang === "de" ? "Nachlieferung" : "Riconsegna");
         }
@@ -401,12 +401,12 @@ export default function RestaurantHome() {
       }
       if (msg.messageType === "document") {
         const data = JSON.parse(msg.content);
-        const id = (data.orderId || "")?.substring(0, 8);
+        const id = data.orderNumber || formatOrderNumber({orderNumber: msg.orderNumber, id: data.orderId || ""});
         return id ? `${lang === "de" ? "Lieferschein" : "Bolla di consegna"} #${id}` : (lang === "de" ? "Neuer Lieferschein" : "Nuova bolla");
       }
       if (msg.messageType === "order_change_request") {
         const data = JSON.parse(msg.content);
-        const id = (data.orderId || msg.orderId || "")?.substring(0, 8);
+        const id = data.orderNumber || formatOrderNumber({orderNumber: msg.orderNumber, id: data.orderId || msg.orderId || ""});
         return id ? `${lang === "de" ? "Änderungsanfrage" : "Richiesta di modifica"} #${id}` : (lang === "de" ? "Änderungsanfrage" : "Richiesta di modifica");
       }
     } catch {}
@@ -702,7 +702,7 @@ export default function RestaurantHome() {
         )}
 
         <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
-          <span className="text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</span>
+          <span className="text-xs text-muted-foreground font-mono">#{formatOrderNumber(order)}</span>
           <span className="text-base font-bold">{order.totalAmount}€</span>
         </div>
       </div>
@@ -779,7 +779,7 @@ export default function RestaurantHome() {
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {order.items?.length || 0} {t("common", "items")} — #{order.id.slice(0, 8)}
+              {order.items?.length || 0} {t("common", "items")} — #{formatOrderNumber(order)}
               {order.createdByUser && (
                 <span className="ml-1.5" data-testid={`text-created-by-${order.id}`}>— {order.createdByUser.name}</span>
               )}
@@ -809,7 +809,7 @@ export default function RestaurantHome() {
               className="text-xs bg-white dark:bg-background text-foreground border-border h-7 px-2.5 rounded-lg"
               onClick={(e) => {
                 e.stopPropagation();
-                navigate(`/restaurant/inbox?to=${order.supplierId}&orderRefId=${order.id}`);
+                navigate(`/restaurant/inbox?to=${order.supplierId}&orderRefId=${order.id}&orderNumber=${encodeURIComponent(formatOrderNumber(order))}`);
               }}
               data-testid={`button-send-overdue-msg-${order.id}`}
             >
@@ -1086,7 +1086,7 @@ export default function RestaurantHome() {
                                 className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
                                 style={{ gridTemplateColumns: deliveriesGridTemplate }}
                               >
-                                <span className={`font-mono text-[13px] text-primary truncate ${isChild ? "pl-4" : ""}`}>#{order.id.slice(0, 8)}</span>
+                                <span className={`font-mono text-[13px] text-primary truncate ${isChild ? "pl-4" : ""}`}>#{formatOrderNumber(order)}</span>
                                 <div>
                                   <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
                                     <span className="inline-flex items-center gap-1">
@@ -1912,14 +1912,14 @@ export default function RestaurantHome() {
       <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">
           <DialogHeader className="sr-only">
-            <DialogTitle>{t("orders", "order")} #{detailOrder?.id.slice(0, 8)}</DialogTitle>
+            <DialogTitle>{t("orders", "order")} #{formatOrderNumber(detailOrder)}</DialogTitle>
           </DialogHeader>
           {detailOrder && (
             <div className="px-5 pt-5 pb-5 space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-xs text-muted-foreground">{t("orders", "order")}</p>
-                  <h3 className="text-base font-semibold">#{detailOrder.id.slice(0, 8)}</h3>
+                  <h3 className="text-base font-semibold">#{formatOrderNumber(detailOrder)}</h3>
                 </div>
                 <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
                   {getStatusIcon(detailOrder.status)}

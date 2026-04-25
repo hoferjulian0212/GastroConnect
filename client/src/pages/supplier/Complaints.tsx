@@ -31,7 +31,7 @@ import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircl
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
-import type { ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
+import { formatComplaintNumber, formatOrderNumber, type ComplaintWithDetails, type ComplaintCommentWithUser } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getComplaintStatus } from "@/lib/translations";
 
@@ -145,7 +145,7 @@ export default function SupplierComplaints() {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         setFollowUpDeliveryDate(tomorrow.toISOString().split("T")[0]);
-        setFollowUpNotes(`Nachlieferung zu Reklamation #${complaint.id.slice(0, 8)}`);
+        setFollowUpNotes(`Nachlieferung zu Reklamation #${formatComplaintNumber(complaint)}`);
         setShowFollowUpDialog(true);
       }
     } catch {}
@@ -653,7 +653,7 @@ export default function SupplierComplaints() {
                         </Avatar>
                         <span className="text-sm truncate">{complaint.restaurant?.companyName || t("common", "unknown")}</span>
                       </div>
-                      <div className="text-xs font-mono text-muted-foreground truncate">#{complaint.orderId.substring(0, 8)}</div>
+                      <div className="text-xs font-mono text-muted-foreground truncate">#{complaint.order ? formatOrderNumber(complaint.order) : formatOrderNumber({orderNumber: null, id: complaint.orderId})}</div>
                       <div className="text-xs text-muted-foreground truncate">{formatShortDate(complaint.createdAt)}</div>
                       <div className="flex items-center justify-end gap-0.5">
                         {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
@@ -694,7 +694,7 @@ export default function SupplierComplaints() {
                         <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground flex-wrap">
                           <span>{complaint.restaurant?.companyName || t("common", "unknown")}</span>
                           <span>·</span>
-                          <span className="font-mono font-semibold">#{complaint.orderId.substring(0, 8)}</span>
+                          <span className="font-mono font-semibold">#{complaint.order ? formatOrderNumber(complaint.order) : formatOrderNumber({orderNumber: null, id: complaint.orderId})}</span>
                           <span>·</span>
                           <span>{formatShortDate(complaint.createdAt)}</span>
                           {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
@@ -807,7 +807,7 @@ export default function SupplierComplaints() {
                   </div>
                   <div className="flex justify-between gap-3">
                     <span className="text-muted-foreground shrink-0">{lang === "de" ? "Bestellung" : "Ordine"}</span>
-                    <span className="shrink-0">#{selectedComplaint.orderId.substring(0, 8)}</span>
+                    <span className="shrink-0">#{selectedComplaint.order ? formatOrderNumber(selectedComplaint.order) : formatOrderNumber({orderNumber: null, id: selectedComplaint.orderId})}</span>
                   </div>
                   <div className="flex justify-between gap-3">
                     <span className="text-muted-foreground shrink-0">{lang === "de" ? "Erstellt am" : "Creato il"}</span>

@@ -7,7 +7,7 @@ import {
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
-  type Message, type InsertMessage, type ProductWithSupplier, type OrderWithDetails,
+  type Message, type InsertMessage, type MessageWithOrderNumber, type ProductWithSupplier, type OrderWithDetails,
   type ConversationWithUser, type CartItemWithProduct, type Complaint, type InsertComplaint,
   type ComplaintWithDetails, type Notification, type InsertNotification, type UpdateComplaint,
   type ComplaintComment, type InsertComplaintComment, type ComplaintCommentWithUser,
@@ -64,9 +64,10 @@ export interface IStorage {
 
   // Conversations & Messages
   getConversations(userId: string, role: "restaurant" | "supplier"): Promise<ConversationWithUser[]>;
+
   getConversation(conversationId: string): Promise<Conversation | undefined>;
   getOrCreateConversation(restaurantId: string, supplierId: string): Promise<Conversation>;
-  getMessages(conversationId: string): Promise<Message[]>;
+  getMessages(conversationId: string): Promise<MessageWithOrderNumber[]>;
   getConversationStatuses(conversationId: string): Promise<{ orderStatuses: Record<string, string>; complaintStatuses: Record<string, { status: string; complaintId: string }> }>;
   sendMessage(message: InsertMessage): Promise<Message>;
   getUnreadCount(userId: string): Promise<number>;
@@ -408,14 +409,43 @@ export class DatabaseStorage implements IStorage {
     return this.enrichOrderWithDetails(order);
   }
 
+  private generateOrderNumber(): string {
+    return "B-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+  }
+
+  private async generateUniqueOrderNumber(): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = this.generateOrderNumber();
+      const [existing] = await db
+        .select({ id: orders.id })
+        .from(orders)
+        .where(eq(orders.orderNumber, candidate))
+        .limit(1);
+      if (!existing) return candidate;
+    }
+    return this.generateOrderNumber() + "-" + Date.now().toString(36).toUpperCase();
+  }
+
   async createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order> {
-    const [created] = await db.insert(orders).values(order).returning();
+    const orderNumber = await this.generateUniqueOrderNumber();
+    const [created] = await db.insert(orders).values({ ...order, orderNumber }).returning();
     
     for (const item of items) {
       await db.insert(orderItems).values({ ...item, orderId: created.id });
     }
     
     return created;
+  }
+
+  async backfillOrderNumbers(): Promise<number> {
+    const rows = await db.select({ id: orders.id }).from(orders).where(isNull(orders.orderNumber));
+    let updated = 0;
+    for (const row of rows) {
+      const num = await this.generateUniqueOrderNumber();
+      await db.update(orders).set({ orderNumber: num }).where(eq(orders.id, row.id));
+      updated++;
+    }
+    return updated;
   }
 
   async updateOrderStatus(id: string, status: string, requestedDeliveryDate?: string): Promise<Order | undefined> {
@@ -551,14 +581,20 @@ export class DatabaseStorage implements IStorage {
     const convIds = convs.map(c => c.id);
 
     const lastMsgResults = await Promise.all(
-      convIds.map(convId => db.select().from(messages)
+      convIds.map(convId => db
+        .select({ message: messages, orderNumber: orders.orderNumber })
+        .from(messages)
+        .leftJoin(orders, eq(messages.orderId, orders.id))
         .where(eq(messages.conversationId, convId))
         .orderBy(desc(messages.createdAt))
         .limit(1))
     );
-    const lastMsgMap = new Map<string, Message>();
+    const lastMsgMap = new Map<string, MessageWithOrderNumber>();
     for (const [i, rows] of lastMsgResults.entries()) {
-      if (rows.length > 0) lastMsgMap.set(convIds[i], rows[0]);
+      if (rows.length > 0) {
+        const r = rows[0];
+        lastMsgMap.set(convIds[i], { ...r.message, orderNumber: r.orderNumber });
+      }
     }
 
     const unreadCounts = await db
@@ -609,12 +645,14 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getMessages(conversationId: string): Promise<Message[]> {
-    return db
-      .select()
+  async getMessages(conversationId: string): Promise<MessageWithOrderNumber[]> {
+    const rows = await db
+      .select({ message: messages, orderNumber: orders.orderNumber })
       .from(messages)
+      .leftJoin(orders, eq(messages.orderId, orders.id))
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt);
+    return rows.map(r => ({ ...r.message, orderNumber: r.orderNumber }));
   }
 
   async getConversationStatuses(conversationId: string): Promise<{ orderStatuses: Record<string, string>; complaintStatuses: Record<string, { status: string; complaintId: string }> }> {
@@ -931,9 +969,38 @@ export class DatabaseStorage implements IStorage {
     return complaintsWithDetails;
   }
 
+  private generateComplaintNumber(): string {
+    return "R-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+  }
+
+  private async generateUniqueComplaintNumber(): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = this.generateComplaintNumber();
+      const [existing] = await db
+        .select({ id: complaints.id })
+        .from(complaints)
+        .where(eq(complaints.complaintNumber, candidate))
+        .limit(1);
+      if (!existing) return candidate;
+    }
+    return this.generateComplaintNumber() + "-" + Date.now().toString(36).toUpperCase();
+  }
+
   async createComplaint(complaint: InsertComplaint): Promise<Complaint> {
-    const [created] = await db.insert(complaints).values(complaint).returning();
+    const complaintNumber = await this.generateUniqueComplaintNumber();
+    const [created] = await db.insert(complaints).values({ ...complaint, complaintNumber }).returning();
     return created;
+  }
+
+  async backfillComplaintNumbers(): Promise<number> {
+    const rows = await db.select({ id: complaints.id }).from(complaints).where(isNull(complaints.complaintNumber));
+    let updated = 0;
+    for (const row of rows) {
+      const num = await this.generateUniqueComplaintNumber();
+      await db.update(complaints).set({ complaintNumber: num }).where(eq(complaints.id, row.id));
+      updated++;
+    }
+    return updated;
   }
 
   async getComplaint(id: string): Promise<ComplaintWithDetails | undefined> {

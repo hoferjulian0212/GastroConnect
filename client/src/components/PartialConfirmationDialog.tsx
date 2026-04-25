@@ -7,7 +7,7 @@ import { CheckCircle, AlertTriangle, Package, Info } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import QuantityInput from "@/components/QuantityInput";
-import type { OrderWithDetails, Product } from "@shared/schema";
+import { formatOrderNumber, type OrderWithDetails, type Product } from "@shared/schema";
 
 interface PartialConfirmationDialogProps {
   order: OrderWithDetails;
@@ -139,7 +139,7 @@ export function PartialConfirmationDialog({
             <CheckCircle className="h-4 w-4 text-blue-600" />
             <h3 className="text-sm font-semibold">{lang === "it" ? "Conferma ordine" : "Bestellung bestätigen"}</h3>
             <Badge variant="outline" className="ml-auto text-xs">
-              #{order.id.slice(0, 8)}
+              #{formatOrderNumber(order)}
             </Badge>
           </div>
           <div className="flex items-center justify-between mt-1 pl-6">

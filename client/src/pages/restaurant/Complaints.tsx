@@ -31,7 +31,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import type { User, Order, ComplaintWithDetails, ComplaintCommentWithUser } from "@shared/schema";
+import { formatOrderNumber, type User, type Order, type ComplaintWithDetails, type ComplaintCommentWithUser } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus, getComplaintStatus } from "@/lib/translations";
@@ -747,7 +747,7 @@ export default function Complaints() {
                           </Avatar>
                           <span className="text-sm truncate">{complaint.supplier?.companyName || complaint.supplier?.name || t("orders", "unknownSupplier")}</span>
                         </div>
-                        <div className="text-xs font-mono text-muted-foreground truncate" data-testid={`text-complaint-order-${complaint.id}`}>#{complaint.orderId.substring(0, 8)}</div>
+                        <div className="text-xs font-mono text-muted-foreground truncate" data-testid={`text-complaint-order-${complaint.id}`}>#{complaint.order ? formatOrderNumber(complaint.order) : formatOrderNumber({orderNumber: null, id: complaint.orderId})}</div>
                         <div className="text-xs text-muted-foreground truncate">{formatDate(complaint.createdAt)}</div>
                         <div className="flex items-center justify-end gap-0.5">
                           {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
@@ -784,7 +784,7 @@ export default function Complaints() {
                           </div>
                           <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{complaint.description}</p>
                           <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground flex-wrap">
-                            <span className="font-mono font-semibold">#{complaint.orderId.substring(0, 8)}</span>
+                            <span className="font-mono font-semibold">#{complaint.order ? formatOrderNumber(complaint.order) : formatOrderNumber({orderNumber: null, id: complaint.orderId})}</span>
                             <span>·</span>
                             <span>{complaint.supplier?.companyName || t("orders", "unknownSupplier")}</span>
                             <span>·</span>
@@ -1171,7 +1171,7 @@ export default function Complaints() {
                   </div>
                   <div className="flex justify-between gap-3">
                     <span className="text-muted-foreground shrink-0">{t("orders", "order")}</span>
-                    <span className="shrink-0">#{detailComplaint.orderId.substring(0, 8)}</span>
+                    <span className="shrink-0">#{detailComplaint.order ? formatOrderNumber(detailComplaint.order) : formatOrderNumber({orderNumber: null, id: detailComplaint.orderId})}</span>
                   </div>
                   <div className="flex justify-between gap-3">
                     <span className="text-muted-foreground shrink-0">{t("orders", "createdAt")}</span>

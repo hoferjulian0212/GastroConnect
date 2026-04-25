@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import QuantityInput from "@/components/QuantityInput";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { CartItemWithProduct, DeliverySchedule, Promotion } from "@shared/schema";
+import { formatOrderNumber, type CartItemWithProduct, type DeliverySchedule, type Promotion } from "@shared/schema";
 import { ProductImage } from "@/components/ProductImage";
 
 type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion | null };
@@ -107,7 +107,7 @@ export default function RestaurantCart() {
       const supplierNames = Object.values(groupedBySupplier || {}).map(g => g.supplier.companyName || g.supplier.name);
       const itemCount = cartItems?.length || 0;
       const orders = Array.isArray(data) ? data : [data];
-      const orderId = orders.length === 1 ? orders[0]?.id?.slice(0, 8) : orders.map(o => o?.id?.slice(0, 8)).join(", ");
+      const orderId = orders.length === 1 ? formatOrderNumber(orders[0]) : orders.map(o => formatOrderNumber(o)).join(", ");
       const firstDeliveryDate = Object.values(selectedDeliveryDates).find(d => d) || null;
       const allNotes = Object.values(orderNotes).filter(n => n.trim()).join("; ");
       setOrderConfirmation({

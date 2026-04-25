@@ -13,7 +13,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProductImage } from "@/components/ProductImage";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { ComplaintWithDetails, ComplaintStatusHistoryWithUser, ComplaintCommentWithUser } from "@shared/schema";
+import { formatComplaintNumber, formatOrderNumber, type ComplaintWithDetails, type ComplaintStatusHistoryWithUser, type ComplaintCommentWithUser } from "@shared/schema";
 
 type ConfirmAction = "in_progress" | "resolved" | "closed" | "reopen" | "follow_up" | "comment" | null;
 
@@ -138,8 +138,8 @@ export default function ComplaintDetail() {
         deliveryDate: date,
         supplierId: complaint.supplierId,
         notes: lang === "de"
-          ? `Nachlieferung zu Reklamation #${complaint.id.slice(0, 8).toUpperCase()}`
-          : `Riconsegna per reclamo #${complaint.id.slice(0, 8).toUpperCase()}`,
+          ? `Nachlieferung zu Reklamation #${formatComplaintNumber(complaint)}`
+          : `Riconsegna per reclamo #${formatComplaintNumber(complaint)}`,
       });
     },
     onSuccess: () => {
@@ -436,7 +436,7 @@ export default function ComplaintDetail() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider" data-testid="text-complaint-id">
-                  {lang === "de" ? "Reklamation" : "Reclamo"} · #{complaint.id.slice(0, 8)}
+                  {lang === "de" ? "Reklamation" : "Reclamo"} · #{formatComplaintNumber(complaint)}
                 </p>
                 <p className="text-xl md:text-2xl font-semibold text-white truncate" data-testid="text-complaint-title">{complaint.title}</p>
                 <p className="text-xs text-white/60 truncate mt-0.5" data-testid="text-counterparty">{counterpartyName}</p>
@@ -681,7 +681,7 @@ export default function ComplaintDetail() {
                 className="text-base md:text-lg font-semibold mt-1.5 truncate tabular-nums hover:underline text-left w-full"
                 data-testid="link-order"
               >
-                #{complaint.orderId.slice(0, 8).toUpperCase()}
+                #{formatOrderNumber(complaint.order)}
               </button>
             </div>
             <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-items">
@@ -798,7 +798,7 @@ export default function ComplaintDetail() {
                 <div className="divide-y divide-border/20">
                   <div className="flex justify-between items-center gap-2 px-4 py-3">
                     <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Reklamations-Nr." : "Nr. Reclamo"}</p>
-                    <p className="text-sm font-medium truncate text-right tabular-nums">#{complaint.id.slice(0, 8).toUpperCase()}</p>
+                    <p className="text-sm font-medium truncate text-right tabular-nums">#{formatComplaintNumber(complaint)}</p>
                   </div>
                   <div className="flex justify-between items-center gap-2 px-4 py-3">
                     <p className="text-sm text-muted-foreground shrink-0">{isSupplier ? (lang === "de" ? "Betrieb" : "Azienda") : (lang === "de" ? "Händler" : "Commerciante")}</p>
@@ -811,7 +811,7 @@ export default function ComplaintDetail() {
                       className="text-sm font-medium truncate text-right tabular-nums hover:underline"
                       data-testid="link-order-meta"
                     >
-                      #{complaint.orderId.slice(0, 8).toUpperCase()}
+                      #{formatOrderNumber(complaint.order)}
                     </button>
                   </div>
                   <div className="flex justify-between items-center gap-2 px-4 py-3">

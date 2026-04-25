@@ -27,7 +27,7 @@ import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialo
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import type { ConversationWithUser, Message, Order, ComplaintWithDetails, ComplaintCommentWithUser, OrderStatusHistoryWithUser, ComplaintStatusHistoryWithUser } from "@shared/schema";
+import { formatOrderNumber, formatComplaintNumber, type ConversationWithUser, type Message, type MessageWithOrderNumber, type Order, type ComplaintWithDetails, type ComplaintCommentWithUser, type OrderStatusHistoryWithUser, type ComplaintStatusHistoryWithUser } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -399,7 +399,7 @@ export default function SupplierInbox() {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         setFollowUpDeliveryDate(tomorrow.toISOString().split("T")[0]);
-        setFollowUpNotes(`Nachlieferung zu Reklamation #${complaintDetail.id.slice(0, 8)}`);
+        setFollowUpNotes(`Nachlieferung zu Reklamation #${formatComplaintNumber(complaintDetail)}`);
         setShowFollowUpDialog(true);
       }
     } catch {}
@@ -425,7 +425,7 @@ export default function SupplierInbox() {
     refetchIntervalInBackground: false,
   });
 
-  const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
+  const { data: messages, isLoading: messagesLoading } = useQuery<MessageWithOrderNumber[]>({
     queryKey: [`/api/conversations/${selectedConversation}/messages`],
     enabled: !!selectedConversation,
     refetchInterval: 3000,
@@ -777,7 +777,7 @@ export default function SupplierInbox() {
                       if (conv.lastMessage?.messageType === "order") {
                         try { isFollowUpOrder = JSON.parse(conv.lastMessage.content)?.isFollowUp === true; } catch {}
                       }
-                      const lastOid = conv.lastMessage?.orderId ? ` #${conv.lastMessage.orderId.slice(0, 8)}` : "";
+                      const lastOid = conv.lastMessage?.orderId ? ` #${formatOrderNumber({orderNumber: conv.lastMessage.orderNumber, id: conv.lastMessage.orderId})}` : "";
                       const messagePreview = conv.lastMessage?.messageType === "order" 
                         ? (isFollowUpOrder ? (lang === "de" ? "Nachlieferung" : "Riconsegna") : (lang === "de" ? "Bestellung" : "Ordine")) + lastOid
                         : conv.lastMessage?.messageType === "complaint"
@@ -944,7 +944,7 @@ export default function SupplierInbox() {
                                       <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-1.5 min-w-0 cursor-pointer" onClick={() => { setOrderDetailId(order.id); setOpenActionsPopover(false); }}>
                                           <StatusIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                          <span className="text-xs font-mono truncate">Bestellung #{order.id.slice(0, 8)}</span>
+                                          <span className="text-xs font-mono truncate">Bestellung #{formatOrderNumber(order)}</span>
                                         </div>
                                         <Badge variant="secondary" className={`text-[10px] shrink-0 ${getStatusColor(order.status)}`}>
                                           {getStatusLabel(order.status)}
@@ -1021,7 +1021,7 @@ export default function SupplierInbox() {
                                                 if (selectedConversation) {
                                                   queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
                                                 }
-                                                toast({ title: "Status aktualisiert", description: `Bestellung #${order.id.slice(0, 8)} → ${nextLabel}` });
+                                                toast({ title: "Status aktualisiert", description: `Bestellung #${formatOrderNumber(order)} → ${nextLabel}` });
                                               })
                                               .catch(() => toast({ title: "Fehler", variant: "destructive" }));
                                           }}
@@ -1075,7 +1075,7 @@ export default function SupplierInbox() {
                                         <p className="text-[10px] text-muted-foreground line-clamp-2">{complaint.description}</p>
                                       )}
                                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                        <span>Reklamation #{complaint.orderId?.slice(0, 8)}</span>
+                                        <span>Reklamation #{formatComplaintNumber(complaint)}</span>
                                         <span>•</span>
                                         <span>{format(new Date(complaint.createdAt), "dd.MM.yy", { locale: de })}</span>
                                       </div>
@@ -1304,7 +1304,7 @@ export default function SupplierInbox() {
                                         <div className="flex items-center justify-between px-3 py-2 gap-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                            <span className="text-xs text-muted-foreground truncate">{lang === "de" ? "Bestellung" : "Ordine"} {message.orderId ? `#${message.orderId.slice(0, 8)}` : ""}</span>
+                                            <span className="text-xs text-muted-foreground truncate">{lang === "de" ? "Bestellung" : "Ordine"} {message.orderId ? `#${formatOrderNumber({orderNumber: message.orderNumber, id: message.orderId})}` : ""}</span>
                                             {orderStatus && (
                                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${getStatusColor(orderStatus)}`}>
                                                 {getStatusLabel(orderStatus)}
@@ -1336,7 +1336,7 @@ export default function SupplierInbox() {
                                       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <ClipboardList className={`h-3.5 w-3.5 ${statusStyle.icon}`} />
-                                          <span className={`text-xs font-semibold ${statusStyle.icon}`}>{lang === "de" ? "Bestellung" : "Ordine"} {message.orderId ? `#${message.orderId.slice(0, 8)}` : ""}</span>
+                                          <span className={`text-xs font-semibold ${statusStyle.icon}`}>{lang === "de" ? "Bestellung" : "Ordine"} {message.orderId ? `#${formatOrderNumber({orderNumber: message.orderNumber, id: message.orderId})}` : ""}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                           {orderStatus && (
@@ -1480,7 +1480,7 @@ export default function SupplierInbox() {
                                         <div className="flex items-center justify-between px-3 py-2 gap-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <AlertCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                            <span className="text-xs text-muted-foreground truncate">{lang === "de" ? "Reklamation" : "Reclamo"} {complaintData?.orderId ? `#${complaintData.orderId.slice(0, 8)}` : ""}</span>
+                                            <span className="text-xs text-muted-foreground truncate">{lang === "de" ? "Reklamation" : "Reclamo"} {complaintData?.orderId ? `#${(complaintData as any).complaintNumber || (complaintData as any).orderNumber || formatOrderNumber({orderNumber: null, id: complaintData.orderId})}` : ""}</span>
                                             {complaintStatus && (
                                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${getComplaintStatusColor(complaintStatus)}`}>
                                                 {getComplaintStatusLabel(complaintStatus)}
@@ -1517,7 +1517,7 @@ export default function SupplierInbox() {
                                       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                                          <span className="text-xs font-semibold text-red-600 dark:text-red-400">{lang === "de" ? "Reklamation" : "Reclamo"} {complaintData?.orderId ? `#${complaintData.orderId.slice(0, 8)}` : ""}</span>
+                                          <span className="text-xs font-semibold text-red-600 dark:text-red-400">{lang === "de" ? "Reklamation" : "Reclamo"} {complaintData?.orderId ? `#${(complaintData as any).complaintNumber || (complaintData as any).orderNumber || formatOrderNumber({orderNumber: null, id: complaintData.orderId})}` : ""}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                           {complaintStatus && (
@@ -1541,7 +1541,7 @@ export default function SupplierInbox() {
                                                 <span className={`font-medium ${message.priority === "important" ? "text-red-700 dark:text-red-400" : ""}`}>{complaintData.title}</span>
                                               </div>
                                               <Badge variant="outline" className="text-xs">
-                                                Bestellung #{complaintData.orderId?.substring(0, 8)}
+                                                Bestellung #{complaintData.orderId ? ((complaintData as any).orderNumber || formatOrderNumber({orderNumber: null, id: complaintData.orderId})) : ""}
                                               </Badge>
                                             </div>
                                             <p className="text-sm text-muted-foreground line-clamp-2">{complaintData.description}</p>
@@ -1600,7 +1600,7 @@ export default function SupplierInbox() {
                                       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <FileText className="h-3.5 w-3.5 text-foreground" />
-                                          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{lang === "de" ? "Lieferschein" : "Bolla"} {docData.orderId ? `#${docData.orderId.slice(0, 8)}` : ""}</span>
+                                          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{lang === "de" ? "Lieferschein" : "Bolla"} {docData.orderId ? `#${(docData as any).orderNumber || formatOrderNumber({orderNumber: null, id: docData.orderId})}` : ""}</span>
                                         </div>
                                         <span className="text-[10px] text-muted-foreground">
                                           {format(messageDate, "HH:mm")}
@@ -1610,7 +1610,7 @@ export default function SupplierInbox() {
                                         <p className="text-sm font-medium">{docData.title || "Dokument"}</p>
                                         {docData.orderId && (
                                           <p className="text-xs text-muted-foreground mt-1">
-                                            Bestellung #{docData.orderId.slice(0, 8)}
+                                            Bestellung #{(docData as any).orderNumber || formatOrderNumber({orderNumber: null, id: docData.orderId})}
                                           </p>
                                         )}
                                       </div>
@@ -1648,7 +1648,7 @@ export default function SupplierInbox() {
                                               {pcData.status === "partially_confirmed"
                                                 ? (lang === "it" ? "Parzialmente confermato" : "Teilbestatigt")
                                                 : (lang === "it" ? "Confermato" : "Bestatigt")}
-                                              {pcData.orderId ? ` #${pcData.orderId.slice(0, 8)}` : ""}
+                                              {pcData.orderId ? ` #${(pcData as any).orderNumber || formatOrderNumber({orderNumber: null, id: pcData.orderId})}` : ""}
                                             </span>
                                           </div>
                                           <span className="text-xs text-muted-foreground">{format(messageDate, "HH:mm")}</span>
@@ -1656,7 +1656,7 @@ export default function SupplierInbox() {
                                         <div className="px-3 py-2 space-y-1.5">
                                           {pcData.orderId && (
                                             <p className="text-xs text-muted-foreground">
-                                              {lang === "it" ? "Ordine" : "Bestellung"} #{pcData.orderId.slice(0, 8)}
+                                              {lang === "it" ? "Ordine" : "Bestellung"} #{(pcData as any).orderNumber || formatOrderNumber({orderNumber: null, id: pcData.orderId})}
                                             </p>
                                           )}
                                           {pcData.items?.map((item, idx) => (
@@ -1707,7 +1707,7 @@ export default function SupplierInbox() {
                                             <Pencil className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                             <span className="text-xs text-muted-foreground truncate">{label}</span>
                                             {changeData.orderId && (
-                                              <span className="text-[10px] text-muted-foreground shrink-0">#{changeData.orderId.slice(0, 8)}</span>
+                                              <span className="text-[10px] text-muted-foreground shrink-0">#{(changeData as any).orderNumber || formatOrderNumber({orderNumber: null, id: changeData.orderId})}</span>
                                             )}
                                           </div>
                                           <div className="flex items-center gap-2 shrink-0">
@@ -1734,7 +1734,7 @@ export default function SupplierInbox() {
                                       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <Pencil className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                                          <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{label} {changeData.orderId ? `#${changeData.orderId.slice(0, 8)}` : ""}</span>
+                                          <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{label} {changeData.orderId ? `#${(changeData as any).orderNumber || formatOrderNumber({orderNumber: null, id: changeData.orderId})}` : ""}</span>
                                         </div>
                                         <span className="text-[10px] text-muted-foreground">{format(messageDate, "HH:mm")}</span>
                                       </div>
@@ -1869,7 +1869,7 @@ export default function SupplierInbox() {
                                                   <AlertCircle className={`h-3 w-3 shrink-0 ${isOwn ? "text-secondary-foreground/70" : "text-primary"}`} />
                                                 )}
                                                 <span className={`text-[11px] font-medium truncate ${isOwn ? "text-secondary-foreground/80" : "text-foreground/80"}`}>
-                                                  {refData.refLabel || (refData.refType === "order" ? ((lang === "de" ? "Bestellung" : "Ordine") + (refData.orderId ? ` #${refData.orderId.slice(0, 8)}` : "")) : ((lang === "de" ? "Reklamation" : "Reclamo") + (refData.orderId ? ` #${refData.orderId.slice(0, 8)}` : "")))}
+                                                  {refData.refLabel || (refData.refType === "order" ? ((lang === "de" ? "Bestellung" : "Ordine") + (refData.refId ? ` #${formatOrderNumber({orderNumber: null, id: refData.refId})}` : "")) : ((lang === "de" ? "Reklamation" : "Reclamo") + (refData.refId ? ` #${formatComplaintNumber({complaintNumber: null, id: refData.refId})}` : "")))}
                                                 </span>
                                               </div>
                                             </div>
@@ -2068,7 +2068,7 @@ export default function SupplierInbox() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Bestellung" : "Ordine"}</p>
-                <h2 className="text-lg font-semibold tracking-tight" data-testid="text-order-id">#{orderDetail?.id.slice(0, 8)}</h2>
+                <h2 className="text-lg font-semibold tracking-tight" data-testid="text-order-id">#{formatOrderNumber(orderDetail)}</h2>
               </div>
               {orderDetail && (
                 <Badge className={`${getStatusColor(orderDetail.status)} text-xs`} variant="outline" data-testid="badge-order-status">
@@ -2285,7 +2285,7 @@ export default function SupplierInbox() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs text-muted-foreground mb-0.5">{lang === "de" ? "Reklamation" : "Reclamo"}</p>
-                    <h2 className="text-lg font-semibold tracking-tight" data-testid="text-complaint-id">#{complaintDetail.id.slice(0, 8)}</h2>
+                    <h2 className="text-lg font-semibold tracking-tight" data-testid="text-complaint-id">#{formatComplaintNumber(complaintDetail)}</h2>
                   </div>
                   {(() => {
                     const statusInfo = formatComplaintStatus(complaintDetail.status);
@@ -2398,7 +2398,7 @@ export default function SupplierInbox() {
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-sm text-muted-foreground">{lang === "de" ? "Betroffene Bestellung" : "Ordine interessato"}</span>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">#{complaintDetail.orderId.substring(0, 8)}</Badge>
+                    <Badge variant="outline">#{complaintDetail.order ? formatOrderNumber(complaintDetail.order) : formatOrderNumber({orderNumber: null, id: complaintDetail.orderId})}</Badge>
                     <span className="text-sm text-muted-foreground">
                       {complaintDetail.order?.totalAmount ? parseFloat(complaintDetail.order.totalAmount).toFixed(2) : "0.00"}€
                     </span>

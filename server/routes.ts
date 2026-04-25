@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues } from "@shared/schema";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
@@ -221,6 +221,20 @@ export async function registerRoutes(
     if (backfilled > 0) console.log(`Backfilled article numbers for ${backfilled} product(s).`);
   } catch (err) {
     console.error("Article number backfill failed:", err);
+  }
+  // Backfill order numbers (each order gets ONE unique business-facing number)
+  try {
+    const backfilledOrders = await storage.backfillOrderNumbers();
+    if (backfilledOrders > 0) console.log(`Backfilled order numbers for ${backfilledOrders} order(s).`);
+  } catch (err) {
+    console.error("Order number backfill failed:", err);
+  }
+  // Backfill complaint numbers (each complaint gets ONE unique business-facing number)
+  try {
+    const backfilledComplaints = await storage.backfillComplaintNumbers();
+    if (backfilledComplaints > 0) console.log(`Backfilled complaint numbers for ${backfilledComplaints} complaint(s).`);
+  } catch (err) {
+    console.error("Complaint number backfill failed:", err);
   }
 
   // ===== USERS =====
@@ -1072,7 +1086,9 @@ export async function registerRoutes(
             price: item.totalPrice,
             imageUrl: items[idx]?.product?.imageUrl || null
           })),
-          total: totalAmount
+          total: totalAmount,
+          orderId: order.id,
+          orderNumber: formatOrderNumber(order),
         });
         await storage.sendMessage({
           conversationId: conversation.id,
@@ -1086,8 +1102,8 @@ export async function registerRoutes(
         await createNotificationWithPush({
           userId: supplierId,
           type: "new_order",
-          title: `Neue Bestellung #${order.id.slice(0, 8)}`,
-          message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat eine neue Bestellung aufgegeben #${order.id.slice(0, 8)} (€${totalAmount})`,
+          title: `Neue Bestellung #${formatOrderNumber(order)}`,
+          message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat eine neue Bestellung aufgegeben #${formatOrderNumber(order)} (€${totalAmount})`,
           referenceId: order.id
         }, "supplier");
       }
@@ -1168,7 +1184,9 @@ export async function registerRoutes(
           price: item.totalPrice,
           imageUrl: productImages[item.productId] || null
         })),
-        total: totalAmount
+        total: totalAmount,
+        orderId: order.id,
+        orderNumber: formatOrderNumber(order),
       });
       await storage.sendMessage({
         conversationId: conversation.id,
@@ -1261,7 +1279,7 @@ export async function registerRoutes(
                   quantity: qty,
                   previousStock: currentStock,
                   newStock,
-                  note: `Batch: Bestellung #${order.id.slice(0, 8)} bestätigt`,
+                  note: `Batch: Bestellung #${formatOrderNumber(order)} bestätigt`,
                 });
               }
             }
@@ -1356,7 +1374,7 @@ export async function registerRoutes(
                 quantity: qty,
                 previousStock: currentStock,
                 newStock,
-                note: `Bestellung #${order.id.slice(0, 8)} bestätigt`,
+                note: `Bestellung #${formatOrderNumber(order)} bestätigt`,
               });
               await checkAndNotifyLowStock(item.productId, order.supplierId);
             }
@@ -1389,7 +1407,7 @@ export async function registerRoutes(
             const document = await storage.createDocument({
               orderId: order.id,
               type: "delivery_note",
-              title: `Lieferschein (${order.id.slice(0, 8)})`,
+              title: `Lieferschein (${formatOrderNumber(order)})`,
               fileUrl: objectPath,
               restaurantId: order.restaurantId,
               supplierId: order.supplierId,
@@ -1404,6 +1422,7 @@ export async function registerRoutes(
                 title: document.title,
                 type: "delivery_note",
                 orderId: order.id,
+                orderNumber: formatOrderNumber(order),
                 fileUrl: objectPath,
               }),
               orderId: order.id,
@@ -1421,6 +1440,7 @@ export async function registerRoutes(
                 title: existingNote.title,
                 type: "delivery_note",
                 orderId: order.id,
+                orderNumber: formatOrderNumber(order),
                 fileUrl: existingNote.fileUrl,
               }),
               orderId: order.id,
@@ -1452,7 +1472,7 @@ export async function registerRoutes(
                 quantity: qty,
                 previousStock: currentStock,
                 newStock,
-                note: `Bestellung #${order.id.slice(0, 8)} storniert`,
+                note: `Bestellung #${formatOrderNumber(order)} storniert`,
               });
             }
           }
@@ -1574,8 +1594,8 @@ export async function registerRoutes(
                 previousStock: currentStock,
                 newStock,
                 note: newStatus === "partially_confirmed"
-                  ? `Bestellung #${order.id.slice(0, 8)} teilbestätigt (${confirmItem.confirmedQuantity} von ${order.items.find(i => i.id === confirmItem.orderItemId)!.quantity})`
-                  : `Bestellung #${order.id.slice(0, 8)} bestätigt`,
+                  ? `Bestellung #${formatOrderNumber(order)} teilbestätigt (${confirmItem.confirmedQuantity} von ${order.items.find(i => i.id === confirmItem.orderItemId)!.quantity})`
+                  : `Bestellung #${formatOrderNumber(order)} bestätigt`,
               });
               await checkAndNotifyLowStock(orderItem.productId, order.supplierId);
             }
@@ -1590,10 +1610,10 @@ export async function registerRoutes(
         userId: order.restaurantId,
         type: "order_status",
         title: isPartial
-          ? `Bestellung teilbestätigt #${order.id.slice(0, 8)}`
+          ? `Bestellung teilbestätigt #${formatOrderNumber(order)}`
           : allRejected
-            ? `Bestellung storniert #${order.id.slice(0, 8)}`
-            : `Bestellung bestätigt #${order.id.slice(0, 8)}`,
+            ? `Bestellung storniert #${formatOrderNumber(order)}`
+            : `Bestellung bestätigt #${formatOrderNumber(order)}`,
         message: isPartial
           ? `${supplier?.companyName || supplier?.name || "Händler"} hat deine Bestellung bearbeitet. Einige Mengen wurden angepasst.`
           : allRejected
@@ -1607,12 +1627,13 @@ export async function registerRoutes(
       const chatContent = JSON.stringify({
         type: "partial_confirmation",
         orderId: order.id,
+        orderNumber: formatOrderNumber(order),
         status: newStatus,
         message: isPartial
-          ? `Bestellung #${order.id.slice(0, 8)} wurde bearbeitet. Einige Mengen wurden angepasst.`
+          ? `Bestellung #${formatOrderNumber(order)} wurde bearbeitet. Einige Mengen wurden angepasst.`
           : allRejected
-            ? `Bestellung #${order.id.slice(0, 8)} wurde vollständig abgelehnt.`
-            : `Bestellung #${order.id.slice(0, 8)} wurde bestätigt.`,
+            ? `Bestellung #${formatOrderNumber(order)} wurde vollständig abgelehnt.`
+            : `Bestellung #${formatOrderNumber(order)} wurde bestätigt.`,
         items: confirmationDetails,
         total: totalConfirmedAmount.toFixed(2),
         originalTotal: order.totalAmount,
@@ -1706,7 +1727,8 @@ export async function registerRoutes(
         content: JSON.stringify({
           type: "order_edited",
           orderId: order.id,
-          message: `Bestellung #${order.id.slice(0, 8)} wurde angepasst`,
+          orderNumber: formatOrderNumber(order),
+          message: `Bestellung #${formatOrderNumber(order)} wurde angepasst`,
           items: orderItems.map((i: any) => ({ name: i.productName, quantity: i.quantity, price: i.totalPrice })),
           total: totalAmount
         }),
@@ -1716,8 +1738,8 @@ export async function registerRoutes(
       await createNotificationWithPush({
         userId: order.supplierId,
         type: "order_status",
-        title: `Bestellung angepasst #${order.id.slice(0, 8)}`,
-        message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat Bestellung #${order.id.slice(0, 8)} angepasst`,
+        title: `Bestellung angepasst #${formatOrderNumber(order)}`,
+        message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat Bestellung #${formatOrderNumber(order)} angepasst`,
         referenceId: order.id
       }, "supplier");
 
@@ -1753,9 +1775,10 @@ export async function registerRoutes(
         content: JSON.stringify({
           type: "change_request",
           orderId: order.id,
+          orderNumber: formatOrderNumber(order),
           status: "pending",
           reason: reason || "",
-          message: `Änderungsanfrage für Bestellung #${order.id.slice(0, 8)}`
+          message: `Änderungsanfrage für Bestellung #${formatOrderNumber(order)}`
         }),
         orderId: order.id,
       });
@@ -1763,8 +1786,8 @@ export async function registerRoutes(
       await createNotificationWithPush({
         userId: order.supplierId,
         type: "order_status",
-        title: `Änderungsanfrage #${order.id.slice(0, 8)}`,
-        message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} möchte Bestellung #${order.id.slice(0, 8)} ändern`,
+        title: `Änderungsanfrage #${formatOrderNumber(order)}`,
+        message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} möchte Bestellung #${formatOrderNumber(order)} ändern`,
         referenceId: order.id
       }, "supplier");
 
@@ -1817,7 +1840,7 @@ export async function registerRoutes(
                   quantity: qty,
                   previousStock: currentStock,
                   newStock,
-                  note: `Bestellung #${order.id.slice(0, 8)} zurück auf ausstehend (Änderungsanfrage genehmigt)`,
+                  note: `Bestellung #${formatOrderNumber(order)} zurück auf ausstehend (Änderungsanfrage genehmigt)`,
                 });
               }
             }
@@ -1831,8 +1854,9 @@ export async function registerRoutes(
           content: JSON.stringify({
             type: "change_request_response",
             orderId: order.id,
+            orderNumber: formatOrderNumber(order),
             approved: true,
-            message: `Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} genehmigt – Bestellung ist wieder offen zur Bearbeitung`
+            message: `Änderungsanfrage für Bestellung #${formatOrderNumber(order)} genehmigt – Bestellung ist wieder offen zur Bearbeitung`
           }),
           orderId: order.id,
         });
@@ -1840,8 +1864,8 @@ export async function registerRoutes(
         await createNotificationWithPush({
           userId: order.restaurantId,
           type: "order_status",
-          title: `Änderung genehmigt #${order.id.slice(0, 8)}`,
-          message: `${supplier?.companyName || supplier?.name || "Händler"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} genehmigt`,
+          title: `Änderung genehmigt #${formatOrderNumber(order)}`,
+          message: `${supplier?.companyName || supplier?.name || "Händler"} hat die Änderungsanfrage für Bestellung #${formatOrderNumber(order)} genehmigt`,
           referenceId: order.id
         }, "restaurant");
       } else {
@@ -1852,8 +1876,9 @@ export async function registerRoutes(
           content: JSON.stringify({
             type: "change_request_response",
             orderId: order.id,
+            orderNumber: formatOrderNumber(order),
             approved: false,
-            message: `Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} abgelehnt`
+            message: `Änderungsanfrage für Bestellung #${formatOrderNumber(order)} abgelehnt`
           }),
           orderId: order.id,
         });
@@ -1861,8 +1886,8 @@ export async function registerRoutes(
         await createNotificationWithPush({
           userId: order.restaurantId,
           type: "order_status",
-          title: `Änderung abgelehnt #${order.id.slice(0, 8)}`,
-          message: `${supplier?.companyName || supplier?.name || "Händler"} hat die Änderungsanfrage für Bestellung #${order.id.slice(0, 8)} abgelehnt`,
+          title: `Änderung abgelehnt #${formatOrderNumber(order)}`,
+          message: `${supplier?.companyName || supplier?.name || "Händler"} hat die Änderungsanfrage für Bestellung #${formatOrderNumber(order)} abgelehnt`,
           referenceId: order.id
         }, "restaurant");
       }
@@ -2361,11 +2386,14 @@ export async function registerRoutes(
       
       // Create complaint message in chat
       const conversation = await storage.getOrCreateConversation(validated.restaurantId, validated.supplierId);
+      const orderForComplaint = await storage.getOrder(validated.orderId);
       const complaintContent = JSON.stringify({
         title: validated.title,
         description: validated.description,
         orderId: validated.orderId,
+        orderNumber: orderForComplaint ? formatOrderNumber(orderForComplaint) : undefined,
         complaintId: complaint.id,
+        complaintNumber: formatComplaintNumber(complaint),
         affectedItems: hasAffectedItems ? affectedItems : undefined,
       });
       await storage.sendMessage({
@@ -2381,8 +2409,8 @@ export async function registerRoutes(
       await createNotificationWithPush({
         userId: validated.supplierId,
         type: "new_complaint",
-        title: `Neue Reklamation #${complaint.id.slice(0, 8)}`,
-        message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat eine Reklamation eingereicht #${complaint.id.slice(0, 8)}: ${validated.title}`,
+        title: `Neue Reklamation #${formatComplaintNumber(complaint)}`,
+        message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat eine Reklamation eingereicht #${formatComplaintNumber(complaint)}: ${validated.title}`,
         referenceId: complaint.id
       }, "supplier");
       
@@ -2556,7 +2584,7 @@ export async function registerRoutes(
         .reduce((sum: number, item) => sum + parseFloat(item.totalPrice), 0)
         .toFixed(2);
 
-      const orderNotes = notes || `Nachlieferung zu Reklamation #${complaint.id.slice(0, 8)}`;
+      const orderNotes = notes || `Nachlieferung zu Reklamation #${formatComplaintNumber(complaint)}`;
       const order = await storage.createOrder(
         {
           restaurantId: complaint.restaurantId,
@@ -2588,7 +2616,10 @@ export async function registerRoutes(
         })),
         total: totalAmount,
         isFollowUp: true,
-        complaintId: complaint.id
+        complaintId: complaint.id,
+        complaintNumber: formatComplaintNumber(complaint),
+        orderId: order.id,
+        orderNumber: formatOrderNumber(order),
       });
       await storage.sendMessage({
         conversationId: conversation.id,
@@ -2608,8 +2639,8 @@ export async function registerRoutes(
       await createNotificationWithPush({
         userId: complaint.restaurantId,
         type: "new_order",
-        title: `Nachlieferung #${order.id.slice(0, 8)}`,
-        message: `${supplier?.companyName || supplier?.name || "Ihr Händler"} hat eine Nachlieferung zu Ihrer Reklamation #${complaint.id.slice(0, 8)} erstellt (€${totalAmount})`,
+        title: `Nachlieferung #${formatOrderNumber(order)}`,
+        message: `${supplier?.companyName || supplier?.name || "Ihr Händler"} hat eine Nachlieferung zu Ihrer Reklamation #${formatComplaintNumber(complaint)} erstellt (€${totalAmount})`,
         referenceId: order.id
       }, "restaurant");
 
@@ -2642,8 +2673,8 @@ export async function registerRoutes(
       await createNotificationWithPush({
         userId: notifyUserId,
         type: "complaint_comment",
-        title: `Neuer Kommentar #${complaint.id.slice(0, 8)}`,
-        message: `${commenter?.companyName || commenter?.name || "Jemand"} hat einen Kommentar zur Reklamation #${complaint.id.slice(0, 8)} hinzugefügt: "${validated.content.substring(0, 50)}${validated.content.length > 50 ? '...' : ''}"`,
+        title: `Neuer Kommentar #${formatComplaintNumber(complaint)}`,
+        message: `${commenter?.companyName || commenter?.name || "Jemand"} hat einen Kommentar zur Reklamation #${formatComplaintNumber(complaint)} hinzugefügt: "${validated.content.substring(0, 50)}${validated.content.length > 50 ? '...' : ''}"`,
         referenceId: complaint.id
       }, commentRecipientRole);
       
@@ -2890,7 +2921,7 @@ export async function registerRoutes(
         grandTotal += amount;
         invoiceItems.push({
           date: new Date(o.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }),
-          orderId: o.id.slice(0, 8).toUpperCase(),
+          orderId: formatOrderNumber(o),
           amount: amount.toFixed(2),
         });
       }
@@ -2941,12 +2972,12 @@ export async function registerRoutes(
       if (deliveryNote) {
         const objectService = new ObjectStorageService();
         const objectFile = await objectService.getObjectEntityFile(deliveryNote.fileUrl);
-        res.setHeader("Content-Disposition", `attachment; filename="Lieferschein_${order.id.slice(0, 8)}.pdf"`);
+        res.setHeader("Content-Disposition", `attachment; filename="Lieferschein_${formatOrderNumber(order)}.pdf"`);
         await objectService.downloadObject(objectFile, res);
       } else {
         const pdfBuffer = await generateDeliveryNotePDF(order);
         res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `inline; filename="Lieferschein_${order.id.slice(0, 8)}.pdf"`);
+        res.setHeader("Content-Disposition", `inline; filename="Lieferschein_${formatOrderNumber(order)}.pdf"`);
         res.send(pdfBuffer);
       }
     } catch (error) {
@@ -2997,7 +3028,7 @@ export async function registerRoutes(
       const document = await storage.createDocument({
         orderId: order.id,
         type: "delivery_note",
-        title: `Lieferschein (${order.id.slice(0, 8)})`,
+        title: `Lieferschein (${formatOrderNumber(order)})`,
         fileUrl: objectPath,
         restaurantId: order.restaurantId,
         supplierId: order.supplierId,
@@ -3014,6 +3045,7 @@ export async function registerRoutes(
           title: document.title,
           type: "delivery_note",
           orderId: order.id,
+          orderNumber: formatOrderNumber(order),
           fileUrl: objectPath,
         }),
         orderId: order.id,
@@ -3111,7 +3143,7 @@ export async function registerRoutes(
 
       const pdfBuffer = await generateDeliveryNotePDF(pdfOrder);
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="Lieferschein_${order.id.slice(0, 8)}.pdf"`);
+      res.setHeader("Content-Disposition", `attachment; filename="Lieferschein_${formatOrderNumber(order)}.pdf"`);
       res.send(pdfBuffer);
     } catch (error) {
       console.error("Failed to regenerate delivery note:", error);
@@ -3603,11 +3635,11 @@ export async function registerRoutes(
           const deliveryDate = order.requestedDeliveryDate || "-";
           const orderItems = order.items || [];
           if (orderItems.length === 0) {
-            rows.push([order.id.slice(0, 8), escapeCsv(order.partnerName), statusLabels[order.status] || order.status, dateStr, deliveryDate, "-", "-", "-", "-", `${order.totalAmount}€`, escapeCsv(order.notes || "")].join(";"));
+            rows.push([formatOrderNumber(order), escapeCsv(order.partnerName), statusLabels[order.status] || order.status, dateStr, deliveryDate, "-", "-", "-", "-", `${order.totalAmount}€`, escapeCsv(order.notes || "")].join(";"));
           } else {
             orderItems.forEach((item: any, idx: number) => {
               rows.push([
-                idx === 0 ? order.id.slice(0, 8) : "",
+                idx === 0 ? formatOrderNumber(order) : "",
                 idx === 0 ? escapeCsv(order.partnerName) : "",
                 idx === 0 ? (statusLabels[order.status] || order.status) : "",
                 idx === 0 ? dateStr : "",
@@ -3689,7 +3721,7 @@ async function generateOrdersExportPDF(
       }
 
       doc.font("Helvetica-Bold").fontSize(10).fillColor("#161921");
-      doc.text(`#${order.id.slice(0, 8)}`, 40, y);
+      doc.text(`#${formatOrderNumber(order)}`, 40, y);
       doc.font("Helvetica").fontSize(9).fillColor("#666666");
       doc.text(order.partnerName, 120, y);
       doc.text(statusLabels[order.status] || order.status, 300, y);
@@ -3768,7 +3800,7 @@ async function generateDeliveryNotePDF(order: {
     doc.fontSize(22).font("Helvetica-Bold").text("LIEFERSCHEIN", { align: "center" });
     doc.moveDown(0.5);
     doc.fontSize(10).font("Helvetica").fillColor("#666666")
-      .text(`Lieferschein-Nr: LS-${order.id.slice(0, 8).toUpperCase()}`, { align: "center" });
+      .text(`Lieferschein-Nr: LS-${formatOrderNumber(order)}`, { align: "center" });
     doc.text(`Datum: ${deliveryDate}`, { align: "center" });
 
     doc.moveDown(1.5);
@@ -3799,7 +3831,7 @@ async function generateDeliveryNotePDF(order: {
     doc.moveDown(1);
 
     doc.fontSize(10).font("Helvetica").fillColor("#666666");
-    doc.text(`Bestellnummer: #${order.id.slice(0, 8).toUpperCase()}`, 50);
+    doc.text(`Bestellnummer: #${formatOrderNumber(order)}`, 50);
     doc.text(`Bestelldatum: ${orderDate}`, 50);
     doc.text(`Lieferdatum: ${deliveryDate}`, 50);
 

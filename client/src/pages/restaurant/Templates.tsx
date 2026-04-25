@@ -5,7 +5,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { OrderTemplateWithItems, Product, User, OrderWithDetails } from "@shared/schema";
+import { formatOrderNumber, type OrderTemplateWithItems, type Product, type User, type OrderWithDetails } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -713,7 +713,7 @@ function CreateEditDialog({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-muted-foreground">#{order.id.slice(0, 8)}</span>
+                      <span className="text-xs font-mono text-muted-foreground">#{formatOrderNumber(order)}</span>
                       <span className="text-xs text-muted-foreground">{format(new Date(order.createdAt), "dd.MM.yyyy", { locale: dateFnsLocale })}</span>
                     </div>
                     <p className="text-sm font-medium mt-0.5">{order.supplier?.companyName}</p>

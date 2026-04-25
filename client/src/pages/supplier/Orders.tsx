@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import type { OrderWithDetails, ProductWithSupplierAndPromotion } from "@shared/schema";
+import { formatOrderNumber, type OrderWithDetails, type ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -339,7 +339,7 @@ export default function SupplierOrders() {
   const sendOrderMessageMutation = useMutation({
     mutationFn: async ({ order, message }: { order: OrderWithDetails; message: string }) => {
       const restaurantName = order.restaurant?.companyName || order.restaurant?.name || "";
-      const refLabel = `${lang === "de" ? "Bestellung" : "Ordine"} #${order.id.substring(0, 8)} - ${restaurantName}`;
+      const refLabel = `${lang === "de" ? "Bestellung" : "Ordine"} #${formatOrderNumber(order)} - ${restaurantName}`;
       return await apiRequest("POST", "/api/send-referenced-message", {
         senderId: currentUser?.id,
         restaurantId: order.restaurantId,
@@ -522,7 +522,7 @@ export default function SupplierOrders() {
               </Badge>
               <span className="flex items-center gap-1 text-[11px] md:text-xs text-muted-foreground">
                 <ShoppingBag className="h-3 w-3 shrink-0" />
-                #{order.id.slice(0, 8)}
+                #{formatOrderNumber(order)}
               </span>
               <span className="flex items-center gap-1 text-[11px] md:text-xs text-muted-foreground">
                 <Clock className="h-3 w-3 shrink-0" />
@@ -763,7 +763,7 @@ export default function SupplierOrders() {
             data-testid={`link-order-${order.id}`}
             onClick={(e) => e.stopPropagation()}
           >
-            #{order.id.slice(0, 8)}
+            #{formatOrderNumber(order)}
           </Link>
           {visibleColumns.has("status") && (
             <div>
@@ -855,7 +855,7 @@ export default function SupplierOrders() {
                     {lang === "de" ? "Liefertermin setzen" : "Imposta data"}
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => navTo(`/supplier/inbox?to=${order.restaurantId}&orderRefId=${order.id}`)} data-testid={`action-message-${order.id}`}>
+                <DropdownMenuItem onClick={() => navTo(`/supplier/inbox?to=${order.restaurantId}&orderRefId=${order.id}&orderNumber=${encodeURIComponent(formatOrderNumber(order))}`)} data-testid={`action-message-${order.id}`}>
                   <MessageSquare className="h-4 w-4 mr-2" />
                   {lang === "de" ? "Nachricht senden" : "Invia messaggio"}
                 </DropdownMenuItem>
@@ -899,7 +899,7 @@ export default function SupplierOrders() {
                 onClick={(e) => e.stopPropagation()}
                 data-testid={`link-order-mobile-${order.id}`}
               >
-                #{order.id.slice(0, 8)}
+                #{formatOrderNumber(order)}
               </Link>
               <Badge className={`${getStatusColor(order.status)} text-[10px] rounded-full px-2 py-0 border-0 shrink-0`} variant="outline">
                 {getOrderStatus(order.status, lang, true)}
@@ -1592,14 +1592,14 @@ export default function SupplierOrders() {
       <Dialog open={!!detailOrder} onOpenChange={(open) => { if (!open) { setDetailOrder(null); setShowMessageInput(false); setOrderMessage(""); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">
           <DialogHeader className="sr-only">
-            <DialogTitle>{lang === "de" ? "Auftrag" : "Ordine"} #{detailOrder?.id.slice(0, 8)}</DialogTitle>
+            <DialogTitle>{lang === "de" ? "Auftrag" : "Ordine"} #{formatOrderNumber(detailOrder)}</DialogTitle>
           </DialogHeader>
           {detailOrder && (
             <div className="px-5 pt-5 pb-5 space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-xs text-muted-foreground">{lang === "de" ? "Auftrag" : "Ordine"}</p>
-                  <h3 className="text-base font-semibold">#{detailOrder.id.slice(0, 8)}</h3>
+                  <h3 className="text-base font-semibold">#{formatOrderNumber(detailOrder)}</h3>
                 </div>
                 <Badge className={`${getStatusColor(detailOrder.status)}`} variant="outline">
                   {getStatusIcon(detailOrder.status)}
@@ -1828,7 +1828,7 @@ export default function SupplierOrders() {
                     <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/50 border-l-3 border-primary/50">
                       <ShoppingBag className="h-3 w-3 text-primary shrink-0" />
                       <span className="text-[11px] text-muted-foreground truncate">
-                        {lang === "de" ? "Bestellung" : "Ordine"} #{detailOrder.id.substring(0, 8)} - {detailOrder.restaurant?.companyName || detailOrder.restaurant?.name}
+                        {lang === "de" ? "Bestellung" : "Ordine"} #{formatOrderNumber(detailOrder)} - {detailOrder.restaurant?.companyName || detailOrder.restaurant?.name}
                       </span>
                     </div>
                     <div className="flex gap-2">
