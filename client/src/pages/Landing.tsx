@@ -461,7 +461,7 @@ export default function Landing() {
                 <ArrowLeftRight className="h-5 w-5 rotate-90" />
               </div>
 
-              <div className="relative inline-flex items-center justify-center">
+              <div className="relative inline-flex items-center justify-center mb-[-12px] md:mb-[-16px]">
                 <img src={logoImg} alt="GastroConnect" className="h-20 w-20 md:h-24 md:w-24 object-contain dark:invert" />
               </div>
               <div className="text-center">
