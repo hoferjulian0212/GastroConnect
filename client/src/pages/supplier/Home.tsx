@@ -1012,99 +1012,163 @@ export default function SupplierHome() {
                 })}
               </div>
 
-              {/* Desktop: stacked list */}
-              <div className="hidden md:block space-y-3">
+              {/* Desktop: Excel-style tables (mirrors Anstehende Lieferungen / Neue Bestellungen) */}
+              <div className="hidden md:block space-y-4">
                 {(actionRequired?.staleOrders?.length || 0) > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <Clock className="h-3 w-3 text-red-600" />
                       {lang === "de" ? "Unbearbeitete Bestellungen" : "Ordini non elaborati"} ({actionRequired!.staleOrders.length})
                     </p>
-                    <div className="space-y-2">
-                      {actionRequired!.staleOrders.map((order) => (
-                        <div
-                          key={order.id}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10 hover:shadow-md transition-all duration-200 cursor-pointer"
-                          onClick={() => navigate(`/supplier/orders/${order.id}`)}
-                          data-testid={`stale-order-desktop-${order.id}`}
-                        >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 shrink-0">
-                            <Clock className="h-5 w-5 text-red-600" />
+                    <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="action-stale-orders-table">
+                      <div className="md:overflow-x-auto">
+                        <div style={{ minWidth: deliveriesTableMinWidth }}>
+                          <div
+                            className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border backdrop-blur-sm`}
+                            style={{ gridTemplateColumns: deliveriesGridTemplate }}
+                          >
+                            <div className="pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
+                            <div className="pr-2">Status</div>
+                            <div className="pr-2 !justify-start !text-left">{lang === "de" ? "Restaurant" : "Ristorante"}</div>
+                            <div className="pr-2 !text-right !justify-end">{lang === "de" ? "Artikel" : "Articoli"}</div>
+                            <div className="pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>
+                            <div className="pr-2">{lang === "de" ? "Erstellt" : "Creato"}</div>
+                            <div className="!text-right !justify-end">{lang === "de" ? "Summe" : "Totale"}</div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                              <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5" variant="outline">
-                                {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <UserIcon className="h-3 w-3 text-muted-foreground shrink-0" />
-                              <p className="text-xs text-muted-foreground truncate">
-                                {order.restaurant?.companyName || order.restaurant?.name}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 ml-2">
-                            <span className="text-base font-bold">{order.totalAmount}€</span>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          </div>
+                          {actionRequired!.staleOrders.map((order) => {
+                            const restaurantName = order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown");
+                            const deliveryDateLabel = order.requestedDeliveryDate
+                              ? (() => {
+                                  const d = new Date(order.requestedDeliveryDate + "T00:00:00");
+                                  if (isToday(d)) return lang === "de" ? "Heute" : "Oggi";
+                                  if (isTomorrow(d)) return lang === "de" ? "Morgen" : "Domani";
+                                  return format(d, "EEE dd.MM.", { locale: dateLocale });
+                                })()
+                              : "—";
+                            return (
+                              <Link
+                                key={order.id}
+                                href={`/supplier/orders/${order.id}`}
+                                className="block group/row border-b border-border last:border-b-0 hover:bg-red-50/50 dark:hover:bg-red-950/10 transition-colors"
+                                data-testid={`stale-order-row-${order.id}`}
+                              >
+                                <div
+                                  className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
+                                  style={{ gridTemplateColumns: deliveriesGridTemplate }}
+                                >
+                                  <span className="font-mono text-[13px] text-primary truncate">#{order.id.slice(0, 8)}</span>
+                                  <div>
+                                    <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
+                                      <span className="inline-flex items-center gap-1">
+                                        {getStatusIcon(order.status)}
+                                        {getOrderStatus(order.status, lang, true)}
+                                      </span>
+                                    </Badge>
+                                  </div>
+                                  <div className="min-w-0 flex items-center gap-2">
+                                    <Avatar className="h-6 w-6 shrink-0">
+                                      <AvatarImage src={order.restaurant?.profileImageUrl || undefined} />
+                                      <AvatarFallback className="text-[9px] font-semibold">{restaurantName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="truncate font-medium" data-testid={`text-stale-restaurant-${order.id}`}>{restaurantName}</span>
+                                  </div>
+                                  <div className="text-right tabular-nums text-muted-foreground">{order.items?.length || 0}</div>
+                                  <div className="min-w-0">
+                                    <span className="truncate" data-testid={`text-stale-delivery-${order.id}`}>{deliveryDateLabel}</span>
+                                  </div>
+                                  <div className="text-red-600 dark:text-red-400 text-[12px] font-medium truncate" title={format(new Date(order.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}>
+                                    {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: dateLocale })}
+                                  </div>
+                                  <div className="text-right font-semibold tabular-nums" data-testid={`text-stale-total-${order.id}`}>
+                                    {parseFloat(order.totalAmount).toFixed(2)}€
+                                  </div>
+                                </div>
+                              </Link>
+                            );
+                          })}
                         </div>
-                      ))}
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {(actionRequired?.openComplaints?.length || 0) > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {lang === "de" ? "Reklamationen" : "Reclami"} ({actionRequired!.openComplaints.length})
-                    </p>
+                {(actionRequired?.openComplaints?.length || 0) > 0 && (() => {
+                  const complaintsGridTemplate = "minmax(180px, 1fr) 140px minmax(160px, 1.2fr) 110px 130px";
+                  const complaintsTableMinWidth = 760;
+                  const complaintStatusColors: Record<string, string> = {
+                    open: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+                    in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+                    resolved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+                  };
+                  const complaintStatusLabels: Record<string, Record<string, string>> = {
+                    de: { open: "Offen", in_progress: "In Bearbeitung", resolved: "Gelöst" },
+                    it: { open: "Aperto", in_progress: "In lavorazione", resolved: "Risolto" },
+                  };
+                  return (
                     <div className="space-y-2">
-                      {actionRequired!.openComplaints.map((complaint) => {
-                        const statusColors: Record<string, string> = {
-                          open: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-                          in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-                          resolved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-                        };
-                        const statusLabels: Record<string, Record<string, string>> = {
-                          de: { open: "Offen", in_progress: "In Bearbeitung", resolved: "Gelöst" },
-                          it: { open: "Aperto", in_progress: "In lavorazione", resolved: "Risolto" },
-                        };
-                        return (
-                          <div
-                            key={complaint.id}
-                            className={`flex items-center gap-3 p-3 rounded-xl border hover:shadow-md transition-all duration-200 cursor-pointer ${complaint.priority === "urgent" ? "border-red-300 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10" : "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/10"}`}
-                            onClick={() => navigate(`/supplier/complaints/${complaint.id}`)}
-                            data-testid={`action-complaint-desktop-${complaint.id}`}
-                          >
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 shrink-0">
-                              {complaint.priority === "urgent" ? <Flame className="h-5 w-5 text-red-500" /> : <AlertTriangle className="h-5 w-5 text-amber-600" />}
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                        <AlertTriangle className="h-3 w-3 text-amber-600" />
+                        {lang === "de" ? "Reklamationen" : "Reclami"} ({actionRequired!.openComplaints.length})
+                      </p>
+                      <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="action-complaints-table">
+                        <div className="md:overflow-x-auto">
+                          <div style={{ minWidth: complaintsTableMinWidth }}>
+                            <div
+                              className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border backdrop-blur-sm`}
+                              style={{ gridTemplateColumns: complaintsGridTemplate }}
+                            >
+                              <div className="pr-2 !justify-start !text-left">{lang === "de" ? "Reklamation" : "Reclamo"}</div>
+                              <div className="pr-2">Status</div>
+                              <div className="pr-2 !justify-start !text-left">{lang === "de" ? "Restaurant" : "Ristorante"}</div>
+                              <div className="pr-2">{lang === "de" ? "Bestellung" : "Ordine"}</div>
+                              <div className="pr-2">{lang === "de" ? "Erstellt" : "Creato"}</div>
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {complaint.priority === "urgent" && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
-                                <p className={`text-sm font-medium truncate ${complaint.priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</p>
-                                <Badge className={`${statusColors[complaint.status] || ""} text-[10px] px-1.5`} variant="outline">
-                                  {statusLabels[lang]?.[complaint.status] || complaint.status}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <UserIcon className="h-3 w-3 text-muted-foreground shrink-0" />
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {complaint.restaurant?.companyName || complaint.restaurant?.name}
-                                </p>
-                                <span className="text-[10px] text-muted-foreground/70 shrink-0 ml-1">
-                                  {formatDistanceToNow(new Date(complaint.createdAt), { addSuffix: true, locale: dateLocale })}
-                                </span>
-                              </div>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+                            {actionRequired!.openComplaints.map((complaint) => {
+                              const restaurantName = complaint.restaurant?.companyName || complaint.restaurant?.name || t("common", "unknown");
+                              const isUrgent = complaint.priority === "urgent";
+                              return (
+                                <Link
+                                  key={complaint.id}
+                                  href={`/supplier/complaints/${complaint.id}`}
+                                  className={`block group/row border-b border-border last:border-b-0 transition-colors ${isUrgent ? "hover:bg-red-50/50 dark:hover:bg-red-950/10" : "hover:bg-amber-50/50 dark:hover:bg-amber-950/10"}`}
+                                  data-testid={`action-complaint-row-${complaint.id}`}
+                                >
+                                  <div
+                                    className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
+                                    style={{ gridTemplateColumns: complaintsGridTemplate }}
+                                  >
+                                    <div className="min-w-0 !justify-start !text-left flex items-center gap-1.5">
+                                      {isUrgent && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+                                      <span className={`truncate font-medium ${isUrgent ? "text-red-700 dark:text-red-400" : ""}`} title={complaint.title}>{complaint.title}</span>
+                                    </div>
+                                    <div>
+                                      <Badge className={`${complaintStatusColors[complaint.status] || ""} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
+                                        {complaintStatusLabels[lang]?.[complaint.status] || complaint.status}
+                                      </Badge>
+                                    </div>
+                                    <div className="min-w-0 flex items-center gap-2 !justify-start !text-left">
+                                      <Avatar className="h-6 w-6 shrink-0">
+                                        <AvatarImage src={complaint.restaurant?.profileImageUrl || undefined} />
+                                        <AvatarFallback className="text-[9px] font-semibold">{restaurantName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                      </Avatar>
+                                      <span className="truncate font-medium" data-testid={`text-complaint-restaurant-${complaint.id}`}>{restaurantName}</span>
+                                    </div>
+                                    <div className="font-mono text-[12px] text-primary truncate">
+                                      {complaint.order?.id ? `#${complaint.order.id.slice(0, 8)}` : "—"}
+                                    </div>
+                                    <div className="text-muted-foreground text-[12px] truncate" title={format(new Date(complaint.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}>
+                                      {formatDistanceToNow(new Date(complaint.createdAt), { addSuffix: true, locale: dateLocale })}
+                                    </div>
+                                  </div>
+                                </Link>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
               </div>
             </div>
