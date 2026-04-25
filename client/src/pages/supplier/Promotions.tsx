@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Tag, Plus, Trash2, Package, Calendar, Percent, Loader2, Send, Check, ChevronRight, ChevronLeft, Users, MessageSquare, Search, X, AlertTriangle } from "lucide-react";
+import { Tag, Plus, Trash2, Package, Calendar, Percent, Loader2, Send, Check, ChevronRight, ChevronLeft, ChevronDown, Users, MessageSquare, Search, X, AlertTriangle, Sparkles, Clock, Hourglass, Archive, Flame } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -71,6 +71,9 @@ export default function SupplierPromotions() {
   const [productSearch, setProductSearch] = useState("");
   const [restaurantSearch, setRestaurantSearch] = useState("");
   const [overwriteProduct, setOverwriteProduct] = useState<Product | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "scheduled" | "expired">("all");
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({ expired: true });
+  const toggleSection = (key: string) => setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
 
   const { data: promotions, isLoading } = useQuery<PromotionWithProduct[]>({
     queryKey: [`/api/promotions?supplierId=${currentUser?.id}`],
@@ -300,123 +303,275 @@ export default function SupplierPromotions() {
           </Button>
         </div>
 
-        <div className="grid gap-2 md:gap-3 grid-cols-3">
-          <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
-            <div className="text-center">
-              <div className="text-xl md:text-2xl font-bold text-blue-400" data-testid="text-total-promotions">{promotionGroups.length}</div>
-              <p className="text-[10px] md:text-xs text-white/50">{t("common", "total")}</p>
+        {(() => {
+          const now = new Date();
+          const counts = {
+            all: promotionGroups.length,
+            active: promotionGroups.filter(g => g.isActive && new Date(g.startDate) <= now && new Date(g.endDate) >= now).length,
+            scheduled: promotionGroups.filter(g => g.isActive && new Date(g.startDate) > now).length,
+            expired: promotionGroups.filter(g => new Date(g.endDate) < now || !g.isActive).length,
+          };
+          const filterPills: { key: typeof statusFilter; label: string; count: number; icon: typeof Sparkles; activeBg: string; activeText: string; dot: string }[] = [
+            { key: "all", label: lang === "de" ? "Alle" : "Tutte", count: counts.all, icon: Tag, activeBg: "bg-white text-[#161921]", activeText: "text-[#161921]", dot: "bg-white/60" },
+            { key: "active", label: t("promotionsPage", "active"), count: counts.active, icon: Flame, activeBg: "bg-emerald-500/90 text-white", activeText: "text-white", dot: "bg-emerald-400" },
+            { key: "scheduled", label: lang === "de" ? "Geplant" : "Pianificate", count: counts.scheduled, icon: Hourglass, activeBg: "bg-blue-500/90 text-white", activeText: "text-white", dot: "bg-blue-400" },
+            { key: "expired", label: t("promotionsPage", "expired"), count: counts.expired, icon: Archive, activeBg: "bg-white/15 text-white", activeText: "text-white", dot: "bg-white/40" },
+          ];
+          return (
+            <div className="flex items-center gap-1.5 md:gap-2 overflow-x-auto -mx-1 px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {filterPills.map(pill => {
+                const isActive = statusFilter === pill.key;
+                const Icon = pill.icon;
+                return (
+                  <button
+                    key={pill.key}
+                    type="button"
+                    onClick={() => setStatusFilter(pill.key)}
+                    className={`group shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs md:text-sm font-medium transition-all duration-200 border ${
+                      isActive
+                        ? `${pill.activeBg} border-transparent shadow-sm scale-[1.02]`
+                        : "bg-white/[0.06] text-white/70 border-white/10 hover:bg-white/[0.11] hover:text-white"
+                    }`}
+                    data-testid={`filter-pill-${pill.key}`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{pill.label}</span>
+                    <span className={`inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-bold tabular-nums ${
+                      isActive ? "bg-black/15 dark:bg-black/25" : "bg-white/10 text-white/80"
+                    }`} data-testid={`filter-pill-count-${pill.key}`}>
+                      {pill.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
-            <div className="text-center">
-              <div className="text-xl md:text-2xl font-bold text-green-400" data-testid="text-active-promotions">
-                {promotionGroups.filter(g => {
-                  const now = new Date();
-                  return g.isActive && new Date(g.startDate) <= now && new Date(g.endDate) >= now;
-                }).length}
-              </div>
-              <p className="text-[10px] md:text-xs text-white/50">{t("promotionsPage", "active")}</p>
-            </div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.07] p-2.5 md:p-3">
-            <div className="text-center">
-              <div className="text-xl md:text-2xl font-bold text-white/40" data-testid="text-expired-promotions">
-                {promotionGroups.filter(g => new Date(g.endDate) < new Date()).length}
-              </div>
-              <p className="text-[10px] md:text-xs text-white/50">{t("promotionsPage", "expired")}</p>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4 px-3 md:px-6">
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 w-full rounded-2xl" />)}
           </div>
-        ) : promotionGroups.length > 0 ? (
-          promotionGroups.map((group) => {
-            const status = getGroupStatus(group);
+        ) : promotionGroups.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-10 md:p-14">
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-100 to-blue-100 dark:from-emerald-900/30 dark:to-blue-900/30 flex items-center justify-center mb-3">
+                <Sparkles className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <p className="font-semibold">{t("promotionsPage", "noPromotions")}</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs">{t("promotionsPage", "noPromotionsDesc")}</p>
+              <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="mt-4 rounded-full gap-1.5" size="sm" data-testid="button-create-promotion-empty">
+                <Plus className="h-4 w-4" />
+                {t("promotionsPage", "createPromotion")}
+              </Button>
+            </div>
+          </div>
+        ) : (() => {
+          const now = new Date();
+          const sectionDefs: { key: "active" | "scheduled" | "expired"; titleDe: string; titleIt: string; icon: typeof Flame; accentText: string; accentBg: string; accentDot: string; railColor: string; medallionBg: string }[] = [
+            { key: "active",    titleDe: "Aktiv",      titleIt: "Attive",      icon: Flame,     accentText: "text-emerald-700 dark:text-emerald-400", accentBg: "bg-emerald-50 dark:bg-emerald-950/30", accentDot: "bg-emerald-500", railColor: "before:bg-gradient-to-b before:from-emerald-400 before:to-emerald-600", medallionBg: "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-emerald-500/30" },
+            { key: "scheduled", titleDe: "Geplant",    titleIt: "Pianificate", icon: Hourglass, accentText: "text-blue-700 dark:text-blue-400",       accentBg: "bg-blue-50 dark:bg-blue-950/30",       accentDot: "bg-blue-500",    railColor: "before:bg-gradient-to-b before:from-blue-400 before:to-blue-600",       medallionBg: "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/30" },
+            { key: "expired",   titleDe: "Abgelaufen", titleIt: "Scadute",     icon: Archive,   accentText: "text-muted-foreground",                  accentBg: "bg-muted/40",                          accentDot: "bg-muted-foreground/40", railColor: "before:bg-gradient-to-b before:from-muted-foreground/30 before:to-muted-foreground/40", medallionBg: "bg-muted text-muted-foreground" },
+          ];
+          const grouped: Record<"active" | "scheduled" | "expired", PromotionGroup[]> = { active: [], scheduled: [], expired: [] };
+          for (const g of promotionGroups) {
+            const start = new Date(g.startDate);
+            const end = new Date(g.endDate);
+            if (!g.isActive || end < now) grouped.expired.push(g);
+            else if (start > now) grouped.scheduled.push(g);
+            else grouped.active.push(g);
+          }
+
+          const renderCard = (group: PromotionGroup, sectionKey: "active" | "scheduled" | "expired", section: typeof sectionDefs[number]) => {
+            const start = new Date(group.startDate);
+            const end = new Date(group.endDate);
             const isGroup = group.promotions.length > 1;
+            const totalMs = Math.max(1, end.getTime() - start.getTime());
+            const elapsedMs = Math.min(totalMs, Math.max(0, now.getTime() - start.getTime()));
+            const progress = sectionKey === "active" ? Math.round((elapsedMs / totalMs) * 100) : sectionKey === "scheduled" ? 0 : 100;
+            const daysLeft = sectionKey === "active" ? Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+            const daysUntilStart = sectionKey === "scheduled" ? Math.max(0, Math.ceil((start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+            const previewProducts = group.promotions.slice(0, 4);
+            const remainingCount = group.promotions.length - previewProducts.length;
+            const totalSavings = group.promotions.reduce((sum, p) => sum + (parseFloat(p.product.price) * group.discountPercent / 100), 0);
+            const isExpired = sectionKey === "expired";
+
             return (
-              <Card key={group.groupId || group.promotions[0].id} data-testid={`promotion-group-${group.groupId || group.promotions[0].id}`}>
-                <CardContent className="p-3 md:p-4">
-                  <div className="flex items-start justify-between gap-3">
+              <div
+                key={group.groupId || group.promotions[0].id}
+                className={`relative rounded-2xl border border-border bg-card overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 ${section.railColor} ${isExpired ? "opacity-80" : ""}`}
+                data-testid={`promotion-group-${group.groupId || group.promotions[0].id}`}
+              >
+                <div className="p-3 md:p-4 pl-4 md:pl-5">
+                  <div className="flex items-start gap-3 md:gap-4">
+                    {/* Discount medallion */}
+                    <div className={`shrink-0 h-16 w-16 md:h-20 md:w-20 rounded-2xl flex flex-col items-center justify-center shadow-lg ${section.medallionBg}`}>
+                      <span className="text-xl md:text-2xl font-black leading-none tabular-nums">−{group.discountPercent}</span>
+                      <span className="text-[10px] md:text-xs font-semibold opacity-90 mt-0.5">%</span>
+                    </div>
+
+                    {/* Main content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h3 className="font-semibold text-sm md:text-base" data-testid={`text-promo-name-${group.groupId || group.promotions[0].id}`}>
-                          {group.name || group.promotions[0].product.name}
-                        </h3>
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                        <Badge variant="secondary" className="text-[10px]">-{group.discountPercent}%</Badge>
-                        {isGroup && (
-                          <Badge variant="outline" className="text-[10px] gap-1">
-                            <Package className="h-2.5 w-2.5" />
-                            {group.promotions.length} {t("promotionsPage", "products")}
-                          </Badge>
-                        )}
-                        {group.targetRestaurantIds && group.targetRestaurantIds.length > 0 && (
-                          <Badge variant="outline" className="text-[10px] gap-1">
-                            <Users className="h-2.5 w-2.5" />
-                            {group.targetRestaurantIds.length}
-                          </Badge>
-                        )}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-sm md:text-base leading-tight truncate" data-testid={`text-promo-name-${group.groupId || group.promotions[0].id}`}>
+                            {group.name || group.promotions[0].product.name}
+                          </h3>
+                          {group.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{group.description}</p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 h-7 w-7 -mr-1 -mt-1 opacity-60 hover:opacity-100 hover:text-destructive"
+                          onClick={() => {
+                            if (group.groupId) deleteGroupMutation.mutate(group.groupId);
+                            else deleteMutation.mutate(group.promotions[0].id);
+                          }}
+                          disabled={deleteGroupMutation.isPending || deleteMutation.isPending}
+                          data-testid={`button-delete-group-${group.groupId || group.promotions[0].id}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
-                      {group.description && (
-                        <p className="text-xs text-muted-foreground mb-1.5">{group.description}</p>
-                      )}
-                      <div className="flex flex-wrap gap-1.5 mb-1.5">
-                        {group.promotions.map(promo => {
-                          const orig = parseFloat(promo.product.price);
-                          const disc = orig * (1 - promo.discountPercent / 100);
-                          return (
-                            <div key={promo.id} className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/50 text-[11px]">
-                              <span className="font-medium">{promo.product.name}</span>
-                              <span className="text-muted-foreground line-through">{orig.toFixed(2)}€</span>
-                              <span className="font-semibold text-green-600 dark:text-green-400">{disc.toFixed(2)}€</span>
+
+                      {/* Product image stack + meta */}
+                      <div className="flex items-center gap-3 mt-2.5">
+                        <div className="flex -space-x-2">
+                          {previewProducts.map(promo => (
+                            <div key={promo.id} className="ring-2 ring-card rounded-lg overflow-hidden">
+                              <ProductImage
+                                src={promo.product.imageUrl}
+                                alt={promo.product.name}
+                                className="w-8 h-8 md:w-9 md:h-9 rounded-lg"
+                                iconClassName="h-3.5 w-3.5"
+                                fallbackBg="bg-muted"
+                                fallbackIconColor="text-muted-foreground/40"
+                              />
                             </div>
-                          );
-                        })}
+                          ))}
+                          {remainingCount > 0 && (
+                            <div className="ring-2 ring-card w-8 h-8 md:w-9 md:h-9 rounded-lg bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                              +{remainingCount}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground min-w-0">
+                          <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                            <Package className="h-3 w-3" />
+                            {group.promotions.length} {group.promotions.length === 1 ? (lang === "de" ? "Produkt" : "prodotto") : (lang === "de" ? "Produkte" : "prodotti")}
+                          </span>
+                          {group.targetRestaurantIds && group.targetRestaurantIds.length > 0 ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {group.targetRestaurantIds.length} {lang === "de" ? "ausgewählt" : "selezionati"}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {lang === "de" ? "Alle Betriebe" : "Tutti i ristoranti"}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {format(start, "dd.MM.", { locale: dateFnsLocale })} – {format(end, "dd.MM.yyyy", { locale: dateFnsLocale })}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        <span>
-                          {format(new Date(group.startDate), "dd.MM.yyyy", { locale: dateFnsLocale })} - {format(new Date(group.endDate), "dd.MM.yyyy", { locale: dateFnsLocale })}
-                        </span>
+
+                      {/* Status row: progress / countdown */}
+                      <div className="mt-3">
+                        {sectionKey === "active" ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-500"
+                                style={{ width: `${progress}%` }}
+                                data-testid={`progress-bar-${group.groupId || group.promotions[0].id}`}
+                              />
+                            </div>
+                            <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 shrink-0 tabular-nums">
+                              {daysLeft === 0 ? (lang === "de" ? "endet heute" : "termina oggi") : `${daysLeft} ${daysLeft === 1 ? (lang === "de" ? "Tag" : "giorno") : (lang === "de" ? "Tage" : "giorni")}`}
+                            </span>
+                          </div>
+                        ) : sectionKey === "scheduled" ? (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 text-[11px] font-semibold">
+                            <Clock className="h-3 w-3" />
+                            {daysUntilStart === 0
+                              ? (lang === "de" ? "Startet heute" : "Inizia oggi")
+                              : (lang === "de" ? `Startet in ${daysUntilStart} ${daysUntilStart === 1 ? "Tag" : "Tagen"}` : `Inizia tra ${daysUntilStart} ${daysUntilStart === 1 ? "giorno" : "giorni"}`)}
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                            <Archive className="h-3 w-3" />
+                            {!group.isActive
+                              ? (lang === "de" ? "Deaktiviert" : "Disattivata")
+                              : (lang === "de" ? `Beendet am ${format(end, "dd.MM.yyyy")}` : `Terminata il ${format(end, "dd.MM.yyyy")}`)}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0"
-                      onClick={() => {
-                        if (group.groupId) {
-                          deleteGroupMutation.mutate(group.groupId);
-                        } else {
-                          deleteMutation.mutate(group.promotions[0].id);
-                        }
-                      }}
-                      disabled={deleteGroupMutation.isPending || deleteMutation.isPending}
-                      data-testid={`button-delete-group-${group.groupId || group.promotions[0].id}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        ) : (
-          <Card>
-            <CardContent className="p-8 md:p-12">
-              <div className="flex flex-col items-center justify-center text-center">
-                <Tag className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground">{t("promotionsPage", "noPromotions")}</p>
-                <p className="text-sm text-muted-foreground mt-1">{t("promotionsPage", "noPromotionsDesc")}</p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            );
+          };
+
+          const sectionsToRender = statusFilter === "all"
+            ? sectionDefs.filter(s => grouped[s.key].length > 0)
+            : sectionDefs.filter(s => s.key === statusFilter);
+
+          if (sectionsToRender.length === 0) {
+            return (
+              <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-8 text-center">
+                <Tag className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  {lang === "de" ? "Keine Aktionen in dieser Kategorie." : "Nessuna promozione in questa categoria."}
+                </p>
+              </div>
+            );
+          }
+
+          return sectionsToRender.map(section => {
+            const items = grouped[section.key];
+            if (items.length === 0) return null;
+            const Icon = section.icon;
+            const collapsed = !!collapsedSections[section.key];
+            const showHeader = statusFilter === "all";
+            return (
+              <div key={section.key} className="space-y-2.5" data-testid={`section-${section.key}`}>
+                {showHeader && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.key)}
+                    aria-expanded={!collapsed}
+                    aria-controls={`section-content-${section.key}`}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl ${section.accentBg} hover:opacity-90 transition-opacity`}
+                    data-testid={`section-header-${section.key}`}
+                  >
+                    {collapsed ? <ChevronRight className={`h-4 w-4 ${section.accentText}`} /> : <ChevronDown className={`h-4 w-4 ${section.accentText}`} />}
+                    <span className={`h-1.5 w-1.5 rounded-full ${section.accentDot}`} />
+                    <Icon className={`h-4 w-4 ${section.accentText}`} />
+                    <span className={`text-sm font-semibold ${section.accentText}`}>
+                      {lang === "de" ? section.titleDe : section.titleIt}
+                    </span>
+                    <Badge variant="outline" className={`ml-1 text-[10px] px-1.5 py-0 rounded-full font-medium ${section.accentText} border-current/20`}>
+                      {items.length}
+                    </Badge>
+                  </button>
+                )}
+                {(!showHeader || !collapsed) && (
+                  <div id={`section-content-${section.key}`} className="space-y-2.5">
+                    {items.map(group => renderCard(group, section.key, section))}
+                  </div>
+                )}
+              </div>
+            );
+          });
+        })()}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); }}>
