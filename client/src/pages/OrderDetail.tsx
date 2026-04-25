@@ -6,7 +6,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProductImage } from "@/components/ProductImage";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -70,6 +70,16 @@ export default function OrderDetail() {
     enabled: !!orderConversation?.id,
   });
 
+  const { data: orderDocuments } = useQuery<any[]>({
+    queryKey: ["/api/orders", orderId, "documents", currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders/${orderId}/documents?userId=${currentUser?.id}`);
+      if (!res.ok) throw new Error("Failed to fetch order documents");
+      return res.json();
+    },
+    enabled: !!orderId && !!currentUser?.id,
+  });
+
   const hasPendingChangeRequest = (() => {
     if (!convMessages || !orderId) return false;
     let pending = false;
@@ -126,6 +136,9 @@ export default function OrderDetail() {
     },
     onSuccess: (data) => {
       invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["/api/orders", orderId, "documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents/eligible-orders"] });
       toast({ title: lang === "de" ? "Lieferschein erstellt" : "Bolla di consegna creata" });
       if (data?.documentUrl) window.open(data.documentUrl, "_blank");
     },
@@ -901,6 +914,67 @@ export default function OrderDetail() {
                 )}
               </div>
             </div>
+
+            {/* Documents section — clickable list of generated docs for this order */}
+            {orderDocuments && orderDocuments.length > 0 && (
+              <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0" data-testid="section-documents">
+                <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
+                  <p className="text-sm font-semibold">{lang === "de" ? "Dokumente" : "Documenti"}</p>
+                  <p className="text-[11px] text-muted-foreground">{orderDocuments.length}</p>
+                </div>
+                <div className="divide-y divide-border/20">
+                  {orderDocuments.map((doc: any) => {
+                    const isDeliveryNote = doc.type === "delivery_note";
+                    const downloadUrl = isDeliveryNote
+                      ? `/api/orders/${doc.orderId}/delivery-note/download`
+                      : doc.fileUrl;
+                    const typeLabel = isDeliveryNote
+                      ? (lang === "de" ? "Lieferschein" : "Bolla di consegna")
+                      : doc.type === "invoice"
+                        ? (lang === "de" ? "Rechnung" : "Fattura")
+                        : (lang === "de" ? "Dokument" : "Documento");
+                    return (
+                      <a
+                        key={doc.id}
+                        href={downloadUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
+                        data-testid={`order-document-${doc.id}`}
+                      >
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-md shrink-0 ${isDeliveryNote ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400" : "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400"}`}>
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{doc.title}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {typeLabel} · {format(new Date(doc.createdAt), "dd.MM.yyyy, HH:mm", { locale: dateLocale })}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const a = window.document.createElement("a");
+                            a.href = downloadUrl;
+                            a.setAttribute("download", "");
+                            window.document.body.appendChild(a);
+                            a.click();
+                            window.document.body.removeChild(a);
+                          }}
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-muted shrink-0"
+                          data-testid={`button-download-document-${doc.id}`}
+                          aria-label="Download"
+                        >
+                          <Download className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Detailed history list — bottom right of grid */}
             <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0">

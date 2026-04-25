@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,14 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { FileText, Download, Building2, Clock, Eye, Pencil, ChevronDown, ChevronRight, BarChart3, Receipt, TrendingUp, ShoppingCart, Trash2 } from "lucide-react";
-import { formatOrderNumber, type DocumentWithDetails } from "@shared/schema";
+import { FileText, Download, Building2, Clock, Eye, Pencil, ChevronDown, ChevronRight, BarChart3, Receipt, TrendingUp, ShoppingCart, Trash2, Plus, Truck, CheckCircle, Loader2 } from "lucide-react";
+import { formatOrderNumber, type DocumentWithDetails, type OrderWithDetails, type Document } from "@shared/schema";
 import { format } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 
 interface DeliveryNotePreview {
@@ -86,6 +86,8 @@ export default function Documents() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
   const [invoiceSupplierId, setInvoiceSupplierId] = useState<string | null>(null);
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [generatingOrderId, setGeneratingOrderId] = useState<string | null>(null);
 
   const { data: documents, isLoading } = useQuery<DocumentWithDetails[]>({
     queryKey: ["/api/documents", currentUser?.id, currentRole],
@@ -95,6 +97,42 @@ export default function Documents() {
       return res.json();
     },
     enabled: !!currentUser?.id,
+  });
+
+  const { data: eligibleOrders, isLoading: isLoadingEligible } = useQuery<OrderWithDetails[]>({
+    queryKey: ["/api/documents/eligible-orders", currentUser?.id, currentRole],
+    queryFn: async () => {
+      const res = await fetch(`/api/documents/eligible-orders?userId=${currentUser?.id}&role=${currentRole}`);
+      if (!res.ok) throw new Error("Failed to fetch eligible orders");
+      return res.json();
+    },
+    enabled: !!currentUser?.id && showGenerateDialog,
+  });
+
+  const generateDeliveryNoteMutation = useMutation({
+    mutationFn: async (orderId: string): Promise<Document> => {
+      const res = await apiRequest("POST", `/api/orders/${orderId}/delivery-note`);
+      return res.json();
+    },
+    onSuccess: async (newDoc) => {
+      setShowGenerateDialog(false);
+      setGeneratingOrderId(null);
+      await queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/documents/eligible-orders"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/orders", newDoc.orderId, "documents"] });
+      toast({ title: lang === "de" ? "Lieferschein erstellt" : "Bolla di consegna creata" });
+      const fullDoc: DocumentWithDetails = {
+        ...newDoc,
+        order: eligibleOrders?.find(o => o.id === newDoc.orderId) as any,
+        restaurant: eligibleOrders?.find(o => o.id === newDoc.orderId)?.restaurant as any,
+        supplier: eligibleOrders?.find(o => o.id === newDoc.orderId)?.supplier as any,
+      };
+      handleOpenPreview(fullDoc);
+    },
+    onError: () => {
+      setGeneratingOrderId(null);
+      toast({ title: lang === "de" ? "Fehler beim Erstellen" : "Errore nella creazione", variant: "destructive" });
+    },
   });
 
   const supplierGroups = useMemo(() => {
@@ -281,6 +319,18 @@ export default function Documents() {
       }}
       className="space-y-4 md:space-y-6"
     >
+      <div className="flex items-center justify-end gap-2 px-1">
+        <Button
+          size="sm"
+          onClick={() => setShowGenerateDialog(true)}
+          data-testid="button-open-generate-delivery-note"
+          className="shrink-0 rounded-lg"
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          {lang === "de" ? "Lieferschein generieren" : "Genera bolla di consegna"}
+        </Button>
+      </div>
+
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -423,12 +473,98 @@ export default function Documents() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="h-12 w-12 text-muted-foreground/50 mb-3" />
             <p className="text-muted-foreground">{lang === "de" ? "Keine Dokumente vorhanden" : "Nessun documento disponibile"}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {lang === "de" ? "Dokumente werden automatisch erstellt wenn Bestellungen verarbeitet werden" : "I documenti vengono creati automaticamente quando gli ordini vengono elaborati"}
+            <p className="text-xs text-muted-foreground mt-1 mb-5 max-w-xs text-center">
+              {lang === "de"
+                ? "Erstelle deinen ersten Lieferschein für eine bereits gelieferte oder in Lieferung befindliche Bestellung"
+                : "Crea la tua prima bolla di consegna per un ordine consegnato o in consegna"}
             </p>
+            <Button onClick={() => setShowGenerateDialog(true)} data-testid="button-empty-generate-delivery-note" className="rounded-lg">
+              <Plus className="h-4 w-4 mr-1.5" />
+              {lang === "de" ? "Lieferschein generieren" : "Genera bolla di consegna"}
+            </Button>
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={showGenerateDialog} onOpenChange={(open) => { if (!open) { setShowGenerateDialog(false); setGeneratingOrderId(null); } }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-generate-delivery-note">
+          <DialogHeader>
+            <DialogTitle>{lang === "de" ? "Lieferschein generieren" : "Genera bolla di consegna"}</DialogTitle>
+            <DialogDescription>
+              {lang === "de"
+                ? "Wähle eine Bestellung aus, für die noch kein Lieferschein erstellt wurde."
+                : "Seleziona un ordine per cui non è ancora stata creata una bolla."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingEligible ? (
+            <div className="space-y-2 py-2">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+          ) : !eligibleOrders || eligibleOrders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Truck className="h-10 w-10 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground max-w-xs">
+                {lang === "de"
+                  ? "Keine Bestellung ist aktuell in Lieferung oder geliefert ohne bestehenden Lieferschein."
+                  : "Nessun ordine attualmente in consegna o consegnato senza bolla esistente."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 py-1">
+              {eligibleOrders.map((order) => {
+                const otherParty = currentRole === "restaurant" ? order.supplier : order.restaurant;
+                const otherName = otherParty?.companyName || otherParty?.name || "—";
+                const isInDelivery = order.status === "in_delivery";
+                const isGenerating = generatingOrderId === order.id && generateDeliveryNoteMutation.isPending;
+                return (
+                  <div
+                    key={order.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors"
+                    data-testid={`eligible-order-${order.id}`}
+                  >
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-md shrink-0 ${isInDelivery ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400" : "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400"}`}>
+                      {isInDelivery ? <Truck className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold font-mono">#{formatOrderNumber(order)}</span>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {isInDelivery
+                            ? (lang === "de" ? "In Lieferung" : "In consegna")
+                            : (lang === "de" ? "Geliefert" : "Consegnato")}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{otherName}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {format(new Date(order.createdAt), "dd.MM.yyyy", { locale: dateLocale })}
+                        {" · "}
+                        {Number(order.totalAmount).toFixed(2)} €
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => { setGeneratingOrderId(order.id); generateDeliveryNoteMutation.mutate(order.id); }}
+                      disabled={generateDeliveryNoteMutation.isPending}
+                      data-testid={`button-generate-for-${order.id}`}
+                      className="shrink-0"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <FileText className="h-3.5 w-3.5 mr-1" />
+                          {lang === "de" ? "Erstellen" : "Crea"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!selectedDoc} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="dialog-delivery-note-preview">

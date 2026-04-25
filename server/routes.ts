@@ -2961,6 +2961,51 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/documents/eligible-orders", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      const role = req.query.role as "restaurant" | "supplier";
+      if (!userId || !role) {
+        return res.status(400).json({ error: "userId and role required" });
+      }
+      const orders = role === "restaurant"
+        ? await storage.getOrdersByRestaurant(userId, { status: ["in_delivery", "delivered"] })
+        : await storage.getOrdersBySupplier(userId, { status: ["in_delivery", "delivered"] });
+
+      const eligible = [];
+      for (const order of orders) {
+        const docs = await storage.getDocumentsByOrder(order.id);
+        if (!docs.some(d => d.type === "delivery_note")) {
+          eligible.push(order);
+        }
+      }
+      res.json(eligible);
+    } catch (error) {
+      console.error("Failed to fetch eligible orders:", error);
+      res.status(500).json({ error: "Failed to fetch eligible orders" });
+    }
+  });
+
+  app.get("/api/orders/:id/documents", async (req, res) => {
+    try {
+      const userId = req.query.userId as string | undefined;
+      if (!userId) {
+        return res.status(400).json({ error: "userId required" });
+      }
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      if (order.restaurantId !== userId && order.supplierId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const docs = await storage.getDocumentsByOrder(req.params.id);
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch order documents" });
+    }
+  });
+
   app.get("/api/orders/:id/delivery-note/download", async (req, res) => {
     try {
       const order = await storage.getOrder(req.params.id);
@@ -2992,8 +3037,8 @@ export async function registerRoutes(
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
-      if (order.status !== "in_delivery") {
-        return res.status(400).json({ error: "Order must be in delivery status" });
+      if (order.status !== "in_delivery" && order.status !== "delivered") {
+        return res.status(400).json({ error: "Order must be in delivery or delivered status" });
       }
 
       const existingDocs = await storage.getDocumentsByOrder(order.id);
