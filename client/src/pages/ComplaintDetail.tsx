@@ -440,22 +440,24 @@ export default function ComplaintDetail() {
                 </p>
                 <p className="text-xl md:text-2xl font-semibold text-white truncate" data-testid="text-complaint-title">{complaint.title}</p>
                 <p className="text-xs text-white/60 truncate mt-0.5" data-testid="text-counterparty">{counterpartyName}</p>
+                {/* Status row: placed below the title block, kept clear of the action buttons on the right */}
+                <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                  <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
+                    <span className="inline-flex items-center gap-1">
+                      {getStatusIcon(complaint.status, "h-3.5 w-3.5")}
+                      {getComplaintStatus(complaint.status, lang)}
+                    </span>
+                  </Badge>
+                  {isUrgent && (
+                    <Badge className="bg-red-500/15 text-red-400 rounded-full px-2.5 py-1 text-[11px] font-medium border-0" variant="outline">
+                      <Flame className="h-3 w-3 mr-1" />
+                      {lang === "de" ? "Dringend" : "Urgente"}
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {/* Status badge: inline next to title on all sizes (no overlap with action buttons) */}
-              <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
-                <span className="inline-flex items-center gap-1">
-                  {getStatusIcon(complaint.status, "h-3.5 w-3.5")}
-                  {getComplaintStatus(complaint.status, lang)}
-                </span>
-              </Badge>
-              {isUrgent && (
-                <Badge className="bg-red-500/15 text-red-400 rounded-full px-2.5 py-1 text-[11px] font-medium border-0" variant="outline">
-                  <Flame className="h-3 w-3 mr-1" />
-                  {lang === "de" ? "Dringend" : "Urgente"}
-                </Badge>
-              )}
               {actions.length > 0 && !confirmAction && (
                 <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-end max-w-[55vw]" data-testid="actions-row-inline">
                   {actions.map((action) => {

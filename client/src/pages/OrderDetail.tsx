@@ -558,16 +558,18 @@ export default function OrderDetail() {
                   {lang === "de" ? "Bestellung" : "Ordine"} · #{formatOrderNumber(order)}
                 </p>
                 <p className="text-xl md:text-2xl font-semibold text-white truncate" data-testid="text-counterparty">{counterpartyName}</p>
+                {/* Status row: placed below the title block, kept clear of the action buttons on the right */}
+                <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                  <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
+                    <span className="inline-flex items-center gap-1">
+                      {getStatusIcon(order.status, "h-3.5 w-3.5")}
+                      {getOrderStatus(order.status, lang, isSupplier)}
+                    </span>
+                  </Badge>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {/* Status badge: inline next to title on all sizes (no overlap with action buttons) */}
-              <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
-                <span className="inline-flex items-center gap-1">
-                  {getStatusIcon(order.status, "h-3.5 w-3.5")}
-                  {getOrderStatus(order.status, lang, isSupplier)}
-                </span>
-              </Badge>
               {actions.length > 0 && !confirmAction && (
                 <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-end max-w-[55vw]" data-testid="actions-row-inline">
                   {actions.map((action) => {
