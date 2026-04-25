@@ -1071,6 +1071,8 @@ export default function RestaurantInbox() {
                         ? (lang === "de" ? "Lieferschein" : "Bolla") + lastOid
                         : conv.lastMessage?.messageType === "order_change_request"
                         ? (lang === "de" ? "Änderungsanfrage" : "Richiesta modifica") + lastOid
+                        : conv.lastMessage?.messageType === "delivery_status"
+                        ? (lang === "de" ? "Lieferhinweis" : "Avviso di consegna") + lastOid
                         : conv.lastMessage?.messageType === "promotion"
                         ? t("promotionsPage", "promotionMessage")
                         : conv.lastMessage?.messageType === "attachment"
@@ -1446,7 +1448,7 @@ export default function RestaurantInbox() {
                                 </div>
                               )}
                               <div
-                                className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" || message.messageType === "order_change_request" || message.messageType === "promotion" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
+                                className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" || message.messageType === "order_change_request" || message.messageType === "promotion" || message.messageType === "delivery_status" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
                                 data-testid={`message-${message.id}`}
                                 {...(message.orderId ? { "data-order-id": message.orderId } : {})}
                               >
@@ -1872,6 +1874,51 @@ export default function RestaurantInbox() {
                                             >
                                               <Download className="h-4 w-4 mr-2" />
                                               {t("inbox", "downloadDeliveryNote")}
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()
+                                ) : message.messageType === "delivery_status" ? (
+                                  (() => {
+                                    let dsData: { type?: string; orderId?: string; orderNumber?: string; requestedDeliveryDate?: string | null; deliveryNotes?: string | null } = {};
+                                    try { dsData = JSON.parse(message.content); } catch {}
+                                    const orderRef = dsData.orderNumber || (dsData.orderId ? formatOrderNumber({ orderNumber: null, id: dsData.orderId }) : "");
+                                    return (
+                                      <div className="w-[75%] max-w-sm rounded-2xl border border-purple-200 dark:border-purple-800/50 bg-white dark:bg-card shadow-sm overflow-hidden" data-testid={`delivery-status-${message.id}`}>
+                                        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
+                                          <div className="flex items-center gap-2">
+                                            <Truck className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                                            <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                                              {t("inbox", "deliveryStatusMessage")}{orderRef ? ` #${orderRef}` : ""}
+                                            </span>
+                                          </div>
+                                          <span className="text-[10px] text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                        </div>
+                                        <div className="px-4 py-2 space-y-1.5">
+                                          <p className="text-sm font-medium">{t("inbox", "deliveryStatusInTransit")}</p>
+                                          {dsData.requestedDeliveryDate && (
+                                            <p className="text-xs text-muted-foreground">
+                                              {t("inbox", "estimatedDelivery")}: {new Date(dsData.requestedDeliveryDate + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                                            </p>
+                                          )}
+                                          {dsData.deliveryNotes && (
+                                            <div className="mt-2 rounded-lg border border-purple-200/60 dark:border-purple-800/40 bg-purple-50/70 dark:bg-purple-950/20 px-2.5 py-1.5">
+                                              <p className="text-[10px] font-semibold uppercase tracking-wide text-purple-600 dark:text-purple-400">
+                                                {t("inbox", "supplierNote")}
+                                              </p>
+                                              <p className="text-xs text-foreground whitespace-pre-wrap mt-0.5" data-testid={`text-delivery-note-${message.id}`}>
+                                                {dsData.deliveryNotes}
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                        {dsData.orderId && (
+                                          <div className="px-4 pb-3 pt-1">
+                                            <Button variant="outline" size="sm" className="w-full text-xs h-8" onClick={() => setOrderDetailId(dsData.orderId!)} data-testid={`button-ds-details-${message.id}`}>
+                                              <Eye className="h-3.5 w-3.5 mr-1" />
+                                              {lang === "it" ? "Dettagli" : "Details"}
                                             </Button>
                                           </div>
                                         )}

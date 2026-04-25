@@ -1355,6 +1355,29 @@ export async function registerRoutes(
       }
       await storage.addOrderStatusHistory(req.params.id, previousStatus, status, changedBy || undefined);
 
+      // Post a "delivery_status" chat message when supplier marks order as in_delivery,
+      // so the restaurant sees the delivery date + optional supplier note in the chat thread.
+      if (status === "in_delivery" && previousStatus !== "in_delivery") {
+        try {
+          const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+          await storage.sendMessage({
+            conversationId: conversation.id,
+            senderId: order.supplierId,
+            messageType: "delivery_status",
+            content: JSON.stringify({
+              type: "in_delivery",
+              orderId: order.id,
+              orderNumber: formatOrderNumber(order),
+              requestedDeliveryDate: requestedDeliveryDate ?? updated.requestedDeliveryDate ?? null,
+              deliveryNotes: deliveryNotes ?? null,
+            }),
+            orderId: order.id,
+          });
+        } catch (err) {
+          console.error("Failed to post delivery_status message:", err);
+        }
+      }
+
       // Stock management: deduct stock when order is confirmed via legacy flow (idempotent)
       if (status === "confirmed" && previousStatus === "pending") {
         const existingMovements = await storage.getStockMovementsByOrder(order.id);
