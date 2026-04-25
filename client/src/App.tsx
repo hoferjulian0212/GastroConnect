@@ -487,7 +487,7 @@ function AppLayout() {
             <header className={`dark flex items-center gap-3 md:gap-4 px-3 py-2.5 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
               <div className="flex items-center gap-3 shrink-0 md:flex-1 md:min-w-0">
                 <MobileProfileButton />
-                <div className="hidden md:flex items-center gap-1 shrink-0">
+                <div className="hidden md:flex items-center gap-1 shrink-0 md:-ml-3">
                   <img src={logoImg} alt="GastroConnect Logo" className="h-[72px] w-[72px] object-contain invert" />
                   <span className="text-lg font-bold text-white tracking-tight">GastroConnect</span>
                 </div>
