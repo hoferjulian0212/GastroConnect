@@ -577,7 +577,7 @@ export default function OrderDetail() {
                   {getOrderStatus(order.status, lang, isSupplier)}
                 </span>
               </Badge>
-              {actions.length > 0 && !confirmAction && (
+              {actions.length > 0 && actions.length <= 1 && !confirmAction && (
                 <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-end max-w-[60vw]" data-testid="actions-row-inline">
                   {actions.map((action) => {
                     const Icon = action.icon;
@@ -618,9 +618,11 @@ export default function OrderDetail() {
 
         {/* Body: mobile actions, confirmation flows, KPIs, etc. */}
         <div className="px-4 md:px-6 lg:px-8 pt-3 pb-6">
-          {/* Mobile actions row — centered, fixed-size buttons that don't stretch */}
+          {/* Mobile actions row — centered, fixed-size buttons that don't stretch.
+              Also rendered on desktop when there are 2+ actions, so the centered status
+              badge in the header has room and isn't overlapped by buttons. */}
           {actions.length > 0 && !confirmAction && (
-            <div className="md:hidden flex flex-wrap justify-center gap-2 mb-5" data-testid="actions-row-mobile">
+            <div className={`${actions.length >= 2 ? "flex" : "md:hidden flex"} flex-wrap justify-center gap-2 mb-5`} data-testid="actions-row-mobile">
               {actions.map((action) => {
                 const Icon = action.icon;
                 const isDestructive = action.category === "destructive";
