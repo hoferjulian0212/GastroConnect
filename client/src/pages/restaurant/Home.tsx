@@ -849,7 +849,7 @@ export default function RestaurantHome() {
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 md:mb-5" data-testid="text-page-title">
             {currentUser?.companyName || ""}
           </h1>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
             <Link href="/restaurant/inbox" data-testid="kpi-card-messages">
               <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
                 <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Nachrichten" : "Messaggi"}</span><span className="hidden md:inline">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span></span>
