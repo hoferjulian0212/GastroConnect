@@ -442,17 +442,9 @@ export default function ComplaintDetail() {
                 <p className="text-xs text-white/60 truncate mt-0.5" data-testid="text-counterparty">{counterpartyName}</p>
               </div>
             </div>
-            {/* Status badge: centered horizontally on the page on md+ */}
-            <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-              <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium pointer-events-auto border-0`} variant="outline">
-                <span className="inline-flex items-center gap-1">
-                  {getStatusIcon(complaint.status, "h-3.5 w-3.5")}
-                  {getComplaintStatus(complaint.status, lang)}
-                </span>
-              </Badge>
-            </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Badge className={`md:hidden ${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
+              {/* Status badge: inline next to title on all sizes (no overlap with action buttons) */}
+              <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
                 <span className="inline-flex items-center gap-1">
                   {getStatusIcon(complaint.status, "h-3.5 w-3.5")}
                   {getComplaintStatus(complaint.status, lang)}
@@ -464,8 +456,8 @@ export default function ComplaintDetail() {
                   {lang === "de" ? "Dringend" : "Urgente"}
                 </Badge>
               )}
-              {actions.length > 0 && actions.length <= 1 && !confirmAction && (
-                <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-end max-w-[60vw]" data-testid="actions-row-inline">
+              {actions.length > 0 && !confirmAction && (
+                <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-end max-w-[55vw]" data-testid="actions-row-inline">
                   {actions.map((action) => {
                     const Icon = action.icon;
                     const isDestructive = action.category === "destructive";
@@ -503,10 +495,9 @@ export default function ComplaintDetail() {
           </button>
         </div>
 
-        {/* Mobile actions row — also rendered on desktop when there are 2+ actions,
-            so the centered status badge in the header isn't overlapped by buttons. */}
+        {/* Mobile actions row */}
         {actions.length > 0 && !confirmAction && (
-          <div className={`${actions.length >= 2 ? "flex" : "md:hidden flex"} px-4 flex-wrap justify-center gap-2 pt-3`} data-testid="actions-row-mobile">
+          <div className="md:hidden px-4 flex flex-wrap justify-center gap-2 pt-3" data-testid="actions-row-mobile">
             {actions.map((action) => {
               const Icon = action.icon;
               const isDestructive = action.category === "destructive";
