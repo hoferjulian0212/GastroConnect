@@ -226,7 +226,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
               className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border`}
               style={{ gridTemplateColumns: inventoryGridTemplate }}
             >
-              <div className="relative pr-2">{lang === "de" ? "Produkt" : "Prodotto"}<ColumnResizeHandle onPointerDown={startInventoryResize("product")} testId="resize-inv-product" /></div>
+              <div className="relative pr-2 !justify-start !text-left">{lang === "de" ? "Produkt" : "Prodotto"}<ColumnResizeHandle onPointerDown={startInventoryResize("product")} testId="resize-inv-product" /></div>
               <div className="relative pr-2">{lang === "de" ? "Kategorie" : "Categoria"}<ColumnResizeHandle onPointerDown={startInventoryResize("category")} testId="resize-inv-category" /></div>
               <div className="relative pr-2 text-right">{lang === "de" ? "Bestand" : "Scorta"}<ColumnResizeHandle onPointerDown={startInventoryResize("stock")} testId="resize-inv-stock" /></div>
               <div className="relative pr-2 text-right">{lang === "de" ? "Min" : "Min"}<ColumnResizeHandle onPointerDown={startInventoryResize("threshold")} testId="resize-inv-threshold" /></div>
@@ -249,7 +249,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
                   data-testid={`inventory-row-${product.id}`}
                 >
                   {/* Product (image + name) */}
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2 !justify-start !text-left">
                     <ProductImage src={product.imageUrl} alt={product.name} className="w-8 h-8 rounded-md" iconClassName="h-3.5 w-3.5" fallbackBg="bg-muted/60" fallbackIconColor="text-muted-foreground/40" />
                     <span className="font-medium truncate" data-testid={`text-name-${product.id}`}>{product.name}</span>
                   </div>
