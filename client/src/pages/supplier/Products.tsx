@@ -41,6 +41,7 @@ import {
 } from "@/lib/orderTableConfig";
 
 const productSchema = z.object({
+  articleNumber: z.string().max(64, "Max 64 Zeichen").optional(),
   name: z.string().min(1, "Name ist erforderlich"),
   description: z.string().optional(),
   price: z.string().min(1, "Preis ist erforderlich"),
@@ -341,7 +342,14 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
                         {/* Product (image + name) */}
                         <div className="flex items-center gap-2.5 min-w-0 pr-2 !justify-start !text-left">
                           <ProductImage src={product.imageUrl} alt={product.name} className="w-8 h-8 rounded-md" iconClassName="h-3.5 w-3.5" fallbackBg="bg-muted/60" fallbackIconColor="text-muted-foreground/40" />
-                          <span className="font-medium truncate" data-testid={`text-name-${product.id}`}>{product.name}</span>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-medium truncate" data-testid={`text-name-${product.id}`}>{product.name}</span>
+                            {product.articleNumber && (
+                              <span className="text-[10px] text-muted-foreground/80 font-mono tabular-nums truncate" data-testid={`text-article-number-${product.id}`}>
+                                {product.articleNumber}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {/* Category */}
                         <div className="truncate text-muted-foreground pr-2">
@@ -477,6 +485,11 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
                                     </Badge>
                                   )}
                                 </div>
+                                {product.articleNumber && (
+                                  <p className="text-[10px] text-muted-foreground/80 font-mono tabular-nums truncate mt-0.5" data-testid={`text-article-number-mobile-${product.id}`}>
+                                    {product.articleNumber}
+                                  </p>
+                                )}
                                 <p className="text-[10px] text-muted-foreground mt-0.5">
                                   {product.category && <span>{product.category}</span>}
                                   {product.category && product.lowStockThreshold != null && product.lowStockThreshold > 0 && <span> · </span>}
@@ -1075,6 +1088,7 @@ export default function SupplierProducts() {
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
+      articleNumber: "",
       name: "",
       description: "",
       price: "",
@@ -1179,6 +1193,7 @@ export default function SupplierProducts() {
   const openEditDialog = (product: Product) => {
     setEditingProduct(product);
     form.reset({
+      articleNumber: product.articleNumber || "",
       name: product.name,
       description: product.description || "",
       price: product.price,
@@ -1425,6 +1440,31 @@ export default function SupplierProducts() {
                       )}
                     </div>
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="articleNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {lang === "de" ? "Artikelnummer" : "Codice articolo"}
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            {lang === "de" ? "(optional, wird sonst automatisch erzeugt)" : "(opzionale, altrimenti generato automaticamente)"}
+                          </span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={editingProduct?.articleNumber || (lang === "de" ? "z. B. ART-001 oder leer lassen" : "es. ART-001 o lasciare vuoto")}
+                            autoComplete="off"
+                            {...field}
+                            value={field.value ?? ""}
+                            data-testid="input-product-article-number"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}

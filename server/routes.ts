@@ -70,6 +70,7 @@ const updateUserSchema = z.object({
 }).strict();
 
 const updateProductSchema = z.object({
+  articleNumber: safeShortString.optional().nullable(),
   name: safeShortString.optional(),
   description: safeString.optional().nullable(),
   price: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
@@ -214,6 +215,13 @@ export async function registerRoutes(
 
   // Seed data on startup
   await storage.seedData();
+  // Backfill article numbers for any existing products that lack one
+  try {
+    const backfilled = await storage.backfillArticleNumbers();
+    if (backfilled > 0) console.log(`Backfilled article numbers for ${backfilled} product(s).`);
+  } catch (err) {
+    console.error("Article number backfill failed:", err);
+  }
 
   // ===== USERS =====
   app.get("/api/users", async (req, res) => {
@@ -355,7 +363,10 @@ export async function registerRoutes(
       const validated = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(validated);
       res.status(201).json(product);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === "23505" && typeof error?.constraint === "string" && error.constraint.includes("article")) {
+        return res.status(409).json({ error: "Diese Artikelnummer ist bereits vergeben." });
+      }
       res.status(400).json({ error: "Invalid product data" });
     }
   });
@@ -368,9 +379,12 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Product not found" });
       }
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      if (error?.code === "23505" && typeof error?.constraint === "string" && error.constraint.includes("article")) {
+        return res.status(409).json({ error: "Diese Artikelnummer ist bereits vergeben." });
       }
       res.status(500).json({ error: "Failed to update product" });
     }

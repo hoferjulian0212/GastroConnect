@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, pgEnum, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, pgEnum, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -30,6 +30,7 @@ export const users = pgTable("users", {
 export const products = pgTable("products", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  articleNumber: text("article_number"),
   name: text("name").notNull(),
   description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
@@ -44,6 +45,7 @@ export const products = pgTable("products", {
 }, (table) => [
   index("idx_products_supplier_id").on(table.supplierId),
   index("idx_products_category").on(table.category),
+  uniqueIndex("uniq_products_supplier_article").on(table.supplierId, table.articleNumber),
 ]);
 
 export const customMinOrderQuantities = pgTable("custom_min_order_quantities", {

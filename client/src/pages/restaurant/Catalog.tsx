@@ -239,6 +239,9 @@ export default function RestaurantCatalog() {
                 <div className="flex-1 min-w-0">
                   <div className={`text-sm font-medium truncate ${isDark ? "text-white" : ""}`}>{product.name}</div>
                   <div className={`text-[11px] truncate ${isDark ? "text-white/40" : "text-muted-foreground"}`}>
+                    {product.articleNumber && (
+                      <span className="font-mono tabular-nums">{product.articleNumber} · </span>
+                    )}
                     {product.supplier?.companyName || product.supplier?.name}
                     {product.category && ` · ${lang === "it" ? (categoryConfig[product.category]?.it || product.category) : (categoryConfig[product.category]?.de || product.category)}`}
                   </div>

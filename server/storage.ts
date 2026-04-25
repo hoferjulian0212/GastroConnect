@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, desc, or, sql, ne, inArray, gte } from "drizzle-orm";
+import { eq, and, desc, or, sql, ne, inArray, gte, isNull } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
@@ -241,13 +241,59 @@ export class DatabaseStorage implements IStorage {
     return product;
   }
 
+  private generateArticleNumber(): string {
+    return "GC-" + Math.random().toString(36).slice(2, 9).toUpperCase();
+  }
+
+  private async generateUniqueArticleNumber(supplierId: string): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = this.generateArticleNumber();
+      const [existing] = await db
+        .select({ id: products.id })
+        .from(products)
+        .where(and(eq(products.supplierId, supplierId), eq(products.articleNumber, candidate)))
+        .limit(1);
+      if (!existing) return candidate;
+    }
+    return this.generateArticleNumber() + "-" + Date.now().toString(36).toUpperCase();
+  }
+
   async createProduct(product: InsertProduct): Promise<Product> {
-    const [created] = await db.insert(products).values(product).returning();
+    let articleNumber = product.articleNumber?.trim() || null;
+    if (!articleNumber) {
+      articleNumber = await this.generateUniqueArticleNumber(product.supplierId);
+    }
+    const [created] = await db.insert(products).values({ ...product, articleNumber }).returning();
     return created;
   }
 
   async updateProduct(id: string, data: Partial<InsertProduct>): Promise<Product | undefined> {
-    const [updated] = await db.update(products).set(data).where(eq(products.id, id)).returning();
+    const payload: Partial<InsertProduct> = { ...data };
+    if (Object.prototype.hasOwnProperty.call(payload, "articleNumber")) {
+      const trimmed = (payload.articleNumber as string | null | undefined)?.toString().trim();
+      if (!trimmed) {
+        const [existing] = await db.select({ supplierId: products.supplierId }).from(products).where(eq(products.id, id));
+        if (existing) {
+          payload.articleNumber = await this.generateUniqueArticleNumber(existing.supplierId);
+        } else {
+          delete payload.articleNumber;
+        }
+      } else {
+        payload.articleNumber = trimmed;
+      }
+    }
+    const [updated] = await db.update(products).set(payload).where(eq(products.id, id)).returning();
+    return updated;
+  }
+
+  async backfillArticleNumbers(): Promise<number> {
+    const rows = await db.select({ id: products.id, supplierId: products.supplierId }).from(products).where(isNull(products.articleNumber));
+    let updated = 0;
+    for (const row of rows) {
+      const num = await this.generateUniqueArticleNumber(row.supplierId);
+      await db.update(products).set({ articleNumber: num }).where(eq(products.id, row.id));
+      updated++;
+    }
     return updated;
   }
 
