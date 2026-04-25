@@ -834,8 +834,8 @@ export default function OrderDetail() {
               </div>
             )}
 
-            {/* Two-column layout: Products spans full height, Meta + History stack on the right with minimal gap */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-1 items-start">
+            {/* Two-column layout: Products spans full height, Meta + History stack on the right */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm md:row-span-2 min-w-0" data-testid="section-products">
               <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
                 <p className="text-sm font-semibold">{lang === "de" ? "Produkte" : "Prodotti"}</p>

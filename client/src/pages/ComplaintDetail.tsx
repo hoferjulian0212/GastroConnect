@@ -729,7 +729,7 @@ export default function ComplaintDetail() {
             )}
 
             {/* Two-column grid: details left (spans 2 rows) + meta + history right */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-1 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
               {/* Left: Description + Media + Affected items as one continuous card */}
               <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm md:row-span-2 min-w-0" data-testid="section-details">
                 <div className="px-4 py-3 border-b border-border/30">
