@@ -270,6 +270,8 @@ export const stockMovements = pgTable("stock_movements", {
   productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   orderId: varchar("order_id", { length: 36 }).references(() => orders.id),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id),
+  userName: text("user_name"),
   type: stockMovementTypeEnum("type").notNull(),
   quantity: integer("quantity").notNull(),
   previousStock: integer("previous_stock").notNull(),
@@ -280,6 +282,7 @@ export const stockMovements = pgTable("stock_movements", {
   index("idx_stock_movements_product_id").on(table.productId),
   index("idx_stock_movements_supplier_id").on(table.supplierId),
   index("idx_stock_movements_order_id").on(table.orderId),
+  index("idx_stock_movements_user_id").on(table.userId),
 ]);
 
 export const orderTemplates = pgTable("order_templates", {

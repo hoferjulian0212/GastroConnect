@@ -86,6 +86,7 @@ const updateProductSchema = z.object({
 const stockMovementSchema = z.object({
   productId: uuidField,
   supplierId: uuidField,
+  userId: uuidField.optional(),
   type: z.enum(["manual_in", "manual_out", "manual_set"]),
   quantity: z.number().int().min(0).max(999999),
   note: safeString.optional(),
@@ -764,9 +765,13 @@ export async function registerRoutes(
         newStock = Math.max(0, currentStock - validated.quantity);
       }
       await storage.updateProductStock(validated.productId, newStock);
+      const actingUserId = validated.userId ?? validated.supplierId;
+      const actingUser = actingUserId ? await storage.getUser(actingUserId) : undefined;
       const movement = await storage.addStockMovement({
         productId: validated.productId,
         supplierId: validated.supplierId,
+        userId: actingUserId,
+        userName: actingUser?.name ?? null,
         type: validated.type,
         quantity: validated.quantity,
         previousStock: currentStock,
@@ -1265,6 +1270,8 @@ export async function registerRoutes(
           const existingMovements = await storage.getStockMovementsByOrder(orderId);
           const alreadyConfirmed = existingMovements.some((m: any) => m.type === "order_confirmed");
           if (!alreadyConfirmed) {
+            const actorUser = await storage.getUser(supplierId);
+            const actorName = actorUser?.name ?? null;
             for (const item of order.items) {
               const product = await storage.getProduct(item.productId);
               if (product) {
@@ -1276,6 +1283,8 @@ export async function registerRoutes(
                   productId: item.productId,
                   supplierId: order.supplierId,
                   orderId: order.id,
+                  userId: supplierId,
+                  userName: actorName,
                   type: "order_confirmed",
                   quantity: qty,
                   previousStock: currentStock,
@@ -1383,6 +1392,9 @@ export async function registerRoutes(
         const existingMovements = await storage.getStockMovementsByOrder(order.id);
         const alreadyConfirmed = existingMovements.some(m => m.type === "order_confirmed");
         if (!alreadyConfirmed) {
+          const actorIdConfirm = changedBy ?? order.supplierId;
+          const actorUserConfirm = await storage.getUser(actorIdConfirm);
+          const actorNameConfirm = actorUserConfirm?.name ?? null;
           for (const item of order.items) {
             const product = await storage.getProduct(item.productId);
             if (product) {
@@ -1394,6 +1406,8 @@ export async function registerRoutes(
                 productId: item.productId,
                 supplierId: order.supplierId,
                 orderId: order.id,
+                userId: actorIdConfirm,
+                userName: actorNameConfirm,
                 type: "order_confirmed",
                 quantity: qty,
                 previousStock: currentStock,
@@ -1481,6 +1495,9 @@ export async function registerRoutes(
         const existingMovements = await storage.getStockMovementsByOrder(order.id);
         const alreadyCancelled = existingMovements.some(m => m.type === "order_cancelled");
         if (!alreadyCancelled) {
+          const actorIdCancel = changedBy ?? order.supplierId;
+          const actorUserCancel = await storage.getUser(actorIdCancel);
+          const actorNameCancel = actorUserCancel?.name ?? null;
           for (const item of order.items) {
             const product = await storage.getProduct(item.productId);
             if (product) {
@@ -1492,6 +1509,8 @@ export async function registerRoutes(
                 productId: item.productId,
                 supplierId: order.supplierId,
                 orderId: order.id,
+                userId: actorIdCancel,
+                userName: actorNameCancel,
                 type: "order_cancelled",
                 quantity: qty,
                 previousStock: currentStock,
@@ -1601,6 +1620,9 @@ export async function registerRoutes(
       const existingMovements = await storage.getStockMovementsByOrder(order.id);
       const alreadyConfirmed = existingMovements.some(m => m.type === "order_confirmed");
       if (!alreadyConfirmed) {
+        const actorIdPC = validated.changedBy ?? order.supplierId;
+        const actorUserPC = await storage.getUser(actorIdPC);
+        const actorNamePC = actorUserPC?.name ?? null;
         for (const confirmItem of validated.items) {
           if (confirmItem.confirmedQuantity > 0) {
             const orderItem = order.items.find(i => i.id === confirmItem.orderItemId)!;
@@ -1613,6 +1635,8 @@ export async function registerRoutes(
                 productId: orderItem.productId,
                 supplierId: order.supplierId,
                 orderId: order.id,
+                userId: actorIdPC,
+                userName: actorNamePC,
                 type: "order_confirmed",
                 quantity: confirmItem.confirmedQuantity,
                 previousStock: currentStock,
@@ -1849,6 +1873,8 @@ export async function registerRoutes(
           const existingMovements = await storage.getStockMovementsByOrder(order.id);
           const alreadyReversed = existingMovements.some(m => m.type === "order_reversed");
           if (!alreadyReversed) {
+            const actorIdRev = supplierId;
+            const actorNameRev = supplier?.name ?? null;
             for (const item of order.items) {
               const product = await storage.getProduct(item.productId);
               if (product) {
@@ -1860,6 +1886,8 @@ export async function registerRoutes(
                   productId: item.productId,
                   supplierId: order.supplierId,
                   orderId: order.id,
+                  userId: actorIdRev,
+                  userName: actorNameRev,
                   type: "order_reversed",
                   quantity: qty,
                   previousStock: currentStock,

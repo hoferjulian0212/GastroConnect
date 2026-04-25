@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich, ChevronDown, ChevronRight } from "lucide-react";
+import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich, ChevronDown, ChevronRight, User as UserIcon } from "lucide-react";
 import { ProductImage } from "@/components/ProductImage";
 
 import type { Product, StockMovement, PromotionWithProduct } from "@shared/schema";
@@ -95,7 +95,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
   });
 
   const stockMovementMutation = useMutation({
-    mutationFn: async (data: { productId: string; supplierId: string; type: "manual_in" | "manual_out" | "manual_set"; quantity: number; note?: string }) => {
+    mutationFn: async (data: { productId: string; supplierId: string; userId?: string; type: "manual_in" | "manual_out" | "manual_set"; quantity: number; note?: string }) => {
       return apiRequest("POST", "/api/stock-movements", data);
     },
     onSuccess: (_data, variables) => {
@@ -125,6 +125,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
     stockMovementMutation.mutate({
       productId: product.id,
       supplierId: currentUser.id,
+      userId: currentUser.id,
       type: delta > 0 ? "manual_in" : "manual_out",
       quantity: Math.abs(delta),
     });
@@ -146,6 +147,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
     stockMovementMutation.mutate({
       productId: adjustProduct.id,
       supplierId: currentUser.id,
+      userId: currentUser.id,
       type: adjustMode,
       quantity: finalQty,
       note: adjustNote || undefined,
@@ -732,10 +734,18 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
                           <span className="text-[10px] text-muted-foreground truncate">
                             {movement.note || `${movement.previousStock} → ${movement.newStock}`}
                           </span>
-                          <span className="text-[10px] text-muted-foreground shrink-0">
-                            {formatDistanceToNow(new Date(movement.createdAt), { addSuffix: true, locale: lang === "de" ? de : itLocale })}
+                          <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums" title={formatDistanceToNow(new Date(movement.createdAt), { addSuffix: true, locale: lang === "de" ? de : itLocale })}>
+                            {format(new Date(movement.createdAt), lang === "de" ? "dd.MM.yyyy, HH:mm" : "dd/MM/yyyy, HH:mm")}
                           </span>
                         </div>
+                        {movement.userName && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <UserIcon className="h-2.5 w-2.5 text-muted-foreground/70" />
+                            <span className="text-[10px] text-muted-foreground/80 truncate" data-testid={`stock-movement-user-${movement.id}`}>
+                              {movement.userName}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
