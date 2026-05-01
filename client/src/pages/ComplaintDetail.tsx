@@ -165,6 +165,48 @@ export default function ComplaintDetail() {
     },
   });
 
+  const sendProposalMutation = useMutation({
+    mutationFn: async (kind: ProposalKind) => {
+      const labels: Record<ProposalKind, { de: string; it: string; desc: { de: string; it: string }; impactSign: 1 | -1 | 0 }> = {
+        credit:     { de: "Gutschrift",    it: "Nota di credito",   desc: { de: "Wert wird auf nächste Rechnung gutgeschrieben.",      it: "L'importo verrà accreditato sulla prossima fattura." }, impactSign: -1 },
+        redelivery: { de: "Nachlieferung", it: "Riconsegna",        desc: { de: "Betroffene Artikel werden kostenfrei nachgeliefert.", it: "Gli articoli interessati verranno riconsegnati senza costi." }, impactSign: 0 },
+        cancel:     { de: "Storno",        it: "Storno",            desc: { de: "Position wird storniert und nicht berechnet.",        it: "La posizione verrà annullata e non addebitata." }, impactSign: -1 },
+      };
+      let items: any[] = [];
+      try {
+        items = JSON.parse((complaint?.affectedItems as string) || "[]");
+      } catch {}
+      const total = items.reduce((sum: number, i: any) => {
+        const qty = parseFloat(i.quantity) || 0;
+        const price = parseFloat(i.unitPrice) || 0;
+        return sum + qty * price;
+      }, 0);
+      const fmt = (n: number) => n.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const label = lang === "de" ? labels[kind].de : labels[kind].it;
+      const desc = lang === "de" ? labels[kind].desc.de : labels[kind].desc.it;
+      const impact = labels[kind].impactSign * total;
+      const impactLine = total > 0
+        ? (lang === "de"
+            ? `Geschätzte Auswirkung: ${impact >= 0 ? "+" : "−"}${fmt(Math.abs(impact))} €`
+            : `Impatto stimato: ${impact >= 0 ? "+" : "−"}${fmt(Math.abs(impact))} €`)
+        : "";
+      const headline = lang === "de" ? `Vorschlag: ${label}` : `Proposta: ${label}`;
+      const content = [headline, desc, impactLine].filter(Boolean).join("\n");
+      await apiRequest("POST", `/api/complaints/${complaintId}/comments`, {
+        userId: currentUser?.id,
+        content,
+      });
+    },
+    onSuccess: () => {
+      setConfirmAction(null);
+      invalidateAll();
+      toast({ title: lang === "de" ? "Vorschlag gesendet" : "Proposta inviata" });
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+    },
+  });
+
   const navigateToChat = () => {
     if (!complaint) return;
     const counterpartyId = isSupplier ? complaint.restaurantId : complaint.supplierId;
@@ -301,33 +343,6 @@ export default function ComplaintDetail() {
     redelivery: { de: "Nachlieferung", it: "Riconsegna",        desc: { de: "Betroffene Artikel werden kostenfrei nachgeliefert.", it: "Gli articoli interessati verranno riconsegnati senza costi." }, impactSign: 0 },
     cancel:     { de: "Storno",        it: "Storno",            desc: { de: "Position wird storniert und nicht berechnet.",        it: "La posizione verrà annullata e non addebitata." }, impactSign: -1 },
   };
-
-  const sendProposalMutation = useMutation({
-    mutationFn: async (kind: ProposalKind) => {
-      const label = lang === "de" ? proposalLabels[kind].de : proposalLabels[kind].it;
-      const desc = lang === "de" ? proposalLabels[kind].desc.de : proposalLabels[kind].desc.it;
-      const impact = proposalLabels[kind].impactSign * totalImpact;
-      const impactLine = totalImpact > 0
-        ? (lang === "de"
-            ? `Geschätzte Auswirkung: ${impact >= 0 ? "+" : "−"}${formatEuro(Math.abs(impact))} €`
-            : `Impatto stimato: ${impact >= 0 ? "+" : "−"}${formatEuro(Math.abs(impact))} €`)
-        : "";
-      const headline = lang === "de" ? `Vorschlag: ${label}` : `Proposta: ${label}`;
-      const content = [headline, desc, impactLine].filter(Boolean).join("\n");
-      await apiRequest("POST", `/api/complaints/${complaintId}/comments`, {
-        userId: currentUser?.id,
-        content,
-      });
-    },
-    onSuccess: () => {
-      setConfirmAction(null);
-      invalidateAll();
-      toast({ title: lang === "de" ? "Vorschlag gesendet" : "Proposta inviata" });
-    },
-    onError: () => {
-      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
-    },
-  });
 
   type ActionCategory = "primary" | "fulfillment" | "communication" | "destructive";
   type ActionButton = {
