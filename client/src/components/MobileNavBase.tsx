@@ -433,19 +433,27 @@ export function MobileNavBase({
                       height: "100%",
                     }}
                   >
-                    {mainNavItems.map((item) => (
+                    {mainNavItems.map((item) => {
+                      const overlayBadgeCount = item.hasBadge ? getBadgeCount(item.url) : 0;
+                      return (
                       <div
                         key={item.url}
                         className="flex-1 flex flex-col items-center justify-center gap-1 py-3 nav-item-active"
                       >
-                        <div className="inline-flex items-center justify-center">
+                        <div className="relative inline-flex items-center justify-center">
                           <item.icon className="h-5 w-5" />
+                          {overlayBadgeCount > 0 && (
+                            <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-medium">
+                              {overlayBadgeCount > 9 ? "9+" : overlayBadgeCount}
+                            </span>
+                          )}
                         </div>
                         <span className="text-[10px] font-medium text-center w-full">
                           {item.title}
                         </span>
                       </div>
-                    ))}
+                      );
+                    })}
                     <div className="flex-1 flex flex-col items-center justify-center gap-1 py-3 nav-item-active">
                       <div className="inline-flex items-center justify-center">
                         <MoreHorizontal className="h-5 w-5" />
