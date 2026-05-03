@@ -1,3 +1,4 @@
+import { MobilePageHeader, MobileSearchBar } from "@/components/mobile";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,7 +46,19 @@ export default function RestaurantSuppliers() {
 
   return (
     <div className="space-y-4 md:space-y-6 max-w-6xl mx-auto">
-      <div className="relative">
+      <MobilePageHeader
+        title={lang === "de" ? "Lieferanten" : "Fornitori"}
+        subtitle={lang === "de" ? "Ihre verbundenen Lieferanten" : "I tuoi fornitori collegati"}
+        search={
+          <MobileSearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder={t("suppliers", "searchSuppliers")}
+          />
+        }
+        testId="mobile-header-suppliers"
+      />
+      <div className="hidden md:block relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder={t("suppliers", "searchSuppliers")}

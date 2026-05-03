@@ -1,3 +1,4 @@
+import { MobilePageHeader } from "@/components/mobile";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -139,6 +140,11 @@ export default function SupplierProfile() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      <MobilePageHeader
+        title={lang === "de" ? "Profil" : "Profilo"}
+        subtitle={lang === "de" ? "Verwalten Sie Ihr Profil" : "Gestisci il tuo profilo"}
+        testId="mobile-header-s-profile"
+      />
       <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 order-2 lg:order-1">
           <Card>

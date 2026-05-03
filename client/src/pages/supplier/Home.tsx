@@ -31,6 +31,7 @@ import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import DraggableCardGrid from "@/components/DraggableCardGrid";
 import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
+import SupplierHomeMobile from "./HomeMobile";
 import { ProductImage } from "@/components/ProductImage";
 
 export default function SupplierHome() {
@@ -351,7 +352,46 @@ export default function SupplierHome() {
     return result;
   }, [upcomingDeliveries, lang]);
 
+  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    return (
+      <SupplierHomeMobile
+        currentUser={currentUser}
+        lang={lang}
+        t={t}
+        navigate={navigate}
+        totalUnread={totalUnread}
+        convLoading={convLoading}
+        recentOrders={recentOrders}
+        ordersLoading={ordersLoading}
+        lowStockProducts={lowStockProducts}
+        lowStockLoading={lowStockLoading}
+        upcomingDeliveries={upcomingDeliveries}
+        deliveriesLoading={deliveriesLoading}
+        actionRequired={actionRequired}
+        detailedStats={detailedStats}
+        dateLocale={dateLocale}
+      />
+    );
+  }
   return (
+    <>
+    <SupplierHomeMobile
+      currentUser={currentUser}
+      lang={lang}
+      t={t}
+      navigate={navigate}
+      totalUnread={totalUnread}
+      convLoading={convLoading}
+      recentOrders={recentOrders}
+      ordersLoading={ordersLoading}
+      lowStockProducts={lowStockProducts}
+      lowStockLoading={lowStockLoading}
+      upcomingDeliveries={upcomingDeliveries}
+      deliveriesLoading={deliveriesLoading}
+      actionRequired={actionRequired}
+      detailedStats={detailedStats}
+      dateLocale={dateLocale}
+    />
     <PullToRefreshWrapper
       onRefresh={async () => {
         await queryClient.invalidateQueries({
@@ -361,7 +401,7 @@ export default function SupplierHome() {
           },
         });
       }}
-      className="space-y-4 md:space-y-6 pb-4 md:pb-6"
+      className="hidden md:block md:space-y-6 md:pb-6"
     >
       <div>
         <div className="bg-[#161921] px-3 md:px-6 pt-4 md:pt-6 pb-4 md:pb-6 rounded-b-3xl">
@@ -1451,5 +1491,6 @@ export default function SupplierHome() {
         />
       )}
     </PullToRefreshWrapper>
+    </>
   );
 }

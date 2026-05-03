@@ -1,3 +1,4 @@
+import { MobilePageHeader } from "@/components/mobile";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
@@ -319,6 +320,11 @@ export default function Documents() {
       }}
       className="space-y-4 md:space-y-6"
     >
+      <MobilePageHeader
+        title={lang === "de" ? "Dokumente" : "Documenti"}
+        subtitle={lang === "de" ? "Lieferscheine und Rechnungen" : "Note di consegna e fatture"}
+        testId="mobile-header-documents"
+      />
       <div className="flex items-center justify-end gap-2 px-1">
         <Button
           size="sm"

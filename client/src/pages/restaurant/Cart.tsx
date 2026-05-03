@@ -1,3 +1,4 @@
+import { MobilePageHeader } from "@/components/mobile";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -383,8 +384,13 @@ export default function RestaurantCart() {
           },
         });
       }}
-      className="space-y-4 md:space-y-6"
+      className="space-y-4 md:space-y-6 pb-24 md:pb-6"
     >
+      <MobilePageHeader
+        title={lang === "de" ? "Warenkorb" : "Carrello"}
+        subtitle={lang === "de" ? "Ihre ausgewählten Produkte" : "I tuoi prodotti selezionati"}
+        testId="mobile-header-cart"
+      />
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (

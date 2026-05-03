@@ -386,7 +386,7 @@ function PageHero() {
   if (!page) return null;
 
   return (
-    <div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-5 md:pb-8 rounded-b-3xl mb-3 md:mb-4" data-testid="page-hero">
+    <div className="hidden md:block bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-5 md:pb-8 rounded-b-3xl mb-3 md:mb-4" data-testid="page-hero">
       <h1 className="text-xl md:text-3xl font-bold text-white">{page.title}</h1>
       {page.subtitle && (
         <p className="hidden md:block text-sm text-white/50 mt-1">{page.subtitle}</p>
@@ -484,7 +484,7 @@ function AppLayout() {
       ) : (
         <div className="flex h-dvh w-full">
           <div ref={scrollContainerRef} className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} ${isInChat ? '' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
-            <header className={`dark flex items-center gap-3 md:gap-4 px-3 py-2.5 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl sticky top-0 z-20 ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
+            <header className={`dark hidden md:flex items-center gap-3 md:gap-4 px-3 py-2.5 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl sticky top-0 z-20 ${isInChat || isDetailPage ? 'md:flex' : ''}`}>
               <div className="flex items-center gap-3 shrink-0 md:flex-1 md:min-w-0">
                 <MobileProfileButton />
                 <div className="hidden md:flex items-center gap-0 shrink-0 md:-ml-3">

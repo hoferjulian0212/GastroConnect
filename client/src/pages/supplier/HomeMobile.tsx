@@ -1,0 +1,273 @@
+import { Link } from "wouter";
+import { format, isToday, isTomorrow, formatDistanceToNow } from "date-fns";
+import { MessageSquare, ClipboardList, BarChart3, AlertTriangle, ChevronRight, Plus, Package, Tag, FileText, Building2, Truck, Calendar } from "lucide-react";
+import CountUp from "@/components/CountUp";
+import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { queryClient } from "@/lib/queryClient";
+import { MobilePageHeader, MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, statusToTone } from "@/components/mobile";
+import type { OrderWithDetails, Product } from "@shared/schema";
+import { getOrderStatus } from "@/lib/translations";
+
+interface Props {
+  currentUser: any;
+  lang: "de" | "it";
+  t: any;
+  navigate: (path: string) => void;
+  totalUnread: number;
+  convLoading: boolean;
+  recentOrders: OrderWithDetails[] | undefined;
+  ordersLoading: boolean;
+  lowStockProducts: Product[] | undefined;
+  lowStockLoading: boolean;
+  upcomingDeliveries: OrderWithDetails[] | undefined;
+  deliveriesLoading: boolean;
+  actionRequired: any;
+  detailedStats: any;
+  dateLocale: any;
+}
+
+export default function SupplierHomeMobile({
+  currentUser, lang, t, navigate,
+  totalUnread, convLoading,
+  recentOrders, ordersLoading,
+  lowStockProducts, lowStockLoading,
+  upcomingDeliveries, deliveriesLoading,
+  actionRequired,
+  detailedStats,
+  dateLocale,
+}: Props) {
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (lang === "de") return h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend";
+    return h < 11 ? "Buongiorno" : h < 18 ? "Buon pomeriggio" : "Buonasera";
+  })();
+
+  const fmtPrice = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
+
+  const todayDeliveries = (upcomingDeliveries || []).filter(o => o.deliveryDate && isToday(new Date(o.deliveryDate)));
+  const nextDeliveries = (upcomingDeliveries || []).slice(0, 3);
+  const recent = (recentOrders || []).slice(0, 5);
+
+  const newOrdersCount = (recentOrders || []).filter(o => o.status === "pending").length;
+  const openComplaints = actionRequired?.openComplaints?.length || 0;
+  const todayRevenue = todayDeliveries.reduce((s, o) => s + parseFloat(o.totalPrice as any || "0"), 0);
+
+  const kpis = [
+    {
+      label: lang === "de" ? "Nachrichten" : "Messaggi",
+      value: convLoading ? "..." : <CountUp end={totalUnread} duration={800} />,
+      icon: <MessageSquare className="h-4 w-4" />,
+      tone: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+      onClick: () => navigate("/supplier/inbox"),
+      testId: "mobile-kpi-s-messages",
+    },
+    {
+      label: lang === "de" ? "Neue" : "Nuovi",
+      value: ordersLoading ? "..." : <CountUp end={newOrdersCount} duration={800} />,
+      icon: <ClipboardList className="h-4 w-4" />,
+      tone: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+      onClick: () => navigate("/supplier/orders?status=pending"),
+      testId: "mobile-kpi-s-orders",
+    },
+    {
+      label: lang === "de" ? "Heute" : "Oggi",
+      value: <CountUp end={todayRevenue} duration={1000} suffix="€" formatter={(v: number) => Math.round(v).toLocaleString(lang === "de" ? "de-DE" : "it-IT")} />,
+      icon: <BarChart3 className="h-4 w-4" />,
+      tone: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+      onClick: () => navigate("/supplier/orders"),
+      testId: "mobile-kpi-s-revenue",
+    },
+    {
+      label: lang === "de" ? "Bestand" : "Scorte",
+      value: lowStockLoading ? "..." : <CountUp end={lowStockProducts?.length || 0} duration={800} />,
+      icon: <AlertTriangle className="h-4 w-4" />,
+      tone: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+      onClick: () => navigate("/supplier/products"),
+      testId: "mobile-kpi-s-lowstock",
+    },
+  ];
+
+  const quickActions = [
+    { icon: <Plus className="h-5 w-5" />, label: lang === "de" ? "Produkt" : "Prodotto", to: "/supplier/products?new=1", color: "bg-primary text-primary-foreground" },
+    { icon: <Tag className="h-5 w-5" />, label: lang === "de" ? "Aktion" : "Promo", to: "/supplier/promotions", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+    { icon: <Package className="h-5 w-5" />, label: lang === "de" ? "Lager" : "Magazzino", to: "/supplier/inventory", color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" },
+    { icon: <Building2 className="h-5 w-5" />, label: lang === "de" ? "Kunden" : "Clienti", to: "/supplier/restaurants", color: "bg-teal-500/15 text-teal-600 dark:text-teal-400" },
+    { icon: <AlertTriangle className="h-5 w-5" />, label: lang === "de" ? "Reklamationen" : "Reclami", to: "/supplier/complaints", color: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
+  ];
+
+  return (
+    <div className="md:hidden">
+      <PullToRefreshWrapper
+        onRefresh={async () => {
+          await queryClient.invalidateQueries({
+            predicate: (q) => {
+              const k = q.queryKey[0];
+              return typeof k === "string" && (k.startsWith("/api/supplier") || k.startsWith("/api/low-stock") || k.startsWith("/api/conversations"));
+            },
+          });
+        }}
+        className="pb-32"
+      >
+        <MobilePageHeader
+          title={currentUser?.companyName || ""}
+          subtitle={`${greeting} · ${newOrdersCount} ${lang === "de" ? "neue" : "nuovi"}`}
+          testId="mobile-header-supplier-home"
+        />
+
+        <div className="px-4 -mt-4">
+          <div className="grid grid-cols-2 gap-2">
+            {kpis.map((k) => (
+              <button
+                key={k.testId}
+                onClick={k.onClick}
+                data-testid={k.testId}
+                className="text-left rounded-2xl bg-card border border-border p-3 active:scale-[0.98] transition-transform shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{k.label}</span>
+                  <div className={`flex items-center justify-center h-7 w-7 rounded-lg ${k.tone}`}>{k.icon}</div>
+                </div>
+                <div className="mt-2 text-[22px] font-bold leading-none text-foreground">{k.value}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {openComplaints > 0 && (
+          <MobileSection className="mt-4">
+            <button
+              onClick={() => navigate("/supplier/complaints")}
+              data-testid="mobile-action-required-banner"
+              className="w-full flex items-center gap-3 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 active:scale-[0.98] transition-transform"
+            >
+              <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="flex-1 text-left">
+                <div className="text-[13px] font-semibold text-foreground">
+                  {openComplaints} {lang === "de" ? "offene Reklamation" : "reclamo aperto"}{openComplaints > 1 ? (lang === "de" ? "en" : "i") : ""}
+                </div>
+                <div className="text-[11px] text-muted-foreground">{lang === "de" ? "Aktion erforderlich" : "Azione richiesta"}</div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </MobileSection>
+        )}
+
+        <MobileSection
+          title={lang === "de" ? "Schnellaktionen" : "Azioni rapide"}
+          className="mt-6"
+        >
+          <div className="-mx-4 px-4 overflow-x-auto scrollbar-hide">
+            <div className="flex items-stretch gap-2.5 min-w-min pr-4">
+              {quickActions.map((qa) => (
+                <Link
+                  key={qa.label}
+                  href={qa.to}
+                  data-testid={`mobile-s-quick-${qa.label}`}
+                  className="flex flex-col items-center justify-center gap-2 w-[88px] h-[84px] rounded-2xl bg-card border border-border active:scale-95 transition-transform no-underline"
+                >
+                  <div className={`flex items-center justify-center h-10 w-10 rounded-full ${qa.color}`}>{qa.icon}</div>
+                  <span className="text-[11px] font-semibold text-foreground text-center leading-tight">{qa.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </MobileSection>
+
+        <MobileSection
+          title={lang === "de" ? "Anstehende Lieferungen" : "Consegne in arrivo"}
+          action={<MobileSectionLink onClick={() => navigate("/supplier/orders?status=in_delivery")}>{lang === "de" ? "Alle" : "Tutti"}</MobileSectionLink>}
+          className="mt-6"
+          testId="mobile-s-section-deliveries"
+        >
+          {deliveriesLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-[68px] rounded-2xl" />)}
+            </div>
+          ) : nextDeliveries.length === 0 ? (
+            <MobileEmptyState
+              icon={<Truck className="h-7 w-7" />}
+              title={lang === "de" ? "Keine Lieferungen" : "Nessuna consegna"}
+            />
+          ) : (
+            <div className="space-y-2">
+              {nextDeliveries.map((o) => {
+                const date = o.deliveryDate ? new Date(o.deliveryDate) : null;
+                const dateLabel = !date ? "" : isToday(date)
+                  ? lang === "de" ? "Heute" : "Oggi"
+                  : isTomorrow(date)
+                  ? lang === "de" ? "Morgen" : "Domani"
+                  : format(date, "dd.MM.", { locale: dateLocale });
+                return (
+                  <MobileListCard
+                    key={o.id}
+                    onClick={() => navigate(`/supplier/orders/${o.id}`)}
+                    accent={o.status === "in_delivery" ? "indigo" : o.status === "delivered" ? "emerald" : "amber"}
+                    leading={
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={o.restaurant?.profileImageUrl || undefined} />
+                        <AvatarFallback className="text-xs bg-muted">{o.restaurant?.companyName?.[0] || "?"}</AvatarFallback>
+                      </Avatar>
+                    }
+                    title={o.restaurant?.companyName || ""}
+                    subtitle={`${o.items?.length || 0} ${lang === "de" ? "Artikel" : "articoli"} · ${fmtPrice(parseFloat(o.totalPrice as any || "0"))}`}
+                    trailing={
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[12px] font-semibold text-foreground">{dateLabel}</span>
+                        <MobileStatusPill tone={statusToTone(o.status)} size="sm">
+                          {getOrderStatus(o.status as any, lang)}
+                        </MobileStatusPill>
+                      </div>
+                    }
+                    testId={`mobile-s-delivery-${o.id}`}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </MobileSection>
+
+        <MobileSection
+          title={lang === "de" ? "Letzte Bestellungen" : "Ordini recenti"}
+          action={<MobileSectionLink onClick={() => navigate("/supplier/orders")}>{lang === "de" ? "Alle" : "Tutti"}</MobileSectionLink>}
+          className="mt-6"
+          testId="mobile-s-section-recent"
+        >
+          {ordersLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-[60px] rounded-2xl" />)}
+            </div>
+          ) : recent.length === 0 ? (
+            <MobileEmptyState
+              icon={<Calendar className="h-7 w-7" />}
+              title={lang === "de" ? "Noch keine Bestellungen" : "Nessun ordine"}
+            />
+          ) : (
+            <div className="space-y-2">
+              {recent.map(o => (
+                <MobileListCard
+                  key={o.id}
+                  onClick={() => navigate(`/supplier/orders/${o.id}`)}
+                  title={o.restaurant?.companyName || ""}
+                  subtitle={`${formatDistanceToNow(new Date(o.createdAt as any), { addSuffix: true, locale: dateLocale })} · ${fmtPrice(parseFloat(o.totalPrice as any || "0"))}`}
+                  trailing={<MobileStatusPill tone={statusToTone(o.status)} size="sm">{getOrderStatus(o.status as any, lang)}</MobileStatusPill>}
+                  testId={`mobile-s-recent-${o.id}`}
+                />
+              ))}
+            </div>
+          )}
+        </MobileSection>
+      </PullToRefreshWrapper>
+
+      <MobileFab
+        onClick={() => navigate("/supplier/products")}
+        icon={<Plus className="h-6 w-6" />}
+        label={lang === "de" ? "Produkt" : "Prodotto"}
+        testId="mobile-fab-product"
+      />
+    </div>
+  );
+}
