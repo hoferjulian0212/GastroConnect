@@ -75,77 +75,69 @@ export default function SupplierRestaurants() {
       <div className="px-3 md:px-6 max-w-6xl mx-auto w-full">
 
       {isLoading ? (
-        <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2.5 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-64" />
+            <Skeleton key={i} className="h-24" />
           ))}
         </div>
       ) : filteredRestaurants && filteredRestaurants.length > 0 ? (
-        <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2.5 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {filteredRestaurants.map((restaurant) => (
             <Card
               key={restaurant.id}
-              className="cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-px hover:scale-[1.003] overflow-hidden"
+              className="cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-px overflow-hidden"
               onClick={() => setSelectedRestaurant(restaurant)}
               data-testid={`restaurant-card-${restaurant.id}`}
             >
-              <CardContent className="p-4 md:p-6">
-                <div className="flex items-start justify-between gap-2 mb-4">
-                  <Avatar className="h-12 w-12">
+              <CardContent className="p-3 md:p-3.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 shrink-0">
                     <AvatarImage src={restaurant.profileImageUrl || undefined} alt={restaurant.companyName || restaurant.name} />
-                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
                       {(restaurant.companyName || restaurant.name).charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  {restaurant.phone && (
-                    <a
-                      href={`tel:${restaurant.phone}`}
-                      onClick={(e) => e.stopPropagation()}
-                      data-testid={`button-call-${restaurant.id}`}
+
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-sm truncate leading-tight" data-testid={`text-restaurant-name-${restaurant.id}`}>
+                      {restaurant.companyName || restaurant.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {restaurant.name}{restaurant.city ? ` · ${restaurant.city}` : ""}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {restaurant.phone && (
+                      <a
+                        href={`tel:${restaurant.phone}`}
+                        data-testid={`button-call-${restaurant.id}`}
+                      >
+                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary">
+                          <Phone className="h-4 w-4" />
+                        </Button>
+                      </a>
+                    )}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary"
+                      onClick={handleMessage}
+                      data-testid={`button-message-${restaurant.id}`}
                     >
-                      <Button size="icon" variant="ghost" className="rounded-full bg-primary/10 text-primary">
-                        <Phone className="h-4 w-4" />
-                      </Button>
-                    </a>
-                  )}
-                </div>
-
-                <h3 className="font-semibold text-base md:text-lg mb-1" data-testid={`text-restaurant-name-${restaurant.id}`}>
-                  {restaurant.companyName || restaurant.name}
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {restaurant.name}
-                </p>
-
-                <div className="space-y-2 mb-6">
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="text-muted-foreground flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{t("profile", "email")}</span>
-                    <span className="font-medium truncate ml-2">{restaurant.email}</span>
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary"
+                      onClick={() => setSelectedRestaurant(restaurant)}
+                      data-testid={`button-manage-${restaurant.id}`}
+                    >
+                      <Settings2Icon className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="text-muted-foreground flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{t("profile", "phone")}</span>
-                    <span className="font-medium">{restaurant.phone || "-"}</span>
-                  </div>
-                  {restaurant.city && (
-                    <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className="text-muted-foreground flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{t("profile", "city")}</span>
-                      <span className="font-medium">{restaurant.city}</span>
-                    </div>
-                  )}
                 </div>
-
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedRestaurant(restaurant);
-                  }}
-                  data-testid={`button-manage-${restaurant.id}`}
-                >
-                  <Settings2Icon className="h-4 w-4" />
-                  {t("supplierRestaurants", "manageCustomer")}
-                </Button>
               </CardContent>
             </Card>
           ))}
