@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, Coffee, Droplets } from "lucide-react";
+import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, Coffee, Droplets, Check } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
@@ -544,20 +544,30 @@ export default function RestaurantCatalog() {
               <Button
                 variant={onlyAvailable ? "default" : "outline"}
                 onClick={() => setOnlyAvailable(!onlyAvailable)}
-                className="text-xs md:text-sm toggle-elevate"
+                className={`text-xs md:text-sm toggle-elevate transition-all ${
+                  onlyAvailable
+                    ? "bg-primary text-primary-foreground border-primary font-semibold shadow-md ring-2 ring-primary/30 hover:bg-primary/90"
+                    : ""
+                }`}
                 data-testid="toggle-available-only"
               >
                 <Package className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                 {t("common", "onlyAvailable")}
+                {onlyAvailable && <Check className="h-3.5 w-3.5 ml-1.5" />}
               </Button>
               <Button
                 variant={onlyPromotions ? "default" : "outline"}
                 onClick={() => setOnlyPromotions(!onlyPromotions)}
-                className="text-xs md:text-sm toggle-elevate"
+                className={`text-xs md:text-sm toggle-elevate transition-all ${
+                  onlyPromotions
+                    ? "bg-primary text-primary-foreground border-primary font-semibold shadow-md ring-2 ring-primary/30 hover:bg-primary/90"
+                    : ""
+                }`}
                 data-testid="toggle-promotions-only"
               >
                 <Tag className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                 {t("common", "promotions")}
+                {onlyPromotions && <Check className="h-3.5 w-3.5 ml-1.5" />}
               </Button>
             </div>
           </div>
