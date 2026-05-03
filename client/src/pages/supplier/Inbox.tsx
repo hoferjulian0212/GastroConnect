@@ -174,8 +174,7 @@ export default function SupplierInbox() {
   const searchString = useSearch();
 
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-    setIsInChat(isMobile && selectedConversation !== null);
+    setIsInChat(selectedConversation !== null);
     return () => setIsInChat(false);
   }, [selectedConversation, setIsInChat]);
 

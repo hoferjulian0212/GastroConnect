@@ -201,8 +201,7 @@ export default function RestaurantInbox() {
   }, []);
 
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-    setIsInChat(isMobile && selectedConversation !== null);
+    setIsInChat(selectedConversation !== null);
     return () => setIsInChat(false);
   }, [selectedConversation, setIsInChat]);
 
