@@ -483,8 +483,8 @@ function AppLayout() {
         </div>
       ) : (
         <div className="flex h-dvh w-full">
-          <div ref={scrollContainerRef} className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto'} ${isInChat ? '' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
-            <header className={`dark flex items-center gap-3 md:gap-4 px-3 py-2.5 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
+          <div ref={scrollContainerRef} className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} ${isInChat ? '' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
+            <header className={`dark flex items-center gap-3 md:gap-4 px-3 py-2.5 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl sticky top-0 z-20 ${isInChat || isDetailPage ? 'hidden md:flex' : ''}`}>
               <div className="flex items-center gap-3 shrink-0 md:flex-1 md:min-w-0">
                 <MobileProfileButton />
                 <div className="hidden md:flex items-center gap-0 shrink-0 md:-ml-3">
