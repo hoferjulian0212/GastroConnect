@@ -738,11 +738,14 @@ export default function RestaurantInbox() {
 
   const createOrderMutation = useMutation({
     mutationFn: async (items: { productId: string; quantity: number }[]) => {
+      if (!currentUser?.id) throw new Error(lang === "de" ? "Nicht angemeldet" : "Non autenticato");
+      if (!supplierId) throw new Error(lang === "de" ? "Kein Lieferant ausgewählt" : "Nessun fornitore selezionato");
+      if (items.length === 0) throw new Error(lang === "de" ? "Keine Artikel ausgewählt" : "Nessun articolo selezionato");
       return apiRequest("POST", "/api/orders/direct", {
-        restaurantId: currentUser?.id,
+        restaurantId: currentUser.id,
         supplierId,
         items,
-        createdByUserId: currentUser?.id,
+        createdByUserId: currentUser.id,
       });
     },
     onSuccess: () => {
@@ -765,10 +768,10 @@ export default function RestaurantInbox() {
         setTimeout(scrollToBottom, 300);
       }, 1500);
     },
-    onError: () => {
+    onError: (err: any) => {
       toast({
         title: t("common", "error"),
-        description: t("orders", "orderPlaceError"),
+        description: err?.message || t("orders", "orderPlaceError"),
         variant: "destructive",
       });
     },
@@ -797,10 +800,10 @@ export default function RestaurantInbox() {
       setSelectedComplaintId(null);
       setTimeout(scrollToBottom, 300);
     },
-    onError: () => {
+    onError: (err: any) => {
       toast({
         title: t("common", "error"),
-        description: t("complaints", "complaintSendError"),
+        description: err?.message || t("complaints", "complaintSendError"),
         variant: "destructive",
       });
     },
