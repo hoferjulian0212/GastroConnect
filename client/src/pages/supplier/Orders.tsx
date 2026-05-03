@@ -56,7 +56,7 @@ export default function SupplierOrders() {
   const initialStatus = searchParams.get("status");
   const highlightRef = useRef<HTMLDivElement>(null);
 
-  const [activeStatusTab, setActiveStatusTab] = useState<string>(initialStatus || (highlightOrderId ? "all" : "pending"));
+  const [activeStatusTab, setActiveStatusTab] = useState<string>(initialStatus || "all");
 
   const { containerRef: pullRefreshRef, pullDistance, isRefreshing, progress: pullProgress } = usePullToRefresh({
     onRefresh: async () => {
