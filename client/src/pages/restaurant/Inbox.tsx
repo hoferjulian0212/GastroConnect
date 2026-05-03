@@ -167,6 +167,8 @@ export default function RestaurantInbox() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [openActionsPopover, setOpenActionsPopover] = useState(false);
   const [orderItems, setOrderItems] = useState<Record<string, number>>({});
+  const [orderSearchQuery, setOrderSearchQuery] = useState("");
+  const [orderCategoryFilter, setOrderCategoryFilter] = useState<string>("all");
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const orderCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
@@ -1007,6 +1009,45 @@ export default function RestaurantInbox() {
   };
 
   const totalOrderItems = Object.values(orderItems).reduce((sum, qty) => sum + qty, 0);
+
+  const inStockSupplierProducts = useMemo(
+    () => (supplierProducts || []).filter(p => p.inStock !== false),
+    [supplierProducts]
+  );
+
+  const orderProductCategories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of inStockSupplierProducts) {
+      const cat = (p.category && p.category.trim()) || (lang === "de" ? "Sonstiges" : "Altro");
+      counts.set(cat, (counts.get(cat) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, count }));
+  }, [inStockSupplierProducts, lang]);
+
+  const filteredOrderProducts = useMemo(() => {
+    const q = orderSearchQuery.trim().toLowerCase();
+    return inStockSupplierProducts.filter(p => {
+      if (orderCategoryFilter !== "all") {
+        const cat = (p.category && p.category.trim()) || (lang === "de" ? "Sonstiges" : "Altro");
+        if (cat !== orderCategoryFilter) return false;
+      }
+      if (q && !p.name.toLowerCase().includes(q) && !(p.description || "").toLowerCase().includes(q)) {
+        return false;
+      }
+      return true;
+    });
+  }, [inStockSupplierProducts, orderSearchQuery, orderCategoryFilter, lang]);
+
+  const estimatedOrderTotal = useMemo(() => {
+    let total = 0;
+    for (const [pid, qty] of Object.entries(orderItems)) {
+      const p = inStockSupplierProducts.find(x => x.id === pid);
+      if (p) total += parseFloat(p.price) * qty;
+    }
+    return total;
+  }, [orderItems, inStockSupplierProducts]);
 
   const handleBackToList = () => {
     setSelectedConversation(null);
@@ -2181,166 +2222,282 @@ export default function RestaurantInbox() {
                     )}
                   </div>
                 ) : actionMode === "order" ? (
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="p-4 pb-0">
-                      <div className="flex items-center justify-between gap-2 mb-4">
-                        <h3 className="font-semibold flex items-center gap-2">
-                          <ShoppingCart className="h-5 w-5" />
-                          {t("inbox", "orderMessage")}
-                        </h3>
-                        <Button variant="ghost" size="icon" onClick={() => { setActionMode("none"); setOrderSubmitted(false); setTimeout(scrollToBottom, 100); }} data-testid="button-close-order">
+                  <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="px-4 pt-4 pb-3 border-b border-border bg-background">
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <ShoppingCart className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-sm leading-tight truncate">{t("inbox", "orderMessage")}</h3>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="rounded-full shrink-0" onClick={() => { setActionMode("none"); setOrderSubmitted(false); setOrderSearchQuery(""); setOrderCategoryFilter("all"); setTimeout(scrollToBottom, 100); }} data-testid="button-close-order">
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        {t("inbox", "productsFrom")} {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
-                      </p>
+                      <div className="relative mb-2">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder={lang === "de" ? "Produkt suchen..." : "Cerca prodotto..."}
+                          value={orderSearchQuery}
+                          onChange={(e) => setOrderSearchQuery(e.target.value)}
+                          className="pl-9 h-9 rounded-full bg-muted/50 border-transparent focus-visible:bg-background"
+                          data-testid="input-order-product-search"
+                        />
+                      </div>
+                      {orderProductCategories.length > 0 && (
+                        <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1 scrollbar-hide">
+                          <button
+                            onClick={() => setOrderCategoryFilter("all")}
+                            className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all ${orderCategoryFilter === "all" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/60 text-muted-foreground hover:bg-muted"}`}
+                            data-testid="filter-order-category-all"
+                          >
+                            {lang === "de" ? "Alle" : "Tutti"} · {inStockSupplierProducts.length}
+                          </button>
+                          {orderProductCategories.map(({ name, count }) => (
+                            <button
+                              key={name}
+                              onClick={() => setOrderCategoryFilter(name)}
+                              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all ${orderCategoryFilter === name ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/60 text-muted-foreground hover:bg-muted"}`}
+                              data-testid={`filter-order-category-${name}`}
+                            >
+                              {name} · {count}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <ScrollArea className="flex-1 px-4">
-                      <div className="space-y-2 pb-4">
-                        {supplierProducts?.filter(p => p.inStock).map((product) => (
-                          <div key={product.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30">
-                            <div className="w-12 h-12 shrink-0 cursor-pointer" onClick={() => setInboxDetailProduct(product)} data-testid={`button-product-detail-${product.id}`}>
-                              <ProductImage src={product.imageUrl} alt={product.name} className="w-12 h-12 rounded-md" iconClassName="h-5 w-5" fallbackIconColor="text-muted-foreground/50" />
+                    <ScrollArea className="flex-1 px-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 py-3">
+                        {filteredOrderProducts.map((product) => {
+                          const qty = orderItems[product.id] || 0;
+                          const isSelected = qty > 0;
+                          return (
+                            <div
+                              key={product.id}
+                              className={`group relative rounded-xl border transition-all duration-200 overflow-hidden bg-card ${isSelected ? "border-primary shadow-md ring-1 ring-primary/20" : "border-border hover:border-primary/40 hover:shadow-sm"}`}
+                              data-testid={`order-product-card-${product.id}`}
+                            >
+                              <div className="flex gap-3 p-2.5">
+                                <button
+                                  className="shrink-0 relative"
+                                  onClick={() => setInboxDetailProduct(product)}
+                                  data-testid={`button-product-detail-${product.id}`}
+                                >
+                                  <ProductImage src={product.imageUrl} alt={product.name} className="w-20 h-20 rounded-lg" iconClassName="h-7 w-7" fallbackIconColor="text-muted-foreground/40" />
+                                  {isSelected && (
+                                    <div className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shadow-md animate-in zoom-in duration-150">
+                                      {qty}
+                                    </div>
+                                  )}
+                                </button>
+                                <div className="flex-1 min-w-0 flex flex-col">
+                                  <button
+                                    className="text-left min-w-0"
+                                    onClick={() => setInboxDetailProduct(product)}
+                                    data-testid={`text-product-info-${product.id}`}
+                                  >
+                                    <p className="text-sm font-semibold leading-tight line-clamp-2 mb-0.5">{product.name}</p>
+                                    {product.category && (
+                                      <p className="text-[10px] text-muted-foreground/80 truncate uppercase tracking-wide">{product.category}</p>
+                                    )}
+                                  </button>
+                                  <div className="mt-auto flex items-end justify-between gap-2 pt-1.5">
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-bold text-foreground tabular-nums">{parseFloat(product.price).toFixed(2)}€</p>
+                                      <p className="text-[10px] text-muted-foreground">/{product.unit}</p>
+                                    </div>
+                                    <QuantityInput
+                                      value={qty}
+                                      onChange={(val) => {
+                                        setOrderItems(prev => {
+                                          if (val === 0) {
+                                            const { [product.id]: _, ...rest } = prev;
+                                            return rest;
+                                          }
+                                          return { ...prev, [product.id]: val };
+                                        });
+                                      }}
+                                      min={0}
+                                      size="sm"
+                                      testIdPrefix={`order-qty-${product.id}`}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setInboxDetailProduct(product)} data-testid={`text-product-info-${product.id}`}>
-                              <p className="text-sm font-medium truncate">{product.name}</p>
-                              <p className="text-xs text-muted-foreground">{product.price}€/{product.unit}</p>
-                            </div>
-                            <QuantityInput
-                              value={orderItems[product.id] || 0}
-                              onChange={(val) => {
-                                setOrderItems(prev => {
-                                  if (val === 0) {
-                                    const { [product.id]: _, ...rest } = prev;
-                                    return rest;
-                                  }
-                                  return { ...prev, [product.id]: val };
-                                });
-                              }}
-                              min={0}
-                              size="md"
-                              testIdPrefix={`order-qty-${product.id}`}
-                            />
+                          );
+                        })}
+                        {filteredOrderProducts.length === 0 && (
+                          <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+                            <Package className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                              {inStockSupplierProducts.length === 0
+                                ? t("inbox", "noProductsAvailable")
+                                : (lang === "de" ? "Keine Produkte gefunden" : "Nessun prodotto trovato")}
+                            </p>
+                            {inStockSupplierProducts.length > 0 && (orderSearchQuery || orderCategoryFilter !== "all") && (
+                              <button
+                                className="text-xs text-primary mt-2 hover:underline"
+                                onClick={() => { setOrderSearchQuery(""); setOrderCategoryFilter("all"); }}
+                                data-testid="button-clear-order-filters"
+                              >
+                                {lang === "de" ? "Filter zurücksetzen" : "Reimposta filtri"}
+                              </button>
+                            )}
                           </div>
-                        ))}
-                        {(!supplierProducts || supplierProducts.filter(p => p.inStock).length === 0) && (
-                          <p className="text-sm text-muted-foreground text-center py-8">
-                            {t("inbox", "noProductsAvailable")}
-                          </p>
                         )}
                       </div>
                     </ScrollArea>
-                    <div className="p-4 border-t border-border bg-background shrink-0">
+                    <div className="p-3 border-t border-border bg-background shrink-0">
                       {orderSubmitted ? (
-                        <div className="flex items-center justify-center gap-2 py-2 text-green-600 font-medium animate-in fade-in duration-300" data-testid="text-order-success">
+                        <div className="flex items-center justify-center gap-2 py-2 text-green-600 font-semibold animate-in fade-in zoom-in-95 duration-300" data-testid="text-order-success">
                           <CheckCircle className="h-5 w-5" />
                           {t("orders", "orderPlaced")}
                         </div>
                       ) : (
-                        <Button
-                          className="w-full gap-2"
-                          disabled={totalOrderItems === 0 || createOrderMutation.isPending}
-                          onClick={handleSubmitOrder}
-                          data-testid="button-submit-order"
-                        >
-                          {createOrderMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <ShoppingCart className="h-4 w-4" />
+                        <div className="space-y-2">
+                          {totalOrderItems > 0 && (
+                            <div className="flex items-center justify-between text-xs px-1 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                              <span className="text-muted-foreground">
+                                {totalOrderItems} {t("common", "items")}
+                              </span>
+                              <span className="font-semibold tabular-nums">
+                                ≈ {estimatedOrderTotal.toFixed(2)} €
+                              </span>
+                            </div>
                           )}
-                          {t("inbox", "placeOrderItems")} ({totalOrderItems} {t("common", "items")})
-                        </Button>
+                          <Button
+                            className="w-full gap-2 h-11 rounded-full font-semibold"
+                            disabled={totalOrderItems === 0 || createOrderMutation.isPending}
+                            onClick={handleSubmitOrder}
+                            data-testid="button-submit-order"
+                          >
+                            {createOrderMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <ShoppingCart className="h-4 w-4" />
+                            )}
+                            {totalOrderItems === 0
+                              ? (lang === "de" ? "Produkte auswählen" : "Seleziona prodotti")
+                              : t("inbox", "placeOrderItems")}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
                 ) : actionMode === "complaint" ? (
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="p-4 pb-0">
-                      <div className="flex items-center justify-between gap-2 mb-4">
-                        <h3 className="font-semibold flex items-center gap-2">
-                          <AlertCircle className="h-5 w-5 text-red-500" />
-                          {t("complaints", "newComplaint")}
-                        </h3>
-                        <Button variant="ghost" size="icon" onClick={() => { setActionMode("none"); setTimeout(scrollToBottom, 100); }} data-testid="button-close-complaint">
+                  <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="px-4 pt-4 pb-3 border-b border-border bg-background">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                            <AlertCircle className="h-4 w-4 text-red-500" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-sm leading-tight truncate">{t("complaints", "newComplaint")}</h3>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="rounded-full shrink-0" onClick={() => { setActionMode("none"); setTimeout(scrollToBottom, 100); }} data-testid="button-close-complaint">
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        {t("inbox", "complaintTo")} {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
-                      </p>
                     </div>
-                    <ScrollArea className="flex-1 px-6">
-                      <div className="space-y-4 pb-4 px-1">
+                    <ScrollArea className="flex-1 px-4">
+                      <div className="space-y-5 py-4">
+                        {/* STEP 1: Order picker as cards */}
                         <div className="space-y-2">
-                          <Label>{t("complaints", "selectOrder")}</Label>
-                          <Select
-                            value={complaintOrderId}
-                            onValueChange={(val) => { setComplaintOrderId(val); setComplaintAffectedItems([]); }}
-                            data-testid="select-complaint-order"
-                          >
-                            <SelectTrigger data-testid="trigger-complaint-order">
-                              <SelectValue placeholder={t("complaints", "selectOrderPlaceholder")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {supplierOrders && supplierOrders.length > 0 ? (
-                                supplierOrders.map((order) => (
-                                  <SelectItem key={order.id} value={order.id} data-testid={`option-complaint-order-${order.id}`}>
-                                    <div className="flex items-center gap-2">
-                                      <Package className="h-4 w-4 text-muted-foreground" />
-                                      <span>{formatOrderDate(order.createdAt)}</span>
-                                      <span className="text-muted-foreground">-</span>
-                                      <span>{parseFloat(order.totalAmount).toFixed(2)} €</span>
+                          <div className="flex items-center gap-2">
+                            <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shrink-0">1</span>
+                            <Label className="text-sm font-semibold m-0">{t("complaints", "selectOrder")}</Label>
+                          </div>
+                          {supplierOrders && supplierOrders.length > 0 ? (
+                            <div className="grid grid-cols-1 gap-1.5">
+                              {supplierOrders.slice(0, 8).map((order) => {
+                                const isSelected = complaintOrderId === order.id;
+                                return (
+                                  <button
+                                    key={order.id}
+                                    onClick={() => { setComplaintOrderId(order.id); setComplaintAffectedItems([]); }}
+                                    className={`flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/40 hover:bg-muted/40"}`}
+                                    data-testid={`option-complaint-order-${order.id}`}
+                                  >
+                                    <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                                      <Package className="h-4 w-4" />
                                     </div>
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <div className="p-2 text-sm text-muted-foreground">{t("complaints", "noOrdersForSupplier")}</div>
-                              )}
-                            </SelectContent>
-                          </Select>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium leading-tight truncate">
+                                        #{formatOrderNumber(order)}
+                                      </p>
+                                      <p className="text-[11px] text-muted-foreground">
+                                        {formatOrderDate(order.createdAt)}
+                                      </p>
+                                    </div>
+                                    <span className="text-sm font-semibold tabular-nums shrink-0">
+                                      {parseFloat(order.totalAmount).toFixed(2)} €
+                                    </span>
+                                    {isSelected && <Check className="h-4 w-4 text-primary shrink-0 animate-in zoom-in duration-150" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="p-4 rounded-lg border border-dashed border-border bg-muted/30 text-center">
+                              <Package className="h-6 w-6 text-muted-foreground/50 mx-auto mb-1" />
+                              <p className="text-xs text-muted-foreground">{t("complaints", "noOrdersForSupplier")}</p>
+                            </div>
+                          )}
                         </div>
 
+                        {/* STEP 2: Affected items */}
                         {complaintOrderId && complaintOrderDetails?.items && complaintOrderDetails.items.length > 0 && (
-                          <div className="space-y-2">
-                            <Label>{lang === "de" ? "Betroffene Produkte" : "Prodotti interessati"}</Label>
-                            <p className="text-xs text-muted-foreground">
-                              {lang === "de" ? "Wählen Sie die Produkte aus, die betroffen sind" : "Seleziona i prodotti interessati"}
-                            </p>
-                            <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-md border p-2">
+                          <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shrink-0">2</span>
+                                <Label className="text-sm font-semibold m-0">{lang === "de" ? "Betroffene Produkte" : "Prodotti interessati"}</Label>
+                              </div>
+                              {complaintAffectedItems.length > 0 && (
+                                <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{complaintAffectedItems.length}</Badge>
+                              )}
+                            </div>
+                            <div className="space-y-1 rounded-lg border border-border p-1.5 bg-muted/20">
                               {complaintOrderDetails.items.map((item) => {
                                 const isSelected = complaintAffectedItems.some(a => a.productId === (item.productId || item.id));
                                 return (
-                                  <label
+                                  <button
                                     key={item.id}
-                                    className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors ${isSelected ? "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800" : "hover:bg-muted/50"}`}
+                                    type="button"
+                                    onClick={() => toggleAffectedItem({
+                                      productId: item.productId || item.id,
+                                      productName: item.productName,
+                                      quantity: item.quantity,
+                                      unitPrice: item.unitPrice,
+                                    })}
+                                    className={`w-full flex items-center gap-2.5 p-2 rounded-md transition-all text-left ${isSelected ? "bg-red-50 dark:bg-red-950/30 ring-1 ring-red-200 dark:ring-red-800" : "hover:bg-muted/60"}`}
                                     data-testid={`affected-item-${item.productId || item.id}`}
                                   >
-                                    <input
-                                      type="checkbox"
-                                      checked={isSelected}
-                                      onChange={() => toggleAffectedItem({
-                                        productId: item.productId || item.id,
-                                        productName: item.productName,
-                                        quantity: item.quantity,
-                                        unitPrice: item.unitPrice,
-                                      })}
-                                      className="h-4 w-4 rounded border-gray-300 text-red-500 focus:ring-red-500"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="text-sm font-medium truncate">{item.productName}</span>
-                                        <span className="text-xs text-muted-foreground shrink-0">{item.quantity}x {parseFloat(item.unitPrice).toFixed(2)} €</span>
-                                      </div>
+                                    <div className={`h-5 w-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-red-500 border-red-500" : "border-muted-foreground/30"}`}>
+                                      {isSelected && <Check className="h-3 w-3 text-white" />}
                                     </div>
-                                  </label>
+                                    <span className="flex-1 text-sm font-medium truncate">{item.productName}</span>
+                                    <span className="text-[11px] text-muted-foreground shrink-0 tabular-nums">{item.quantity}× {parseFloat(item.unitPrice).toFixed(2)}€</span>
+                                  </button>
                                 );
                               })}
                             </div>
                             {complaintAffectedItems.length > 0 && (
-                              <div className="flex items-center gap-2 p-2 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                              <div className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 animate-in fade-in duration-200">
                                 <RefreshCw className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
-                                <span className="text-xs text-orange-700 dark:text-orange-300">
+                                <span className="text-[11px] text-orange-700 dark:text-orange-300">
                                   {lang === "de"
                                     ? `Nachlieferung für ${complaintAffectedItems.length} Produkt(e) wird angefragt`
                                     : `Riconsegna per ${complaintAffectedItems.length} prodotto/i verra richiesta`}
@@ -2350,22 +2507,21 @@ export default function RestaurantInbox() {
                           </div>
                         )}
 
-                        <div className="space-y-2">
-                          <Label htmlFor="complaint-title">{t("complaints", "subject")}</Label>
+                        {/* STEP 3: Title + Description */}
+                        <div className={`space-y-3 transition-opacity ${complaintOrderId ? "opacity-100" : "opacity-50 pointer-events-none"}`}>
+                          <div className="flex items-center gap-2">
+                            <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shrink-0">3</span>
+                            <Label className="text-sm font-semibold m-0">{lang === "de" ? "Beschreibung" : "Descrizione"}</Label>
+                          </div>
                           <Input
-                            id="complaint-title"
                             placeholder={t("complaints", "subjectPlaceholder")}
                             value={complaintTitle}
                             onChange={(e) => setComplaintTitle(e.target.value)}
                             disabled={!complaintOrderId}
+                            className="h-10"
                             data-testid="input-complaint-title"
                           />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="complaint-description">{t("common", "description")}</Label>
                           <Textarea
-                            id="complaint-description"
                             placeholder={t("complaints", "descriptionPlaceholder")}
                             value={complaintDescription}
                             onChange={(e) => setComplaintDescription(e.target.value)}
@@ -2375,38 +2531,44 @@ export default function RestaurantInbox() {
                           />
                         </div>
 
-                        <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30">
-                          <input
-                            type="checkbox"
-                            id="complaint-priority-immediate"
-                            checked={complaintPriorityImmediate}
-                            onChange={(e) => setComplaintPriorityImmediate(e.target.checked)}
-                            className="mt-0.5 h-4 w-4 rounded border-red-300 text-red-500 focus:ring-red-500"
-                            data-testid="checkbox-priority-immediate"
-                          />
-                          <label htmlFor="complaint-priority-immediate" className="flex-1 cursor-pointer">
-                            <div className="flex items-center gap-1.5">
-                              <Flame className="h-4 w-4 text-red-500" />
-                              <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                                {lang === "de" ? "Dringend" : "Urgente"}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">
+                        {/* STEP 4: Priority */}
+                        <button
+                          type="button"
+                          onClick={() => setComplaintPriorityImmediate(v => !v)}
+                          disabled={!complaintOrderId}
+                          className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${complaintPriorityImmediate ? "border-red-400 bg-red-50 dark:bg-red-950/30 shadow-sm" : "border-border hover:border-red-200"} ${!complaintOrderId ? "opacity-50 pointer-events-none" : ""}`}
+                          data-testid="checkbox-priority-immediate"
+                        >
+                          <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${complaintPriorityImmediate ? "bg-red-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                            <Flame className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${complaintPriorityImmediate ? "text-red-600 dark:text-red-400" : ""}`}>
+                              {lang === "de" ? "Dringend" : "Urgente"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
                               {lang === "de" ? "Lieferant wird sofort benachrichtigt" : "Il fornitore verra avvisato subito"}
                             </p>
-                          </label>
-                        </div>
+                          </div>
+                          <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${complaintPriorityImmediate ? "bg-red-500 border-red-500" : "border-muted-foreground/30"}`}>
+                            {complaintPriorityImmediate && <Check className="h-3 w-3 text-white" />}
+                          </div>
+                        </button>
                       </div>
                     </ScrollArea>
-                    <div className="p-4 border-t border-border bg-background shrink-0">
+                    <div className="p-3 border-t border-border bg-background shrink-0">
                       <Button
-                        className="w-full gap-2"
+                        className="w-full gap-2 h-11 rounded-full font-semibold"
                         variant="destructive"
                         disabled={!complaintOrderId || !complaintTitle.trim() || !complaintDescription.trim() || createComplaintMutation.isPending}
                         onClick={handleSubmitComplaint}
                         data-testid="button-submit-complaint"
                       >
-                        <AlertCircle className="h-4 w-4" />
+                        {createComplaintMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4" />
+                        )}
                         {createComplaintMutation.isPending ? t("complaints", "sending") : t("complaints", "submitComplaint")}
                       </Button>
                     </div>
