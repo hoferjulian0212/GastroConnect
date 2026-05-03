@@ -1651,7 +1651,7 @@ export default function RestaurantHome() {
                       return (
                         <div
                           key={tmpl.id}
-                          className="rounded-xl border border-border bg-card overflow-hidden transition-all"
+                          className={`rounded-xl border overflow-hidden transition-all ${outOfStockCount > 0 ? "border-amber-300/60 dark:border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20" : "border-border bg-card"}`}
                           data-testid={`template-card-desktop-${tmpl.id}`}
                         >
                           <div
@@ -1660,19 +1660,24 @@ export default function RestaurantHome() {
                             data-testid={`template-header-${tmpl.id}`}
                           >
                             <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <ClipboardList className="h-4 w-4 text-orange-500 shrink-0" />
-                              <h3 className="text-sm font-semibold truncate">{tmpl.name}</h3>
+                              <ClipboardList className={`h-4 w-4 shrink-0 ${outOfStockCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-orange-500"}`} />
+                              <div className="min-w-0 flex-1">
+                                <h3 className="text-sm font-semibold truncate">{tmpl.name}</h3>
+                                {outOfStockCount > 0 && (
+                                  <p className="flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400 mt-0.5" data-testid={`text-template-unavailable-${tmpl.id}`}>
+                                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">
+                                      {lang === "de" ? "Ein oder mehrere Artikel nicht verfügbar" : "Uno o più articoli non disponibili"}
+                                    </span>
+                                  </p>
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className="text-xs text-muted-foreground">
                                 {tmpl.items.length} {t("common", "items")}
                               </span>
                               <span className="text-sm font-bold tabular-nums">{total.toFixed(2)}&euro;</span>
-                              {outOfStockCount > 0 && (
-                                <Badge variant="outline" className="text-[10px] border-red-200 text-red-500 px-1">
-                                  {outOfStockCount}
-                                </Badge>
-                              )}
                               <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                             </div>
                           </div>
