@@ -213,6 +213,7 @@ const t = {
     continueShopping: { de: "Weiter einkaufen", it: "Continua lo shopping" },
   },
   orders: {
+    orderPlaceError: { de: "Bestellung konnte nicht aufgegeben werden.", it: "Impossibile effettuare l'ordine." },
     allOrdersOverview: { de: "Alle Ihre Bestellungen im Überblick", it: "Panoramica di tutti i tuoi ordini" },
     order: { de: "Bestellung", it: "Ordine" },
     orderDetails: { de: "Bestelldetails und Artikelübersicht", it: "Dettagli ordine e panoramica articoli" },
