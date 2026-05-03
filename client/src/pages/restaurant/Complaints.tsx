@@ -1316,15 +1316,15 @@ export default function Complaints() {
 
       {/* Edit Complaint Dialog */}
       <Dialog open={!!editingComplaint} onOpenChange={(open) => !open && setEditingComplaint(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] max-h-[90vh] sm:max-h-[85vh] p-0 flex flex-col gap-0">
           <DialogHeader className="sr-only">
             <DialogTitle>{t("complaints", "editComplaint")}</DialogTitle>
           </DialogHeader>
-          
-          <div className="px-5 pt-5 pb-2">
-            <h3 className="text-sm font-semibold">{t("complaints", "editComplaint")}</h3>
+
+          <div className="px-5 pt-5 pb-3 border-b shrink-0">
+            <h3 className="text-base font-semibold">{t("complaints", "editComplaint")}</h3>
           </div>
-          <div className="space-y-4 px-5 pb-5">
+          <div className="space-y-4 px-5 py-5 overflow-y-auto flex-1 min-h-0">
             <div className="space-y-2">
               <Label>{t("complaints", "subject")}</Label>
               <Input
@@ -1408,7 +1408,7 @@ export default function Complaints() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 px-5 py-4 border-t shrink-0 bg-background">
             <Button
               variant="outline"
               className="flex-1 rounded-lg"
