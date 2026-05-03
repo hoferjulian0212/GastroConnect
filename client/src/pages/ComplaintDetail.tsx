@@ -467,6 +467,17 @@ export default function ComplaintDetail() {
     }
   };
 
+  const categoryLabels: Record<ActionCategory, { de: string; it: string }> = {
+    primary: { de: "Status", it: "Stato" },
+    fulfillment: { de: "Abwicklung", it: "Gestione" },
+    communication: { de: "Kommunikation", it: "Comunicazione" },
+    destructive: { de: "Gefahrenzone", it: "Zona pericolo" },
+  };
+  const categoryOrder: ActionCategory[] = ["primary", "fulfillment", "communication", "destructive"];
+  const groupedActions = categoryOrder
+    .map((cat) => ({ cat, items: actions.filter((a) => a.category === cat) }))
+    .filter((g) => g.items.length > 0);
+
   return (
     <div className="min-h-dvh bg-background flex flex-col" data-testid="page-complaint-detail">
       <div className="w-full">
@@ -503,31 +514,44 @@ export default function ComplaintDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {actions.length > 0 && !confirmAction && (
-                <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-end max-w-[55vw]" data-testid="actions-row-inline">
-                  {actions.map((action) => {
-                    const Icon = action.icon;
-                    const isDestructive = action.category === "destructive";
-                    const baseCls = isDestructive
-                      ? "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25"
-                      : getButtonClasses(action.style);
-                    const disabledCls = action.disabled
-                      ? "bg-white/5 text-white/40 border border-white/10 cursor-not-allowed hover:bg-white/5"
-                      : baseCls;
-                    return (
-                      <button
-                        key={action.testId}
-                        className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
-                        onClick={action.disabled ? undefined : action.action}
-                        disabled={action.disabled}
-                        title={action.disabled ? action.disabledReason : undefined}
-                        data-testid={action.testId}
-                      >
-                        <Icon className="h-3.5 w-3.5 shrink-0" />
-                        <span>{action.label}</span>
-                      </button>
-                    );
-                  })}
+              {groupedActions.length > 0 && !confirmAction && (
+                <div className="hidden md:flex items-stretch gap-3 flex-wrap justify-end max-w-[60vw]" data-testid="actions-row-inline">
+                  {groupedActions.map(({ cat, items }, gIdx) => (
+                    <div
+                      key={cat}
+                      className={`flex flex-col gap-1.5 ${gIdx > 0 ? "pl-3 border-l border-white/10" : ""}`}
+                      data-testid={`actions-group-${cat}`}
+                    >
+                      <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-white/40 px-0.5">
+                        {categoryLabels[cat][lang]}
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {items.map((action) => {
+                          const Icon = action.icon;
+                          const isDestructive = action.category === "destructive";
+                          const baseCls = isDestructive
+                            ? "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25"
+                            : getButtonClasses(action.style);
+                          const disabledCls = action.disabled
+                            ? "bg-white/5 text-white/40 border border-white/10 cursor-not-allowed hover:bg-white/5"
+                            : baseCls;
+                          return (
+                            <button
+                              key={action.testId}
+                              className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
+                              onClick={action.disabled ? undefined : action.action}
+                              disabled={action.disabled}
+                              title={action.disabled ? action.disabledReason : undefined}
+                              data-testid={action.testId}
+                            >
+                              <Icon className="h-3.5 w-3.5 shrink-0" />
+                              <span>{action.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -542,32 +566,41 @@ export default function ComplaintDetail() {
           </button>
         </div>
 
-        {/* Mobile actions row */}
-        {actions.length > 0 && !confirmAction && (
-          <div className="md:hidden px-4 flex flex-wrap justify-center gap-2 pt-3" data-testid="actions-row-mobile">
-            {actions.map((action) => {
-              const Icon = action.icon;
-              const isDestructive = action.category === "destructive";
-              const baseCls = isDestructive
-                ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/50"
-                : getButtonClasses(action.style);
-              const disabledCls = action.disabled
-                ? "bg-muted/40 text-muted-foreground/60 border border-border/60 cursor-not-allowed hover:bg-muted/40"
-                : baseCls;
-              return (
-                <button
-                  key={action.testId}
-                  className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
-                  onClick={action.disabled ? undefined : action.action}
-                  disabled={action.disabled}
-                  title={action.disabled ? action.disabledReason : undefined}
-                  data-testid={`${action.testId}-mobile`}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span>{action.label}</span>
-                </button>
-              );
-            })}
+        {/* Mobile actions — grouped by category with section headings */}
+        {groupedActions.length > 0 && !confirmAction && (
+          <div className="md:hidden px-4 flex flex-col gap-3 pt-3" data-testid="actions-row-mobile">
+            {groupedActions.map(({ cat, items }) => (
+              <div key={cat} className="space-y-1.5" data-testid={`actions-group-mobile-${cat}`}>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground px-1">
+                  {categoryLabels[cat][lang]}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {items.map((action) => {
+                    const Icon = action.icon;
+                    const isDestructive = action.category === "destructive";
+                    const baseCls = isDestructive
+                      ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/50"
+                      : getButtonClasses(action.style);
+                    const disabledCls = action.disabled
+                      ? "bg-muted/40 text-muted-foreground/60 border border-border/60 cursor-not-allowed hover:bg-muted/40"
+                      : baseCls;
+                    return (
+                      <button
+                        key={action.testId}
+                        className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
+                        onClick={action.disabled ? undefined : action.action}
+                        disabled={action.disabled}
+                        title={action.disabled ? action.disabledReason : undefined}
+                        data-testid={`${action.testId}-mobile`}
+                      >
+                        <Icon className="h-3.5 w-3.5 shrink-0" />
+                        <span>{action.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
