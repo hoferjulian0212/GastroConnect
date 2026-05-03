@@ -246,45 +246,40 @@ export default function ProductDetail() {
   const discountedPrice = hasPromo ? originalPrice * (1 - promo.discountPercent / 100) : originalPrice;
 
   return (
-    <div className="space-y-6">
-      <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4 space-y-3" data-testid="product-detail-hero">
-        <div className="space-y-1">
-          <h1 className="text-xl md:text-2xl font-bold text-white" data-testid="text-product-name">{product.name}</h1>
-          {product.articleNumber && (
-            <div className="text-[11px] font-mono tabular-nums text-white/50" data-testid="text-product-article-number">
-              {lang === "de" ? "Art.-Nr." : "Cod. art."} {product.articleNumber}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Avatar className="h-5 w-5">
-            <AvatarImage src={product.supplier?.profileImageUrl || undefined} />
-            <AvatarFallback className="text-[8px] bg-white/20 text-white font-semibold">
-              {(product.supplier?.companyName || product.supplier?.name || "").substring(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <span className="text-sm text-white/60">{product.supplier?.companyName || product.supplier?.name}</span>
-        </div>
-      </div>
+    <div className="space-y-4 md:space-y-6 px-3 md:px-6 pt-3 md:pt-4 pb-6">
+      <button
+        onClick={() => window.history.back()}
+        className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors -ml-1"
+        data-testid="button-back"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        {lang === "de" ? "Zurück" : "Indietro"}
+      </button>
 
-      <div className="px-4 md:px-6 lg:px-8 pt-4">
-        <button
-          onClick={() => window.history.back()}
-          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1"
-          data-testid="button-back"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {lang === "de" ? "Zurück" : "Indietro"}
-        </button>
-      </div>
-
-      <div className="max-w-3xl mx-auto">
-        <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-6">
-          <div>
-            <ProductImage src={product.imageUrl} alt={product.name} className="w-full aspect-[4/3] md:aspect-square rounded-xl" iconClassName="h-16 w-16 md:h-20 md:w-20" fallbackIconColor="text-muted-foreground/20" />
+      <div className="max-w-3xl mx-auto w-full">
+        <div className="flex flex-col md:grid md:grid-cols-[minmax(0,260px)_1fr] gap-4 md:gap-6 md:items-start">
+          <div className="mx-auto w-full max-w-[220px] md:max-w-none">
+            <ProductImage src={product.imageUrl} alt={product.name} className="w-full aspect-square rounded-xl" iconClassName="h-12 w-12 md:h-16 md:w-16" fallbackIconColor="text-muted-foreground/20" />
           </div>
 
-          <div className="space-y-3 md:space-y-4">
+          <div className="space-y-3 md:space-y-4 min-w-0">
+            <div className="space-y-1">
+              <h1 className="text-lg md:text-2xl font-bold leading-tight" data-testid="text-product-name">{product.name}</h1>
+              <div className="flex items-center gap-2 min-w-0">
+                <Avatar className="h-4 w-4 shrink-0">
+                  <AvatarImage src={product.supplier?.profileImageUrl || undefined} />
+                  <AvatarFallback className="text-[8px] bg-muted text-muted-foreground font-semibold">
+                    {(product.supplier?.companyName || product.supplier?.name || "").substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-xs text-muted-foreground truncate">{product.supplier?.companyName || product.supplier?.name}</span>
+                {product.articleNumber && (
+                  <span className="text-[10px] font-mono tabular-nums text-muted-foreground/60 shrink-0" data-testid="text-product-article-number">
+                    · {product.articleNumber}
+                  </span>
+                )}
+              </div>
+            </div>
 
             <div className="flex items-center gap-2 flex-wrap">
               {product.inStock ? (
