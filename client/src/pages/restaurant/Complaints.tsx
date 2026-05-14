@@ -477,7 +477,7 @@ export default function Complaints() {
  <div className="flex items-start justify-between gap-3">
  <div>
  <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "complaints")}</h1>
- <p className="hidden md:block text-sm text-white/50 mt-1">{lang === "de" ? "Verwalten Sie Ihre Reklamationen" : "Gestisci i tuoi reclami"}</p>
+ <p className="text-sm text-white/50 mt-1">{lang === "de" ? "Verwalten Sie Ihre Reklamationen" : "Gestisci i tuoi reclami"}</p>
  </div>
  <Button size="sm" onClick={() => setShowCreateDialog(true)} className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15" data-testid="button-new-complaint">
  <AlertCircle className="h-3.5 w-3.5 mr-1.5" />

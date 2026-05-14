@@ -942,7 +942,7 @@ export default function SupplierOrders() {
  <div className="flex items-start justify-between gap-3">
  <div>
  <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{lang === "de" ? "Aufträge" : "Ordini"}</h1>
- <p className="hidden md:block text-sm text-white/50 mt-1">{t("supplierOrders", "incomingOrders")}</p>
+ <p className="text-sm text-white/50 mt-1">{t("supplierOrders", "incomingOrders")}</p>
  </div>
  <div className="flex items-center gap-2">
  {activeStatusTab === "pending" && !batchMode && (

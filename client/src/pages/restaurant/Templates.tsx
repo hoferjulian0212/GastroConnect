@@ -171,7 +171,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
               <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
                 {t("templates", "orderTemplates")}
               </h1>
-              <p className="hidden md:block text-sm text-white/50 mt-1">
+              <p className="text-sm text-white/50 mt-1">
                 {t("templates", "orderTemplatesDesc")}
               </p>
             </div>

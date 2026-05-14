@@ -1249,7 +1249,7 @@ export default function RestaurantOrders() {
  <div className="flex items-start justify-between gap-3">
  <div>
  <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "orders")}</h1>
- <p className="hidden md:block text-sm text-white/50 mt-1">{t("orders", "allOrdersOverview")}</p>
+ <p className="text-sm text-white/50 mt-1">{t("orders", "allOrdersOverview")}</p>
  </div>
  <div className="relative hidden md:block">
  <button

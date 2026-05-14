@@ -379,7 +379,7 @@ export default function RestaurantCatalog() {
  <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
  {lang === "de" ? "Produktkatalog" : "Catalogo prodotti"}
  </h1>
- <p className="hidden md:block text-sm text-white/50 mt-1">
+ <p className="text-sm text-white/50 mt-1">
  {lang === "de"
  ? "Durchsuchen Sie verfügbare Produkte Ihrer Lieferanten."
  : "Esplora i prodotti disponibili dei tuoi fornitori."}

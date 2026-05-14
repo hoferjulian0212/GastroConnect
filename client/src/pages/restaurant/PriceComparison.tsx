@@ -452,7 +452,7 @@ export default function PriceComparison() {
  <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
  {lang === "de" ? "Preisvergleich" : "Confronto prezzi"}
  </h1>
- <p className="hidden md:block text-sm text-white/50 mt-1">
+ <p className="text-sm text-white/50 mt-1">
  {lang === "de"
  ? "Hochrechnung auf dein Bestellvolumen der letzten 90 Tage."
  : "Proiezione sul tuo volume ordini degli ultimi 90 giorni."}
