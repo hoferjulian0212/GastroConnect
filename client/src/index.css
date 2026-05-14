@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile dark hero — ensure breathing room from the top of the viewport
+   and respect the iOS safe-area inset (notch / status bar). Targets every
+   page-level dark hero (matches both `bg-[#161921]` + `rounded-b-3xl`).
+   Desktop (>=768px) is unchanged. */
+@media (max-width: 767px) {
+  div[class*="bg-[#161921]"][class*="rounded-b-3xl"] {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem) !important;
+  }
+}
+
 input[type="date"].date-empty::-webkit-datetime-edit-text,
 input[type="date"].date-empty::-webkit-datetime-edit-month-field,
 input[type="date"].date-empty::-webkit-datetime-edit-day-field,
