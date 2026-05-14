@@ -391,12 +391,6 @@ export function MobileNavBase({
         )}
       </AnimatePresence>
 
-      <div
-        aria-hidden
-        className="md:hidden fixed bottom-0 left-0 right-0 bg-background pointer-events-none z-40"
-        style={{ height: "calc(72px + env(safe-area-inset-bottom, 0px))" }}
-      />
-
       <nav
         className="md:hidden floating-nav"
         style={navStyle}
