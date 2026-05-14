@@ -295,10 +295,10 @@ export default function SupplierHomeMobile({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 {([
-                  { id: "revenue", label: t("supplierHome", "totalRevenue"), value: detailedStats.totalRevenue, prev: detailedStats.previous.totalRevenue, isCurrency: true, icon: <Euro className="h-3 w-3 text-indigo-600" /> },
-                  { id: "orders", label: t("supplierHome", "totalOrders"), value: detailedStats.totalOrders, prev: detailedStats.previous.totalOrders, isCurrency: false, icon: <Hash className="h-3 w-3 text-emerald-600" /> },
-                  { id: "avg", label: t("supplierHome", "avgOrderValue"), value: detailedStats.avgOrderValue, prev: detailedStats.previous.avgOrderValue, isCurrency: true, icon: <TrendingUp className="h-3 w-3 text-amber-600" /> },
-                  { id: "active-customers", label: t("supplierHome", "activeCustomers"), value: detailedStats.activeCustomers, prev: detailedStats.previous.activeCustomers, isCurrency: false, icon: <Users className="h-3 w-3 text-sky-600" /> },
+                  { id: "revenue", label: t("supplierHome", "totalRevenue"), value: detailedStats.totalRevenue, prev: detailedStats.previous?.totalRevenue ?? 0, isCurrency: true, icon: <Euro className="h-3 w-3 text-indigo-600" /> },
+                  { id: "orders", label: t("supplierHome", "totalOrders"), value: detailedStats.totalOrders, prev: detailedStats.previous?.totalOrders ?? 0, isCurrency: false, icon: <Hash className="h-3 w-3 text-emerald-600" /> },
+                  { id: "avg", label: t("supplierHome", "avgOrderValue"), value: detailedStats.avgOrderValue, prev: detailedStats.previous?.avgOrderValue ?? 0, isCurrency: true, icon: <TrendingUp className="h-3 w-3 text-amber-600" /> },
+                  { id: "active-customers", label: t("supplierHome", "activeCustomers"), value: detailedStats.activeCustomers, prev: detailedStats.previous?.activeCustomers ?? 0, isCurrency: false, icon: <Users className="h-3 w-3 text-sky-600" /> },
                 ] as const).map(k => {
                   const delta = calcDelta(k.value as number, k.prev as number);
                   const isUp = delta > 0; const isDown = delta < 0;

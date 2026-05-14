@@ -1470,10 +1470,10 @@ export default function SupplierHome() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
               {([
-                { id: "revenue", label: t("supplierHome", "totalRevenue"), value: detailedStats.totalRevenue, prev: detailedStats.previous.totalRevenue, isCurrency: true, icon: <Euro className="h-3.5 w-3.5 text-indigo-600 shrink-0" /> },
-                { id: "orders", label: t("supplierHome", "totalOrders"), value: detailedStats.totalOrders, prev: detailedStats.previous.totalOrders, isCurrency: false, icon: <Hash className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> },
-                { id: "avg", label: t("supplierHome", "avgOrderValue"), value: detailedStats.avgOrderValue, prev: detailedStats.previous.avgOrderValue, isCurrency: true, icon: <TrendingUp className="h-3.5 w-3.5 text-amber-600 shrink-0" /> },
-                { id: "active-customers", label: t("supplierHome", "activeCustomers"), value: detailedStats.activeCustomers, prev: detailedStats.previous.activeCustomers, isCurrency: false, icon: <Users className="h-3.5 w-3.5 text-sky-600 shrink-0" /> },
+                { id: "revenue", label: t("supplierHome", "totalRevenue"), value: detailedStats.totalRevenue, prev: detailedStats.previous?.totalRevenue ?? 0, isCurrency: true, icon: <Euro className="h-3.5 w-3.5 text-indigo-600 shrink-0" /> },
+                { id: "orders", label: t("supplierHome", "totalOrders"), value: detailedStats.totalOrders, prev: detailedStats.previous?.totalOrders ?? 0, isCurrency: false, icon: <Hash className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> },
+                { id: "avg", label: t("supplierHome", "avgOrderValue"), value: detailedStats.avgOrderValue, prev: detailedStats.previous?.avgOrderValue ?? 0, isCurrency: true, icon: <TrendingUp className="h-3.5 w-3.5 text-amber-600 shrink-0" /> },
+                { id: "active-customers", label: t("supplierHome", "activeCustomers"), value: detailedStats.activeCustomers, prev: detailedStats.previous?.activeCustomers ?? 0, isCurrency: false, icon: <Users className="h-3.5 w-3.5 text-sky-600 shrink-0" /> },
               ] as const).map(k => {
                 const delta = calcDelta(k.value as number, k.prev as number);
                 const isUp = delta > 0;
