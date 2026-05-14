@@ -9,12 +9,14 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUser } from "@/context/UserContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Notification } from "@shared/schema";
 
 export function NotificationBell() {
   const { currentUser, currentRole } = useUser();
+  const { lang } = useLanguage();
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
 
@@ -61,22 +63,20 @@ export function NotificationBell() {
   });
 
   const getNotificationRoute = (notification: Notification): string | null => {
-    if (!notification.referenceId) return null;
     const role = currentRole;
+    const ref = notification.referenceId;
 
     switch (notification.type) {
       case "new_order":
-        return `/${role}/orders?orderId=${notification.referenceId}`;
       case "order_status":
-        return `/${role}/orders?orderId=${notification.referenceId}`;
+        return ref ? `/${role}/orders?orderId=${ref}` : `/${role}/orders`;
       case "new_message":
-        return `/${role}/inbox?conversationId=${notification.referenceId}`;
+        return ref ? `/${role}/inbox?conversationId=${ref}` : `/${role}/inbox`;
       case "new_complaint":
-        return `/${role}/complaints?complaintId=${notification.referenceId}`;
       case "complaint_comment":
-        return `/${role}/complaints?complaintId=${notification.referenceId}`;
+        return ref ? `/${role}/complaints?complaintId=${ref}` : `/${role}/complaints`;
       case "low_stock":
-        return `/${role}/products`;
+        return `/${role}/inventory`;
       default:
         return null;
     }
@@ -147,11 +147,11 @@ export function NotificationBell() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return "jetzt";
+    if (diffMins < 1) return lang === "it" ? "ora" : "jetzt";
     if (diffMins < 60) return `${diffMins}m`;
     if (diffHours < 24) return `${diffHours}h`;
     if (diffDays < 7) return `${diffDays}d`;
-    return date.toLocaleDateString("de-DE", { day: "numeric", month: "short" });
+    return date.toLocaleDateString(lang === "it" ? "it-IT" : "de-DE", { day: "numeric", month: "short" });
   };
 
   const unreadNotifications = notifications?.filter(n => !n.isRead) || [];
@@ -174,7 +174,7 @@ export function NotificationBell() {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end" sideOffset={8}>
         <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-muted/30">
-          <span className="font-medium text-sm">Benachrichtigungen</span>
+          <span className="font-medium text-sm">{lang === "it" ? "Notifiche" : "Benachrichtigungen"}</span>
           {hasUnread && (
             <Button
               variant="ghost"
@@ -185,7 +185,7 @@ export function NotificationBell() {
               data-testid="button-mark-all-read"
             >
               <CheckCheck className="h-3.5 w-3.5" />
-              Alle gelesen
+              {lang === "it" ? "Tutte lette" : "Alle gelesen"}
             </Button>
           )}
         </div>
@@ -221,7 +221,7 @@ export function NotificationBell() {
                       {hasRoute && (
                         <div className="flex items-center gap-1 mt-1 text-[11px] text-primary">
                           <ExternalLink className="h-3 w-3" />
-                          <span>Anzeigen</span>
+                          <span>{lang === "it" ? "Visualizza" : "Anzeigen"}</span>
                         </div>
                       )}
                     </div>
@@ -236,7 +236,7 @@ export function NotificationBell() {
             <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-2">
               <Bell className="h-5 w-5 text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground">Keine neuen Benachrichtigungen</p>
+            <p className="text-sm text-muted-foreground">{lang === "it" ? "Nessuna nuova notifica" : "Keine neuen Benachrichtigungen"}</p>
           </div>
         )}
       </PopoverContent>
