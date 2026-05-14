@@ -6,7 +6,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, Monitor, Moon, LogOut, Smartphone, ChevronRight } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/context/LanguageContext";
@@ -16,7 +17,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
 
 export default function RestaurantSettings() {
-  const { currentUser } = useUser();
+  const { currentUser, setCurrentUser } = useUser();
+  const [, setLocation] = useLocation();
+
+  function handleLogout() {
+    try { localStorage.removeItem("gastroconnect_selected_restaurant_id"); } catch {}
+    try { localStorage.removeItem("gastroconnect_selected_supplier_id"); } catch {}
+    setCurrentUser(null);
+    queryClient.clear();
+    setLocation("/");
+  }
   const { toast } = useToast();
   const { isDark, setTheme } = useTheme();
   const { lang } = useLanguage();
@@ -258,14 +268,14 @@ export default function RestaurantSettings() {
 
         <Card className="flex-1 border-destructive/30">
           <CardContent className="p-3 flex items-center justify-center">
-            <Link
-              href="/"
+            <button
+              onClick={handleLogout}
               className="flex items-center gap-2 text-destructive font-medium transition-colors"
               data-testid="button-logout"
             >
               <LogOut className="h-4 w-4" />
               <span className="text-sm font-semibold">{t("common", "logout")}</span>
-            </Link>
+            </button>
           </CardContent>
         </Card>
       </div>
