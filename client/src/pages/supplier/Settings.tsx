@@ -52,7 +52,7 @@ export default function SupplierSettings() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6 pb-[var(--mobile-bottom-pad)] md:pb-0">
       <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6">
         <h1 className="text-xl md:text-3xl font-bold text-white mb-3 md:mb-4" data-testid="text-page-title">
           {t("common", "settings")}

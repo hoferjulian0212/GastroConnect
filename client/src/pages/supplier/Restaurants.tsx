@@ -56,7 +56,7 @@ export default function SupplierRestaurants() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6 pb-[var(--mobile-bottom-pad)] md:pb-0">
       <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6">
         <h1 className="text-xl md:text-3xl font-bold text-white mb-3 md:mb-4" data-testid="text-page-title">
           {t("supplierRestaurants", "title")}
@@ -363,7 +363,7 @@ function RestaurantDetail({
   };
 
   return (
-    <div className="space-y-4 md:space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-4 md:space-y-6 max-w-4xl mx-auto pb-[var(--mobile-bottom-pad)] md:pb-0">
       <button
         onClick={onBack}
         className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1"

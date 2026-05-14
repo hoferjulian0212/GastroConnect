@@ -45,7 +45,7 @@ export default function RestaurantSuppliers() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-4 md:space-y-6 max-w-6xl mx-auto pb-[var(--mobile-bottom-pad)] md:pb-0">
       <MobilePageHeader
         title={lang === "de" ? "Lieferanten" : "Fornitori"}
         subtitle={lang === "de" ? "Ihre verbundenen Lieferanten" : "I tuoi fornitori collegati"}

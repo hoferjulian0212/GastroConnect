@@ -164,7 +164,7 @@ export function MobileNavBase({
 
           <button
             type="button"
-            onClick={() => setIsMoreOpen(true)}
+            onClick={() => setIsMoreOpen((v) => !v)}
             className={`flex-1 flex flex-col items-center justify-center gap-1 relative py-3 select-none ${
               isMoreActive || isMoreOpen ? "nav-item-active" : "nav-item-inactive"
             }`}

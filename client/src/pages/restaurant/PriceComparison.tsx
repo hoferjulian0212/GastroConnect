@@ -444,7 +444,7 @@ export default function PriceComparison() {
  })();
 
  return (
- <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
+ <div className="space-y-4 md:space-y-6 pb-[var(--mobile-bottom-pad)] md:pb-6">
  {/* ─── HERO (slim, single headline) ─────────────────────────────── */}
  <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 md:" data-testid="price-comparison-hero">
  <div className="flex items-start justify-between gap-3 mb-3">

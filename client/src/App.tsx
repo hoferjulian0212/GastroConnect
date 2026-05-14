@@ -523,7 +523,7 @@ function AppLayout() {
               </header>
               <HeroOutlet />
             </div>
-            <main className={`flex-1 flex flex-col min-h-0 ${isInChat || isDetailPage ? 'p-0 pb-0' : isInboxPage ? 'pt-0 pb-0 md:pb-4' : 'pt-0 pb-[var(--mobile-bottom-pad)] md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
+            <main className={`flex-1 flex flex-col min-h-0 ${isInChat || isDetailPage ? 'p-0 pb-0' : isInboxPage ? 'pt-0 pb-0 md:pb-4' : 'pt-0 pb-0 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
               <div key={location.split("?")[0]} className="animate-page-enter flex-1 flex flex-col min-h-0">
                 <PageHero />
                 {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}

@@ -471,7 +471,7 @@ export default function Complaints() {
  },
  });
  }}
- className="space-y-3 md:space-y-4"
+ className="space-y-3 md:space-y-4 pb-[var(--mobile-bottom-pad)] md:pb-0"
  >
  <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="complaints-hero">
  <div className="flex items-start justify-between gap-3">

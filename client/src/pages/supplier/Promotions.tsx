@@ -291,7 +291,7 @@ export default function SupplierPromotions() {
   const canSubmit = canGoToStep3 && (targetMode === "all" || selectedRestaurantIds.length > 0);
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6 pb-[var(--mobile-bottom-pad)] md:pb-0">
       <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-4" data-testid="promotions-hero">
         <div className="flex items-center justify-between gap-3">
           <div>

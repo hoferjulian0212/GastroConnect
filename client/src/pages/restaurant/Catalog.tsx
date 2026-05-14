@@ -370,7 +370,7 @@ export default function RestaurantCatalog() {
  },
  });
  }}
- className="space-y-4 md:space-y-6"
+ className="space-y-4 md:space-y-6 pb-[var(--mobile-bottom-pad)] md:pb-0"
  >
  {!selectedCategory ? (
  <>

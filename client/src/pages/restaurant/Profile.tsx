@@ -139,7 +139,7 @@ export default function RestaurantProfile() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6 pb-[var(--mobile-bottom-pad)] md:pb-0">
       <MobilePageHeader
         title={lang === "de" ? "Profil" : "Profilo"}
         subtitle={lang === "de" ? "Verwalten Sie Ihr Profil" : "Gestisci il tuo profilo"}

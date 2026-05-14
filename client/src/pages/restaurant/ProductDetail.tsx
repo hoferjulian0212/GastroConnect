@@ -246,7 +246,7 @@ export default function ProductDetail() {
   const discountedPrice = hasPromo ? originalPrice * (1 - promo.discountPercent / 100) : originalPrice;
 
   return (
-    <div className="space-y-4 md:space-y-6 px-3 md:px-6 pt-3 md:pt-4 pb-6">
+    <div className="space-y-4 md:space-y-6 px-3 md:px-6 pt-3 md:pt-4 pb-[var(--mobile-bottom-pad)] md:pb-6">
       <button
         onClick={() => window.history.back()}
         className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors -ml-1"
