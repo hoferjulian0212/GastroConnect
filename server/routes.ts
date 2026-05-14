@@ -2924,8 +2924,16 @@ export async function registerRoutes(
       // Initialize zeroed entries for every supplier the restaurant has ever
       // interacted with (any status) so the response shape matches the legacy
       // per-supplier endpoint even when no qualifying orders exist.
-      const result: Record<string, any> = {};
-      const ensureEntry = (supplierId: string) => {
+      type MonthBucket = { month: string; total: number; count: number };
+      type SupplierStatsEntry = {
+        totalOrders: number;
+        totalSpent: string;
+        avgOrderValue: string;
+        monthlyBreakdown: MonthBucket[];
+        _spentNumeric: number;
+      };
+      const result: Record<string, SupplierStatsEntry> = {};
+      const ensureEntry = (supplierId: string): SupplierStatsEntry => {
         if (!result[supplierId]) {
           result[supplierId] = {
             totalOrders: 0,
@@ -2954,13 +2962,17 @@ export async function registerRoutes(
         }
       }
 
+      const response: Record<string, Omit<SupplierStatsEntry, "_spentNumeric">> = {};
       for (const supplierId of Object.keys(result)) {
         const entry = result[supplierId];
-        entry.totalSpent = entry._spentNumeric.toFixed(2);
-        entry.avgOrderValue = (entry.totalOrders > 0 ? entry._spentNumeric / entry.totalOrders : 0).toFixed(2);
-        delete entry._spentNumeric;
+        const { _spentNumeric, ...rest } = entry;
+        response[supplierId] = {
+          ...rest,
+          totalSpent: _spentNumeric.toFixed(2),
+          avgOrderValue: (entry.totalOrders > 0 ? _spentNumeric / entry.totalOrders : 0).toFixed(2),
+        };
       }
-      res.json(result);
+      res.json(response);
     } catch (error) {
       console.error("Error fetching batched supplier stats:", error);
       res.status(500).json({ error: "Failed to fetch stats" });
