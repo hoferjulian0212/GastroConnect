@@ -1466,7 +1466,7 @@ export default function SupplierHome() {
             </div>
             <Skeleton className="h-48 w-full rounded-xl" />
           </div>
-        ) : detailedStats && (detailedStats.totalOrders > 0 || detailedStats.topProducts.length > 0) ? (
+        ) : detailedStats && (detailedStats.totalOrders > 0 || (detailedStats.topProducts?.length ?? 0) > 0) ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
               {([
@@ -1486,8 +1486,8 @@ export default function SupplierHome() {
                     </div>
                     <p className="text-base md:text-xl font-bold text-foreground tabular-nums tracking-tight whitespace-nowrap" data-testid={`kpi-value-${k.id}`}>
                       {k.isCurrency
-                        ? `${(k.value as number).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€`
-                        : (k.value as number).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}
+                        ? `${((k.value as number) ?? 0).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€`
+                        : ((k.value as number) ?? 0).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}
                     </p>
                     <div className="flex items-center gap-1 mt-1" data-testid={`kpi-delta-${k.id}`}>
                       {isUp && <TrendingUp className="h-3 w-3 text-emerald-600" />}
@@ -1603,10 +1603,10 @@ export default function SupplierHome() {
                 <TabsTrigger value="customers" data-testid="tab-top-customers">{t("supplierHome", "topCustomers")}</TabsTrigger>
               </TabsList>
               <TabsContent value="products" className="mt-3">
-                {detailedStats.topProducts.length > 0 ? (
+                {(detailedStats.topProducts?.length ?? 0) > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-                    {detailedStats.topProducts.slice(0, 6).map((product, idx) => {
-                      const maxQty = detailedStats.topProducts[0]?.quantity || 1;
+                    {(detailedStats.topProducts ?? []).slice(0, 6).map((product, idx) => {
+                      const maxQty = (detailedStats.topProducts ?? [])[0]?.quantity || 1;
                       const pct = Math.round((product.quantity / maxQty) * 100);
                       const qDelta = calcDelta(product.quantity, product.previousQuantity);
                       return (
@@ -1643,10 +1643,10 @@ export default function SupplierHome() {
                 )}
               </TabsContent>
               <TabsContent value="customers" className="mt-3">
-                {detailedStats.topCustomers.length > 0 ? (
+                {(detailedStats.topCustomers?.length ?? 0) > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                    {detailedStats.topCustomers.slice(0, 6).map((c, idx) => {
-                      const maxRev = detailedStats.topCustomers[0]?.revenue || 1;
+                    {(detailedStats.topCustomers ?? []).slice(0, 6).map((c, idx) => {
+                      const maxRev = (detailedStats.topCustomers ?? [])[0]?.revenue || 1;
                       const pct = Math.round((c.revenue / maxRev) * 100);
                       return (
                         <div key={c.restaurantId || idx} className="rounded-xl border border-border bg-card p-2.5 md:p-3 cursor-pointer hover:border-primary/40 transition-colors"

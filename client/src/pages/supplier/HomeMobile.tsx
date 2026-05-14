@@ -310,8 +310,8 @@ export default function SupplierHomeMobile({
                       </div>
                       <p className="text-base font-bold tabular-nums tracking-tight" data-testid={`kpi-value-${k.id}-mobile`}>
                         {k.isCurrency
-                          ? `${(k.value as number).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { maximumFractionDigits: 0 })}€`
-                          : (k.value as number).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}
+                          ? `${((k.value as number) ?? 0).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { maximumFractionDigits: 0 })}€`
+                          : ((k.value as number) ?? 0).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}
                       </p>
                       <div className="flex items-center gap-1 mt-1" data-testid={`kpi-delta-${k.id}-mobile`}>
                         {isUp && <TrendingUp className="h-3 w-3 text-emerald-600" />}
