@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
-import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema } from "@shared/schema";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 
 const insertProductSchema = _insertProductSchema.strict();
@@ -16,6 +16,8 @@ const updateComplaintSchema = _updateComplaintSchema.strict();
 const insertComplaintCommentSchema = _insertComplaintCommentSchema.strict();
 const insertNotificationSchema = _insertNotificationSchema.strict();
 const insertPromotionSchema = _insertPromotionSchema.strict();
+const insertCustomMinOrderQuantitySchema = _insertCustomMinOrderQuantitySchema.strict();
+const insertCustomPriceSchema = _insertCustomPriceSchema.strict();
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { objectStorageClient, ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
 import PDFDocument from "pdfkit";
@@ -642,13 +644,16 @@ export async function registerRoutes(
 
   app.put("/api/custom-moq", async (req, res) => {
     try {
-      const { productId, supplierId, restaurantId, minOrderQuantity } = req.body;
-      if (!productId || !supplierId || !restaurantId || !minOrderQuantity || minOrderQuantity < 1) {
-        return res.status(400).json({ error: "Invalid data" });
+      const validated = insertCustomMinOrderQuantitySchema.parse(req.body);
+      if (validated.minOrderQuantity < 1) {
+        return res.status(400).json({ error: "minOrderQuantity must be >= 1" });
       }
-      const moq = await storage.setCustomMinOrderQuantity({ productId, supplierId, restaurantId, minOrderQuantity });
+      const moq = await storage.setCustomMinOrderQuantity(validated);
       res.json(moq);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to set custom MOQ" });
     }
   });
@@ -681,13 +686,16 @@ export async function registerRoutes(
 
   app.put("/api/custom-prices", async (req, res) => {
     try {
-      const { productId, supplierId, restaurantId, customPrice } = req.body;
-      if (!productId || !supplierId || !restaurantId || !customPrice || parseFloat(customPrice) <= 0) {
-        return res.status(400).json({ error: "Invalid data" });
+      const validated = insertCustomPriceSchema.parse(req.body);
+      if (parseFloat(validated.customPrice) <= 0) {
+        return res.status(400).json({ error: "customPrice must be > 0" });
       }
-      const price = await storage.setCustomPrice({ productId, supplierId, restaurantId, customPrice });
+      const price = await storage.setCustomPrice(validated);
       res.json(price);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to set custom price" });
     }
   });
@@ -2890,6 +2898,72 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
       }
       res.status(500).json({ error: "Failed to remove push subscription" });
+    }
+  });
+
+  app.get("/api/restaurant/supplier-order-stats/batch", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      if (!restaurantId) {
+        return res.status(400).json({ error: "restaurantId required" });
+      }
+      const allOrders = await db.select().from(orders)
+        .where(eq(orders.restaurantId, restaurantId));
+      const delivered = allOrders.filter(o => o.status === "delivered" || o.status === "confirmed" || o.status === "in_delivery" || o.status === "partially_confirmed");
+
+      const now = new Date();
+      const monthKeys: { key: string; label: string }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        monthKeys.push({
+          key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+          label: d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" }),
+        });
+      }
+
+      // Initialize zeroed entries for every supplier the restaurant has ever
+      // interacted with (any status) so the response shape matches the legacy
+      // per-supplier endpoint even when no qualifying orders exist.
+      const result: Record<string, any> = {};
+      const ensureEntry = (supplierId: string) => {
+        if (!result[supplierId]) {
+          result[supplierId] = {
+            totalOrders: 0,
+            totalSpent: "0.00",
+            avgOrderValue: "0.00",
+            monthlyBreakdown: monthKeys.map(({ label }) => ({ month: label, total: 0, count: 0 })),
+            _spentNumeric: 0,
+          };
+        }
+        return result[supplierId];
+      };
+
+      for (const o of allOrders) ensureEntry(o.supplierId);
+
+      for (const o of delivered) {
+        const entry = ensureEntry(o.supplierId);
+        const amount = Number(o.totalAmount || 0);
+        entry.totalOrders += 1;
+        entry._spentNumeric += amount;
+        const d = new Date(o.createdAt);
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const idx = monthKeys.findIndex(m => m.key === k);
+        if (idx >= 0) {
+          entry.monthlyBreakdown[idx].total += amount;
+          entry.monthlyBreakdown[idx].count += 1;
+        }
+      }
+
+      for (const supplierId of Object.keys(result)) {
+        const entry = result[supplierId];
+        entry.totalSpent = entry._spentNumeric.toFixed(2);
+        entry.avgOrderValue = (entry.totalOrders > 0 ? entry._spentNumeric / entry.totalOrders : 0).toFixed(2);
+        delete entry._spentNumeric;
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching batched supplier stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
 

@@ -745,10 +745,11 @@ export default function Documents() {
 }
 
 function SupplierStatsCard({ restaurantId, supplierId, lang, currentRole }: { restaurantId: string; supplierId: string; lang: string; currentRole: string }) {
-  const { data: stats, isLoading } = useQuery<SupplierStats>({
-    queryKey: [`/api/restaurant/supplier-order-stats?restaurantId=${restaurantId}&supplierId=${supplierId}`],
-    enabled: !!restaurantId && !!supplierId && currentRole === "restaurant",
+  const { data: batch, isLoading } = useQuery<Record<string, SupplierStats>>({
+    queryKey: [`/api/restaurant/supplier-order-stats/batch?restaurantId=${restaurantId}`],
+    enabled: !!restaurantId && currentRole === "restaurant",
   });
+  const stats = batch?.[supplierId];
 
   if (currentRole !== "restaurant") return null;
 

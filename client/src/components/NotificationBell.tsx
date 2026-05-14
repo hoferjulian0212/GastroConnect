@@ -76,7 +76,7 @@ export function NotificationBell() {
       case "complaint_comment":
         return ref ? `/${role}/complaints?complaintId=${ref}` : `/${role}/complaints`;
       case "low_stock":
-        return `/${role}/inventory`;
+        return role === "supplier" ? "/supplier/inventory" : null;
       default:
         return null;
     }
