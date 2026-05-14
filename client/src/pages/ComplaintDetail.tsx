@@ -211,10 +211,11 @@ export default function ComplaintDetail() {
     if (!complaint) return;
     const counterpartyId = isSupplier ? complaint.restaurantId : complaint.supplierId;
     const conv = conversations?.find((c: any) => c.otherUser?.id === counterpartyId);
+    const refParams = `&complaintRefId=${complaint.id}${complaint.complaintNumber ? `&complaintNumber=${encodeURIComponent(String(complaint.complaintNumber))}` : ""}`;
     if (conv) {
-      setLocation(`/${currentRole}/inbox?chat=${conv.id}`);
+      setLocation(`/${currentRole}/inbox?chat=${conv.id}${refParams}`);
     } else {
-      setLocation(`/${currentRole}/inbox`);
+      setLocation(`/${currentRole}/inbox?${refParams.replace(/^&/, "")}&to=${counterpartyId}`);
     }
   };
 

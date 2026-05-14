@@ -183,6 +183,7 @@ export default function RestaurantInbox() {
   const [complaintTitle, setComplaintTitle] = useState("");
   const [pendingSupplierRedirect, setPendingSupplierRedirect] = useState<string | null>(null);
   const [attachedOrderRef, setAttachedOrderRef] = useState<{ id: string; label: string } | null>(null);
+  const [attachedComplaintRef, setAttachedComplaintRef] = useState<{ id: string; label: string } | null>(null);
   const [replyToMessage, setReplyToMessage] = useState<{ id: string; senderName: string; preview: string } | null>(null);
   const [complaintDescription, setComplaintDescription] = useState("");
   const [messagePriority, setMessagePriority] = useState<"standard" | "important">("standard");
@@ -229,6 +230,13 @@ export default function RestaurantInbox() {
       const display = orderNumberParam || formatOrderNumber({ orderNumber: null, id: orderRefIdParam });
       const label = `${lang === "de" ? "Bestellung" : "Ordine"} #${display}`;
       setAttachedOrderRef({ id: orderRefIdParam, label });
+    }
+    const complaintRefIdParam = params.get("complaintRefId");
+    if (complaintRefIdParam) {
+      const complaintNumberParam = params.get("complaintNumber");
+      const display = complaintNumberParam || formatComplaintNumber({ complaintNumber: null, id: complaintRefIdParam });
+      const label = `${lang === "de" ? "Reklamation" : "Reclamo"} #${display}`;
+      setAttachedComplaintRef({ id: complaintRefIdParam, label });
     }
     const conversationIdParam = params.get("conversationId") || params.get("chat");
     if (conversationIdParam) {
@@ -702,6 +710,7 @@ export default function RestaurantInbox() {
     setSelectedConversation(conversationId);
     setReplyToMessage(null);
     setAttachedOrderRef(null);
+    setAttachedComplaintRef(null);
     if (currentUser?.id) {
       markAsReadMutation.mutate(conversationId);
       apiRequest("PATCH", `/api/notifications/read-by-reference?userId=${currentUser.id}&referenceId=${conversationId}&type=new_message`).then(() => {
@@ -726,6 +735,7 @@ export default function RestaurantInbox() {
       setMessageText("");
       setMessagePriority("standard");
       setAttachedOrderRef(null);
+      setAttachedComplaintRef(null);
       setReplyToMessage(null);
       setTimeout(scrollToBottom, 100);
     },
@@ -968,6 +978,13 @@ export default function RestaurantInbox() {
           refType: "order",
           refId: attachedOrderRef.id,
           refLabel: attachedOrderRef.label,
+          text: messageText.trim(),
+        });
+      } else if (attachedComplaintRef) {
+        content = JSON.stringify({
+          refType: "complaint",
+          refId: attachedComplaintRef.id,
+          refLabel: attachedComplaintRef.label,
           text: messageText.trim(),
         });
       } else if (replyToMessage) {
@@ -2620,6 +2637,21 @@ export default function RestaurantInbox() {
                           onClick={() => setAttachedOrderRef(null)}
                           className="ml-1 hover:text-destructive transition-colors"
                           data-testid="button-remove-order-ref"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {attachedComplaintRef && (
+                    <div className="flex items-center gap-2 mb-3 px-1" data-testid="attached-complaint-ref">
+                      <div className="flex items-center gap-1.5 bg-red-500/10 text-red-600 dark:text-red-400 rounded-full px-3 py-1 text-xs font-medium">
+                        <AlertCircle className="h-3 w-3" />
+                        <span className="truncate max-w-[200px]">{attachedComplaintRef.label}</span>
+                        <button
+                          onClick={() => setAttachedComplaintRef(null)}
+                          className="ml-1 hover:text-destructive transition-colors"
+                          data-testid="button-remove-complaint-ref"
                         >
                           <X className="h-3 w-3" />
                         </button>

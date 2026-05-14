@@ -237,10 +237,11 @@ export default function OrderDetail() {
     if (!order) return;
     const counterpartyId = isSupplier ? order.restaurantId : order.supplierId;
     const conv = conversations?.find((c: any) => c.otherUser?.id === counterpartyId);
+    const refParams = `&orderRefId=${order.id}${order.orderNumber ? `&orderNumber=${encodeURIComponent(String(order.orderNumber))}` : ""}`;
     if (conv) {
-      setLocation(`/${currentRole}/inbox?chat=${conv.id}`);
+      setLocation(`/${currentRole}/inbox?chat=${conv.id}${refParams}`);
     } else {
-      setLocation(`/${currentRole}/inbox`);
+      setLocation(`/${currentRole}/inbox?${refParams.replace(/^&/, "")}&to=${counterpartyId}`);
     }
   };
 

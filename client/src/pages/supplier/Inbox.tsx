@@ -158,6 +158,9 @@ export default function SupplierInbox() {
   const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
   const [confirmOrderForDialog, setConfirmOrderForDialog] = useState<any | null>(null);
   const [replyToMessage, setReplyToMessage] = useState<{ id: string; senderName: string; preview: string } | null>(null);
+  const [attachedOrderRef, setAttachedOrderRef] = useState<{ id: string; label: string } | null>(null);
+  const [attachedComplaintRef, setAttachedComplaintRef] = useState<{ id: string; label: string } | null>(null);
+  const [pendingRestaurantRedirect, setPendingRestaurantRedirect] = useState<string | null>(null);
   const [messagePriority, setMessagePriority] = useState<"standard" | "important">("standard");
   const [priorityPopoverOpen, setPriorityPopoverOpen] = useState(false);
 
@@ -190,6 +193,10 @@ export default function SupplierInbox() {
 
   useEffect(() => {
     const params = new URLSearchParams(searchString);
+    const toRestaurantId = params.get("to");
+    if (toRestaurantId && currentUser?.id) {
+      setPendingRestaurantRedirect(toRestaurantId);
+    }
     const conversationIdParam = params.get("conversationId") || params.get("chat");
     if (conversationIdParam) {
       setSelectedConversation(conversationIdParam);
@@ -209,7 +216,21 @@ export default function SupplierInbox() {
       setSelectedComplaintId(complaintIdParam);
       setShowComplaintDetail(true);
     }
-  }, [searchString, currentUser?.id]);
+    const orderRefIdParam = params.get("orderRefId");
+    if (orderRefIdParam) {
+      const orderNumberParam = params.get("orderNumber");
+      const display = orderNumberParam || formatOrderNumber({ orderNumber: null, id: orderRefIdParam });
+      const label = `${lang === "de" ? "Bestellung" : "Ordine"} #${display}`;
+      setAttachedOrderRef({ id: orderRefIdParam, label });
+    }
+    const complaintRefIdParam = params.get("complaintRefId");
+    if (complaintRefIdParam) {
+      const complaintNumberParam = params.get("complaintNumber");
+      const display = complaintNumberParam || formatComplaintNumber({ complaintNumber: null, id: complaintRefIdParam });
+      const label = `${lang === "de" ? "Reklamation" : "Reclamo"} #${display}`;
+      setAttachedComplaintRef({ id: complaintRefIdParam, label });
+    }
+  }, [searchString, currentUser?.id, lang]);
 
   const { data: orderDetail, refetch: refetchOrderDetail } = useQuery<OrderWithDetails>({
     queryKey: ["/api/orders", orderDetailId],
@@ -432,6 +453,35 @@ export default function SupplierInbox() {
     refetchIntervalInBackground: false,
   });
 
+  useEffect(() => {
+    const createAndSelectConversation = async () => {
+      if (pendingRestaurantRedirect && currentUser?.id && conversations) {
+        const existingConv = conversations.find(c => c.otherUser.id === pendingRestaurantRedirect);
+        if (existingConv) {
+          setSelectedConversation(existingConv.id);
+          setPendingRestaurantRedirect(null);
+          setLocation("/supplier/inbox");
+        } else {
+          try {
+            const response = await apiRequest("POST", "/api/conversations", {
+              restaurantId: pendingRestaurantRedirect,
+              supplierId: currentUser.id,
+            });
+            const newConversation = await response.json();
+            queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser.id}`] });
+            setSelectedConversation(newConversation.id);
+            setPendingRestaurantRedirect(null);
+            setLocation("/supplier/inbox");
+          } catch (error) {
+            console.error("Failed to create conversation:", error);
+            setPendingRestaurantRedirect(null);
+          }
+        }
+      }
+    };
+    createAndSelectConversation();
+  }, [pendingRestaurantRedirect, currentUser?.id, conversations, setLocation]);
+
   const { data: conversationDocs } = useQuery<any[]>({
     queryKey: ['/api/conversations', selectedConversation, 'documents', currentUser?.id],
     queryFn: async () => {
@@ -557,6 +607,8 @@ export default function SupplierInbox() {
   const handleSelectConversation = (conversationId: string) => {
     setSelectedConversation(conversationId);
     setReplyToMessage(null);
+    setAttachedOrderRef(null);
+    setAttachedComplaintRef(null);
     if (currentUser?.id) {
       markAsReadMutation.mutate(conversationId);
       apiRequest("PATCH", `/api/notifications/read-by-reference?userId=${currentUser.id}&referenceId=${conversationId}&type=new_message`).then(() => {
@@ -581,6 +633,8 @@ export default function SupplierInbox() {
       setMessageText("");
       setMessagePriority("standard");
       setReplyToMessage(null);
+      setAttachedOrderRef(null);
+      setAttachedComplaintRef(null);
       setTimeout(scrollToBottom, 100);
     },
   });
@@ -705,7 +759,21 @@ export default function SupplierInbox() {
   const handleSendMessage = () => {
     if (messageText.trim() && selectedConversation) {
       let content = messageText.trim();
-      if (replyToMessage) {
+      if (attachedOrderRef) {
+        content = JSON.stringify({
+          refType: "order",
+          refId: attachedOrderRef.id,
+          refLabel: attachedOrderRef.label,
+          text: messageText.trim(),
+        });
+      } else if (attachedComplaintRef) {
+        content = JSON.stringify({
+          refType: "complaint",
+          refId: attachedComplaintRef.id,
+          refLabel: attachedComplaintRef.label,
+          text: messageText.trim(),
+        });
+      } else if (replyToMessage) {
         content = JSON.stringify({
           refType: "reply",
           refId: replyToMessage.id,
@@ -1998,6 +2066,36 @@ export default function SupplierInbox() {
                             <X className="h-3.5 w-3.5" />
                           </button>
                         </div>
+                      </div>
+                    </div>
+                  )}
+                  {attachedOrderRef && (
+                    <div className="flex items-center gap-2 mb-3 px-1" data-testid="attached-order-ref">
+                      <div className="flex items-center gap-1.5 bg-primary/10 text-primary rounded-full px-3 py-1 text-xs font-medium">
+                        <ShoppingBag className="h-3 w-3" />
+                        <span className="truncate max-w-[200px]">{attachedOrderRef.label}</span>
+                        <button
+                          onClick={() => setAttachedOrderRef(null)}
+                          className="ml-1 hover:text-destructive transition-colors"
+                          data-testid="button-remove-order-ref"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {attachedComplaintRef && (
+                    <div className="flex items-center gap-2 mb-3 px-1" data-testid="attached-complaint-ref">
+                      <div className="flex items-center gap-1.5 bg-red-500/10 text-red-600 dark:text-red-400 rounded-full px-3 py-1 text-xs font-medium">
+                        <AlertCircle className="h-3 w-3" />
+                        <span className="truncate max-w-[200px]">{attachedComplaintRef.label}</span>
+                        <button
+                          onClick={() => setAttachedComplaintRef(null)}
+                          className="ml-1 hover:text-destructive transition-colors"
+                          data-testid="button-remove-complaint-ref"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
                       </div>
                     </div>
                   )}
