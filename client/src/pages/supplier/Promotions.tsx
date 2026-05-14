@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -291,7 +292,7 @@ export default function SupplierPromotions() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl space-y-4" data-testid="promotions-hero">
+      <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-4" data-testid="promotions-hero">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "promotions")}</h1>
@@ -347,7 +348,7 @@ export default function SupplierPromotions() {
             </div>
           );
         })()}
-      </div>
+      </div></HeroPortal>
 
       <div className="space-y-4 px-3 md:px-6">
         {isLoading ? (

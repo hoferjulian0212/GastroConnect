@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { ChatProvider, useChat } from "@/context/ChatContext";
+import { HeroProvider, HeroOutlet, HeroPortal } from "@/context/HeroContext";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -386,12 +387,14 @@ function PageHero() {
   if (!page) return null;
 
   return (
-    <div className="hidden md:block bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-5 md:pb-8 rounded-b-3xl mb-3 md:mb-4" data-testid="page-hero">
-      <h1 className="text-xl md:text-3xl font-bold text-white">{page.title}</h1>
-      {page.subtitle && (
-        <p className="hidden md:block text-sm text-white/50 mt-1">{page.subtitle}</p>
-      )}
-    </div>
+    <HeroPortal desktopOnly>
+      <div className="px-3 md:px-6 pt-3 md:pt-4 pb-5 md:pb-8" data-testid="page-hero">
+        <h1 className="text-xl md:text-3xl font-bold text-white">{page.title}</h1>
+        {page.subtitle && (
+          <p className="hidden md:block text-sm text-white/50 mt-1">{page.subtitle}</p>
+        )}
+      </div>
+    </HeroPortal>
   );
 }
 
@@ -484,32 +487,35 @@ function AppLayout() {
       ) : (
         <div className="flex h-dvh w-full">
           <div ref={scrollContainerRef} className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} ${isInChat ? '' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
-            <header className={`dark hidden md:flex items-center gap-3 md:gap-4 px-3 py-2.5 md:px-6 md:py-2.5 bg-[#161921] shrink-0 rounded-t-3xl ${isInChat || isDetailPage ? 'md:flex' : ''}`}>
-              <div className="flex items-center gap-3 shrink-0 md:flex-1 md:min-w-0">
-                <MobileProfileButton />
-                <div className="hidden md:flex items-center gap-0 shrink-0 md:-ml-3">
-                  <img src={logoImg} alt="GastroConnect Logo" className="h-[72px] w-[72px] object-contain brightness-0 invert" />
-                  <span className="font-bold text-white tracking-tight -ml-1 text-[18px]">GastroConnect</span>
-                </div>
-              </div>
-              <HeaderNav />
-              <div className="flex items-center gap-2 shrink-0 md:flex-1 md:min-w-0 md:justify-end">
-                <div className="hidden md:block">
-                  <RoleSwitcher />
-                </div>
-                <div className="hidden md:block">
-                  <AccountSwitcher compact />
-                </div>
-                <LanguageToggle />
-                {currentRole === "restaurant" && (
-                  <div className="hidden md:block">
-                    <CartButton />
+            <div className={`dark hidden md:block bg-[#161921] shrink-0 rounded-3xl mb-3 md:mb-4 ${isInChat || isDetailPage ? 'md:block' : ''}`} data-testid="app-header-shell">
+              <header className="flex items-center gap-3 md:gap-4 px-3 py-2.5 md:px-6 md:py-2.5">
+                <div className="flex items-center gap-3 shrink-0 md:flex-1 md:min-w-0">
+                  <MobileProfileButton />
+                  <div className="hidden md:flex items-center gap-0 shrink-0 md:-ml-3">
+                    <img src={logoImg} alt="GastroConnect Logo" className="h-[72px] w-[72px] object-contain brightness-0 invert" />
+                    <span className="font-bold text-white tracking-tight -ml-1 text-[18px]">GastroConnect</span>
                   </div>
-                )}
-                <NotificationBell />
-                <DesktopProfileButton />
-              </div>
-            </header>
+                </div>
+                <HeaderNav />
+                <div className="flex items-center gap-2 shrink-0 md:flex-1 md:min-w-0 md:justify-end">
+                  <div className="hidden md:block">
+                    <RoleSwitcher />
+                  </div>
+                  <div className="hidden md:block">
+                    <AccountSwitcher compact />
+                  </div>
+                  <LanguageToggle />
+                  {currentRole === "restaurant" && (
+                    <div className="hidden md:block">
+                      <CartButton />
+                    </div>
+                  )}
+                  <NotificationBell />
+                  <DesktopProfileButton />
+                </div>
+              </header>
+              <HeroOutlet />
+            </div>
             <main className={`flex-1 flex flex-col min-h-0 ${isInChat || isDetailPage ? 'p-0 pb-0' : isInboxPage ? 'pt-0 pb-2 md:pb-4' : 'pt-0 pb-28 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
               <div key={location.split("?")[0]} className="animate-page-enter flex-1 flex flex-col min-h-0">
                 <PageHero />
@@ -531,10 +537,12 @@ function App() {
         <ThemeProvider>
           <LanguageProvider>
             <UserProvider>
+              <HeroProvider>
               <ChatProvider>
                 <AppLayout />
                 <Toaster />
               </ChatProvider>
+              </HeroProvider>
             </UserProvider>
           </LanguageProvider>
         </ThemeProvider>

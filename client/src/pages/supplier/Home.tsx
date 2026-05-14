@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { HeroPortal } from "@/context/HeroContext";
 import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, TrendingDown, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert, ChevronRight, Flame } from "lucide-react";
@@ -406,7 +407,7 @@ export default function SupplierHome() {
       className="hidden md:block md:space-y-6 md:pb-6"
     >
       <div>
-        <div className="bg-[#161921] px-3 md:px-6 pt-4 md:pt-6 pb-4 md:pb-6 rounded-b-3xl">
+        <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-4 md:pt-6 pb-4 md:pb-6">
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 md:mb-5" data-testid="text-page-title">
             {currentUser?.companyName || ""}
           </h1>
@@ -462,7 +463,7 @@ export default function SupplierHome() {
               </div>
             </Link>
           </div>
-        </div>
+        </div></HeroPortal>
       </div>
 
       <DraggableCardGrid

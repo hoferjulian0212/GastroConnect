@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { useSearch, useLocation } from "wouter";
@@ -383,12 +384,12 @@ export default function SupplierComplaints() {
       }}
       className="space-y-3 md:space-y-4"
     >
-      <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4" data-testid="complaints-hero">
+      <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 md:" data-testid="complaints-hero">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "complaints")}</h1>
           <p className="hidden md:block text-sm text-white/50 mt-1">{lang === "de" ? "Verwalten Sie eingehende Reklamationen" : "Gestisci i reclami ricevuti"}</p>
         </div>
-      </div>
+      </div></HeroPortal>
 
       {/* Toolbar (Suchen · Sortieren · Filter) — page-content area, right-aligned */}
       <div className="flex items-center gap-2 flex-wrap justify-start">

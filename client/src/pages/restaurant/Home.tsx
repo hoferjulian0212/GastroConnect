@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -885,7 +886,7 @@ export default function RestaurantHome() {
       className="hidden md:block md:space-y-6 md:pb-6"
     >
       <div>
-        <div className="bg-[#161921] px-3 md:px-6 pt-4 md:pt-6 pb-4 md:pb-6 rounded-b-3xl">
+        <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-4 md:pt-6 pb-4 md:pb-6">
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 md:mb-5" data-testid="text-page-title">
             {currentUser?.companyName || ""}
           </h1>
@@ -945,7 +946,7 @@ export default function RestaurantHome() {
               </div>
             </Link>
           </div>
-        </div>
+        </div></HeroPortal>
       </div>
       <DraggableCardGrid
         userId={currentUser?.id || ""}

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -164,7 +165,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
   return (
     <div className="space-y-4 md:space-y-6">
       {!embedded ? (
-        <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4" data-testid="templates-hero">
+        <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 md:" data-testid="templates-hero">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
@@ -183,7 +184,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
               <span className="hidden sm:inline">{t("templates", "newTemplate")}</span>
             </Button>
           </div>
-        </div>
+        </div></HeroPortal>
       ) : (
         <div className="flex items-center justify-end gap-3">
           <Button onClick={() => setShowCreate(true)} data-testid="button-create-template">

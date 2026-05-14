@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { HeroPortal } from "@/context/HeroContext";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -42,7 +43,7 @@ export default function RestaurantSettings() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6 rounded-b-3xl">
+      <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6">
         <h1 className="text-xl md:text-3xl font-bold text-white mb-3 md:mb-4" data-testid="text-page-title">
           {t("common", "settings")}
         </h1>
@@ -73,7 +74,7 @@ export default function RestaurantSettings() {
             </div>
           </div>
         </Link>
-      </div>
+      </div></HeroPortal>
 
       <AccountSwitcher />
 

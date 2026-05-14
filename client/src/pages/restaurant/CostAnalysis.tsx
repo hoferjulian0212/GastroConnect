@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { HeroPortal } from "@/context/HeroContext";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -223,7 +224,7 @@ export default function CostAnalysis() {
   return (
     <div>
       <div className="space-y-4 md:space-y-6 pb-28 md:pb-6">
-        <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl space-y-4" data-testid="cost-analysis-hero">
+        <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-4" data-testid="cost-analysis-hero">
           <div className="flex items-center justify-between gap-2">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="cost-analysis-title">
@@ -353,7 +354,7 @@ export default function CostAnalysis() {
               <p className="text-white/50 text-sm mt-1">{t("costAnalysis", "noDataDesc")}</p>
             </div>
           )}
-        </div>
+        </div></HeroPortal>
 
         <div className="px-4 md:px-6 space-y-4 md:space-y-6">
 
