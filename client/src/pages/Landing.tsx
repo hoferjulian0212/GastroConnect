@@ -47,6 +47,7 @@ import {
 
 const benefitIcons = [Clock, Shield, Eye, Sparkles];
 const mobileBulletIcons = [BellRing, WifiOff, Hand, Bookmark];
+const featureIcons = [MessageSquare, FileText, Tag, Calendar, Package, FileText, BarChart3, ArrowLeftRight, Bookmark, BellRing];
 
 function Reveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -183,8 +184,20 @@ const translations = {
     restaurantMockBadgeBest: "günstigster",
     restaurantCta: "Als Betrieb starten",
 
-    showcaseHeadline: "Die Werkzeuge, die den Unterschied machen",
-    showcaseSub: "Vier Kern-Features, die Ihren Arbeitsalltag spürbar verändern.",
+    showcaseHeadline: "Funktionen im Überblick",
+    showcaseSub: "Alles, was Sie für die tägliche Zusammenarbeit zwischen Händler und Betrieb brauchen — in einer einzigen Anwendung.",
+    features: [
+      { title: "Chat & Reklamationen", desc: "Direkter Chat zu jeder Bestellung, mit Reklamationen und priorisierten Nachrichten." },
+      { title: "Lieferscheine als PDF", desc: "Lieferscheine werden automatisch als A4-PDF erzeugt und im Chat geteilt." },
+      { title: "Aktionen & Promotionen", desc: "Händler erstellen Rabattaktionen, die im Katalog des Betriebs hervorgehoben werden." },
+      { title: "Lieferpläne & Zeitfenster", desc: "Pro Kunde individuelle Liefertage und optionale Zeitfenster definieren." },
+      { title: "Reklamationen mit Nachlieferung", desc: "Betroffene Artikel auswählen — Händler bestätigt direkt eine Nachlieferung." },
+      { title: "Dokumentencenter", desc: "Alle Lieferscheine und Rechnungen pro Händler sortiert mit Statistiken." },
+      { title: "Statistiken & KPIs", desc: "Umsatz, Top-Produkte, Wareneinsatz pro Gast — Live-Dashboard für beide Seiten." },
+      { title: "Preisvergleich", desc: "Identische Produkte zwischen Händlern direkt vergleichen — mit Ersparnis-Anzeige." },
+      { title: "Bestellvorlagen", desc: "Wiederkehrende Bestellungen als Vorlage speichern und in Sekunden auslösen." },
+      { title: "Push-Benachrichtigungen", desc: "Echtzeit-Benachrichtigungen mit Deeplinks direkt in die richtige Ansicht." },
+    ],
     showcase: [
       {
         title: "Preisvergleich",
@@ -370,8 +383,20 @@ const translations = {
     restaurantMockBadgeBest: "più conveniente",
     restaurantCta: "Inizia come azienda",
 
-    showcaseHeadline: "Gli strumenti che fanno la differenza",
-    showcaseSub: "Quattro funzionalità chiave che cambiano concretamente la tua giornata lavorativa.",
+    showcaseHeadline: "Funzionalità in sintesi",
+    showcaseSub: "Tutto quello che serve per la collaborazione quotidiana tra commerciante e azienda — in un'unica applicazione.",
+    features: [
+      { title: "Chat & reclami", desc: "Chat diretta per ogni ordine, con reclami e messaggi prioritari." },
+      { title: "Bolle di consegna PDF", desc: "Bolle generate automaticamente come PDF A4 e condivise in chat." },
+      { title: "Promozioni", desc: "I commercianti creano promozioni evidenziate nel catalogo dell'azienda." },
+      { title: "Piani di consegna", desc: "Giorni di consegna individuali e finestre orarie opzionali per cliente." },
+      { title: "Reclami con riconsegna", desc: "Seleziona gli articoli interessati — il commerciante conferma una riconsegna." },
+      { title: "Centro documenti", desc: "Tutte le bolle e fatture ordinate per commerciante con statistiche." },
+      { title: "Statistiche & KPI", desc: "Fatturato, top prodotti, costo merce per ospite — dashboard live per entrambi." },
+      { title: "Confronto prezzi", desc: "Confronta prodotti identici tra commercianti — con indicazione del risparmio." },
+      { title: "Modelli d'ordine", desc: "Salva ordini ricorrenti come modelli e attivali in pochi secondi." },
+      { title: "Notifiche push", desc: "Notifiche in tempo reale con deep link direttamente alla vista corretta." },
+    ],
     showcase: [
       {
         title: "Confronto prezzi",
@@ -473,7 +498,13 @@ const showcaseIcons = [LineChart, TrendingUp, Package, Tag];
 
 export default function Landing() {
   const [, setLocation] = useLocation();
-  const { switchRole } = useUser();
+  const { currentUser, currentRole, switchRole } = useUser();
+
+  useEffect(() => {
+    if (currentUser && currentRole) {
+      setLocation(`/${currentRole}`);
+    }
+  }, [currentUser, currentRole]);
   const { lang, toggleLang } = useLanguage();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -542,7 +573,7 @@ export default function Landing() {
             </Button>
             <Button
               size="sm"
-              onClick={() => handleStart("restaurant")}
+              onClick={() => smoothScrollTo("cta")}
               data-testid="button-nav-login"
             >
               {t.navLogin}
@@ -591,27 +622,26 @@ export default function Landing() {
       </nav>
 
       {/* HERO */}
-      <section className="relative overflow-hidden py-16 md:py-24">
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/8 via-primary/3 to-transparent" />
-        <div className="absolute inset-0 -z-10 [background-image:radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.12),transparent_70%)]" />
-        <div className="mx-auto max-w-6xl px-4 md:px-8">
+      <section className="relative overflow-hidden bg-[#161921] text-white rounded-b-3xl py-16 md:py-24 -mt-px">
+        <div className="absolute inset-0 -z-0 [background-image:radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.18),transparent_60%)]" />
+        <div className="relative mx-auto max-w-6xl px-4 md:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
-              <Zap className="h-3 w-3 text-primary" />
+            <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-xs font-medium text-white/80">
+              <Zap className="h-3 w-3 text-blue-400" />
               {t.heroBadge}
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight leading-tight" data-testid="text-hero-headline">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight leading-tight text-white" data-testid="text-hero-headline">
               {t.heroH1Part1}
               <br />
-              <span className="text-primary">{t.heroH1Part2}</span> {t.heroH1Part3}
+              <span className="text-blue-400">{t.heroH1Part2}</span> {t.heroH1Part3}
             </h1>
-            <p className="mt-6 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+            <p className="mt-6 text-base md:text-xl text-white/70 leading-relaxed max-w-2xl mx-auto">
               {t.heroSub}
             </p>
             <div className="mt-8 md:mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <Button
                 size="lg"
-                className="w-full sm:w-auto gap-2 text-base text-[#000000]"
+                className="w-full sm:w-auto gap-2 text-base bg-white text-[#161921] hover:bg-white/90"
                 onClick={() => handleStart("supplier")}
                 data-testid="button-hero-supplier"
               >
@@ -620,9 +650,8 @@ export default function Landing() {
                 <ArrowRight className="h-4 w-4" />
               </Button>
               <Button
-                variant="outline"
                 size="lg"
-                className="w-full sm:w-auto gap-2 text-base"
+                className="w-full sm:w-auto gap-2 text-base bg-white/[0.08] border border-white/20 text-white hover:bg-white/[0.14]"
                 onClick={() => handleStart("restaurant")}
                 data-testid="button-hero-restaurant"
               >
@@ -639,10 +668,10 @@ export default function Landing() {
                 { label: t.heroStatsLabel2, value: t.heroStatsValue2, icon: Clock },
                 { label: t.heroStatsLabel3, value: t.heroStatsValue3, icon: TrendingUp },
               ].map((stat, idx) => (
-                <div key={idx} className="rounded-2xl border border-border bg-card/60 backdrop-blur p-3 md:p-4 text-center" data-testid={`hero-stat-${idx}`}>
-                  <stat.icon className="h-4 w-4 text-primary mx-auto mb-1.5" />
-                  <div className="text-sm md:text-lg font-bold tracking-tight">{stat.value}</div>
-                  <div className="text-[10px] md:text-xs text-muted-foreground mt-0.5 leading-tight">{stat.label}</div>
+                <div key={idx} className="rounded-2xl border border-white/15 bg-white/[0.06] backdrop-blur p-3 md:p-4 text-center" data-testid={`hero-stat-${idx}`}>
+                  <stat.icon className="h-4 w-4 text-blue-400 mx-auto mb-1.5" />
+                  <div className="text-sm md:text-lg font-bold tracking-tight text-white">{stat.value}</div>
+                  <div className="text-[10px] md:text-xs text-white/60 mt-0.5 leading-tight">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -976,22 +1005,19 @@ export default function Landing() {
               {t.showcaseSub}
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {t.showcase.map((item, idx) => {
-              const Icon = showcaseIcons[idx];
-              const accent = ["from-blue-500 to-blue-600 shadow-blue-500/20", "from-emerald-500 to-emerald-600 shadow-emerald-500/20", "from-amber-500 to-amber-600 shadow-amber-500/20", "from-purple-500 to-purple-600 shadow-purple-500/20"][idx];
-              const labelColor = ["text-blue-700 dark:text-blue-400 bg-blue-500/10", "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10", "text-amber-700 dark:text-amber-400 bg-amber-500/10", "text-purple-700 dark:text-purple-400 bg-purple-500/10"][idx];
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {t.features.map((item, idx) => {
+              const Icon = featureIcons[idx % featureIcons.length];
               return (
-                <div key={idx} className="group rounded-2xl border border-border bg-card p-5 hover:shadow-lg hover:-translate-y-1 transition-all duration-200" data-testid={`showcase-${idx}`}>
-                  <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${accent} text-white flex items-center justify-center shadow-lg mb-3`}>
-                    <Icon className="h-5 w-5" />
+                <Reveal key={idx} delay={(idx % 5) * 60}>
+                  <div className="h-full rounded-2xl border border-border bg-card p-5 hover-elevate" data-testid={`feature-${idx}`}>
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="font-bold text-sm mb-1" data-testid={`text-feature-title-${idx}`}>{item.title}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
                   </div>
-                  <span className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 ${labelColor}`}>
-                    {item.forLabel}
-                  </span>
-                  <h3 className="font-bold text-base mb-1.5" data-testid={`text-showcase-title-${idx}`}>{item.title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
-                </div>
+                </Reveal>
               );
             })}
           </div>
