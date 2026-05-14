@@ -121,20 +121,20 @@ export default function RestaurantHomeMobile({
           testId="mobile-header-restaurant-home"
         />
 
-        <div className="px-4 -mt-4">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="px-4 mt-4">
+          <div className="grid grid-cols-2 gap-2.5">
             {kpis.map((k) => (
               <button
                 key={k.testId}
                 onClick={k.onClick}
                 data-testid={k.testId}
-                className="text-left rounded-2xl bg-card border border-border p-3 active:scale-[0.98] transition-transform shadow-sm"
+                className="text-left rounded-2xl bg-card border border-border p-3.5 active:scale-[0.98] transition-transform shadow-sm"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{k.label}</span>
                   <div className={`flex items-center justify-center h-7 w-7 rounded-lg ${k.tone}`}>{k.icon}</div>
                 </div>
-                <div className="mt-2 text-[22px] font-bold leading-none text-foreground">{k.value}</div>
+                <div className="mt-2.5 text-[22px] font-bold leading-none text-foreground">{k.value}</div>
               </button>
             ))}
           </div>

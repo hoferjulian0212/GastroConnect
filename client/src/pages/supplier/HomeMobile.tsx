@@ -116,7 +116,7 @@ export default function SupplierHomeMobile({
           testId="mobile-header-supplier-home"
         />
 
-        <div className="px-4 -mt-4">
+        <div className="px-4 mt-4">
           <div className="grid grid-cols-2 gap-2">
             {kpis.map((k) => (
               <button
