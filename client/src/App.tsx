@@ -462,15 +462,17 @@ function AppLayout() {
   const isHomePage = location === '/restaurant' || location === '/supplier';
   const isInboxPage = location === '/restaurant/inbox' || location === '/supplier/inbox';
 
-  if (location === "/") {
+  const pathOnly = location.split("?")[0];
+
+  if (pathOnly === "/") {
     return <Landing />;
   }
 
-  if (location === "/login") {
+  if (pathOnly === "/login") {
     return <Login />;
   }
 
-  if (location === "/about") {
+  if (pathOnly === "/about") {
     return <About />;
   }
 
