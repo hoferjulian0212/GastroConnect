@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import SwipeableRow from "@/components/SwipeableRow";
 import StaggeredList from "@/components/StaggeredList";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { HeroPortal } from "@/context/HeroContext";
 
 interface OrderContent {
   items: { name: string; quantity: number; price: string; imageUrl?: string | null }[];
@@ -730,6 +731,18 @@ export default function SupplierInbox() {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
+      <HeroPortal desktopOnly={!!selectedConversation}>
+        <div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5" data-testid="inbox-hero">
+          <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
+            {lang === "de" ? "Postfach" : "Cassetta postale"}
+          </h1>
+          <p className="text-sm text-white/50 mt-1">
+            {lang === "de"
+              ? "Nachrichten, Bestellungen und Reklamationen deiner Kunden."
+              : "Messaggi, ordini e reclami dei tuoi clienti."}
+          </p>
+        </div>
+      </HeroPortal>
 
       <Card className={`${selectedConversation ? 'flex-1 border-0 md:border rounded-none md:rounded-lg' : 'flex-1'} flex flex-col overflow-hidden`}>
         <div className="flex flex-1 min-h-0 min-w-0">
