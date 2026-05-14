@@ -24,6 +24,7 @@ export const users = pgTable("users", {
   description: text("description"),
   profileImageUrl: text("profile_image_url"),
   lastSeenAt: timestamp("last_seen_at"),
+  monthlyRevenueTarget: decimal("monthly_revenue_target", { precision: 12, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

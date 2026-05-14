@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { HeroPortal } from "@/context/HeroContext";
 import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, TrendingDown, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert, ChevronRight, Flame } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, TrendingDown, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert, ChevronRight, Flame, Target, Users, Sparkles, Download } from "lucide-react";
 import { formatOrderNumber, formatComplaintNumber, type OrderWithDetails, type Product, type ConversationWithUser, type ComplaintWithDetails } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,11 @@ import { useT, getOrderStatus } from "@/lib/translations";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ComposedChart, Line, Legend } from "recharts";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import DraggableCardGrid from "@/components/DraggableCardGrid";
 import CountUp from "@/components/CountUp";
@@ -96,16 +100,68 @@ export default function SupplierHome() {
     enabled: !!currentUser?.id,
   });
 
-  const { data: detailedStats, isLoading: statsLoading } = useQuery<{
+  type StatsPeriod = "7d" | "30d" | "6m" | "12m";
+  const [statsPeriod, setStatsPeriod] = useState<StatsPeriod>("6m");
+  const [statsTab, setStatsTab] = useState<"products" | "customers">("products");
+  const [revenueGoalOpen, setRevenueGoalOpen] = useState(false);
+  const [revenueGoalInput, setRevenueGoalInput] = useState("");
+
+  type DetailedStats = {
+    period: StatsPeriod;
+    bucket: "day" | "month";
+    timeSeries: { key: string; revenue: number; orders: number }[];
     monthlyRevenue: { month: string; revenue: number }[];
-    topProducts: { name: string; quantity: number; revenue: number }[];
+    topProducts: { productId: string; name: string; quantity: number; revenue: number; previousQuantity: number }[];
+    topCustomers: { restaurantId: string; name: string; orders: number; revenue: number }[];
     ordersByStatus: { status: string; count: number }[];
     totalRevenue: number;
     totalOrders: number;
     avgOrderValue: number;
-  }>({
-    queryKey: [`/api/supplier/detailed-stats?supplierId=${currentUser?.id}`],
+    activeCustomers: number;
+    currentMonthRevenue: number;
+    previous: { totalRevenue: number; totalOrders: number; avgOrderValue: number; activeCustomers: number };
+  };
+
+  const { data: detailedStats, isLoading: statsLoading } = useQuery<DetailedStats>({
+    queryKey: [`/api/supplier/detailed-stats?supplierId=${currentUser?.id}&period=${statsPeriod}`],
     enabled: !!currentUser?.id,
+  });
+
+  const { data: revenueTargetData } = useQuery<{ monthlyRevenueTarget: number | null }>({
+    queryKey: [`/api/supplier/settings/revenue-target?supplierId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+    queryFn: async () => {
+      const res = await fetch(`/api/supplier/settings/revenue-target?supplierId=${currentUser?.id}`, {
+        credentials: "include",
+        headers: { "x-user-id": currentUser?.id ?? "" },
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      return res.json();
+    },
+  });
+
+  const { data: insights } = useQuery<Array<{ type: string; title: string; count: number; link: string }>>({
+    queryKey: [`/api/supplier/insights?supplierId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const monthlyRevenueTarget = revenueTargetData?.monthlyRevenueTarget ?? null;
+
+  const setRevenueTargetMutation = useMutation({
+    mutationFn: async (target: number | null) => {
+      const res = await fetch("/api/supplier/settings/revenue-target", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "x-user-id": currentUser?.id ?? "" },
+        body: JSON.stringify({ supplierId: currentUser?.id, monthlyRevenueTarget: target }),
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier/settings/revenue-target?supplierId=${currentUser?.id}`] });
+      setRevenueGoalOpen(false);
+      toast({ title: lang === "de" ? "Ziel gespeichert" : "Obiettivo salvato" });
+    },
   });
 
   const monthNames: Record<string, Record<string, string>> = {
@@ -113,13 +169,47 @@ export default function SupplierHome() {
     it: { "01": "Gen", "02": "Feb", "03": "Mar", "04": "Apr", "05": "Mag", "06": "Giu", "07": "Lug", "08": "Ago", "09": "Set", "10": "Ott", "11": "Nov", "12": "Dic" },
   };
 
+  const dayShort = (lang === "de") ? ["So","Mo","Di","Mi","Do","Fr","Sa"] : ["Dom","Lun","Mar","Mer","Gio","Ven","Sab"];
+
   const chartData = useMemo(() => {
-    if (!detailedStats?.monthlyRevenue) return [];
-    return detailedStats.monthlyRevenue.map(m => ({
-      name: monthNames[lang]?.[m.month.split("-")[1]] || m.month.split("-")[1],
-      revenue: m.revenue,
-    }));
-  }, [detailedStats, lang]);
+    if (!detailedStats?.timeSeries) return [];
+    return detailedStats.timeSeries.map(p => {
+      let name = "";
+      if (detailedStats.bucket === "day") {
+        const d = new Date(p.key + "T00:00:00");
+        if (statsPeriod === "7d") {
+          name = dayShort[d.getDay()];
+        } else {
+          name = `${d.getDate()}.${d.getMonth()+1}`;
+        }
+      } else {
+        const mo = p.key.split("-")[1];
+        name = monthNames[lang]?.[mo] || mo;
+      }
+      return { name, key: p.key, revenue: Number(p.revenue) || 0, orders: Number(p.orders) || 0 };
+    });
+  }, [detailedStats, lang, statsPeriod]);
+
+  const calcDelta = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - previous) / previous) * 100);
+  };
+
+  const monthRevenue = Number(detailedStats?.currentMonthRevenue) || 0;
+  const goalProgress = monthlyRevenueTarget && monthlyRevenueTarget > 0 ? Math.min(100, Math.round((monthRevenue / monthlyRevenueTarget) * 100)) : 0;
+
+  const handleStatsExport = () => {
+    if (!currentUser?.id) return;
+    const now = new Date();
+    let dateFrom = new Date(now);
+    if (statsPeriod === "7d") dateFrom.setDate(now.getDate() - 6);
+    else if (statsPeriod === "30d") dateFrom.setDate(now.getDate() - 29);
+    else if (statsPeriod === "6m") dateFrom = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    else dateFrom = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const url = `/api/orders/export?userId=${currentUser.id}&role=supplier&format=csv&dateFrom=${fmt(dateFrom)}&dateTo=${fmt(now)}`;
+    window.open(url, "_blank");
+  };
 
   const unreadConversations = useMemo(() => {
     if (!conversations) return [];
@@ -355,46 +445,66 @@ export default function SupplierHome() {
     return result;
   }, [upcomingDeliveries, lang]);
 
+  const mobileSharedProps = {
+    currentUser, lang, t, navigate,
+    totalUnread, convLoading,
+    recentOrders, ordersLoading,
+    lowStockProducts, lowStockLoading,
+    upcomingDeliveries, deliveriesLoading,
+    actionRequired, detailedStats, dateLocale,
+    statsPeriod, setStatsPeriod, statsLoading,
+    insights, monthlyRevenueTarget,
+    onExportStats: handleStatsExport,
+    onOpenRevenueGoal: () => { setRevenueGoalInput(monthlyRevenueTarget ? String(monthlyRevenueTarget) : ""); setRevenueGoalOpen(true); },
+    chartData,
+    monthRevenue,
+    goalProgress,
+    calcDelta,
+  };
+  const mobileGoalDialog = (
+    <Dialog open={revenueGoalOpen} onOpenChange={setRevenueGoalOpen}>
+      <DialogContent data-testid="dialog-revenue-goal-mobile">
+        <DialogHeader>
+          <DialogTitle>{t("supplierHome", "revenueGoal")}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Label htmlFor="revenue-goal-input-m">{t("supplierHome", "revenueGoalAmount")}</Label>
+          <Input
+            id="revenue-goal-input-m"
+            type="number"
+            inputMode="decimal"
+            min={0}
+            value={revenueGoalInput}
+            onChange={(e) => setRevenueGoalInput(e.target.value)}
+            data-testid="input-revenue-goal-mobile"
+            placeholder="10000"
+          />
+        </div>
+        <DialogFooter className="gap-2 sm:gap-2">
+          {monthlyRevenueTarget && (
+            <Button type="button" variant="outline" onClick={() => setRevenueTargetMutation.mutate(null)} disabled={setRevenueTargetMutation.isPending} data-testid="button-remove-revenue-goal-mobile">
+              {t("supplierHome", "revenueGoalRemove")}
+            </Button>
+          )}
+          <Button type="button" onClick={() => { const v = parseFloat(revenueGoalInput); if (!isFinite(v) || v <= 0) return; setRevenueTargetMutation.mutate(v); }} disabled={setRevenueTargetMutation.isPending || !revenueGoalInput} data-testid="button-save-revenue-goal-mobile">
+            {t("supplierHome", "revenueGoalSave")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
   if (isMobile) {
     return (
-      <SupplierHomeMobile
-        currentUser={currentUser}
-        lang={lang}
-        t={t}
-        navigate={navigate}
-        totalUnread={totalUnread}
-        convLoading={convLoading}
-        recentOrders={recentOrders}
-        ordersLoading={ordersLoading}
-        lowStockProducts={lowStockProducts}
-        lowStockLoading={lowStockLoading}
-        upcomingDeliveries={upcomingDeliveries}
-        deliveriesLoading={deliveriesLoading}
-        actionRequired={actionRequired}
-        detailedStats={detailedStats}
-        dateLocale={dateLocale}
-      />
+      <>
+        <SupplierHomeMobile {...mobileSharedProps} />
+        {mobileGoalDialog}
+      </>
     );
   }
   return (
     <>
-    <SupplierHomeMobile
-      currentUser={currentUser}
-      lang={lang}
-      t={t}
-      navigate={navigate}
-      totalUnread={totalUnread}
-      convLoading={convLoading}
-      recentOrders={recentOrders}
-      ordersLoading={ordersLoading}
-      lowStockProducts={lowStockProducts}
-      lowStockLoading={lowStockLoading}
-      upcomingDeliveries={upcomingDeliveries}
-      deliveriesLoading={deliveriesLoading}
-      actionRequired={actionRequired}
-      detailedStats={detailedStats}
-      dateLocale={dateLocale}
-    />
+    <SupplierHomeMobile {...mobileSharedProps} />
+    {mobileGoalDialog}
     <PullToRefreshWrapper
       onRefresh={async () => {
         await queryClient.invalidateQueries({
@@ -1309,11 +1419,11 @@ export default function SupplierHome() {
             </div>
           </div>
           )},
-          { id: "statistics", defaultSize: "half" as const, content: (
+          { id: "statistics", defaultSize: "full" as const, content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
-        <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
-          <div className="flex items-center gap-2.5">
-            <div>
+        <div className="flex items-start md:items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4 flex-wrap">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="min-w-0">
               <h2 className="text-base md:text-xl font-bold" data-testid="text-statistics-title">
                 {t("supplierHome", "statistics")}
               </h2>
@@ -1322,139 +1432,268 @@ export default function SupplierHome() {
               </p>
             </div>
           </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex items-center rounded-full bg-muted/60 p-0.5" data-testid="period-switcher">
+              {(["7d","30d","6m","12m"] as const).map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setStatsPeriod(p)}
+                  data-testid={`pill-period-${p}`}
+                  className={`text-[11px] md:text-xs px-2.5 md:px-3 py-1 rounded-full transition-colors ${statsPeriod === p ? "bg-background text-foreground shadow-sm font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {p === "7d" ? t("supplierHome", "period7d") : p === "30d" ? t("supplierHome", "period30d") : p === "6m" ? t("supplierHome", "period6m") : t("supplierHome", "period12m")}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2.5 text-xs gap-1.5"
+              onClick={handleStatsExport}
+              data-testid="button-export-stats"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("supplierHome", "exportStats")}</span>
+            </Button>
+          </div>
         </div>
         <div className="md:px-5 md:pb-5">
         {statsLoading ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
-              {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
             </div>
             <Skeleton className="h-48 w-full rounded-xl" />
           </div>
         ) : detailedStats && (detailedStats.totalOrders > 0 || detailedStats.topProducts.length > 0) ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-2 md:gap-3">
-              <div className="rounded-xl border border-border bg-card p-3 md:p-4 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1 min-w-0">
-                  <Euro className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-                  <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "totalRevenue")}</span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+              {([
+                { id: "revenue", label: t("supplierHome", "totalRevenue"), value: detailedStats.totalRevenue, prev: detailedStats.previous.totalRevenue, isCurrency: true, icon: <Euro className="h-3.5 w-3.5 text-indigo-600 shrink-0" /> },
+                { id: "orders", label: t("supplierHome", "totalOrders"), value: detailedStats.totalOrders, prev: detailedStats.previous.totalOrders, isCurrency: false, icon: <Hash className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> },
+                { id: "avg", label: t("supplierHome", "avgOrderValue"), value: detailedStats.avgOrderValue, prev: detailedStats.previous.avgOrderValue, isCurrency: true, icon: <TrendingUp className="h-3.5 w-3.5 text-amber-600 shrink-0" /> },
+                { id: "active-customers", label: t("supplierHome", "activeCustomers"), value: detailedStats.activeCustomers, prev: detailedStats.previous.activeCustomers, isCurrency: false, icon: <Users className="h-3.5 w-3.5 text-sky-600 shrink-0" /> },
+              ] as const).map(k => {
+                const delta = calcDelta(k.value as number, k.prev as number);
+                const isUp = delta > 0;
+                const isDown = delta < 0;
+                return (
+                  <div key={k.id} className="rounded-xl border border-border bg-card p-3 md:p-4 min-w-0" data-testid={`kpi-${k.id}`}>
+                    <div className="flex items-center gap-1.5 mb-1 min-w-0">
+                      {k.icon}
+                      <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{k.label}</span>
+                    </div>
+                    <p className="text-base md:text-xl font-bold text-foreground tabular-nums tracking-tight whitespace-nowrap" data-testid={`kpi-value-${k.id}`}>
+                      {k.isCurrency
+                        ? `${(k.value as number).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€`
+                        : (k.value as number).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}
+                    </p>
+                    <div className="flex items-center gap-1 mt-1" data-testid={`kpi-delta-${k.id}`}>
+                      {isUp && <TrendingUp className="h-3 w-3 text-emerald-600" />}
+                      {isDown && <TrendingDown className="h-3 w-3 text-rose-600" />}
+                      <span className={`text-[10px] tabular-nums ${isUp ? "text-emerald-600" : isDown ? "text-rose-600" : "text-muted-foreground"}`}>
+                        {delta > 0 ? "+" : ""}{delta}% <span className="text-muted-foreground hidden md:inline">{t("supplierHome", "vsPrevious")}</span>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              {chartData.length > 0 && (
+                <div className="lg:col-span-2 rounded-xl border border-border bg-card p-3 md:p-4">
+                  <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "revenueOverview")}</p>
+                  <div className="h-44 md:h-56" data-testid="chart-revenue-orders">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={chartData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                        <YAxis yAxisId="left" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44}
+                          tickFormatter={(v) => v >= 1_000 ? `${(v/1_000).toFixed(0)}k€` : `${v}€`} />
+                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={28} />
+                        <Tooltip
+                          cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                          isAnimationActive={false}
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null;
+                            const rev = payload.find((p) => p.dataKey === "revenue")?.value as number | undefined;
+                            const ord = payload.find((p) => p.dataKey === "orders")?.value as number | undefined;
+                            return (
+                              <div className="rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-sm">
+                                <p className="text-[11px] text-muted-foreground">{label}</p>
+                                <p className="text-xs font-semibold">{(rev || 0).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 2 })}€</p>
+                                <p className="text-[11px] text-muted-foreground">{ord || 0} {t("supplierHome", "chartOrders")}</p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar
+                          yAxisId="left" dataKey="revenue" name={t("supplierHome", "chartRevenue")}
+                          fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={40}
+                          cursor="pointer"
+                          onClick={(d: { key?: string }) => {
+                            if (!d?.key) return;
+                            const isDay = detailedStats.bucket === "day";
+                            const from = isDay ? d.key : `${d.key}-01`;
+                            const to = isDay ? d.key : (() => {
+                              const [y, m] = d.key!.split("-").map(Number);
+                              const last = new Date(y, m, 0);
+                              return `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;
+                            })();
+                            navigate(`/supplier/orders?dateFrom=${from}&dateTo=${to}`);
+                          }}
+                        />
+                        <Line yAxisId="right" type="monotone" dataKey="orders" name={t("supplierHome", "chartOrders")} stroke="hsl(var(--chart-2, 220 70% 55%))" strokeWidth={2} dot={false} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-                <p
-                  className={`font-bold text-foreground tabular-nums tracking-tight whitespace-nowrap ${
-                    detailedStats.totalRevenue >= 100000
-                      ? "text-xs md:text-base"
-                      : detailedStats.totalRevenue >= 10000
-                      ? "text-sm md:text-lg"
-                      : "text-base md:text-xl"
-                  }`}
-                  data-testid="text-total-revenue"
-                >
-                  {detailedStats.totalRevenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-card p-3 md:p-4 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1 min-w-0">
-                  <Hash className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                  <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "totalOrders")}</span>
+              )}
+
+              <div className="rounded-xl border border-border bg-card p-3 md:p-4 flex flex-col" data-testid="ring-revenue-goal">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5 text-fuchsia-600" />
+                    <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t("supplierHome", "revenueGoal")}</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[10px]"
+                    onClick={() => { setRevenueGoalInput(monthlyRevenueTarget ? String(monthlyRevenueTarget) : ""); setRevenueGoalOpen(true); }}
+                    data-testid="button-edit-revenue-goal"
+                  >
+                    {monthlyRevenueTarget ? t("supplierHome", "revenueGoalEdit") : t("supplierHome", "revenueGoalSet")}
+                  </Button>
                 </div>
-                <p className="text-base md:text-xl font-bold text-foreground tabular-nums tracking-tight whitespace-nowrap" data-testid="text-total-orders">
-                  {detailedStats.totalOrders}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-card p-3 md:p-4 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1 min-w-0">
-                  <TrendingUp className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                  <span className="text-[10px] md:text-xs text-muted-foreground font-medium truncate">{t("supplierHome", "avgOrderValue")}</span>
+                <div className="flex-1 flex items-center justify-center">
+                  {monthlyRevenueTarget && monthlyRevenueTarget > 0 ? (
+                    <div className="relative h-32 w-32">
+                      <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="10" />
+                        <circle
+                          cx="50" cy="50" r="42" fill="none"
+                          stroke="hsl(var(--primary))"
+                          strokeWidth="10"
+                          strokeLinecap="round"
+                          strokeDasharray={`${(2 * Math.PI * 42 * goalProgress) / 100} ${2 * Math.PI * 42}`}
+                          className="transition-all duration-700"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-xl font-bold tabular-nums" data-testid="text-goal-progress-percent">{goalProgress}%</span>
+                        <span className="text-[10px] text-muted-foreground tabular-nums" data-testid="text-goal-progress-amount">
+                          {Math.round(monthRevenue).toLocaleString(lang === "de" ? "de-DE" : "it-IT")} / {Math.round(monthlyRevenueTarget).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}€
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center">{t("supplierHome", "revenueGoalNone")}</p>
+                  )}
                 </div>
-                <p
-                  className={`font-bold text-foreground tabular-nums tracking-tight whitespace-nowrap ${
-                    detailedStats.avgOrderValue >= 100000
-                      ? "text-xs md:text-base"
-                      : detailedStats.avgOrderValue >= 10000
-                      ? "text-sm md:text-lg"
-                      : "text-base md:text-xl"
-                  }`}
-                  data-testid="text-avg-order-value"
-                >
-                  {detailedStats.avgOrderValue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
-                </p>
               </div>
             </div>
 
-            {chartData.length > 0 && chartData.some(d => d.revenue > 0) && (
-              <div>
-                <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "revenueOverview")}</p>
-                <div className="h-44 md:h-52">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 20, right: 4, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                      <YAxis
-                        tick={{ fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={44}
-                        tickFormatter={(v) => {
-                          if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}M€`;
-                          if (v >= 1_000) return `${(v / 1_000).toFixed(v % 1_000 === 0 ? 0 : 1)}k€`;
-                          return `${v}€`;
-                        }}
-                      />
-                      <Tooltip
-                        cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
-                        isAnimationActive={false}
-                        position={{ y: 0 }}
-                        offset={0}
-                        allowEscapeViewBox={{ x: false, y: true }}
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          const value = payload[0].value as number;
-                          return (
-                            <div className="rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-sm text-center">
-                              <p className="text-xs font-semibold text-foreground">
-                                {value.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 2 })}€
-                              </p>
+            <Tabs value={statsTab} onValueChange={(v) => setStatsTab(v as "products" | "customers")} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 max-w-sm">
+                <TabsTrigger value="products" data-testid="tab-top-products">{t("supplierHome", "topProducts")}</TabsTrigger>
+                <TabsTrigger value="customers" data-testid="tab-top-customers">{t("supplierHome", "topCustomers")}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="products" className="mt-3">
+                {detailedStats.topProducts.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                    {detailedStats.topProducts.slice(0, 6).map((product, idx) => {
+                      const maxQty = detailedStats.topProducts[0]?.quantity || 1;
+                      const pct = Math.round((product.quantity / maxQty) * 100);
+                      const qDelta = calcDelta(product.quantity, product.previousQuantity);
+                      return (
+                        <div key={product.productId || idx} className="rounded-xl border border-border bg-card p-2.5 md:p-3 cursor-pointer hover:border-primary/40 transition-colors"
+                          data-testid={`top-product-${idx}`}
+                          onClick={() => product.productId && navigate(`/supplier/products?highlight=${product.productId}`)}>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">{idx + 1}</span>
+                            <span className="text-xs md:text-sm font-medium truncate flex-1">{product.name}</span>
+                          </div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
+                            <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] md:text-xs text-muted-foreground tabular-nums">{product.quantity}x</span>
+                            <span className="text-xs md:text-sm font-semibold tabular-nums">
+                              {product.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
+                            </span>
+                          </div>
+                          {product.previousQuantity > 0 && (
+                            <div className="flex items-center gap-1 mt-1">
+                              {qDelta > 0 ? <TrendingUp className="h-3 w-3 text-emerald-600" /> : qDelta < 0 ? <TrendingDown className="h-3 w-3 text-rose-600" /> : null}
+                              <span className={`text-[10px] tabular-nums ${qDelta > 0 ? "text-emerald-600" : qDelta < 0 ? "text-rose-600" : "text-muted-foreground"}`}>
+                                {qDelta > 0 ? "+" : ""}{qDelta}%
+                              </span>
                             </div>
-                          );
-                        }}
-                      />
-                      <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground py-4 text-center">{t("supplierHome", "noStatsYet")}</p>
+                )}
+              </TabsContent>
+              <TabsContent value="customers" className="mt-3">
+                {detailedStats.topCustomers.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                    {detailedStats.topCustomers.slice(0, 6).map((c, idx) => {
+                      const maxRev = detailedStats.topCustomers[0]?.revenue || 1;
+                      const pct = Math.round((c.revenue / maxRev) * 100);
+                      return (
+                        <div key={c.restaurantId || idx} className="rounded-xl border border-border bg-card p-2.5 md:p-3 cursor-pointer hover:border-primary/40 transition-colors"
+                          data-testid={`top-customer-${idx}`}
+                          onClick={() => c.restaurantId && navigate(`/supplier/inbox?to=${c.restaurantId}`)}>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">{idx + 1}</span>
+                            <span className="text-xs md:text-sm font-medium truncate flex-1">{c.name}</span>
+                          </div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
+                            <div className="h-full bg-sky-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] md:text-xs text-muted-foreground tabular-nums">{c.orders} {t("supplierHome", "chartOrders")}</span>
+                            <span className="text-xs md:text-sm font-semibold tabular-nums">
+                              {c.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground py-4 text-center">{t("supplierHome", "noStatsYet")}</p>
+                )}
+              </TabsContent>
+            </Tabs>
 
-            {detailedStats.topProducts.length > 0 && (
-              <div>
-                <p className="text-xs md:text-sm font-medium text-foreground mb-3">{t("supplierHome", "topProducts")}</p>
-                <div className="grid grid-cols-2 gap-2 md:gap-3">
-                  {detailedStats.topProducts.slice(0, 6).map((product, idx) => {
-                    const maxQty = detailedStats.topProducts[0]?.quantity || 1;
-                    const pct = Math.round((product.quantity / maxQty) * 100);
+            {insights && insights.length > 0 && (
+              <div className="rounded-xl border border-border bg-muted/30 p-3 md:p-4" data-testid="insights-box">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Sparkles className="h-3.5 w-3.5 text-fuchsia-600" />
+                  <span className="text-[10px] md:text-xs text-muted-foreground font-semibold uppercase tracking-wide">{t("supplierHome", "insights")}</span>
+                </div>
+                <div className="space-y-1.5">
+                  {insights.map((ins) => {
+                    const label =
+                      ins.type === "inactive_customers" ? t("supplierHome", "insightInactive") :
+                      ins.type === "low_stock_top" ? t("supplierHome", "insightLowStockTop") :
+                      t("supplierHome", "insightTrending");
                     return (
-                      <div key={idx} className="rounded-xl border border-border bg-card p-2.5 md:p-3" data-testid={`top-product-${idx}`}>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">
-                            {idx + 1}
-                          </span>
-                          <span className="text-xs md:text-sm font-medium truncate flex-1">{product.name}</span>
-                        </div>
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
-                          <div
-                            className="h-full bg-primary rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] md:text-xs text-muted-foreground">
-                            {product.quantity}x
-                          </span>
-                          <span className="text-xs md:text-sm font-semibold">
-                            {product.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
-                          </span>
-                        </div>
-                      </div>
+                      <Link key={ins.type} href={ins.link} data-testid={`insight-${ins.type}`} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-card border border-border hover:border-primary/40 transition-colors">
+                        <span className="text-xs md:text-sm font-medium">
+                          <span className="tabular-nums font-bold mr-1">{ins.count}</span>{label}
+                        </span>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Link>
                     );
                   })}
                 </div>
@@ -1470,6 +1709,52 @@ export default function SupplierHome() {
             <p className="text-xs text-muted-foreground mt-1">{t("supplierHome", "noStatsYetDesc")}</p>
           </div>
         )}
+
+        <Dialog open={revenueGoalOpen} onOpenChange={setRevenueGoalOpen}>
+          <DialogContent data-testid="dialog-revenue-goal">
+            <DialogHeader>
+              <DialogTitle>{t("supplierHome", "revenueGoal")}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="revenue-goal-input">{t("supplierHome", "revenueGoalAmount")}</Label>
+              <Input
+                id="revenue-goal-input"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={revenueGoalInput}
+                onChange={(e) => setRevenueGoalInput(e.target.value)}
+                data-testid="input-revenue-goal"
+                placeholder="10000"
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-2">
+              {monthlyRevenueTarget && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRevenueTargetMutation.mutate(null)}
+                  disabled={setRevenueTargetMutation.isPending}
+                  data-testid="button-remove-revenue-goal"
+                >
+                  {t("supplierHome", "revenueGoalRemove")}
+                </Button>
+              )}
+              <Button
+                type="button"
+                onClick={() => {
+                  const v = parseFloat(revenueGoalInput);
+                  if (!isFinite(v) || v <= 0) return;
+                  setRevenueTargetMutation.mutate(v);
+                }}
+                disabled={setRevenueTargetMutation.isPending || !revenueGoalInput}
+                data-testid="button-save-revenue-goal"
+              >
+                {t("supplierHome", "revenueGoalSave")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         </div>
       </div>
           )},

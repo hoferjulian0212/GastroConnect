@@ -94,14 +94,21 @@ export interface IStorage {
     totalProducts: number;
     monthlyRevenue: number;
   }>;
-  getSupplierDetailedStats(supplierId: string): Promise<{
+  getSupplierDetailedStats(supplierId: string, period?: "7d" | "30d" | "6m" | "12m"): Promise<{
+    period: "7d" | "30d" | "6m" | "12m";
+    bucket: "day" | "month";
+    timeSeries: { key: string; revenue: number; orders: number }[];
     monthlyRevenue: { month: string; revenue: number }[];
-    topProducts: { name: string; quantity: number; revenue: number }[];
+    topProducts: { productId: string; name: string; quantity: number; revenue: number; previousQuantity: number }[];
+    topCustomers: { restaurantId: string; name: string; orders: number; revenue: number }[];
     ordersByStatus: { status: string; count: number }[];
     totalRevenue: number;
     totalOrders: number;
     avgOrderValue: number;
+    activeCustomers: number;
+    previous: { totalRevenue: number; totalOrders: number; avgOrderValue: number; activeCustomers: number };
   }>;
+  getSupplierInsights(supplierId: string): Promise<Array<{ type: string; title: string; count: number; link: string }>>;
   getPendingOrderCount(supplierId: string): Promise<number>;
   getRestaurantsForSupplier(supplierId: string): Promise<User[]>;
 
@@ -828,45 +835,195 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getSupplierDetailedStats(supplierId: string): Promise<{
+  async getSupplierDetailedStats(supplierId: string, period: "7d" | "30d" | "6m" | "12m" = "6m"): Promise<{
+    period: "7d" | "30d" | "6m" | "12m";
+    bucket: "day" | "month";
+    timeSeries: { key: string; revenue: number; orders: number }[];
     monthlyRevenue: { month: string; revenue: number }[];
-    topProducts: { name: string; quantity: number; revenue: number }[];
+    topProducts: { productId: string; name: string; quantity: number; revenue: number; previousQuantity: number }[];
+    topCustomers: { restaurantId: string; name: string; orders: number; revenue: number }[];
     ordersByStatus: { status: string; count: number }[];
     totalRevenue: number;
     totalOrders: number;
     avgOrderValue: number;
+    activeCustomers: number;
+    currentMonthRevenue: number;
+    previous: { totalRevenue: number; totalOrders: number; avgOrderValue: number; activeCustomers: number };
   }> {
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-    sixMonthsAgo.setDate(1);
-    sixMonthsAgo.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const bucket: "day" | "month" = period === "7d" || period === "30d" ? "day" : "month";
 
-    const validStatuses = ['delivered', 'confirmed', 'in_delivery', 'partially_confirmed'];
+    let currentFrom = new Date(now);
+    let prevFrom = new Date(now);
+    let prevTo = new Date(now);
 
-    const monthlyRevenueResult = await db.execute(sql`
-      SELECT 
-        TO_CHAR(created_at, 'YYYY-MM') as month,
-        COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as revenue
+    if (period === "7d") {
+      currentFrom = new Date(now); currentFrom.setDate(now.getDate() - 6); currentFrom.setHours(0, 0, 0, 0);
+      prevTo = new Date(currentFrom); prevTo.setMilliseconds(prevTo.getMilliseconds() - 1);
+      prevFrom = new Date(currentFrom); prevFrom.setDate(currentFrom.getDate() - 7);
+    } else if (period === "30d") {
+      currentFrom = new Date(now); currentFrom.setDate(now.getDate() - 29); currentFrom.setHours(0, 0, 0, 0);
+      prevTo = new Date(currentFrom); prevTo.setMilliseconds(prevTo.getMilliseconds() - 1);
+      prevFrom = new Date(currentFrom); prevFrom.setDate(currentFrom.getDate() - 30);
+    } else if (period === "6m") {
+      currentFrom = new Date(now.getFullYear(), now.getMonth() - 5, 1, 0, 0, 0, 0);
+      prevTo = new Date(currentFrom); prevTo.setMilliseconds(prevTo.getMilliseconds() - 1);
+      prevFrom = new Date(currentFrom.getFullYear(), currentFrom.getMonth() - 6, 1, 0, 0, 0, 0);
+    } else {
+      currentFrom = new Date(now.getFullYear(), now.getMonth() - 11, 1, 0, 0, 0, 0);
+      prevTo = new Date(currentFrom); prevTo.setMilliseconds(prevTo.getMilliseconds() - 1);
+      prevFrom = new Date(currentFrom.getFullYear(), currentFrom.getMonth() - 12, 1, 0, 0, 0, 0);
+    }
+
+    // Current month boundary (independent of selected period — used for the monthly revenue goal)
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+
+    // Time series (current period) bucketed
+    const seriesFmt = bucket === "day" ? "YYYY-MM-DD" : "YYYY-MM";
+    const seriesResult = await db.execute(sql`
+      SELECT
+        TO_CHAR(created_at, ${seriesFmt}) as key,
+        COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as revenue,
+        COUNT(*) as orders
       FROM orders
       WHERE supplier_id = ${supplierId}
         AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
-        AND created_at >= ${sixMonthsAgo}
-      GROUP BY TO_CHAR(created_at, 'YYYY-MM')
-      ORDER BY month ASC
+        AND created_at >= ${currentFrom}
+      GROUP BY 1
+      ORDER BY 1 ASC
     `);
 
+    // Build full series with zeros
+    const seriesMap = new Map<string, { revenue: number; orders: number }>();
+    for (const r of (seriesResult.rows || [])) {
+      seriesMap.set(String((r as any).key), { revenue: Number((r as any).revenue) || 0, orders: Number((r as any).orders) || 0 });
+    }
+    const timeSeries: { key: string; revenue: number; orders: number }[] = [];
+    if (bucket === "day") {
+      const days = period === "7d" ? 7 : 30;
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(now); d.setDate(now.getDate() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const f = seriesMap.get(key);
+        timeSeries.push({ key, revenue: f?.revenue || 0, orders: f?.orders || 0 });
+      }
+    } else {
+      const months = period === "6m" ? 6 : 12;
+      for (let i = months - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const f = seriesMap.get(key);
+        timeSeries.push({ key, revenue: f?.revenue || 0, orders: f?.orders || 0 });
+      }
+    }
+
+    const monthlyRevenue = bucket === "month"
+      ? timeSeries.map(t => ({ month: t.key, revenue: t.revenue }))
+      : (() => {
+          const arr: { month: string; revenue: number }[] = [];
+          for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            arr.push({ month: key, revenue: 0 });
+          }
+          return arr;
+        })();
+
+    // Current totals
+    const totalsCur = await db.execute(sql`
+      SELECT
+        COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total_revenue,
+        COUNT(*) as total_orders,
+        COUNT(DISTINCT restaurant_id) as active_customers
+      FROM orders
+      WHERE supplier_id = ${supplierId}
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        AND created_at >= ${currentFrom}
+    `);
+    const totalRevenue = Number(totalsCur.rows?.[0]?.total_revenue) || 0;
+    const totalOrders = Number(totalsCur.rows?.[0]?.total_orders) || 0;
+    const activeCustomers = Number(totalsCur.rows?.[0]?.active_customers) || 0;
+
+    // Previous totals
+    const totalsPrev = await db.execute(sql`
+      SELECT
+        COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total_revenue,
+        COUNT(*) as total_orders,
+        COUNT(DISTINCT restaurant_id) as active_customers
+      FROM orders
+      WHERE supplier_id = ${supplierId}
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        AND created_at >= ${prevFrom}
+        AND created_at <= ${prevTo}
+    `);
+    const prevRevenue = Number(totalsPrev.rows?.[0]?.total_revenue) || 0;
+    const prevOrders = Number(totalsPrev.rows?.[0]?.total_orders) || 0;
+    const prevActive = Number(totalsPrev.rows?.[0]?.active_customers) || 0;
+
+    // Current calendar month revenue (independent of selected period — used for monthly revenue goal)
+    const currentMonthRes = await db.execute(sql`
+      SELECT COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as revenue
+      FROM orders
+      WHERE supplier_id = ${supplierId}
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        AND created_at >= ${startOfThisMonth}
+    `);
+    const currentMonthRevenue = Number(currentMonthRes.rows?.[0]?.revenue) || 0;
+
+    // Top products in period
     const topProductsResult = await db.execute(sql`
-      SELECT 
-        oi.product_name as name,
+      SELECT
+        oi.product_id as product_id,
+        MAX(oi.product_name) as name,
         SUM(oi.quantity) as quantity,
         COALESCE(SUM(CAST(oi.total_price AS DECIMAL)), 0) as revenue
       FROM order_items oi
       JOIN orders o ON o.id = oi.order_id
       WHERE o.supplier_id = ${supplierId}
         AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
-      GROUP BY oi.product_name
+        AND o.created_at >= ${currentFrom}
+      GROUP BY oi.product_id
       ORDER BY quantity DESC
-      LIMIT 5
+      LIMIT 6
+    `);
+    const productIds = (topProductsResult.rows || []).map((r: any) => r.product_id).filter(Boolean);
+
+    // Previous-period quantities for the same products
+    let prevQtyMap = new Map<string, number>();
+    if (productIds.length > 0) {
+      const prevQty = await db.execute(sql`
+        SELECT
+          oi.product_id as product_id,
+          SUM(oi.quantity) as quantity
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        WHERE o.supplier_id = ${supplierId}
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+          AND o.created_at >= ${prevFrom}
+          AND o.created_at <= ${prevTo}
+          AND oi.product_id IN (${sql.join(productIds.map((id: string) => sql`${id}`), sql`, `)})
+        GROUP BY oi.product_id
+      `);
+      for (const r of (prevQty.rows || [])) {
+        prevQtyMap.set(String((r as any).product_id), Number((r as any).quantity) || 0);
+      }
+    }
+
+    // Top customers in period
+    const topCustomersResult = await db.execute(sql`
+      SELECT
+        o.restaurant_id as restaurant_id,
+        COALESCE(MAX(u.company_name), MAX(u.name)) as name,
+        COUNT(*) as orders,
+        COALESCE(SUM(CAST(o.total_amount AS DECIMAL)), 0) as revenue
+      FROM orders o
+      LEFT JOIN users u ON u.id = o.restaurant_id
+      WHERE o.supplier_id = ${supplierId}
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        AND o.created_at >= ${currentFrom}
+      GROUP BY o.restaurant_id
+      ORDER BY revenue DESC
+      LIMIT 6
     `);
 
     const ordersByStatusResult = await db.execute(sql`
@@ -876,32 +1033,22 @@ export class DatabaseStorage implements IStorage {
       GROUP BY status
     `);
 
-    const totalsResult = await db.execute(sql`
-      SELECT 
-        COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total_revenue,
-        COUNT(*) as total_orders
-      FROM orders
-      WHERE supplier_id = ${supplierId}
-        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
-    `);
-
-    const totalRevenue = Number(totalsResult.rows?.[0]?.total_revenue) || 0;
-    const totalOrders = Number(totalsResult.rows?.[0]?.total_orders) || 0;
-
-    const now = new Date();
-    const months: { month: string; revenue: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const found = (monthlyRevenueResult.rows || []).find((r: any) => r.month === key);
-      months.push({ month: key, revenue: Number(found?.revenue) || 0 });
-    }
-
     return {
-      monthlyRevenue: months,
+      period,
+      bucket,
+      timeSeries,
+      monthlyRevenue,
       topProducts: (topProductsResult.rows || []).map((r: any) => ({
+        productId: r.product_id,
         name: r.name,
         quantity: Number(r.quantity) || 0,
+        revenue: Number(r.revenue) || 0,
+        previousQuantity: prevQtyMap.get(String(r.product_id)) || 0,
+      })),
+      topCustomers: (topCustomersResult.rows || []).map((r: any) => ({
+        restaurantId: r.restaurant_id,
+        name: r.name || "—",
+        orders: Number(r.orders) || 0,
         revenue: Number(r.revenue) || 0,
       })),
       ordersByStatus: (ordersByStatusResult.rows || []).map((r: any) => ({
@@ -911,7 +1058,112 @@ export class DatabaseStorage implements IStorage {
       totalRevenue,
       totalOrders,
       avgOrderValue: totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0,
+      activeCustomers,
+      currentMonthRevenue,
+      previous: {
+        totalRevenue: prevRevenue,
+        totalOrders: prevOrders,
+        avgOrderValue: prevOrders > 0 ? Math.round((prevRevenue / prevOrders) * 100) / 100 : 0,
+        activeCustomers: prevActive,
+      },
     };
+  }
+
+  async getSupplierInsights(supplierId: string): Promise<Array<{ type: string; title: string; count: number; link: string }>> {
+    const insights: Array<{ type: string; title: string; count: number; link: string }> = [];
+
+    // 1) Inactive customers (>= 30 days no order, but had >= 2 orders in 90 days before that)
+    const inactiveResult = await db.execute(sql`
+      SELECT COUNT(*)::int AS count FROM (
+        SELECT o.restaurant_id,
+          MAX(o.created_at) AS last_order,
+          COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) AS prior_count
+        FROM orders o
+        WHERE o.supplier_id = ${supplierId}
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        GROUP BY o.restaurant_id
+        HAVING MAX(o.created_at) < (NOW() - INTERVAL '30 days')
+          AND COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) >= 2
+      ) sub
+    `);
+    const inactiveCount = Number((inactiveResult.rows?.[0] as any)?.count) || 0;
+    if (inactiveCount > 0) {
+      insights.push({
+        type: "inactive_customers",
+        title: "inactive_customers",
+        count: inactiveCount,
+        link: "/supplier/restaurants",
+      });
+    }
+
+    // 2) Low stock among top products (intersection)
+    const lowStockTopResult = await db.execute(sql`
+      WITH top_products AS (
+        SELECT oi.product_id
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        WHERE o.supplier_id = ${supplierId}
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+          AND o.created_at >= (NOW() - INTERVAL '90 days')
+        GROUP BY oi.product_id
+        ORDER BY SUM(oi.quantity) DESC
+        LIMIT 10
+      )
+      SELECT COUNT(*)::int AS count
+      FROM products p
+      JOIN top_products t ON t.product_id = p.id
+      WHERE p.supplier_id = ${supplierId}
+        AND COALESCE(p.low_stock_threshold, 0) > 0
+        AND COALESCE(p.stock_quantity, 0) <= COALESCE(p.low_stock_threshold, 0)
+    `);
+    const lowStockTopCount = Number((lowStockTopResult.rows?.[0] as any)?.count) || 0;
+    if (lowStockTopCount > 0) {
+      insights.push({
+        type: "low_stock_top",
+        title: "low_stock_top",
+        count: lowStockTopCount,
+        link: "/supplier/products",
+      });
+    }
+
+    // 3) Strongly trending products (current 30d vs prior 30d, top up-mover by qty delta)
+    const trendingResult = await db.execute(sql`
+      WITH cur AS (
+        SELECT oi.product_id, MAX(oi.product_name) AS name, SUM(oi.quantity) AS qty
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        WHERE o.supplier_id = ${supplierId}
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+          AND o.created_at >= (NOW() - INTERVAL '30 days')
+        GROUP BY oi.product_id
+      ),
+      prev AS (
+        SELECT oi.product_id, SUM(oi.quantity) AS qty
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        WHERE o.supplier_id = ${supplierId}
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+          AND o.created_at < (NOW() - INTERVAL '30 days')
+          AND o.created_at >= (NOW() - INTERVAL '60 days')
+        GROUP BY oi.product_id
+      )
+      SELECT COUNT(*)::int AS count
+      FROM cur
+      LEFT JOIN prev ON prev.product_id = cur.product_id
+      WHERE cur.qty >= 10
+        AND (COALESCE(prev.qty, 0) = 0 OR (cur.qty::numeric / NULLIF(prev.qty, 0)) >= 1.5)
+    `);
+    const trendingCount = Number((trendingResult.rows?.[0] as any)?.count) || 0;
+    if (trendingCount > 0) {
+      insights.push({
+        type: "trending_up",
+        title: "trending_up",
+        count: trendingCount,
+        link: "/supplier/products",
+      });
+    }
+
+    return insights.slice(0, 3);
   }
 
   async getPendingOrderCount(supplierId: string): Promise<number> {

@@ -1,14 +1,20 @@
 import { Link } from "wouter";
+import { useState } from "react";
 import { format, isToday, isTomorrow, formatDistanceToNow } from "date-fns";
-import { MessageSquare, ClipboardList, BarChart3, AlertTriangle, ChevronRight, Plus, Package, Tag, FileText, Building2, Truck, Calendar } from "lucide-react";
+import { MessageSquare, ClipboardList, BarChart3, AlertTriangle, ChevronRight, Plus, Package, Tag, FileText, Building2, Truck, Calendar, Target, Sparkles, TrendingUp, TrendingDown, Download, Users, Euro, Hash } from "lucide-react";
 import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ComposedChart, Line } from "recharts";
 import { queryClient } from "@/lib/queryClient";
 import { MobilePageHeader, MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, statusToTone } from "@/components/mobile";
 import type { OrderWithDetails, Product } from "@shared/schema";
 import { getOrderStatus } from "@/lib/translations";
+
+type StatsPeriod = "7d" | "30d" | "6m" | "12m";
 
 interface Props {
   currentUser: any;
@@ -26,6 +32,17 @@ interface Props {
   actionRequired: any;
   detailedStats: any;
   dateLocale: any;
+  statsPeriod: StatsPeriod;
+  setStatsPeriod: (p: StatsPeriod) => void;
+  statsLoading: boolean;
+  insights?: Array<{ type: string; title: string; count: number; link: string }>;
+  monthlyRevenueTarget: number | null;
+  onExportStats: () => void;
+  onOpenRevenueGoal: () => void;
+  chartData: Array<{ name: string; key: string; revenue: number; orders: number }>;
+  monthRevenue: number;
+  goalProgress: number;
+  calcDelta: (current: number, previous: number) => number;
 }
 
 export default function SupplierHomeMobile({
@@ -37,7 +54,12 @@ export default function SupplierHomeMobile({
   actionRequired,
   detailedStats,
   dateLocale,
+  statsPeriod, setStatsPeriod, statsLoading,
+  insights, monthlyRevenueTarget,
+  onExportStats, onOpenRevenueGoal,
+  chartData, monthRevenue, goalProgress, calcDelta,
 }: Props) {
+  const [statsTab, setStatsTab] = useState<"products" | "customers">("products");
   const greeting = (() => {
     const h = new Date().getHours();
     if (lang === "de") return h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend";
@@ -235,6 +257,238 @@ export default function SupplierHomeMobile({
                 );
               })}
             </div>
+          )}
+        </MobileSection>
+
+        <MobileSection
+          title={t("supplierHome", "statistics")}
+          className="mt-6"
+          testId="mobile-s-section-stats"
+          action={
+            <button onClick={onExportStats} data-testid="button-export-stats-mobile" className="text-[12px] font-semibold text-primary inline-flex items-center gap-1">
+              <Download className="h-3 w-3" /> {t("supplierHome", "exportStats")}
+            </button>
+          }
+        >
+          <div className="-mx-4 px-4 overflow-x-auto scrollbar-hide mb-3" data-testid="period-switcher-mobile">
+            <div className="inline-flex items-center rounded-full bg-muted/60 p-0.5">
+              {(["7d","30d","6m","12m"] as const).map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setStatsPeriod(p)}
+                  data-testid={`pill-period-${p}-mobile`}
+                  className={`text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap transition-colors ${statsPeriod === p ? "bg-background text-foreground shadow-sm font-semibold" : "text-muted-foreground"}`}
+                >
+                  {p === "7d" ? t("supplierHome", "period7d") : p === "30d" ? t("supplierHome", "period30d") : p === "6m" ? t("supplierHome", "period6m") : t("supplierHome", "period12m")}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {statsLoading ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">{[1,2,3,4].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
+              <Skeleton className="h-40 rounded-xl" />
+            </div>
+          ) : detailedStats && (detailedStats.totalOrders > 0 || detailedStats.topProducts?.length > 0) ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { id: "revenue", label: t("supplierHome", "totalRevenue"), value: detailedStats.totalRevenue, prev: detailedStats.previous.totalRevenue, isCurrency: true, icon: <Euro className="h-3 w-3 text-indigo-600" /> },
+                  { id: "orders", label: t("supplierHome", "totalOrders"), value: detailedStats.totalOrders, prev: detailedStats.previous.totalOrders, isCurrency: false, icon: <Hash className="h-3 w-3 text-emerald-600" /> },
+                  { id: "avg", label: t("supplierHome", "avgOrderValue"), value: detailedStats.avgOrderValue, prev: detailedStats.previous.avgOrderValue, isCurrency: true, icon: <TrendingUp className="h-3 w-3 text-amber-600" /> },
+                  { id: "active-customers", label: t("supplierHome", "activeCustomers"), value: detailedStats.activeCustomers, prev: detailedStats.previous.activeCustomers, isCurrency: false, icon: <Users className="h-3 w-3 text-sky-600" /> },
+                ] as const).map(k => {
+                  const delta = calcDelta(k.value as number, k.prev as number);
+                  const isUp = delta > 0; const isDown = delta < 0;
+                  return (
+                    <div key={k.id} className="rounded-2xl border border-border bg-card p-3" data-testid={`kpi-${k.id}-mobile`}>
+                      <div className="flex items-center gap-1 mb-1">
+                        {k.icon}
+                        <span className="text-[10px] text-muted-foreground font-medium truncate">{k.label}</span>
+                      </div>
+                      <p className="text-base font-bold tabular-nums tracking-tight" data-testid={`kpi-value-${k.id}-mobile`}>
+                        {k.isCurrency
+                          ? `${(k.value as number).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { maximumFractionDigits: 0 })}€`
+                          : (k.value as number).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}
+                      </p>
+                      <div className="flex items-center gap-1 mt-1" data-testid={`kpi-delta-${k.id}-mobile`}>
+                        {isUp && <TrendingUp className="h-3 w-3 text-emerald-600" />}
+                        {isDown && <TrendingDown className="h-3 w-3 text-rose-600" />}
+                        <span className={`text-[10px] tabular-nums ${isUp ? "text-emerald-600" : isDown ? "text-rose-600" : "text-muted-foreground"}`}>
+                          {delta > 0 ? "+" : ""}{delta}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-3" data-testid="ring-revenue-goal-mobile">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5 text-fuchsia-600" />
+                    <span className="text-[11px] font-semibold">{t("supplierHome", "revenueGoal")}</span>
+                  </div>
+                  <button onClick={onOpenRevenueGoal} data-testid="button-edit-revenue-goal-mobile" className="text-[11px] text-primary font-semibold">
+                    {monthlyRevenueTarget ? t("supplierHome", "revenueGoalEdit") : t("supplierHome", "revenueGoalSet")}
+                  </button>
+                </div>
+                {monthlyRevenueTarget && monthlyRevenueTarget > 0 ? (
+                  <>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${goalProgress}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-[11px] tabular-nums" data-testid="text-goal-progress-amount-mobile">{Math.round(monthRevenue).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}€ / {Math.round(monthlyRevenueTarget).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}€</span>
+                      <span className="text-[11px] font-bold tabular-nums" data-testid="text-goal-progress-percent-mobile">{goalProgress}%</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">{t("supplierHome", "revenueGoalNone")}</p>
+                )}
+              </div>
+
+              {chartData.length > 0 && (
+                <div className="rounded-2xl border border-border bg-card p-3">
+                  <p className="text-[11px] font-semibold mb-2">{t("supplierHome", "revenueOverview")}</p>
+                  <div className="h-36" data-testid="chart-revenue-orders-mobile">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={chartData} margin={{ top: 5, right: 4, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                        <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={36}
+                          tickFormatter={(v) => v >= 1000 ? `${Math.round(v/1000)}k` : `${v}`} />
+                        <Tooltip
+                          isAnimationActive={false}
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null;
+                            const rev = payload.find((p) => p.dataKey === "revenue")?.value as number | undefined;
+                            const ord = payload.find((p) => p.dataKey === "orders")?.value as number | undefined;
+                            return (
+                              <div className="rounded-lg border border-border bg-card px-2 py-1 shadow-sm">
+                                <p className="text-[10px] text-muted-foreground">{label}</p>
+                                <p className="text-[11px] font-semibold">{(rev ?? 0).toLocaleString(lang === "de" ? "de-DE" : "it-IT", { maximumFractionDigits: 0 })}€</p>
+                                <p className="text-[10px] text-muted-foreground">{ord ?? 0} {t("supplierHome", "chartOrders")}</p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={28}
+                          cursor="pointer"
+                          onClick={(d: { key?: string }) => {
+                            if (!d?.key) return;
+                            const isDay = detailedStats.bucket === "day";
+                            const from = isDay ? d.key : `${d.key}-01`;
+                            const to = isDay ? d.key : (() => {
+                              const [y, m] = d.key!.split("-").map(Number);
+                              const last = new Date(y, m, 0);
+                              return `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;
+                            })();
+                            navigate(`/supplier/orders?dateFrom=${from}&dateTo=${to}`);
+                          }} />
+                        <Line type="monotone" dataKey="orders" stroke="hsl(var(--chart-2, 220 70% 55%))" strokeWidth={2} dot={false} yAxisId={0} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              <Tabs value={statsTab} onValueChange={(v) => setStatsTab(v as "products" | "customers")}>
+                <TabsList className="grid w-full grid-cols-2 h-8">
+                  <TabsTrigger value="products" className="text-[11px]" data-testid="tab-top-products-mobile">{t("supplierHome", "topProducts")}</TabsTrigger>
+                  <TabsTrigger value="customers" className="text-[11px]" data-testid="tab-top-customers-mobile">{t("supplierHome", "topCustomers")}</TabsTrigger>
+                </TabsList>
+                <TabsContent value="products" className="mt-2">
+                  {detailedStats.topProducts.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground py-3 text-center">{t("supplierHome", "noStatsYet")}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {detailedStats.topProducts.slice(0, 5).map((p: { productId?: string; name: string; quantity: number; previousQuantity: number; revenue: number }, idx: number) => {
+                        const maxQty = detailedStats.topProducts[0]?.quantity || 1;
+                        const pct = Math.round((p.quantity / maxQty) * 100);
+                        const qDelta = calcDelta(p.quantity, p.previousQuantity);
+                        return (
+                          <button key={p.productId || idx} onClick={() => p.productId && navigate(`/supplier/products?highlight=${p.productId}`)}
+                            data-testid={`top-product-${idx}-mobile`}
+                            className="w-full text-left rounded-xl border border-border bg-card p-2.5 active:scale-[0.99] transition-transform">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">{idx + 1}</span>
+                              <span className="text-xs font-medium truncate flex-1">{p.name}</span>
+                              <span className="text-xs font-semibold tabular-nums">{p.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { maximumFractionDigits: 0 })}€</span>
+                            </div>
+                            <div className="h-1 bg-muted rounded-full overflow-hidden mb-1"><div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} /></div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-muted-foreground tabular-nums">{p.quantity}x</span>
+                              {p.previousQuantity > 0 && (
+                                <span className={`text-[10px] tabular-nums ${qDelta > 0 ? "text-emerald-600" : qDelta < 0 ? "text-rose-600" : "text-muted-foreground"}`}>
+                                  {qDelta > 0 ? "+" : ""}{qDelta}%
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="customers" className="mt-2">
+                  {(detailedStats.topCustomers || []).length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground py-3 text-center">{t("supplierHome", "noStatsYet")}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {(detailedStats.topCustomers || []).slice(0, 5).map((c: { restaurantId?: string; name: string; orders: number; revenue: number }, idx: number) => {
+                        const maxRev = detailedStats.topCustomers[0]?.revenue || 1;
+                        const pct = Math.round((c.revenue / maxRev) * 100);
+                        return (
+                          <button key={c.restaurantId || idx} onClick={() => c.restaurantId && navigate(`/supplier/inbox?to=${c.restaurantId}`)}
+                            data-testid={`top-customer-${idx}-mobile`}
+                            className="w-full text-left rounded-xl border border-border bg-card p-2.5 active:scale-[0.99] transition-transform">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">{idx + 1}</span>
+                              <span className="text-xs font-medium truncate flex-1">{c.name}</span>
+                              <span className="text-xs font-semibold tabular-nums">{c.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { maximumFractionDigits: 0 })}€</span>
+                            </div>
+                            <div className="h-1 bg-muted rounded-full overflow-hidden mb-1"><div className="h-full bg-sky-500 rounded-full" style={{ width: `${pct}%` }} /></div>
+                            <span className="text-[10px] text-muted-foreground tabular-nums">{c.orders} {t("supplierHome", "chartOrders")}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+
+              {insights && insights.length > 0 && (
+                <div className="rounded-2xl border border-border bg-muted/30 p-3" data-testid="insights-box-mobile">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Sparkles className="h-3.5 w-3.5 text-fuchsia-600" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("supplierHome", "insights")}</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {insights.map((ins) => {
+                      const label =
+                        ins.type === "inactive_customers" ? t("supplierHome", "insightInactive") :
+                        ins.type === "low_stock_top" ? t("supplierHome", "insightLowStockTop") :
+                        t("supplierHome", "insightTrending");
+                      return (
+                        <Link key={ins.type} href={ins.link} data-testid={`insight-${ins.type}-mobile`} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-card border border-border">
+                          <span className="text-[12px] font-medium"><span className="font-bold tabular-nums mr-1">{ins.count}</span>{label}</span>
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <MobileEmptyState
+              icon={<BarChart3 className="h-7 w-7" />}
+              title={t("supplierHome", "noStatsYet")}
+              description={t("supplierHome", "noStatsYetDesc")}
+            />
           )}
         </MobileSection>
 

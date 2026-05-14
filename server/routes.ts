@@ -2389,13 +2389,82 @@ export async function registerRoutes(
   app.get("/api/supplier/detailed-stats", async (req, res) => {
     try {
       const supplierId = (req.query.supplierId || req.query.userId) as string;
+      const periodRaw = (req.query.period as string) || "6m";
+      const period: "7d" | "30d" | "6m" | "12m" =
+        periodRaw === "7d" || periodRaw === "30d" || periodRaw === "12m" ? periodRaw : "6m";
       if (!supplierId) {
-        return res.json({ monthlyRevenue: [], topProducts: [], ordersByStatus: [], totalRevenue: 0, totalOrders: 0, avgOrderValue: 0 });
+        return res.json({
+          period, bucket: period === "7d" || period === "30d" ? "day" : "month",
+          timeSeries: [], monthlyRevenue: [], topProducts: [], topCustomers: [], ordersByStatus: [],
+          totalRevenue: 0, totalOrders: 0, avgOrderValue: 0, activeCustomers: 0,
+          currentMonthRevenue: 0,
+          previous: { totalRevenue: 0, totalOrders: 0, avgOrderValue: 0, activeCustomers: 0 },
+        });
       }
-      const stats = await storage.getSupplierDetailedStats(supplierId);
+      const stats = await storage.getSupplierDetailedStats(supplierId, period);
       res.json(stats);
     } catch (error) {
+      console.error("detailed-stats error", error);
       res.status(500).json({ error: "Failed to fetch detailed stats" });
+    }
+  });
+
+  app.get("/api/supplier/insights", async (req, res) => {
+    try {
+      const supplierId = (req.query.supplierId || req.query.userId) as string;
+      if (!supplierId) return res.json([]);
+      const insights = await storage.getSupplierInsights(supplierId);
+      res.json(insights);
+    } catch (error) {
+      console.error("supplier insights error", error);
+      res.status(500).json({ error: "Failed to fetch insights" });
+    }
+  });
+
+  app.get("/api/supplier/settings/revenue-target", async (req, res) => {
+    try {
+      const supplierId = (req.query.supplierId || req.query.userId) as string;
+      const callerId = (req.header("x-user-id") || req.query.userId) as string | undefined;
+      if (!supplierId) return res.json({ monthlyRevenueTarget: null });
+      if (!callerId || callerId !== supplierId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const user = await storage.getUser(supplierId);
+      if (!user || user.role !== "supplier") {
+        return res.status(404).json({ error: "Supplier not found" });
+      }
+      const value = user.monthlyRevenueTarget ? Number(user.monthlyRevenueTarget) : null;
+      res.json({ monthlyRevenueTarget: value });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch revenue target" });
+    }
+  });
+
+  app.patch("/api/supplier/settings/revenue-target", async (req, res) => {
+    try {
+      const schema = z.object({
+        supplierId: uuidField,
+        monthlyRevenueTarget: z.number().min(0).max(99999999).nullable(),
+      }).strict();
+      const { supplierId, monthlyRevenueTarget } = schema.parse(req.body);
+      const callerId = (req.header("x-user-id") || (req.body as { userId?: string }).userId) as string | undefined;
+      if (!callerId || callerId !== supplierId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const existing = await storage.getUser(supplierId);
+      if (!existing || existing.role !== "supplier") {
+        return res.status(404).json({ error: "Supplier not found" });
+      }
+      const updated = await storage.updateUser(supplierId, {
+        monthlyRevenueTarget: monthlyRevenueTarget === null ? null : monthlyRevenueTarget.toFixed(2),
+      });
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      res.json({ monthlyRevenueTarget: updated.monthlyRevenueTarget ? Number(updated.monthlyRevenueTarget) : null });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update revenue target" });
     }
   });
 
