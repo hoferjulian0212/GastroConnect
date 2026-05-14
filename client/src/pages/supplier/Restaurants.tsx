@@ -122,7 +122,7 @@ export default function SupplierRestaurants() {
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary"
-                      onClick={handleMessage}
+                      onClick={() => setLocation(`/supplier/inbox?to=${restaurant.id}`)}
                       data-testid={`button-message-${restaurant.id}`}
                     >
                       <MessageSquare className="h-4 w-4" />
