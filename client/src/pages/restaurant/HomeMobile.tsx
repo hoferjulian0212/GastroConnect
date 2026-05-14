@@ -115,26 +115,34 @@ export default function RestaurantHomeMobile({
         }}
         className="pb-32"
       >
-        <MobilePageHeader
-          title={currentUser?.companyName || ""}
-          subtitle={`${greeting} · ${todayDeliveries.length} ${lang === "de" ? "heute" : "oggi"}`}
-          testId="mobile-header-restaurant-home"
-        />
-
-        <div className="px-4 mt-4">
+        <div
+          className="bg-[#161921] text-white px-5 pb-5 rounded-b-3xl"
+          data-testid="mobile-header-restaurant-home"
+        >
+          <div className="pt-2 pb-5">
+            <p className="text-[13px] font-medium text-white/60">{greeting},</p>
+            <h1 className="text-[26px] font-bold leading-tight mt-1 text-white truncate">
+              {currentUser?.companyName || currentUser?.name || ""}
+            </h1>
+            <p className="text-[12px] text-white/55 mt-1.5">
+              {lang === "de"
+                ? `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "Lieferung" : "Lieferungen"} heute · ${pendingOrdersCount} offen`
+                : `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "consegna" : "consegne"} oggi · ${pendingOrdersCount} aperti`}
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-2.5">
             {kpis.map((k) => (
               <button
                 key={k.testId}
                 onClick={k.onClick}
                 data-testid={k.testId}
-                className="text-left rounded-2xl bg-card border border-border p-3.5 active:scale-[0.98] transition-transform shadow-sm"
+                className="text-left rounded-2xl bg-white/[0.07] border border-white/[0.10] p-3.5 active:scale-[0.98] transition-transform"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{k.label}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-white/55">{k.label}</span>
                   <div className={`flex items-center justify-center h-7 w-7 rounded-lg ${k.tone}`}>{k.icon}</div>
                 </div>
-                <div className="mt-2.5 text-[22px] font-bold leading-none text-foreground">{k.value}</div>
+                <div className="mt-2.5 text-[22px] font-bold leading-none text-white">{k.value}</div>
               </button>
             ))}
           </div>
