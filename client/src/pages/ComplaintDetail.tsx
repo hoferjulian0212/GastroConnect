@@ -503,6 +503,17 @@ export default function ComplaintDetail() {
       <div className="w-full">
         {/* Dark hero: matches design used on list pages */}
         <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4" data-testid="complaint-detail-hero">
+          {/* Compact mobile top bar inside the hero */}
+          <div className="md:hidden flex items-center justify-between mb-2">
+            <button
+              onClick={goBack}
+              className="inline-flex items-center gap-1 -ml-1 px-2 py-1.5 rounded-full text-sm font-medium text-white/80 hover:text-white active:bg-white/10 transition-colors"
+              data-testid="button-back-mobile"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {lang === "de" ? "Zurück" : "Indietro"}
+            </button>
+          </div>
           <div className="relative flex items-start justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className={`hidden md:flex h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-500/15" : "bg-white/10"} items-center justify-center shrink-0`}>
@@ -578,47 +589,10 @@ export default function ComplaintDetail() {
             </div>
           </div>
 
-          {/* Mobile actions — moved to sticky bottom bar; kept here disabled for desktop parity only */}
-          {false && groupedActions.length > 0 && !confirmAction && (
-            <div className="hidden flex-col gap-3 mt-4 pt-4 border-t border-white/10" data-testid="actions-row-mobile">
-              {groupedActions.map(({ cat, items }) => (
-                <div key={cat} className="space-y-1.5" data-testid={`actions-group-mobile-${cat}`}>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/40 px-0.5">
-                    {categoryLabels[cat][lang]}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {items.map((action) => {
-                      const Icon = action.icon;
-                      const isDestructive = action.category === "destructive";
-                      const baseCls = isDestructive
-                        ? "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25"
-                        : getButtonClasses(action.style);
-                      const disabledCls = action.disabled
-                        ? "bg-white/5 text-white/40 border border-white/10 cursor-not-allowed hover:bg-white/5"
-                        : baseCls;
-                      return (
-                        <button
-                          key={action.testId}
-                          className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
-                          onClick={action.disabled ? undefined : action.action}
-                          disabled={action.disabled}
-                          title={action.disabled ? action.disabledReason : undefined}
-                          data-testid={`${action.testId}-mobile`}
-                        >
-                          <Icon className="h-3.5 w-3.5 shrink-0" />
-                          <span>{action.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
-        {/* Back button: placed below the dark hero, matches OrderDetail */}
-        <div className="px-4 md:px-6 lg:px-8 pt-3">
+        {/* Back button: shown below the dark hero on desktop only; mobile uses the in-hero back button */}
+        <div className="hidden md:block px-4 md:px-6 lg:px-8 pt-3">
           <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
             <ArrowLeft className="h-4 w-4" />
             {lang === "de" ? "Zurück" : "Indietro"}
