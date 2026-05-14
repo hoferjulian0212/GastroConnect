@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile FAB — iOS 26 Liquid Glass treatment to match the floating bottom
+   nav. Translucent blur, inset rim highlights, no flat brand colour. */
+.mobile-fab-glass {
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.18),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.dark .mobile-fab-glass {
+  background: rgba(28, 28, 38, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
 /* Mobile dark hero — render as a floating rounded card with margins from
    all viewport edges, mirroring the desktop look. Respects the iOS
    safe-area inset (notch / status bar). Targets every page-level dark

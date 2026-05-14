@@ -20,7 +20,7 @@ export function MobileFab({
   const colors =
     variant === "dark"
       ? "bg-[#161921] text-white hover:bg-[#1f2330] active:bg-[#262a39]"
-      : "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80";
+      : "text-foreground dark:text-white";
 
   return (
     <button
@@ -28,7 +28,7 @@ export function MobileFab({
       data-testid={testId || "mobile-fab"}
       className={`md:hidden fixed right-4 z-30 inline-flex items-center justify-center gap-2 h-14 ${
         label ? "px-5 rounded-full" : "w-14 rounded-full"
-      } shadow-lg shadow-black/20 transition-all active:scale-95 ${colors}`}
+      } transition-all active:scale-95 ${colors} ${variant === "primary" ? "mobile-fab-glass" : "shadow-lg shadow-black/20"}`}
       style={{
         bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px))`,
       }}
