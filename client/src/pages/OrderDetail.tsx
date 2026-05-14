@@ -554,7 +554,7 @@ export default function OrderDetail() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {groupedActions.length > 0 && !confirmAction && (
-                <div className="hidden md:flex items-stretch gap-3 flex-wrap justify-end max-w-[60vw]" data-testid="actions-row-inline">
+                <div className="hidden md:flex items-stretch gap-3 flex-wrap justify-end max-w-[70vw] xl:max-w-[60vw]" data-testid="actions-row-inline">
                   {groupedActions.map(({ cat, items }, gIdx) => (
                     <div
                       key={cat}
@@ -595,24 +595,13 @@ export default function OrderDetail() {
               )}
             </div>
           </div>
-        </div>
 
-        {/* Back button: placed below the dark hero, matches Reklamationsdetails */}
-        <div className="px-4 md:px-6 lg:px-8 pt-3">
-          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
-            <ArrowLeft className="h-4 w-4" />
-            {lang === "de" ? "Zurück" : "Indietro"}
-          </button>
-        </div>
-
-        {/* Body: mobile actions, confirmation flows, KPIs, etc. */}
-        <div className="px-4 md:px-6 lg:px-8 pt-3 pb-6">
-          {/* Mobile actions — grouped by category with section headings */}
+          {/* Mobile actions — inside the dark hero */}
           {groupedActions.length > 0 && !confirmAction && (
-            <div className="md:hidden flex flex-col gap-3 mb-5" data-testid="actions-row-mobile">
+            <div className="md:hidden flex flex-col gap-3 mt-4 pt-4 border-t border-white/10" data-testid="actions-row-mobile">
               {groupedActions.map(({ cat, items }) => (
                 <div key={cat} className="space-y-1.5" data-testid={`actions-group-mobile-${cat}`}>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground px-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/40 px-0.5">
                     {categoryLabels[cat][lang]}
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -620,10 +609,10 @@ export default function OrderDetail() {
                       const Icon = action.icon;
                       const isDestructive = action.category === "destructive";
                       const baseCls = isDestructive
-                        ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/50"
+                        ? "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25"
                         : getButtonClasses(action.style);
                       const disabledCls = action.disabled
-                        ? "bg-muted/40 text-muted-foreground/60 border border-border/60 cursor-not-allowed hover:bg-muted/40"
+                        ? "bg-white/5 text-white/40 border border-white/10 cursor-not-allowed hover:bg-white/5"
                         : baseCls;
                       return (
                         <button
@@ -644,7 +633,18 @@ export default function OrderDetail() {
               ))}
             </div>
           )}
+        </div>
 
+        {/* Back button: placed below the dark hero, matches Reklamationsdetails */}
+        <div className="px-4 md:px-6 lg:px-8 pt-3">
+          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
+            <ArrowLeft className="h-4 w-4" />
+            {lang === "de" ? "Zurück" : "Indietro"}
+          </button>
+        </div>
+
+        {/* Body: confirmation flows, KPIs, etc. */}
+        <div className="px-4 md:px-6 lg:px-8 pt-3 pb-6">
           {/* Confirmation flows — centered, compact */}
           {confirmAction && (
             <div className="mb-5 mx-auto max-w-md" data-testid="section-confirm">
