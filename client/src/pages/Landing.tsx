@@ -1,8 +1,15 @@
 import { useLocation } from "wouter";
+import { useEffect, useRef, useState } from "react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import logoImg from "@assets/logo_no_bg.png";
 import {
   ShoppingCart,
@@ -29,7 +36,58 @@ import {
   Search,
   LineChart,
   Calendar,
+  Smartphone,
+  BellRing,
+  WifiOff,
+  Hand,
+  Bookmark,
+  Menu,
+  X,
 } from "lucide-react";
+
+const benefitIcons = [Clock, Shield, Eye, Sparkles];
+const mobileBulletIcons = [BellRing, WifiOff, Hand, Bookmark];
+
+function Reveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
+      setShown(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            setShown(true);
+            obs.disconnect();
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return (
+    <div
+      ref={ref}
+      style={{ transitionDelay: `${delay}ms` }}
+      className={`transition-all duration-700 ease-out will-change-transform ${shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"} ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function smoothScrollTo(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 const translations = {
   de: {
@@ -163,6 +221,61 @@ const translations = {
     ctaSupplier: "Als Händler starten",
     ctaRestaurant: "Als Betrieb starten",
     footerTagline: "Die digitale Plattform für Gastronomie-Bestellungen.",
+
+    navAnchorPillars: "Für wen",
+    navAnchorSteps: "So funktioniert es",
+    navAnchorFeatures: "Funktionen",
+    navAnchorMobile: "Mobile App",
+    navAnchorFaq: "FAQ",
+    navLogin: "Anmelden",
+
+    mobileBadge: "Mobile-Erlebnis",
+    mobileHeadline: "Ihre Bestellungen — immer in der Tasche",
+    mobileSub: "GastroConnect funktioniert auf jedem Gerät. Das mobile Erlebnis ist genauso vollständig wie am Desktop — mit Push-Benachrichtigungen, die Sie sofort informieren.",
+    mobileBullets: [
+      { title: "Push-Benachrichtigungen", desc: "Neue Bestellungen, Statuswechsel und Nachrichten direkt aufs Handy." },
+      { title: "Offline-fähig", desc: "Auch unterwegs oder im Lager: zuletzt geladene Daten bleiben verfügbar." },
+      { title: "Wisch-Gesten", desc: "Bestellungen schnell bestätigen oder als gelesen markieren — mit einem Swipe." },
+      { title: "Schnellzugriffe", desc: "Bestellvorlagen direkt vom Startbildschirm in Sekunden auslösen." },
+    ],
+    mobileMockTitle: "Neue Bestellung",
+    mobileMockMsg: "Biergarten München · 12 Artikel",
+    mobileMockTime: "vor 2 Min.",
+
+    benefitsHeadline: "Warum GastroConnect",
+    benefitsSub: "Konkrete Vorteile, die Sie ab dem ersten Tag spüren.",
+    benefits: [
+      { title: "Zeitersparnis", desc: "Statt Telefon und Fax: Bestellungen mit wenigen Klicks erfassen, freigeben und nachverfolgen." },
+      { title: "Weniger Fehler", desc: "Standardisierte Prozesse, klare Mengen und Lieferdaten — keine Missverständnisse mehr." },
+      { title: "Volle Transparenz", desc: "Preise, Aktionen, Lieferzeiten und Reklamationen sind für beide Seiten jederzeit sichtbar." },
+      { title: "Alles an einem Ort", desc: "Bestellungen, Chat, Dokumente und Kennzahlen — in einer einzigen Anwendung." },
+    ],
+
+    faqHeadline: "Häufig gestellte Fragen",
+    faqSub: "Antworten auf die wichtigsten Fragen rund um GastroConnect.",
+    faq: [
+      { q: "Was kostet GastroConnect?", a: "Sie können GastroConnect direkt ausprobieren — ohne Registrierung und ohne Kreditkarte. Genaue Preise besprechen wir individuell, abgestimmt auf Ihren Betrieb." },
+      { q: "Für welche Betriebe ist die Plattform geeignet?", a: "GastroConnect richtet sich an Restaurants, Hotels, Kantinen, Cafés und Gastronomiebetriebe jeder Größe — sowie an Lieferanten und Großhändler, die diese Betriebe beliefern." },
+      { q: "Wie funktioniert die Anmeldung?", a: "Sie wählen einfach Ihre Rolle (Betrieb oder Händler) und legen direkt los. Eine vollständige Registrierung mit Firmendaten ist erst nötig, wenn Sie produktiv arbeiten möchten." },
+      { q: "Brauche ich eine App aus dem Store?", a: "Nein. GastroConnect ist eine Webanwendung, die in jedem Browser läuft. Auf dem Handy können Sie sie wie eine App zum Startbildschirm hinzufügen — inklusive Push-Benachrichtigungen." },
+      { q: "Sind meine Daten sicher?", a: "Ja. Alle Daten werden verschlüsselt übertragen und sicher in der EU gehostet. Jede Rolle sieht nur die Informationen, die für sie bestimmt sind." },
+      { q: "Kann ich meine bestehenden Lieferanten weiter nutzen?", a: "Selbstverständlich. Sie können Ihre vorhandenen Lieferanten zu GastroConnect einladen oder direkt aus unserem wachsenden Netzwerk auswählen." },
+    ],
+
+    finalCtaConfirm: "Kostenlos testen — keine Kreditkarte nötig.",
+
+    footerTitleProduct: "Produkt",
+    footerTitleCompany: "Unternehmen",
+    footerTitleLegal: "Rechtliches",
+    footerLinkFeatures: "Funktionen",
+    footerLinkSteps: "So funktioniert es",
+    footerLinkFaq: "FAQ",
+    footerLinkAbout: "Über uns",
+    footerLinkContact: "Kontakt",
+    footerLinkImprint: "Impressum",
+    footerLinkPrivacy: "Datenschutz",
+    footerLinkTerms: "AGB",
+    footerCopyright: "Alle Rechte vorbehalten.",
   },
   it: {
     navSupplier: "Commerciante",
@@ -295,6 +408,61 @@ const translations = {
     ctaSupplier: "Inizia come commerciante",
     ctaRestaurant: "Inizia come azienda",
     footerTagline: "La piattaforma digitale per gli ordini nella gastronomia.",
+
+    navAnchorPillars: "Per chi",
+    navAnchorSteps: "Come funziona",
+    navAnchorFeatures: "Funzionalità",
+    navAnchorMobile: "App mobile",
+    navAnchorFaq: "FAQ",
+    navLogin: "Accedi",
+
+    mobileBadge: "Esperienza mobile",
+    mobileHeadline: "I tuoi ordini — sempre in tasca",
+    mobileSub: "GastroConnect funziona su qualsiasi dispositivo. L'esperienza mobile è completa come quella desktop — con notifiche push che ti tengono sempre aggiornato.",
+    mobileBullets: [
+      { title: "Notifiche push", desc: "Nuovi ordini, cambi di stato e messaggi direttamente sul telefono." },
+      { title: "Funziona offline", desc: "Anche fuori sede o in magazzino: i dati caricati restano disponibili." },
+      { title: "Gesti rapidi", desc: "Conferma ordini o segna come letti — con un semplice swipe." },
+      { title: "Accessi rapidi", desc: "Modelli d'ordine direttamente dalla home screen, in pochi secondi." },
+    ],
+    mobileMockTitle: "Nuovo ordine",
+    mobileMockMsg: "Biergarten München · 12 articoli",
+    mobileMockTime: "2 min fa",
+
+    benefitsHeadline: "Perché GastroConnect",
+    benefitsSub: "Vantaggi concreti che noterai dal primo giorno.",
+    benefits: [
+      { title: "Risparmio di tempo", desc: "Niente più telefonate e fax: ordini in pochi clic, approvazioni e tracciamento immediato." },
+      { title: "Meno errori", desc: "Processi standardizzati, quantità chiare e date di consegna — niente più malintesi." },
+      { title: "Massima trasparenza", desc: "Prezzi, promozioni, tempi di consegna e reclami sempre visibili a entrambe le parti." },
+      { title: "Tutto in un posto", desc: "Ordini, chat, documenti e KPI — in un'unica applicazione." },
+    ],
+
+    faqHeadline: "Domande frequenti",
+    faqSub: "Risposte alle domande più importanti su GastroConnect.",
+    faq: [
+      { q: "Quanto costa GastroConnect?", a: "Puoi provare GastroConnect subito — senza registrazione e senza carta di credito. I prezzi vengono concordati individualmente, in base alla tua attività." },
+      { q: "Per quali attività è adatta la piattaforma?", a: "GastroConnect è pensato per ristoranti, hotel, mense, bar e attività gastronomiche di ogni dimensione — oltre a fornitori e grossisti che li riforniscono." },
+      { q: "Come funziona la registrazione?", a: "Scegli semplicemente il tuo ruolo (azienda o commerciante) e inizia subito. Una registrazione completa con i dati aziendali è necessaria solo quando passi all'uso produttivo." },
+      { q: "Mi serve un'app dallo store?", a: "No. GastroConnect è un'applicazione web che funziona in qualsiasi browser. Sul telefono puoi aggiungerla alla home come un'app — comprese le notifiche push." },
+      { q: "I miei dati sono al sicuro?", a: "Sì. Tutti i dati sono trasmessi in modo cifrato e ospitati in modo sicuro nell'UE. Ogni ruolo vede solo le informazioni a lui destinate." },
+      { q: "Posso continuare a usare i miei fornitori esistenti?", a: "Certamente. Puoi invitare i tuoi fornitori attuali su GastroConnect oppure scegliere direttamente dalla nostra rete in crescita." },
+    ],
+
+    finalCtaConfirm: "Prova gratuitamente — senza carta di credito.",
+
+    footerTitleProduct: "Prodotto",
+    footerTitleCompany: "Azienda",
+    footerTitleLegal: "Legale",
+    footerLinkFeatures: "Funzionalità",
+    footerLinkSteps: "Come funziona",
+    footerLinkFaq: "FAQ",
+    footerLinkAbout: "Chi siamo",
+    footerLinkContact: "Contatti",
+    footerLinkImprint: "Note legali",
+    footerLinkPrivacy: "Privacy",
+    footerLinkTerms: "Termini",
+    footerCopyright: "Tutti i diritti riservati.",
   },
 } as const;
 
@@ -307,6 +475,7 @@ export default function Landing() {
   const [, setLocation] = useLocation();
   const { switchRole } = useUser();
   const { lang, toggleLang } = useLanguage();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const t = translations[lang];
 
@@ -317,18 +486,44 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl flex items-center justify-between flex-wrap gap-4 px-4 py-3 md:px-8">
-          <div className="flex items-center gap-2">
-            <img src={logoImg} alt="GastroConnect Logo" className="h-20 w-20 object-contain dark:invert -mr-2" />
-            <span className="font-bold text-xl tracking-tight" data-testid="text-brand-name">GastroConnect</span>
+      <nav className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
+        <div className="mx-auto max-w-6xl flex items-center justify-between gap-3 px-4 py-3 md:px-8">
+          <a
+            href="#top"
+            onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            className="flex items-center gap-2 shrink-0"
+            data-testid="link-brand"
+          >
+            <img src={logoImg} alt="GastroConnect Logo" className="h-12 w-12 md:h-16 md:w-16 object-contain dark:invert -mr-1" />
+            <span className="font-bold text-lg md:text-xl tracking-tight" data-testid="text-brand-name">GastroConnect</span>
+          </a>
+
+          {/* Desktop anchor nav */}
+          <div className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+            {[
+              { id: "fuer-wen", label: t.navAnchorPillars },
+              { id: "so-funktioniert", label: t.navAnchorSteps },
+              { id: "funktionen", label: t.navAnchorFeatures },
+              { id: "mobile", label: t.navAnchorMobile },
+              { id: "faq", label: t.navAnchorFaq },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => smoothScrollTo(item.id)}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                data-testid={`nav-anchor-${item.id}`}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={toggleLang}
               data-testid="button-toggle-lang"
               title={lang === "de" ? "Lingua italiana" : "Deutsche Sprache"}
-              className="relative flex h-8 w-[72px] items-center rounded-full bg-muted border border-border p-0.5 transition-colors cursor-pointer"
+              className="relative hidden sm:flex h-8 w-[72px] items-center rounded-full bg-muted border border-border p-0.5 transition-colors cursor-pointer"
             >
               <span className={`absolute left-0.5 flex h-7 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold shadow-sm transition-transform duration-300 ease-in-out ${lang === "it" ? "translate-x-[30px]" : "translate-x-0"}`}>
                 {lang === "de" ? "DE" : "IT"}
@@ -339,6 +534,7 @@ export default function Landing() {
             <Button
               variant="ghost"
               size="sm"
+              className="hidden md:inline-flex"
               onClick={() => handleStart("supplier")}
               data-testid="button-nav-supplier"
             >
@@ -347,12 +543,51 @@ export default function Landing() {
             <Button
               size="sm"
               onClick={() => handleStart("restaurant")}
-              data-testid="button-nav-restaurant"
+              data-testid="button-nav-login"
             >
-              {t.navRestaurant}
+              {t.navLogin}
             </Button>
+            <button
+              onClick={() => setMobileNavOpen((v) => !v)}
+              className="lg:hidden flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-foreground"
+              aria-label="Menu"
+              data-testid="button-mobile-menu"
+            >
+              {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile dropdown menu */}
+        {mobileNavOpen && (
+          <div className="lg:hidden border-t border-border bg-background/95 backdrop-blur-md" data-testid="menu-mobile">
+            <div className="mx-auto max-w-6xl px-4 py-2 flex flex-col">
+              {[
+                { id: "fuer-wen", label: t.navAnchorPillars },
+                { id: "so-funktioniert", label: t.navAnchorSteps },
+                { id: "funktionen", label: t.navAnchorFeatures },
+                { id: "mobile", label: t.navAnchorMobile },
+                { id: "faq", label: t.navAnchorFaq },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => { setMobileNavOpen(false); setTimeout(() => smoothScrollTo(item.id), 60); }}
+                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-foreground hover:bg-muted/60"
+                  data-testid={`nav-mobile-${item.id}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+              <button
+                onClick={toggleLang}
+                className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted/60 sm:hidden"
+                data-testid="button-mobile-lang"
+              >
+                {lang === "de" ? "Lingua italiana (IT)" : "Deutsche Sprache (DE)"}
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* HERO */}
@@ -534,7 +769,7 @@ export default function Landing() {
       </section>
 
       {/* PILLARS — Supplier & Restaurant detail panels */}
-      <section className="py-16 md:py-24 bg-muted/30 border-y border-border/50">
+      <section id="fuer-wen" className="scroll-mt-20 py-16 md:py-24 bg-muted/30 border-y border-border/50">
         <div className="mx-auto max-w-6xl px-4 md:px-8">
           <div className="mx-auto max-w-2xl text-center mb-10 md:mb-14">
             <h2 className="text-2xl md:text-4xl font-bold tracking-tight" data-testid="text-pillars-headline">
@@ -731,7 +966,7 @@ export default function Landing() {
       </section>
 
       {/* SHOWCASE — Key Features */}
-      <section className="py-16 md:py-24">
+      <section id="funktionen" className="scroll-mt-20 py-16 md:py-24">
         <div className="mx-auto max-w-6xl px-4 md:px-8">
           <div className="mx-auto max-w-2xl text-center mb-10 md:mb-12">
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight" data-testid="text-showcase-headline">
@@ -764,7 +999,7 @@ export default function Landing() {
       </section>
 
       {/* STEPS */}
-      <section className="py-16 md:py-24 bg-muted/30 border-y border-border/50">
+      <section id="so-funktioniert" className="scroll-mt-20 py-16 md:py-24 bg-muted/30 border-y border-border/50">
         <div className="mx-auto max-w-6xl px-4 md:px-8">
           <div className="mx-auto max-w-2xl text-center mb-12">
             <h2 className="text-2xl font-bold tracking-tight md:text-3xl" data-testid="text-steps-headline">
@@ -790,14 +1025,170 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* MOBILE EXPERIENCE */}
+      <section id="mobile" className="scroll-mt-20 py-16 md:py-24">
+        <div className="mx-auto max-w-6xl px-4 md:px-8">
+          <Reveal>
+            <div className="grid gap-10 lg:grid-cols-2 items-center">
+              <div>
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary mb-4">
+                  <Smartphone className="h-3 w-3" />
+                  {t.mobileBadge}
+                </div>
+                <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-3" data-testid="text-mobile-headline">
+                  {t.mobileHeadline}
+                </h2>
+                <p className="text-muted-foreground text-base md:text-lg mb-6 leading-relaxed">
+                  {t.mobileSub}
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {t.mobileBullets.map((b, idx) => {
+                    const Icon = mobileBulletIcons[idx];
+                    return (
+                      <div key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-border bg-card" data-testid={`mobile-bullet-${idx}`}>
+                        <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm">{b.title}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5 leading-snug">{b.desc}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Phone mockup */}
+              <div className="flex justify-center">
+                <div className="relative w-[260px] md:w-[300px] aspect-[9/19] rounded-[3rem] border-[10px] border-[#161921] bg-[#161921] shadow-2xl overflow-hidden" data-testid="phone-mockup">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-5 w-28 bg-[#161921] rounded-b-2xl z-20" />
+                  <div className="relative h-full w-full bg-gradient-to-b from-[#1e2130] to-[#161921] p-3 pt-7 flex flex-col gap-2.5">
+                    {/* Push notification card */}
+                    <div className="rounded-2xl bg-white/[0.08] border border-white/15 p-3 flex items-start gap-2.5 backdrop-blur" data-testid="phone-push">
+                      <div className="h-8 w-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                        <BellRing className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-[11px] font-bold text-white">GastroConnect</div>
+                          <div className="text-[9px] text-white/50">{t.mobileMockTime}</div>
+                        </div>
+                        <div className="text-[11px] font-semibold text-white mt-0.5">{t.mobileMockTitle}</div>
+                        <div className="text-[10px] text-white/70 leading-tight mt-0.5 truncate">{t.mobileMockMsg}</div>
+                      </div>
+                    </div>
+
+                    {/* Mini cards */}
+                    {[
+                      { icon: ShoppingCart, label: "Trattoria Lina", sub: "8 Artikel", color: "text-blue-400" },
+                      { icon: MessageSquare, label: "Frische GmbH", sub: "Neue Nachricht", color: "text-emerald-400" },
+                      { icon: Truck, label: "Bio Bauer", sub: "In Lieferung", color: "text-amber-400" },
+                    ].map((row, idx) => (
+                      <div key={idx} className="rounded-xl bg-white/[0.05] border border-white/10 p-2.5 flex items-center gap-2.5">
+                        <div className={`h-8 w-8 rounded-lg bg-white/[0.08] flex items-center justify-center ${row.color}`}>
+                          <row.icon className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] font-semibold text-white truncate">{row.label}</div>
+                          <div className="text-[9px] text-white/50 truncate">{row.sub}</div>
+                        </div>
+                        <ChevronRight className="h-3.5 w-3.5 text-white/30" />
+                      </div>
+                    ))}
+
+                    <div className="flex-1" />
+
+                    {/* Bottom nav */}
+                    <div className="rounded-2xl bg-white/[0.08] border border-white/15 backdrop-blur px-3 py-2 flex items-center justify-around">
+                      {[Smartphone, MessageSquare, ShoppingCart, BarChart3].map((Icon, idx) => (
+                        <div key={idx} className={`h-7 w-7 rounded-lg flex items-center justify-center ${idx === 0 ? "bg-white/30 text-white" : "text-white/50"}`}>
+                          <Icon className="h-3.5 w-3.5" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* BENEFITS — Vorteile */}
+      <section id="vorteile" className="scroll-mt-20 py-16 md:py-24 bg-muted/30 border-y border-border/50">
+        <div className="mx-auto max-w-6xl px-4 md:px-8">
+          <Reveal>
+            <div className="mx-auto max-w-2xl text-center mb-10 md:mb-12">
+              <h2 className="text-2xl md:text-4xl font-bold tracking-tight" data-testid="text-benefits-headline">
+                {t.benefitsHeadline}
+              </h2>
+              <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
+                {t.benefitsSub}
+              </p>
+            </div>
+          </Reveal>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {t.benefits.map((item, idx) => {
+              const Icon = benefitIcons[idx];
+              return (
+                <Reveal key={idx} delay={idx * 80}>
+                  <div className="h-full rounded-2xl border border-border bg-card p-5 hover-elevate" data-testid={`card-benefit-${idx}`}>
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="font-bold text-base mb-1.5" data-testid={`text-benefit-title-${idx}`}>{item.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                  </div>
+                </Reveal>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="scroll-mt-20 py-16 md:py-24">
+        <div className="mx-auto max-w-3xl px-4 md:px-8">
+          <Reveal>
+            <div className="text-center mb-10 md:mb-12">
+              <h2 className="text-2xl md:text-4xl font-bold tracking-tight" data-testid="text-faq-headline">
+                {t.faqHeadline}
+              </h2>
+              <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
+                {t.faqSub}
+              </p>
+            </div>
+          </Reveal>
+          <Reveal>
+            <Accordion type="single" collapsible className="rounded-2xl border border-border bg-card divide-y divide-border overflow-hidden">
+              {t.faq.map((item, idx) => (
+                <AccordionItem key={idx} value={`item-${idx}`} className="border-0">
+                  <AccordionTrigger className="px-5 py-4 text-left text-base font-semibold hover:no-underline" data-testid={`faq-q-${idx}`}>
+                    {item.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="px-5 pb-4 text-sm text-muted-foreground leading-relaxed" data-testid={`faq-a-${idx}`}>
+                    {item.a}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </Reveal>
+        </div>
+      </section>
+
       {/* CTA */}
-      <section className="py-16 md:py-20 bg-primary/5 border-t border-border/50">
+      <section id="cta" className="scroll-mt-20 py-16 md:py-20 bg-primary/5 border-t border-border/50">
         <div className="mx-auto max-w-6xl px-4 md:px-8 text-center">
           <h2 className="text-2xl font-bold tracking-tight md:text-3xl mb-4" data-testid="text-cta-headline">
             {t.ctaHeadline}
           </h2>
-          <p className="text-muted-foreground text-base md:text-lg mb-8 max-w-xl mx-auto">
+          <p className="text-muted-foreground text-base md:text-lg mb-3 max-w-xl mx-auto">
             {t.ctaSub}
+          </p>
+          <p className="text-xs md:text-sm text-muted-foreground mb-8 inline-flex items-center gap-1.5">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            {t.finalCtaConfirm}
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button
@@ -822,15 +1213,52 @@ export default function Landing() {
         </div>
       </section>
 
-      <footer className="border-t border-border py-8 md:py-12">
+      <footer className="border-t border-border py-12 md:py-16 bg-card/30">
         <div className="mx-auto max-w-6xl px-4 md:px-8">
-          <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between flex-wrap">
-            <div className="flex items-center gap-2">
-              <img src={logoImg} alt="GastroConnect Logo" className="h-12 w-12 object-contain dark:invert -mr-1" />
-              <span className="font-bold text-sm tracking-tight" data-testid="text-footer-brand">GastroConnect</span>
+          <div className="grid gap-10 md:grid-cols-4">
+            <div className="md:col-span-1">
+              <div className="flex items-center gap-2 mb-3">
+                <img src={logoImg} alt="GastroConnect Logo" className="h-12 w-12 object-contain dark:invert -mr-1" />
+                <span className="font-bold text-sm tracking-tight" data-testid="text-footer-brand">GastroConnect</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-xs" data-testid="text-footer-tagline">
+                {t.footerTagline}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground text-center md:text-right" data-testid="text-footer-tagline">
-              {t.footerTagline}
+
+            <div>
+              <h3 className="text-sm font-bold mb-3">{t.footerTitleProduct}</h3>
+              <ul className="space-y-2 text-sm">
+                <li><button onClick={() => smoothScrollTo("funktionen")} className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-features">{t.footerLinkFeatures}</button></li>
+                <li><button onClick={() => smoothScrollTo("so-funktioniert")} className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-steps">{t.footerLinkSteps}</button></li>
+                <li><button onClick={() => smoothScrollTo("faq")} className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-faq">{t.footerLinkFaq}</button></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold mb-3">{t.footerTitleCompany}</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="/about" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-about">{t.footerLinkAbout}</a></li>
+                <li><a href="mailto:hello@gastroconnect.app" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-contact">{t.footerLinkContact}</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold mb-3">{t.footerTitleLegal}</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="/impressum" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-imprint">{t.footerLinkImprint}</a></li>
+                <li><a href="/datenschutz" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-privacy">{t.footerLinkPrivacy}</a></li>
+                <li><a href="/agb" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-terms">{t.footerLinkTerms}</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-10 pt-6 border-t border-border flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <p className="text-xs text-muted-foreground" data-testid="text-footer-copyright">
+              © {new Date().getFullYear()} GastroConnect. {t.footerCopyright}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Made for Gastronomie
             </p>
           </div>
         </div>
