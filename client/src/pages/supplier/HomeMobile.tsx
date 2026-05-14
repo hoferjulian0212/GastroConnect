@@ -46,13 +46,13 @@ export default function SupplierHomeMobile({
 
   const fmtPrice = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
 
-  const todayDeliveries = (upcomingDeliveries || []).filter(o => o.deliveryDate && isToday(new Date(o.deliveryDate)));
+  const todayDeliveries = (upcomingDeliveries || []).filter(o => o.requestedDeliveryDate && isToday(new Date(o.requestedDeliveryDate)));
   const nextDeliveries = (upcomingDeliveries || []).slice(0, 3);
   const recent = (recentOrders || []).slice(0, 5);
 
   const newOrdersCount = (recentOrders || []).filter(o => o.status === "pending").length;
   const openComplaints = actionRequired?.openComplaints?.length || 0;
-  const todayRevenue = todayDeliveries.reduce((s, o) => s + parseFloat(o.totalPrice as any || "0"), 0);
+  const todayRevenue = todayDeliveries.reduce((s, o) => s + parseFloat(o.totalAmount as any || "0"), 0);
 
   const kpis = [
     {
@@ -203,7 +203,7 @@ export default function SupplierHomeMobile({
           ) : (
             <div className="space-y-2">
               {nextDeliveries.map((o) => {
-                const date = o.deliveryDate ? new Date(o.deliveryDate) : null;
+                const date = o.requestedDeliveryDate ? new Date(o.requestedDeliveryDate) : null;
                 const dateLabel = !date ? "" : isToday(date)
                   ? lang === "de" ? "Heute" : "Oggi"
                   : isTomorrow(date)
@@ -221,7 +221,7 @@ export default function SupplierHomeMobile({
                       </Avatar>
                     }
                     title={o.restaurant?.companyName || ""}
-                    subtitle={`${o.items?.length || 0} ${lang === "de" ? "Artikel" : "articoli"} · ${fmtPrice(parseFloat(o.totalPrice as any || "0"))}`}
+                    subtitle={`${o.items?.length || 0} ${lang === "de" ? "Artikel" : "articoli"} · ${fmtPrice(parseFloat(o.totalAmount as any || "0"))}`}
                     trailing={
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-[12px] font-semibold text-foreground">{dateLabel}</span>
@@ -260,7 +260,7 @@ export default function SupplierHomeMobile({
                   key={o.id}
                   onClick={() => navigate(`/supplier/orders/${o.id}`)}
                   title={o.restaurant?.companyName || ""}
-                  subtitle={`${formatDistanceToNow(new Date(o.createdAt as any), { addSuffix: true, locale: dateLocale })} · ${fmtPrice(parseFloat(o.totalPrice as any || "0"))}`}
+                  subtitle={`${formatDistanceToNow(new Date(o.createdAt as any), { addSuffix: true, locale: dateLocale })} · ${fmtPrice(parseFloat(o.totalAmount as any || "0"))}`}
                   trailing={<MobileStatusPill tone={statusToTone(o.status)} size="sm">{getOrderStatus(o.status as any, lang)}</MobileStatusPill>}
                   testId={`mobile-s-recent-${o.id}`}
                 />

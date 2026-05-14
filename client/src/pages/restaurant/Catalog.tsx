@@ -14,6 +14,7 @@ import { useT } from "@/lib/translations";
 import { queryClient } from "@/lib/queryClient";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { ProductImage } from "@/components/ProductImage";
+import { ShoppingCart, ChevronRight as ChevronRightIcon } from "lucide-react";
 
 
 const categoryConfig: Record<string, { de: string; it: string; icon: typeof Package; color: string }> = {
@@ -41,6 +42,33 @@ const categoryConfig: Record<string, { de: string; it: string; icon: typeof Pack
 };
 
 const allCategories = Object.keys(categoryConfig);
+
+function CartPillMobile({ lang, setLocation }: { lang: string; setLocation: (p: string) => void }) {
+  const { currentUser } = useUser();
+  const { data } = useQuery<{ count: string | number }>({
+    queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+    refetchInterval: 5000,
+  });
+  const count = Number(data?.count || 0);
+  if (!count) return null;
+  return (
+    <button
+      onClick={() => setLocation("/restaurant/cart")}
+      data-testid="button-mobile-cart-pill"
+      className="md:hidden fixed left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-2 h-12 pl-3 pr-4 rounded-full bg-foreground text-background shadow-[0_8px_24px_rgba(0,0,0,0.25)] active:scale-95 transition-transform"
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)" }}
+    >
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-background/15">
+        <ShoppingCart className="h-4 w-4" />
+      </span>
+      <span className="text-[13px] font-semibold tabular-nums">
+        {count} {lang === "de" ? "im Warenkorb" : "nel carrello"}
+      </span>
+      <ChevronRightIcon className="h-4 w-4 opacity-70" />
+    </button>
+  );
+}
 
 export default function RestaurantCatalog() {
   const { currentUser } = useUser();
@@ -588,6 +616,7 @@ export default function RestaurantCatalog() {
         </>
       )}
 
+    <CartPillMobile lang={lang} setLocation={setLocation} />
     </PullToRefreshWrapper>
   );
 }

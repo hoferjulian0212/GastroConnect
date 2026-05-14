@@ -22,6 +22,7 @@ import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import RestaurantHomeMobile from "./HomeMobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
 import { ProductImage } from "@/components/ProductImage";
@@ -43,6 +44,7 @@ export default function RestaurantHome() {
   const { toast } = useToast();
   const { triggerFly } = useFlyToCart();
   const [, navigate] = useLocation();
+  const isMobile = useIsMobile();
   const [detailOrder, setDetailOrder] = useState<OrderWithDetails | null>(null);
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null);
   const [expandedBundles, setExpandedBundles] = useState<Set<string>>(new Set());
@@ -833,7 +835,7 @@ export default function RestaurantHome() {
     return Array.from(map.entries()).map(([supplierId, list]) => ({ supplierId, orders: list }));
   };
 
-  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+  if (isMobile) {
     return (
       <RestaurantHomeMobile
         currentUser={currentUser}

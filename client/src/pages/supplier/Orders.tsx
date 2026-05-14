@@ -41,6 +41,8 @@ import {
 } from "@/lib/orderTableConfig";
 import { GroupHeader } from "@/components/orders/GroupHeader";
 import { ProductImage } from "@/components/ProductImage";
+import { useIsMobile } from "@/hooks/use-mobile";
+import SupplierOrdersMobile from "./OrdersMobile";
 
 export default function SupplierOrders() {
   const { currentUser } = useUser();
@@ -49,6 +51,7 @@ export default function SupplierOrders() {
   const { lang } = useLanguage();
   const t = useT(lang);
   const dateFnsLocale = lang === "de" ? de : it;
+  const isMobile = useIsMobile();
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const highlightOrderId = searchParams.get("orderId");
@@ -918,6 +921,19 @@ export default function SupplierOrders() {
       </div>
     );
   };
+
+  if (isMobile) {
+    return (
+      <SupplierOrdersMobile
+        orders={orders}
+        isLoading={isLoading}
+        currentUserId={currentUser?.id || ""}
+        lang={lang}
+        dateLocale={dateFnsLocale}
+        initialStatus={initialStatus || undefined}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-6">

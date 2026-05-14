@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global mobile bottom-padding variable so every scrollable page can clear
+   the floating tab bar consistently. Use as: padding-bottom: var(--mobile-bottom-pad). */
+:root {
+  --mobile-bottom-pad: calc(env(safe-area-inset-bottom, 0px) + 88px + 16px);
+}
+
+/* Mobile-only: ensure form inputs hit at least 44px and font-size 16px so
+   iOS Safari does NOT auto-zoom on focus, and tap targets are thumb-friendly. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+  /* Keep tiny inline inputs (e.g. quantity steppers) compact when explicitly sized */
+  .qty-input-compact input,
+  input.h-8, input.h-7, input.h-6 {
+    min-height: unset;
+  }
+}
+
 /* Mobile FAB — iOS 26 Liquid Glass treatment to match the floating bottom
    nav. Translucent blur, inset rim highlights, no flat brand colour. */
 .mobile-fab-glass {

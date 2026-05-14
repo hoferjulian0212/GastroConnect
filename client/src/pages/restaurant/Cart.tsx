@@ -384,7 +384,7 @@ export default function RestaurantCart() {
           },
         });
       }}
-      className="space-y-4 md:space-y-6 pb-24 md:pb-6"
+      className="space-y-4 md:space-y-6 md:pb-6 pb-[calc(var(--mobile-bottom-pad)+64px)]"
     >
       <MobilePageHeader
         title={lang === "de" ? "Warenkorb" : "Carrello"}
@@ -803,6 +803,45 @@ export default function RestaurantCart() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    {cartItems && cartItems.length > 0 && !orderConfirmation && (
+      <div
+        className="md:hidden fixed left-3 right-3 z-30 rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.18)] p-3 flex items-center gap-3"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
+        data-testid="mobile-cart-sticky-footer"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+            {t("common", "total")}
+          </div>
+          <div className="text-[20px] font-bold leading-tight tabular-nums" data-testid="text-mobile-total">
+            {grandTotal} €
+          </div>
+        </div>
+        <Button
+          className="h-12 px-5 rounded-full font-semibold gap-2"
+          onClick={() => {
+            const allSuppliers = Object.entries(groupedBySupplier || {});
+            const supplierNames = allSuppliers.map(([, g]) => g.supplier.companyName || g.supplier.name).join(", ");
+            const allItems = allSuppliers.flatMap(([, g]) => g.items.map(item => ({ name: item.product.name, quantity: item.quantity, price: (getEffectivePrice(item) * item.quantity).toFixed(2), unit: item.product.unit })));
+            const firstDate = Object.entries(selectedDeliveryDates).find(([sid, d]) => d && deliveryOptions[sid] === "date");
+            const deliveryDateStr = firstDate ? format(parse(firstDate[1], "yyyy-MM-dd", new Date()), "EEEE, dd. MMMM yyyy", { locale: dateLocale }) : null;
+            setPreConfirmDialog({
+              mode: "all",
+              supplierName: supplierNames,
+              items: allItems,
+              total: grandTotal,
+              deliveryDate: deliveryDateStr,
+              notes: Object.values(orderNotes).filter(n => n.trim()).join("; "),
+            });
+          }}
+          disabled={createOrderMutation.isPending || createSupplierOrderMutation.isPending || supplierIds.some(sid => isBelowMov(sid, (groupedBySupplier || {})[sid]?.items || [])) || supplierIds.some(sid => deliveryOptions[sid] === "date" && !selectedDeliveryDates[sid] && (perSupplierDeliveryDates[sid] || []).length > 0)}
+          data-testid="button-mobile-checkout"
+        >
+          {Object.keys(groupedBySupplier || {}).length > 1 ? t("cart", "placeAllOrders") : t("cart", "placeOrder")}
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    )}
     </PullToRefreshWrapper>
   );
 }

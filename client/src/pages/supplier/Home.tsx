@@ -32,6 +32,7 @@ import DraggableCardGrid from "@/components/DraggableCardGrid";
 import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import SupplierHomeMobile from "./HomeMobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductImage } from "@/components/ProductImage";
 
 export default function SupplierHome() {
@@ -40,6 +41,7 @@ export default function SupplierHome() {
   const t = useT(lang);
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const isMobile = useIsMobile();
   const dateLocale = lang === "de" ? de : it;
 
   const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string } | null>(null);
@@ -352,7 +354,7 @@ export default function SupplierHome() {
     return result;
   }, [upcomingDeliveries, lang]);
 
-  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+  if (isMobile) {
     return (
       <SupplierHomeMobile
         currentUser={currentUser}

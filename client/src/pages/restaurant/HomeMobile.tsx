@@ -42,7 +42,7 @@ export default function RestaurantHomeMobile({
     return h < 11 ? "Buongiorno" : h < 18 ? "Buon pomeriggio" : "Buonasera";
   })();
 
-  const todayDeliveries = (upcomingDeliveries || []).filter(o => o.deliveryDate && isToday(new Date(o.deliveryDate)));
+  const todayDeliveries = (upcomingDeliveries || []).filter(o => o.requestedDeliveryDate && isToday(new Date(o.requestedDeliveryDate)));
   const nextDeliveries = (upcomingDeliveries || []).slice(0, 3);
   const recentActivity = (allOrders || [])
     .slice()
@@ -188,7 +188,7 @@ export default function RestaurantHomeMobile({
           ) : (
             <div className="space-y-2">
               {nextDeliveries.map((o) => {
-                const date = o.deliveryDate ? new Date(o.deliveryDate) : null;
+                const date = o.requestedDeliveryDate ? new Date(o.requestedDeliveryDate) : null;
                 const dateLabel = !date ? "" : isToday(date)
                   ? lang === "de" ? "Heute" : "Oggi"
                   : isTomorrow(date)
@@ -206,7 +206,7 @@ export default function RestaurantHomeMobile({
                       </Avatar>
                     }
                     title={o.supplier?.companyName || ""}
-                    subtitle={`${o.items?.length || 0} ${lang === "de" ? "Artikel" : "articoli"} · ${fmtPrice(parseFloat(o.totalPrice as any || "0"))}`}
+                    subtitle={`${o.items?.length || 0} ${lang === "de" ? "Artikel" : "articoli"} · ${fmtPrice(parseFloat(o.totalAmount as any || "0"))}`}
                     trailing={
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-[12px] font-semibold text-foreground">{dateLabel}</span>
@@ -246,7 +246,7 @@ export default function RestaurantHomeMobile({
                   key={o.id}
                   onClick={() => navigate(`/restaurant/orders/${o.id}`)}
                   title={o.supplier?.companyName || ""}
-                  subtitle={`${formatDistanceToNow(new Date(o.createdAt as any), { addSuffix: true, locale: dateLocale })} · ${fmtPrice(parseFloat(o.totalPrice as any || "0"))}`}
+                  subtitle={`${formatDistanceToNow(new Date(o.createdAt as any), { addSuffix: true, locale: dateLocale })} · ${fmtPrice(parseFloat(o.totalAmount as any || "0"))}`}
                   trailing={<MobileStatusPill tone={statusToTone(o.status)} size="sm">{getOrderStatus(o.status as any, lang)}</MobileStatusPill>}
                   showChevron={false}
                   testId={`mobile-recent-${o.id}`}

@@ -40,6 +40,8 @@ import {
 import { Cell } from "@/components/orders/Cell";
 import { GroupHeader } from "@/components/orders/GroupHeader";
 import { ProductImage } from "@/components/ProductImage";
+import { useIsMobile } from "@/hooks/use-mobile";
+import RestaurantOrdersMobile from "./OrdersMobile";
 
 interface EditableItem {
   id: string;
@@ -56,6 +58,7 @@ export default function RestaurantOrders() {
   const { lang } = useLanguage();
   const t = useT(lang);
   const dateLocale = lang === "it" ? it : de;
+  const isMobile = useIsMobile();
   const [, navigate] = useLocation();
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
@@ -1225,6 +1228,19 @@ export default function RestaurantOrders() {
       default: return "";
     }
   };
+
+  if (isMobile) {
+    return (
+      <RestaurantOrdersMobile
+        orders={orders}
+        isLoading={isLoading}
+        currentUserId={currentUser?.id || ""}
+        lang={lang}
+        dateLocale={dateLocale}
+        initialStatus={initialStatus || undefined}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-6">
