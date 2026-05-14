@@ -58,7 +58,7 @@ function CartPillMobile({ lang, setLocation }: { lang: string; setLocation: (p: 
  onClick={() => setLocation("/restaurant/cart")}
  data-testid="button-mobile-cart-pill"
  className="md:hidden fixed left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-2 h-12 pl-3 pr-4 rounded-full bg-foreground text-background shadow-[0_8px_24px_rgba(0,0,0,0.25)] active:scale-95 transition-transform"
- style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 78px)" }}
+ style={{ bottom: "var(--mobile-cta-offset)" }}
  >
  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-background/15">
  <ShoppingCart className="h-4 w-4" />

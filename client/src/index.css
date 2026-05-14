@@ -3,9 +3,12 @@
 @tailwind utilities;
 
 /* Global mobile bottom-padding variable so every scrollable page can clear
-   the floating tab bar consistently. Use as: padding-bottom: var(--mobile-bottom-pad). */
+   the floating tab bar consistently. Use as: padding-bottom: var(--mobile-bottom-pad).
+   --mobile-cta-offset is the bottom inset for sticky/fixed CTA bars so they
+   float just above the tab bar with a small gap. */
 :root {
-  --mobile-bottom-pad: calc(env(safe-area-inset-bottom, 0px) + 88px + 16px);
+  --mobile-cta-offset: calc(env(safe-area-inset-bottom, 0px) + 88px);
+  --mobile-bottom-pad: calc(var(--mobile-cta-offset) + 16px);
 }
 
 /* Mobile-only: ensure form inputs hit at least 44px and font-size 16px so

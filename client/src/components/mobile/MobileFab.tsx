@@ -14,7 +14,7 @@ export function MobileFab({
   icon,
   label,
   testId,
-  bottomOffset = 88,
+  bottomOffset,
   variant = "primary",
 }: MobileFabProps) {
   const colors =
@@ -30,7 +30,9 @@ export function MobileFab({
         label ? "px-5 rounded-full" : "w-14 rounded-full"
       } transition-all active:scale-95 ${colors} ${variant === "primary" ? "mobile-fab-glass" : "shadow-lg shadow-black/20"}`}
       style={{
-        bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px))`,
+        bottom: bottomOffset !== undefined
+          ? `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px))`
+          : "var(--mobile-cta-offset)",
       }}
     >
       <span className="inline-flex items-center justify-center">{icon}</span>

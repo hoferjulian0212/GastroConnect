@@ -113,7 +113,7 @@ export default function RestaurantHomeMobile({
             },
           });
         }}
-        className="pb-32"
+        className="pb-[var(--mobile-bottom-pad)]"
       >
         <div
           className="bg-[#161921] text-white px-5 pb-5 rounded-b-3xl"

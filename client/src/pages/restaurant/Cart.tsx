@@ -384,7 +384,7 @@ export default function RestaurantCart() {
           },
         });
       }}
-      className="space-y-4 md:space-y-6 md:pb-6 pb-[calc(var(--mobile-bottom-pad)+64px)]"
+      className="space-y-4 md:space-y-6 md:pb-6 pb-[calc(var(--mobile-cta-offset)+80px)]"
     >
       <MobilePageHeader
         title={lang === "de" ? "Warenkorb" : "Carrello"}
@@ -806,7 +806,7 @@ export default function RestaurantCart() {
     {cartItems && cartItems.length > 0 && !orderConfirmation && (
       <div
         className="md:hidden fixed left-3 right-3 z-30 rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.18)] p-3 flex items-center gap-3"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
+        style={{ bottom: "var(--mobile-cta-offset)" }}
         data-testid="mobile-cart-sticky-footer"
       >
         <div className="flex-1 min-w-0">

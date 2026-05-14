@@ -1105,7 +1105,7 @@ export default function RestaurantInbox() {
                 />
               </div>
             </CardHeader>
-            <div ref={pullRefreshRef} className="flex-1 min-h-0 overflow-y-auto relative">
+            <div ref={pullRefreshRef} className="flex-1 min-h-0 overflow-y-auto relative pb-[var(--mobile-bottom-pad)] md:pb-0">
               {pullDistance > 0 && (
                 <div className="absolute top-0 left-0 right-0 flex justify-center z-10 pointer-events-none md:hidden" style={{ transform: `translateY(${pullDistance - 40}px)` }}>
                   <div className={`flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 border border-primary/20 ${isRefreshing ? "animate-pull-spin" : ""}`}>
