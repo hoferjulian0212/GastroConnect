@@ -25,6 +25,7 @@ import { navigate } from "wouter/use-browser-location";
 import type { User } from "@shared/schema";
 
 import Landing from "@/pages/Landing";
+import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 import RestaurantHome from "@/pages/restaurant/Home";
 import RestaurantInbox from "@/pages/restaurant/Inbox";
@@ -463,6 +464,10 @@ function AppLayout() {
 
   if (location === "/") {
     return <Landing />;
+  }
+
+  if (location === "/login") {
+    return <Login />;
   }
 
   if (location === "/about") {

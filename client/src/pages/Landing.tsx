@@ -1,7 +1,6 @@
 import { useLocation } from "wouter";
 import { useEffect, useRef, useState } from "react";
 import { useUser } from "@/context/UserContext";
-import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -225,8 +224,7 @@ const translations = {
     stepsSub: "In wenigen Schritten zur digitalen Bestellabwicklung.",
     steps: [
       { title: "Rolle wählen", desc: "Starten Sie als Betrieb oder Händler — ohne Registrierung." },
-      { title: "Produkte entdecken", desc: "Betriebe durchsuchen den Katalog und finden passende Händler." },
-      { title: "Bestellen & Kommunizieren", desc: "Bestellungen aufgeben, Liefertermine wählen und direkt chatten." },
+      { title: "Bestellen & Kommunizieren", desc: "Produkte entdecken, Bestellungen aufgeben, Liefertermine wählen und direkt chatten." },
       { title: "Liefern & Verwalten", desc: "Händler bearbeiten Bestellungen, erstellen Dokumente und liefern." },
     ],
     ctaHeadline: "Bereit, Ihren Bestellprozess zu digitalisieren?",
@@ -424,8 +422,7 @@ const translations = {
     stepsSub: "In pochi passi alla gestione digitale degli ordini.",
     steps: [
       { title: "Scegli il ruolo", desc: "Inizia come azienda o commerciante — senza registrazione." },
-      { title: "Scopri i prodotti", desc: "Le aziende esplorano il catalogo e trovano i commercianti adatti." },
-      { title: "Ordina e comunica", desc: "Effettua ordini, scegli le date di consegna e chatta direttamente." },
+      { title: "Ordina e comunica", desc: "Esplora i prodotti, effettua ordini, scegli le date di consegna e chatta direttamente." },
       { title: "Consegna e gestisci", desc: "I commercianti elaborano gli ordini, creano documenti e consegnano." },
     ],
     ctaHeadline: "Pronto a digitalizzare il tuo processo di ordinazione?",
@@ -505,14 +502,16 @@ export default function Landing() {
       setLocation(`/${currentRole}`);
     }
   }, [currentUser, currentRole]);
-  const { lang, toggleLang } = useLanguage();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const t = translations[lang];
+  const t = translations.de;
 
   function handleStart(role: "restaurant" | "supplier") {
-    switchRole(role);
-    setLocation(`/${role}`);
+    setLocation(`/login?role=${role}`);
+  }
+
+  function handleLogin() {
+    setLocation("/login");
   }
 
   return (
@@ -550,18 +549,6 @@ export default function Landing() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={toggleLang}
-              data-testid="button-toggle-lang"
-              title={lang === "de" ? "Lingua italiana" : "Deutsche Sprache"}
-              className="relative hidden sm:flex h-8 w-[72px] items-center rounded-full bg-muted border border-border p-0.5 transition-colors cursor-pointer"
-            >
-              <span className={`absolute left-0.5 flex h-7 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold shadow-sm transition-transform duration-300 ease-in-out ${lang === "it" ? "translate-x-[30px]" : "translate-x-0"}`}>
-                {lang === "de" ? "DE" : "IT"}
-              </span>
-              <span className={`absolute left-1.5 text-[11px] font-semibold text-muted-foreground transition-opacity duration-200 ${lang === "de" ? "opacity-0" : "opacity-100"}`}>DE</span>
-              <span className={`absolute right-1.5 text-[11px] font-semibold text-muted-foreground transition-opacity duration-200 ${lang === "it" ? "opacity-0" : "opacity-100"}`}>IT</span>
-            </button>
             <Button
               variant="ghost"
               size="sm"
@@ -573,7 +560,7 @@ export default function Landing() {
             </Button>
             <Button
               size="sm"
-              onClick={() => smoothScrollTo("cta")}
+              onClick={handleLogin}
               data-testid="button-nav-login"
             >
               {t.navLogin}
@@ -609,13 +596,27 @@ export default function Landing() {
                   {item.label}
                 </button>
               ))}
-              <button
-                onClick={toggleLang}
-                className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted/60 sm:hidden"
-                data-testid="button-mobile-lang"
-              >
-                {lang === "de" ? "Lingua italiana (IT)" : "Deutsche Sprache (DE)"}
-              </button>
+              <div className="mt-2 pt-2 border-t border-border grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setMobileNavOpen(false); handleStart("supplier"); }}
+                  data-testid="button-mobile-supplier"
+                  className="gap-1.5"
+                >
+                  <Store className="h-4 w-4" />
+                  {t.navSupplier}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => { setMobileNavOpen(false); handleStart("restaurant"); }}
+                  data-testid="button-mobile-restaurant"
+                  className="gap-1.5"
+                >
+                  <Utensils className="h-4 w-4" />
+                  {t.navRestaurant}
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -1035,7 +1036,7 @@ export default function Landing() {
               {t.stepsSub}
             </p>
           </div>
-          <div className="grid gap-8 md:grid-cols-4 relative">
+          <div className="grid gap-8 md:grid-cols-3 relative">
             {/* Connection line for desktop */}
             <div className="hidden md:block absolute top-6 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" />
             {t.steps.map((item, idx) => (
