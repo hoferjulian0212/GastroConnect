@@ -6,9 +6,11 @@ import { useLanguage } from "@/context/LanguageContext";
 import { getComplaintStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, Check, Image as ImageIcon, MessageSquare, Play, RotateCcw, Ban, Send, Truck, Plus } from "lucide-react";
+import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, Check, Image as ImageIcon, MessageSquare, Play, RotateCcw, Ban, Send, Truck, Plus, MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { TONE, complaintStatusTone } from "@/lib/status-colors";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProductImage } from "@/components/ProductImage";
@@ -39,6 +41,9 @@ export default function ComplaintDetail() {
     t.setDate(t.getDate() + 1);
     return t.toISOString().split("T")[0];
   });
+  const [mobileTab, setMobileTab] = useState<"updates" | "details">("updates");
+  const isMobile = useIsMobile();
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
 
   const { data: complaint, isLoading } = useQuery<ComplaintWithDetails>({
     queryKey: ["/api/complaints", complaintId],
@@ -479,14 +484,28 @@ export default function ComplaintDetail() {
     .map((cat) => ({ cat, items: actions.filter((a) => a.category === cat) }))
     .filter((g) => g.items.length > 0);
 
+  // Mobile primary CTA: first non-disabled "primary"-style action; fallback to first enabled action.
+  const mobilePrimary =
+    actions.find((a) => !a.disabled && a.style === "primary") ||
+    actions.find((a) => !a.disabled);
+  const mobileSecondaryByCat = categoryOrder
+    .map((cat) => ({
+      cat,
+      items: actions.filter((a) => a.category === cat && a !== mobilePrimary),
+    }))
+    .filter((g) => g.items.length > 0);
+
+  const tabClsUpdates = mobileTab === "updates" ? "" : "max-md:hidden";
+  const tabClsDetails = mobileTab === "details" ? "" : "max-md:hidden";
+
   return (
-    <div className="min-h-dvh bg-background flex flex-col" data-testid="page-complaint-detail">
+    <div className="min-h-dvh bg-background flex flex-col pb-[calc(env(safe-area-inset-bottom,0px)+88px)] md:pb-0" data-testid="page-complaint-detail">
       <div className="w-full">
         {/* Dark hero: matches design used on list pages */}
         <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4" data-testid="complaint-detail-hero">
           <div className="relative flex items-start justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-500/15" : "bg-white/10"} flex items-center justify-center shrink-0`}>
+              <div className={`hidden md:flex h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-500/15" : "bg-white/10"} items-center justify-center shrink-0`}>
                 <div className={isUrgent ? "text-red-400" : "text-white"}>
                   {isUrgent ? <Flame className="h-6 w-6" /> : getStatusIcon(complaint.status, "h-6 w-6")}
                 </div>
@@ -495,8 +514,9 @@ export default function ComplaintDetail() {
                 <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider" data-testid="text-complaint-id">
                   {lang === "de" ? "Reklamation" : "Reclamo"} · #{formatComplaintNumber(complaint)}
                 </p>
-                <p className="text-xl md:text-2xl font-semibold text-white truncate" data-testid="text-complaint-title">{complaint.title}</p>
-                <p className="text-xs text-white/60 truncate mt-0.5" data-testid="text-counterparty">{counterpartyName}</p>
+                <p className="hidden md:block text-xl md:text-2xl font-semibold text-white truncate" data-testid="text-complaint-title">{complaint.title}</p>
+                <p className="md:hidden text-base font-semibold text-white truncate mt-0.5" data-testid="text-complaint-title-mobile">{complaint.title}</p>
+                <p className="hidden md:block text-xs text-white/60 truncate mt-0.5" data-testid="text-counterparty">{counterpartyName}</p>
                 {/* Status row: placed below the title block, kept clear of the action buttons on the right */}
                 <div className="flex items-center gap-2 flex-wrap mt-2.5">
                   <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
@@ -558,9 +578,9 @@ export default function ComplaintDetail() {
             </div>
           </div>
 
-          {/* Mobile actions — inside the dark hero */}
-          {groupedActions.length > 0 && !confirmAction && (
-            <div className="md:hidden flex flex-col gap-3 mt-4 pt-4 border-t border-white/10" data-testid="actions-row-mobile">
+          {/* Mobile actions — moved to sticky bottom bar; kept here disabled for desktop parity only */}
+          {false && groupedActions.length > 0 && !confirmAction && (
+            <div className="hidden flex-col gap-3 mt-4 pt-4 border-t border-white/10" data-testid="actions-row-mobile">
               {groupedActions.map(({ cat, items }) => (
                 <div key={cat} className="space-y-1.5" data-testid={`actions-group-mobile-${cat}`}>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/40 px-0.5">
@@ -605,9 +625,9 @@ export default function ComplaintDetail() {
           </button>
         </div>
 
-        {/* Confirmation flows */}
+        {/* Confirmation flows — desktop only; mobile uses bottom-sheet drawers */}
         {confirmAction && (
-          <div className="px-4 md:px-6 lg:px-8 pt-3">
+          <div className="hidden md:block px-4 md:px-6 lg:px-8 pt-3">
             <div className="mx-auto max-w-md" data-testid="section-confirm">
               {(confirmAction === "in_progress" || confirmAction === "resolved" || confirmAction === "closed" || confirmAction === "reopen") && (
                 <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
@@ -809,10 +829,65 @@ export default function ComplaintDetail() {
           </div>
         )}
 
+        {/* Mobile summary card — replaces 4-tile KPI grid on small screens */}
+        <div className="md:hidden px-4 pt-3">
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3" data-testid="mobile-summary-card">
+            <div className="flex items-center gap-3">
+              <div className={`h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-500/15" : getStatusBg(complaint.status)} flex items-center justify-center shrink-0`}>
+                <div className={isUrgent ? "text-red-400" : getStatusTextColor(complaint.status)}>
+                  {isUrgent ? <Flame className="h-6 w-6" /> : getStatusIcon(complaint.status, "h-6 w-6")}
+                </div>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{isSupplier ? (lang === "de" ? "Betrieb" : "Azienda") : (lang === "de" ? "Händler" : "Commerciante")}</p>
+                <p className="text-base font-semibold leading-tight truncate" data-testid="mobile-text-counterparty">{counterpartyName}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/40">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Bestellung" : "Ordine"}</p>
+                <button
+                  onClick={() => setLocation(`/${currentRole}/orders/${complaint.orderId}`)}
+                  className="text-sm font-semibold mt-0.5 truncate tabular-nums hover:underline text-left w-full"
+                  data-testid="mobile-link-order"
+                >
+                  #{formatOrderNumber(complaint.order)}
+                </button>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Betroffen" : "Interessati"}</p>
+                <p className="text-sm font-semibold mt-0.5">
+                  {affectedItems.length} <span className="text-xs font-normal text-muted-foreground">{affectedItems.length === 1 ? (lang === "de" ? "Produkt" : "prodotto") : (lang === "de" ? "Produkte" : "prodotti")}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Pill tabs */}
+          <div className="mt-4 inline-flex w-full p-1 rounded-full bg-muted" role="tablist" data-testid="mobile-tabs">
+            <button
+              type="button"
+              onClick={() => setMobileTab("updates")}
+              className={`flex-1 h-9 rounded-full text-xs font-semibold transition-all ${mobileTab === "updates" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+              data-testid="tab-updates"
+            >
+              {lang === "de" ? "Verlauf" : "Aggiornamenti"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab("details")}
+              className={`flex-1 h-9 rounded-full text-xs font-semibold transition-all ${mobileTab === "details" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+              data-testid="tab-details"
+            >
+              {lang === "de" ? "Details" : "Dettagli"}
+            </button>
+          </div>
+        </div>
+
         {/* KPI strip + body */}
         <div className="px-3 md:px-6 pb-6 pt-3">
-          {/* KPI tiles */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* KPI tiles: desktop only — mobile uses summary card above */}
+          <div className="hidden md:grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-status">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Status" : "Stato"}</p>
               <p className={`text-base md:text-lg font-semibold mt-1.5 truncate ${getStatusTextColor(complaint.status)}`}>
@@ -847,9 +922,47 @@ export default function ComplaintDetail() {
         {/* Body */}
         <div className="px-4 md:px-6 lg:px-8 pt-5 pb-8">
           <div className="space-y-5">
-            {/* Horizontal stepper */}
+            {/* Mobile vertical timeline — replaces horizontal stepper on small screens */}
             {!isClosed && (
-              <div className="rounded-xl border border-border bg-card p-5 shadow-sm" data-testid="status-stepper">
+              <div className={`md:hidden rounded-xl border border-border bg-card p-4 shadow-sm ${mobileTab === "updates" ? "" : "hidden"}`} data-testid="status-stepper-mobile">
+                <div className="space-y-0">
+                  {statusSteps.map((step, i) => {
+                    const completed = i <= currentStepIndex;
+                    const isCurrent = i === currentStepIndex;
+                    const stepEntry = timeline.find((e: any) => e.toStatus === step);
+                    const isLast = i === statusSteps.length - 1;
+                    return (
+                      <div key={`vstep-${step}`} className="flex gap-3 items-start" data-testid={`stepper-mobile-${step}`}>
+                        <div className="flex flex-col items-center shrink-0">
+                          <div className={`relative h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${completed ? `${getStatusBg(step)} ${isCurrent ? 'ring-2 ring-offset-2 ring-offset-card ring-primary/40' : ''}` : 'bg-muted'}`}>
+                            <div className={completed ? getStatusTextColor(step) : 'text-muted-foreground/50'}>
+                              {completed && !isCurrent ? <Check className="h-4 w-4" /> : getStatusIcon(step, "h-4 w-4")}
+                            </div>
+                          </div>
+                          {!isLast && (
+                            <div className="w-0.5 flex-1 bg-muted overflow-hidden mt-1 mb-1" style={{ minHeight: "24px" }}>
+                              <div className={`w-full transition-all ${i < currentStepIndex ? 'bg-primary h-full' : 'h-0'}`} />
+                            </div>
+                          )}
+                        </div>
+                        <div className={`min-w-0 flex-1 ${isLast ? "" : "pb-4"}`}>
+                          <p className={`text-sm font-medium leading-tight ${completed ? 'text-foreground' : 'text-muted-foreground/60'}`}>{stepLabels[step]}</p>
+                          {stepEntry && completed && (
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {format(new Date(stepEntry.createdAt), "EEE, dd.MM. · HH:mm", { locale: dateLocale })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Horizontal stepper — desktop only */}
+            {!isClosed && (
+              <div className="hidden md:block rounded-xl border border-border bg-card p-5 shadow-sm" data-testid="status-stepper">
                 <div className="flex items-start">
                   {statusSteps.flatMap((step, i) => {
                     const completed = i <= currentStepIndex;
@@ -886,7 +999,7 @@ export default function ComplaintDetail() {
             {/* Two-column grid: details left (spans 2 rows) + meta + history right */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
               {/* Left: Description + Media + Affected items as one continuous card */}
-              <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm md:row-span-2 min-w-0" data-testid="section-details">
+              <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm md:row-span-2 min-w-0 ${tabClsDetails}`} data-testid="section-details">
                 <div className="px-4 py-3 border-b border-border/30">
                   <p className="text-sm font-semibold">{lang === "de" ? "Reklamationsdetails" : "Dettagli reclamo"}</p>
                 </div>
@@ -940,7 +1053,7 @@ export default function ComplaintDetail() {
               </div>
 
               {/* Right top: Meta */}
-              <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0" data-testid="section-meta">
+              <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0 ${tabClsDetails}`} data-testid="section-meta">
                 <div className="px-4 py-3 border-b border-border/30">
                   <p className="text-sm font-semibold">{lang === "de" ? "Übersicht" : "Panoramica"}</p>
                 </div>
@@ -980,7 +1093,7 @@ export default function ComplaintDetail() {
               </div>
 
               {/* Right bottom: Verlauf (timeline + comments) */}
-              <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0" data-testid="section-history">
+              <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0 ${tabClsUpdates}`} data-testid="section-history">
                 <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
                   <p className="text-sm font-semibold">{lang === "de" ? "Verlauf" : "Cronologia"}</p>
                   <p className="text-[11px] text-muted-foreground">{timeline.length} {lang === "de" ? (timeline.length === 1 ? "Eintrag" : "Einträge") : (timeline.length === 1 ? "voce" : "voci")}</p>
@@ -1048,6 +1161,294 @@ export default function ComplaintDetail() {
           </div>
         </div>
       </div>
+
+      {/* Mobile sticky bottom CTA bar */}
+      {!confirmAction && (mobilePrimary || mobileSecondaryByCat.length > 0) && (
+        <div
+          className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]"
+          data-testid="mobile-action-bar"
+        >
+          <div className="flex gap-2">
+            {mobilePrimary && (() => {
+              const Icon = mobilePrimary.icon;
+              const isDestructive = mobilePrimary.category === "destructive";
+              const baseCls = isDestructive
+                ? "bg-red-600 text-white hover:bg-red-700"
+                : mobilePrimary.style === "primary"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-card border border-border text-foreground hover:bg-accent";
+              return (
+                <button
+                  className={`flex-1 h-12 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] ${baseCls}`}
+                  onClick={mobilePrimary.action}
+                  data-testid={`${mobilePrimary.testId}-mobile-primary`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="truncate">{mobilePrimary.label}</span>
+                </button>
+              );
+            })()}
+            {mobileSecondaryByCat.length > 0 && (
+              <button
+                className="h-12 px-4 rounded-xl text-sm font-semibold bg-card border border-border text-foreground hover:bg-accent inline-flex items-center justify-center transition-all active:scale-[0.98]"
+                onClick={() => setMoreSheetOpen(true)}
+                data-testid="button-more-actions"
+                aria-label={lang === "de" ? "Weitere Aktionen" : "Altre azioni"}
+              >
+                <MoreHorizontal className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Mobile More-actions bottom sheet — only mounted on mobile so desktop never sees the overlay */}
+      <Drawer open={isMobile && moreSheetOpen} onOpenChange={setMoreSheetOpen}>
+        <DrawerContent className="md:hidden" data-testid="drawer-more-actions">
+          <DrawerHeader className="text-left">
+            <DrawerTitle>{lang === "de" ? "Aktionen" : "Azioni"}</DrawerTitle>
+            <DrawerDescription className="sr-only">
+              {lang === "de" ? "Weitere Aktionen für diese Reklamation" : "Altre azioni per questo reclamo"}
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="px-4 pb-6 space-y-4">
+            {mobileSecondaryByCat.map(({ cat, items }) => (
+              <div key={cat} className="space-y-2" data-testid={`drawer-group-${cat}`}>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground px-1">
+                  {categoryLabels[cat][lang]}
+                </p>
+                <div className="space-y-1.5">
+                  {items.map((action) => {
+                    const Icon = action.icon;
+                    const isDestructive = action.category === "destructive";
+                    const baseCls = isDestructive
+                      ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40"
+                      : "bg-card border border-border text-foreground";
+                    return (
+                      <button
+                        key={action.testId}
+                        className={`w-full h-12 px-4 rounded-xl text-sm font-medium inline-flex items-center gap-3 transition-all ${action.disabled ? "opacity-40 cursor-not-allowed" : "active:scale-[0.99] hover:bg-accent/50"} ${baseCls}`}
+                        onClick={action.disabled ? undefined : () => { setMoreSheetOpen(false); action.action(); }}
+                        disabled={action.disabled}
+                        data-testid={`${action.testId}-sheet`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="flex-1 text-left truncate">{action.label}</span>
+                        {action.disabled && action.disabledReason && (
+                          <span className="text-[10px] text-muted-foreground truncate max-w-[40%]">{action.disabledReason}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Mobile confirmation drawer — mirrors desktop inline confirm flows. Mounted only on mobile. */}
+      <Drawer
+        open={isMobile && !!confirmAction}
+        onOpenChange={(open) => { if (!open) { setConfirmAction(null); setCommentText(""); } }}
+      >
+        <DrawerContent className="md:hidden" data-testid="drawer-confirm-action">
+          {(confirmAction === "in_progress" || confirmAction === "resolved" || confirmAction === "closed" || confirmAction === "reopen") && (
+            <>
+              <DrawerHeader className="text-left">
+                <DrawerTitle>
+                  {confirmAction === "in_progress" && (lang === "de" ? "In Bearbeitung nehmen?" : "Prendere in lavorazione?")}
+                  {confirmAction === "resolved" && (lang === "de" ? "Als gelöst markieren?" : "Segnare come risolto?")}
+                  {confirmAction === "closed" && (lang === "de" ? "Reklamation schließen?" : "Chiudere il reclamo?")}
+                  {confirmAction === "reopen" && (lang === "de" ? "Reklamation wieder öffnen?" : "Riaprire il reclamo?")}
+                </DrawerTitle>
+                <DrawerDescription>
+                  {lang === "de" ? "Bestätige die Statusänderung." : "Conferma il cambio di stato."}
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="px-4 pb-6 flex flex-col gap-2">
+                <button
+                  className={`w-full h-12 rounded-xl text-sm font-semibold text-white shadow-sm inline-flex items-center justify-center gap-2 ${confirmAction === "closed" ? "bg-gray-700 hover:bg-gray-800" : "bg-primary hover:bg-primary/90 text-primary-foreground"}`}
+                  onClick={() => updateStatusMutation.mutate(confirmAction === "reopen" ? "open" : (confirmAction as "in_progress" | "resolved" | "closed"))}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid={`confirm-status-${confirmAction}-mobile`}
+                >
+                  <Check className="h-4 w-4" />
+                  {updateStatusMutation.isPending
+                    ? (lang === "de" ? "Wird aktualisiert..." : "Aggiornamento...")
+                    : (lang === "de" ? "Bestätigen" : "Conferma")}
+                </button>
+                <button
+                  className="w-full h-12 rounded-xl text-sm font-semibold bg-card border border-border text-foreground"
+                  onClick={() => setConfirmAction(null)}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid={`cancel-status-${confirmAction}-mobile`}
+                >
+                  {lang === "de" ? "Abbrechen" : "Annulla"}
+                </button>
+              </div>
+            </>
+          )}
+          {confirmAction === "follow_up" && (
+            <>
+              <DrawerHeader className="text-left">
+                <DrawerTitle>{lang === "de" ? "Folgebestellung erstellen" : "Crea riconsegna"}</DrawerTitle>
+                <DrawerDescription>
+                  {lang === "de"
+                    ? `Eine Nachlieferung wird mit ${affectedItems.filter((i:any)=>i.productId).length} Produkt(en) erstellt und automatisch bestätigt.`
+                    : `Verrà creata una riconsegna con ${affectedItems.filter((i:any)=>i.productId).length} prodotto/i e confermata automaticamente.`}
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="px-4 pb-6 space-y-3">
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                    {lang === "de" ? "Lieferdatum" : "Data di consegna"}
+                  </label>
+                  <input
+                    type="date"
+                    value={followUpDate}
+                    min={new Date().toISOString().split("T")[0]}
+                    onChange={(e) => setFollowUpDate(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    data-testid="input-follow-up-date-mobile"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <button
+                    className="w-full h-12 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                    onClick={() => followUpMutation.mutate(followUpDate)}
+                    disabled={!followUpDate || followUpMutation.isPending}
+                    data-testid="confirm-follow-up-mobile"
+                  >
+                    <Truck className="h-4 w-4" />
+                    {followUpMutation.isPending
+                      ? (lang === "de" ? "Wird erstellt..." : "Creazione...")
+                      : (lang === "de" ? "Erstellen" : "Crea")}
+                  </button>
+                  <button
+                    className="w-full h-12 rounded-xl text-sm font-semibold bg-card border border-border text-foreground"
+                    onClick={() => setConfirmAction(null)}
+                    disabled={followUpMutation.isPending}
+                    data-testid="cancel-follow-up-mobile"
+                  >
+                    {lang === "de" ? "Abbrechen" : "Annulla"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          {confirmAction === "proposal" && (
+            <>
+              <DrawerHeader className="text-left">
+                <DrawerTitle>{lang === "de" ? "Vorschlag senden" : "Invia proposta"}</DrawerTitle>
+                <DrawerDescription>
+                  {lang === "de"
+                    ? "Wähle einen Lösungsvorschlag — er wird als Kommentar gepostet."
+                    : "Scegli una proposta di risoluzione — verrà pubblicata come commento."}
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="px-4 pb-6 space-y-3">
+                <div className="grid grid-cols-1 gap-2">
+                  {(Object.keys(proposalLabels) as ProposalKind[]).map((kind) => {
+                    const isActive = proposalKind === kind;
+                    const label = lang === "de" ? proposalLabels[kind].de : proposalLabels[kind].it;
+                    const desc = lang === "de" ? proposalLabels[kind].desc.de : proposalLabels[kind].desc.it;
+                    return (
+                      <button
+                        key={kind}
+                        type="button"
+                        onClick={() => setProposalKind(kind)}
+                        className={`text-left rounded-xl border p-3 transition-all ${isActive ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border bg-card"}`}
+                        data-testid={`proposal-option-mobile-${kind}`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                          <span className="text-sm font-semibold">{label}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                {totalImpact > 0 && (
+                  <div className="rounded-xl bg-muted/50 border border-border p-3 flex items-center justify-between" data-testid="proposal-impact-mobile">
+                    <span className="text-xs text-muted-foreground">
+                      {lang === "de" ? "Geschätzte Auswirkung" : "Impatto stimato"}
+                    </span>
+                    <span className={`text-sm font-bold tabular-nums ${proposalLabels[proposalKind].impactSign === -1 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
+                      {proposalLabels[proposalKind].impactSign === -1 ? "−" : proposalLabels[proposalKind].impactSign === 1 ? "+" : "±"}
+                      {formatEuro(totalImpact)} €
+                    </span>
+                  </div>
+                )}
+                <div className="flex flex-col gap-2 pt-1">
+                  <button
+                    className="w-full h-12 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                    onClick={() => sendProposalMutation.mutate(proposalKind)}
+                    disabled={sendProposalMutation.isPending}
+                    data-testid="confirm-proposal-mobile"
+                  >
+                    <Send className="h-4 w-4" />
+                    {sendProposalMutation.isPending
+                      ? (lang === "de" ? "Senden..." : "Invio...")
+                      : (lang === "de" ? "Vorschlag senden" : "Invia proposta")}
+                  </button>
+                  <button
+                    className="w-full h-12 rounded-xl text-sm font-semibold bg-card border border-border text-foreground"
+                    onClick={() => setConfirmAction(null)}
+                    disabled={sendProposalMutation.isPending}
+                    data-testid="cancel-proposal-mobile"
+                  >
+                    {lang === "de" ? "Abbrechen" : "Annulla"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          {confirmAction === "comment" && (
+            <>
+              <DrawerHeader className="text-left" data-testid="drawer-comment-header">
+                <DrawerTitle>{lang === "de" ? "Kommentar hinzufügen" : "Aggiungi commento"}</DrawerTitle>
+                <DrawerDescription>
+                  {lang === "de" ? "Sichtbar für beide Seiten." : "Visibile a entrambe le parti."}
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="px-4 pb-6 space-y-3">
+                <textarea
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  rows={4}
+                  placeholder={lang === "de" ? "Was möchten Sie mitteilen?" : "Cosa vorresti comunicare?"}
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  autoFocus
+                  data-testid="input-comment-mobile"
+                />
+                <div className="flex flex-col gap-2">
+                  <button
+                    className="w-full h-12 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                    onClick={() => addCommentMutation.mutate(commentText)}
+                    disabled={!commentText.trim() || addCommentMutation.isPending}
+                    data-testid="confirm-comment-mobile"
+                  >
+                    <Send className="h-4 w-4" />
+                    {addCommentMutation.isPending
+                      ? (lang === "de" ? "Wird gesendet..." : "Invio...")
+                      : (lang === "de" ? "Senden" : "Invia")}
+                  </button>
+                  <button
+                    className="w-full h-12 rounded-xl text-sm font-semibold bg-card border border-border text-foreground"
+                    onClick={() => { setConfirmAction(null); setCommentText(""); }}
+                    disabled={addCommentMutation.isPending}
+                    data-testid="cancel-comment-mobile"
+                  >
+                    {lang === "de" ? "Abbrechen" : "Annulla"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
