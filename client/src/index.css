@@ -62,6 +62,17 @@
     margin-right: 0.5rem !important;
     border-radius: 1.5rem !important;
     padding-top: 1rem !important;
+    overflow: hidden !important;
+    max-width: calc(100% - 1rem) !important;
+    box-sizing: border-box !important;
+  }
+  /* Inner solid-bg dark blocks that fill the wrapper would otherwise paint
+     over the rounded corners. Force them to inherit the rounded clip and
+     never extend past the wrapper's content box. */
+  div[class*="bg-[#161921]"][class*="rounded-b-3xl"] > div[class*="bg-[#161921]"] {
+    border-radius: inherit;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 
