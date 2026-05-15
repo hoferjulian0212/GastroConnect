@@ -20,7 +20,9 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, CircleAlert, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter as FilterIcon, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw, Flame, Search, ArrowUpDown, ArrowUp, ArrowDown, Check } from "lucide-react";
+import { AlertCircle, CircleAlert, Send, Package, ImagePlus, X, FileVideo, FileImage, Pencil, Clock, CheckCircle, XCircle, Loader2, Store, Filter as FilterIcon, MessageSquare, Calendar, ShoppingBag, CalendarDays, SlidersHorizontal, ChevronUp, ChevronDown, RefreshCw, Flame, Search, ArrowUpDown, ArrowUp, ArrowDown, Check, Ban, AlertTriangle, Hourglass } from "lucide-react";
+import { COMPLAINT_REASONS, type ComplaintReason } from "@shared/schema";
+import { getComplaintReasonLabel } from "@/lib/complaintReasons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
@@ -59,9 +61,12 @@ export default function Complaints() {
  const [priorityImmediate, setPriorityImmediate] = useState(false);
  const [affectedItems, setAffectedItems] = useState<{ productId: string; productName: string; quantity: number; unitPrice: string }[]>([]);
  const [showCreateDialog, setShowCreateDialog] = useState(false);
+ const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
  
+ const [reason, setReason] = useState<ComplaintReason | "">("");
  const [filterComplaintSupplier, setFilterComplaintSupplier] = useState<string>(initialSupplierId || "all");
  const [filterComplaintStatus, setFilterComplaintStatus] = useState<string>("all");
+ const [filterComplaintReason, setFilterComplaintReason] = useState<string>("all");
  const [filterComplaintPriority, setFilterComplaintPriority] = useState<"all" | "urgent" | "normal">("all");
  const [filterComplaintDateFrom, setFilterComplaintDateFrom] = useState<string>("");
  const [filterComplaintDateTo, setFilterComplaintDateTo] = useState<string>("");
@@ -156,8 +161,20 @@ export default function Complaints() {
  }
  }, [highlightComplaintId, existingComplaints]);
 
+ useEffect(() => {
+ if (searchParams.get("openWizard") === "1") {
+ const sId = searchParams.get("supplierId");
+ const oId = searchParams.get("orderId");
+ if (sId) setSelectedSupplierId(sId);
+ if (oId) setSelectedOrderId(oId);
+ setWizardStep(sId && oId ? 2 : 1);
+ setShowCreateDialog(true);
+ }
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, []);
+
  const createComplaintMutation = useMutation({
- mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; mediaUrls: string[]; priorityImmediate?: boolean; affectedItems?: { productId: string; productName: string; quantity: number; unitPrice: string }[] }) => {
+ mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; mediaUrls: string[]; priorityImmediate?: boolean; reason?: ComplaintReason | null; affectedItems?: { productId: string; productName: string; quantity: number; unitPrice: string }[] }) => {
  return apiRequest("POST", "/api/complaints", data);
  },
  onSuccess: () => {
@@ -190,15 +207,22 @@ export default function Complaints() {
  });
 
  const [withdrawComplaintId, setWithdrawComplaintId] = useState<string | null>(null);
+ const [withdrawReason, setWithdrawReason] = useState("");
 
  const withdrawComplaintMutation = useMutation({
- mutationFn: async (id: string) => {
- return apiRequest("PATCH", `/api/complaints/${id}`, { status: "closed" });
+ mutationFn: async ({ id, closeNote }: { id: string; closeNote: string }) => {
+ return apiRequest("PATCH", `/api/complaints/${id}`, {
+ status: "closed",
+ closeNote,
+ changedBy: currentUser?.id,
+ actorRole: "restaurant",
+ });
  },
  onSuccess: () => {
  toast({ title: t("complaints", "complaintWithdrawn"), description: t("complaints", "complaintWithdrawnDesc") });
  queryClient.invalidateQueries({ queryKey: [`/api/complaints?restaurantId=${currentUser?.id}`] });
  setWithdrawComplaintId(null);
+ setWithdrawReason("");
  },
  onError: () => {
  toast({ title: t("common", "error"), description: t("complaints", "withdrawError"), variant: "destructive" });
@@ -213,8 +237,14 @@ export default function Complaints() {
  setMediaUrls([]);
  setPriorityImmediate(false);
  setAffectedItems([]);
+ setReason("");
+ setWizardStep(1);
  setShowCreateDialog(false);
  };
+
+ const wizardStep1Valid = !!selectedSupplierId && !!selectedOrderId;
+ const wizardStep2Valid = !!reason;
+ const wizardStep3Valid = !!title.trim() && !!description.trim();
 
  const toggleAffectedItem = (item: { productId: string; productName: string; quantity: number; unitPrice: string }) => {
  setAffectedItems(prev => {
@@ -231,6 +261,15 @@ export default function Complaints() {
  toast({ title: t("common", "error"), description: t("complaints", "fillAllFields"), variant: "destructive" });
  return;
  }
+ if (!reason) {
+ toast({
+ title: t("common", "error"),
+ description: lang === "de" ? "Bitte wählen Sie einen Grund aus." : "Seleziona un motivo.",
+ variant: "destructive",
+ });
+ setWizardStep(2);
+ return;
+ }
 
  const hasAffected = affectedItems.length > 0;
  createComplaintMutation.mutate({
@@ -241,6 +280,7 @@ export default function Complaints() {
  description: description.trim(),
  mediaUrls,
  priorityImmediate: priorityImmediate || hasAffected,
+ reason: reason as ComplaintReason,
  affectedItems: hasAffected ? affectedItems : undefined,
  });
  };
@@ -291,8 +331,15 @@ export default function Complaints() {
  in_progress: { label: getComplaintStatus("in_progress", lang), icon: Loader2, variant: "default" },
  resolved: { label: getComplaintStatus("resolved", lang), icon: CheckCircle, variant: "outline" },
  closed: { label: getComplaintStatus("closed", lang), icon: XCircle, variant: "outline" },
+ rejected: { label: getComplaintStatus("rejected", lang), icon: Ban, variant: "destructive" },
+ partially_resolved: { label: getComplaintStatus("partially_resolved", lang), icon: AlertTriangle, variant: "default" },
  };
  return statusMap[status] || { label: status, icon: Clock, variant: "secondary" as const };
+ };
+
+ const daysOpen = (createdAt: Date | string) => {
+ const ms = Date.now() - new Date(createdAt).getTime();
+ return Math.floor(ms / (1000 * 60 * 60 * 24));
  };
 
  const getComplaintAccent = (status: string) => {
@@ -377,12 +424,32 @@ export default function Complaints() {
  }, [existingComplaints]);
 
  const statusCounts = useMemo(() => {
- if (!existingComplaints) return { all: 0, open: 0, in_progress: 0, resolved: 0, closed: 0 };
- const counts = { all: existingComplaints.length, open: 0, in_progress: 0, resolved: 0, closed: 0 };
+ if (!existingComplaints) return { all: 0, open: 0, in_progress: 0, resolved: 0, closed: 0, rejected: 0, partially_resolved: 0 };
+ const counts = { all: existingComplaints.length, open: 0, in_progress: 0, resolved: 0, closed: 0, rejected: 0, partially_resolved: 0 };
  existingComplaints.forEach(c => {
  if (c.status in counts) (counts as any)[c.status]++;
  });
  return counts;
+ }, [existingComplaints]);
+
+ const complaintKpis = useMemo(() => {
+ const list = existingComplaints || [];
+ const open = list.filter(c => c.status === "open" || c.status === "in_progress").length;
+ const closedList = list.filter(c => c.status === "resolved" || c.status === "closed" || c.status === "rejected" || c.status === "partially_resolved");
+ let avgHours = 0;
+ if (closedList.length > 0) {
+ const totalMs = closedList.reduce((sum, c: any) => {
+ const end = c.updatedAt ? new Date(c.updatedAt).getTime() : Date.now();
+ return sum + (end - new Date(c.createdAt).getTime());
+ }, 0);
+ avgHours = Math.round(totalMs / closedList.length / (1000 * 60 * 60));
+ }
+ const reasonCounts: Record<string, number> = {};
+ list.forEach((c: any) => {
+ if (c.reason) reasonCounts[c.reason] = (reasonCounts[c.reason] || 0) + 1;
+ });
+ const topReason = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])[0]?.[0] as ComplaintReason | undefined;
+ return { open, avgHours, topReason };
  }, [existingComplaints]);
 
  const filteredComplaints = useMemo(() => {
@@ -400,6 +467,7 @@ export default function Complaints() {
  if (filterComplaintPriority === "urgent" && !isUrgent) return false;
  if (filterComplaintPriority === "normal" && isUrgent) return false;
  }
+ if (filterComplaintReason !== "all" && (c as any).reason !== filterComplaintReason) return false;
  if (filterComplaintDateFrom) {
  const from = new Date(filterComplaintDateFrom);
  from.setHours(0, 0, 0, 0);
@@ -443,10 +511,10 @@ export default function Complaints() {
  });
 
  return sorted;
- }, [existingComplaints, filterComplaintSupplier, filterComplaintStatus, filterComplaintPriority, filterComplaintDateFrom, filterComplaintDateTo, searchQuery, sortBy, sortDir]);
+ }, [existingComplaints, filterComplaintSupplier, filterComplaintStatus, filterComplaintPriority, filterComplaintReason, filterComplaintDateFrom, filterComplaintDateTo, searchQuery, sortBy, sortDir]);
 
- const hasActiveFilters = filterComplaintStatus !== "all" || filterComplaintSupplier !== "all" || filterComplaintPriority !== "all" || !!filterComplaintDateFrom || !!filterComplaintDateTo;
- const activeFilterCount = (filterComplaintStatus !== "all" ? 1 : 0) + (filterComplaintSupplier !== "all" ? 1 : 0) + (filterComplaintPriority !== "all" ? 1 : 0) + (filterComplaintDateFrom ? 1 : 0) + (filterComplaintDateTo ? 1 : 0);
+ const hasActiveFilters = filterComplaintStatus !== "all" || filterComplaintSupplier !== "all" || filterComplaintPriority !== "all" || filterComplaintReason !== "all" || !!filterComplaintDateFrom || !!filterComplaintDateTo;
+ const activeFilterCount = (filterComplaintStatus !== "all" ? 1 : 0) + (filterComplaintSupplier !== "all" ? 1 : 0) + (filterComplaintPriority !== "all" ? 1 : 0) + (filterComplaintReason !== "all" ? 1 : 0) + (filterComplaintDateFrom ? 1 : 0) + (filterComplaintDateTo ? 1 : 0);
  const priorityLabel = (k: string) => k === "urgent" ? (lang === "de" ? "Dringend" : "Urgente") : k === "normal" ? (lang === "de" ? "Normal" : "Normale") : t("common", "all");
  const statusFilterLabel = (k: string) => k === "active" ? (lang === "de" ? "Aktiv" : "Attivo") : getComplaintStatus(k as any, lang);
 
@@ -454,6 +522,7 @@ export default function Complaints() {
  setFilterComplaintSupplier("all");
  setFilterComplaintStatus("all");
  setFilterComplaintPriority("all");
+ setFilterComplaintReason("all");
  setFilterComplaintDateFrom("");
  setFilterComplaintDateTo("");
  setSearchQuery("");
@@ -483,6 +552,20 @@ export default function Complaints() {
  <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
  {t("complaints", "newComplaint")}
  </Button>
+ </div>
+ <div className="grid grid-cols-3 gap-2 md:gap-3 pt-1">
+ <div className="rounded-xl bg-white/[0.05] border border-white/10 p-3" data-testid="kpi-open">
+ <div className="text-[10px] uppercase tracking-wider text-white/50 font-medium">{lang === "de" ? "Offen" : "Aperti"}</div>
+ <div className="text-2xl font-bold text-white mt-0.5">{complaintKpis.open}</div>
+ </div>
+ <div className="rounded-xl bg-white/[0.05] border border-white/10 p-3" data-testid="kpi-avg-time">
+ <div className="text-[10px] uppercase tracking-wider text-white/50 font-medium">{lang === "de" ? "Ø Bearbeitung" : "Tempo medio"}</div>
+ <div className="text-2xl font-bold text-white mt-0.5">{complaintKpis.avgHours > 0 ? `${complaintKpis.avgHours}h` : "—"}</div>
+ </div>
+ <div className="rounded-xl bg-white/[0.05] border border-white/10 p-3" data-testid="kpi-top-reason">
+ <div className="text-[10px] uppercase tracking-wider text-white/50 font-medium">{lang === "de" ? "Top-Grund" : "Motivo top"}</div>
+ <div className="text-sm font-bold text-white mt-1 truncate">{complaintKpis.topReason ? getComplaintReasonLabel(complaintKpis.topReason, lang) : "—"}</div>
+ </div>
  </div>
  </div></HeroPortal>
 
@@ -630,6 +713,8 @@ export default function Complaints() {
  { key: "open", label: getComplaintStatus("open", lang), dot: "bg-yellow-500" },
  { key: "in_progress", label: getComplaintStatus("in_progress", lang), dot: "bg-blue-500" },
  { key: "resolved", label: getComplaintStatus("resolved", lang), dot: "bg-green-500" },
+ { key: "partially_resolved", label: getComplaintStatus("partially_resolved", lang), dot: "bg-amber-500" },
+ { key: "rejected", label: getComplaintStatus("rejected", lang), dot: "bg-red-500" },
  { key: "closed", label: getComplaintStatus("closed", lang), dot: "bg-gray-500" },
  ] as const).map(({ key, label, dot }) => (
  <button
@@ -640,6 +725,28 @@ export default function Complaints() {
  >
  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
  <span className="truncate">{label}</span>
+ </button>
+ ))}
+ </div>
+ </div>
+ <div>
+ <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{lang === "de" ? "Grund" : "Motivo"}</Label>
+ <div className="grid grid-cols-3 gap-1">
+ <button
+ onClick={() => setFilterComplaintReason("all")}
+ className={`flex items-center justify-center px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${filterComplaintReason === "all" ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
+ data-testid="filter-complaint-reason-all"
+ >
+ {t("common", "all")}
+ </button>
+ {COMPLAINT_REASONS.map((r) => (
+ <button
+ key={r}
+ onClick={() => setFilterComplaintReason(r)}
+ className={`flex items-center justify-center px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${filterComplaintReason === r ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
+ data-testid={`filter-complaint-reason-${r}`}
+ >
+ {getComplaintReasonLabel(r, lang)}
  </button>
  ))}
  </div>
@@ -754,7 +861,15 @@ export default function Complaints() {
  <span className="text-sm truncate">{complaint.supplier?.companyName || complaint.supplier?.name || t("orders", "unknownSupplier")}</span>
  </div>
  <div className="text-xs font-mono text-muted-foreground truncate" data-testid={`text-complaint-order-${complaint.id}`}>#{complaint.order ? formatOrderNumber(complaint.order) : formatOrderNumber({orderNumber: null, id: complaint.orderId})}</div>
- <div className="text-xs text-muted-foreground truncate">{formatDate(complaint.createdAt)}</div>
+ <div className="text-xs text-muted-foreground truncate">
+ {formatDate(complaint.createdAt)}
+ {complaint.status === "open" && daysOpen(complaint.createdAt) >= 1 && (
+ <span className={`ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${daysOpen(complaint.createdAt) >= 3 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"}`} data-testid={`age-badge-${complaint.id}`}>
+ <Hourglass className="h-2.5 w-2.5" />
+ {daysOpen(complaint.createdAt)}d
+ </span>
+ )}
+ </div>
  <div className="flex items-center justify-end gap-0.5">
  {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
  <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground mr-1">
@@ -837,8 +952,20 @@ export default function Complaints() {
  <h3 className="text-sm font-semibold">{t("complaints", "newComplaint")}</h3>
  </div>
  <p className="text-xs text-muted-foreground mt-0.5 pl-6">{t("complaints", "writeComplaint")}</p>
+ <div className="mt-3 flex items-center gap-2" data-testid="wizard-steps">
+ {[1, 2, 3].map((s) => (
+ <div key={s} className="flex items-center gap-2 flex-1">
+ <div className={`flex items-center justify-center h-6 w-6 rounded-full text-[11px] font-semibold shrink-0 ${wizardStep === s ? "bg-primary text-primary-foreground" : wizardStep > s ? "bg-primary/30 text-primary" : "bg-muted text-muted-foreground"}`}>{s}</div>
+ <span className={`text-[11px] font-medium truncate ${wizardStep === s ? "text-foreground" : "text-muted-foreground"}`}>
+ {s === 1 ? (lang === "de" ? "Bestellung" : "Ordine") : s === 2 ? (lang === "de" ? "Grund" : "Motivo") : (lang === "de" ? "Beschreibung" : "Descrizione")}
+ </span>
+ {s < 3 && <div className="h-px flex-1 bg-border" />}
+ </div>
+ ))}
+ </div>
  </div>
  <div className="space-y-3 md:space-y-4 px-5 pb-5">
+ {wizardStep === 1 && (<>
  <div className="space-y-2">
  <Label>{t("complaints", "selectSupplier")}</Label>
  {loadingSuppliers ? (
@@ -967,7 +1094,31 @@ export default function Complaints() {
  )}
  </div>
  )}
+ </>)}
 
+ {wizardStep === 2 && (
+ <div className="space-y-2">
+ <Label>{lang === "de" ? "Grund (Pflichtfeld)" : "Motivo (obbligatorio)"}</Label>
+ <p className="text-xs text-muted-foreground">
+ {lang === "de" ? "Wählen Sie den Grund für die Reklamation aus." : "Seleziona il motivo del reclamo."}
+ </p>
+ <div className="grid grid-cols-2 gap-2">
+ {COMPLAINT_REASONS.map((r) => (
+ <button
+ key={r}
+ type="button"
+ onClick={() => setReason(r)}
+ className={`flex items-center justify-center gap-1 px-3 py-3 rounded-lg text-sm font-medium border transition-all ${reason === r ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
+ data-testid={`button-reason-${r}`}
+ >
+ {getComplaintReasonLabel(r, lang)}
+ </button>
+ ))}
+ </div>
+ </div>
+ )}
+
+ {wizardStep === 3 && (<>
  <div className="space-y-2">
  <Label htmlFor="title">{t("complaints", "subject")}</Label>
  <Input
@@ -1087,9 +1238,20 @@ export default function Complaints() {
  </p>
  </div>
  </label>
+ </>)}
  </div>
 
- <div className="flex gap-2">
+ <div className="flex gap-2 px-5 pb-5">
+ {wizardStep > 1 ? (
+ <Button
+ variant="outline"
+ className="flex-1 rounded-lg"
+ onClick={() => setWizardStep((s) => (s === 3 ? 2 : 1))}
+ data-testid="button-wizard-back"
+ >
+ {lang === "de" ? "Zurück" : "Indietro"}
+ </Button>
+ ) : (
  <Button
  variant="outline"
  className="flex-1 rounded-lg"
@@ -1098,15 +1260,27 @@ export default function Complaints() {
  >
  {t("common", "cancel")}
  </Button>
+ )}
+ {wizardStep < 3 ? (
+ <Button
+ className="flex-1 rounded-lg"
+ onClick={() => setWizardStep((s) => (s === 1 ? 2 : 3))}
+ disabled={wizardStep === 1 ? !wizardStep1Valid : !wizardStep2Valid}
+ data-testid="button-wizard-next"
+ >
+ {lang === "de" ? "Weiter" : "Avanti"}
+ </Button>
+ ) : (
  <Button
  className="flex-1 rounded-lg"
  onClick={handleSubmit}
- disabled={!canSubmit || createComplaintMutation.isPending}
+ disabled={!canSubmit || !wizardStep3Valid || !reason || createComplaintMutation.isPending}
  data-testid="button-submit-complaint"
  >
  <Send className="mr-2 h-4 w-4" />
  {createComplaintMutation.isPending ? t("complaints", "sending") : t("complaints", "submitComplaint")}
  </Button>
+ )}
  </div>
  </DialogContent>
  </Dialog>
@@ -1435,7 +1609,7 @@ export default function Complaints() {
  </DialogContent>
  </Dialog>
 
- <Dialog open={!!withdrawComplaintId} onOpenChange={(open) => !open && setWithdrawComplaintId(null)}>
+ <Dialog open={!!withdrawComplaintId} onOpenChange={(open) => { if (!open) { setWithdrawComplaintId(null); setWithdrawReason(""); } }}>
  <DialogContent className="max-w-sm">
  <DialogHeader className="sr-only">
  <DialogTitle>{t("complaints", "withdrawComplaint")}</DialogTitle>
@@ -1445,11 +1619,24 @@ export default function Complaints() {
  <p className="text-sm text-muted-foreground">
  {t("complaints", "withdrawConfirm")}
  </p>
+ <div className="space-y-2">
+ <Label htmlFor="withdraw-reason">
+ {lang === "de" ? "Grund (Pflichtfeld)" : "Motivo (obbligatorio)"}
+ </Label>
+ <Textarea
+ id="withdraw-reason"
+ placeholder={lang === "de" ? "Warum möchten Sie die Reklamation zurückziehen?" : "Perché vuoi ritirare il reclamo?"}
+ value={withdrawReason}
+ onChange={(e) => setWithdrawReason(e.target.value)}
+ rows={3}
+ data-testid="textarea-withdraw-reason"
+ />
+ </div>
  <div className="flex gap-2">
  <Button
  variant="outline"
  className="flex-1 rounded-lg"
- onClick={() => setWithdrawComplaintId(null)}
+ onClick={() => { setWithdrawComplaintId(null); setWithdrawReason(""); }}
  data-testid="button-cancel-withdraw"
  >
  {t("common", "cancel")}
@@ -1457,8 +1644,19 @@ export default function Complaints() {
  <Button
  variant="destructive"
  className="flex-1 rounded-lg"
- onClick={() => withdrawComplaintId && withdrawComplaintMutation.mutate(withdrawComplaintId)}
- disabled={withdrawComplaintMutation.isPending}
+ onClick={() => {
+ if (!withdrawComplaintId) return;
+ if (!withdrawReason.trim()) {
+ toast({
+ title: t("common", "error"),
+ description: lang === "de" ? "Bitte geben Sie einen Grund an." : "Inserisci un motivo.",
+ variant: "destructive",
+ });
+ return;
+ }
+ withdrawComplaintMutation.mutate({ id: withdrawComplaintId, closeNote: withdrawReason.trim() });
+ }}
+ disabled={withdrawComplaintMutation.isPending || !withdrawReason.trim()}
  data-testid="button-confirm-withdraw"
  >
  {withdrawComplaintMutation.isPending ? t("complaints", "closing") : t("complaints", "withdraw")}

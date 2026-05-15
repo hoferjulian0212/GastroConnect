@@ -15,6 +15,13 @@
       "when": 1778780751501,
       "tag": "0001_workable_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778875159904,
+      "tag": "0002_complaint_workflow",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,12 @@ export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion"]);
 export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);
-export const complaintStatusEnum = pgEnum("complaint_status", ["open", "in_progress", "resolved", "closed"]);
+export const complaintStatusEnum = pgEnum("complaint_status", ["open", "in_progress", "resolved", "closed", "rejected", "partially_resolved"]);
+export const complaintReasonEnum = pgEnum("complaint_reason", ["damaged", "short", "wrong", "quality", "late", "other"]);
+
+export const COMPLAINT_REASONS = ["damaged", "short", "wrong", "quality", "late", "other"] as const;
+export type ComplaintReason = typeof COMPLAINT_REASONS[number];
+
 export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["manual_in", "manual_out", "order_confirmed", "order_reversed", "order_cancelled", "manual_set"]);
 
 export const users = pgTable("users", {
@@ -176,6 +181,9 @@ export const complaints = pgTable("complaints", {
   affectedItems: text("affected_items"),
   status: complaintStatusEnum("status").default("open").notNull(),
   priority: text("priority").default("standard").notNull(),
+  reason: complaintReasonEnum("reason"),
+  rejectionReason: text("rejection_reason"),
+  lastReminderAt: timestamp("last_reminder_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -313,7 +321,9 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: t
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true, createdAt: true });
 export const insertConversationSchema = createInsertSchema(conversations).omit({ id: true, createdAt: true, lastMessageAt: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, isRead: true });
-export const insertComplaintSchema = createInsertSchema(complaints).omit({ id: true, createdAt: true, updatedAt: true, status: true });
+export const insertComplaintSchema = createInsertSchema(complaints).omit({ id: true, createdAt: true, updatedAt: true, status: true }).extend({
+  reason: z.enum(["damaged", "short", "wrong", "quality", "late", "other"]),
+});
 export const updateComplaintSchema = createInsertSchema(complaints).omit({ id: true, createdAt: true, updatedAt: true, orderId: true, restaurantId: true, supplierId: true }).partial();
 export const insertComplaintCommentSchema = createInsertSchema(complaintComments).omit({ id: true, createdAt: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, isRead: true });

@@ -1,12 +1,13 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useState, useEffect, useRef } from "react";
+import { useRoute, useLocation, useSearch } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { getComplaintStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, Check, Image as ImageIcon, MessageSquare, Play, RotateCcw, Ban, Send, Truck, Plus, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, Check, Image as ImageIcon, MessageSquare, Play, RotateCcw, Ban, Send, Truck, Plus, MoreHorizontal, ThumbsDown, CheckSquare, Percent } from "lucide-react";
+import { getComplaintReasonLabel } from "@/lib/complaintReasons";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
@@ -18,11 +19,12 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatComplaintNumber, formatOrderNumber, type ComplaintWithDetails, type ComplaintStatusHistoryWithUser, type ComplaintCommentWithUser } from "@shared/schema";
 
-type ConfirmAction = "in_progress" | "resolved" | "closed" | "reopen" | "follow_up" | "comment" | "proposal" | null;
+type ConfirmAction = "in_progress" | "resolved" | "closed" | "reopen" | "follow_up" | "comment" | "proposal" | "rejected" | "partially_resolved" | null;
 type ProposalKind = "credit" | "redelivery" | "cancel";
 
 export default function ComplaintDetail() {
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const [matchRestaurant, paramsR] = useRoute("/restaurant/complaints/:id");
   const [matchSupplier, paramsS] = useRoute("/supplier/complaints/:id");
   const params = matchRestaurant ? paramsR : paramsS;
@@ -35,15 +37,32 @@ export default function ComplaintDetail() {
 
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [commentText, setCommentText] = useState("");
+  const [rejectionReasonText, setRejectionReasonText] = useState("");
+  const [closeNoteText, setCloseNoteText] = useState("");
+  const [followUpCompensation, setFollowUpCompensation] = useState(false);
   const [proposalKind, setProposalKind] = useState<ProposalKind>("credit");
+  const [followUpDateTouched, setFollowUpDateTouched] = useState(false);
   const [followUpDate, setFollowUpDate] = useState(() => {
     const t = new Date();
     t.setDate(t.getDate() + 1);
     return t.toISOString().split("T")[0];
   });
+  const followUpDateAutoApplied = useRef(false);
   const [mobileTab, setMobileTab] = useState<"updates" | "details">("updates");
   const isMobile = useIsMobile();
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const actionApplied = useRef(false);
+
+  useEffect(() => {
+    if (actionApplied.current) return;
+    const params = new URLSearchParams(searchString);
+    const action = params.get("action");
+    const allowed: ConfirmAction[] = ["in_progress", "rejected", "partially_resolved", "follow_up", "resolved", "closed", "comment"];
+    if (action && (allowed as string[]).includes(action)) {
+      setConfirmAction(action as ConfirmAction);
+      actionApplied.current = true;
+    }
+  }, [searchString]);
 
   const { data: complaint, isLoading } = useQuery<ComplaintWithDetails>({
     queryKey: ["/api/complaints", complaintId],
@@ -80,6 +99,32 @@ export default function ComplaintDetail() {
     enabled: !!currentUser?.id && !!complaint,
   });
 
+  const { data: deliverySchedules } = useQuery<any[]>({
+    queryKey: [`/api/delivery-schedules/restaurant?supplierId=${complaint?.supplierId}&restaurantId=${complaint?.restaurantId}`],
+    enabled: !!complaint?.supplierId && !!complaint?.restaurantId && isSupplier,
+  });
+
+  const suggestedFollowUpDate = (() => {
+    const days = (deliverySchedules || []).map((s: any) => s.dayOfWeek).filter((d: any) => typeof d === "number");
+    const fallback = new Date();
+    fallback.setDate(fallback.getDate() + 1);
+    if (days.length === 0) return fallback.toISOString().split("T")[0];
+    for (let i = 1; i <= 14; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      if (days.includes(d.getDay())) return d.toISOString().split("T")[0];
+    }
+    return fallback.toISOString().split("T")[0];
+  })();
+
+  useEffect(() => {
+    if (followUpDateAutoApplied.current || followUpDateTouched) return;
+    if (deliverySchedules && deliverySchedules.length > 0 && suggestedFollowUpDate) {
+      setFollowUpDate(suggestedFollowUpDate);
+      followUpDateAutoApplied.current = true;
+    }
+  }, [deliverySchedules, suggestedFollowUpDate, followUpDateTouched]);
+
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/complaints", complaintId] });
     queryClient.invalidateQueries({ queryKey: ["/api/complaints", complaintId, "status-history"] });
@@ -88,19 +133,25 @@ export default function ComplaintDetail() {
   };
 
   const updateStatusMutation = useMutation({
-    mutationFn: async (status: "open" | "in_progress" | "resolved" | "closed") => {
+    mutationFn: async (vars: { status: "open" | "in_progress" | "resolved" | "closed" | "rejected" | "partially_resolved"; rejectionReason?: string; closeNote?: string }) => {
       await apiRequest("PATCH", `/api/complaints/${complaintId}`, {
-        status,
+        status: vars.status,
         changedBy: currentUser?.name || currentUser?.id,
+        actorRole: currentRole,
+        ...(vars.rejectionReason ? { rejectionReason: vars.rejectionReason } : {}),
+        ...(vars.closeNote ? { closeNote: vars.closeNote } : {}),
       });
     },
     onSuccess: () => {
       setConfirmAction(null);
+      setRejectionReasonText("");
+      setCloseNoteText("");
+      setCommentText("");
       invalidateAll();
       toast({ title: lang === "de" ? "Status aktualisiert" : "Stato aggiornato" });
     },
-    onError: () => {
-      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+    onError: (err: any) => {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", description: err?.message, variant: "destructive" });
     },
   });
 
@@ -123,18 +174,19 @@ export default function ComplaintDetail() {
   });
 
   const followUpMutation = useMutation({
-    mutationFn: async (date: string) => {
+    mutationFn: async (vars: { date: string; compensation: boolean }) => {
       if (!complaint) return;
       let items: any[] = [];
       try {
         items = JSON.parse((complaint.affectedItems as string) || "[]");
       } catch {}
+      const factor = vars.compensation ? 1.1 : 1;
       const orderItems = items
         .filter((i: any) => i.productId)
         .map((i: any) => ({
           productId: i.productId,
           productName: i.name || i.productName,
-          quantity: Math.max(1, Math.round(Number(i.quantity || 1))),
+          quantity: Math.max(1, Math.round(Number(i.quantity || 1) * factor)),
           unitPrice: i.unitPrice,
         }));
       if (orderItems.length === 0) {
@@ -142,11 +194,11 @@ export default function ComplaintDetail() {
       }
       await apiRequest("POST", `/api/complaints/${complaintId}/follow-up-order`, {
         items: orderItems,
-        deliveryDate: date,
+        deliveryDate: vars.date,
         supplierId: complaint.supplierId,
         notes: lang === "de"
-          ? `Nachlieferung zu Reklamation #${formatComplaintNumber(complaint)}`
-          : `Riconsegna per reclamo #${formatComplaintNumber(complaint)}`,
+          ? `Nachlieferung zu Reklamation #${formatComplaintNumber(complaint)}${vars.compensation ? " (+10% Kompensation)" : ""}`
+          : `Riconsegna per reclamo #${formatComplaintNumber(complaint)}${vars.compensation ? " (+10% compensazione)" : ""}`,
       });
     },
     onSuccess: () => {
@@ -234,6 +286,8 @@ export default function ComplaintDetail() {
       case "in_progress": return <Loader2 className={size} />;
       case "resolved": return <CheckCircle className={size} />;
       case "closed": return <XCircle className={size} />;
+      case "rejected": return <ThumbsDown className={size} />;
+      case "partially_resolved": return <CheckSquare className={size} />;
       default: return <AlertTriangle className={size} />;
     }
   };
@@ -258,6 +312,8 @@ export default function ComplaintDetail() {
         case "in_progress": return "Reklamation wird bearbeitet";
         case "resolved": return "Reklamation wurde gelöst";
         case "closed": return "Reklamation wurde geschlossen";
+        case "rejected": return "Reklamation wurde abgelehnt";
+        case "partially_resolved": return "Reklamation teilweise gelöst";
         default: return "";
       }
     }
@@ -266,6 +322,8 @@ export default function ComplaintDetail() {
       case "in_progress": return "Reclamo in lavorazione";
       case "resolved": return "Reclamo risolto";
       case "closed": return "Reclamo chiuso";
+      case "rejected": return "Reclamo rifiutato";
+      case "partially_resolved": return "Reclamo parzialmente risolto";
       default: return "";
     }
   };
@@ -402,6 +460,28 @@ export default function ComplaintDetail() {
         ? (lang === "de" ? "Keine Produkte verknüpft" : "Nessun prodotto collegato")
         : (lang === "de" ? "Reklamation abgeschlossen" : "Reclamo chiuso"),
     });
+    // Teilweise gelöst
+    actions.push({
+      label: lang === "de" ? "Teilweise gelöst" : "Parzialmente risolto",
+      icon: CheckSquare,
+      style: "secondary",
+      category: "primary",
+      action: () => setConfirmAction("partially_resolved"),
+      testId: "action-mark-partially-resolved",
+      disabled: isTerminal,
+      disabledReason: lang === "de" ? "Reklamation abgeschlossen" : "Reclamo chiuso",
+    });
+    // Ablehnen
+    actions.push({
+      label: lang === "de" ? "Ablehnen" : "Rifiuta",
+      icon: ThumbsDown,
+      style: "destructive",
+      category: "destructive",
+      action: () => { setRejectionReasonText(""); setConfirmAction("rejected"); },
+      testId: "action-reject",
+      disabled: isTerminal,
+      disabledReason: lang === "de" ? "Reklamation abgeschlossen" : "Reclamo chiuso",
+    });
   } else {
     // Restaurant: kann wieder öffnen wenn geschlossen/gelöst
     actions.push({
@@ -456,7 +536,7 @@ export default function ComplaintDetail() {
     icon: Ban,
     style: "destructive",
     category: "destructive",
-    action: () => setConfirmAction("closed"),
+    action: () => { setCloseNoteText(""); setConfirmAction("closed"); },
     testId: "action-close",
     disabled: complaint.status === "closed",
     disabledReason: lang === "de" ? "Bereits geschlossen" : "Già chiuso",
@@ -615,6 +695,20 @@ export default function ComplaintDetail() {
                     {confirmAction === "closed" && (lang === "de" ? "Reklamation wirklich schließen?" : "Chiudere davvero il reclamo?")}
                     {confirmAction === "reopen" && (lang === "de" ? "Reklamation wieder öffnen?" : "Riaprire il reclamo?")}
                   </p>
+                  {confirmAction === "closed" && !isSupplier && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-foreground">
+                        {lang === "de" ? "Begründung (Pflichtfeld)" : "Motivazione (obbligatorio)"}
+                      </label>
+                      <textarea
+                        value={closeNoteText}
+                        onChange={(e) => setCloseNoteText(e.target.value)}
+                        placeholder={lang === "de" ? "Warum schließen Sie die Reklamation?" : "Perché chiudi il reclamo?"}
+                        className="w-full min-h-[80px] rounded-lg border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        data-testid="textarea-close-note"
+                      />
+                    </div>
+                  )}
                   <div className="flex justify-center gap-2">
                     <button
                       className="h-9 px-4 rounded-lg text-xs font-semibold bg-card border border-border text-foreground hover:bg-accent transition-all active:scale-[0.97]"
@@ -625,16 +719,19 @@ export default function ComplaintDetail() {
                       {lang === "de" ? "Abbrechen" : "Annulla"}
                     </button>
                     <button
-                      className={`h-9 px-4 rounded-lg text-xs font-semibold text-white shadow-sm transition-all active:scale-[0.97] inline-flex items-center justify-center gap-1.5 ${
+                      className={`h-9 px-4 rounded-lg text-xs font-semibold text-white shadow-sm transition-all active:scale-[0.97] inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
                         confirmAction === "closed"
                           ? "bg-red-600 hover:bg-red-700"
                           : "bg-primary hover:bg-primary/90"
                       }`}
                       onClick={() => {
                         const target = confirmAction === "reopen" ? "open" : (confirmAction as "in_progress" | "resolved" | "closed");
-                        updateStatusMutation.mutate(target);
+                        updateStatusMutation.mutate({
+                          status: target,
+                          ...(target === "closed" && !isSupplier ? { closeNote: closeNoteText.trim() } : {}),
+                        });
                       }}
-                      disabled={updateStatusMutation.isPending}
+                      disabled={updateStatusMutation.isPending || (confirmAction === "closed" && !isSupplier && !closeNoteText.trim())}
                       data-testid="confirm-status-change"
                     >
                       {updateStatusMutation.isPending
@@ -775,11 +872,36 @@ export default function ComplaintDetail() {
                       type="date"
                       value={followUpDate}
                       min={new Date().toISOString().split("T")[0]}
-                      onChange={(e) => setFollowUpDate(e.target.value)}
+                      onChange={(e) => { setFollowUpDate(e.target.value); setFollowUpDateTouched(true); }}
                       className="mt-1 w-full rounded-lg border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                       data-testid="input-follow-up-date"
                     />
+                    {!followUpDateTouched && suggestedFollowUpDate && followUpDate !== suggestedFollowUpDate && (
+                      <button
+                        type="button"
+                        onClick={() => { setFollowUpDate(suggestedFollowUpDate); setFollowUpDateTouched(true); }}
+                        className="mt-1.5 text-[11px] text-primary hover:underline"
+                        data-testid="suggest-follow-up-date"
+                      >
+                        {lang === "de" ? `Nächster Liefertag: ${suggestedFollowUpDate}` : `Prossima consegna: ${suggestedFollowUpDate}`}
+                      </button>
+                    )}
                   </div>
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors" data-testid="toggle-followup-compensation">
+                    <input
+                      type="checkbox"
+                      checked={followUpCompensation}
+                      onChange={(e) => setFollowUpCompensation(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <Percent className="h-3.5 w-3.5 text-emerald-600" />
+                        <span className="text-xs font-semibold">{lang === "de" ? "+10% Kompensation" : "+10% compensazione"}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{lang === "de" ? "Mengen werden um 10% erhöht als Entschädigung." : "Le quantità vengono aumentate del 10% come compensazione."}</p>
+                    </div>
+                  </label>
                   <div className="flex justify-end gap-2">
                     <button
                       className="h-9 px-4 rounded-lg text-xs font-semibold bg-card border border-border text-foreground hover:bg-accent transition-all active:scale-[0.97]"
@@ -791,7 +913,7 @@ export default function ComplaintDetail() {
                     </button>
                     <button
                       className="h-9 px-4 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-white shadow-sm transition-all active:scale-[0.97] inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => followUpMutation.mutate(followUpDate)}
+                      onClick={() => followUpMutation.mutate({ date: followUpDate, compensation: followUpCompensation })}
                       disabled={!followUpDate || followUpMutation.isPending}
                       data-testid="confirm-follow-up"
                     >
@@ -799,6 +921,69 @@ export default function ComplaintDetail() {
                       {followUpMutation.isPending
                         ? (lang === "de" ? "Wird erstellt..." : "Creazione...")
                         : (lang === "de" ? "Erstellen" : "Crea")}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {confirmAction === "rejected" && (
+                <div className="rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50/40 dark:bg-red-950/20 p-4 shadow-sm space-y-3" data-testid="section-reject">
+                  <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                    {lang === "de" ? "Reklamation ablehnen" : "Rifiuta reclamo"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "de" ? "Bitte geben Sie einen Ablehnungsgrund an. Dieser ist für den Betrieb sichtbar." : "Indica un motivo del rifiuto. Sarà visibile al cliente."}
+                  </p>
+                  <textarea
+                    value={rejectionReasonText}
+                    onChange={(e) => setRejectionReasonText(e.target.value)}
+                    placeholder={lang === "de" ? "z.B. Ware war zum Zeitpunkt der Lieferung einwandfrei..." : "es. La merce era in condizioni perfette al momento della consegna..."}
+                    className="w-full min-h-[88px] resize-y rounded-lg border border-red-200 dark:border-red-900/40 bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                    data-testid="input-rejection-reason"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="h-9 px-4 rounded-lg text-xs font-semibold bg-card border border-border text-foreground hover:bg-accent"
+                      onClick={() => { setConfirmAction(null); setRejectionReasonText(""); }}
+                      disabled={updateStatusMutation.isPending}
+                      data-testid="cancel-reject"
+                    >{lang === "de" ? "Abbrechen" : "Annulla"}</button>
+                    <button
+                      className="h-9 px-4 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      onClick={() => updateStatusMutation.mutate({ status: "rejected", rejectionReason: rejectionReasonText.trim() })}
+                      disabled={!rejectionReasonText.trim() || updateStatusMutation.isPending}
+                      data-testid="confirm-reject"
+                    >
+                      <ThumbsDown className="h-3.5 w-3.5" />
+                      {lang === "de" ? "Ablehnen" : "Rifiuta"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {confirmAction === "partially_resolved" && (
+                <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 p-4 shadow-sm space-y-3" data-testid="section-partial">
+                  <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                    {lang === "de" ? "Als teilweise gelöst markieren?" : "Segnare come parzialmente risolto?"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "de" ? "Verwende diesen Status, wenn ein Teil der Reklamation behoben wurde, der Rest aber noch offen ist." : "Usa questo stato quando una parte del reclamo è risolta ma il resto rimane aperto."}
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="h-9 px-4 rounded-lg text-xs font-semibold bg-card border border-border text-foreground hover:bg-accent"
+                      onClick={() => setConfirmAction(null)}
+                      disabled={updateStatusMutation.isPending}
+                      data-testid="cancel-partial"
+                    >{lang === "de" ? "Abbrechen" : "Annulla"}</button>
+                    <button
+                      className="h-9 px-4 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      onClick={() => updateStatusMutation.mutate({ status: "partially_resolved" })}
+                      disabled={updateStatusMutation.isPending}
+                      data-testid="confirm-partial"
+                    >
+                      <CheckSquare className="h-3.5 w-3.5" />
+                      {lang === "de" ? "Bestätigen" : "Conferma"}
                     </button>
                   </div>
                 </div>
@@ -1245,10 +1430,30 @@ export default function ComplaintDetail() {
                 </DrawerDescription>
               </DrawerHeader>
               <div className="px-4 pb-6 flex flex-col gap-2">
+                {confirmAction === "closed" && !isSupplier && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      {lang === "de" ? "Begründung (Pflichtfeld)" : "Motivazione (obbligatorio)"}
+                    </label>
+                    <textarea
+                      value={closeNoteText}
+                      onChange={(e) => setCloseNoteText(e.target.value)}
+                      placeholder={lang === "de" ? "Warum schließen Sie die Reklamation?" : "Perché chiudi il reclamo?"}
+                      className="w-full min-h-[80px] rounded-lg border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      data-testid="textarea-close-note-mobile"
+                    />
+                  </div>
+                )}
                 <button
-                  className={`w-full h-12 rounded-xl text-sm font-semibold text-white shadow-sm inline-flex items-center justify-center gap-2 ${confirmAction === "closed" ? "bg-gray-700 hover:bg-gray-800" : "bg-primary hover:bg-primary/90 text-primary-foreground"}`}
-                  onClick={() => updateStatusMutation.mutate(confirmAction === "reopen" ? "open" : (confirmAction as "in_progress" | "resolved" | "closed"))}
-                  disabled={updateStatusMutation.isPending}
+                  className={`w-full h-12 rounded-xl text-sm font-semibold text-white shadow-sm inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${confirmAction === "closed" ? "bg-gray-700 hover:bg-gray-800" : "bg-primary hover:bg-primary/90 text-primary-foreground"}`}
+                  onClick={() => {
+                    const target = confirmAction === "reopen" ? "open" : (confirmAction as "in_progress" | "resolved" | "closed");
+                    updateStatusMutation.mutate({
+                      status: target,
+                      ...(target === "closed" && !isSupplier ? { closeNote: closeNoteText.trim() } : {}),
+                    });
+                  }}
+                  disabled={updateStatusMutation.isPending || (confirmAction === "closed" && !isSupplier && !closeNoteText.trim())}
                   data-testid={`confirm-status-${confirmAction}-mobile`}
                 >
                   <Check className="h-4 w-4" />
@@ -1286,15 +1491,40 @@ export default function ComplaintDetail() {
                     type="date"
                     value={followUpDate}
                     min={new Date().toISOString().split("T")[0]}
-                    onChange={(e) => setFollowUpDate(e.target.value)}
+                    onChange={(e) => { setFollowUpDate(e.target.value); setFollowUpDateTouched(true); }}
                     className="mt-1 w-full rounded-xl border border-border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                     data-testid="input-follow-up-date-mobile"
                   />
+                  {!followUpDateTouched && suggestedFollowUpDate && followUpDate !== suggestedFollowUpDate && (
+                    <button
+                      type="button"
+                      onClick={() => { setFollowUpDate(suggestedFollowUpDate); setFollowUpDateTouched(true); }}
+                      className="mt-1.5 text-[11px] text-primary hover:underline"
+                      data-testid="suggest-follow-up-date-mobile"
+                    >
+                      {lang === "de" ? `Nächster Liefertag: ${suggestedFollowUpDate}` : `Prossima consegna: ${suggestedFollowUpDate}`}
+                    </button>
+                  )}
                 </div>
+                <label className="flex items-start gap-2.5 p-3 rounded-xl border border-border bg-muted/30 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={followUpCompensation}
+                    onChange={(e) => setFollowUpCompensation(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <Percent className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="text-xs font-semibold">{lang === "de" ? "+10% Kompensation" : "+10% compensazione"}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{lang === "de" ? "Mengen werden um 10% erhöht." : "Le quantità vengono aumentate del 10%."}</p>
+                  </div>
+                </label>
                 <div className="flex flex-col gap-2">
                   <button
                     className="w-full h-12 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
-                    onClick={() => followUpMutation.mutate(followUpDate)}
+                    onClick={() => followUpMutation.mutate({ date: followUpDate, compensation: followUpCompensation })}
                     disabled={!followUpDate || followUpMutation.isPending}
                     data-testid="confirm-follow-up-mobile"
                   >
@@ -1380,6 +1610,75 @@ export default function ComplaintDetail() {
                     {lang === "de" ? "Abbrechen" : "Annulla"}
                   </button>
                 </div>
+              </div>
+            </>
+          )}
+          {confirmAction === "rejected" && (
+            <>
+              <DrawerHeader className="text-left">
+                <DrawerTitle>{lang === "de" ? "Reklamation ablehnen" : "Rifiuta reclamo"}</DrawerTitle>
+                <DrawerDescription>
+                  {lang === "de" ? "Bitte geben Sie einen Ablehnungsgrund an." : "Indica un motivo del rifiuto."}
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="px-4 pb-6 space-y-3">
+                <textarea
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                  rows={4}
+                  placeholder={lang === "de" ? "Begründung..." : "Motivo..."}
+                  value={rejectionReasonText}
+                  onChange={(e) => setRejectionReasonText(e.target.value)}
+                  autoFocus
+                  data-testid="input-rejection-reason-mobile"
+                />
+                <div className="flex flex-col gap-2">
+                  <button
+                    className="w-full h-12 rounded-xl text-sm font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                    onClick={() => updateStatusMutation.mutate({ status: "rejected", rejectionReason: rejectionReasonText.trim() })}
+                    disabled={!rejectionReasonText.trim() || updateStatusMutation.isPending}
+                    data-testid="confirm-reject-mobile"
+                  >
+                    <ThumbsDown className="h-4 w-4" />
+                    {lang === "de" ? "Ablehnen" : "Rifiuta"}
+                  </button>
+                  <button
+                    className="w-full h-12 rounded-xl text-sm font-semibold bg-card border border-border text-foreground"
+                    onClick={() => { setConfirmAction(null); setRejectionReasonText(""); }}
+                    disabled={updateStatusMutation.isPending}
+                    data-testid="cancel-reject-mobile"
+                  >
+                    {lang === "de" ? "Abbrechen" : "Annulla"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          {confirmAction === "partially_resolved" && (
+            <>
+              <DrawerHeader className="text-left">
+                <DrawerTitle>{lang === "de" ? "Teilweise gelöst?" : "Parzialmente risolto?"}</DrawerTitle>
+                <DrawerDescription>
+                  {lang === "de" ? "Markiert die Reklamation als teilweise gelöst." : "Segna il reclamo come parzialmente risolto."}
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="px-4 pb-6 flex flex-col gap-2">
+                <button
+                  className="w-full h-12 rounded-xl text-sm font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  onClick={() => updateStatusMutation.mutate({ status: "partially_resolved" })}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="confirm-partial-mobile"
+                >
+                  <CheckSquare className="h-4 w-4" />
+                  {lang === "de" ? "Bestätigen" : "Conferma"}
+                </button>
+                <button
+                  className="w-full h-12 rounded-xl text-sm font-semibold bg-card border border-border text-foreground"
+                  onClick={() => setConfirmAction(null)}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="cancel-partial-mobile"
+                >
+                  {lang === "de" ? "Abbrechen" : "Annulla"}
+                </button>
               </div>
             </>
           )}

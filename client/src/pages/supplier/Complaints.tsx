@@ -28,7 +28,9 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, X, Store, RefreshCw, Truck, Plus, Flame, Search, ArrowUpDown, ArrowUp, ArrowDown, Check, Filter as FilterIcon } from "lucide-react";
+import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, X, Store, RefreshCw, Truck, Plus, Flame, Search, ArrowUpDown, ArrowUp, ArrowDown, Check, Filter as FilterIcon, Ban, AlertTriangle, Hourglass } from "lucide-react";
+import { COMPLAINT_REASONS, type ComplaintReason } from "@shared/schema";
+import { getComplaintReasonLabel } from "@/lib/complaintReasons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
@@ -56,6 +58,7 @@ export default function SupplierComplaints() {
 
   const [filterRestaurant, setFilterRestaurant] = useState<string>(initialRestaurantId || "all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterReason, setFilterReason] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
@@ -226,6 +229,8 @@ export default function SupplierComplaints() {
       in_progress: { label: getComplaintStatus("in_progress", lang), icon: Loader2, variant: "default" },
       resolved: { label: getComplaintStatus("resolved", lang), icon: CheckCircle, variant: "outline" },
       closed: { label: getComplaintStatus("closed", lang), icon: XCircle, variant: "outline" },
+      rejected: { label: getComplaintStatus("rejected", lang), icon: Ban, variant: "destructive" },
+      partially_resolved: { label: getComplaintStatus("partially_resolved", lang), icon: AlertTriangle, variant: "default" },
     };
     return statusMap[status] || { label: status, icon: Clock, variant: "secondary" as const };
   };
@@ -235,6 +240,8 @@ export default function SupplierComplaints() {
       case "open": return "bg-yellow-400 dark:bg-yellow-500";
       case "in_progress": return "bg-blue-400 dark:bg-blue-500";
       case "resolved": return "bg-green-400 dark:bg-green-500";
+      case "partially_resolved": return "bg-amber-400 dark:bg-amber-500";
+      case "rejected": return "bg-red-400 dark:bg-red-500";
       case "closed": return "bg-muted-foreground/50";
       default: return "bg-muted-foreground";
     }
@@ -245,9 +252,16 @@ export default function SupplierComplaints() {
       case "open": return "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40";
       case "in_progress": return "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40";
       case "resolved": return "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40";
+      case "partially_resolved": return "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40";
+      case "rejected": return "bg-red-50/60 dark:bg-red-950/20 border-red-200 dark:border-red-800/40";
       case "closed": return "bg-muted/30 border-border";
       default: return "";
     }
+  };
+
+  const daysOpen = (createdAt: Date | string) => {
+    const ms = Date.now() - new Date(createdAt).getTime();
+    return Math.floor(ms / (1000 * 60 * 60 * 24));
   };
 
   const openStatusWizard = (complaint: ComplaintWithDetails) => {
@@ -297,8 +311,8 @@ export default function SupplierComplaints() {
   }, [complaints]);
 
   const statusCounts = useMemo(() => {
-    if (!complaints) return { all: 0, active: 0, open: 0, in_progress: 0, resolved: 0, closed: 0 };
-    const counts = { all: complaints.length, active: 0, open: 0, in_progress: 0, resolved: 0, closed: 0 };
+    if (!complaints) return { all: 0, active: 0, open: 0, in_progress: 0, resolved: 0, closed: 0, rejected: 0, partially_resolved: 0 };
+    const counts = { all: complaints.length, active: 0, open: 0, in_progress: 0, resolved: 0, closed: 0, rejected: 0, partially_resolved: 0 };
     complaints.forEach(c => {
       if (c.status in counts) (counts as any)[c.status]++;
       if (c.status === "open" || c.status === "in_progress") counts.active++;
@@ -306,8 +320,28 @@ export default function SupplierComplaints() {
     return counts;
   }, [complaints]);
 
-  const hasActiveFilters = filterStatus !== "all" || filterPriority !== "all" || filterRestaurant !== "all" || !!filterDateFrom || !!filterDateTo;
-  const activeFilterCount = (filterStatus !== "all" ? 1 : 0) + (filterPriority !== "all" ? 1 : 0) + (filterRestaurant !== "all" ? 1 : 0) + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0);
+  const complaintKpis = useMemo(() => {
+    const list = complaints || [];
+    const open = list.filter(c => c.status === "open" || c.status === "in_progress").length;
+    const closedList = list.filter(c => c.status === "resolved" || c.status === "closed" || c.status === "rejected" || c.status === "partially_resolved");
+    let avgHours = 0;
+    if (closedList.length > 0) {
+      const totalMs = closedList.reduce((sum, c: any) => {
+        const end = c.updatedAt ? new Date(c.updatedAt).getTime() : Date.now();
+        return sum + (end - new Date(c.createdAt).getTime());
+      }, 0);
+      avgHours = Math.round(totalMs / closedList.length / (1000 * 60 * 60));
+    }
+    const reasonCounts: Record<string, number> = {};
+    list.forEach((c: any) => {
+      if (c.reason) reasonCounts[c.reason] = (reasonCounts[c.reason] || 0) + 1;
+    });
+    const topReason = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])[0]?.[0] as ComplaintReason | undefined;
+    return { open, avgHours, topReason };
+  }, [complaints]);
+
+  const hasActiveFilters = filterStatus !== "all" || filterPriority !== "all" || filterRestaurant !== "all" || filterReason !== "all" || !!filterDateFrom || !!filterDateTo;
+  const activeFilterCount = (filterStatus !== "all" ? 1 : 0) + (filterPriority !== "all" ? 1 : 0) + (filterRestaurant !== "all" ? 1 : 0) + (filterReason !== "all" ? 1 : 0) + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0);
   const priorityLabel = (k: string) => k === "urgent" ? (lang === "de" ? "Dringend" : "Urgente") : k === "normal" ? (lang === "de" ? "Normal" : "Normale") : t("common", "all");
   const statusFilterLabel = (k: string) => k === "active" ? (lang === "de" ? "Aktiv" : "Attivo") : getComplaintStatus(k as any, lang);
 
@@ -315,6 +349,7 @@ export default function SupplierComplaints() {
     setFilterRestaurant("all");
     setFilterStatus("all");
     setFilterPriority("all");
+    setFilterReason("all");
     setFilterDateFrom("");
     setFilterDateTo("");
     setSearchQuery("");
@@ -333,6 +368,7 @@ export default function SupplierComplaints() {
         if (filterPriority === "urgent" && !isUrgent) return false;
         if (filterPriority === "normal" && isUrgent) return false;
       }
+      if (filterReason !== "all" && (c as any).reason !== filterReason) return false;
       if (filterDateFrom) {
         const from = new Date(filterDateFrom);
         from.setHours(0, 0, 0, 0);
@@ -370,7 +406,7 @@ export default function SupplierComplaints() {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return sorted;
-  }, [complaints, filterRestaurant, filterStatus, filterPriority, filterDateFrom, filterDateTo, searchQuery, sortBy, sortDir]);
+  }, [complaints, filterRestaurant, filterStatus, filterPriority, filterReason, filterDateFrom, filterDateTo, searchQuery, sortBy, sortDir]);
 
   return (
     <PullToRefreshWrapper
@@ -384,10 +420,24 @@ export default function SupplierComplaints() {
       }}
       className="space-y-3 md:space-y-4 pb-[var(--mobile-bottom-pad)] md:pb-0"
     >
-      <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 md:" data-testid="complaints-hero">
+      <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 md: space-y-3" data-testid="complaints-hero">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "complaints")}</h1>
           <p className="text-sm text-white/50 mt-1">{lang === "de" ? "Verwalten Sie eingehende Reklamationen" : "Gestisci i reclami ricevuti"}</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2 md:gap-3 pt-1">
+          <div className="rounded-xl bg-white/[0.05] border border-white/10 p-3" data-testid="kpi-open">
+            <div className="text-[10px] uppercase tracking-wider text-white/50 font-medium">{lang === "de" ? "Offen" : "Aperti"}</div>
+            <div className="text-2xl font-bold text-white mt-0.5">{complaintKpis.open}</div>
+          </div>
+          <div className="rounded-xl bg-white/[0.05] border border-white/10 p-3" data-testid="kpi-avg-time">
+            <div className="text-[10px] uppercase tracking-wider text-white/50 font-medium">{lang === "de" ? "Ø Bearbeitung" : "Tempo medio"}</div>
+            <div className="text-2xl font-bold text-white mt-0.5">{complaintKpis.avgHours > 0 ? `${complaintKpis.avgHours}h` : "—"}</div>
+          </div>
+          <div className="rounded-xl bg-white/[0.05] border border-white/10 p-3" data-testid="kpi-top-reason">
+            <div className="text-[10px] uppercase tracking-wider text-white/50 font-medium">{lang === "de" ? "Top-Grund" : "Motivo top"}</div>
+            <div className="text-sm font-bold text-white mt-1 truncate">{complaintKpis.topReason ? getComplaintReasonLabel(complaintKpis.topReason, lang) : "—"}</div>
+          </div>
         </div>
       </div></HeroPortal>
 
@@ -530,6 +580,8 @@ export default function SupplierComplaints() {
                       { key: "open", label: getComplaintStatus("open", lang), dot: "bg-yellow-500" },
                       { key: "in_progress", label: getComplaintStatus("in_progress", lang), dot: "bg-blue-500" },
                       { key: "resolved", label: getComplaintStatus("resolved", lang), dot: "bg-green-500" },
+                      { key: "partially_resolved", label: getComplaintStatus("partially_resolved", lang), dot: "bg-amber-500" },
+                      { key: "rejected", label: getComplaintStatus("rejected", lang), dot: "bg-red-500" },
                       { key: "closed", label: getComplaintStatus("closed", lang), dot: "bg-gray-500" },
                     ] as const).map(({ key, label, dot }) => (
                       <button
@@ -540,6 +592,28 @@ export default function SupplierComplaints() {
                       >
                         <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
                         <span className="truncate">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">{lang === "de" ? "Grund" : "Motivo"}</Label>
+                  <div className="grid grid-cols-3 gap-1">
+                    <button
+                      onClick={() => setFilterReason("all")}
+                      className={`flex items-center justify-center px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${filterReason === "all" ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
+                      data-testid="filter-complaint-reason-all"
+                    >
+                      {t("common", "all")}
+                    </button>
+                    {COMPLAINT_REASONS.map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => setFilterReason(r)}
+                        className={`flex items-center justify-center px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${filterReason === r ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
+                        data-testid={`filter-complaint-reason-${r}`}
+                      >
+                        {getComplaintReasonLabel(r, lang)}
                       </button>
                     ))}
                   </div>
@@ -655,7 +729,15 @@ export default function SupplierComplaints() {
                         <span className="text-sm truncate">{complaint.restaurant?.companyName || t("common", "unknown")}</span>
                       </div>
                       <div className="text-xs font-mono text-muted-foreground truncate">#{complaint.order ? formatOrderNumber(complaint.order) : formatOrderNumber({orderNumber: null, id: complaint.orderId})}</div>
-                      <div className="text-xs text-muted-foreground truncate">{formatShortDate(complaint.createdAt)}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {formatShortDate(complaint.createdAt)}
+                        {complaint.status === "open" && daysOpen(complaint.createdAt) >= 1 && (
+                          <span className={`ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${daysOpen(complaint.createdAt) >= 3 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"}`} data-testid={`age-badge-${complaint.id}`}>
+                            <Hourglass className="h-2.5 w-2.5" />
+                            {daysOpen(complaint.createdAt)}d
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center justify-end gap-0.5">
                         {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
                           <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground mr-1">
@@ -698,6 +780,15 @@ export default function SupplierComplaints() {
                           <span className="font-mono font-semibold">#{complaint.order ? formatOrderNumber(complaint.order) : formatOrderNumber({orderNumber: null, id: complaint.orderId})}</span>
                           <span>·</span>
                           <span>{formatShortDate(complaint.createdAt)}</span>
+                          {complaint.status === "open" && daysOpen(complaint.createdAt) >= 1 && (
+                            <>
+                              <span>·</span>
+                              <span className={`inline-flex items-center gap-0.5 px-1 py-0 rounded-full text-[9px] font-semibold ${daysOpen(complaint.createdAt) >= 3 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"}`} data-testid={`age-badge-mobile-${complaint.id}`}>
+                                <Hourglass className="h-2 w-2" />
+                                {daysOpen(complaint.createdAt)}d
+                              </span>
+                            </>
+                          )}
                           {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
                             <>
                               <span>·</span>
@@ -1205,6 +1296,16 @@ export default function SupplierComplaints() {
                 <span>{lang === "de" ? "Gesamt" : "Totale"}</span>
                 <span>{followUpItems.reduce((sum, item) => sum + item.quantity * parseFloat(item.unitPrice), 0).toFixed(2)} EUR</span>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full rounded-lg"
+                onClick={() => setFollowUpItems(prev => prev.map(it => ({ ...it, quantity: Math.max(1, Math.ceil(it.quantity * 1.1)) })))}
+                data-testid="button-followup-compensate-10"
+              >
+                {lang === "de" ? "+10% Kompensation hinzufügen" : "+10% compensazione"}
+              </Button>
             </div>
 
             <div className="space-y-2">

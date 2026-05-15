@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ProductImage } from "@/components/ProductImage";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, Plus, RefreshCw, Flame } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, Plus, RefreshCw, Flame, Ban } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
@@ -49,6 +49,7 @@ interface AffectedItem {
   unitPrice: string;
 }
 
+import { getComplaintReasonLabel } from "@/lib/complaintReasons";
 interface ComplaintContent {
   title: string;
   description: string;
@@ -116,6 +117,8 @@ const getComplaintStatusLabel = (status: string) => {
     case "in_progress": return "In Bearbeitung";
     case "resolved": return "Gelöst";
     case "closed": return "Geschlossen";
+    case "rejected": return "Abgelehnt";
+    case "partially_resolved": return "Teilweise gelöst";
     default: return status;
   }
 };
@@ -126,6 +129,8 @@ const getComplaintStatusColor = (status: string) => {
     case "in_progress": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
     case "resolved": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
     case "closed": return "bg-muted text-muted-foreground";
+    case "rejected": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+    case "partially_resolved": return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400";
     default: return "bg-muted text-muted-foreground";
   }
 };
@@ -175,7 +180,78 @@ export default function SupplierInbox() {
   const [followUpItems, setFollowUpItems] = useState<{ productId: string; productName: string; quantity: number; unitPrice: string }[]>([]);
   const [followUpDeliveryDate, setFollowUpDeliveryDate] = useState("");
   const [followUpNotes, setFollowUpNotes] = useState("");
+  const [rejectComplaintId, setRejectComplaintId] = useState<string | null>(null);
+  const [rejectReasonText, setRejectReasonText] = useState("");
   const searchString = useSearch();
+
+  const quickStatusUpdateMutation = useMutation({
+    mutationFn: async ({ id, status, rejectionReason }: { id: string; status: string; rejectionReason?: string }) => {
+      return apiRequest("PATCH", `/api/complaints/${id}`, {
+        status,
+        changedBy: currentUser?.id,
+        actorRole: "supplier",
+        ...(rejectionReason ? { rejectionReason } : {}),
+      });
+    },
+    onSuccess: () => {
+      toast({ title: lang === "de" ? "Status aktualisiert" : "Stato aggiornato" });
+      queryClient.invalidateQueries({ queryKey: [`/api/complaints?supplierId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+      if (selectedConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'statuses'] });
+        queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
+      }
+    },
+    onError: () => {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", description: lang === "de" ? "Status konnte nicht aktualisiert werden." : "Stato non aggiornabile.", variant: "destructive" });
+    },
+  });
+
+  const computeNextDeliveryDate = (schedules: any[]): string => {
+    const days = (schedules || []).map((s: any) => s.dayOfWeek).filter((d: any) => typeof d === "number");
+    const fallback = new Date();
+    fallback.setDate(fallback.getDate() + 1);
+    if (days.length === 0) return fallback.toISOString().split("T")[0];
+    for (let i = 1; i <= 14; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      if (days.includes(d.getDay())) return d.toISOString().split("T")[0];
+    }
+    return fallback.toISOString().split("T")[0];
+  };
+
+  const startFollowUpFromCard = async (complaintId: string) => {
+    try {
+      const res = await fetch(`/api/complaints/${complaintId}`);
+      if (!res.ok) throw new Error("fetch failed");
+      const c: any = await res.json();
+      let items: AffectedItem[] = [];
+      if (c?.affectedItems) {
+        try {
+          const parsed = typeof c.affectedItems === "string" ? JSON.parse(c.affectedItems) : c.affectedItems;
+          if (Array.isArray(parsed)) items = parsed;
+        } catch {}
+      }
+      if (items.length === 0) {
+        toast({ title: lang === "de" ? "Keine betroffenen Produkte" : "Nessun prodotto interessato", description: lang === "de" ? "Bitte Details öffnen." : "Apri i dettagli.", variant: "destructive" });
+        return;
+      }
+      let schedules: any[] = [];
+      if (c?.supplierId && c?.restaurantId) {
+        try {
+          const sRes = await fetch(`/api/delivery-schedules/restaurant?supplierId=${c.supplierId}&restaurantId=${c.restaurantId}`);
+          if (sRes.ok) schedules = await sRes.json();
+        } catch {}
+      }
+      setSelectedComplaintId(complaintId);
+      setFollowUpItems(items.map(ai => ({ productId: ai.productId, productName: ai.productName, quantity: ai.quantity, unitPrice: ai.unitPrice })));
+      setFollowUpDeliveryDate(computeNextDeliveryDate(schedules));
+      setFollowUpNotes(`Nachlieferung zu Reklamation #${formatComplaintNumber(c)}`);
+      setShowFollowUpDialog(true);
+    } catch {
+      toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
+    }
+  };
 
   useEffect(() => {
     setIsInChat(selectedConversation !== null);
@@ -343,7 +419,7 @@ export default function SupplierInbox() {
 
   const updateComplaintStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return apiRequest("PATCH", `/api/complaints/${id}`, { status, changedBy: currentUser?.id });
+      return apiRequest("PATCH", `/api/complaints/${id}`, { status, changedBy: currentUser?.id, actorRole: "supplier" });
     },
     onSuccess: (_, variables) => {
       toast({ title: "Status aktualisiert", description: "Der Reklamationsstatus wurde erfolgreich geändert." });
@@ -1168,7 +1244,7 @@ export default function SupplierInbox() {
                                           className="text-xs flex-1 border-border/40 rounded-lg"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            apiRequest("PATCH", `/api/complaints/${complaint.id}`, { status: nextStatus, changedBy: currentUser?.id })
+                                            apiRequest("PATCH", `/api/complaints/${complaint.id}`, { status: nextStatus, changedBy: currentUser?.id, actorRole: "supplier" })
                                               .then(() => {
                                                 queryClient.invalidateQueries({ queryKey: [`/api/complaints?supplierId=${currentUser?.id}`] });
                                                 queryClient.invalidateQueries({ queryKey: ["/api/complaints"] });
@@ -1607,6 +1683,15 @@ export default function SupplierInbox() {
                                               {getComplaintStatusLabel(complaintStatus)}
                                             </span>
                                           )}
+                                          {(complaintStatus === "open" || !complaintStatus) && (Date.now() - messageDate.getTime()) >= 24 * 60 * 60 * 1000 && (() => {
+                                            const days = Math.floor((Date.now() - messageDate.getTime()) / (24 * 60 * 60 * 1000));
+                                            const cls = days >= 3 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+                                            return (
+                                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${cls}`} data-testid={`complaint-overdue-${message.id}`}>
+                                                {days}d {lang === "de" ? "offen" : "aperto"}
+                                              </span>
+                                            );
+                                          })()}
                                           <span className="text-xs text-muted-foreground">
                                             {format(messageDate, "HH:mm")}
                                           </span>
@@ -1627,6 +1712,12 @@ export default function SupplierInbox() {
                                               </Badge>
                                             </div>
                                             <p className="text-sm text-muted-foreground line-clamp-2">{complaintData.description}</p>
+                                            {(complaintData as any).reason && (
+                                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-[10px] font-medium" data-testid={`complaint-reason-${message.id}`}>
+                                                <AlertCircle className="h-2.5 w-2.5" />
+                                                {getComplaintReasonLabel((complaintData as any).reason, lang)}
+                                              </div>
+                                            )}
                                             {complaintData.affectedItems && complaintData.affectedItems.length > 0 && (
                                               <div className="mt-2 p-2 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
                                                 <div className="flex items-center gap-1.5 mb-1.5">
@@ -1651,7 +1742,53 @@ export default function SupplierInbox() {
                                         )}
                                       </div>
                                       {(complaintData?.complaintId || complaintData?.orderId) && (
-                                        <div className="px-4 pb-3 pt-1">
+                                        <div className="px-4 pb-3 pt-1 space-y-1.5">
+                                          {complaintData.complaintId && complaintStatus !== "resolved" && complaintStatus !== "closed" && complaintStatus !== "rejected" && (
+                                            <div className="grid grid-cols-2 gap-1.5">
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 text-[11px] text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/30"
+                                                onClick={() => complaintData.complaintId && quickStatusUpdateMutation.mutate({ id: complaintData.complaintId, status: "in_progress" })}
+                                                disabled={quickStatusUpdateMutation.isPending}
+                                                data-testid={`button-complaint-quick-progress-${message.id}`}
+                                              >
+                                                <Loader2 className="h-3 w-3 mr-1" />
+                                                {lang === "de" ? "Bearb." : "Avvia"}
+                                              </Button>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 text-[11px] text-orange-600 border-orange-200 hover:bg-orange-50 dark:text-orange-400 dark:border-orange-800 dark:hover:bg-orange-950/30"
+                                                onClick={() => complaintData.complaintId && startFollowUpFromCard(complaintData.complaintId)}
+                                                data-testid={`button-complaint-quick-followup-${message.id}`}
+                                              >
+                                                <RefreshCw className="h-3 w-3 mr-1" />
+                                                {lang === "de" ? "Nachl." : "Riconseg."}
+                                              </Button>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 text-[11px] text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-950/30"
+                                                onClick={() => complaintData.complaintId && quickStatusUpdateMutation.mutate({ id: complaintData.complaintId, status: "partially_resolved" })}
+                                                disabled={quickStatusUpdateMutation.isPending}
+                                                data-testid={`button-complaint-quick-partial-${message.id}`}
+                                              >
+                                                <CheckCircle className="h-3 w-3 mr-1" />
+                                                {lang === "de" ? "Teilw." : "Parz."}
+                                              </Button>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 text-[11px] text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/30"
+                                                onClick={() => { if (complaintData.complaintId) { setRejectComplaintId(complaintData.complaintId); setRejectReasonText(""); } }}
+                                                data-testid={`button-complaint-quick-reject-${message.id}`}
+                                              >
+                                                <Ban className="h-3 w-3 mr-1" />
+                                                {lang === "de" ? "Ablehnen" : "Rifiuta"}
+                                              </Button>
+                                            </div>
+                                          )}
                                           <Button
                                             variant="outline"
                                             size="sm"
@@ -2966,6 +3103,16 @@ export default function SupplierInbox() {
                 <span>{lang === "de" ? "Gesamt" : "Totale"}</span>
                 <span>{followUpItems.reduce((sum, item) => sum + item.quantity * parseFloat(item.unitPrice), 0).toFixed(2)} EUR</span>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full rounded-lg"
+                onClick={() => setFollowUpItems(prev => prev.map(it => ({ ...it, quantity: Math.max(1, Math.ceil(it.quantity * 1.1)) })))}
+                data-testid="button-followup-compensate-10"
+              >
+                {lang === "de" ? "+10% Kompensation hinzufügen" : "+10% compensazione"}
+              </Button>
             </div>
 
             <div className="space-y-2">
@@ -3018,6 +3165,44 @@ export default function SupplierInbox() {
               {lang === "de" ? "Nachlieferung bestätigen" : "Conferma riconsegna"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!rejectComplaintId} onOpenChange={(open) => { if (!open) { setRejectComplaintId(null); setRejectReasonText(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{lang === "de" ? "Reklamation ablehnen" : "Rifiuta reclamo"}</DialogTitle>
+            <DialogDescription>
+              {lang === "de" ? "Bitte begründen Sie die Ablehnung. Diese Information wird im Chat geteilt." : "Indica il motivo del rifiuto. Verrà condiviso in chat."}
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={rejectReasonText}
+            onChange={(e) => setRejectReasonText(e.target.value)}
+            placeholder={lang === "de" ? "Ablehnungsgrund (Pflichtfeld)" : "Motivo del rifiuto (obbligatorio)"}
+            className="min-h-[100px] rounded-lg"
+            data-testid="input-quick-reject-reason"
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setRejectComplaintId(null); setRejectReasonText(""); }} data-testid="button-quick-reject-cancel">
+              {lang === "de" ? "Abbrechen" : "Annulla"}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!rejectReasonText.trim() || quickStatusUpdateMutation.isPending}
+              onClick={() => {
+                if (rejectComplaintId && rejectReasonText.trim()) {
+                  quickStatusUpdateMutation.mutate(
+                    { id: rejectComplaintId, status: "rejected", rejectionReason: rejectReasonText.trim() },
+                    { onSuccess: () => { setRejectComplaintId(null); setRejectReasonText(""); } }
+                  );
+                }
+              }}
+              data-testid="button-quick-reject-confirm"
+            >
+              {lang === "de" ? "Ablehnen" : "Rifiuta"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

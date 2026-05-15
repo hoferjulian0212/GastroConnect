@@ -2781,16 +2781,135 @@ export async function registerRoutes(
   });
 
   // ===== COMPLAINTS =====
+  async function sendComplaintStatusMessage(
+    complaintId: string,
+    fromStatus: string | null,
+    toStatus: string,
+    actorRole: "restaurant" | "supplier" | "system",
+    extra?: { rejectionReason?: string; closeNote?: string }
+  ) {
+    const complaint = await storage.getComplaint(complaintId);
+    if (!complaint) return;
+    const conversation = await storage.getOrCreateConversation(complaint.restaurantId, complaint.supplierId);
+    const senderId = actorRole === "supplier" ? complaint.supplierId : complaint.restaurantId;
+    const content = JSON.stringify({
+      type: "complaint_status_change",
+      complaintId,
+      complaintNumber: formatComplaintNumber(complaint),
+      title: complaint.title,
+      fromStatus,
+      toStatus,
+      reason: complaint.reason || null,
+      rejectionReason: extra?.rejectionReason || null,
+      closeNote: extra?.closeNote || null,
+      actorRole,
+    });
+    await storage.sendMessage({
+      conversationId: conversation.id,
+      senderId,
+      messageType: "complaint",
+      content,
+      orderId: complaint.orderId,
+      priority: toStatus === "rejected" ? "important" : "standard",
+    });
+
+    const notifyUserId = actorRole === "supplier" ? complaint.restaurantId : complaint.supplierId;
+    const recipientRole: "restaurant" | "supplier" = notifyUserId === complaint.restaurantId ? "restaurant" : "supplier";
+    const statusLabels: Record<string, string> = {
+      open: "Offen",
+      in_progress: "In Bearbeitung",
+      resolved: "Gelöst",
+      closed: "Geschlossen",
+      rejected: "Abgelehnt",
+      partially_resolved: "Teilweise gelöst",
+    };
+    await createNotificationWithPush({
+      userId: notifyUserId,
+      type: "complaint_comment",
+      title: `Reklamation #${formatComplaintNumber(complaint)} – ${statusLabels[toStatus] || toStatus}`,
+      message: extra?.rejectionReason
+        ? `Status: ${statusLabels[toStatus] || toStatus}. Grund: ${extra.rejectionReason.slice(0, 80)}`
+        : `Status geändert: ${statusLabels[toStatus] || toStatus}`,
+      referenceId: complaintId,
+    }, recipientRole);
+  }
+
+  async function supplierHasReacted(complaint: any): Promise<boolean> {
+    if (complaint.status !== "open") return true;
+    try {
+      const history = await storage.getComplaintStatusHistory(complaint.id);
+      if (history.some((h: any) => h.changedBy && h.changedBy === complaint.supplierId)) return true;
+    } catch {}
+    try {
+      const comments = await storage.getComplaintComments(complaint.id);
+      if (comments.some((cm: any) => cm.userId === complaint.supplierId)) return true;
+    } catch {}
+    return false;
+  }
+
+  async function maybeSendComplaintReminders(complaintList: any[]) {
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    for (const c of complaintList) {
+      if (c.status !== "open") continue;
+      const ageMs = now - new Date(c.createdAt).getTime();
+      if (ageMs < dayMs) continue;
+      if (c.lastReminderAt) continue;
+      if (await supplierHasReacted(c)) continue;
+      try {
+        await storage.updateComplaint(c.id, { lastReminderAt: new Date() });
+        await createNotificationWithPush({
+          userId: c.supplierId,
+          type: "new_complaint",
+          title: `Erinnerung: Reklamation #${formatComplaintNumber(c)} ist >24h ohne Reaktion`,
+          message: c.title,
+          referenceId: c.id,
+        }, "supplier");
+      } catch (err) {
+        console.error("Reminder send failed:", err);
+      }
+    }
+  }
+
+  app.get("/api/complaints/kpis", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string | undefined;
+      const supplierId = req.query.supplierId as string | undefined;
+      const list = restaurantId
+        ? await storage.getComplaintsByRestaurant(restaurantId)
+        : supplierId
+        ? await storage.getComplaintsBySupplier(supplierId)
+        : [];
+      const openCount = list.filter(c => c.status === "open" || c.status === "in_progress").length;
+      const resolved = list.filter(c => c.status === "resolved" || c.status === "closed" || c.status === "partially_resolved");
+      const avgHours = resolved.length > 0
+        ? resolved.reduce((sum, c) => sum + ((new Date(c.updatedAt).getTime() - new Date(c.createdAt).getTime()) / (1000 * 60 * 60)), 0) / resolved.length
+        : 0;
+      const avgDays = Math.round((avgHours / 24) * 10) / 10;
+      const reasonCounts: Record<string, number> = {};
+      for (const c of list) {
+        if (c.reason) reasonCounts[c.reason] = (reasonCounts[c.reason] || 0) + 1;
+      }
+      const topReason = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+      res.json({ openCount, avgDays, topReason, total: list.length, rejectedCount: list.filter(c => c.status === "rejected").length });
+    } catch (e) {
+      console.error("Complaint KPI error:", e);
+      res.status(500).json({ error: "Failed to compute KPIs" });
+    }
+  });
+
   app.get("/api/complaints", async (req, res) => {
     try {
       const restaurantId = req.query.restaurantId as string;
       const supplierId = req.query.supplierId as string;
       if (restaurantId) {
         const complaints = await storage.getComplaintsByRestaurant(restaurantId);
+        maybeSendComplaintReminders(complaints).catch(() => {});
         return res.json(complaints);
       }
       if (supplierId) {
         const complaints = await storage.getComplaintsBySupplier(supplierId);
+        maybeSendComplaintReminders(complaints).catch(() => {});
         return res.json(complaints);
       }
       return res.status(400).json({ error: "restaurantId or supplierId required" });
@@ -2822,6 +2941,7 @@ export async function registerRoutes(
         orderNumber: orderForComplaint ? formatOrderNumber(orderForComplaint) : undefined,
         complaintId: complaint.id,
         complaintNumber: formatComplaintNumber(complaint),
+        reason: complaint.reason || null,
         affectedItems: hasAffectedItems ? affectedItems : undefined,
       });
       await storage.sendMessage({
@@ -2932,13 +3052,28 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Complaint not found" });
       }
       
-      const { changedBy: rawChangedBy, ...complaintBody } = req.body;
+      const { changedBy: rawChangedBy, actorRole: rawActorRole, closeNote: rawCloseNote, ...complaintBody } = req.body;
       const changedBy = typeof rawChangedBy === "string" ? rawChangedBy.slice(0, 100) : undefined;
+      const actorRole: "restaurant" | "supplier" | "system" =
+        rawActorRole === "supplier" ? "supplier" : rawActorRole === "restaurant" ? "restaurant" : "system";
+      const closeNote = typeof rawCloseNote === "string" ? rawCloseNote.slice(0, 500) : undefined;
       const validated = updateComplaintSchema.parse(complaintBody);
       const isContentEdit = validated.title !== undefined || validated.description !== undefined || validated.mediaUrls !== undefined;
       
       if (isContentEdit && complaint.status !== "open") {
         return res.status(400).json({ error: "Reklamationen können nur bearbeitet werden, wenn der Status 'Offen' ist." });
+      }
+
+      if (validated.status === "rejected" && !validated.rejectionReason && !complaint.rejectionReason) {
+        return res.status(400).json({ error: "Ein Ablehnungsgrund ist erforderlich." });
+      }
+      if (
+        validated.status === "closed" &&
+        complaint.status !== "closed" &&
+        actorRole === "restaurant" &&
+        (!closeNote || !closeNote.trim())
+      ) {
+        return res.status(400).json({ error: "Bitte begründen Sie das Schließen der Reklamation." });
       }
       
       const previousStatus = complaint.status;
@@ -2946,6 +3081,10 @@ export async function registerRoutes(
       
       if (validated.status && validated.status !== previousStatus) {
         await storage.addComplaintStatusHistory(req.params.id, previousStatus, validated.status, changedBy);
+        await sendComplaintStatusMessage(req.params.id, previousStatus, validated.status, actorRole, {
+          rejectionReason: validated.rejectionReason || undefined,
+          closeNote,
+        });
       }
       
       res.json(updated);
@@ -2971,15 +3110,33 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Complaint not found" });
       }
 
-      const { items, deliveryDate, notes, supplierId } = req.body;
+      const { items, deliveryDate: deliveryDateRaw, notes, supplierId } = req.body;
       if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: "Items are required" });
       }
-      if (!deliveryDate) {
-        return res.status(400).json({ error: "Delivery date is required" });
-      }
 
       const effectiveSupplierId = complaint.supplierId;
+
+      let deliveryDate: string | undefined = deliveryDateRaw;
+      if (!deliveryDate) {
+        const schedules = await storage.getDeliverySchedulesForRestaurant(effectiveSupplierId, complaint.restaurantId);
+        const days = new Set(schedules.map((s) => s.dayOfWeek));
+        if (days.size > 0) {
+          const next = new Date();
+          for (let i = 1; i <= 14; i++) {
+            const d = new Date(next.getFullYear(), next.getMonth(), next.getDate() + i);
+            if (days.has(d.getDay())) {
+              deliveryDate = d.toISOString().split("T")[0];
+              break;
+            }
+          }
+        }
+        if (!deliveryDate) {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          deliveryDate = tomorrow.toISOString().split("T")[0];
+        }
+      }
       if (supplierId && supplierId !== effectiveSupplierId) {
         return res.status(403).json({ error: "Unauthorized: supplier does not match complaint" });
       }
@@ -3057,10 +3214,11 @@ export async function registerRoutes(
         orderId: order.id,
       });
 
-      await storage.updateComplaint(req.params.id, { status: "in_progress" });
       const previousStatus = complaint.status;
       if (previousStatus !== "in_progress") {
+        await storage.updateComplaint(req.params.id, { status: "in_progress" });
         await storage.addComplaintStatusHistory(req.params.id, previousStatus, "in_progress", effectiveSupplierId);
+        await sendComplaintStatusMessage(req.params.id, previousStatus, "in_progress", "supplier");
       }
 
       const supplier = await storage.getUser(effectiveSupplierId);

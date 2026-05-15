@@ -70,6 +70,8 @@ export function complaintStatusTone(status: string): StatusTone {
     case "resolved": return "emerald";
     case "in_progress": return "indigo";
     case "open": return "amber";
+    case "partially_resolved": return "amber";
+    case "rejected": return "red";
     case "closed": return "slate";
     default: return "slate";
   }

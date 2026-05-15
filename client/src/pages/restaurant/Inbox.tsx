@@ -102,6 +102,8 @@ const getStatusLabel = (status: string) => {
   }
 };
 
+import { getComplaintReasonLabel } from "@/lib/complaintReasons";
+import { COMPLAINT_REASONS, type ComplaintReason } from "@shared/schema";
 const isOrderInactive = (status: string) => status === "delivered" || status === "cancelled";
 const isComplaintInactive = (status: string) => status === "resolved" || status === "closed";
 
@@ -111,6 +113,8 @@ const getComplaintStatusLabel = (status: string) => {
     case "in_progress": return "In Bearbeitung";
     case "resolved": return "Gelöst";
     case "closed": return "Geschlossen";
+    case "rejected": return "Abgelehnt";
+    case "partially_resolved": return "Teilweise gelöst";
     default: return status;
   }
 };
@@ -121,6 +125,8 @@ const getComplaintStatusColor = (status: string) => {
     case "in_progress": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
     case "resolved": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
     case "closed": return "bg-muted text-muted-foreground";
+    case "rejected": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+    case "partially_resolved": return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400";
     default: return "bg-muted text-muted-foreground";
   }
 };
@@ -190,6 +196,7 @@ export default function RestaurantInbox() {
   const [priorityPopoverOpen, setPriorityPopoverOpen] = useState(false);
   const [complaintPriorityImmediate, setComplaintPriorityImmediate] = useState(false);
   const [complaintAffectedItems, setComplaintAffectedItems] = useState<AffectedItem[]>([]);
+  const [complaintReason, setComplaintReason] = useState<ComplaintReason | "">("");
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
   const [showComplaintDetail, setShowComplaintDetail] = useState(false);
   const [loadingComplaintDetail, setLoadingComplaintDetail] = useState(false);
@@ -789,7 +796,7 @@ export default function RestaurantInbox() {
   });
 
   const createComplaintMutation = useMutation({
-    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; priorityImmediate?: boolean; affectedItems?: AffectedItem[] }) => {
+    mutationFn: async (data: { orderId: string; restaurantId: string; supplierId: string; title: string; description: string; priorityImmediate?: boolean; affectedItems?: AffectedItem[]; reason: ComplaintReason }) => {
       return apiRequest("POST", "/api/complaints", data);
     },
     onSuccess: () => {
@@ -806,6 +813,7 @@ export default function RestaurantInbox() {
       setComplaintDescription("");
       setComplaintPriorityImmediate(false);
       setComplaintAffectedItems([]);
+      setComplaintReason("");
       setActionMode("none");
       setShowComplaintDetail(false);
       setSelectedComplaintId(null);
@@ -822,6 +830,14 @@ export default function RestaurantInbox() {
 
   const handleSubmitComplaint = () => {
     if (!complaintOrderId || !complaintTitle.trim() || !complaintDescription.trim() || !supplierId) return;
+    if (!complaintReason) {
+      toast({
+        title: t("common", "error"),
+        description: lang === "de" ? "Bitte wählen Sie einen Grund aus." : "Seleziona un motivo.",
+        variant: "destructive",
+      });
+      return;
+    }
     const hasAffected = complaintAffectedItems.length > 0;
     createComplaintMutation.mutate({
       orderId: complaintOrderId,
@@ -831,6 +847,7 @@ export default function RestaurantInbox() {
       description: complaintDescription.trim(),
       priorityImmediate: complaintPriorityImmediate || hasAffected,
       affectedItems: hasAffected ? complaintAffectedItems : undefined,
+      reason: complaintReason,
     });
   };
 
@@ -846,6 +863,7 @@ export default function RestaurantInbox() {
 
   const [showCancelOrderConfirm, setShowCancelOrderConfirm] = useState(false);
   const [showWithdrawComplaintConfirm, setShowWithdrawComplaintConfirm] = useState(false);
+  const [withdrawCloseNote, setWithdrawCloseNote] = useState("");
   const [newComplaintComment, setNewComplaintComment] = useState("");
 
   const cancelOrderMutation = useMutation({
@@ -898,8 +916,8 @@ export default function RestaurantInbox() {
   });
 
   const withdrawComplaintMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("PATCH", `/api/complaints/${id}`, { status: "closed", changedBy: currentUser?.id });
+    mutationFn: async ({ id, closeNote }: { id: string; closeNote: string }) => {
+      return apiRequest("PATCH", `/api/complaints/${id}`, { status: "closed", changedBy: currentUser?.id, actorRole: "restaurant", closeNote });
     },
     onSuccess: () => {
       toast({ title: t("complaints", "complaintWithdrawn"), description: t("complaints", "complaintWithdrawnDesc") });
@@ -912,6 +930,7 @@ export default function RestaurantInbox() {
         queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
       }
       setShowWithdrawComplaintConfirm(false);
+      setWithdrawCloseNote("");
       setShowComplaintDetail(false);
       setSelectedComplaintId(null);
       setTimeout(scrollToBottom, 300);
@@ -923,7 +942,7 @@ export default function RestaurantInbox() {
 
   const reopenComplaintMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest("PATCH", `/api/complaints/${id}`, { status: "open", changedBy: currentUser?.id });
+      return apiRequest("PATCH", `/api/complaints/${id}`, { status: "open", changedBy: currentUser?.id, actorRole: "restaurant" });
     },
     onSuccess: () => {
       toast({ title: lang === "de" ? "Reklamation wieder geöffnet" : "Reclamo riaperto" });
@@ -1845,6 +1864,15 @@ export default function RestaurantInbox() {
                                                 {getComplaintStatus(complaintStatus, lang)}
                                               </span>
                                             )}
+                                            {(complaintStatus === "open" || !complaintStatus) && (Date.now() - messageDate.getTime()) >= 24 * 60 * 60 * 1000 && (() => {
+                                              const days = Math.floor((Date.now() - messageDate.getTime()) / (24 * 60 * 60 * 1000));
+                                              const cls = days >= 3 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+                                              return (
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${cls}`} data-testid={`complaint-overdue-${message.id}`}>
+                                                  {days}d {lang === "de" ? "offen" : "aperto"}
+                                                </span>
+                                              );
+                                            })()}
                                             <span className="text-xs text-muted-foreground">
                                               {format(messageDate, "HH:mm")}
                                             </span>
@@ -1865,6 +1893,12 @@ export default function RestaurantInbox() {
                                                 </Badge>
                                               </div>
                                               <p className="text-sm text-muted-foreground">{complaintData.description}</p>
+                                              {(complaintData as any).reason && (
+                                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-[10px] font-medium" data-testid={`complaint-reason-${message.id}`}>
+                                                  <AlertCircle className="h-2.5 w-2.5" />
+                                                  {getComplaintReasonLabel((complaintData as any).reason, lang)}
+                                                </div>
+                                              )}
                                               {complaintData.affectedItems && complaintData.affectedItems.length > 0 && (
                                                 <div className="mt-2 p-2 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
                                                   <div className="flex items-center gap-1.5 mb-1.5">
@@ -2540,10 +2574,32 @@ export default function RestaurantInbox() {
                           </div>
                         )}
 
-                        {/* STEP 3: Title + Description */}
-                        <div className={`space-y-3 transition-opacity ${complaintOrderId ? "opacity-100" : "opacity-50 pointer-events-none"}`}>
+                        {/* STEP 2.5: Reason (mandatory) */}
+                        <div className={`space-y-2 transition-opacity ${complaintOrderId ? "opacity-100" : "opacity-50 pointer-events-none"}`}>
                           <div className="flex items-center gap-2">
                             <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shrink-0">3</span>
+                            <Label className="text-sm font-semibold m-0">{lang === "de" ? "Grund (Pflichtfeld)" : "Motivo (obbligatorio)"}</Label>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {COMPLAINT_REASONS.map((r) => (
+                              <button
+                                key={r}
+                                type="button"
+                                onClick={() => setComplaintReason(r)}
+                                disabled={!complaintOrderId}
+                                className={`flex items-center justify-center px-2 py-2 rounded-lg text-xs font-medium border transition-all ${complaintReason === r ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
+                                data-testid={`button-inbox-reason-${r}`}
+                              >
+                                {getComplaintReasonLabel(r, lang)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* STEP 4: Title + Description */}
+                        <div className={`space-y-3 transition-opacity ${complaintOrderId ? "opacity-100" : "opacity-50 pointer-events-none"}`}>
+                          <div className="flex items-center gap-2">
+                            <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shrink-0">4</span>
                             <Label className="text-sm font-semibold m-0">{lang === "de" ? "Beschreibung" : "Descrizione"}</Label>
                           </div>
                           <Input
@@ -2593,7 +2649,7 @@ export default function RestaurantInbox() {
                       <Button
                         className="w-full gap-2 h-11 rounded-full font-semibold"
                         variant="destructive"
-                        disabled={!complaintOrderId || !complaintTitle.trim() || !complaintDescription.trim() || createComplaintMutation.isPending}
+                        disabled={!complaintOrderId || !complaintReason || !complaintTitle.trim() || !complaintDescription.trim() || createComplaintMutation.isPending}
                         onClick={handleSubmitComplaint}
                         data-testid="button-submit-complaint"
                       >
@@ -3247,12 +3303,19 @@ export default function RestaurantInbox() {
                       <div className="p-4 rounded-xl border border-destructive/20 space-y-3">
                         <p className="text-sm font-medium text-destructive">{t("complaints", "confirmWithdraw")}</p>
                         <p className="text-xs text-muted-foreground">{t("complaints", "withdrawWarning")}</p>
+                        <Textarea
+                          value={withdrawCloseNote}
+                          onChange={(e) => setWithdrawCloseNote(e.target.value)}
+                          placeholder={lang === "de" ? "Grund für den Rückzug (Pflichtfeld)" : "Motivo del ritiro (obbligatorio)"}
+                          className="min-h-[72px] rounded-lg"
+                          data-testid="input-withdraw-close-note"
+                        />
                         <div className="flex gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             className="flex-1 rounded-lg"
-                            onClick={() => setShowWithdrawComplaintConfirm(false)}
+                            onClick={() => { setShowWithdrawComplaintConfirm(false); setWithdrawCloseNote(""); }}
                             data-testid="button-withdraw-complaint-abort"
                           >
                             {t("common", "cancel")}
@@ -3261,8 +3324,8 @@ export default function RestaurantInbox() {
                             variant="destructive"
                             size="sm"
                             className="flex-1 rounded-lg"
-                            onClick={() => selectedComplaintId && withdrawComplaintMutation.mutate(selectedComplaintId)}
-                            disabled={withdrawComplaintMutation.isPending}
+                            onClick={() => selectedComplaintId && withdrawCloseNote.trim() && withdrawComplaintMutation.mutate({ id: selectedComplaintId, closeNote: withdrawCloseNote.trim() })}
+                            disabled={withdrawComplaintMutation.isPending || !withdrawCloseNote.trim()}
                             data-testid="button-withdraw-complaint-confirm"
                           >
                             {withdrawComplaintMutation.isPending ? t("inbox", "closing") : t("inbox", "yesWithdraw")}

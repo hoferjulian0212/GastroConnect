@@ -6,7 +6,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { getOrderStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown, Download, MoreHorizontal, X } from "lucide-react";
+import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, AlertCircle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown, Download, MoreHorizontal, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProductImage } from "@/components/ProductImage";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -484,6 +484,15 @@ export default function OrderDetail() {
       category: "fulfillment",
       action: () => setShowReorderSheet(true),
       testId: "action-reorder",
+      disabled: false,
+    });
+    actions.push({
+      label: lang === "de" ? "Problem melden" : "Segnala problema",
+      icon: AlertCircle,
+      style: "secondary",
+      category: "communication",
+      action: () => setLocation(`/restaurant/complaints?openWizard=1&orderId=${order.id}&supplierId=${order.supplierId || ""}`),
+      testId: "action-report-problem",
       disabled: false,
     });
     actions.push({

@@ -112,6 +112,8 @@ const t = {
     in_progress: { de: "In Bearbeitung", it: "In lavorazione" },
     resolved: { de: "Gelöst", it: "Risolto" },
     closed: { de: "Geschlossen", it: "Chiuso" },
+    rejected: { de: "Abgelehnt", it: "Rifiutato" },
+    partially_resolved: { de: "Teilweise gelöst", it: "Parzialmente risolto" },
   },
   restaurantHome: {
     openOrders: { de: "Offene Bestellungen", it: "Ordini aperti" },
