@@ -246,7 +246,7 @@ export default function RestaurantHome() {
       setWizardSubmitting(false);
       setTimeout(() => {
         setWizardTemplate(null);
-        navigate("/restaurant/cart");
+        navigate("/restaurant/cart?from=template");
       }, 3500);
     },
     onError: () => {

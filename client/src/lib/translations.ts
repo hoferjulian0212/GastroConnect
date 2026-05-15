@@ -233,6 +233,7 @@ const t = {
     notesLabel: { de: "Anmerkungen", it: "Note" },
     viewOrders: { de: "Zu meinen Bestellungen", it: "Vai ai miei ordini" },
     continueShopping: { de: "Weiter einkaufen", it: "Continua lo shopping" },
+    done: { de: "Fertig", it: "Fatto" },
   },
   orders: {
     orderPlaceError: { de: "Bestellung konnte nicht aufgegeben werden.", it: "Impossibile effettuare l'ordine." },

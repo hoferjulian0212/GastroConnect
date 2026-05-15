@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock, StickyNote, AlertCircle } from "lucide-react";
+import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock, StickyNote, AlertCircle, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import QuantityInput from "@/components/QuantityInput";
 import { Calendar } from "@/components/ui/calendar";
@@ -19,7 +19,7 @@ type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { format, addDays, startOfDay, parse } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
@@ -55,6 +55,8 @@ export default function RestaurantCart() {
   } | null>(null);
   const { lang } = useLanguage();
   const t = useT(lang);
+  const [location] = useLocation();
+  const fromTemplate = typeof window !== "undefined" && new URLSearchParams(location.split("?")[1] || window.location.search).get("from") === "template";
 
   const { data: cartItems, isLoading } = useQuery<CartItemWithPromotion[]>({
     queryKey: [`/api/cart?restaurantId=${currentUser?.id}`],
@@ -362,12 +364,21 @@ export default function RestaurantCart() {
                 {t("cart", "viewOrders")}
               </Link>
             </Button>
-            <Button variant="outline" className="flex-1 gap-2" asChild>
-              <Link href="/restaurant/catalog" data-testid="link-continue-shopping">
-                <ShoppingBag className="h-4 w-4" />
-                {t("cart", "continueShopping")}
-              </Link>
-            </Button>
+            {fromTemplate ? (
+              <Button variant="outline" className="flex-1 gap-2" asChild>
+                <Link href="/restaurant" data-testid="link-done">
+                  <Check className="h-4 w-4" />
+                  {t("cart", "done")}
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="outline" className="flex-1 gap-2" asChild>
+                <Link href="/restaurant/catalog" data-testid="link-continue-shopping">
+                  <ShoppingBag className="h-4 w-4" />
+                  {t("cart", "continueShopping")}
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
