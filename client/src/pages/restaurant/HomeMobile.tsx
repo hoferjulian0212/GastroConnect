@@ -6,7 +6,7 @@ import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { queryClient } from "@/lib/queryClient";
-import { MobilePageHeader, MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, statusToTone } from "@/components/mobile";
+import { MobilePageHeader, MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, MobileTopActions, statusToTone } from "@/components/mobile";
 import type { OrderWithDetails } from "@shared/schema";
 import { getOrderStatus } from "@/lib/translations";
 
@@ -120,16 +120,19 @@ export default function RestaurantHomeMobile({
           style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
           data-testid="mobile-header-restaurant-home"
         >
-          <div className="pt-2 pb-5">
-            <p className="text-[13px] font-medium text-white/60">{greeting},</p>
-            <h1 className="text-[26px] font-bold leading-tight mt-1 text-white truncate">
-              {currentUser?.companyName || currentUser?.name || ""}
-            </h1>
-            <p className="text-[12px] text-white/55 mt-1.5">
-              {lang === "de"
-                ? `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "Lieferung" : "Lieferungen"} heute · ${pendingOrdersCount} offen`
-                : `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "consegna" : "consegne"} oggi · ${pendingOrdersCount} aperti`}
-            </p>
+          <div className="pt-2 pb-5 flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-white/60">{greeting},</p>
+              <h1 className="text-[26px] font-bold leading-tight mt-1 text-white truncate">
+                {currentUser?.companyName || currentUser?.name || ""}
+              </h1>
+              <p className="text-[12px] text-white/55 mt-1.5">
+                {lang === "de"
+                  ? `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "Lieferung" : "Lieferungen"} heute · ${pendingOrdersCount} offen`
+                  : `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "consegna" : "consegne"} oggi · ${pendingOrdersCount} aperti`}
+              </p>
+            </div>
+            <MobileTopActions variant="dark" />
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {kpis.map((k) => (

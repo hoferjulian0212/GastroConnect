@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { ChevronLeft } from "lucide-react";
 import { useLocation } from "wouter";
+import { MobileTopActions } from "./MobileTopActions";
 
 interface MobilePageHeaderProps {
   title: string;
@@ -12,6 +13,7 @@ interface MobilePageHeaderProps {
   search?: ReactNode;
   testId?: string;
   compact?: boolean;
+  hideTopActions?: boolean;
 }
 
 export function MobilePageHeader({
@@ -24,6 +26,7 @@ export function MobilePageHeader({
   search,
   testId,
   compact,
+  hideTopActions,
 }: MobilePageHeaderProps) {
   const [, setLocation] = useLocation();
 
@@ -58,6 +61,7 @@ export function MobilePageHeader({
           )}
         </div>
         {rightAction}
+        {!hideTopActions && <MobileTopActions variant="dark" />}
       </div>
       {search && <div className="mt-3">{search}</div>}
       {filters && (

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ComposedChart, Line } from "recharts";
 import { queryClient } from "@/lib/queryClient";
-import { MobilePageHeader, MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, statusToTone } from "@/components/mobile";
+import { MobilePageHeader, MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, MobileTopActions, statusToTone } from "@/components/mobile";
 import type { OrderWithDetails, Product } from "@shared/schema";
 import { getOrderStatus } from "@/lib/translations";
 
@@ -137,16 +137,19 @@ export default function SupplierHomeMobile({
           style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
           data-testid="mobile-header-supplier-home"
         >
-          <div className="pt-2 pb-5">
-            <p className="text-[13px] font-medium text-white/60">{greeting},</p>
-            <h1 className="text-[26px] font-bold leading-tight mt-1 text-white truncate">
-              {currentUser?.companyName || currentUser?.name || ""}
-            </h1>
-            <p className="text-[12px] text-white/55 mt-1.5">
-              {lang === "de"
-                ? `${newOrdersCount} ${newOrdersCount === 1 ? "neue Bestellung" : "neue Bestellungen"} · ${todayDeliveries.length} ${todayDeliveries.length === 1 ? "Lieferung heute" : "Lieferungen heute"}`
-                : `${newOrdersCount} ${newOrdersCount === 1 ? "nuovo ordine" : "nuovi ordini"} · ${todayDeliveries.length} ${todayDeliveries.length === 1 ? "consegna oggi" : "consegne oggi"}`}
-            </p>
+          <div className="pt-2 pb-5 flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-white/60">{greeting},</p>
+              <h1 className="text-[26px] font-bold leading-tight mt-1 text-white truncate">
+                {currentUser?.companyName || currentUser?.name || ""}
+              </h1>
+              <p className="text-[12px] text-white/55 mt-1.5">
+                {lang === "de"
+                  ? `${newOrdersCount} ${newOrdersCount === 1 ? "neue Bestellung" : "neue Bestellungen"} · ${todayDeliveries.length} ${todayDeliveries.length === 1 ? "Lieferung heute" : "Lieferungen heute"}`
+                  : `${newOrdersCount} ${newOrdersCount === 1 ? "nuovo ordine" : "nuovi ordini"} · ${todayDeliveries.length} ${todayDeliveries.length === 1 ? "consegna oggi" : "consegne oggi"}`}
+              </p>
+            </div>
+            <MobileTopActions variant="dark" />
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {kpis.map((k) => (
