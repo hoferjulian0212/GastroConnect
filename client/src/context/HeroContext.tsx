@@ -55,7 +55,7 @@ export function HeroPortal({ children, desktopOnly = false, mobileWrapperClassNa
       <div className="absolute top-3 right-3 z-10">
         <MobileTopActions variant="dark" />
       </div>
-      <div className="pr-[124px]">{children}</div>
+      <div className="[&_h1]:pr-[124px] [&_h1+p]:pr-[124px]">{children}</div>
     </div>
   );
 }
