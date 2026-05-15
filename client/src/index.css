@@ -751,7 +751,7 @@ html, body, #root {
     border-color: rgba(255, 255, 255, 0.08);
   }
   .mobile-message-pill {
-    border-radius: 9999px !important;
+    border-radius: 1.5rem !important;
     margin-left: 12px !important;
     margin-right: 12px !important;
     margin-bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
