@@ -37,7 +37,8 @@ export function MobilePageHeader({
 
   return (
     <div
-      className={`md:hidden bg-[#161921] text-white px-4 ${compact ? "pt-3 pb-3" : "pt-3 pb-4"} rounded-b-3xl`}
+      className={`md:hidden bg-[#161921] text-white px-4 ${compact ? "pt-4 pb-4" : "pt-4 pb-5"} rounded-3xl mx-2`}
+      style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
       data-testid={testId || "mobile-page-header"}
     >
       <div className="flex items-center gap-3 min-h-[40px]">

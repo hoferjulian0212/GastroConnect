@@ -50,20 +50,8 @@
     0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
-/* Mobile dark hero — render as a floating rounded card with margins from
-   all viewport edges, mirroring the desktop look. Respects the iOS
-   safe-area inset (notch / status bar). Targets every page-level dark
-   hero (matches both `bg-[#161921]` + `rounded-b-3xl`).
-   Desktop (>=768px) is unchanged. */
-@media (max-width: 767px) {
-  div[class*="bg-[#161921]"][class*="rounded-b-3xl"] {
-    margin-top: calc(env(safe-area-inset-top, 0px) + 0.5rem) !important;
-    margin-left: 0.5rem !important;
-    margin-right: 0.5rem !important;
-    border-radius: 1.5rem !important;
-    overflow: hidden !important;
-  }
-}
+/* Mobile dark hero — floating rounded card styling is applied directly on
+   MobilePageHeader and HeroPortal mobile wrappers via inline styles. */
 
 input[type="date"].date-empty::-webkit-datetime-edit-text,
 input[type="date"].date-empty::-webkit-datetime-edit-month-field,
