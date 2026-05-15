@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
@@ -2204,7 +2204,13 @@ export async function registerRoutes(
               messageType: "order_change_request",
               content: responseContent,
               orderId: order.id,
-            } as any);
+            });
+            // Mirror storage.sendMessage's side effect so inbox ordering by
+            // lastMessageAt stays correct after the approval response.
+            await tx
+              .update(conversations)
+              .set({ lastMessageAt: new Date() })
+              .where(eq(conversations.id, conversation.id));
           },
         });
 
