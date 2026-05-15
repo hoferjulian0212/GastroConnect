@@ -711,7 +711,7 @@ html, body, #root {
 }
 
 .nav-item-active {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
   -webkit-font-smoothing: antialiased;
   transition: color 0.2s ease;
 }
