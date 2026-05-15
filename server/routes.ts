@@ -377,11 +377,15 @@ const updateOrderStatusSchema = z.object({
   deliveryNotes: safeString.optional().nullable(),
 }).strict();
 
+// Edit endpoint accepts a minimal payload: productId + quantity. The server
+// recomputes productName and unitPrice from product master data + active
+// promotions, so the legacy productName/unitPrice fields are accepted but
+// ignored (kept optional for backward-compatibility with older clients).
 const editOrderItemSchema = z.object({
   productId: uuidField,
-  productName: safeShortString,
   quantity: z.number().int().min(1).max(9999),
-  unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  productName: safeShortString.optional(),
+  unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
 });
 
 const editOrderItemsSchema = z.object({
@@ -2007,14 +2011,28 @@ export async function registerRoutes(
         }
       }
 
-      const orderItems = items.map((item) => {
+      // Validate all products before mapping so we can return precise 4xx
+      // errors instead of falling through to a generic 500.
+      for (const item of items) {
         const product = productMap.get(item.productId);
         if (!product) {
-          throw new Error(`product_not_found:${item.productId}`);
+          return res.status(404).json({
+            error: "product_not_found",
+            productId: item.productId,
+            message: `Produkt nicht gefunden (${item.productId}).`,
+          });
         }
         if (product.supplierId !== order.supplierId) {
-          throw new Error(`product_wrong_supplier:${item.productId}`);
+          return res.status(400).json({
+            error: "product_wrong_supplier",
+            productId: item.productId,
+            message: `Produkt "${product.name}" gehört nicht zum Händler dieser Bestellung.`,
+          });
         }
+      }
+
+      const orderItems = items.map((item) => {
+        const product = productMap.get(item.productId)!;
         const promo = promoMap.get(item.productId);
         const originalPrice = parseFloat(product.price);
         const effectivePrice = promo
