@@ -14,15 +14,15 @@ export function RestaurantMobileNav() {
     { title: t("common", "home"), url: "/restaurant", icon: Home },
     { title: t("common", "products"), url: "/restaurant/catalog", icon: Package },
     { title: t("common", "messages"), url: "/restaurant/inbox", icon: MessageSquare, hasBadge: true },
-    { title: t("common", "cart"), url: "/restaurant/cart", icon: ShoppingCart, hasBadge: true },
+    { title: lang === "de" ? "Preisvergleich" : "Confronto prezzi", url: "/restaurant/price-comparison", icon: ArrowUpDown },
   ];
 
   const moreMenuItems = [
     { title: t("common", "suppliers"), url: "/restaurant/suppliers", icon: Truck },
     { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag },
+    { title: t("common", "cart"), url: "/restaurant/cart", icon: ShoppingCart, hasBadge: true },
     { title: t("common", "complaints"), url: "/restaurant/complaints", icon: AlertCircle },
     { title: t("common", "documents"), url: "/restaurant/documents", icon: FileText },
-    { title: lang === "de" ? "Preisvergleich" : "Confronto prezzi", url: "/restaurant/price-comparison", icon: ArrowUpDown },
     { title: t("common", "costAnalysis"), url: "/restaurant/cost-analysis", icon: Calculator },
     { title: t("common", "profile"), url: "/restaurant/profile", icon: User },
     { title: t("common", "settings"), url: "/restaurant/settings", icon: Settings },
