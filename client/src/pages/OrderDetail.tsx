@@ -548,7 +548,11 @@ export default function OrderDetail() {
     <div className="min-h-dvh bg-background pb-[calc(env(safe-area-inset-bottom,0px)+88px)] md:pb-0" data-testid="page-order-detail">
       <div className="w-full">
         {/* Dark hero: matches Reklamationsdetails design */}
-        <div className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 rounded-b-3xl mb-3 md:mb-4" data-testid="order-detail-hero">
+        <div
+          className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 max-md:rounded-3xl max-md:mx-2 max-md:overflow-hidden md:rounded-b-3xl mb-3 md:mb-4"
+          style={{ marginTop: typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches ? undefined : "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+          data-testid="order-detail-hero"
+        >
           {/* Compact mobile top bar inside the hero — back + status pill on the right of the hero handled by the existing badge below */}
           <div className="md:hidden flex items-center justify-between mb-2">
             <button

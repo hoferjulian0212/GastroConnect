@@ -133,7 +133,8 @@ export default function SupplierHomeMobile({
         className="pb-[var(--mobile-bottom-pad)]"
       >
         <div
-          className="bg-[#161921] text-white px-5 pb-5 rounded-b-3xl"
+          className="bg-[#161921] text-white px-5 pb-5 rounded-3xl mx-2 overflow-hidden"
+          style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
           data-testid="mobile-header-supplier-home"
         >
           <div className="pt-2 pb-5">
