@@ -233,7 +233,7 @@ export default function CostAnalysis() {
             </div>
             <Button
               size="sm"
-              className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15"
+              className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15"
               onClick={() => {
                 setShowSettings(!showSettings);
                 if (!showSettings && settings) {

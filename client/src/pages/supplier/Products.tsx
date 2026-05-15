@@ -1375,13 +1375,18 @@ export default function SupplierProducts() {
  {t("supplierProducts", "manageProducts")}
  </p>
  </div>
- <Button className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
+ <Button className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
  <Plus className="h-4 w-4" />
  <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}</span>
  <span className="sm:hidden">{t("common", "add")}</span>
  </Button>
  </div>
  </div></HeroPortal>
+
+ <Button className="md:hidden w-full gap-2" size="sm" onClick={openCreateDialog} data-testid="button-add-product-mobile">
+ <Plus className="h-4 w-4" />
+ {lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}
+ </Button>
 
  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
  <DialogContent className="!max-w-4xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[92vh] overflow-y-auto">

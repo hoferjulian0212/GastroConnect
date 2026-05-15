@@ -165,6 +165,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
   return (
     <div className="space-y-4 md:space-y-6 pb-[var(--mobile-bottom-pad)] md:pb-0">
       {!embedded ? (
+        <>
         <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 md:" data-testid="templates-hero">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -177,7 +178,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
             </div>
             <Button
               onClick={() => setShowCreate(true)}
-              className="bg-white text-[#161921] hover:bg-white/90"
+              className="hidden md:inline-flex bg-white text-[#161921] hover:bg-white/90"
               data-testid="button-create-template"
             >
               <Plus className="h-4 w-4 sm:mr-1.5" />
@@ -185,6 +186,17 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
             </Button>
           </div>
         </div></HeroPortal>
+
+        <Button
+          onClick={() => setShowCreate(true)}
+          className="md:hidden w-full gap-2"
+          size="sm"
+          data-testid="button-create-template-mobile"
+        >
+          <Plus className="h-4 w-4" />
+          {t("templates", "newTemplate")}
+        </Button>
+        </>
       ) : (
         <div className="flex items-center justify-end gap-3">
           <Button onClick={() => setShowCreate(true)} data-testid="button-create-template">

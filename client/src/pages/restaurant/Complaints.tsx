@@ -479,12 +479,17 @@ export default function Complaints() {
  <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "complaints")}</h1>
  <p className="text-sm text-white/50 mt-1">{lang === "de" ? "Verwalten Sie Ihre Reklamationen" : "Gestisci i tuoi reclami"}</p>
  </div>
- <Button size="sm" onClick={() => setShowCreateDialog(true)} className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15" data-testid="button-new-complaint">
+ <Button size="sm" onClick={() => setShowCreateDialog(true)} className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15" data-testid="button-new-complaint">
  <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
  {t("complaints", "newComplaint")}
  </Button>
  </div>
  </div></HeroPortal>
+
+ <Button size="sm" onClick={() => setShowCreateDialog(true)} className="md:hidden w-full gap-2" data-testid="button-new-complaint-mobile">
+ <AlertCircle className="h-4 w-4" />
+ {t("complaints", "newComplaint")}
+ </Button>
 
  {/* Toolbar (Suchen · Sortieren · Filter) — page-content area, right-aligned */}
  <div className="flex items-center gap-2 flex-wrap justify-start">

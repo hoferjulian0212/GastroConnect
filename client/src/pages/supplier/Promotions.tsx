@@ -298,11 +298,16 @@ export default function SupplierPromotions() {
             <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "promotions")}</h1>
             <p className="text-sm text-white/50 mt-1">{lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti"}</p>
           </div>
-          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5" size="sm" data-testid="button-create-promotion">
+          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5" size="sm" data-testid="button-create-promotion">
             <Plus className="h-4 w-4" />
             {t("promotionsPage", "createPromotion")}
           </Button>
         </div>
+
+        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="md:hidden w-full gap-2" size="sm" data-testid="button-create-promotion-mobile">
+          <Plus className="h-4 w-4" />
+          {t("promotionsPage", "createPromotion")}
+        </Button>
 
         {(() => {
           const now = new Date();
