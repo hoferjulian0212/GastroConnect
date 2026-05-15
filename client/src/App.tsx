@@ -20,7 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useCallback, useState, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { navigate } from "wouter/use-browser-location";
 import type { User } from "@shared/schema";
 
@@ -194,12 +195,31 @@ type NavItem = {
 
 function HeaderNavDropdown({ item, location }: { item: NavItem; location: string }) {
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
 
   const isActive = item.exact
     ? location === item.href
     : location === item.href || location.startsWith(item.href + '/') ||
       (item.children?.some(c => location === c.href || location.startsWith(c.href + '/')) ?? false);
+
+  const updateCoords = useCallback(() => {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setCoords({ top: r.bottom + 4, left: r.left });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updateCoords();
+    window.addEventListener("scroll", updateCoords, true);
+    window.addEventListener("resize", updateCoords);
+    return () => {
+      window.removeEventListener("scroll", updateCoords, true);
+      window.removeEventListener("resize", updateCoords);
+    };
+  }, [open, updateCoords]);
 
   const handleEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -225,7 +245,7 @@ function HeaderNavDropdown({ item, location }: { item: NavItem; location: string
   }
 
   return (
-    <div className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+    <div ref={triggerRef} className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <Link href={item.href}>
         <span
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-1 ${
@@ -237,8 +257,13 @@ function HeaderNavDropdown({ item, location }: { item: NavItem; location: string
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
         </span>
       </Link>
-      {open && (
-        <div className="absolute top-full left-0 mt-1 min-w-[180px] py-1 bg-[#1e2130] border border-white/10 rounded-xl shadow-xl z-50">
+      {open && coords && typeof document !== "undefined" && createPortal(
+        <div
+          className="dark fixed min-w-[180px] py-1 bg-[#1e2130] border border-white/10 rounded-xl shadow-xl z-[9999]"
+          style={{ top: coords.top, left: coords.left }}
+          onMouseEnter={handleEnter}
+          onMouseLeave={handleLeave}
+        >
           {item.children.map(child => {
             const childActive = location === child.href || location.startsWith(child.href + '/');
             return (
@@ -255,7 +280,8 @@ function HeaderNavDropdown({ item, location }: { item: NavItem; location: string
               </Link>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -494,7 +520,7 @@ function AppLayout() {
       ) : (
         <div className="flex h-dvh w-full">
           <div ref={scrollContainerRef} className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} ${isInChat ? '' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
-            <div className={`dark hidden md:block bg-[#161921] shrink-0 rounded-3xl mb-3 md:mb-4 relative z-30 ${isInChat || isDetailPage ? 'md:block' : ''}`} data-testid="app-header-shell">
+            <div className={`dark hidden md:block bg-[#161921] shrink-0 rounded-3xl overflow-hidden mb-3 md:mb-4 ${isInChat || isDetailPage ? 'md:block' : ''}`} data-testid="app-header-shell">
               <header className="flex items-center gap-3 md:gap-4 px-3 py-2.5 md:px-6 md:py-2.5">
                 <div className="flex items-center gap-3 shrink-0 md:flex-1 md:min-w-0">
                   <MobileProfileButton />
