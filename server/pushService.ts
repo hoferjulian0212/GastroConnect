@@ -9,10 +9,22 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 }
 
+function maskEndpoint(endpoint: string): string {
+  if (!endpoint) return "";
+  const tail = endpoint.slice(-12);
+  return `…${tail}`;
+}
+
 export async function sendPushNotification(userId: string, payload: { title: string; message: string; url?: string; type?: string }) {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return;
 
-  const subscriptions = await storage.getPushSubscriptions(userId);
+  let subscriptions;
+  try {
+    subscriptions = await storage.getPushSubscriptions(userId);
+  } catch (err: any) {
+    console.error("[push] failed to load subscriptions", { userId, type: payload.type, error: err?.message });
+    return;
+  }
   if (subscriptions.length === 0) return;
 
   const pushPayload = JSON.stringify({
@@ -32,8 +44,23 @@ export async function sendPushNotification(userId: string, payload: { title: str
         pushPayload
       );
     } catch (error: any) {
-      if (error.statusCode === 410 || error.statusCode === 404) {
-        await storage.deletePushSubscription(sub.endpoint);
+      const statusCode = error?.statusCode;
+      const ctx = {
+        userId,
+        type: payload.type,
+        endpoint: maskEndpoint(sub.endpoint),
+        statusCode,
+        message: error?.body || error?.message || String(error),
+      };
+      if (statusCode === 410 || statusCode === 404) {
+        try {
+          await storage.deletePushSubscription(sub.endpoint);
+          console.warn("[push] removed dead subscription", ctx);
+        } catch (delErr: any) {
+          console.error("[push] failed to remove dead subscription", { ...ctx, deleteError: delErr?.message });
+        }
+      } else {
+        console.error("[push] delivery failed", ctx);
       }
     }
   }

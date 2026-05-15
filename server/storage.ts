@@ -472,20 +472,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string, requestedDeliveryDate?: string | null): Promise<Order | undefined> {
-    await db.delete(orderItems).where(eq(orderItems.orderId, id));
-    for (const item of items) {
-      await db.insert(orderItems).values({ ...item, orderId: id });
-    }
-    const setData: any = { totalAmount, updatedAt: new Date() };
-    if (requestedDeliveryDate !== undefined) {
-      setData.requestedDeliveryDate = requestedDeliveryDate;
-    }
-    const [updated] = await db
-      .update(orders)
-      .set(setData)
-      .where(eq(orders.id, id))
-      .returning();
-    return updated;
+    return await db.transaction(async (tx) => {
+      await tx.delete(orderItems).where(eq(orderItems.orderId, id));
+      if (items.length > 0) {
+        await tx.insert(orderItems).values(items.map(item => ({ ...item, orderId: id })));
+      }
+      const setData: any = { totalAmount, updatedAt: new Date() };
+      if (requestedDeliveryDate !== undefined) {
+        setData.requestedDeliveryDate = requestedDeliveryDate;
+      }
+      const [updated] = await tx
+        .update(orders)
+        .set(setData)
+        .where(eq(orders.id, id))
+        .returning();
+      return updated;
+    });
   }
 
   async updateOrderItemConfirmation(orderItemId: string, confirmedQuantity: number, rejectedQuantity: number): Promise<OrderItem | undefined> {

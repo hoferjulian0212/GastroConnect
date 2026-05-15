@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
@@ -51,8 +51,230 @@ async function createNotificationWithPush(notification: InsertNotification, role
     message: notification.message,
     url,
     type: notification.type,
-  }).catch(() => {});
+  }).catch((err) => {
+    console.error("[push] createNotificationWithPush dispatch failed", {
+      userId: notification.userId,
+      type: notification.type,
+      referenceId: notification.referenceId,
+      error: err?.message ?? String(err),
+    });
+  });
   return created;
+}
+
+// ===== ORDER WORKFLOW HELPERS (Task #9) =====
+
+/**
+ * Returns true if the order has an unresolved (open) change request from the
+ * restaurant that the supplier has not yet approved or denied. Counts
+ * `change_request` messages and decrements on `change_request_response`.
+ */
+async function hasOpenChangeRequest(orderId: string): Promise<boolean> {
+  const rows = await db
+    .select({ content: messages.content, createdAt: messages.createdAt })
+    .from(messages)
+    .where(and(eq(messages.orderId, orderId), eq(messages.messageType, "order_change_request")))
+    .orderBy(asc(messages.createdAt));
+  let open = 0;
+  for (const r of rows) {
+    try {
+      const c = JSON.parse(r.content);
+      if (c?.type === "change_request") {
+        open++;
+      } else if (c?.type === "change_request_response") {
+        // Clamp at 0: stray response messages without a preceding open request
+        // must not push the counter negative (otherwise a later real request
+        // would appear closed).
+        if (open > 0) open--;
+      }
+    } catch {}
+  }
+  return open > 0;
+}
+
+type OrderForTransition = {
+  id: string;
+  supplierId: string;
+  items: Array<{ id: string; productId: string; productName: string; quantity: number; confirmedQuantity?: number | null; unitPrice: string }>;
+};
+
+type StockMovementType = "order_confirmed" | "order_cancelled" | "order_reversed";
+
+interface TransitionOpts {
+  order: OrderForTransition;
+  newStatus: string;
+  previousStatus: string;
+  changedBy?: string | null;
+  actorName?: string | null;
+  /** When set, write stock movements + adjust product stock atomically with the status change. */
+  movementType?: StockMovementType | null;
+  noteFn?: (item: OrderForTransition["items"][number], qty: number) => string;
+  /** Per-orderItemId confirmedQuantity overrides (partial confirmation). */
+  confirmedQuantitiesByItemId?: Record<string, number>;
+  totalAmountOverride?: string;
+  requestedDeliveryDate?: string | null;
+  deliveryNotes?: string | null;
+  /**
+   * Optional additional work to run inside the same DB transaction (e.g.
+   * writing a chat message that must atomically accompany the status change).
+   */
+  txExtra?: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<void>;
+}
+
+/**
+ * Cycle-aware stock-movement gate. The order can pass through multiple
+ * confirm → reverse → confirm cycles, so plain "movement of this type
+ * exists" is not enough. We compute the current outstanding deduction
+ * count: +1 per order_confirmed, -1 per order_reversed/order_cancelled.
+ *
+ *  - order_confirmed   → only apply if no current deduction is outstanding.
+ *  - order_reversed    → only apply if a deduction is currently outstanding.
+ *  - order_cancelled   → only apply if a deduction is currently outstanding.
+ */
+function shouldApplyStockMovement(existing: Array<{ type: string }>, newType: StockMovementType): boolean {
+  let active = 0;
+  for (const m of existing) {
+    if (m.type === "order_confirmed") active++;
+    else if (m.type === "order_reversed" || m.type === "order_cancelled") active--;
+  }
+  if (newType === "order_confirmed") return active <= 0;
+  return active > 0;
+}
+
+/**
+ * Atomically updates an order's status, history, optional per-item confirmed
+ * quantities, optional totalAmount and the related stock movements & product
+ * stock adjustments — all in a single DB transaction. Idempotent for stock:
+ * skips stock writes when a movement of the same `movementType` already exists
+ * for this order.
+ */
+class OrderTransitionConflictError extends Error {
+  constructor(public actualStatus: string | null, public expectedStatus: string) {
+    super(`Order status changed concurrently: expected ${expectedStatus}, found ${actualStatus}`);
+    this.name = "OrderTransitionConflictError";
+  }
+}
+
+class InsufficientStockError extends Error {
+  constructor(public productId: string, public productName: string, public requested: number) {
+    super(`Insufficient stock for ${productName} (${requested})`);
+    this.name = "InsufficientStockError";
+  }
+}
+
+async function transitionOrderWithStock(opts: TransitionOpts) {
+  return await db.transaction(async (tx) => {
+    // Lock the order row to serialize concurrent transitions on the same
+    // order. Without this, two simultaneous confirms could both pass the
+    // stock-movement gate and double-deduct inventory.
+    const locked = await tx.execute(
+      sql`SELECT status FROM ${orders} WHERE id = ${opts.order.id} FOR UPDATE`
+    );
+    const lockedRow: any = (locked as any).rows?.[0] ?? (locked as any)[0];
+    const actualStatus: string | null = lockedRow?.status ?? null;
+    if (actualStatus !== opts.previousStatus) {
+      throw new OrderTransitionConflictError(actualStatus, opts.previousStatus);
+    }
+
+    const setData: any = { status: opts.newStatus, updatedAt: new Date() };
+    if (opts.requestedDeliveryDate !== undefined) setData.requestedDeliveryDate = opts.requestedDeliveryDate;
+    if (opts.deliveryNotes !== undefined) setData.deliveryNotes = opts.deliveryNotes;
+    if (opts.totalAmountOverride !== undefined) setData.totalAmount = opts.totalAmountOverride;
+
+    const [updated] = await tx.update(orders).set(setData).where(eq(orders.id, opts.order.id)).returning();
+    if (!updated) throw new Error("Order not found");
+
+    await tx.insert(orderStatusHistory).values({
+      orderId: opts.order.id,
+      fromStatus: opts.previousStatus,
+      toStatus: opts.newStatus,
+      changedBy: opts.changedBy ?? null,
+    } as any);
+
+    if (opts.confirmedQuantitiesByItemId) {
+      for (const [itemId, q] of Object.entries(opts.confirmedQuantitiesByItemId)) {
+        const item = opts.order.items.find(i => i.id === itemId);
+        const rejected = item ? Math.max(0, item.quantity - q) : 0;
+        await tx.update(orderItems)
+          .set({ confirmedQuantity: q, rejectedQuantity: rejected })
+          .where(eq(orderItems.id, itemId));
+      }
+    }
+
+    if (opts.movementType) {
+      const existing = await tx.select().from(stockMovements).where(eq(stockMovements.orderId, opts.order.id));
+      if (shouldApplyStockMovement(existing as any, opts.movementType)) {
+        for (const item of opts.order.items) {
+          let qty: number;
+          if (opts.movementType === "order_confirmed" && opts.confirmedQuantitiesByItemId) {
+            qty = opts.confirmedQuantitiesByItemId[item.id] ?? item.confirmedQuantity ?? item.quantity;
+          } else {
+            qty = item.confirmedQuantity ?? item.quantity;
+          }
+          if (qty <= 0) continue;
+
+          // Strict conditional updates: the DB enforces both race-safety and
+          // stock sufficiency. For untracked products (stock_quantity IS NULL)
+          // the WHERE clause never matches and we skip the movement entirely.
+          let updateRes: any;
+          if (opts.movementType === "order_confirmed") {
+            updateRes = await tx.execute(sql`
+              UPDATE ${products}
+                 SET stock_quantity = stock_quantity - ${qty},
+                     in_stock      = (stock_quantity - ${qty}) > 0
+               WHERE id = ${item.productId}
+                 AND stock_quantity IS NOT NULL
+                 AND stock_quantity >= ${qty}
+               RETURNING stock_quantity AS new_stock
+            `);
+          } else {
+            updateRes = await tx.execute(sql`
+              UPDATE ${products}
+                 SET stock_quantity = stock_quantity + ${qty},
+                     in_stock      = (stock_quantity + ${qty}) > 0
+               WHERE id = ${item.productId}
+                 AND stock_quantity IS NOT NULL
+               RETURNING stock_quantity AS new_stock
+            `);
+          }
+          const updRow: any = updateRes.rows?.[0] ?? updateRes[0];
+          if (!updRow) {
+            // Either untracked stock (skip cleanly) or — for confirm — actual
+            // insufficient stock. Distinguish so we hard-fail confirms that
+            // would otherwise silently under-deduct.
+            if (opts.movementType === "order_confirmed") {
+              const [p] = await tx.select().from(products).where(eq(products.id, item.productId));
+              if (p && p.stockQuantity !== null && p.stockQuantity !== undefined) {
+                throw new InsufficientStockError(item.productId, item.productName, qty);
+              }
+            }
+            continue;
+          }
+          const newStock: number = Number(updRow.new_stock ?? updRow.newStock ?? 0);
+          const delta = opts.movementType === "order_confirmed" ? -qty : qty;
+          const previousStock = Math.max(0, newStock - delta);
+          await tx.insert(stockMovements).values({
+            productId: item.productId,
+            supplierId: opts.order.supplierId,
+            orderId: opts.order.id,
+            userId: opts.changedBy ?? opts.order.supplierId,
+            userName: opts.actorName ?? null,
+            type: opts.movementType,
+            quantity: qty,
+            previousStock,
+            newStock,
+            note: opts.noteFn ? opts.noteFn(item, qty) : "",
+          } as any);
+        }
+      }
+    }
+
+    if (opts.txExtra) {
+      await opts.txExtra(tx);
+    }
+
+    return updated;
+  });
 }
 
 const uuidField = z.string().min(1).max(100);
@@ -1252,11 +1474,17 @@ export async function registerRoutes(
       if (!parsed.success) return res.status(400).json({ error: "Invalid request body" });
       const { orderIds, supplierId } = parsed.data;
       const results: { orderId: string; success: boolean; error?: string }[] = [];
+      const actorUser = await storage.getUser(supplierId);
+      const actorName = actorUser?.name ?? null;
       for (const orderId of orderIds) {
         try {
           const order = await storage.getOrder(orderId);
           if (!order || order.supplierId !== supplierId || order.status !== "pending") {
             results.push({ orderId, success: false, error: "Invalid order" });
+            continue;
+          }
+          if (await hasOpenChangeRequest(order.id)) {
+            results.push({ orderId, success: false, error: "Offene Änderungsanfrage – bitte zuerst beantworten." });
             continue;
           }
           const stockErrors: string[] = [];
@@ -1273,37 +1501,18 @@ export async function registerRoutes(
             results.push({ orderId, success: false, error: `Insufficient stock: ${stockErrors.join(", ")}` });
             continue;
           }
-          await storage.updateOrderStatus(orderId, "confirmed");
-          await storage.addOrderStatusHistory(orderId, "pending", "confirmed", supplierId);
-          const existingMovements = await storage.getStockMovementsByOrder(orderId);
-          const alreadyConfirmed = existingMovements.some((m: any) => m.type === "order_confirmed");
-          if (!alreadyConfirmed) {
-            const actorUser = await storage.getUser(supplierId);
-            const actorName = actorUser?.name ?? null;
-            for (const item of order.items) {
-              const product = await storage.getProduct(item.productId);
-              if (product) {
-                const qty = item.confirmedQuantity ?? item.quantity;
-                const currentStock = product.stockQuantity ?? 0;
-                const newStock = Math.max(0, currentStock - qty);
-                await storage.updateProductStock(item.productId, newStock);
-                await storage.addStockMovement({
-                  productId: item.productId,
-                  supplierId: order.supplierId,
-                  orderId: order.id,
-                  userId: supplierId,
-                  userName: actorName,
-                  type: "order_confirmed",
-                  quantity: qty,
-                  previousStock: currentStock,
-                  newStock,
-                  note: `Batch: Bestellung #${formatOrderNumber(order)} bestätigt`,
-                });
-              }
-            }
-          }
+          await transitionOrderWithStock({
+            order,
+            newStatus: "confirmed",
+            previousStatus: "pending",
+            changedBy: supplierId,
+            actorName,
+            movementType: "order_confirmed",
+            noteFn: () => `Batch: Bestellung #${formatOrderNumber(order)} bestätigt`,
+          });
           results.push({ orderId, success: true });
-        } catch {
+        } catch (err: any) {
+          console.error("Batch-confirm failed for order", orderId, err?.message);
           results.push({ orderId, success: false, error: "Processing failed" });
         }
       }
@@ -1319,6 +1528,8 @@ export async function registerRoutes(
       if (!parsed.success) return res.status(400).json({ error: "Invalid request body" });
       const { orderIds, supplierId } = parsed.data;
       const results: { orderId: string; success: boolean; error?: string }[] = [];
+      const actorUserCancel = await storage.getUser(supplierId);
+      const actorNameCancel = actorUserCancel?.name ?? null;
       for (const orderId of orderIds) {
         try {
           const order = await storage.getOrder(orderId);
@@ -1326,11 +1537,27 @@ export async function registerRoutes(
             results.push({ orderId, success: false, error: "Invalid order" });
             continue;
           }
+          if (await hasOpenChangeRequest(order.id)) {
+            results.push({ orderId, success: false, error: "Offene Änderungsanfrage – bitte zuerst beantworten." });
+            continue;
+          }
           const previousStatus = order.status;
-          await storage.updateOrderStatus(orderId, "cancelled");
-          await storage.addOrderStatusHistory(orderId, previousStatus, "cancelled", supplierId);
+          const needsReversal =
+            previousStatus === "confirmed" ||
+            previousStatus === "partially_confirmed" ||
+            previousStatus === "in_delivery";
+          await transitionOrderWithStock({
+            order,
+            newStatus: "cancelled",
+            previousStatus,
+            changedBy: supplierId,
+            actorName: actorNameCancel,
+            movementType: needsReversal ? "order_cancelled" : null,
+            noteFn: () => `Batch: Bestellung #${formatOrderNumber(order)} storniert`,
+          });
           results.push({ orderId, success: true });
-        } catch {
+        } catch (err: any) {
+          console.error("Batch-cancel failed for order", orderId, err?.message);
           results.push({ orderId, success: false, error: "Processing failed" });
         }
       }
@@ -1349,6 +1576,15 @@ export async function registerRoutes(
       }
       const previousStatus = order.status;
 
+      // Block status transitions while a change request is open. The supplier
+      // (or anyone else) must respond approve/deny on the change request first.
+      if (previousStatus !== status && await hasOpenChangeRequest(order.id)) {
+        return res.status(409).json({
+          error: "change_request_open",
+          message: "Es liegt eine offene Änderungsanfrage für diese Bestellung vor. Bitte zuerst beantworten.",
+        });
+      }
+
       // Stock check before confirming via legacy flow
       if (status === "confirmed" && previousStatus === "pending") {
         const stockErrors: string[] = [];
@@ -1366,11 +1602,42 @@ export async function registerRoutes(
         }
       }
 
-      const updated = await storage.updateOrderStatus(req.params.id, status, requestedDeliveryDate ?? undefined, deliveryNotes ?? undefined);
-      if (!updated) {
-        return res.status(404).json({ error: "Order not found" });
+      // Determine if this transition needs an atomic stock movement write.
+      let movementType: StockMovementType | null = null;
+      let noteFn: TransitionOpts["noteFn"] | undefined;
+      if (status === "confirmed" && previousStatus === "pending") {
+        movementType = "order_confirmed";
+        noteFn = () => `Bestellung #${formatOrderNumber(order)} bestätigt`;
+      } else if (
+        status === "cancelled" &&
+        (previousStatus === "confirmed" || previousStatus === "partially_confirmed" || previousStatus === "in_delivery")
+      ) {
+        movementType = "order_cancelled";
+        noteFn = () => `Bestellung #${formatOrderNumber(order)} storniert`;
       }
-      await storage.addOrderStatusHistory(req.params.id, previousStatus, status, changedBy || undefined);
+
+      const actorId = changedBy ?? order.supplierId;
+      const actorUser = await storage.getUser(actorId);
+      const actorName = actorUser?.name ?? null;
+
+      const updated = await transitionOrderWithStock({
+        order,
+        newStatus: status,
+        previousStatus,
+        changedBy: changedBy ?? null,
+        actorName,
+        movementType,
+        noteFn,
+        requestedDeliveryDate: requestedDeliveryDate ?? undefined,
+        deliveryNotes: deliveryNotes ?? undefined,
+      });
+
+      // Trigger low-stock notifications outside the transaction
+      if (movementType === "order_confirmed") {
+        for (const item of order.items) {
+          await checkAndNotifyLowStock(item.productId, order.supplierId);
+        }
+      }
 
       // Post a "delivery_status" chat message when supplier marks order as in_delivery,
       // so the restaurant sees the delivery date + optional supplier note in the chat thread.
@@ -1392,39 +1659,6 @@ export async function registerRoutes(
           });
         } catch (err) {
           console.error("Failed to post delivery_status message:", err);
-        }
-      }
-
-      // Stock management: deduct stock when order is confirmed via legacy flow (idempotent)
-      if (status === "confirmed" && previousStatus === "pending") {
-        const existingMovements = await storage.getStockMovementsByOrder(order.id);
-        const alreadyConfirmed = existingMovements.some(m => m.type === "order_confirmed");
-        if (!alreadyConfirmed) {
-          const actorIdConfirm = changedBy ?? order.supplierId;
-          const actorUserConfirm = await storage.getUser(actorIdConfirm);
-          const actorNameConfirm = actorUserConfirm?.name ?? null;
-          for (const item of order.items) {
-            const product = await storage.getProduct(item.productId);
-            if (product) {
-              const qty = item.confirmedQuantity ?? item.quantity;
-              const currentStock = product.stockQuantity ?? 0;
-              const newStock = Math.max(0, currentStock - qty);
-              await storage.updateProductStock(item.productId, newStock);
-              await storage.addStockMovement({
-                productId: item.productId,
-                supplierId: order.supplierId,
-                orderId: order.id,
-                userId: actorIdConfirm,
-                userName: actorNameConfirm,
-                type: "order_confirmed",
-                quantity: qty,
-                previousStock: currentStock,
-                newStock,
-                note: `Bestellung #${formatOrderNumber(order)} bestätigt`,
-              });
-              await checkAndNotifyLowStock(item.productId, order.supplierId);
-            }
-          }
         }
       }
 
@@ -1498,40 +1732,24 @@ export async function registerRoutes(
         }
       }
 
-      // Stock management: reverse stock when order is cancelled (idempotent)
-      if (status === "cancelled" && (previousStatus === "confirmed" || previousStatus === "partially_confirmed" || previousStatus === "in_delivery")) {
-        const existingMovements = await storage.getStockMovementsByOrder(order.id);
-        const alreadyCancelled = existingMovements.some(m => m.type === "order_cancelled");
-        if (!alreadyCancelled) {
-          const actorIdCancel = changedBy ?? order.supplierId;
-          const actorUserCancel = await storage.getUser(actorIdCancel);
-          const actorNameCancel = actorUserCancel?.name ?? null;
-          for (const item of order.items) {
-            const product = await storage.getProduct(item.productId);
-            if (product) {
-              const qty = item.confirmedQuantity ?? item.quantity;
-              const currentStock = product.stockQuantity ?? 0;
-              const newStock = currentStock + qty;
-              await storage.updateProductStock(item.productId, newStock);
-              await storage.addStockMovement({
-                productId: item.productId,
-                supplierId: order.supplierId,
-                orderId: order.id,
-                userId: actorIdCancel,
-                userName: actorNameCancel,
-                type: "order_cancelled",
-                quantity: qty,
-                previousStock: currentStock,
-                newStock,
-                note: `Bestellung #${formatOrderNumber(order)} storniert`,
-              });
-            }
-          }
-        }
-      }
-
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof OrderTransitionConflictError) {
+        return res.status(409).json({
+          error: "status_conflict",
+          message: "Der Status der Bestellung wurde inzwischen geändert. Bitte Seite aktualisieren und erneut versuchen.",
+        });
+      }
+      if (error instanceof InsufficientStockError) {
+        return res.status(409).json({
+          error: "insufficient_stock",
+          message: `Nicht genug Lagerbestand für ${error.productName} (benötigt: ${error.requested}).`,
+        });
+      }
+      if (error?.message === "Order not found") {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      console.error("Update order status error:", error);
       res.status(500).json({ error: "Failed to update order status" });
     }
   });
@@ -1585,11 +1803,12 @@ export async function registerRoutes(
       let allFullyConfirmed = true;
       let allRejected = true;
       const confirmationDetails: { name: string; ordered: number; confirmed: number; rejected: number; price: string }[] = [];
+      const confirmedQuantitiesByItemId: Record<string, number> = {};
 
       for (const confirmItem of validated.items) {
         const orderItem = order.items.find(i => i.id === confirmItem.orderItemId)!;
         const rejectedQty = orderItem.quantity - confirmItem.confirmedQuantity;
-        await storage.updateOrderItemConfirmation(confirmItem.orderItemId, confirmItem.confirmedQuantity, rejectedQty);
+        confirmedQuantitiesByItemId[confirmItem.orderItemId] = confirmItem.confirmedQuantity;
 
         const itemTotal = confirmItem.confirmedQuantity * Number(orderItem.unitPrice);
         totalConfirmedAmount += itemTotal;
@@ -1615,46 +1834,37 @@ export async function registerRoutes(
         newStatus = "partially_confirmed";
       }
 
-      const updated = await storage.updateOrderStatus(req.params.id, newStatus);
+      const actorIdPC = validated.changedBy ?? order.supplierId;
+      const actorUserPC = await storage.getUser(actorIdPC);
+      const actorNamePC = actorUserPC?.name ?? null;
+      const finalStatus = newStatus;
+
+      const updated = await transitionOrderWithStock({
+        order,
+        newStatus: finalStatus,
+        previousStatus: "pending",
+        changedBy: validated.changedBy ?? null,
+        actorName: actorNamePC,
+        movementType: allRejected ? null : "order_confirmed",
+        confirmedQuantitiesByItemId,
+        totalAmountOverride: totalConfirmedAmount.toFixed(2),
+        noteFn: (item, qty) => {
+          const orig = order.items.find(i => i.id === item.id)?.quantity ?? qty;
+          return finalStatus === "partially_confirmed"
+            ? `Bestellung #${formatOrderNumber(order)} teilbestätigt (${qty} von ${orig})`
+            : `Bestellung #${formatOrderNumber(order)} bestätigt`;
+        },
+      });
       if (!updated) {
         return res.status(500).json({ error: "Failed to update order status" });
       }
 
-      await db.update(orders).set({ totalAmount: totalConfirmedAmount.toFixed(2), updatedAt: new Date() }).where(eq(orders.id, req.params.id));
-
-      await storage.addOrderStatusHistory(req.params.id, "pending", newStatus, validated.changedBy || undefined);
-
-      // Stock management: deduct confirmed quantities
-      const existingMovements = await storage.getStockMovementsByOrder(order.id);
-      const alreadyConfirmed = existingMovements.some(m => m.type === "order_confirmed");
-      if (!alreadyConfirmed) {
-        const actorIdPC = validated.changedBy ?? order.supplierId;
-        const actorUserPC = await storage.getUser(actorIdPC);
-        const actorNamePC = actorUserPC?.name ?? null;
+      // Low-stock notifications outside transaction
+      if (!allRejected) {
         for (const confirmItem of validated.items) {
           if (confirmItem.confirmedQuantity > 0) {
             const orderItem = order.items.find(i => i.id === confirmItem.orderItemId)!;
-            const product = await storage.getProduct(orderItem.productId);
-            if (product) {
-              const currentStock = product.stockQuantity ?? 0;
-              const newStock = Math.max(0, currentStock - confirmItem.confirmedQuantity);
-              await storage.updateProductStock(orderItem.productId, newStock);
-              await storage.addStockMovement({
-                productId: orderItem.productId,
-                supplierId: order.supplierId,
-                orderId: order.id,
-                userId: actorIdPC,
-                userName: actorNamePC,
-                type: "order_confirmed",
-                quantity: confirmItem.confirmedQuantity,
-                previousStock: currentStock,
-                newStock,
-                note: newStatus === "partially_confirmed"
-                  ? `Bestellung #${formatOrderNumber(order)} teilbestätigt (${confirmItem.confirmedQuantity} von ${order.items.find(i => i.id === confirmItem.orderItemId)!.quantity})`
-                  : `Bestellung #${formatOrderNumber(order)} bestätigt`,
-              });
-              await checkAndNotifyLowStock(orderItem.productId, order.supplierId);
-            }
+            await checkAndNotifyLowStock(orderItem.productId, order.supplierId);
           }
         }
       }
@@ -1707,6 +1917,18 @@ export async function registerRoutes(
       const updatedOrder = await storage.getOrder(req.params.id);
       res.json(updatedOrder);
     } catch (error: any) {
+      if (error instanceof OrderTransitionConflictError) {
+        return res.status(409).json({
+          error: "status_conflict",
+          message: "Der Status der Bestellung wurde inzwischen geändert. Bitte Seite aktualisieren und erneut versuchen.",
+        });
+      }
+      if (error instanceof InsufficientStockError) {
+        return res.status(409).json({
+          error: "insufficient_stock",
+          message: `Nicht genug Lagerbestand für ${error.productName} (benötigt: ${error.requested}).`,
+        });
+      }
       if (error?.name === "ZodError") {
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
       }
@@ -1760,13 +1982,53 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Not authorized" });
       }
 
-      const orderItems = items.map((item) => ({
-        productId: item.productId,
-        productName: item.productName,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: (parseFloat(item.unitPrice) * item.quantity).toFixed(2)
-      }));
+      // Server-side recomputation of unit prices from product master data
+      // and currently-active promotions. The client-supplied unitPrice is
+      // ignored to prevent tampering and to keep promo pricing consistent.
+      const productIds = Array.from(new Set(items.map(i => i.productId)));
+      const productRows = productIds.length > 0
+        ? await db.select().from(products).where(
+            productIds.length === 1
+              ? eq(products.id, productIds[0])
+              : sql`${products.id} = ANY(${productIds})`
+          )
+        : [];
+      const productMap = new Map(productRows.map(p => [p.id, p]));
+
+      // Mirrors POST /api/orders promotion selection (no targetRestaurantIds
+      // filtering) so that editing a pending order yields the same prices it
+      // would have at order-creation time.
+      const activePromotions = await storage.getActivePromotions();
+      const promoMap = new Map<string, typeof activePromotions[0]>();
+      for (const promo of activePromotions) {
+        const existing = promoMap.get(promo.productId);
+        if (!existing || promo.discountPercent > existing.discountPercent) {
+          promoMap.set(promo.productId, promo);
+        }
+      }
+
+      const orderItems = items.map((item) => {
+        const product = productMap.get(item.productId);
+        if (!product) {
+          throw new Error(`product_not_found:${item.productId}`);
+        }
+        if (product.supplierId !== order.supplierId) {
+          throw new Error(`product_wrong_supplier:${item.productId}`);
+        }
+        const promo = promoMap.get(item.productId);
+        const originalPrice = parseFloat(product.price);
+        const effectivePrice = promo
+          ? originalPrice * (1 - promo.discountPercent / 100)
+          : originalPrice;
+        const unitPriceStr = effectivePrice.toFixed(2);
+        return {
+          productId: item.productId,
+          productName: product.name,
+          quantity: item.quantity,
+          unitPrice: unitPriceStr,
+          totalPrice: (effectivePrice * item.quantity).toFixed(2)
+        };
+      });
 
       const totalAmount = orderItems
         .reduce((sum: number, item: any) => sum + parseFloat(item.totalPrice), 0)
@@ -1821,6 +2083,14 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Not authorized" });
       }
 
+      // Reject duplicate change requests — exactly one open request at a time.
+      if (await hasOpenChangeRequest(order.id)) {
+        return res.status(409).json({
+          error: "change_request_already_open",
+          message: "Es liegt bereits eine offene Änderungsanfrage für diese Bestellung vor.",
+        });
+      }
+
       const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
       const restaurant = await storage.getUser(order.restaurantId);
 
@@ -1868,57 +2138,55 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Cannot respond to change request for this order status" });
       }
 
+      // Must actually have an open change request to respond to. Without this
+      // check, repeated responses would push the open-counter negative and
+      // mask future real requests.
+      if (!(await hasOpenChangeRequest(order.id))) {
+        return res.status(409).json({
+          error: "no_open_change_request",
+          message: "Es gibt keine offene Änderungsanfrage für diese Bestellung.",
+        });
+      }
+
       const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
       const supplier = await storage.getUser(order.supplierId);
 
       if (approved) {
         const previousStatus = order.status;
-        await storage.updateOrderStatus(req.params.id, "pending");
-        await storage.addOrderStatusHistory(req.params.id, previousStatus, "pending", supplierId);
+        const needsStockReverse =
+          previousStatus === "confirmed" ||
+          previousStatus === "partially_confirmed" ||
+          previousStatus === "in_delivery";
 
-        // Reverse stock deductions since order goes back to pending (idempotent)
-        if (previousStatus === "confirmed" || previousStatus === "partially_confirmed" || previousStatus === "in_delivery") {
-          const existingMovements = await storage.getStockMovementsByOrder(order.id);
-          const alreadyReversed = existingMovements.some(m => m.type === "order_reversed");
-          if (!alreadyReversed) {
-            const actorIdRev = supplierId;
-            const actorNameRev = supplier?.name ?? null;
-            for (const item of order.items) {
-              const product = await storage.getProduct(item.productId);
-              if (product) {
-                const qty = item.confirmedQuantity ?? item.quantity;
-                const currentStock = product.stockQuantity ?? 0;
-                const newStock = currentStock + qty;
-                await storage.updateProductStock(item.productId, newStock);
-                await storage.addStockMovement({
-                  productId: item.productId,
-                  supplierId: order.supplierId,
-                  orderId: order.id,
-                  userId: actorIdRev,
-                  userName: actorNameRev,
-                  type: "order_reversed",
-                  quantity: qty,
-                  previousStock: currentStock,
-                  newStock,
-                  note: `Bestellung #${formatOrderNumber(order)} zurück auf ausstehend (Änderungsanfrage genehmigt)`,
-                });
-              }
-            }
-          }
-        }
-
-        await storage.sendMessage({
-          conversationId: conversation.id,
-          senderId: order.supplierId,
-          messageType: "order_change_request",
-          content: JSON.stringify({
-            type: "change_request_response",
-            orderId: order.id,
-            orderNumber: formatOrderNumber(order),
-            approved: true,
-            message: `Änderungsanfrage für Bestellung #${formatOrderNumber(order)} genehmigt – Bestellung ist wieder offen zur Bearbeitung`
-          }),
+        // Status transition + response chat message must be atomic. Otherwise
+        // a failed message insert would leave the order in `pending` while
+        // hasOpenChangeRequest() still reports an open request, deadlocking
+        // the workflow (no further /respond and no /status transitions).
+        const responseContent = JSON.stringify({
+          type: "change_request_response",
           orderId: order.id,
+          orderNumber: formatOrderNumber(order),
+          approved: true,
+          message: `Änderungsanfrage für Bestellung #${formatOrderNumber(order)} genehmigt – Bestellung ist wieder offen zur Bearbeitung`
+        });
+
+        await transitionOrderWithStock({
+          order,
+          newStatus: "pending",
+          previousStatus,
+          changedBy: supplierId,
+          actorName: supplier?.name ?? null,
+          movementType: needsStockReverse ? "order_reversed" : null,
+          noteFn: () => `Bestellung #${formatOrderNumber(order)} zurück auf ausstehend (Änderungsanfrage genehmigt)`,
+          txExtra: async (tx) => {
+            await tx.insert(messages).values({
+              conversationId: conversation.id,
+              senderId: order.supplierId,
+              messageType: "order_change_request",
+              content: responseContent,
+              orderId: order.id,
+            } as any);
+          },
         });
 
         await createNotificationWithPush({
@@ -1954,6 +2222,12 @@ export async function registerRoutes(
 
       res.json({ success: true, approved });
     } catch (error) {
+      if (error instanceof OrderTransitionConflictError) {
+        return res.status(409).json({
+          error: "status_conflict",
+          message: "Der Status der Bestellung wurde inzwischen geändert. Bitte Seite aktualisieren und erneut versuchen.",
+        });
+      }
       console.error("Change request respond error:", error);
       res.status(500).json({ error: "Failed to respond to change request" });
     }
