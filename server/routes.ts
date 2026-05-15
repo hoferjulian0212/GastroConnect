@@ -167,16 +167,19 @@ async function transitionOrderWithStock(opts: TransitionOpts) {
     // Lock the order row to serialize concurrent transitions on the same
     // order. Without this, two simultaneous confirms could both pass the
     // stock-movement gate and double-deduct inventory.
-    const locked = await tx.execute(
+    const locked = await tx.execute<{ status: string | null }>(
       sql`SELECT status FROM ${orders} WHERE id = ${opts.order.id} FOR UPDATE`
     );
-    const lockedRow: any = (locked as any).rows?.[0] ?? (locked as any)[0];
+    const lockedRow = locked.rows[0];
     const actualStatus: string | null = lockedRow?.status ?? null;
     if (actualStatus !== opts.previousStatus) {
       throw new OrderTransitionConflictError(actualStatus, opts.previousStatus);
     }
 
-    const setData: any = { status: opts.newStatus, updatedAt: new Date() };
+    const setData: Partial<typeof orders.$inferInsert> = {
+      status: opts.newStatus as typeof orders.$inferInsert.status,
+      updatedAt: new Date(),
+    };
     if (opts.requestedDeliveryDate !== undefined) setData.requestedDeliveryDate = opts.requestedDeliveryDate;
     if (opts.deliveryNotes !== undefined) setData.deliveryNotes = opts.deliveryNotes;
     if (opts.totalAmountOverride !== undefined) setData.totalAmount = opts.totalAmountOverride;
@@ -189,7 +192,7 @@ async function transitionOrderWithStock(opts: TransitionOpts) {
       fromStatus: opts.previousStatus,
       toStatus: opts.newStatus,
       changedBy: opts.changedBy ?? null,
-    } as any);
+    });
 
     if (opts.confirmedQuantitiesByItemId) {
       for (const [itemId, q] of Object.entries(opts.confirmedQuantitiesByItemId)) {
@@ -202,8 +205,8 @@ async function transitionOrderWithStock(opts: TransitionOpts) {
     }
 
     if (opts.movementType) {
-      const existing = await tx.select().from(stockMovements).where(eq(stockMovements.orderId, opts.order.id));
-      if (shouldApplyStockMovement(existing as any, opts.movementType)) {
+      const existing = await tx.select({ type: stockMovements.type }).from(stockMovements).where(eq(stockMovements.orderId, opts.order.id));
+      if (shouldApplyStockMovement(existing, opts.movementType)) {
         for (const item of opts.order.items) {
           let qty: number;
           if (opts.movementType === "order_confirmed" && opts.confirmedQuantitiesByItemId) {
@@ -216,28 +219,26 @@ async function transitionOrderWithStock(opts: TransitionOpts) {
           // Strict conditional updates: the DB enforces both race-safety and
           // stock sufficiency. For untracked products (stock_quantity IS NULL)
           // the WHERE clause never matches and we skip the movement entirely.
-          let updateRes: any;
-          if (opts.movementType === "order_confirmed") {
-            updateRes = await tx.execute(sql`
-              UPDATE ${products}
-                 SET stock_quantity = stock_quantity - ${qty},
-                     in_stock      = (stock_quantity - ${qty}) > 0
-               WHERE id = ${item.productId}
-                 AND stock_quantity IS NOT NULL
-                 AND stock_quantity >= ${qty}
-               RETURNING stock_quantity AS new_stock
-            `);
-          } else {
-            updateRes = await tx.execute(sql`
-              UPDATE ${products}
-                 SET stock_quantity = stock_quantity + ${qty},
-                     in_stock      = (stock_quantity + ${qty}) > 0
-               WHERE id = ${item.productId}
-                 AND stock_quantity IS NOT NULL
-               RETURNING stock_quantity AS new_stock
-            `);
-          }
-          const updRow: any = updateRes.rows?.[0] ?? updateRes[0];
+          type StockUpdateRow = { new_stock: number | string | null };
+          const updateRes = opts.movementType === "order_confirmed"
+            ? await tx.execute<StockUpdateRow>(sql`
+                UPDATE ${products}
+                   SET stock_quantity = stock_quantity - ${qty},
+                       in_stock      = (stock_quantity - ${qty}) > 0
+                 WHERE id = ${item.productId}
+                   AND stock_quantity IS NOT NULL
+                   AND stock_quantity >= ${qty}
+                 RETURNING stock_quantity AS new_stock
+              `)
+            : await tx.execute<StockUpdateRow>(sql`
+                UPDATE ${products}
+                   SET stock_quantity = stock_quantity + ${qty},
+                       in_stock      = (stock_quantity + ${qty}) > 0
+                 WHERE id = ${item.productId}
+                   AND stock_quantity IS NOT NULL
+                 RETURNING stock_quantity AS new_stock
+              `);
+          const updRow = updateRes.rows[0];
           if (!updRow) {
             // Either untracked stock (skip cleanly) or — for confirm — actual
             // insufficient stock. Distinguish so we hard-fail confirms that
@@ -250,7 +251,7 @@ async function transitionOrderWithStock(opts: TransitionOpts) {
             }
             continue;
           }
-          const newStock: number = Number(updRow.new_stock ?? updRow.newStock ?? 0);
+          const newStock: number = Number(updRow.new_stock ?? 0);
           const delta = opts.movementType === "order_confirmed" ? -qty : qty;
           const previousStock = Math.max(0, newStock - delta);
           await tx.insert(stockMovements).values({
@@ -264,7 +265,7 @@ async function transitionOrderWithStock(opts: TransitionOpts) {
             previousStock,
             newStock,
             note: opts.noteFn ? opts.noteFn(item, qty) : "",
-          } as any);
+          });
         }
       }
     }
