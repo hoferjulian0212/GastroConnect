@@ -24,6 +24,7 @@ import {
 import logoImg from "@assets/logo_no_bg.png";
 import shotHome from "@assets/landing-home.jpg";
 import shotMobile from "@assets/landing-mobile.png";
+import shotMobileSupplier from "@assets/landing-mobile-supplier.png";
 import shotPrice from "@assets/landing-price-comparison.jpg";
 import shotInbox from "@assets/landing-inbox.jpg";
 import {
@@ -242,6 +243,10 @@ const translations = {
     mobileHeadline: "Ihre Bestellungen — immer in der Tasche",
     mobileSub:
       "GastroConnect funktioniert auf jedem Gerät. Das mobile Erlebnis ist genauso vollständig wie am Desktop.",
+    mobileRoleRestaurant: "Betrieb",
+    mobileRoleSupplier: "Händler",
+    mobileAltRestaurant: "GastroConnect mobil — Betrieb",
+    mobileAltSupplier: "GastroConnect mobil — Händler",
     mobileBullets: [
       {
         title: "Push-Benachrichtigungen",
@@ -385,6 +390,10 @@ const translations = {
     mobileHeadline: "I tuoi ordini — sempre in tasca",
     mobileSub:
       "GastroConnect funziona su qualsiasi dispositivo. L'esperienza mobile è completa come quella desktop.",
+    mobileRoleRestaurant: "Ristorante",
+    mobileRoleSupplier: "Fornitore",
+    mobileAltRestaurant: "GastroConnect mobile — Ristorante",
+    mobileAltSupplier: "GastroConnect mobile — Fornitore",
     mobileBullets: [
       { title: "Notifiche push", desc: "Nuovi ordini, cambi di stato e messaggi direttamente sul telefono." },
       { title: "Funziona offline", desc: "Anche fuori sede o in magazzino: i dati caricati restano disponibili." },
@@ -486,6 +495,10 @@ const translations = {
 
     mobileHeadline: "Your orders — always in your pocket",
     mobileSub: "GastroConnect runs on every device. The mobile experience is just as complete as the desktop one.",
+    mobileRoleRestaurant: "Restaurant",
+    mobileRoleSupplier: "Supplier",
+    mobileAltRestaurant: "GastroConnect mobile — Restaurant",
+    mobileAltSupplier: "GastroConnect mobile — Supplier",
     mobileBullets: [
       { title: "Push notifications", desc: "New orders, status changes and messages straight to your phone." },
       { title: "Works offline", desc: "On the road or in the warehouse: last-loaded data stays available." },
@@ -560,6 +573,7 @@ export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [lang, setLang] = useState<Lang>("de");
+  const [mobileShotRole, setMobileShotRole] = useState<"restaurant" | "supplier">("restaurant");
   const reduceMotion = useReducedMotion();
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined" &&
@@ -1132,9 +1146,45 @@ export default function Landing() {
               </ul>
             </MotionReveal>
 
-            {/* Phone frame — B4 parallax (desktop) */}
-            <div className="flex justify-center">
+            {/* Phone frame — B4 parallax (desktop) + role tab switcher */}
+            <div className="flex flex-col items-center gap-5">
+              <div
+                role="tablist"
+                aria-label="Mobile preview role"
+                className="inline-flex rounded-full border border-border bg-muted/40 p-1 text-sm"
+                data-testid="tabs-mobile-role"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mobileShotRole === "restaurant"}
+                  onClick={() => setMobileShotRole("restaurant")}
+                  className={`px-4 py-1.5 rounded-full font-medium transition-colors ${
+                    mobileShotRole === "restaurant"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  data-testid="tab-mobile-role-restaurant"
+                >
+                  {t.mobileRoleRestaurant}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mobileShotRole === "supplier"}
+                  onClick={() => setMobileShotRole("supplier")}
+                  className={`px-4 py-1.5 rounded-full font-medium transition-colors ${
+                    mobileShotRole === "supplier"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  data-testid="tab-mobile-role-supplier"
+                >
+                  {t.mobileRoleSupplier}
+                </button>
+              </div>
               <motion.div
+                ref={phoneFrameRef}
                 className="rounded-[2.75rem] border border-border bg-card p-3 shadow-2xl shadow-black/5"
                 style={
                   phoneParallaxActive
@@ -1144,8 +1194,12 @@ export default function Landing() {
               >
                 <div className="rounded-[2.25rem] overflow-hidden border border-border w-[260px] md:w-[300px] aspect-[9/19] bg-card">
                   <img
-                    src={shotMobile}
-                    alt="GastroConnect mobile"
+                    src={mobileShotRole === "supplier" ? shotMobileSupplier : shotMobile}
+                    alt={
+                      mobileShotRole === "supplier"
+                        ? t.mobileAltSupplier
+                        : t.mobileAltRestaurant
+                    }
                     width={375}
                     height={812}
                     className="w-full h-full object-cover object-top"
