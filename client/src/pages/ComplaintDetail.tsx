@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useStickyActionBarHeight } from "@/hooks/use-sticky-action-bar";
 import { TONE, complaintStatusTone } from "@/lib/status-colors";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProductImage } from "@/components/ProductImage";
@@ -50,6 +51,7 @@ export default function ComplaintDetail() {
   const followUpDateAutoApplied = useRef(false);
   const [mobileTab, setMobileTab] = useState<"updates" | "details">("updates");
   const isMobile = useIsMobile();
+  const { containerRef: stickyBarContainerRef, barRef: stickyBarRef } = useStickyActionBarHeight();
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const actionApplied = useRef(false);
 
@@ -579,7 +581,7 @@ export default function ComplaintDetail() {
   const tabClsDetails = mobileTab === "details" ? "" : "max-md:hidden";
 
   return (
-    <div className="min-h-dvh bg-background flex flex-col pb-[calc(env(safe-area-inset-bottom,0px)+88px)] md:pb-0" data-testid="page-complaint-detail">
+    <div ref={stickyBarContainerRef} className="min-h-dvh bg-background flex flex-col pb-[var(--mobile-action-bar-h,112px)] md:!pb-0" data-testid="page-complaint-detail">
       <div className="w-full">
         {/* Dark hero: matches design used on list pages */}
         <div
@@ -1328,6 +1330,7 @@ export default function ComplaintDetail() {
       {/* Mobile sticky bottom CTA bar */}
       {!confirmAction && (mobilePrimary || mobileSecondaryByCat.length > 0) && (
         <div
+          ref={stickyBarRef}
           className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]"
           data-testid="mobile-action-bar"
         >
