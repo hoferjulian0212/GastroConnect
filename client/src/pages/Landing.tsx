@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/accordion";
 import logoImg from "@assets/logo_no_bg.png";
 import shotHome from "@assets/landing-home.jpg";
+import shotMobile from "@assets/landing-mobile.png";
 import shotPrice from "@assets/landing-price-comparison.jpg";
 import shotInbox from "@assets/landing-inbox.jpg";
 import {
@@ -1049,8 +1050,10 @@ export default function Landing() {
                 <div className="rounded-[2.75rem] border border-border bg-card p-3 shadow-2xl shadow-black/5">
                   <div className="rounded-[2.25rem] overflow-hidden border border-border w-[260px] md:w-[300px] aspect-[9/19] bg-card">
                     <img
-                      src={shotHome}
+                      src={shotMobile}
                       alt="GastroConnect mobile"
+                      width={375}
+                      height={812}
                       className="w-full h-full object-cover object-top"
                       loading="lazy"
                       data-testid="img-mobile-screenshot"
