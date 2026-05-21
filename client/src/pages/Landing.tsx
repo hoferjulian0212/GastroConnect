@@ -2,7 +2,11 @@ import { useLocation } from "wouter";
 import { useEffect, useRef, useState } from "react";
 import { useUser } from "@/context/UserContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   Accordion,
   AccordionContent,
@@ -10,45 +14,44 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import logoImg from "@assets/logo_no_bg.png";
+import shotHome from "@assets/landing-home.jpg";
+import shotPrice from "@assets/landing-price-comparison.jpg";
+import shotInbox from "@assets/landing-inbox.jpg";
 import {
-  ShoppingCart,
   MessageSquare,
-  BarChart3,
-  Clock,
-  Truck,
   FileText,
-  CheckCircle2,
-  ArrowRight,
-  Utensils,
-  Store,
-  Zap,
-  Shield,
-  ChevronRight,
-  TrendingUp,
-  Wallet,
-  Package,
-  Eye,
   Tag,
-  Users,
-  ArrowLeftRight,
-  Sparkles,
-  Search,
-  LineChart,
   Calendar,
-  Smartphone,
+  Package,
+  BarChart3,
+  ArrowLeftRight,
+  Bookmark,
   BellRing,
   WifiOff,
   Hand,
-  Bookmark,
+  Clock,
+  Shield,
+  Eye,
+  Sparkles,
+  Wallet,
+  Search,
+  ChevronRight,
+  ArrowRight,
+  Utensils,
+  Store,
   Menu,
-  X,
+  CheckCircle2,
 } from "lucide-react";
 
-const benefitIcons = [Clock, Shield, Eye, Sparkles];
-const mobileBulletIcons = [BellRing, WifiOff, Hand, Bookmark];
-const featureIcons = [MessageSquare, FileText, Tag, Calendar, Package, FileText, BarChart3, ArrowLeftRight, Bookmark, BellRing];
-
-function Reveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+function Reveal({
+  children,
+  className = "",
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [shown, setShown] = useState(false);
   useEffect(() => {
@@ -91,190 +94,177 @@ function smoothScrollTo(id: string) {
 
 const translations = {
   de: {
-    navSupplier: "Händler",
-    navRestaurant: "Betrieb",
-    heroBadge: "Die Plattform für die Gastronomie",
-    heroH1Part1: "Händler & Betriebe.",
-    heroH1Part2: "Endlich",
-    heroH1Part3: "auf einer Plattform.",
-    heroSub: "GastroConnect ist der digitale Marktplatz, der Lieferanten und Gastronomiebetriebe direkt verbindet — mit Preisvergleichen, Ausgaben­übersicht und allen Bestellungen an einem Ort.",
-    heroCtaSupplier: "Als Händler starten",
-    heroCtaRestaurant: "Als Betrieb starten",
-    heroStatsLabel1: "Bestellprozess",
-    heroStatsValue1: "100% digital",
-    heroStatsLabel2: "Zeitersparnis pro Woche",
-    heroStatsValue2: "bis zu 8 Std.",
-    heroStatsLabel3: "Preisvergleich",
-    heroStatsValue3: "in Echtzeit",
-
-    bridgeBadge: "Wie es funktioniert",
-    bridgeHeadline: "Eine Brücke zwischen zwei Welten",
-    bridgeSub: "Statt Telefon, Fax und Excel-Listen: Händler und Betriebe arbeiten direkt miteinander — auf derselben Plattform, mit denselben Daten, in Echtzeit.",
-    bridgeSupplierTitle: "Händler",
-    bridgeSupplierLine1: "Produktkatalog",
-    bridgeSupplierLine2: "Aktionen & Preise",
-    bridgeSupplierLine3: "Lager & Lieferung",
-    bridgeMiddleLabel: "GastroConnect",
-    bridgeMiddleSub: "verbindet beide Seiten",
-    bridgeFlow1: "Bestellungen",
-    bridgeFlow2: "Chat & Reklamationen",
-    bridgeFlow3: "Lieferscheine",
-    bridgeRestaurantTitle: "Betrieb",
-    bridgeRestaurantLine1: "Mehrere Lieferanten",
-    bridgeRestaurantLine2: "Preisvergleich",
-    bridgeRestaurantLine3: "Ausgabenübersicht",
-
-    problemHeadline: "Warum Gastronomie neu gedacht werden muss",
-    problemSub: "Telefonate, Faxbestellungen und unübersichtliche Excel-Listen kosten Betriebe und Händler jeden Tag wertvolle Zeit und Nerven.",
-    problemCards: [
-      { title: "Zeitverschwendung", desc: "Manuelle Bestellprozesse per Telefon, Fax oder E-Mail sind fehleranfällig und kosten Stunden pro Woche." },
-      { title: "Fehlende Übersicht", desc: "Ohne zentrale Plattform gehen Bestellungen, Preise und Absprachen schnell verloren." },
-      { title: "Kommunikationsprobleme", desc: "Rückfragen zu Bestellungen und Reklamationen laufen über verschiedene Kanäle — chaotisch und langsam." },
-    ],
-
-    pillarsHeadline: "Für jede Seite das Richtige",
-    pillarsSub: "GastroConnect ist von Grund auf für beide Rollen entwickelt — mit klar getrennten, aber perfekt verbundenen Werkzeugen.",
-
-    supplierBadge: "Für Händler",
-    supplierHeadline: "Mehr Übersicht. Mehr Kunden. Weniger Aufwand.",
-    supplierSub: "Alles, was Sie brauchen, um Ihren Betrieb effizient zu führen — und sichtbar für neue Kunden zu sein.",
-    supplierFeatures: [
-      { title: "Alles an einem Ort", desc: "Bestellungen, Lager, Produkte, Lieferpläne und Chats — eine Oberfläche, kein Tool-Wechsel." },
-      { title: "Mehr Kundenreichweite", desc: "Sichtbar für alle Betriebe auf der Plattform. Aktionen und Promotionen erreichen Ihre Zielgruppe direkt." },
-      { title: "Volle Geschäftsübersicht", desc: "Kennzahlen, offene Bestellungen, Reklamationen und Lieferungen auf einen Blick im Dashboard." },
-      { title: "Automatisierte Abläufe", desc: "Lieferscheine generieren, Stati aktualisieren, Kunden informieren — alles automatisch." },
-    ],
-    supplierMockTitle: "Händler-Dashboard",
-    supplierMockKpi1Label: "Heutige Bestellungen",
-    supplierMockKpi1Value: "24",
-    supplierMockKpi2Label: "Umsatz heute",
-    supplierMockKpi2Value: "3.842€",
-    supplierMockKpi3Label: "Aktive Aktionen",
-    supplierMockKpi3Value: "5",
-    supplierMockOrdersTitle: "Eingehende Bestellungen",
-    supplierMockOrder1: "Biergarten München",
-    supplierMockOrder1Items: "12 Artikel",
-    supplierMockOrder2: "Trattoria Lina",
-    supplierMockOrder2Items: "8 Artikel",
-    supplierMockOrder3: "Gasthof Sonne",
-    supplierMockOrder3Items: "15 Artikel",
-    supplierCta: "Als Händler starten",
-
-    restaurantBadge: "Für Betriebe",
-    restaurantHeadline: "Ausgaben im Griff. Preise im Vergleich. Alles auf einen Blick.",
-    restaurantSub: "Bestellen Sie schneller, finden Sie bessere Preise und behalten Sie volle Kontrolle über Ihre Wareneinkäufe.",
-    restaurantFeatures: [
-      { title: "Ausgabenübersicht", desc: "Echte Zahlen statt Schätzungen: Wareneinsatz pro Gast, Monatsausgaben, Ausgaben pro Kategorie und Lieferant." },
-      { title: "Bessere Preisvergleiche", desc: "Identische Produkte direkt zwischen Händlern vergleichen — Preisunterschiede sofort sichtbar." },
-      { title: "Mehr Produkte auf einen Blick", desc: "Ein zentraler Katalog für alle Lieferanten. Suchen, filtern, vergleichen — alles ohne Tool-Wechsel." },
-      { title: "Volle Organisation", desc: "Alle Bestellungen, Lieferscheine, Reklamationen und Chats — strukturiert und durchsuchbar." },
-    ],
-    restaurantMockTitle: "Betriebs-Dashboard",
-    restaurantMockKpi1Label: "Wareneinsatz/Gast",
-    restaurantMockKpi1Value: "12,43€",
-    restaurantMockKpi2Label: "Offene Bestellungen",
-    restaurantMockKpi2Value: "15",
-    restaurantMockKpi3Label: "Monatsausgaben",
-    restaurantMockKpi3Value: "10.213€",
-    restaurantMockCompareTitle: "Preisvergleich · Tomaten 1kg",
-    restaurantMockCompareS1: "Italia Import",
-    restaurantMockCompareS2: "Frische GmbH",
-    restaurantMockCompareS3: "Bio Bauer",
-    restaurantMockBadgeBest: "günstigster",
-    restaurantCta: "Als Betrieb starten",
-
-    showcaseHeadline: "Funktionen im Überblick",
-    showcaseSub: "Alles, was Sie für die tägliche Zusammenarbeit zwischen Händler und Betrieb brauchen — in einer einzigen Anwendung.",
-    features: [
-      { title: "Chat & Reklamationen", desc: "Direkter Chat zu jeder Bestellung, mit Reklamationen und priorisierten Nachrichten." },
-      { title: "Lieferscheine als PDF", desc: "Lieferscheine werden automatisch als A4-PDF erzeugt und im Chat geteilt." },
-      { title: "Aktionen & Promotionen", desc: "Händler erstellen Rabattaktionen, die im Katalog des Betriebs hervorgehoben werden." },
-      { title: "Lieferpläne & Zeitfenster", desc: "Pro Kunde individuelle Liefertage und optionale Zeitfenster definieren." },
-      { title: "Reklamationen mit Nachlieferung", desc: "Betroffene Artikel auswählen — Händler bestätigt direkt eine Nachlieferung." },
-      { title: "Dokumentencenter", desc: "Alle Lieferscheine und Rechnungen pro Händler sortiert mit Statistiken." },
-      { title: "Statistiken & KPIs", desc: "Umsatz, Top-Produkte, Wareneinsatz pro Gast — Live-Dashboard für beide Seiten." },
-      { title: "Preisvergleich", desc: "Identische Produkte zwischen Händlern direkt vergleichen — mit Ersparnis-Anzeige." },
-      { title: "Bestellvorlagen", desc: "Wiederkehrende Bestellungen als Vorlage speichern und in Sekunden auslösen." },
-      { title: "Push-Benachrichtigungen", desc: "Echtzeit-Benachrichtigungen mit Deeplinks direkt in die richtige Ansicht." },
-    ],
-    showcase: [
-      {
-        title: "Preisvergleich",
-        desc: "Identische Produkte zwischen Händlern direkt vergleichen — mit historischer Preisentwicklung.",
-        forLabel: "Für Betriebe",
-      },
-      {
-        title: "Ausgabenübersicht",
-        desc: "Live-Dashboard mit Wareneinsatz pro Gast, Monatsausgaben und Trend-Analysen.",
-        forLabel: "Für Betriebe",
-      },
-      {
-        title: "Produktkatalog",
-        desc: "Ein zentraler Katalog für alle Lieferanten. Suche, Filter, Artikelnummern und Bilder.",
-        forLabel: "Für beide",
-      },
-      {
-        title: "Aktionen & Promotionen",
-        desc: "Händler erstellen gezielte Rabattaktionen und erreichen ihre Kunden direkt.",
-        forLabel: "Für Händler",
-      },
-    ],
-
-    stepsHeadline: "So funktioniert es",
-    stepsSub: "In wenigen Schritten zur digitalen Bestellabwicklung.",
-    steps: [
-      { title: "Rolle wählen", desc: "Starten Sie als Betrieb oder Händler — ohne Registrierung." },
-      { title: "Bestellen & Kommunizieren", desc: "Produkte entdecken, Bestellungen aufgeben, Liefertermine wählen und direkt chatten." },
-      { title: "Liefern & Verwalten", desc: "Händler bearbeiten Bestellungen, erstellen Dokumente und liefern." },
-    ],
-    ctaHeadline: "Bereit, Ihren Bestellprozess zu digitalisieren?",
-    ctaSub: "Starten Sie jetzt und erleben Sie, wie einfach Gastronomie-Bestellungen sein können.",
-    ctaSupplier: "Als Händler starten",
-    ctaRestaurant: "Als Betrieb starten",
-    footerTagline: "Die digitale Plattform für Gastronomie-Bestellungen.",
-
     navAnchorPillars: "Für wen",
     navAnchorSteps: "So funktioniert es",
     navAnchorFeatures: "Funktionen",
-    navAnchorMobile: "Mobile App",
+    navAnchorMobile: "Mobile",
     navAnchorFaq: "FAQ",
     navLogin: "Anmelden",
+    navStart: "Jetzt starten",
 
-    mobileBadge: "Mobile-Erlebnis",
+    heroH1: "Händler und Betriebe. Endlich auf einer Plattform.",
+    heroSub:
+      "GastroConnect verbindet Lieferanten und Gastronomie direkt — mit Preisvergleichen, Ausgabenübersicht und allen Bestellungen an einem Ort.",
+    heroCtaRestaurant: "Als Betrieb starten",
+    heroCtaSupplier: "Als Händler starten",
+    heroImageAlt: "GastroConnect Restaurant-Dashboard",
+
+    pillarsHeadline: "Für wen GastroConnect gebaut ist",
+    pillarsSub:
+      "Eine Plattform, zwei klar getrennte Erlebnisse — beide perfekt auf die jeweilige Rolle zugeschnitten.",
+    pillarRestaurantTitle: "Für Betriebe",
+    pillarRestaurantBullets: [
+      "Alle Lieferanten in einem Katalog — suchen, vergleichen, bestellen.",
+      "Preisvergleich für identische Produkte über alle Händler hinweg.",
+      "Wareneinsatz pro Gast, Monatsausgaben und Trends auf einen Blick.",
+      "Bestellungen, Dokumente und Chats strukturiert und durchsuchbar.",
+    ],
+    pillarSupplierTitle: "Für Händler",
+    pillarSupplierBullets: [
+      "Bestellungen, Lager, Produkte und Lieferpläne in einer Oberfläche.",
+      "Sichtbar für alle Betriebe — Aktionen erreichen Kunden direkt.",
+      "Lieferscheine automatisch als PDF, im Chat geteilt, im Dokumentencenter abgelegt.",
+      "Umsatz, Top-Produkte und offene Bestellungen im Live-Dashboard.",
+    ],
+
+    stepsHeadline: "So funktioniert es",
+    steps: [
+      {
+        title: "Rolle wählen",
+        desc: "Starten Sie als Betrieb oder Händler — ohne Registrierung.",
+      },
+      {
+        title: "Bestellen & kommunizieren",
+        desc: "Produkte entdecken, bestellen, Liefertermine wählen, direkt chatten.",
+      },
+      {
+        title: "Liefern & verwalten",
+        desc: "Bestellungen bearbeiten, Lieferscheine erzeugen, ausliefern.",
+      },
+    ],
+
+    featuresHeadline: "Funktionen im Überblick",
+    featuresSub:
+      "Alles, was Sie für die tägliche Zusammenarbeit zwischen Händler und Betrieb brauchen.",
+    features: [
+      {
+        title: "Chat & Reklamationen",
+        desc: "Direkter Chat zu jeder Bestellung, mit priorisierten Nachrichten.",
+      },
+      {
+        title: "Lieferscheine als PDF",
+        desc: "A4-Lieferscheine werden automatisch erzeugt und im Chat geteilt.",
+      },
+      {
+        title: "Aktionen & Promotionen",
+        desc: "Händler erstellen Rabattaktionen, die im Katalog hervorgehoben werden.",
+      },
+      {
+        title: "Lieferpläne",
+        desc: "Pro Kunde individuelle Liefertage und optionale Zeitfenster.",
+      },
+      {
+        title: "Bestellvorlagen",
+        desc: "Wiederkehrende Bestellungen als Vorlage speichern und in Sekunden auslösen.",
+      },
+      {
+        title: "Dokumentencenter",
+        desc: "Lieferscheine und Rechnungen pro Händler sortiert mit Statistiken.",
+      },
+      {
+        title: "Statistiken & KPIs",
+        desc: "Umsatz, Top-Produkte, Wareneinsatz pro Gast — live für beide Seiten.",
+      },
+      {
+        title: "Preisvergleich",
+        desc: "Identische Produkte zwischen Händlern direkt vergleichen.",
+      },
+      {
+        title: "Reklamationen mit Nachlieferung",
+        desc: "Betroffene Artikel auswählen — Händler bestätigt die Nachlieferung.",
+      },
+      {
+        title: "Push-Benachrichtigungen",
+        desc: "Echtzeit-Benachrichtigungen mit Deeplinks direkt in die richtige Ansicht.",
+      },
+    ],
+
+    showcaseHeadline: "Sehen Sie es in Aktion",
+    showcaseSub:
+      "Die wichtigsten Ansichten aus der App — direkte Sicht auf das, womit Sie täglich arbeiten.",
+    showcase: [
+      {
+        img: shotHome,
+        caption: "Bestellungen, Nachrichten und Ausgaben auf einen Blick.",
+        alt: "Restaurant-Dashboard",
+      },
+      {
+        img: shotPrice,
+        caption: "Preisvergleich für identische Produkte über alle Händler.",
+        alt: "Preisvergleich",
+      },
+      {
+        img: shotInbox,
+        caption: "Chat zu jeder Bestellung — Nachrichten, Belege, Reklamationen.",
+        alt: "Chat & Inbox",
+      },
+    ],
+
     mobileHeadline: "Ihre Bestellungen — immer in der Tasche",
-    mobileSub: "GastroConnect funktioniert auf jedem Gerät. Das mobile Erlebnis ist genauso vollständig wie am Desktop — mit Push-Benachrichtigungen, die Sie sofort informieren.",
+    mobileSub:
+      "GastroConnect funktioniert auf jedem Gerät. Das mobile Erlebnis ist genauso vollständig wie am Desktop.",
     mobileBullets: [
-      { title: "Push-Benachrichtigungen", desc: "Neue Bestellungen, Statuswechsel und Nachrichten direkt aufs Handy." },
-      { title: "Offline-fähig", desc: "Auch unterwegs oder im Lager: zuletzt geladene Daten bleiben verfügbar." },
-      { title: "Wisch-Gesten", desc: "Bestellungen schnell bestätigen oder als gelesen markieren — mit einem Swipe." },
-      { title: "Schnellzugriffe", desc: "Bestellvorlagen direkt vom Startbildschirm in Sekunden auslösen." },
+      {
+        title: "Push-Benachrichtigungen",
+        desc: "Neue Bestellungen, Statuswechsel und Nachrichten direkt aufs Handy.",
+      },
+      {
+        title: "Offline-fähig",
+        desc: "Auch unterwegs oder im Lager: zuletzt geladene Daten bleiben verfügbar.",
+      },
+      {
+        title: "Wisch-Gesten",
+        desc: "Bestellungen schnell bestätigen oder als gelesen markieren — mit einem Swipe.",
+      },
+      {
+        title: "Bestellvorlagen",
+        desc: "Wiederkehrende Bestellungen vom Startbildschirm in Sekunden auslösen.",
+      },
     ],
-    mobileMockTitle: "Neue Bestellung",
-    mobileMockMsg: "Biergarten München · 12 Artikel",
-    mobileMockTime: "vor 2 Min.",
 
-    benefitsHeadline: "Warum GastroConnect",
-    benefitsSub: "Konkrete Vorteile, die Sie ab dem ersten Tag spüren.",
-    benefits: [
-      { title: "Zeitersparnis", desc: "Statt Telefon und Fax: Bestellungen mit wenigen Klicks erfassen, freigeben und nachverfolgen." },
-      { title: "Weniger Fehler", desc: "Standardisierte Prozesse, klare Mengen und Lieferdaten — keine Missverständnisse mehr." },
-      { title: "Volle Transparenz", desc: "Preise, Aktionen, Lieferzeiten und Reklamationen sind für beide Seiten jederzeit sichtbar." },
-      { title: "Alles an einem Ort", desc: "Bestellungen, Chat, Dokumente und Kennzahlen — in einer einzigen Anwendung." },
-    ],
-
-    faqHeadline: "Häufig gestellte Fragen",
-    faqSub: "Antworten auf die wichtigsten Fragen rund um GastroConnect.",
+    faqHeadline: "Häufige Fragen",
     faq: [
-      { q: "Was kostet GastroConnect?", a: "Sie können GastroConnect direkt ausprobieren — ohne Registrierung und ohne Kreditkarte. Genaue Preise besprechen wir individuell, abgestimmt auf Ihren Betrieb." },
-      { q: "Für welche Betriebe ist die Plattform geeignet?", a: "GastroConnect richtet sich an Restaurants, Hotels, Kantinen, Cafés und Gastronomiebetriebe jeder Größe — sowie an Lieferanten und Großhändler, die diese Betriebe beliefern." },
-      { q: "Wie funktioniert die Anmeldung?", a: "Sie wählen einfach Ihre Rolle (Betrieb oder Händler) und legen direkt los. Eine vollständige Registrierung mit Firmendaten ist erst nötig, wenn Sie produktiv arbeiten möchten." },
-      { q: "Brauche ich eine App aus dem Store?", a: "Nein. GastroConnect ist eine Webanwendung, die in jedem Browser läuft. Auf dem Handy können Sie sie wie eine App zum Startbildschirm hinzufügen — inklusive Push-Benachrichtigungen." },
-      { q: "Sind meine Daten sicher?", a: "Ja. Alle Daten werden verschlüsselt übertragen und sicher in der EU gehostet. Jede Rolle sieht nur die Informationen, die für sie bestimmt sind." },
-      { q: "Kann ich meine bestehenden Lieferanten weiter nutzen?", a: "Selbstverständlich. Sie können Ihre vorhandenen Lieferanten zu GastroConnect einladen oder direkt aus unserem wachsenden Netzwerk auswählen." },
+      {
+        q: "Was kostet GastroConnect?",
+        a: "Sie können GastroConnect direkt ausprobieren — ohne Registrierung und ohne Kreditkarte. Preise besprechen wir individuell, abgestimmt auf Ihren Betrieb.",
+      },
+      {
+        q: "Für welche Betriebe ist die Plattform geeignet?",
+        a: "GastroConnect richtet sich an Restaurants, Hotels, Kantinen, Cafés und Gastronomiebetriebe jeder Größe — sowie an Lieferanten und Großhändler, die diese Betriebe beliefern.",
+      },
+      {
+        q: "Wie funktioniert die Anmeldung?",
+        a: "Sie wählen einfach Ihre Rolle (Betrieb oder Händler) und legen direkt los. Eine vollständige Registrierung ist erst nötig, wenn Sie produktiv arbeiten möchten.",
+      },
+      {
+        q: "Brauche ich eine App aus dem Store?",
+        a: "Nein. GastroConnect läuft in jedem Browser. Auf dem Handy können Sie die Seite wie eine App zum Startbildschirm hinzufügen — inklusive Push-Benachrichtigungen.",
+      },
+      {
+        q: "Sind meine Daten sicher?",
+        a: "Ja. Alle Daten werden verschlüsselt übertragen und sicher in der EU gehostet. Jede Rolle sieht nur die für sie bestimmten Informationen.",
+      },
+      {
+        q: "Kann ich meine bestehenden Lieferanten weiter nutzen?",
+        a: "Selbstverständlich. Sie können Ihre vorhandenen Lieferanten zu GastroConnect einladen oder direkt aus unserem Netzwerk auswählen.",
+      },
     ],
 
-    finalCtaConfirm: "Kostenlos testen — keine Kreditkarte nötig.",
+    ctaHeadline: "Bereit, Ihren Bestellprozess zu digitalisieren?",
+    ctaSub: "Starten Sie in wenigen Sekunden — kein Setup, keine Kreditkarte.",
+    ctaConfirm: "Kostenlos testen — keine Kreditkarte nötig.",
 
+    footerTagline: "Die digitale Plattform für Gastronomie-Bestellungen.",
     footerTitleProduct: "Produkt",
     footerTitleCompany: "Unternehmen",
     footerTitleLegal: "Rechtliches",
@@ -289,190 +279,105 @@ const translations = {
     footerCopyright: "Alle Rechte vorbehalten.",
   },
   it: {
-    navSupplier: "Commerciante",
-    navRestaurant: "Azienda",
-    heroBadge: "La piattaforma per la gastronomia",
-    heroH1Part1: "Commercianti & Aziende.",
-    heroH1Part2: "Finalmente",
-    heroH1Part3: "su un'unica piattaforma.",
-    heroSub: "GastroConnect è il marketplace digitale che collega direttamente fornitori e attività gastronomiche — con confronto prezzi, panoramica spese e tutti gli ordini in un unico posto.",
-    heroCtaSupplier: "Inizia come commerciante",
-    heroCtaRestaurant: "Inizia come azienda",
-    heroStatsLabel1: "Processo d'ordine",
-    heroStatsValue1: "100% digitale",
-    heroStatsLabel2: "Risparmio settimanale",
-    heroStatsValue2: "fino a 8 ore",
-    heroStatsLabel3: "Confronto prezzi",
-    heroStatsValue3: "in tempo reale",
-
-    bridgeBadge: "Come funziona",
-    bridgeHeadline: "Un ponte tra due mondi",
-    bridgeSub: "Niente più telefono, fax e fogli Excel: commercianti e aziende lavorano direttamente insieme — sulla stessa piattaforma, con gli stessi dati, in tempo reale.",
-    bridgeSupplierTitle: "Commerciante",
-    bridgeSupplierLine1: "Catalogo prodotti",
-    bridgeSupplierLine2: "Promozioni & prezzi",
-    bridgeSupplierLine3: "Magazzino & consegne",
-    bridgeMiddleLabel: "GastroConnect",
-    bridgeMiddleSub: "collega le due parti",
-    bridgeFlow1: "Ordini",
-    bridgeFlow2: "Chat & reclami",
-    bridgeFlow3: "Bolle di consegna",
-    bridgeRestaurantTitle: "Azienda",
-    bridgeRestaurantLine1: "Più fornitori",
-    bridgeRestaurantLine2: "Confronto prezzi",
-    bridgeRestaurantLine3: "Panoramica spese",
-
-    problemHeadline: "Perché la gastronomia ha bisogno di innovazione",
-    problemSub: "Telefonate, ordini via fax e fogli Excel confusi costano ogni giorno tempo prezioso e stress ad aziende e commercianti.",
-    problemCards: [
-      { title: "Spreco di tempo", desc: "Processi di ordinazione manuali via telefono, fax o e-mail sono soggetti a errori e richiedono ore ogni settimana." },
-      { title: "Mancanza di visione d'insieme", desc: "Senza una piattaforma centrale, ordini, prezzi e accordi si perdono rapidamente." },
-      { title: "Problemi di comunicazione", desc: "Le richieste sugli ordini e i reclami passano attraverso diversi canali — caotico e lento." },
-    ],
-
-    pillarsHeadline: "Lo strumento giusto per ogni ruolo",
-    pillarsSub: "GastroConnect è progettato fin dall'inizio per entrambi i ruoli — con strumenti chiaramente separati ma perfettamente collegati.",
-
-    supplierBadge: "Per i commercianti",
-    supplierHeadline: "Più visione d'insieme. Più clienti. Meno fatica.",
-    supplierSub: "Tutto ciò che serve per gestire la tua attività in modo efficiente — e per farti trovare da nuovi clienti.",
-    supplierFeatures: [
-      { title: "Tutto in un posto", desc: "Ordini, magazzino, prodotti, piani di consegna e chat — un'unica interfaccia, nessun cambio di strumento." },
-      { title: "Più clienti raggiunti", desc: "Visibile a tutte le aziende sulla piattaforma. Promozioni e offerte raggiungono direttamente il tuo pubblico." },
-      { title: "Panoramica completa", desc: "KPI, ordini aperti, reclami e consegne in un colpo d'occhio nella dashboard." },
-      { title: "Flussi automatizzati", desc: "Bolle di consegna generate, stati aggiornati, clienti informati — tutto automatico." },
-    ],
-    supplierMockTitle: "Dashboard commerciante",
-    supplierMockKpi1Label: "Ordini di oggi",
-    supplierMockKpi1Value: "24",
-    supplierMockKpi2Label: "Fatturato oggi",
-    supplierMockKpi2Value: "3.842€",
-    supplierMockKpi3Label: "Promozioni attive",
-    supplierMockKpi3Value: "5",
-    supplierMockOrdersTitle: "Ordini in arrivo",
-    supplierMockOrder1: "Biergarten München",
-    supplierMockOrder1Items: "12 articoli",
-    supplierMockOrder2: "Trattoria Lina",
-    supplierMockOrder2Items: "8 articoli",
-    supplierMockOrder3: "Gasthof Sonne",
-    supplierMockOrder3Items: "15 articoli",
-    supplierCta: "Inizia come commerciante",
-
-    restaurantBadge: "Per le aziende",
-    restaurantHeadline: "Spese sotto controllo. Prezzi a confronto. Tutto in un colpo d'occhio.",
-    restaurantSub: "Ordina più velocemente, trova prezzi migliori e mantieni il controllo totale sui tuoi acquisti.",
-    restaurantFeatures: [
-      { title: "Panoramica spese", desc: "Numeri reali invece di stime: costo merce per ospite, spese mensili, per categoria e fornitore." },
-      { title: "Confronti prezzi migliori", desc: "Confronta lo stesso prodotto tra fornitori — differenze di prezzo immediatamente visibili." },
-      { title: "Più prodotti in un colpo d'occhio", desc: "Un catalogo centrale per tutti i fornitori. Cerca, filtra, confronta — tutto senza cambio di strumento." },
-      { title: "Organizzazione completa", desc: "Tutti gli ordini, bolle, reclami e chat — strutturati e ricercabili." },
-    ],
-    restaurantMockTitle: "Dashboard azienda",
-    restaurantMockKpi1Label: "Costo merce/ospite",
-    restaurantMockKpi1Value: "12,43€",
-    restaurantMockKpi2Label: "Ordini aperti",
-    restaurantMockKpi2Value: "15",
-    restaurantMockKpi3Label: "Spese mensili",
-    restaurantMockKpi3Value: "10.213€",
-    restaurantMockCompareTitle: "Confronto prezzi · Pomodori 1kg",
-    restaurantMockCompareS1: "Italia Import",
-    restaurantMockCompareS2: "Frische GmbH",
-    restaurantMockCompareS3: "Bio Bauer",
-    restaurantMockBadgeBest: "più conveniente",
-    restaurantCta: "Inizia come azienda",
-
-    showcaseHeadline: "Funzionalità in sintesi",
-    showcaseSub: "Tutto quello che serve per la collaborazione quotidiana tra commerciante e azienda — in un'unica applicazione.",
-    features: [
-      { title: "Chat & reclami", desc: "Chat diretta per ogni ordine, con reclami e messaggi prioritari." },
-      { title: "Bolle di consegna PDF", desc: "Bolle generate automaticamente come PDF A4 e condivise in chat." },
-      { title: "Promozioni", desc: "I commercianti creano promozioni evidenziate nel catalogo dell'azienda." },
-      { title: "Piani di consegna", desc: "Giorni di consegna individuali e finestre orarie opzionali per cliente." },
-      { title: "Reclami con riconsegna", desc: "Seleziona gli articoli interessati — il commerciante conferma una riconsegna." },
-      { title: "Centro documenti", desc: "Tutte le bolle e fatture ordinate per commerciante con statistiche." },
-      { title: "Statistiche & KPI", desc: "Fatturato, top prodotti, costo merce per ospite — dashboard live per entrambi." },
-      { title: "Confronto prezzi", desc: "Confronta prodotti identici tra commercianti — con indicazione del risparmio." },
-      { title: "Modelli d'ordine", desc: "Salva ordini ricorrenti come modelli e attivali in pochi secondi." },
-      { title: "Notifiche push", desc: "Notifiche in tempo reale con deep link direttamente alla vista corretta." },
-    ],
-    showcase: [
-      {
-        title: "Confronto prezzi",
-        desc: "Confronta direttamente prodotti identici tra fornitori — con storico dei prezzi.",
-        forLabel: "Per le aziende",
-      },
-      {
-        title: "Panoramica spese",
-        desc: "Dashboard in tempo reale con costo merce per ospite, spese mensili e analisi dei trend.",
-        forLabel: "Per le aziende",
-      },
-      {
-        title: "Catalogo prodotti",
-        desc: "Un catalogo centrale per tutti i fornitori. Ricerca, filtri, codici articolo e immagini.",
-        forLabel: "Per entrambi",
-      },
-      {
-        title: "Promozioni",
-        desc: "I commercianti creano promozioni mirate e raggiungono direttamente i loro clienti.",
-        forLabel: "Per i commercianti",
-      },
-    ],
-
-    stepsHeadline: "Come funziona",
-    stepsSub: "In pochi passi alla gestione digitale degli ordini.",
-    steps: [
-      { title: "Scegli il ruolo", desc: "Inizia come azienda o commerciante — senza registrazione." },
-      { title: "Ordina e comunica", desc: "Esplora i prodotti, effettua ordini, scegli le date di consegna e chatta direttamente." },
-      { title: "Consegna e gestisci", desc: "I commercianti elaborano gli ordini, creano documenti e consegnano." },
-    ],
-    ctaHeadline: "Pronto a digitalizzare il tuo processo di ordinazione?",
-    ctaSub: "Inizia ora e scopri quanto possono essere semplici gli ordini nella gastronomia.",
-    ctaSupplier: "Inizia come commerciante",
-    ctaRestaurant: "Inizia come azienda",
-    footerTagline: "La piattaforma digitale per gli ordini nella gastronomia.",
-
     navAnchorPillars: "Per chi",
     navAnchorSteps: "Come funziona",
     navAnchorFeatures: "Funzionalità",
-    navAnchorMobile: "App mobile",
+    navAnchorMobile: "Mobile",
     navAnchorFaq: "FAQ",
     navLogin: "Accedi",
+    navStart: "Inizia ora",
 
-    mobileBadge: "Esperienza mobile",
+    heroH1: "Commercianti e aziende. Finalmente su un'unica piattaforma.",
+    heroSub:
+      "GastroConnect collega direttamente fornitori e gastronomia — con confronto prezzi, panoramica spese e tutti gli ordini in un unico posto.",
+    heroCtaRestaurant: "Inizia come azienda",
+    heroCtaSupplier: "Inizia come commerciante",
+    heroImageAlt: "Dashboard ristorante GastroConnect",
+
+    pillarsHeadline: "Per chi è pensato GastroConnect",
+    pillarsSub:
+      "Una piattaforma, due esperienze chiaramente separate — entrambe ottimizzate per il rispettivo ruolo.",
+    pillarRestaurantTitle: "Per le aziende",
+    pillarRestaurantBullets: [
+      "Tutti i fornitori in un unico catalogo — cerca, confronta, ordina.",
+      "Confronto prezzi per prodotti identici tra tutti i commercianti.",
+      "Costo merce per ospite, spese mensili e trend in un colpo d'occhio.",
+      "Ordini, documenti e chat strutturati e ricercabili.",
+    ],
+    pillarSupplierTitle: "Per i commercianti",
+    pillarSupplierBullets: [
+      "Ordini, magazzino, prodotti e piani di consegna in un'unica interfaccia.",
+      "Visibile a tutte le aziende — le promozioni raggiungono i clienti direttamente.",
+      "Bolle di consegna automatiche in PDF, condivise in chat, archiviate nel centro documenti.",
+      "Fatturato, top prodotti e ordini aperti nella dashboard live.",
+    ],
+
+    stepsHeadline: "Come funziona",
+    steps: [
+      {
+        title: "Scegli il ruolo",
+        desc: "Inizia come azienda o commerciante — senza registrazione.",
+      },
+      {
+        title: "Ordina e comunica",
+        desc: "Scopri i prodotti, ordina, scegli le date di consegna, chatta direttamente.",
+      },
+      {
+        title: "Consegna e gestisci",
+        desc: "Elabora gli ordini, crea le bolle di consegna, consegna.",
+      },
+    ],
+
+    featuresHeadline: "Funzionalità in sintesi",
+    featuresSub:
+      "Tutto ciò che serve per la collaborazione quotidiana tra commerciante e azienda.",
+    features: [
+      { title: "Chat e reclami", desc: "Chat diretta per ogni ordine, con messaggi prioritari." },
+      { title: "Bolle di consegna PDF", desc: "Bolle A4 generate automaticamente e condivise in chat." },
+      { title: "Promozioni", desc: "I commercianti creano promozioni evidenziate nel catalogo." },
+      { title: "Piani di consegna", desc: "Giorni di consegna individuali e finestre orarie opzionali per cliente." },
+      { title: "Modelli d'ordine", desc: "Salva ordini ricorrenti come modelli e attivali in pochi secondi." },
+      { title: "Centro documenti", desc: "Bolle e fatture ordinate per commerciante con statistiche." },
+      { title: "Statistiche e KPI", desc: "Fatturato, top prodotti, costo merce per ospite — live per entrambi." },
+      { title: "Confronto prezzi", desc: "Confronta direttamente prodotti identici tra commercianti." },
+      { title: "Reclami con riconsegna", desc: "Seleziona gli articoli interessati — il commerciante conferma la riconsegna." },
+      { title: "Notifiche push", desc: "Notifiche in tempo reale con deep link direttamente alla vista corretta." },
+    ],
+
+    showcaseHeadline: "Guardalo in azione",
+    showcaseSub:
+      "Le viste più importanti dell'app — uno sguardo diretto a ciò con cui lavori ogni giorno.",
+    showcase: [
+      { img: shotHome, caption: "Ordini, messaggi e spese in un colpo d'occhio.", alt: "Dashboard ristorante" },
+      { img: shotPrice, caption: "Confronto prezzi per prodotti identici tra tutti i commercianti.", alt: "Confronto prezzi" },
+      { img: shotInbox, caption: "Chat per ogni ordine — messaggi, documenti, reclami.", alt: "Chat & inbox" },
+    ],
+
     mobileHeadline: "I tuoi ordini — sempre in tasca",
-    mobileSub: "GastroConnect funziona su qualsiasi dispositivo. L'esperienza mobile è completa come quella desktop — con notifiche push che ti tengono sempre aggiornato.",
+    mobileSub:
+      "GastroConnect funziona su qualsiasi dispositivo. L'esperienza mobile è completa come quella desktop.",
     mobileBullets: [
       { title: "Notifiche push", desc: "Nuovi ordini, cambi di stato e messaggi direttamente sul telefono." },
       { title: "Funziona offline", desc: "Anche fuori sede o in magazzino: i dati caricati restano disponibili." },
-      { title: "Gesti rapidi", desc: "Conferma ordini o segna come letti — con un semplice swipe." },
-      { title: "Accessi rapidi", desc: "Modelli d'ordine direttamente dalla home screen, in pochi secondi." },
-    ],
-    mobileMockTitle: "Nuovo ordine",
-    mobileMockMsg: "Biergarten München · 12 articoli",
-    mobileMockTime: "2 min fa",
-
-    benefitsHeadline: "Perché GastroConnect",
-    benefitsSub: "Vantaggi concreti che noterai dal primo giorno.",
-    benefits: [
-      { title: "Risparmio di tempo", desc: "Niente più telefonate e fax: ordini in pochi clic, approvazioni e tracciamento immediato." },
-      { title: "Meno errori", desc: "Processi standardizzati, quantità chiare e date di consegna — niente più malintesi." },
-      { title: "Massima trasparenza", desc: "Prezzi, promozioni, tempi di consegna e reclami sempre visibili a entrambe le parti." },
-      { title: "Tutto in un posto", desc: "Ordini, chat, documenti e KPI — in un'unica applicazione." },
+      { title: "Gesti rapidi", desc: "Conferma ordini o segna come letti con un semplice swipe." },
+      { title: "Modelli d'ordine", desc: "Ordini ricorrenti dalla home screen in pochi secondi." },
     ],
 
     faqHeadline: "Domande frequenti",
-    faqSub: "Risposte alle domande più importanti su GastroConnect.",
     faq: [
       { q: "Quanto costa GastroConnect?", a: "Puoi provare GastroConnect subito — senza registrazione e senza carta di credito. I prezzi vengono concordati individualmente, in base alla tua attività." },
       { q: "Per quali attività è adatta la piattaforma?", a: "GastroConnect è pensato per ristoranti, hotel, mense, bar e attività gastronomiche di ogni dimensione — oltre a fornitori e grossisti che li riforniscono." },
-      { q: "Come funziona la registrazione?", a: "Scegli semplicemente il tuo ruolo (azienda o commerciante) e inizia subito. Una registrazione completa con i dati aziendali è necessaria solo quando passi all'uso produttivo." },
-      { q: "Mi serve un'app dallo store?", a: "No. GastroConnect è un'applicazione web che funziona in qualsiasi browser. Sul telefono puoi aggiungerla alla home come un'app — comprese le notifiche push." },
+      { q: "Come funziona la registrazione?", a: "Scegli semplicemente il tuo ruolo (azienda o commerciante) e inizia subito. Una registrazione completa è necessaria solo quando passi all'uso produttivo." },
+      { q: "Mi serve un'app dallo store?", a: "No. GastroConnect funziona in qualsiasi browser. Sul telefono puoi aggiungerla alla home come un'app — comprese le notifiche push." },
       { q: "I miei dati sono al sicuro?", a: "Sì. Tutti i dati sono trasmessi in modo cifrato e ospitati in modo sicuro nell'UE. Ogni ruolo vede solo le informazioni a lui destinate." },
-      { q: "Posso continuare a usare i miei fornitori esistenti?", a: "Certamente. Puoi invitare i tuoi fornitori attuali su GastroConnect oppure scegliere direttamente dalla nostra rete in crescita." },
+      { q: "Posso continuare a usare i miei fornitori esistenti?", a: "Certamente. Puoi invitare i tuoi fornitori attuali su GastroConnect oppure scegliere direttamente dalla nostra rete." },
     ],
 
-    finalCtaConfirm: "Prova gratuitamente — senza carta di credito.",
+    ctaHeadline: "Pronto a digitalizzare il tuo processo d'ordine?",
+    ctaSub: "Inizia in pochi secondi — nessun setup, nessuna carta di credito.",
+    ctaConfirm: "Prova gratuitamente — senza carta di credito.",
 
+    footerTagline: "La piattaforma digitale per gli ordini nella gastronomia.",
     footerTitleProduct: "Prodotto",
     footerTitleCompany: "Azienda",
     footerTitleLegal: "Legale",
@@ -486,61 +391,229 @@ const translations = {
     footerLinkTerms: "Termini",
     footerCopyright: "Tutti i diritti riservati.",
   },
+  en: {
+    navAnchorPillars: "Who it's for",
+    navAnchorSteps: "How it works",
+    navAnchorFeatures: "Features",
+    navAnchorMobile: "Mobile",
+    navAnchorFaq: "FAQ",
+    navLogin: "Sign in",
+    navStart: "Get started",
+
+    heroH1: "Suppliers and restaurants. Finally on one platform.",
+    heroSub:
+      "GastroConnect connects suppliers and hospitality directly — with price comparison, spending overview and all your orders in one place.",
+    heroCtaRestaurant: "Start as a restaurant",
+    heroCtaSupplier: "Start as a supplier",
+    heroImageAlt: "GastroConnect restaurant dashboard",
+
+    pillarsHeadline: "Who GastroConnect is built for",
+    pillarsSub:
+      "One platform, two clearly separated experiences — both tailored perfectly to their role.",
+    pillarRestaurantTitle: "For restaurants",
+    pillarRestaurantBullets: [
+      "All your suppliers in one catalog — search, compare, order.",
+      "Price comparison for identical products across every supplier.",
+      "Food cost per guest, monthly spending and trends at a glance.",
+      "Orders, documents and chats — structured and searchable.",
+    ],
+    pillarSupplierTitle: "For suppliers",
+    pillarSupplierBullets: [
+      "Orders, inventory, products and delivery schedules in one interface.",
+      "Visible to every restaurant — promotions reach customers directly.",
+      "Delivery notes generated as PDF, shared in chat, filed in the document center.",
+      "Revenue, top products and open orders in a live dashboard.",
+    ],
+
+    stepsHeadline: "How it works",
+    steps: [
+      { title: "Choose your role", desc: "Start as a restaurant or supplier — no sign-up needed." },
+      { title: "Order & communicate", desc: "Discover products, place orders, pick delivery dates, chat directly." },
+      { title: "Deliver & manage", desc: "Process orders, generate delivery notes, deliver." },
+    ],
+
+    featuresHeadline: "Features at a glance",
+    featuresSub: "Everything you need for the daily collaboration between supplier and restaurant.",
+    features: [
+      { title: "Chat & complaints", desc: "Direct chat on every order, with priority messages." },
+      { title: "Delivery notes as PDF", desc: "A4 delivery notes generated automatically and shared in chat." },
+      { title: "Promotions", desc: "Suppliers create discounts that are highlighted in the catalog." },
+      { title: "Delivery schedules", desc: "Per-customer delivery days and optional time windows." },
+      { title: "Order templates", desc: "Save recurring orders as templates and trigger them in seconds." },
+      { title: "Document center", desc: "Delivery notes and invoices sorted per supplier with stats." },
+      { title: "Statistics & KPIs", desc: "Revenue, top products, food cost per guest — live for both sides." },
+      { title: "Price comparison", desc: "Compare identical products across suppliers directly." },
+      { title: "Complaints with re-delivery", desc: "Pick affected items — supplier confirms the re-delivery." },
+      { title: "Push notifications", desc: "Real-time notifications with deep links straight into the right view." },
+    ],
+
+    showcaseHeadline: "See it in action",
+    showcaseSub: "The most important views from the app — a direct look at what you'll work with every day.",
+    showcase: [
+      { img: shotHome, caption: "Orders, messages and spending at a glance.", alt: "Restaurant dashboard" },
+      { img: shotPrice, caption: "Price comparison for identical products across every supplier.", alt: "Price comparison" },
+      { img: shotInbox, caption: "Chat on every order — messages, documents, complaints.", alt: "Chat & inbox" },
+    ],
+
+    mobileHeadline: "Your orders — always in your pocket",
+    mobileSub: "GastroConnect runs on every device. The mobile experience is just as complete as the desktop one.",
+    mobileBullets: [
+      { title: "Push notifications", desc: "New orders, status changes and messages straight to your phone." },
+      { title: "Works offline", desc: "On the road or in the warehouse: last-loaded data stays available." },
+      { title: "Swipe gestures", desc: "Confirm orders or mark them as read with a single swipe." },
+      { title: "Order templates", desc: "Trigger recurring orders from your home screen in seconds." },
+    ],
+
+    faqHeadline: "Frequently asked questions",
+    faq: [
+      { q: "What does GastroConnect cost?", a: "You can try GastroConnect right away — no sign-up and no credit card. We discuss pricing individually, tailored to your business." },
+      { q: "Which businesses is the platform for?", a: "GastroConnect is built for restaurants, hotels, canteens, cafés and hospitality businesses of every size — and for the suppliers and wholesalers that serve them." },
+      { q: "How does sign-up work?", a: "Just pick your role (restaurant or supplier) and get going. A full registration is only needed once you switch to productive use." },
+      { q: "Do I need an app from the store?", a: "No. GastroConnect runs in any browser. On your phone you can add it to the home screen like an app — push notifications included." },
+      { q: "Is my data safe?", a: "Yes. All data is transmitted encrypted and hosted securely in the EU. Each role only sees the information meant for them." },
+      { q: "Can I keep my existing suppliers?", a: "Of course. You can invite your current suppliers to GastroConnect or pick directly from our growing network." },
+    ],
+
+    ctaHeadline: "Ready to digitize your ordering process?",
+    ctaSub: "Get started in seconds — no setup, no credit card.",
+    ctaConfirm: "Free to try — no credit card required.",
+
+    footerTagline: "The digital platform for hospitality ordering.",
+    footerTitleProduct: "Product",
+    footerTitleCompany: "Company",
+    footerTitleLegal: "Legal",
+    footerLinkFeatures: "Features",
+    footerLinkSteps: "How it works",
+    footerLinkFaq: "FAQ",
+    footerLinkAbout: "About",
+    footerLinkContact: "Contact",
+    footerLinkImprint: "Imprint",
+    footerLinkPrivacy: "Privacy",
+    footerLinkTerms: "Terms",
+    footerCopyright: "All rights reserved.",
+  },
 } as const;
 
-const problemIcons = [Clock, BarChart3, MessageSquare];
-const supplierFeatureIcons = [Package, Users, Eye, Zap];
-const restaurantFeatureIcons = [Wallet, BarChart3, Search, Calendar];
-const showcaseIcons = [LineChart, TrendingUp, Package, Tag];
+type Lang = keyof typeof translations;
+const LANG_STORAGE_KEY = "gc-landing-lang";
+
+function detectInitialLang(): Lang {
+  if (typeof window === "undefined") return "de";
+  try {
+    const stored = window.localStorage.getItem(LANG_STORAGE_KEY) as Lang | null;
+    if (stored && stored in translations) return stored;
+  } catch {}
+  const nav = (typeof navigator !== "undefined" ? navigator.language : "de").toLowerCase();
+  if (nav.startsWith("it")) return "it";
+  if (nav.startsWith("en")) return "en";
+  return "de";
+}
+
+const pillarRestaurantIcons = [Search, BarChart3, Wallet, Eye];
+const pillarSupplierIcons = [Package, Sparkles, FileText, BarChart3];
+const featureIcons = [
+  MessageSquare,
+  FileText,
+  Tag,
+  Calendar,
+  Bookmark,
+  FileText,
+  BarChart3,
+  ArrowLeftRight,
+  Shield,
+  BellRing,
+];
+const mobileBulletIcons = [BellRing, WifiOff, Hand, Bookmark];
 
 export default function Landing() {
   const [, setLocation] = useLocation();
-  const { currentUser, currentRole, switchRole } = useUser();
+  const { currentUser, currentRole } = useUser();
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [lang, setLang] = useState<Lang>("de");
+
+  useEffect(() => {
+    setLang(detectInitialLang());
+  }, []);
 
   useEffect(() => {
     if (currentUser && currentRole) {
       setLocation(`/${currentRole}`);
     }
   }, [currentUser, currentRole]);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const t = translations.de;
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  function changeLang(next: Lang) {
+    setLang(next);
+    try {
+      window.localStorage.setItem(LANG_STORAGE_KEY, next);
+    } catch {}
+  }
+
+  const t = translations[lang];
 
   function handleStart(role: "restaurant" | "supplier") {
-    setLocation(`/login?role=${role}`);
+    setLocation(`/${role}`);
   }
 
   function handleLogin() {
     setLocation("/login");
   }
 
+  const anchors = [
+    { id: "fuer-wen", label: t.navAnchorPillars },
+    { id: "so-funktioniert", label: t.navAnchorSteps },
+    { id: "funktionen", label: t.navAnchorFeatures },
+    { id: "mobile", label: t.navAnchorMobile },
+    { id: "faq", label: t.navAnchorFaq },
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
+    <div className="min-h-screen bg-white dark:bg-background text-foreground">
+      {/* HEADER */}
+      <header
+        className={`sticky top-0 z-50 transition-all ${
+          scrolled
+            ? "bg-white/85 dark:bg-background/85 backdrop-blur-md border-b border-border"
+            : "bg-transparent border-b border-transparent"
+        }`}
+      >
         <div className="mx-auto max-w-6xl flex items-center justify-between gap-3 px-4 py-3 md:px-8">
           <a
             href="#top"
-            onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            onClick={(e) => {
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
             className="flex items-center gap-2 shrink-0"
             data-testid="link-brand"
           >
-            <img src={logoImg} alt="GastroConnect Logo" className="h-12 w-12 md:h-16 md:w-16 object-contain dark:invert -mr-1" />
-            <span className="font-bold text-lg md:text-xl tracking-tight" data-testid="text-brand-name">GastroConnect</span>
+            <img
+              src={logoImg}
+              alt="GastroConnect Logo"
+              className="h-10 w-10 md:h-12 md:w-12 object-contain dark:invert -mr-1"
+            />
+            <span
+              className="font-semibold text-base md:text-lg tracking-tight"
+              data-testid="text-brand-name"
+            >
+              GastroConnect
+            </span>
           </a>
 
           {/* Desktop anchor nav */}
           <div className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
-            {[
-              { id: "fuer-wen", label: t.navAnchorPillars },
-              { id: "so-funktioniert", label: t.navAnchorSteps },
-              { id: "funktionen", label: t.navAnchorFeatures },
-              { id: "mobile", label: t.navAnchorMobile },
-              { id: "faq", label: t.navAnchorFaq },
-            ].map((item) => (
+            {anchors.map((item) => (
               <button
                 key={item.id}
                 onClick={() => smoothScrollTo(item.id)}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                className="px-3 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
                 data-testid={`nav-anchor-${item.id}`}
               >
                 {item.label}
@@ -549,110 +622,149 @@ export default function Landing() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <div
+              className="hidden md:flex items-center rounded-full border border-border bg-card p-0.5 text-xs font-medium"
+              data-testid="lang-switcher"
+            >
+              {(["de", "it", "en"] as const).map((code) => (
+                <button
+                  key={code}
+                  onClick={() => changeLang(code)}
+                  className={`px-2 py-1 rounded-full uppercase tracking-wide transition-colors ${
+                    lang === code
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  data-testid={`lang-${code}`}
+                >
+                  {code}
+                </button>
+              ))}
+            </div>
             <Button
               variant="ghost"
               size="sm"
               className="hidden md:inline-flex"
-              onClick={() => handleStart("supplier")}
-              data-testid="button-nav-supplier"
-            >
-              {t.navSupplier}
-            </Button>
-            <Button
-              size="sm"
               onClick={handleLogin}
-              data-testid="button-nav-login"
+              data-testid="link-login"
             >
               {t.navLogin}
             </Button>
-            <button
-              onClick={() => setMobileNavOpen((v) => !v)}
-              className="lg:hidden flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-foreground"
-              aria-label="Menu"
-              data-testid="button-mobile-menu"
+            <Button
+              size="sm"
+              className="hidden md:inline-flex"
+              onClick={() => handleStart("restaurant")}
+              data-testid="button-nav-start"
             >
-              {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </button>
+              {t.navStart}
+            </Button>
+
+            {/* Mobile menu */}
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <SheetTrigger asChild>
+                <button
+                  className="lg:hidden flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-foreground"
+                  aria-label="Menu"
+                  data-testid="button-mobile-menu"
+                >
+                  <Menu className="h-4 w-4" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px] p-0">
+                <div className="flex flex-col h-full">
+                  <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+                    <img
+                      src={logoImg}
+                      alt=""
+                      className="h-9 w-9 object-contain dark:invert"
+                    />
+                    <span className="font-semibold tracking-tight">
+                      GastroConnect
+                    </span>
+                  </div>
+                  <div className="flex-1 px-3 py-4 flex flex-col">
+                    {anchors.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setMobileNavOpen(false);
+                          setTimeout(() => smoothScrollTo(item.id), 60);
+                        }}
+                        className="text-left px-3 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted/60"
+                        data-testid={`nav-mobile-${item.id}`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t border-border p-4 space-y-3">
+                    <div
+                      className="flex items-center justify-center rounded-full border border-border bg-card p-0.5 text-xs font-medium"
+                      data-testid="lang-switcher-mobile"
+                    >
+                      {(["de", "it", "en"] as const).map((code) => (
+                        <button
+                          key={code}
+                          onClick={() => changeLang(code)}
+                          className={`flex-1 px-3 py-1.5 rounded-full uppercase tracking-wide transition-colors ${
+                            lang === code
+                              ? "bg-foreground text-background"
+                              : "text-muted-foreground"
+                          }`}
+                          data-testid={`lang-mobile-${code}`}
+                        >
+                          {code}
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        handleLogin();
+                      }}
+                      data-testid="link-login-mobile"
+                    >
+                      {t.navLogin}
+                    </Button>
+                    <Button
+                      className="w-full"
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        handleStart("restaurant");
+                      }}
+                      data-testid="button-mobile-start"
+                    >
+                      {t.navStart}
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
+      </header>
 
-        {/* Mobile dropdown menu */}
-        {mobileNavOpen && (
-          <div className="lg:hidden border-t border-border bg-background/95 backdrop-blur-md" data-testid="menu-mobile">
-            <div className="mx-auto max-w-6xl px-4 py-2 flex flex-col">
-              {[
-                { id: "fuer-wen", label: t.navAnchorPillars },
-                { id: "so-funktioniert", label: t.navAnchorSteps },
-                { id: "funktionen", label: t.navAnchorFeatures },
-                { id: "mobile", label: t.navAnchorMobile },
-                { id: "faq", label: t.navAnchorFaq },
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => { setMobileNavOpen(false); setTimeout(() => smoothScrollTo(item.id), 60); }}
-                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-foreground hover:bg-muted/60"
-                  data-testid={`nav-mobile-${item.id}`}
-                >
-                  {item.label}
-                </button>
-              ))}
-              <div className="mt-2 pt-2 border-t border-border grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setMobileNavOpen(false); handleStart("supplier"); }}
-                  data-testid="button-mobile-supplier"
-                  className="gap-1.5"
-                >
-                  <Store className="h-4 w-4" />
-                  {t.navSupplier}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => { setMobileNavOpen(false); handleStart("restaurant"); }}
-                  data-testid="button-mobile-restaurant"
-                  className="gap-1.5"
-                >
-                  <Utensils className="h-4 w-4" />
-                  {t.navRestaurant}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </nav>
+      <div id="top" />
 
       {/* HERO */}
-      <section className="relative overflow-hidden bg-[#161921] text-white rounded-b-3xl py-16 md:py-24 -mt-px">
-        <div className="absolute inset-0 -z-0 [background-image:radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.18),transparent_60%)]" />
-        <div className="relative mx-auto max-w-6xl px-4 md:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-xs font-medium text-white/80">
-              <Zap className="h-3 w-3 text-blue-400" />
-              {t.heroBadge}
-            </div>
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight leading-tight text-white" data-testid="text-hero-headline">
-              {t.heroH1Part1}
-              <br />
-              <span className="text-blue-400">{t.heroH1Part2}</span> {t.heroH1Part3}
+      <section className="px-4 md:px-8 pt-12 md:pt-20 pb-12 md:pb-16">
+        <div className="mx-auto max-w-5xl text-center">
+          <Reveal>
+            <h1
+              className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] max-w-4xl mx-auto"
+              data-testid="text-hero-headline"
+            >
+              {t.heroH1}
             </h1>
-            <p className="mt-6 text-base md:text-xl text-white/70 leading-relaxed max-w-2xl mx-auto">
+            <p className="mt-6 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
               {t.heroSub}
             </p>
             <div className="mt-8 md:mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <Button
                 size="lg"
-                className="w-full sm:w-auto gap-2 text-base bg-white text-[#161921] hover:bg-white/90"
-                onClick={() => handleStart("supplier")}
-                data-testid="button-hero-supplier"
-              >
-                <Store className="h-4 w-4" />
-                {t.heroCtaSupplier}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-              <Button
-                size="lg"
-                className="w-full sm:w-auto gap-2 text-base bg-white/[0.08] border border-white/20 text-white hover:bg-white/[0.14]"
+                className="w-full sm:w-auto gap-2 text-base"
                 onClick={() => handleStart("restaurant")}
                 data-testid="button-hero-restaurant"
               >
@@ -660,512 +772,191 @@ export default function Landing() {
                 {t.heroCtaRestaurant}
                 <ArrowRight className="h-4 w-4" />
               </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full sm:w-auto gap-2 text-base"
+                onClick={() => handleStart("supplier")}
+                data-testid="button-hero-supplier"
+              >
+                <Store className="h-4 w-4" />
+                {t.heroCtaSupplier}
+              </Button>
             </div>
-
-            {/* Hero Stats */}
-            <div className="mt-10 md:mt-14 grid grid-cols-3 gap-3 md:gap-6 max-w-2xl mx-auto">
-              {[
-                { label: t.heroStatsLabel1, value: t.heroStatsValue1, icon: Sparkles },
-                { label: t.heroStatsLabel2, value: t.heroStatsValue2, icon: Clock },
-                { label: t.heroStatsLabel3, value: t.heroStatsValue3, icon: TrendingUp },
-              ].map((stat, idx) => (
-                <div key={idx} className="rounded-2xl border border-white/15 bg-white/[0.06] backdrop-blur p-3 md:p-4 text-center" data-testid={`hero-stat-${idx}`}>
-                  <stat.icon className="h-4 w-4 text-blue-400 mx-auto mb-1.5" />
-                  <div className="text-sm md:text-lg font-bold tracking-tight text-white">{stat.value}</div>
-                  <div className="text-[10px] md:text-xs text-white/60 mt-0.5 leading-tight">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+          </Reveal>
         </div>
+
+        {/* Hero screenshot */}
+        <Reveal delay={120} className="mx-auto max-w-6xl mt-12 md:mt-16">
+          <div className="rounded-2xl border border-border overflow-hidden shadow-2xl shadow-black/5 bg-card">
+            <img
+              src={shotHome}
+              alt={t.heroImageAlt}
+              className="w-full h-auto block"
+              data-testid="img-hero-screenshot"
+              loading="eager"
+            />
+          </div>
+        </Reveal>
       </section>
 
-      {/* BRIDGE — Konzept-Visualisierung */}
-      <section className="py-16 md:py-24 bg-muted/30 border-y border-border/50">
-        <div className="mx-auto max-w-6xl px-4 md:px-8">
-          <div className="mx-auto max-w-2xl text-center mb-10 md:mb-14">
-            <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
-              <ArrowLeftRight className="h-3 w-3" />
-              {t.bridgeBadge}
-            </div>
-            <h2 className="text-2xl md:text-4xl font-bold tracking-tight" data-testid="text-bridge-headline">
-              {t.bridgeHeadline}
-            </h2>
-            <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
-              {t.bridgeSub}
-            </p>
-          </div>
-
-          {/* Bridge diagram */}
-          <div className="grid gap-4 md:gap-6 lg:grid-cols-[1fr_auto_1fr] items-stretch">
-            {/* Supplier card */}
-            <div className="rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-card dark:from-emerald-950/20 dark:to-card p-5 md:p-6 relative overflow-hidden" data-testid="bridge-supplier">
-              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500/10 blur-2xl" />
-              <div className="relative flex flex-col items-center text-center">
-                <div className="flex flex-col items-center gap-2 mb-3">
-                  <div className="h-10 w-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/30">
-                    <Store className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-bold text-lg" data-testid="text-bridge-supplier-title">{t.bridgeSupplierTitle}</h3>
-                </div>
-                <ul className="space-y-1.5 text-sm inline-block text-left">
-                  {[t.bridgeSupplierLine1, t.bridgeSupplierLine2, t.bridgeSupplierLine3].map((line, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* Middle hub */}
-            <div className="flex flex-col items-center justify-center gap-3 py-2 md:py-0 md:px-2 lg:px-4">
-              {/* Mobile: arrow down. Desktop: arrows horizontal */}
-              <div className="flex lg:hidden items-center gap-2 text-primary">
-                <ArrowLeftRight className="h-5 w-5 rotate-90" />
-              </div>
-
-              <div className="relative inline-flex items-center justify-center mb-[-22px] md:mb-[-28px]">
-                <img src={logoImg} alt="GastroConnect" className="h-20 w-20 md:h-24 md:w-24 object-contain dark:invert" />
-              </div>
-              <div className="text-center">
-                <div className="font-bold text-sm md:text-base" data-testid="text-bridge-middle">{t.bridgeMiddleLabel}</div>
-                <div className="text-[11px] md:text-xs text-muted-foreground">{t.bridgeMiddleSub}</div>
-              </div>
-
-              {/* Flow chips */}
-              <div className="flex flex-wrap justify-center gap-1.5 max-w-[220px]">
-                {[t.bridgeFlow1, t.bridgeFlow2, t.bridgeFlow3].map((flow, idx) => (
-                  <span key={idx} className="text-[10px] md:text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium border border-primary/15">
-                    {flow}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Restaurant card */}
-            <div className="rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-card dark:from-blue-950/20 dark:to-card p-5 md:p-6 relative overflow-hidden" data-testid="bridge-restaurant">
-              <div className="absolute -left-6 -top-6 h-24 w-24 rounded-full bg-blue-500/10 blur-2xl" />
-              <div className="relative flex flex-col items-center text-center">
-                <div className="flex flex-col items-center gap-2 mb-3">
-                  <div className="h-10 w-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-500/30">
-                    <Utensils className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-bold text-lg" data-testid="text-bridge-restaurant-title">{t.bridgeRestaurantTitle}</h3>
-                </div>
-                <ul className="space-y-1.5 text-sm inline-block text-left">
-                  {[t.bridgeRestaurantLine1, t.bridgeRestaurantLine2, t.bridgeRestaurantLine3].map((line, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PROBLEM */}
-      <section className="py-16 md:py-24">
-        <div className="mx-auto max-w-6xl px-4 md:px-8">
-          <div className="mx-auto max-w-2xl text-center mb-12">
-            <h2 className="text-2xl font-bold tracking-tight md:text-3xl" data-testid="text-problem-headline">
-              {t.problemHeadline}
-            </h2>
-            <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
-              {t.problemSub}
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {t.problemCards.map((item, idx) => {
-              const Icon = problemIcons[idx];
-              return (
-                <Card key={idx} className="border-border/50 hover-elevate overflow-visible" data-testid={`card-problem-${idx}`}>
-                  <CardContent className="pt-6 pb-6">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive mb-4">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-semibold text-base mb-2" data-testid={`text-problem-title-${idx}`}>{item.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* PILLARS — Supplier & Restaurant detail panels */}
-      <section id="fuer-wen" className="scroll-mt-20 py-16 md:py-24 bg-muted/30 border-y border-border/50">
-        <div className="mx-auto max-w-6xl px-4 md:px-8">
-          <div className="mx-auto max-w-2xl text-center mb-10 md:mb-14">
-            <h2 className="text-2xl md:text-4xl font-bold tracking-tight" data-testid="text-pillars-headline">
+      {/* PILLARS — Für wen */}
+      <section
+        id="fuer-wen"
+        className="scroll-mt-20 px-4 md:px-8 py-24 md:py-32"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
+            <h2
+              className="text-3xl md:text-5xl font-semibold tracking-tight"
+              data-testid="text-pillars-headline"
+            >
               {t.pillarsHeadline}
             </h2>
             <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
               {t.pillarsSub}
             </p>
           </div>
-
-          {/* Supplier panel */}
-          <div className="grid gap-8 lg:grid-cols-2 items-center mb-12 md:mb-16" data-testid="panel-supplier">
-            <div className="order-2 lg:order-1">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-4">
-                <Store className="h-3 w-3" />
-                {t.supplierBadge}
-              </div>
-              <h3 className="text-2xl md:text-3xl font-bold tracking-tight mb-3" data-testid="text-supplier-headline">
-                {t.supplierHeadline}
-              </h3>
-              <p className="text-muted-foreground text-base mb-6 leading-relaxed">
-                {t.supplierSub}
-              </p>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {t.supplierFeatures.map((feature, idx) => {
-                  const Icon = supplierFeatureIcons[idx];
-                  return (
-                    <div key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-border bg-card hover:border-emerald-500/40 transition-colors" data-testid={`supplier-feature-${idx}`}>
-                      <div className="h-8 w-8 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-semibold text-sm">{feature.title}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5 leading-snug">{feature.desc}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <Button
-                className="mt-6 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => handleStart("supplier")}
-                data-testid="button-supplier-cta"
+          <div className="grid gap-6 md:grid-cols-2">
+            {[
+              {
+                title: t.pillarRestaurantTitle,
+                bullets: t.pillarRestaurantBullets,
+                icons: pillarRestaurantIcons,
+                head: Utensils,
+                cta: t.heroCtaRestaurant,
+                role: "restaurant" as const,
+                testid: "card-pillar-restaurant",
+              },
+              {
+                title: t.pillarSupplierTitle,
+                bullets: t.pillarSupplierBullets,
+                icons: pillarSupplierIcons,
+                head: Store,
+                cta: t.heroCtaSupplier,
+                role: "supplier" as const,
+                testid: "card-pillar-supplier",
+              },
+            ].map((p) => (
+              <div
+                key={p.role}
+                className="rounded-2xl border border-border bg-white dark:bg-card p-7 md:p-8 flex flex-col"
+                data-testid={p.testid}
               >
-                {t.supplierCta}
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Supplier mock */}
-            <div className="order-1 lg:order-2">
-              <div className="relative rounded-3xl border border-border bg-gradient-to-br from-emerald-50/50 via-card to-card dark:from-emerald-950/20 p-3 md:p-4 shadow-xl">
-                <div className="absolute -inset-px rounded-3xl bg-gradient-to-br from-emerald-500/20 to-transparent pointer-events-none" />
-                <div className="relative rounded-2xl bg-[#161921] p-3 md:p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-white text-sm font-bold">{t.supplierMockTitle}</div>
-                    <div className="flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                      <span className="text-[10px] text-white/50 uppercase tracking-wider">live</span>
-                    </div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-10 w-10 rounded-xl border border-border bg-muted/30 flex items-center justify-center">
+                    <p.head className="h-5 w-5 text-foreground" />
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { label: t.supplierMockKpi1Label, value: t.supplierMockKpi1Value, color: "text-emerald-400" },
-                      { label: t.supplierMockKpi2Label, value: t.supplierMockKpi2Value, color: "text-blue-400" },
-                      { label: t.supplierMockKpi3Label, value: t.supplierMockKpi3Value, color: "text-amber-400" },
-                    ].map((kpi, idx) => (
-                      <div key={idx} className="rounded-xl bg-white/[0.06] border border-white/10 p-2">
-                        <div className={`text-base md:text-xl font-bold ${kpi.color}`}>{kpi.value}</div>
-                        <div className="text-[9px] md:text-[10px] text-white/50 leading-tight mt-0.5">{kpi.label}</div>
-                      </div>
-                    ))}
-                  </div>
+                  <h3
+                    className="text-xl md:text-2xl font-semibold tracking-tight"
+                    data-testid={`text-${p.testid}-title`}
+                  >
+                    {p.title}
+                  </h3>
                 </div>
-                <div className="relative mt-3 rounded-2xl bg-card border border-border p-3">
-                  <div className="text-xs font-semibold text-muted-foreground mb-2">{t.supplierMockOrdersTitle}</div>
-                  <div className="space-y-1.5">
-                    {[
-                      { name: t.supplierMockOrder1, items: t.supplierMockOrder1Items, color: "bg-amber-500" },
-                      { name: t.supplierMockOrder2, items: t.supplierMockOrder2Items, color: "bg-emerald-500" },
-                      { name: t.supplierMockOrder3, items: t.supplierMockOrder3Items, color: "bg-blue-500" },
-                    ].map((o, idx) => (
-                      <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-muted/40">
-                        <div className={`h-7 w-7 rounded-md ${o.color}/20 flex items-center justify-center`}>
-                          <ShoppingCart className={`h-3.5 w-3.5 ${o.color.replace("bg-", "text-")}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium truncate">{o.name}</div>
-                          <div className="text-[10px] text-muted-foreground">{o.items}</div>
-                        </div>
-                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Restaurant panel */}
-          <div className="grid gap-8 lg:grid-cols-2 items-center" data-testid="panel-restaurant">
-            {/* Restaurant mock */}
-            <div>
-              <div className="relative rounded-3xl border border-border bg-gradient-to-br from-blue-50/50 via-card to-card dark:from-blue-950/20 p-3 md:p-4 shadow-xl">
-                <div className="absolute -inset-px rounded-3xl bg-gradient-to-br from-blue-500/20 to-transparent pointer-events-none" />
-                <div className="relative rounded-2xl bg-[#161921] p-3 md:p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-white text-sm font-bold">{t.restaurantMockTitle}</div>
-                    <div className="flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-blue-400" />
-                      <span className="text-[10px] text-white/50 uppercase tracking-wider">live</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { label: t.restaurantMockKpi1Label, value: t.restaurantMockKpi1Value, color: "text-emerald-400" },
-                      { label: t.restaurantMockKpi2Label, value: t.restaurantMockKpi2Value, color: "text-amber-400" },
-                      { label: t.restaurantMockKpi3Label, value: t.restaurantMockKpi3Value, color: "text-blue-400" },
-                    ].map((kpi, idx) => (
-                      <div key={idx} className="rounded-xl bg-white/[0.06] border border-white/10 p-2">
-                        <div className={`text-base md:text-xl font-bold ${kpi.color}`}>{kpi.value}</div>
-                        <div className="text-[9px] md:text-[10px] text-white/50 leading-tight mt-0.5">{kpi.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="relative mt-3 rounded-2xl bg-card border border-border p-3">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2">
-                    <TrendingUp className="h-3 w-3 text-blue-500" />
-                    {t.restaurantMockCompareTitle}
-                  </div>
-                  <div className="space-y-1.5">
-                    {[
-                      { name: t.restaurantMockCompareS1, price: "3,20€", widthPct: 80, isBest: false },
-                      { name: t.restaurantMockCompareS2, price: "2,85€", widthPct: 70, isBest: true },
-                      { name: t.restaurantMockCompareS3, price: "3,90€", widthPct: 100, isBest: false },
-                    ].map((row, idx) => (
-                      <div key={idx} className="space-y-0.5">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-medium flex items-center gap-1.5">
-                            {row.name}
-                            {row.isBest && <span className="text-[9px] px-1.5 py-0 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold">{t.restaurantMockBadgeBest}</span>}
-                          </span>
-                          <span className={`font-bold tabular-nums ${row.isBest ? "text-emerald-600 dark:text-emerald-400" : ""}`}>{row.price}</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                          <div className={`h-full rounded-full ${row.isBest ? "bg-gradient-to-r from-emerald-400 to-emerald-600" : "bg-gradient-to-r from-blue-400 to-blue-500"}`} style={{ width: `${row.widthPct}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-400 mb-4">
-                <Utensils className="h-3 w-3" />
-                {t.restaurantBadge}
-              </div>
-              <h3 className="text-2xl md:text-3xl font-bold tracking-tight mb-3" data-testid="text-restaurant-headline">
-                {t.restaurantHeadline}
-              </h3>
-              <p className="text-muted-foreground text-base mb-6 leading-relaxed">
-                {t.restaurantSub}
-              </p>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {t.restaurantFeatures.map((feature, idx) => {
-                  const Icon = restaurantFeatureIcons[idx];
-                  return (
-                    <div key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-border bg-card hover:border-blue-500/40 transition-colors" data-testid={`restaurant-feature-${idx}`}>
-                      <div className="h-8 w-8 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-semibold text-sm">{feature.title}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5 leading-snug">{feature.desc}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <Button
-                className="mt-6 gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => handleStart("restaurant")}
-                data-testid="button-restaurant-cta"
-              >
-                {t.restaurantCta}
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SHOWCASE — Key Features */}
-      <section id="funktionen" className="scroll-mt-20 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl px-4 md:px-8">
-          <div className="mx-auto max-w-2xl text-center mb-10 md:mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight" data-testid="text-showcase-headline">
-              {t.showcaseHeadline}
-            </h2>
-            <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
-              {t.showcaseSub}
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {t.features.map((item, idx) => {
-              const Icon = featureIcons[idx % featureIcons.length];
-              return (
-                <Reveal key={idx} delay={(idx % 5) * 60}>
-                  <div className="h-full rounded-2xl border border-border bg-card p-5 hover-elevate" data-testid={`feature-${idx}`}>
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-bold text-sm mb-1" data-testid={`text-feature-title-${idx}`}>{item.title}</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
-                  </div>
-                </Reveal>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* STEPS */}
-      <section id="so-funktioniert" className="scroll-mt-20 py-16 md:py-24 bg-muted/30 border-y border-border/50">
-        <div className="mx-auto max-w-6xl px-4 md:px-8">
-          <div className="mx-auto max-w-2xl text-center mb-12">
-            <h2 className="text-2xl font-bold tracking-tight md:text-3xl" data-testid="text-steps-headline">
-              {t.stepsHeadline}
-            </h2>
-            <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
-              {t.stepsSub}
-            </p>
-          </div>
-          <div className="grid gap-8 md:grid-cols-3 relative">
-            {/* Connection line for desktop */}
-            <div className="hidden md:block absolute top-6 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" />
-            {t.steps.map((item, idx) => (
-              <div key={idx} className="text-center relative" data-testid={`card-step-${idx + 1}`}>
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-lg mb-4 shadow-lg shadow-primary/30 relative z-10">
-                  {idx + 1}
-                </div>
-                <h3 className="font-semibold text-base mb-2" data-testid={`text-step-title-${idx + 1}`}>{item.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                <ul className="space-y-3 flex-1">
+                  {p.bullets.map((b, i) => {
+                    const Icon = p.icons[i] ?? CheckCircle2;
+                    return (
+                      <li key={i} className="flex items-start gap-3">
+                        <Icon className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
+                        <span className="text-sm md:text-base text-foreground/80 leading-relaxed">
+                          {b}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <Button
+                  variant="outline"
+                  className="mt-7 self-start gap-2"
+                  onClick={() => handleStart(p.role)}
+                  data-testid={`button-${p.testid}-cta`}
+                >
+                  {p.cta}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* MOBILE EXPERIENCE */}
-      <section id="mobile" className="scroll-mt-20 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl px-4 md:px-8">
-          <Reveal>
-            <div className="grid gap-10 lg:grid-cols-2 items-center">
-              <div>
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary mb-4">
-                  <Smartphone className="h-3 w-3" />
-                  {t.mobileBadge}
+      {/* STEPS — So funktioniert es */}
+      <section
+        id="so-funktioniert"
+        className="scroll-mt-20 px-4 md:px-8 py-24 md:py-32"
+      >
+        <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
+            <h2
+              className="text-3xl md:text-5xl font-semibold tracking-tight"
+              data-testid="text-steps-headline"
+            >
+              {t.stepsHeadline}
+            </h2>
+          </div>
+          <div className="grid md:grid-cols-3 md:divide-x divide-border">
+            {t.steps.map((s, idx) => (
+              <div
+                key={idx}
+                className="px-0 md:px-8 py-6 md:py-2 text-center md:text-left"
+                data-testid={`card-step-${idx + 1}`}
+              >
+                <div className="text-sm font-semibold text-muted-foreground tabular-nums">
+                  0{idx + 1}
                 </div>
-                <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-3" data-testid="text-mobile-headline">
-                  {t.mobileHeadline}
-                </h2>
-                <p className="text-muted-foreground text-base md:text-lg mb-6 leading-relaxed">
-                  {t.mobileSub}
+                <h3
+                  className="mt-2 text-lg md:text-xl font-semibold tracking-tight"
+                  data-testid={`text-step-title-${idx + 1}`}
+                >
+                  {s.title}
+                </h3>
+                <p className="mt-2 text-sm md:text-base text-muted-foreground leading-relaxed">
+                  {s.desc}
                 </p>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {t.mobileBullets.map((b, idx) => {
-                    const Icon = mobileBulletIcons[idx];
-                    return (
-                      <div key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-border bg-card" data-testid={`mobile-bullet-${idx}`}>
-                        <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-semibold text-sm">{b.title}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5 leading-snug">{b.desc}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
-
-              {/* Phone mockup */}
-              <div className="flex justify-center">
-                <div className="relative w-[260px] md:w-[300px] aspect-[9/19] rounded-[3rem] border-[10px] border-[#161921] bg-[#161921] shadow-2xl overflow-hidden" data-testid="phone-mockup">
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-5 w-28 bg-[#161921] rounded-b-2xl z-20" />
-                  <div className="relative h-full w-full bg-gradient-to-b from-[#1e2130] to-[#161921] p-3 pt-7 flex flex-col gap-2.5">
-                    {/* Push notification card */}
-                    <div className="rounded-2xl bg-white/[0.08] border border-white/15 p-3 flex items-start gap-2.5 backdrop-blur" data-testid="phone-push">
-                      <div className="h-8 w-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0">
-                        <BellRing className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="text-[11px] font-bold text-white">GastroConnect</div>
-                          <div className="text-[9px] text-white/50">{t.mobileMockTime}</div>
-                        </div>
-                        <div className="text-[11px] font-semibold text-white mt-0.5">{t.mobileMockTitle}</div>
-                        <div className="text-[10px] text-white/70 leading-tight mt-0.5 truncate">{t.mobileMockMsg}</div>
-                      </div>
-                    </div>
-
-                    {/* Mini cards */}
-                    {[
-                      { icon: ShoppingCart, label: "Trattoria Lina", sub: "8 Artikel", color: "text-blue-400" },
-                      { icon: MessageSquare, label: "Frische GmbH", sub: "Neue Nachricht", color: "text-emerald-400" },
-                      { icon: Truck, label: "Bio Bauer", sub: "In Lieferung", color: "text-amber-400" },
-                    ].map((row, idx) => (
-                      <div key={idx} className="rounded-xl bg-white/[0.05] border border-white/10 p-2.5 flex items-center gap-2.5">
-                        <div className={`h-8 w-8 rounded-lg bg-white/[0.08] flex items-center justify-center ${row.color}`}>
-                          <row.icon className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[11px] font-semibold text-white truncate">{row.label}</div>
-                          <div className="text-[9px] text-white/50 truncate">{row.sub}</div>
-                        </div>
-                        <ChevronRight className="h-3.5 w-3.5 text-white/30" />
-                      </div>
-                    ))}
-
-                    <div className="flex-1" />
-
-                    {/* Bottom nav */}
-                    <div className="rounded-2xl bg-white/[0.08] border border-white/15 backdrop-blur px-3 py-2 flex items-center justify-around">
-                      {[Smartphone, MessageSquare, ShoppingCart, BarChart3].map((Icon, idx) => (
-                        <div key={idx} className={`h-7 w-7 rounded-lg flex items-center justify-center ${idx === 0 ? "bg-white/30 text-white" : "text-white/50"}`}>
-                          <Icon className="h-3.5 w-3.5" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* BENEFITS — Vorteile */}
-      <section id="vorteile" className="scroll-mt-20 py-16 md:py-24 bg-muted/30 border-y border-border/50">
-        <div className="mx-auto max-w-6xl px-4 md:px-8">
-          <Reveal>
-            <div className="mx-auto max-w-2xl text-center mb-10 md:mb-12">
-              <h2 className="text-2xl md:text-4xl font-bold tracking-tight" data-testid="text-benefits-headline">
-                {t.benefitsHeadline}
-              </h2>
-              <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
-                {t.benefitsSub}
-              </p>
-            </div>
-          </Reveal>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {t.benefits.map((item, idx) => {
-              const Icon = benefitIcons[idx];
+      {/* FEATURES — Funktionen */}
+      <section
+        id="funktionen"
+        className="scroll-mt-20 px-4 md:px-8 py-24 md:py-32"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
+            <h2
+              className="text-3xl md:text-5xl font-semibold tracking-tight"
+              data-testid="text-features-headline"
+            >
+              {t.featuresHeadline}
+            </h2>
+            <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
+              {t.featuresSub}
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {t.features.map((f, idx) => {
+              const Icon = featureIcons[idx % featureIcons.length];
               return (
-                <Reveal key={idx} delay={idx * 80}>
-                  <div className="h-full rounded-2xl border border-border bg-card p-5 hover-elevate" data-testid={`card-benefit-${idx}`}>
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-bold text-base mb-1.5" data-testid={`text-benefit-title-${idx}`}>{item.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                <Reveal key={idx} delay={(idx % 5) * 60}>
+                  <div
+                    className="h-full rounded-2xl border border-border bg-white dark:bg-card p-5 hover-elevate transition"
+                    data-testid={`feature-${idx}`}
+                  >
+                    <Icon className="h-5 w-5 text-foreground mb-3" />
+                    <h3
+                      className="font-semibold text-sm md:text-base mb-1"
+                      data-testid={`text-feature-title-${idx}`}
+                    >
+                      {f.title}
+                    </h3>
+                    <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+                      {f.desc}
+                    </p>
                   </div>
                 </Reveal>
               );
@@ -1174,114 +965,308 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="scroll-mt-20 py-16 md:py-24">
-        <div className="mx-auto max-w-3xl px-4 md:px-8">
-          <Reveal>
-            <div className="text-center mb-10 md:mb-12">
-              <h2 className="text-2xl md:text-4xl font-bold tracking-tight" data-testid="text-faq-headline">
-                {t.faqHeadline}
-              </h2>
-              <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
-                {t.faqSub}
-              </p>
-            </div>
-          </Reveal>
-          <Reveal>
-            <Accordion type="single" collapsible className="rounded-2xl border border-border bg-card divide-y divide-border overflow-hidden">
-              {t.faq.map((item, idx) => (
-                <AccordionItem key={idx} value={`item-${idx}`} className="border-0">
-                  <AccordionTrigger className="px-5 py-4 text-left text-base font-semibold hover:no-underline" data-testid={`faq-q-${idx}`}>
-                    {item.q}
-                  </AccordionTrigger>
-                  <AccordionContent className="px-5 pb-4 text-sm text-muted-foreground leading-relaxed" data-testid={`faq-a-${idx}`}>
-                    {item.a}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section id="cta" className="scroll-mt-20 py-16 md:py-20 bg-primary/5 border-t border-border/50">
-        <div className="mx-auto max-w-6xl px-4 md:px-8 text-center">
-          <h2 className="text-2xl font-bold tracking-tight md:text-3xl mb-4" data-testid="text-cta-headline">
-            {t.ctaHeadline}
-          </h2>
-          <p className="text-muted-foreground text-base md:text-lg mb-3 max-w-xl mx-auto">
-            {t.ctaSub}
-          </p>
-          <p className="text-xs md:text-sm text-muted-foreground mb-8 inline-flex items-center gap-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-            {t.finalCtaConfirm}
-          </p>
-          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Button
-              size="lg"
-              className="w-full sm:w-auto gap-2 text-base bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => handleStart("supplier")}
-              data-testid="button-cta-supplier"
+      {/* SHOWCASE — Inline-Produktvorschau */}
+      <section className="px-4 md:px-8 py-24 md:py-32">
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
+            <h2
+              className="text-3xl md:text-5xl font-semibold tracking-tight"
+              data-testid="text-showcase-headline"
             >
-              <Store className="h-4 w-4" />
-              {t.ctaSupplier}
-            </Button>
-            <Button
-              size="lg"
-              className="w-full sm:w-auto gap-2 text-base bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => handleStart("restaurant")}
-              data-testid="button-cta-restaurant"
-            >
-              <Utensils className="h-4 w-4" />
-              {t.ctaRestaurant}
-            </Button>
+              {t.showcaseHeadline}
+            </h2>
+            <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
+              {t.showcaseSub}
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {t.showcase.map((s, idx) => (
+              <figure
+                key={idx}
+                className="flex flex-col"
+                data-testid={`showcase-${idx}`}
+              >
+                <div className="rounded-2xl border border-border overflow-hidden shadow-xl shadow-black/5 bg-card">
+                  <img
+                    src={s.img}
+                    alt={s.alt}
+                    className="w-full h-auto block"
+                    loading="lazy"
+                  />
+                </div>
+                <figcaption className="mt-4 text-sm text-muted-foreground leading-relaxed">
+                  {s.caption}
+                </figcaption>
+              </figure>
+            ))}
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-border py-12 md:py-16 bg-card/30">
-        <div className="mx-auto max-w-6xl px-4 md:px-8">
+      {/* MOBILE */}
+      <section id="mobile" className="scroll-mt-20 px-4 md:px-8 py-24 md:py-32">
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <div className="grid gap-12 lg:grid-cols-2 items-center">
+              <div>
+                <h2
+                  className="text-3xl md:text-5xl font-semibold tracking-tight"
+                  data-testid="text-mobile-headline"
+                >
+                  {t.mobileHeadline}
+                </h2>
+                <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
+                  {t.mobileSub}
+                </p>
+                <ul className="mt-8 space-y-5">
+                  {t.mobileBullets.map((b, idx) => {
+                    const Icon = mobileBulletIcons[idx];
+                    return (
+                      <li
+                        key={idx}
+                        className="flex items-start gap-3"
+                        data-testid={`mobile-bullet-${idx}`}
+                      >
+                        <div className="h-9 w-9 rounded-xl border border-border bg-muted/30 flex items-center justify-center shrink-0">
+                          <Icon className="h-4 w-4 text-foreground" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm md:text-base">
+                            {b.title}
+                          </div>
+                          <div className="text-sm text-muted-foreground mt-0.5 leading-relaxed">
+                            {b.desc}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              {/* Phone frame */}
+              <div className="flex justify-center">
+                <div className="rounded-[2.75rem] border border-border bg-card p-3 shadow-2xl shadow-black/5">
+                  <div className="rounded-[2.25rem] overflow-hidden border border-border w-[260px] md:w-[300px] aspect-[9/19] bg-card">
+                    <img
+                      src={shotHome}
+                      alt="GastroConnect mobile"
+                      className="w-full h-full object-cover object-top"
+                      loading="lazy"
+                      data-testid="img-mobile-screenshot"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="scroll-mt-20 px-4 md:px-8 py-24 md:py-32">
+        <div className="mx-auto max-w-3xl">
+          <div className="text-center mb-12 md:mb-16">
+            <h2
+              className="text-3xl md:text-5xl font-semibold tracking-tight"
+              data-testid="text-faq-headline"
+            >
+              {t.faqHeadline}
+            </h2>
+          </div>
+          <Accordion type="single" collapsible className="divide-y divide-border border-t border-b border-border">
+            {t.faq.map((item, idx) => (
+              <AccordionItem
+                key={idx}
+                value={`item-${idx}`}
+                className="border-0"
+              >
+                <AccordionTrigger
+                  className="py-5 text-left text-base md:text-lg font-medium hover:no-underline"
+                  data-testid={`faq-q-${idx}`}
+                >
+                  {item.q}
+                </AccordionTrigger>
+                <AccordionContent
+                  className="pb-5 text-sm md:text-base text-muted-foreground leading-relaxed"
+                  data-testid={`faq-a-${idx}`}
+                >
+                  {item.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="px-4 md:px-8 py-24 md:py-32">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2
+            className="text-3xl md:text-5xl font-semibold tracking-tight"
+            data-testid="text-cta-headline"
+          >
+            {t.ctaHeadline}
+          </h2>
+          <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
+            {t.ctaSub}
+          </p>
+          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <Button
+              size="lg"
+              className="w-full sm:w-auto gap-2 text-base"
+              onClick={() => handleStart("restaurant")}
+              data-testid="button-cta-restaurant"
+            >
+              <Utensils className="h-4 w-4" />
+              {t.heroCtaRestaurant}
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full sm:w-auto gap-2 text-base"
+              onClick={() => handleStart("supplier")}
+              data-testid="button-cta-supplier"
+            >
+              <Store className="h-4 w-4" />
+              {t.heroCtaSupplier}
+            </Button>
+          </div>
+          <p className="mt-5 text-xs md:text-sm text-muted-foreground inline-flex items-center gap-1.5">
+            <CheckCircle2 className="h-3.5 w-3.5 text-foreground/60" />
+            {t.ctaConfirm}
+          </p>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="border-t border-border px-4 md:px-8 py-12 md:py-16">
+        <div className="mx-auto max-w-6xl">
           <div className="grid gap-10 md:grid-cols-4">
             <div className="md:col-span-1">
               <div className="flex items-center gap-2 mb-3">
-                <img src={logoImg} alt="GastroConnect Logo" className="h-12 w-12 object-contain dark:invert -mr-1" />
-                <span className="font-bold text-sm tracking-tight" data-testid="text-footer-brand">GastroConnect</span>
+                <img
+                  src={logoImg}
+                  alt="GastroConnect Logo"
+                  className="h-10 w-10 object-contain dark:invert -mr-1"
+                />
+                <span
+                  className="font-semibold text-sm tracking-tight"
+                  data-testid="text-footer-brand"
+                >
+                  GastroConnect
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed max-w-xs" data-testid="text-footer-tagline">
+              <p
+                className="text-xs text-muted-foreground leading-relaxed max-w-xs"
+                data-testid="text-footer-tagline"
+              >
                 {t.footerTagline}
               </p>
             </div>
 
             <div>
-              <h3 className="text-sm font-bold mb-3">{t.footerTitleProduct}</h3>
+              <h3 className="text-sm font-semibold mb-3">
+                {t.footerTitleProduct}
+              </h3>
               <ul className="space-y-2 text-sm">
-                <li><button onClick={() => smoothScrollTo("funktionen")} className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-features">{t.footerLinkFeatures}</button></li>
-                <li><button onClick={() => smoothScrollTo("so-funktioniert")} className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-steps">{t.footerLinkSteps}</button></li>
-                <li><button onClick={() => smoothScrollTo("faq")} className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-faq">{t.footerLinkFaq}</button></li>
+                <li>
+                  <button
+                    onClick={() => smoothScrollTo("funktionen")}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="footer-link-features"
+                  >
+                    {t.footerLinkFeatures}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => smoothScrollTo("so-funktioniert")}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="footer-link-steps"
+                  >
+                    {t.footerLinkSteps}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => smoothScrollTo("faq")}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="footer-link-faq"
+                  >
+                    {t.footerLinkFaq}
+                  </button>
+                </li>
               </ul>
             </div>
 
             <div>
-              <h3 className="text-sm font-bold mb-3">{t.footerTitleCompany}</h3>
+              <h3 className="text-sm font-semibold mb-3">
+                {t.footerTitleCompany}
+              </h3>
               <ul className="space-y-2 text-sm">
-                <li><a href="/about" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-about">{t.footerLinkAbout}</a></li>
-                <li><a href="mailto:hello@gastroconnect.app" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-contact">{t.footerLinkContact}</a></li>
+                <li>
+                  <a
+                    href="/about"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="footer-link-about"
+                  >
+                    {t.footerLinkAbout}
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="mailto:hello@gastroconnect.app"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="footer-link-contact"
+                  >
+                    {t.footerLinkContact}
+                  </a>
+                </li>
               </ul>
             </div>
 
             <div>
-              <h3 className="text-sm font-bold mb-3">{t.footerTitleLegal}</h3>
+              <h3 className="text-sm font-semibold mb-3">
+                {t.footerTitleLegal}
+              </h3>
               <ul className="space-y-2 text-sm">
-                <li><a href="/impressum" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-imprint">{t.footerLinkImprint}</a></li>
-                <li><a href="/datenschutz" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-privacy">{t.footerLinkPrivacy}</a></li>
-                <li><a href="/agb" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="footer-link-terms">{t.footerLinkTerms}</a></li>
+                <li>
+                  <a
+                    href="/impressum"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="footer-link-imprint"
+                  >
+                    {t.footerLinkImprint}
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/datenschutz"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="footer-link-privacy"
+                  >
+                    {t.footerLinkPrivacy}
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/agb"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="footer-link-terms"
+                  >
+                    {t.footerLinkTerms}
+                  </a>
+                </li>
               </ul>
             </div>
           </div>
 
           <div className="mt-10 pt-6 border-t border-border flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <p className="text-xs text-muted-foreground" data-testid="text-footer-copyright">
+            <p
+              className="text-xs text-muted-foreground"
+              data-testid="text-footer-copyright"
+            >
               © {new Date().getFullYear()} GastroConnect. {t.footerCopyright}
             </p>
             <p className="text-xs text-muted-foreground">
