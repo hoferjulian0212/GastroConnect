@@ -25,10 +25,12 @@ import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
+import { useStickyActionBarHeight } from "@/hooks/use-sticky-action-bar";
 
 export default function RestaurantCart() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const { containerRef: stickyBarContainerRef, barRef: stickyBarRef } = useStickyActionBarHeight();
   const [orderNotes, setOrderNotes] = useState<Record<string, string>>({});
   const [deliveryOptions, setDeliveryOptions] = useState<Record<string, "asap" | "date">>({});
   const [selectedDeliveryDates, setSelectedDeliveryDates] = useState<Record<string, string>>({});
@@ -386,6 +388,7 @@ export default function RestaurantCart() {
   }
 
   return (
+    <div ref={stickyBarContainerRef}>
     <PullToRefreshWrapper
       onRefresh={async () => {
         await queryClient.invalidateQueries({
@@ -395,7 +398,7 @@ export default function RestaurantCart() {
           },
         });
       }}
-      className="space-y-4 md:space-y-6 md:pb-6 pb-[calc(var(--mobile-cta-offset)+80px)]"
+      className="space-y-4 md:space-y-6 md:pb-6 pb-[calc(var(--mobile-cta-offset)+var(--mobile-action-bar-h,80px))]"
     >
       <MobilePageHeader
         title={lang === "de" ? "Warenkorb" : "Carrello"}
@@ -816,6 +819,7 @@ export default function RestaurantCart() {
       </Dialog>
     {cartItems && cartItems.length > 0 && !orderConfirmation && (
       <div
+        ref={stickyBarRef}
         className="md:hidden fixed left-3 right-3 z-30 rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.18)] p-3 flex items-center gap-3"
         style={{ bottom: "var(--mobile-cta-offset)" }}
         data-testid="mobile-cart-sticky-footer"
@@ -854,5 +858,6 @@ export default function RestaurantCart() {
       </div>
     )}
     </PullToRefreshWrapper>
+    </div>
   );
 }
