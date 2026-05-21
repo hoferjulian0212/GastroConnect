@@ -1,7 +1,14 @@
 import { useLocation } from "wouter";
 import { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { useUser } from "@/context/UserContext";
 import { Button } from "@/components/ui/button";
+import { MotionReveal } from "@/components/landing/MotionReveal";
+import { HeadlineReveal } from "@/components/landing/HeadlineReveal";
+import { HeroShotReveal } from "@/components/landing/HeroShotReveal";
+import { TiltCard } from "@/components/landing/TiltCard";
+import { PinnedFeatureStory } from "@/components/landing/PinnedFeatureStory";
+import { useLandingSmoothScroll } from "@/components/landing/useLandingSmoothScroll";
 import {
   Sheet,
   SheetContent,
@@ -44,48 +51,59 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-function Reveal({
-  children,
-  className = "",
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [shown, setShown] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
-      setShown(true);
-      return;
-    }
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            setShown(true);
-            obs.disconnect();
-          }
-        });
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-  return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={`transition-all duration-700 ease-out will-change-transform ${shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"} ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
+const animationStrings = {
+  de: {
+    callout1: "Preisvergleich",
+    callout2: "Live-Chat",
+    callout3: "Lieferschein als PDF",
+    priceStoryHeadline: "Preisvergleich in Echtzeit.",
+    priceStorySteps: [
+      "Identische Produkte. Drei Händler. Eine Übersicht.",
+      "Ersparnis sofort sichtbar.",
+      "Direkt im Katalog bestellen.",
+    ],
+    complaintStoryHeadline: "Reklamation mit Nachlieferung.",
+    complaintStorySteps: [
+      "Betroffene Artikel auswählen.",
+      "Händler bestätigt direkt im Chat.",
+      "Nachlieferung als Folge-Bestellung.",
+    ],
+  },
+  it: {
+    callout1: "Confronto prezzi",
+    callout2: "Chat live",
+    callout3: "Bolla in PDF",
+    priceStoryHeadline: "Confronto prezzi in tempo reale.",
+    priceStorySteps: [
+      "Prodotti identici. Tre fornitori. Una panoramica.",
+      "Risparmio subito visibile.",
+      "Ordina direttamente dal catalogo.",
+    ],
+    complaintStoryHeadline: "Reclamo con riconsegna.",
+    complaintStorySteps: [
+      "Seleziona gli articoli interessati.",
+      "Il fornitore conferma in chat.",
+      "Riconsegna come ordine successivo.",
+    ],
+  },
+  en: {
+    callout1: "Price comparison",
+    callout2: "Live chat",
+    callout3: "Delivery note as PDF",
+    priceStoryHeadline: "Price comparison in real time.",
+    priceStorySteps: [
+      "Identical products. Three suppliers. One overview.",
+      "Savings visible instantly.",
+      "Order directly from the catalog.",
+    ],
+    complaintStoryHeadline: "Complaints with re-delivery.",
+    complaintStorySteps: [
+      "Pick the affected items.",
+      "Supplier confirms right in chat.",
+      "Re-delivery as a follow-up order.",
+    ],
+  },
+} as const;
 
 function smoothScrollTo(id: string) {
   const el = document.getElementById(id);
@@ -532,6 +550,32 @@ export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [lang, setLang] = useState<Lang>("de");
+  const reduceMotion = useReducedMotion();
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(min-width: 768px)").matches,
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(mq.matches);
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // A1 — Lenis smooth scroll (landing only, desktop only, reduced-motion safe)
+  useLandingSmoothScroll();
+
+  // B4 — Phone-frame parallax in mobile section (desktop-only motion)
+  const phoneFrameRef = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress: phoneProgress } = useScroll({
+    target: phoneFrameRef,
+    offset: ["start end", "end start"],
+    layoutEffect: false,
+  });
+  const phoneY = useTransform(phoneProgress, [0, 1], [24, -24]);
+  const phoneParallaxActive = isDesktop && !reduceMotion;
 
   useEffect(() => {
     setLang(detectInitialLang());
@@ -558,6 +602,7 @@ export default function Landing() {
   }
 
   const t = translations[lang];
+  const a = animationStrings[lang];
 
   function handleStart(role: "restaurant" | "supplier") {
     setLocation(`/${role}`);
@@ -752,13 +797,13 @@ export default function Landing() {
       {/* HERO */}
       <section className="px-4 md:px-8 pt-12 md:pt-20 pb-12 md:pb-16">
         <div className="mx-auto max-w-5xl text-center">
-          <Reveal>
-            <h1
-              className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] max-w-4xl mx-auto"
-              data-testid="text-hero-headline"
-            >
-              {t.heroH1}
-            </h1>
+          <HeadlineReveal
+            key={`hero-${lang}`}
+            text={t.heroH1}
+            className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] max-w-4xl mx-auto"
+            testId="text-hero-headline"
+          />
+          <MotionReveal delay={400} y={16} blur={false}>
             <p className="mt-6 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
               {t.heroSub}
             </p>
@@ -784,21 +829,21 @@ export default function Landing() {
                 {t.heroCtaSupplier}
               </Button>
             </div>
-          </Reveal>
+          </MotionReveal>
         </div>
 
-        {/* Hero screenshot */}
-        <Reveal delay={120} className="mx-auto max-w-6xl mt-12 md:mt-16">
-          <div className="rounded-2xl border border-border overflow-hidden shadow-2xl shadow-black/5 bg-card">
-            <img
-              src={shotHome}
-              alt={t.heroImageAlt}
-              className="w-full h-auto block"
-              data-testid="img-hero-screenshot"
-              loading="eager"
-            />
-          </div>
-        </Reveal>
+        {/* Hero screenshot — A2 grow + B2 callouts + B3 tilt */}
+        <div className="mx-auto max-w-6xl mt-12 md:mt-16">
+          <HeroShotReveal
+            src={shotHome}
+            alt={t.heroImageAlt}
+            callouts={[
+              { label: a.callout1, ax: 22, ay: 32, lx: 8, ly: 14, testId: "callout-price" },
+              { label: a.callout2, ax: 78, ay: 48, lx: 94, ly: 24, testId: "callout-chat" },
+              { label: a.callout3, ax: 52, ay: 78, lx: 30, ly: 96, testId: "callout-pdf" },
+            ]}
+          />
+        </div>
       </section>
 
       {/* PILLARS — Für wen */}
@@ -943,7 +988,7 @@ export default function Landing() {
             {t.features.map((f, idx) => {
               const Icon = featureIcons[idx % featureIcons.length];
               return (
-                <Reveal key={idx} delay={(idx % 5) * 60}>
+                <MotionReveal key={idx} delay={(idx % 5) * 60}>
                   <div
                     className="h-full rounded-2xl border border-border bg-white dark:bg-card p-5 hover-elevate transition"
                     data-testid={`feature-${idx}`}
@@ -959,12 +1004,31 @@ export default function Landing() {
                       {f.desc}
                     </p>
                   </div>
-                </Reveal>
+                </MotionReveal>
               );
             })}
           </div>
         </div>
       </section>
+
+      {/* B1a — Pinned Preisvergleich-Story */}
+      <PinnedFeatureStory
+        imageSrc={shotPrice}
+        imageAlt="GastroConnect Preisvergleich"
+        headline={a.priceStoryHeadline}
+        steps={[...a.priceStorySteps]}
+        testId="pinned-story-price"
+      />
+
+      {/* B1b — Pinned Reklamation/Nachlieferung-Story */}
+      <PinnedFeatureStory
+        imageSrc={shotInbox}
+        imageAlt="GastroConnect Reklamation im Chat"
+        headline={a.complaintStoryHeadline}
+        steps={[...a.complaintStorySteps]}
+        testId="pinned-story-complaint"
+        reverse
+      />
 
       {/* SHOWCASE — Inline-Produktvorschau */}
       <section className="px-4 md:px-8 py-24 md:py-32">
@@ -982,49 +1046,53 @@ export default function Landing() {
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {t.showcase.map((s, idx) => (
-              <figure
-                key={idx}
-                className="flex flex-col"
-                data-testid={`showcase-${idx}`}
-              >
-                <div className="rounded-2xl border border-border overflow-hidden shadow-xl shadow-black/5 bg-card">
-                  <img
-                    src={s.img}
-                    alt={s.alt}
-                    className="w-full h-auto block"
-                    loading="lazy"
-                  />
-                </div>
-                <figcaption className="mt-4 text-sm text-muted-foreground leading-relaxed">
-                  {s.caption}
-                </figcaption>
-              </figure>
+              <MotionReveal key={idx} delay={idx * 90}>
+                <figure
+                  className="flex flex-col"
+                  data-testid={`showcase-${idx}`}
+                >
+                  <TiltCard className="rounded-2xl border border-border overflow-hidden shadow-xl shadow-black/5 bg-card">
+                    <img
+                      src={s.img}
+                      alt={s.alt}
+                      className="w-full h-auto block"
+                      loading="lazy"
+                    />
+                  </TiltCard>
+                  <figcaption className="mt-4 text-sm text-muted-foreground leading-relaxed">
+                    {s.caption}
+                  </figcaption>
+                </figure>
+              </MotionReveal>
             ))}
           </div>
         </div>
       </section>
 
       {/* MOBILE */}
-      <section id="mobile" className="scroll-mt-20 px-4 md:px-8 py-24 md:py-32">
+      <section
+        id="mobile"
+        ref={phoneFrameRef}
+        className="relative scroll-mt-20 px-4 md:px-8 py-24 md:py-32"
+      >
         <div className="mx-auto max-w-6xl">
-          <Reveal>
-            <div className="grid gap-12 lg:grid-cols-2 items-center">
-              <div>
-                <h2
-                  className="text-3xl md:text-5xl font-semibold tracking-tight"
-                  data-testid="text-mobile-headline"
-                >
-                  {t.mobileHeadline}
-                </h2>
-                <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
-                  {t.mobileSub}
-                </p>
-                <ul className="mt-8 space-y-5">
-                  {t.mobileBullets.map((b, idx) => {
-                    const Icon = mobileBulletIcons[idx];
-                    return (
+          <div className="grid gap-12 lg:grid-cols-2 items-center">
+            <MotionReveal>
+              <h2
+                className="text-3xl md:text-5xl font-semibold tracking-tight"
+                data-testid="text-mobile-headline"
+              >
+                {t.mobileHeadline}
+              </h2>
+              <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
+                {t.mobileSub}
+              </p>
+              <ul className="mt-8 space-y-5">
+                {t.mobileBullets.map((b, idx) => {
+                  const Icon = mobileBulletIcons[idx];
+                  return (
+                    <MotionReveal key={idx} delay={idx * 80} y={16}>
                       <li
-                        key={idx}
                         className="flex items-start gap-3"
                         data-testid={`mobile-bullet-${idx}`}
                       >
@@ -1040,29 +1108,36 @@ export default function Landing() {
                           </div>
                         </div>
                       </li>
-                    );
-                  })}
-                </ul>
-              </div>
+                    </MotionReveal>
+                  );
+                })}
+              </ul>
+            </MotionReveal>
 
-              {/* Phone frame */}
-              <div className="flex justify-center">
-                <div className="rounded-[2.75rem] border border-border bg-card p-3 shadow-2xl shadow-black/5">
-                  <div className="rounded-[2.25rem] overflow-hidden border border-border w-[260px] md:w-[300px] aspect-[9/19] bg-card">
-                    <img
-                      src={shotMobile}
-                      alt="GastroConnect mobile"
-                      width={375}
-                      height={812}
-                      className="w-full h-full object-cover object-top"
-                      loading="lazy"
-                      data-testid="img-mobile-screenshot"
-                    />
-                  </div>
+            {/* Phone frame — B4 parallax (desktop) */}
+            <div className="flex justify-center">
+              <motion.div
+                className="rounded-[2.75rem] border border-border bg-card p-3 shadow-2xl shadow-black/5"
+                style={
+                  phoneParallaxActive
+                    ? { y: phoneY, willChange: "transform" }
+                    : undefined
+                }
+              >
+                <div className="rounded-[2.25rem] overflow-hidden border border-border w-[260px] md:w-[300px] aspect-[9/19] bg-card">
+                  <img
+                    src={shotMobile}
+                    alt="GastroConnect mobile"
+                    width={375}
+                    height={812}
+                    className="w-full h-full object-cover object-top"
+                    loading="lazy"
+                    data-testid="img-mobile-screenshot"
+                  />
                 </div>
-              </div>
+              </motion.div>
             </div>
-          </Reveal>
+          </div>
         </div>
       </section>
 
