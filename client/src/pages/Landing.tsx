@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion
 import { useUser } from "@/context/UserContext";
 import { Button } from "@/components/ui/button";
 import { MotionReveal } from "@/components/landing/MotionReveal";
+import CountUp from "@/components/CountUp";
 import { HeadlineReveal } from "@/components/landing/HeadlineReveal";
 import { HeroShotReveal } from "@/components/landing/HeroShotReveal";
 import { TiltCard } from "@/components/landing/TiltCard";
@@ -883,10 +884,10 @@ export default function Landing() {
                 role: "supplier" as const,
                 testid: "card-pillar-supplier",
               },
-            ].map((p) => (
+            ].map((p, pIdx) => (
+              <MotionReveal key={p.role} delay={pIdx * 120}>
               <div
-                key={p.role}
-                className="rounded-2xl border border-border bg-white dark:bg-card p-7 md:p-8 flex flex-col"
+                className="h-full rounded-2xl border border-border bg-white dark:bg-card p-7 md:p-8 flex flex-col"
                 data-testid={p.testid}
               >
                 <div className="flex items-center gap-3 mb-6">
@@ -923,6 +924,7 @@ export default function Landing() {
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
+              </MotionReveal>
             ))}
           </div>
         </div>
@@ -944,24 +946,26 @@ export default function Landing() {
           </div>
           <div className="grid md:grid-cols-3 md:divide-x divide-border">
             {t.steps.map((s, idx) => (
-              <div
-                key={idx}
-                className="px-0 md:px-8 py-6 md:py-2 text-center md:text-left"
-                data-testid={`card-step-${idx + 1}`}
-              >
-                <div className="text-sm font-semibold text-muted-foreground tabular-nums">
-                  0{idx + 1}
-                </div>
-                <h3
-                  className="mt-2 text-lg md:text-xl font-semibold tracking-tight"
-                  data-testid={`text-step-title-${idx + 1}`}
+              <MotionReveal key={idx} delay={idx * 100}>
+                <div
+                  className="px-0 md:px-8 py-6 md:py-2 text-center md:text-left"
+                  data-testid={`card-step-${idx + 1}`}
                 >
-                  {s.title}
-                </h3>
-                <p className="mt-2 text-sm md:text-base text-muted-foreground leading-relaxed">
-                  {s.desc}
-                </p>
-              </div>
+                  <div className="text-sm font-semibold text-muted-foreground tabular-nums">
+                    0
+                    <CountUp end={idx + 1} duration={700} />
+                  </div>
+                  <h3
+                    className="mt-2 text-lg md:text-xl font-semibold tracking-tight"
+                    data-testid={`text-step-title-${idx + 1}`}
+                  >
+                    {s.title}
+                  </h3>
+                  <p className="mt-2 text-sm md:text-base text-muted-foreground leading-relaxed">
+                    {s.desc}
+                  </p>
+                </div>
+              </MotionReveal>
             ))}
           </div>
         </div>
@@ -1154,8 +1158,8 @@ export default function Landing() {
           </div>
           <Accordion type="single" collapsible className="divide-y divide-border border-t border-b border-border">
             {t.faq.map((item, idx) => (
+              <MotionReveal key={idx} delay={idx * 60} y={12}>
               <AccordionItem
-                key={idx}
                 value={`item-${idx}`}
                 className="border-0"
               >
@@ -1172,6 +1176,7 @@ export default function Landing() {
                   {item.a}
                 </AccordionContent>
               </AccordionItem>
+              </MotionReveal>
             ))}
           </Accordion>
         </div>

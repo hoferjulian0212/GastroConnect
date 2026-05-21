@@ -20,12 +20,12 @@ import { Badge } from "@/components/ui/badge";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
-import { useEffect, useCallback, useState, useRef, useLayoutEffect } from "react";
+import { useEffect, useCallback, useState, useRef, useLayoutEffect, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { navigate } from "wouter/use-browser-location";
 import type { User } from "@shared/schema";
 
-import Landing from "@/pages/Landing";
+const Landing = lazy(() => import("@/pages/Landing"));
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 import RestaurantHome from "@/pages/restaurant/Home";
@@ -491,7 +491,11 @@ function AppLayout() {
   const pathOnly = location.split("?")[0];
 
   if (pathOnly === "/") {
-    return <Landing />;
+    return (
+      <Suspense fallback={<div className="min-h-screen" />}>
+        <Landing />
+      </Suspense>
+    );
   }
 
   if (pathOnly === "/login") {

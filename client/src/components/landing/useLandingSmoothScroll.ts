@@ -5,7 +5,6 @@ export function useLandingSmoothScroll() {
     if (typeof window === "undefined") return;
 
     const reducedMq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const desktopMq = window.matchMedia("(min-width: 768px)");
 
     let lenis: any = null;
     let rafId = 0;
@@ -27,11 +26,11 @@ export function useLandingSmoothScroll() {
 
     const init = async () => {
       if (lenis || initInFlight) return;
-      if (reducedMq.matches || !desktopMq.matches) return;
+      if (reducedMq.matches) return;
       initInFlight = true;
       try {
         const mod = await import("lenis");
-        if (cancelled || reducedMq.matches || !desktopMq.matches) return;
+        if (cancelled || reducedMq.matches) return;
         const Lenis = (mod as any).default ?? (mod as any).Lenis;
         lenis = new Lenis({
           lerp: 0.1,
@@ -53,7 +52,7 @@ export function useLandingSmoothScroll() {
     };
 
     const onChange = () => {
-      if (reducedMq.matches || !desktopMq.matches) {
+      if (reducedMq.matches) {
         teardown();
       } else {
         init();
@@ -62,12 +61,10 @@ export function useLandingSmoothScroll() {
 
     init();
     reducedMq.addEventListener("change", onChange);
-    desktopMq.addEventListener("change", onChange);
 
     return () => {
       cancelled = true;
       reducedMq.removeEventListener("change", onChange);
-      desktopMq.removeEventListener("change", onChange);
       teardown();
     };
   }, []);
