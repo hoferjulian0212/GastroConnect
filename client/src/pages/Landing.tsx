@@ -867,9 +867,9 @@ export default function Landing() {
               { label: a.callout1, ax: 93, ay: 85, lx: 82, ly: 52, testId: "callout-price" },
             ]}
             kpis={[
-              { label: a.kpiSavings, value: 18, suffix: "%", x: 14, y: 64, testId: "kpi-savings" },
-              { label: a.kpiOrders, value: 1240, x: 50, y: 8, testId: "kpi-orders" },
-              { label: a.kpiSuppliers, value: 86, x: 88, y: 64, testId: "kpi-suppliers" },
+              { label: a.kpiSavings, value: 18, suffix: "%", x: 16, y: 104, testId: "kpi-savings" },
+              { label: a.kpiOrders, value: 1240, x: 50, y: 104, testId: "kpi-orders" },
+              { label: a.kpiSuppliers, value: 86, x: 84, y: 104, testId: "kpi-suppliers" },
             ]}
           />
         </div>

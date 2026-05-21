@@ -89,29 +89,29 @@ export function HeroShotReveal({
             data-testid="img-hero-screenshot"
             loading="eager"
           />
-          {/* Reduced-motion: show end values immediately, no count-up */}
-          {kpis.map((k, i) => (
-            <div
-              key={`kpi-${i}`}
-              className="absolute hidden md:flex flex-col items-start gap-0.5 px-3 py-2 rounded-xl bg-white/90 backdrop-blur border border-border shadow-sm"
-              style={{
-                left: `${k.x}%`,
-                top: `${k.y}%`,
-                transform: "translate(-50%, -50%)",
-              }}
-              data-testid={k.testId}
-            >
-              <span className="text-[11px] md:text-xs uppercase tracking-wide text-muted-foreground font-semibold">
-                {k.label}
-              </span>
-              <span className="text-xl md:text-2xl font-semibold text-foreground tabular-nums">
-                {k.prefix ?? ""}
-                {k.decimals ? k.value.toFixed(k.decimals) : k.value}
-                {k.suffix ?? ""}
-              </span>
-            </div>
-          ))}
         </div>
+        {/* Reduced-motion: marketing KPI badges hanging off the bottom of the screenshot */}
+        {kpis.map((k, i) => (
+          <div
+            key={`kpi-${i}`}
+            className="absolute hidden md:flex flex-col items-start gap-0.5 px-4 py-2.5 rounded-xl bg-white/95 backdrop-blur border border-border shadow-lg"
+            style={{
+              left: `${k.x}%`,
+              top: `${k.y}%`,
+              transform: "translate(-50%, -50%)",
+            }}
+            data-testid={k.testId}
+          >
+            <span className="text-[11px] md:text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+              {k.label}
+            </span>
+            <span className="text-xl md:text-2xl font-semibold text-foreground tabular-nums">
+              {k.prefix ?? ""}
+              {k.decimals ? k.value.toFixed(k.decimals) : k.value}
+              {k.suffix ?? ""}
+            </span>
+          </div>
+        ))}
       </div>
     );
   }
@@ -186,11 +186,12 @@ export function HeroShotReveal({
           ))}
         </svg>
 
-        {/* KPI mockup overlays — A5 in-view count-up */}
+        {/* KPI marketing badges (A5) — floated outside the screenshot card
+            so they never overlap dashboard chrome */}
         {kpis.map((k, i) => (
           <motion.div
             key={`kpi-${i}`}
-            className="absolute hidden md:flex flex-col items-start gap-0.5 px-3 py-2 rounded-xl bg-white/90 backdrop-blur border border-border shadow-md"
+            className="absolute hidden md:flex flex-col items-start gap-0.5 px-4 py-2.5 rounded-xl bg-white/95 backdrop-blur border border-border shadow-lg"
             style={{
               left: `${k.x}%`,
               top: `${k.y}%`,
