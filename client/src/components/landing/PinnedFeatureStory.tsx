@@ -149,7 +149,7 @@ export function PinnedFeatureStory({
                     }}
                   >
                     <div className="flex flex-col items-center gap-2 shrink-0">
-                      <span className="text-xs font-semibold text-muted-foreground tabular-nums">
+                      <span className="text-sm font-semibold text-muted-foreground tabular-nums">
                         0{i + 1}
                       </span>
                       <div className="h-1.5 w-1.5 rounded-full bg-foreground/70" />

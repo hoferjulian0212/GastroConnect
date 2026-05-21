@@ -101,10 +101,10 @@ export function HeroShotReveal({
               }}
               data-testid={k.testId}
             >
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+              <span className="text-[11px] md:text-xs uppercase tracking-wide text-muted-foreground font-semibold">
                 {k.label}
               </span>
-              <span className="text-lg font-semibold text-foreground tabular-nums">
+              <span className="text-xl md:text-2xl font-semibold text-foreground tabular-nums">
                 {k.prefix ?? ""}
                 {k.decimals ? k.value.toFixed(k.decimals) : k.value}
                 {k.suffix ?? ""}
@@ -209,10 +209,10 @@ export function HeroShotReveal({
             }}
             data-testid={k.testId}
           >
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+            <span className="text-[11px] md:text-xs uppercase tracking-wide text-muted-foreground font-semibold">
               {k.label}
             </span>
-            <span className="text-lg font-semibold text-foreground tabular-nums">
+            <span className="text-xl md:text-2xl font-semibold text-foreground tabular-nums">
               {k.prefix ?? ""}
               {kpisInView ? (
                 <CountUp
@@ -250,7 +250,7 @@ export function HeroShotReveal({
               }}
             >
               <span
-                className="inline-block px-2.5 py-1 rounded-full bg-white/95 dark:bg-card/95 backdrop-blur text-[11px] font-medium text-foreground border border-border shadow-sm whitespace-nowrap"
+                className="inline-block px-3 py-1.5 rounded-full bg-white/95 dark:bg-card/95 backdrop-blur text-sm font-medium text-foreground border border-border shadow-sm whitespace-nowrap"
                 data-testid={c.testId}
               >
                 {c.label}

@@ -1018,7 +1018,7 @@ export default function Landing() {
                     >
                       {f.title}
                     </h3>
-                    <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
                       {f.desc}
                     </p>
                   </div>
@@ -1229,8 +1229,8 @@ export default function Landing() {
               {t.heroCtaSupplier}
             </Button>
           </div>
-          <p className="mt-5 text-xs md:text-sm text-muted-foreground inline-flex items-center gap-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-foreground/60" />
+          <p className="mt-5 text-sm md:text-base text-muted-foreground inline-flex items-center gap-1.5">
+            <CheckCircle2 className="h-4 w-4 text-foreground/60" />
             {t.ctaConfirm}
           </p>
         </div>
@@ -1255,7 +1255,7 @@ export default function Landing() {
                 </span>
               </div>
               <p
-                className="text-xs text-muted-foreground leading-relaxed max-w-xs"
+                className="text-sm text-muted-foreground leading-relaxed max-w-xs"
                 data-testid="text-footer-tagline"
               >
                 {t.footerTagline}
@@ -1361,12 +1361,12 @@ export default function Landing() {
 
           <div className="mt-10 pt-6 border-t border-border flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <p
-              className="text-xs text-muted-foreground"
+              className="text-sm text-muted-foreground"
               data-testid="text-footer-copyright"
             >
               © {new Date().getFullYear()} GastroConnect. {t.footerCopyright}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Made for Gastronomie
             </p>
           </div>
