@@ -65,13 +65,10 @@ export function PinnedFeatureStory({
     return () => unsub();
   }, [scrollYProgress, steps.length]);
 
-  // Mobile fallback: simple stacked, no pin
-  if (!isDesktop || reduce) {
+  // Reduced-motion fallback (any viewport): simple stacked, no pin, no snap
+  if (reduce) {
     return (
-      <section
-        className="px-4 py-20"
-        data-testid={testId}
-      >
+      <section className="px-4 py-20" data-testid={testId}>
         <div className="mx-auto max-w-6xl">
           <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-8">
             {headline}
@@ -92,6 +89,19 @@ export function PinnedFeatureStory({
           </ul>
         </div>
       </section>
+    );
+  }
+
+  // Mobile / tablet: horizontally snapping step carousel with tap-through dots
+  if (!isDesktop) {
+    return (
+      <MobileStoryCarousel
+        imageSrc={imageSrc}
+        imageAlt={imageAlt}
+        headline={headline}
+        steps={steps}
+        testId={testId}
+      />
     );
   }
 
@@ -175,6 +185,105 @@ export function PinnedFeatureStory({
               ))}
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+interface MobileStoryCarouselProps {
+  imageSrc: string;
+  imageAlt: string;
+  headline: string;
+  steps: string[];
+  testId?: string;
+}
+
+function MobileStoryCarousel({
+  imageSrc,
+  imageAlt,
+  headline,
+  steps,
+  testId,
+}: MobileStoryCarouselProps) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const [activeStep, setActiveStep] = useState(0);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const w = el.clientWidth;
+      if (w <= 0) return;
+      const idx = Math.round(el.scrollLeft / w);
+      setActiveStep(Math.max(0, Math.min(steps.length - 1, idx)));
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [steps.length]);
+
+  const goTo = (i: number) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+  };
+
+  return (
+    <section className="px-4 py-16" data-testid={testId}>
+      <div className="mx-auto max-w-6xl">
+        <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-6">
+          {headline}
+        </h2>
+        <div className="rounded-2xl border border-border overflow-hidden shadow-xl shadow-black/5 bg-card mb-6">
+          <img src={imageSrc} alt={imageAlt} className="w-full h-auto block" />
+        </div>
+
+        <div
+          ref={scrollerRef}
+          className="-mx-4 flex overflow-x-auto snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden"
+          style={{ scrollbarWidth: "none" }}
+          data-testid={testId ? `${testId}-scroller` : undefined}
+        >
+          {steps.map((s, i) => (
+            <div
+              key={i}
+              className="snap-center shrink-0 w-full px-4"
+              aria-roledescription="slide"
+              aria-label={`Schritt ${i + 1} von ${steps.length}`}
+            >
+              <div className="rounded-2xl border border-border bg-card p-5 min-h-[160px] flex items-start gap-4">
+                <div className="flex flex-col items-center gap-2 shrink-0">
+                  <span className="text-sm font-semibold text-muted-foreground tabular-nums">
+                    0{i + 1}
+                  </span>
+                  <div className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
+                </div>
+                <p className="text-lg font-medium text-foreground leading-snug">
+                  {s}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 flex items-center justify-center gap-2">
+          {steps.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => goTo(i)}
+              aria-label={`Zu Schritt ${i + 1} springen`}
+              aria-current={i === activeStep ? "true" : undefined}
+              data-testid={
+                testId ? `${testId}-dot-${i}` : undefined
+              }
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === activeStep
+                  ? "w-8 bg-foreground"
+                  : "w-4 bg-foreground/20"
+              }`}
+            />
+          ))}
         </div>
       </div>
     </section>
