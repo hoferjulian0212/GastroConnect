@@ -862,9 +862,9 @@ export default function Landing() {
             src={shotHome}
             alt={t.heroImageAlt}
             callouts={[
-              { label: a.callout1, ax: 22, ay: 32, lx: 8, ly: 14, testId: "callout-price" },
-              { label: a.callout2, ax: 78, ay: 48, lx: 94, ly: 24, testId: "callout-chat" },
-              { label: a.callout3, ax: 52, ay: 78, lx: 30, ly: 96, testId: "callout-pdf" },
+              { label: a.callout2, ax: 24, ay: 42, lx: 14, ly: 52, testId: "callout-chat" },
+              { label: a.callout3, ax: 20, ay: 84, lx: 48, ly: 52, testId: "callout-pdf" },
+              { label: a.callout1, ax: 93, ay: 85, lx: 82, ly: 52, testId: "callout-price" },
             ]}
             kpis={[
               { label: a.kpiSavings, value: 18, suffix: "%", x: 14, y: 64, testId: "kpi-savings" },
