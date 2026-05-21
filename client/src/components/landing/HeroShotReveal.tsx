@@ -7,6 +7,7 @@ import {
 } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { TiltCard } from "./TiltCard";
+import CountUp from "@/components/CountUp";
 
 interface Callout {
   label: string;
@@ -19,16 +20,35 @@ interface Callout {
   testId?: string;
 }
 
+interface KpiOverlay {
+  label: string;
+  value: number;
+  decimals?: number;
+  prefix?: string;
+  suffix?: string;
+  /** position on screenshot in % */
+  x: number;
+  y: number;
+  testId?: string;
+}
+
 interface HeroShotRevealProps {
   src: string;
   alt: string;
   callouts: Callout[];
+  kpis?: KpiOverlay[];
 }
 
-export function HeroShotReveal({ src, alt, callouts }: HeroShotRevealProps) {
+export function HeroShotReveal({
+  src,
+  alt,
+  callouts,
+  kpis = [],
+}: HeroShotRevealProps) {
   const reduce = useReducedMotion();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [showCallouts, setShowCallouts] = useState(false);
+  const [kpisInView, setKpisInView] = useState(false);
 
   const { scrollYProgress } = useScroll({
     target: wrapRef,
@@ -40,6 +60,12 @@ export function HeroShotReveal({ src, alt, callouts }: HeroShotRevealProps) {
   const rawScale = useTransform(scrollYProgress, [0, 0.35], [0.95, 1]);
   const rawY = useTransform(scrollYProgress, [0, 0.35], [40, 0]);
   const rawOpacity = useTransform(scrollYProgress, [0, 0.15, 0.35], [0, 0.85, 1]);
+  // A2: explicit width interpolation 85% → 100% as the shot scrolls in
+  const rawWidth = useTransform(
+    scrollYProgress,
+    [0, 0.35],
+    ["85%", "100%"],
+  );
 
   const scale = useSpring(rawScale, { stiffness: 120, damping: 24, mass: 0.8 });
   const yMv = useSpring(rawY, { stiffness: 120, damping: 24, mass: 0.8 });
@@ -47,6 +73,7 @@ export function HeroShotReveal({ src, alt, callouts }: HeroShotRevealProps) {
   useEffect(() => {
     const unsub = scrollYProgress.on("change", (v) => {
       setShowCallouts(v > 0.25);
+      if (v > 0.2) setKpisInView(true);
     });
     return () => unsub();
   }, [scrollYProgress]);
@@ -54,7 +81,7 @@ export function HeroShotReveal({ src, alt, callouts }: HeroShotRevealProps) {
   if (reduce) {
     return (
       <div ref={wrapRef} className="relative">
-        <div className="rounded-2xl border border-border overflow-hidden shadow-2xl shadow-black/5 bg-card">
+        <div className="relative rounded-2xl border border-border overflow-hidden shadow-2xl shadow-black/5 bg-card">
           <img
             src={src}
             alt={alt}
@@ -62,6 +89,28 @@ export function HeroShotReveal({ src, alt, callouts }: HeroShotRevealProps) {
             data-testid="img-hero-screenshot"
             loading="eager"
           />
+          {/* Reduced-motion: show end values immediately, no count-up */}
+          {kpis.map((k, i) => (
+            <div
+              key={`kpi-${i}`}
+              className="absolute hidden md:flex flex-col items-start gap-0.5 px-3 py-2 rounded-xl bg-white/90 backdrop-blur border border-border shadow-sm"
+              style={{
+                left: `${k.x}%`,
+                top: `${k.y}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+              data-testid={k.testId}
+            >
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                {k.label}
+              </span>
+              <span className="text-lg font-semibold text-foreground tabular-nums">
+                {k.prefix ?? ""}
+                {k.decimals ? k.value.toFixed(k.decimals) : k.value}
+                {k.suffix ?? ""}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -70,12 +119,13 @@ export function HeroShotReveal({ src, alt, callouts }: HeroShotRevealProps) {
   return (
     <motion.div
       ref={wrapRef}
-      className="relative"
+      className="relative mx-auto"
       style={{
+        width: rawWidth,
         scale,
         y: yMv,
         opacity: rawOpacity,
-        willChange: "transform, opacity",
+        willChange: "transform, opacity, width",
         transformOrigin: "center top",
       }}
     >
@@ -135,6 +185,48 @@ export function HeroShotReveal({ src, alt, callouts }: HeroShotRevealProps) {
             />
           ))}
         </svg>
+
+        {/* KPI mockup overlays — A5 in-view count-up */}
+        {kpis.map((k, i) => (
+          <motion.div
+            key={`kpi-${i}`}
+            className="absolute hidden md:flex flex-col items-start gap-0.5 px-3 py-2 rounded-xl bg-white/90 backdrop-blur border border-border shadow-md"
+            style={{
+              left: `${k.x}%`,
+              top: `${k.y}%`,
+              transform: "translate(-50%, -50%)",
+            }}
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={
+              kpisInView
+                ? { opacity: 1, y: 0, scale: 1 }
+                : { opacity: 0, y: 8, scale: 0.96 }
+            }
+            transition={{
+              duration: 0.45,
+              delay: 0.2 + i * 0.15,
+              ease: "easeOut",
+            }}
+            data-testid={k.testId}
+          >
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+              {k.label}
+            </span>
+            <span className="text-lg font-semibold text-foreground tabular-nums">
+              {k.prefix ?? ""}
+              {kpisInView ? (
+                <CountUp
+                  end={k.value}
+                  duration={1200}
+                  decimals={k.decimals ?? 0}
+                />
+              ) : (
+                0
+              )}
+              {k.suffix ?? ""}
+            </span>
+          </motion.div>
+        ))}
 
         {/* Labels */}
         <div className="hidden md:block pointer-events-none absolute inset-0">

@@ -69,6 +69,9 @@ const animationStrings = {
       "Händler bestätigt direkt im Chat.",
       "Nachlieferung als Folge-Bestellung.",
     ],
+    kpiSavings: "Ø Ersparnis",
+    kpiOrders: "Bestellungen / Monat",
+    kpiSuppliers: "Aktive Händler",
   },
   it: {
     callout1: "Confronto prezzi",
@@ -86,6 +89,9 @@ const animationStrings = {
       "Il fornitore conferma in chat.",
       "Riconsegna come ordine successivo.",
     ],
+    kpiSavings: "Risparmio medio",
+    kpiOrders: "Ordini / mese",
+    kpiSuppliers: "Fornitori attivi",
   },
   en: {
     callout1: "Price comparison",
@@ -103,6 +109,9 @@ const animationStrings = {
       "Supplier confirms right in chat.",
       "Re-delivery as a follow-up order.",
     ],
+    kpiSavings: "Avg. savings",
+    kpiOrders: "Orders / month",
+    kpiSuppliers: "Active suppliers",
   },
 } as const;
 
@@ -842,6 +851,11 @@ export default function Landing() {
               { label: a.callout1, ax: 22, ay: 32, lx: 8, ly: 14, testId: "callout-price" },
               { label: a.callout2, ax: 78, ay: 48, lx: 94, ly: 24, testId: "callout-chat" },
               { label: a.callout3, ax: 52, ay: 78, lx: 30, ly: 96, testId: "callout-pdf" },
+            ]}
+            kpis={[
+              { label: a.kpiSavings, value: 18, suffix: "%", x: 14, y: 64, testId: "kpi-savings" },
+              { label: a.kpiOrders, value: 1240, x: 50, y: 8, testId: "kpi-orders" },
+              { label: a.kpiSuppliers, value: 86, x: 88, y: 64, testId: "kpi-suppliers" },
             ]}
           />
         </div>
