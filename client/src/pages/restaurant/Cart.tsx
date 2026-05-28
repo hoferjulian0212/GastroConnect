@@ -25,12 +25,13 @@ import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
-import { useStickyActionBarHeight } from "@/hooks/use-sticky-action-bar";
+import { useStickyActionBarHeight, useMobileKeyboardInset } from "@/hooks/use-sticky-action-bar";
 
 export default function RestaurantCart() {
   const { currentUser } = useUser();
   const { toast } = useToast();
   const { containerRef: stickyBarContainerRef, barRef: stickyBarRef } = useStickyActionBarHeight();
+  useMobileKeyboardInset();
   const [orderNotes, setOrderNotes] = useState<Record<string, string>>({});
   const [deliveryOptions, setDeliveryOptions] = useState<Record<string, "asap" | "date">>({});
   const [selectedDeliveryDates, setSelectedDeliveryDates] = useState<Record<string, string>>({});
@@ -821,7 +822,7 @@ export default function RestaurantCart() {
       <div
         ref={stickyBarRef}
         className="md:hidden fixed left-3 right-3 z-30 rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.18)] p-3 flex items-center gap-3"
-        style={{ bottom: "var(--mobile-cta-offset)" }}
+        style={{ bottom: "max(var(--mobile-cta-offset), calc(var(--mobile-keyboard-inset, 0px) + 8px))" }}
         data-testid="mobile-cart-sticky-footer"
       >
         <div className="flex-1 min-w-0">
