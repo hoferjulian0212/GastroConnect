@@ -91,6 +91,12 @@ export default function RestaurantHomeMobile({
     ? leadParts.join(" · ")
     : lang === "de" ? "Heute ist nichts dringend." : "Niente di urgente oggi.";
 
+  const leadHref =
+    pendingOrdersCount > 0 ? "/restaurant/orders?status=pending"
+    : todayDeliveries.length > 0 ? "/restaurant/orders?status=in_delivery"
+    : unreadConvs.length > 0 ? "/restaurant/inbox"
+    : "/restaurant/cost-analysis";
+
   // Build attention deck
   const deck: AttentionCard[] = [];
   todayDeliveries.slice(0, 3).forEach((o) => {
@@ -133,6 +139,7 @@ export default function RestaurantHomeMobile({
       testId: `mobile-attention-tmpl-${tmpl.id}`,
     });
   });
+  const finalDeck = deck.slice(0, 6);
 
   const quickActions = [
     { icon: <Plus className="h-5 w-5" />, label: lang === "de" ? "Bestellen" : "Ordina", to: "/restaurant/catalog", color: "bg-foreground text-background" },
@@ -206,33 +213,18 @@ export default function RestaurantHomeMobile({
             </div>
             <MobileTopActions variant="dark" />
           </div>
-          <p className="text-[14px] text-white/85 leading-snug mt-1" data-testid="mobile-home-lead">
+          <button
+            onClick={() => navigate(leadHref)}
+            data-testid="mobile-home-lead"
+            className="text-left text-[14px] text-white/85 leading-snug mt-1 w-full active:opacity-70 transition-opacity"
+          >
             {leadLine}
-          </p>
-          {cpgStatus !== "none" && (
-            <button
-              onClick={() => navigate("/restaurant/cost-analysis")}
-              data-testid="mobile-home-cpg-line"
-              className="mt-3 w-full flex items-center justify-between gap-2 rounded-xl bg-white/[0.06] border border-white/[0.10] px-3 py-2 active:scale-[0.98] transition-transform"
-            >
-              <span className="flex items-center gap-2 text-[12px] text-white/75">
-                <Calculator className="h-3.5 w-3.5" />
-                {lang === "de" ? "Kosten/Gast" : "Costo/ospite"}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="text-[13px] font-bold tabular-nums text-white">{cpgNum.toFixed(2)}€</span>
-                <span className={`text-[11px] tabular-nums font-semibold ${cpgStatus === "over" ? "text-rose-300" : cpgStatus === "under" ? "text-emerald-300" : "text-white/70"}`}>
-                  {cpgDiff > 0 ? "+" : ""}{cpgDiff.toFixed(2)}€
-                </span>
-                <ChevronRight className="h-3.5 w-3.5 text-white/50" />
-              </span>
-            </button>
-          )}
+          </button>
         </div>
 
-        {deck.length > 0 && (
+        {finalDeck.length > 0 && (
           <MobileSection className="mt-4" testId="mobile-section-briefing">
-            <AttentionDeck cards={deck} testId="mobile-attention-deck" />
+            <AttentionDeck cards={finalDeck} testId="mobile-attention-deck" />
           </MobileSection>
         )}
 
@@ -369,6 +361,27 @@ export default function RestaurantHomeMobile({
         label={lang === "de" ? "Bestellen" : "Ordina"}
         testId="mobile-fab-order"
       />
+
+      {cpgStatus !== "none" && (
+        <button
+          onClick={() => navigate("/restaurant/cost-analysis")}
+          data-testid="mobile-home-cpg-sticky"
+          className="fixed left-3 right-3 z-40 flex items-center justify-between gap-2 rounded-2xl bg-card/95 backdrop-blur border border-border shadow-lg px-3.5 py-2.5 active:scale-[0.98] transition-transform"
+          style={{ bottom: "var(--mobile-cta-offset)" }}
+        >
+          <span className="flex items-center gap-2 text-[12px] font-medium text-muted-foreground">
+            <Calculator className="h-3.5 w-3.5" />
+            {lang === "de" ? "Kosten/Gast" : "Costo/ospite"}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="text-[14px] font-bold tabular-nums text-foreground">{cpgNum.toFixed(2)}€</span>
+            <span className={`text-[11px] tabular-nums font-semibold ${cpgStatus === "over" ? "text-rose-600 dark:text-rose-400" : cpgStatus === "under" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+              {cpgDiff > 0 ? "+" : ""}{cpgDiff.toFixed(2)}€
+            </span>
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          </span>
+        </button>
+      )}
     </div>
   );
 }

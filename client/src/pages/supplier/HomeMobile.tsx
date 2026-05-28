@@ -61,6 +61,7 @@ export default function SupplierHomeMobile({
   chartData, monthRevenue, goalProgress, calcDelta,
 }: Props) {
   const [statsTab, setStatsTab] = useState<"products" | "customers">("products");
+  const [statsExpanded, setStatsExpanded] = useState(false);
   const { data: conversations } = useQuery<ConversationWithUser[]>({
     queryKey: [`/api/conversations?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
@@ -142,6 +143,13 @@ export default function SupplierHomeMobile({
     ? leadParts.slice(0, 3).join(" · ")
     : lang === "de" ? "Heute ist nichts dringend." : "Niente di urgente oggi.";
 
+  const leadHref =
+    newOrdersCount > 0 ? "/supplier/orders?status=pending"
+    : openComplaints > 0 ? "/supplier/complaints"
+    : todayDeliveries.length > 0 ? "/supplier/orders?status=in_delivery"
+    : unreadConvs.length > 0 ? "/supplier/inbox"
+    : "/supplier/orders";
+
   const deck: AttentionCard[] = [];
   todayDeliveries.slice(0, 3).forEach((o) => {
     deck.push({
@@ -195,6 +203,7 @@ export default function SupplierHomeMobile({
       testId: `mobile-attention-s-low-${p.id}`,
     });
   });
+  const finalDeck = deck.slice(0, 6);
 
   return (
     <div className="md:hidden">
@@ -223,14 +232,18 @@ export default function SupplierHomeMobile({
             </div>
             <MobileTopActions variant="dark" />
           </div>
-          <p className="text-[14px] text-white/85 leading-snug mt-1" data-testid="mobile-home-lead-supplier">
+          <button
+            onClick={() => navigate(leadHref)}
+            data-testid="mobile-home-lead-supplier"
+            className="text-left text-[14px] text-white/85 leading-snug mt-1 w-full active:opacity-70 transition-opacity"
+          >
             {leadLine}
-          </p>
+          </button>
         </div>
 
-        {deck.length > 0 && (
+        {finalDeck.length > 0 && (
           <MobileSection className="mt-4" testId="mobile-s-section-briefing">
-            <AttentionDeck cards={deck} testId="mobile-s-attention-deck" />
+            <AttentionDeck cards={finalDeck} testId="mobile-s-attention-deck" />
           </MobileSection>
         )}
 
@@ -331,11 +344,44 @@ export default function SupplierHomeMobile({
           className="mt-5"
           testId="mobile-s-section-stats"
           action={
-            <button onClick={onExportStats} data-testid="button-export-stats-mobile" className="text-[12px] font-semibold text-primary inline-flex items-center gap-1">
-              <Download className="h-3 w-3" /> {t("supplierHome", "exportStats")}
-            </button>
+            statsExpanded ? (
+              <button onClick={onExportStats} data-testid="button-export-stats-mobile" className="text-[12px] font-semibold text-primary inline-flex items-center gap-1">
+                <Download className="h-3 w-3" /> {t("supplierHome", "exportStats")}
+              </button>
+            ) : null
           }
         >
+          {(() => {
+            const rev = detailedStats?.totalRevenue ?? 0;
+            const prev = detailedStats?.previous?.totalRevenue ?? 0;
+            const ordersN = detailedStats?.totalOrders ?? 0;
+            const delta = prev > 0 ? ((rev - prev) / prev) * 100 : 0;
+            const deltaSign = delta > 0 ? "+" : "";
+            const deltaTone = delta > 0.5 ? "text-emerald-600 dark:text-emerald-400" : delta < -0.5 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground";
+            const summary = `${fmtPrice(rev)} · ${ordersN} ${lang === "de" ? (ordersN === 1 ? "Bestellung" : "Bestellungen") : (ordersN === 1 ? "ordine" : "ordini")}`;
+            return (
+              <button
+                type="button"
+                onClick={() => setStatsExpanded((v) => !v)}
+                data-testid="mobile-s-stats-toggle"
+                className="w-full flex items-center justify-between gap-2 rounded-2xl bg-card border border-border px-3.5 py-2.5 mb-3 active:scale-[0.98] transition-transform"
+                aria-expanded={statsExpanded}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center justify-center h-7 w-7 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-[13px] font-semibold text-foreground tabular-nums truncate">{summary}</span>
+                  {prev > 0 && (
+                    <span className={`text-[11px] font-semibold tabular-nums ${deltaTone}`}>{deltaSign}{delta.toFixed(0)}%</span>
+                  )}
+                </div>
+                <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${statsExpanded ? "rotate-90" : ""}`} />
+              </button>
+            );
+          })()}
+          {!statsExpanded ? null : (
+          <>
           <div className="-mx-4 px-4 overflow-x-auto scrollbar-hide mb-3" data-testid="period-switcher-mobile">
             <div className="inline-flex items-center rounded-full bg-muted/60 p-0.5">
               {(["7d","30d","6m","12m"] as const).map(p => (
@@ -555,6 +601,8 @@ export default function SupplierHomeMobile({
               title={t("supplierHome", "noStatsYet")}
               description={t("supplierHome", "noStatsYetDesc")}
             />
+          )}
+          </>
           )}
         </MobileSection>
 
