@@ -616,6 +616,14 @@ export default function SupplierInbox() {
           setNewMessageIds(prev => { const next = new Set(prev); incomingIds.forEach(id => next.add(id)); return next; });
           clearTimeout(incomingTimerRef.current);
           incomingTimerRef.current = setTimeout(() => setNewMessageIds(new Set()), 2000);
+          // Auto mark-as-read: chat is open and we just received messages from the other user.
+          if (selectedConversation && currentUser?.id && (typeof document === "undefined" || document.visibilityState === "visible")) {
+            markAsReadMutation.mutate(selectedConversation);
+            apiRequest("PATCH", `/api/notifications/read-by-reference?userId=${currentUser.id}&referenceId=${selectedConversation}&type=new_message`).then(() => {
+              queryClient.invalidateQueries({ queryKey: [`/api/notifications?userId=${currentUser.id}`] });
+              queryClient.invalidateQueries({ queryKey: [`/api/notifications/count?userId=${currentUser.id}`] });
+            }).catch(() => {});
+          }
         }
         if (ownIds.length > 0) {
           setSentMessageIds(prev => { const next = new Set(prev); ownIds.forEach(id => next.add(id)); return next; });
