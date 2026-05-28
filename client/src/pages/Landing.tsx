@@ -27,6 +27,11 @@ import shotMobile from "@assets/landing-mobile.png";
 import shotMobileSupplier from "@assets/landing-mobile-supplier.png";
 import shotPrice from "@assets/landing-price-comparison.jpg";
 import shotInbox from "@assets/landing-inbox.jpg";
+import shotPriceOverview from "@assets/landing-story/price-1-overview.jpg";
+import shotPriceCatalog from "@assets/landing-story/price-3-catalog.jpg";
+import shotComplaintDialog from "@assets/landing-story/complaint-1-dialog.jpg";
+import shotComplaintInbox from "@assets/landing-story/complaint-2-inbox.jpg";
+import shotComplaintDetail from "@assets/landing-story/complaint-3-detail.jpg";
 import {
   MessageSquare,
   FileText,
@@ -1045,19 +1050,47 @@ export default function Landing() {
 
       {/* B1a — Pinned Preisvergleich-Story */}
       <PinnedFeatureStory
-        imageSrc={shotPrice}
+        imageSrc={shotPriceOverview}
         imageAlt="GastroConnect Preisvergleich"
         headline={a.priceStoryHeadline}
         steps={[...a.priceStorySteps]}
+        stepImages={[
+          {
+            src: shotPriceOverview,
+            alt: "Preisvergleich-Übersicht mit mehreren Anbietern pro Produkt",
+          },
+          {
+            src: shotPrice,
+            alt: "Preisvergleich-Zeile mit hervorgehobener Ersparnis",
+          },
+          {
+            src: shotPriceCatalog,
+            alt: "Produktkatalog zum Bestellen",
+          },
+        ]}
         testId="pinned-story-price"
       />
 
       {/* B1b — Pinned Reklamation/Nachlieferung-Story */}
       <PinnedFeatureStory
-        imageSrc={shotInbox}
+        imageSrc={shotComplaintDialog}
         imageAlt="GastroConnect Reklamation im Chat"
         headline={a.complaintStoryHeadline}
         steps={[...a.complaintStorySteps]}
+        stepImages={[
+          {
+            src: shotComplaintDialog,
+            alt: "Reklamations-Wizard mit Auswahl der betroffenen Bestellung",
+          },
+          {
+            src: shotComplaintInbox,
+            alt: "Inbox mit Reklamations-Chat zum Händler",
+          },
+          {
+            src: shotComplaintDetail,
+            alt: "Reklamations-Detailansicht mit Status und Nachlieferung",
+          },
+        ]}
         testId="pinned-story-complaint"
         reverse
       />

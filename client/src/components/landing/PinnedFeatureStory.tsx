@@ -6,11 +6,17 @@ import {
 } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
+export interface StepImage {
+  src: string;
+  alt: string;
+}
+
 interface PinnedFeatureStoryProps {
   imageSrc: string;
   imageAlt: string;
   headline: string;
   steps: string[];
+  stepImages?: StepImage[];
   side?: "left" | "right";
   testId?: string;
   reverse?: boolean;
@@ -21,13 +27,12 @@ export function PinnedFeatureStory({
   imageAlt,
   headline,
   steps,
+  stepImages,
   testId,
   reverse = false,
 }: PinnedFeatureStoryProps) {
   const reduce = useReducedMotion();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  // Initialize synchronously to avoid first-paint layout shift between
-  // mobile-stack and desktop-pinned variants.
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined" &&
     window.matchMedia("(min-width: 768px)").matches,
@@ -52,12 +57,10 @@ export function PinnedFeatureStory({
     [0.96, 1, 1, 0.98],
   );
 
-  // Active step index based on scroll progress
   const [activeStep, setActiveStep] = useState(0);
   useEffect(() => {
     const unsub = scrollYProgress.on("change", (v) => {
       const n = steps.length;
-      // ignore the first 10% (intro) and last 10% (outro)
       const t = Math.max(0, Math.min(1, (v - 0.1) / 0.8));
       const idx = Math.min(n - 1, Math.floor(t * n));
       setActiveStep(idx);
@@ -65,7 +68,15 @@ export function PinnedFeatureStory({
     return () => unsub();
   }, [scrollYProgress, steps.length]);
 
-  // Reduced-motion fallback (any viewport): simple stacked, no pin, no snap
+  // Resolve images: per-step or fall back to single image for every step
+  const resolvedImages: StepImage[] =
+    stepImages && stepImages.length === steps.length
+      ? stepImages
+      : steps.map(() => ({ src: imageSrc, alt: imageAlt }));
+
+  // Reduced-motion fallback: simple stacked, no pin, no snap.
+  // Each step shows its own image so the visual coupling between text
+  // and screenshot is preserved even without animation.
   if (reduce) {
     return (
       <section className="px-4 py-20" data-testid={testId}>
@@ -73,39 +84,43 @@ export function PinnedFeatureStory({
           <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-8">
             {headline}
           </h2>
-          <div className="rounded-2xl border border-border overflow-hidden shadow-xl shadow-black/5 bg-card mb-8">
-            <img src={imageSrc} alt={imageAlt} className="w-full h-auto block" />
-          </div>
-          <ul className="space-y-4">
-            {steps.map((s, i) => (
-              <li
-                key={i}
-                className="flex items-start gap-3 text-base md:text-lg text-foreground/80 leading-relaxed"
-              >
-                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-foreground/60 shrink-0" />
-                <span>{s}</span>
-              </li>
-            ))}
+          <ul className="space-y-10">
+            {steps.map((s, i) => {
+              const img = resolvedImages[i];
+              return (
+                <li key={i} className="space-y-4">
+                  <div className="rounded-2xl border border-border overflow-hidden shadow-xl shadow-black/5 bg-card">
+                    <img
+                      src={img.src}
+                      alt={img.alt}
+                      className="w-full h-auto block"
+                    />
+                  </div>
+                  <div className="flex items-start gap-3 text-base md:text-lg text-foreground/80 leading-relaxed">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-foreground/60 shrink-0" />
+                    <span>{s}</span>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </section>
     );
   }
 
-  // Mobile / tablet: horizontally snapping step carousel with tap-through dots
   if (!isDesktop) {
     return (
       <MobileStoryCarousel
-        imageSrc={imageSrc}
-        imageAlt={imageAlt}
         headline={headline}
         steps={steps}
+        stepImages={resolvedImages}
         testId={testId}
       />
     );
   }
 
-  // Desktop: ~150vh scroll distance, content pinned in center
+  // Desktop: ~180vh scroll distance, content pinned in center, image crossfades per step.
   return (
     <section
       ref={containerRef}
@@ -114,23 +129,48 @@ export function PinnedFeatureStory({
       data-testid={testId}
     >
       <div className="sticky top-0 h-screen flex items-center px-8">
-        <div
-          className={`mx-auto max-w-6xl w-full grid gap-12 items-center grid-cols-12 ${
-            reverse ? "" : ""
-          }`}
-        >
-          {/* Image side */}
+        <div className="mx-auto max-w-6xl w-full grid gap-12 items-center grid-cols-12">
+          {/* Image side — stacked, crossfaded */}
           <div className={reverse ? "col-span-7 order-2" : "col-span-7 order-1"}>
             <motion.div
-              className="rounded-2xl border border-border overflow-hidden shadow-2xl shadow-black/5 bg-card"
+              className="relative rounded-2xl border border-border overflow-hidden shadow-2xl shadow-black/5 bg-card"
               style={{ scale: imageScale }}
             >
+              {/* Spacer image keeps container height stable; uses first image */}
               <img
-                src={imageSrc}
-                alt={imageAlt}
-                className="w-full h-auto block"
-                loading="lazy"
+                src={resolvedImages[0].src}
+                alt=""
+                aria-hidden="true"
+                className="w-full h-auto block invisible"
               />
+              {resolvedImages.map((img, i) => {
+                const isActive = i === activeStep;
+                return (
+                  <motion.img
+                    key={i}
+                    src={img.src}
+                    alt={img.alt}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    className="absolute inset-0 w-full h-full object-cover block"
+                    initial={false}
+                    animate={{
+                      opacity: isActive ? 1 : 0,
+                      scale: isActive ? 1 : 1.02,
+                    }}
+                    transition={{
+                      opacity: { duration: 0.45, ease: "easeOut" },
+                      scale: {
+                        type: "spring",
+                        stiffness: 140,
+                        damping: 22,
+                      },
+                    }}
+                    data-testid={
+                      testId ? `${testId}-image-${i}` : undefined
+                    }
+                  />
+                );
+              })}
             </motion.div>
           </div>
 
@@ -171,7 +211,6 @@ export function PinnedFeatureStory({
                 );
               })}
             </div>
-            {/* Progress dots */}
             <div className="mt-8 flex items-center gap-2">
               {steps.map((_, i) => (
                 <span
@@ -192,18 +231,16 @@ export function PinnedFeatureStory({
 }
 
 interface MobileStoryCarouselProps {
-  imageSrc: string;
-  imageAlt: string;
   headline: string;
   steps: string[];
+  stepImages: StepImage[];
   testId?: string;
 }
 
 function MobileStoryCarousel({
-  imageSrc,
-  imageAlt,
   headline,
   steps,
+  stepImages,
   testId,
 }: MobileStoryCarouselProps) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -234,9 +271,6 @@ function MobileStoryCarousel({
         <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-6">
           {headline}
         </h2>
-        <div className="rounded-2xl border border-border overflow-hidden shadow-xl shadow-black/5 bg-card mb-6">
-          <img src={imageSrc} alt={imageAlt} className="w-full h-auto block" />
-        </div>
 
         <div
           ref={scrollerRef}
@@ -244,26 +278,40 @@ function MobileStoryCarousel({
           style={{ scrollbarWidth: "none" }}
           data-testid={testId ? `${testId}-scroller` : undefined}
         >
-          {steps.map((s, i) => (
-            <div
-              key={i}
-              className="snap-center shrink-0 w-full px-4"
-              aria-roledescription="slide"
-              aria-label={`Schritt ${i + 1} von ${steps.length}`}
-            >
-              <div className="rounded-2xl border border-border bg-card p-5 min-h-[160px] flex items-start gap-4">
-                <div className="flex flex-col items-center gap-2 shrink-0">
-                  <span className="text-sm font-semibold text-muted-foreground tabular-nums">
-                    0{i + 1}
-                  </span>
-                  <div className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
+          {steps.map((s, i) => {
+            const img = stepImages[i];
+            return (
+              <div
+                key={i}
+                className="snap-center shrink-0 w-full px-4"
+                aria-roledescription="slide"
+                aria-label={`Schritt ${i + 1} von ${steps.length}`}
+              >
+                <div className="rounded-2xl border border-border overflow-hidden shadow-xl shadow-black/5 bg-card mb-4">
+                  <img
+                    src={img.src}
+                    alt={img.alt}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    className="w-full h-auto block"
+                    data-testid={
+                      testId ? `${testId}-mobile-image-${i}` : undefined
+                    }
+                  />
                 </div>
-                <p className="text-lg font-medium text-foreground leading-snug">
-                  {s}
-                </p>
+                <div className="rounded-2xl border border-border bg-card p-5 min-h-[140px] flex items-start gap-4">
+                  <div className="flex flex-col items-center gap-2 shrink-0">
+                    <span className="text-sm font-semibold text-muted-foreground tabular-nums">
+                      0{i + 1}
+                    </span>
+                    <div className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
+                  </div>
+                  <p className="text-lg font-medium text-foreground leading-snug">
+                    {s}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-5 flex items-center justify-center gap-2">
