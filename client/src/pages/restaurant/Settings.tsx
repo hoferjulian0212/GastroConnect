@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, Monitor, Moon, LogOut, Smartphone, ChevronRight } from "lucide-react";
+import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, Monitor, Moon, LogOut, Smartphone, ChevronRight, FileBarChart } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/context/LanguageContext";
@@ -42,6 +43,20 @@ export default function RestaurantSettings() {
   const [notifOrderStatus, setNotifOrderStatus] = useState(true);
   const [notifNewMessage, setNotifNewMessage] = useState(true);
   const [notifComplaint, setNotifComplaint] = useState(true);
+  const [monthlyReportEnabled, setMonthlyReportEnabled] = useState(!currentUser?.monthlyReportOptOut);
+
+  const optOutMutation = useMutation({
+    mutationFn: async (optOut: boolean) =>
+      apiRequest("PATCH", `/api/users/${currentUser?.id}/monthly-report-opt-out`, { optOut }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/users?role=restaurant`] });
+    },
+    onError: (_err, optOut) => {
+      // Revert local switch state on failure so the UI does not lie.
+      setMonthlyReportEnabled(optOut);
+      toast({ title: "Fehler", description: "Einstellung konnte nicht gespeichert werden.", variant: "destructive" });
+    },
+  });
 
   const handleToggle = (setter: (v: boolean) => void, value: boolean, label: string) => {
     setter(value);
@@ -247,6 +262,38 @@ export default function RestaurantSettings() {
           </Card>
         )}
       </div>
+
+      <Card>
+        <CardHeader className="p-3 md:p-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <FileBarChart className="h-4 w-4 md:h-5 md:w-5" />
+            Monatsberichte
+          </CardTitle>
+          <CardDescription className="text-xs md:text-sm">
+            Erhalte am 1. jedes Monats einen automatisch erstellten Vergleichsbericht für den Vormonat mit Top-Produkten, Einsparpotenzial und verpassten Aktionen.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+          <div className="flex items-center justify-between gap-3 py-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <Bell className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Label className="text-sm font-medium">Monatlichen Vergleichsbericht erhalten</Label>
+            </div>
+            <Switch
+              checked={monthlyReportEnabled}
+              onCheckedChange={(v) => {
+                setMonthlyReportEnabled(v);
+                optOutMutation.mutate(!v);
+                toast({
+                  title: t("common", "settingSaved"),
+                  description: `Monatsbericht ${t("common", "was")} ${v ? t("common", "activated") : t("common", "deactivated")}.`,
+                });
+              }}
+              data-testid="switch-monthly-report"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex gap-3 justify-center max-w-md mx-auto w-full">
         <Card className="flex-1">

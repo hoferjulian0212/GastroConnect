@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
+import { runMonthlyReportsForAll } from "./monthlyReportService";
 import { createServer } from "http";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -141,4 +142,28 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
+
+  // ── Monthly comparison report scheduler (Task #45) ──────────────────────
+  // Run daily; if today is the 1st (server-local time), generate previous-
+  // month reports for every opted-in restaurant. The service itself skips
+  // months that already have a report, so duplicate runs are safe.
+  let lastRunYearMonth = "";
+  const runIfFirstOfMonth = async () => {
+    const now = new Date();
+    // Standardize on UTC so scheduler and report month math (which uses UTC)
+    // agree at day boundaries.
+    if (now.getUTCDate() !== 1) return;
+    const tag = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
+    if (tag === lastRunYearMonth) return;
+    lastRunYearMonth = tag;
+    try {
+      log("[monthly-report] running scheduled batch", "scheduler");
+      const result = await runMonthlyReportsForAll();
+      log(`[monthly-report] generated=${result.generated} skipped=${result.skipped} failed=${result.failed}`, "scheduler");
+    } catch (err) {
+      console.error("[monthly-report] scheduled batch failed:", err);
+    }
+  };
+  setTimeout(() => { runIfFirstOfMonth(); }, 30_000);
+  setInterval(() => { runIfFirstOfMonth(); }, 6 * 60 * 60 * 1000);
 })();

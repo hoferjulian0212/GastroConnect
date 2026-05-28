@@ -1,4 +1,5 @@
 import { MobilePageHeader } from "@/components/mobile";
+import { navigate } from "wouter/use-browser-location";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
@@ -325,7 +326,19 @@ export default function Documents() {
         subtitle={lang === "de" ? "Lieferscheine und Rechnungen" : "Note di consegna e fatture"}
         testId="mobile-header-documents"
       />
-      <div className="flex items-center justify-end gap-2 px-1">
+      <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
+        {currentRole === "restaurant" ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate("/restaurant/monthly-reports")}
+            data-testid="button-open-monthly-reports"
+            className="shrink-0 rounded-lg"
+          >
+            <BarChart3 className="h-4 w-4 mr-1" />
+            {lang === "de" ? "Monatsberichte ansehen" : "Vedi report mensili"}
+          </Button>
+        ) : <div />}
         <Button
           size="sm"
           onClick={() => setShowGenerateDialog(true)}

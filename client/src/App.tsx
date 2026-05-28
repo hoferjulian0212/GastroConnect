@@ -43,6 +43,7 @@ import RestaurantTemplates from "@/pages/restaurant/Templates";
 import RestaurantSuppliers from "@/pages/restaurant/Suppliers";
 import RestaurantCostAnalysis from "@/pages/restaurant/CostAnalysis";
 import RestaurantPriceComparison from "@/pages/restaurant/PriceComparison";
+import RestaurantMonthlyReports from "@/pages/restaurant/MonthlyReports";
 import SupplierHome from "@/pages/supplier/Home";
 import SupplierInbox from "@/pages/supplier/Inbox";
 import SupplierProducts from "@/pages/supplier/Products";
@@ -80,6 +81,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/settings" component={RestaurantSettings} />
       <Route path="/restaurant/profile" component={RestaurantProfile} />
       <Route path="/restaurant/documents" component={Documents} />
+      <Route path="/restaurant/monthly-reports" component={RestaurantMonthlyReports} />
       <Route path="/restaurant/cost-analysis" component={RestaurantCostAnalysis} />
       <Route path="/restaurant/price-comparison" component={RestaurantPriceComparison} />
       <Route path="/restaurant/calendar">{() => <CalendarPage role="restaurant" />}</Route>
@@ -313,6 +315,7 @@ function HeaderNav() {
         { href: '/restaurant/calendar', label: lang === 'de' ? 'Lieferkalender' : 'Calendario consegne' },
         { href: '/restaurant/complaints', label: lang === 'de' ? 'Reklamationen' : 'Reclami' },
         { href: '/restaurant/documents', label: lang === 'de' ? 'Dokumente' : 'Documenti' },
+        { href: '/restaurant/monthly-reports', label: lang === 'de' ? 'Monatsberichte' : 'Report mensili' },
       ],
     },
     {

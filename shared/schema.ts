@@ -6,7 +6,7 @@ import { z } from "zod";
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]);
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion"]);
-export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);
 export const complaintStatusEnum = pgEnum("complaint_status", ["open", "in_progress", "resolved", "closed", "rejected", "partially_resolved"]);
 export const complaintReasonEnum = pgEnum("complaint_reason", ["damaged", "short", "wrong", "quality", "late", "other"]);
@@ -34,6 +34,7 @@ export const users = pgTable("users", {
   dashboardWidgets: jsonb("dashboard_widgets").$type<Record<string, string[]>>(),
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
   dismissedHelpTopics: jsonb("dismissed_help_topics").$type<string[]>(),
+  monthlyReportOptOut: boolean("monthly_report_opt_out").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -551,6 +552,75 @@ export const priceChangeLog = pgTable("price_change_log", {
 export const insertPriceChangeLogSchema = createInsertSchema(priceChangeLog).omit({ id: true, createdAt: true });
 export type PriceChangeLog = typeof priceChangeLog.$inferSelect;
 export type InsertPriceChangeLog = z.infer<typeof insertPriceChangeLogSchema>;
+
+// ─── Monthly comparison reports (Task #45) ──────────────────────────────
+export interface MonthlyReportProductRow {
+  productKey: string;
+  name: string;
+  unit: string;
+  category: string | null;
+  currentSupplierId: string;
+  currentSupplierName: string;
+  currentUnitPrice: number;
+  totalQuantity: number;
+  totalSpent: number;
+  cheapestSupplierId: string | null;
+  cheapestSupplierName: string | null;
+  cheapestUnitPrice: number | null;
+  potentialSaving: number;
+}
+export interface MonthlyReportSwitchRecommendation {
+  fromSupplierId: string;
+  fromSupplierName: string;
+  toSupplierId: string;
+  toSupplierName: string;
+  productCount: number;
+  expectedMonthlySaving: number;
+  products: Array<{ name: string; unit: string; saving: number }>;
+}
+export interface MonthlyReportMissedPromotion {
+  promotionId: string;
+  productName: string;
+  unit: string;
+  supplierName: string;
+  discountPercent: number;
+  startDate: string;
+  endDate: string;
+  estimatedMissedSaving: number;
+}
+export interface MonthlyReportPayload {
+  month: string; // YYYY-MM
+  generatedAt: string;
+  restaurantName: string;
+  totalSpent: number;
+  prevMonthTotal: number;
+  trendPercent: number;
+  orderCount: number;
+  topProducts: Array<{ name: string; unit: string; totalSpent: number; totalQuantity: number; supplierName: string }>;
+  productRows: MonthlyReportProductRow[];
+  totalSavingPotential: number;
+  recommendedSwitches: MonthlyReportSwitchRecommendation[];
+  missedPromotions: MonthlyReportMissedPromotion[];
+}
+
+export const monthlyReports = pgTable("monthly_reports", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  month: varchar("month", { length: 7 }).notNull(), // YYYY-MM
+  fileUrl: text("file_url"),
+  totalSpent: decimal("total_spent", { precision: 12, scale: 2 }).notNull(),
+  prevMonthTotal: decimal("prev_month_total", { precision: 12, scale: 2 }).notNull(),
+  savingsPotential: decimal("savings_potential", { precision: 12, scale: 2 }).notNull(),
+  payload: jsonb("payload").$type<MonthlyReportPayload>().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_monthly_reports_restaurant_id").on(table.restaurantId),
+  uniqueIndex("uniq_monthly_reports_restaurant_month").on(table.restaurantId, table.month),
+]);
+
+export const insertMonthlyReportSchema = createInsertSchema(monthlyReports).omit({ id: true, createdAt: true });
+export type MonthlyReport = typeof monthlyReports.$inferSelect;
+export type InsertMonthlyReport = z.infer<typeof insertMonthlyReportSchema>;
 
 // ─── Display helpers for business numbers ────────────────────────────────
 // Each order/complaint has ONE unique business-facing number that appears

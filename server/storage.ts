@@ -3,7 +3,7 @@ import { eq, and, desc, or, sql, ne, inArray, gte, isNull } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
-  orderTemplates, orderTemplateItems, costSettings, overnightStays, minimumOrderValues, supplierRatings,
+  orderTemplates, orderTemplateItems, costSettings, overnightStays, minimumOrderValues, supplierRatings, monthlyReports,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -21,7 +21,8 @@ import {
   type StockMovement, type InsertStockMovement, type StockMovementWithProduct,
   type OrderTemplate, type InsertOrderTemplate, type InsertOrderTemplateItem, type OrderTemplateWithItems,
   pushSubscriptions, type InsertPushSubscription, type PushSubscription,
-  type SupplierRating, type InsertSupplierRating, type UpdateSupplierRating
+  type SupplierRating, type InsertSupplierRating, type UpdateSupplierRating,
+  type MonthlyReport, type InsertMonthlyReport,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -146,6 +147,13 @@ export interface IStorage {
   getDocumentsByOrder(orderId: string): Promise<Document[]>;
   getDocumentsByUser(userId: string, role: "restaurant" | "supplier"): Promise<DocumentWithDetails[]>;
   createDocument(doc: InsertDocument): Promise<Document>;
+
+  // Monthly reports (Task #45)
+  getMonthlyReportsByRestaurant(restaurantId: string): Promise<MonthlyReport[]>;
+  getMonthlyReportByMonth(restaurantId: string, month: string): Promise<MonthlyReport | undefined>;
+  getMonthlyReport(id: string): Promise<MonthlyReport | undefined>;
+  upsertMonthlyReport(report: InsertMonthlyReport): Promise<MonthlyReport>;
+  deleteMonthlyReport(id: string): Promise<void>;
 
   // Status History
   getOrderStatusHistory(orderId: string): Promise<OrderStatusHistoryWithUser[]>;
@@ -2786,6 +2794,47 @@ export class DatabaseStorage implements IStorage {
   async createDocument(doc: InsertDocument): Promise<Document> {
     const [created] = await db.insert(documents).values(doc).returning();
     return created;
+  }
+
+  // ─── Monthly reports (Task #45) ────────────────────────────────────────
+  async getMonthlyReportsByRestaurant(restaurantId: string): Promise<MonthlyReport[]> {
+    return db.select().from(monthlyReports)
+      .where(eq(monthlyReports.restaurantId, restaurantId))
+      .orderBy(desc(monthlyReports.month));
+  }
+
+  async getMonthlyReportByMonth(restaurantId: string, month: string): Promise<MonthlyReport | undefined> {
+    const [row] = await db.select().from(monthlyReports)
+      .where(and(eq(monthlyReports.restaurantId, restaurantId), eq(monthlyReports.month, month)));
+    return row;
+  }
+
+  async getMonthlyReport(id: string): Promise<MonthlyReport | undefined> {
+    const [row] = await db.select().from(monthlyReports).where(eq(monthlyReports.id, id));
+    return row;
+  }
+
+  async upsertMonthlyReport(report: InsertMonthlyReport): Promise<MonthlyReport> {
+    const existing = await this.getMonthlyReportByMonth(report.restaurantId, report.month);
+    if (existing) {
+      const [updated] = await db.update(monthlyReports)
+        .set({
+          fileUrl: report.fileUrl,
+          totalSpent: report.totalSpent,
+          prevMonthTotal: report.prevMonthTotal,
+          savingsPotential: report.savingsPotential,
+          payload: report.payload,
+        })
+        .where(eq(monthlyReports.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(monthlyReports).values(report).returning();
+    return created;
+  }
+
+  async deleteMonthlyReport(id: string): Promise<void> {
+    await db.delete(monthlyReports).where(eq(monthlyReports.id, id));
   }
 
   // Promotions

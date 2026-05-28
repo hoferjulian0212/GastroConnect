@@ -8,6 +8,7 @@ import { orders, messages, orderStatusHistory, complaints, orderItems, users, ov
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, insertSupplierRatingSchema, updateSupplierRatingSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
+import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
 
 const insertProductSchema = _insertProductSchema.strict();
 const insertCartItemSchema = _insertCartItemSchema.strict();
@@ -44,6 +45,9 @@ async function createNotificationWithPush(notification: InsertNotification, role
       break;
     case "low_stock":
       url = `/${urlRole}/inventory`;
+      break;
+    case "monthly_report":
+      url = `/restaurant/monthly-reports?reportId=${notification.referenceId}`;
       break;
   }
   sendPushNotification(notification.userId, {
@@ -5308,6 +5312,102 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Export error:", error);
       res.status(500).json({ error: "Export failed" });
+    }
+  });
+
+  // ===== MONTHLY COMPARISON REPORTS (Task #45) =====
+  const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+  app.get("/api/restaurant/monthly-reports", async (req, res) => {
+    try {
+      const restaurantId = String(req.query.restaurantId || "");
+      if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      const reports = await storage.getMonthlyReportsByRestaurant(restaurantId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Failed to list monthly reports:", error);
+      res.status(500).json({ error: "Failed to list monthly reports" });
+    }
+  });
+
+  app.get("/api/restaurant/monthly-reports/:id", async (req, res) => {
+    try {
+      const report = await storage.getMonthlyReport(req.params.id);
+      if (!report) return res.status(404).json({ error: "Report not found" });
+      res.json(report);
+    } catch (error) {
+      console.error("Failed to fetch monthly report:", error);
+      res.status(500).json({ error: "Failed to fetch monthly report" });
+    }
+  });
+
+  app.post("/api/restaurant/monthly-reports/generate", async (req, res) => {
+    try {
+      const { restaurantId, month } = req.body ?? {};
+      if (!restaurantId || typeof restaurantId !== "string") {
+        return res.status(400).json({ error: "restaurantId required" });
+      }
+      if (!month || typeof month !== "string" || !MONTH_RE.test(month)) {
+        return res.status(400).json({ error: "month must be YYYY-MM" });
+      }
+      const now = new Date();
+      const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+      if (month >= currentMonth) {
+        return res.status(400).json({ error: "Berichte können nur für abgeschlossene Monate erstellt werden" });
+      }
+      const restaurant = await storage.getUser(restaurantId);
+      if (!restaurant || restaurant.role !== "restaurant") {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+      const { report } = await generateAndStoreMonthlyReport(restaurantId, month);
+      res.json(report);
+    } catch (error) {
+      console.error("Failed to generate monthly report:", error);
+      res.status(500).json({ error: "Failed to generate monthly report" });
+    }
+  });
+
+  app.get("/api/restaurant/monthly-reports/:id/download", async (req, res) => {
+    try {
+      const report = await storage.getMonthlyReport(req.params.id);
+      if (!report) return res.status(404).json({ error: "Report not found" });
+      if (!report.fileUrl) return res.status(409).json({ error: "PDF nicht verfügbar — bitte Bericht neu erstellen." });
+      const objectService = new ObjectStorageService();
+      const file = await objectService.getObjectEntityFile(report.fileUrl);
+      const inline = req.query.inline === "1";
+      const disposition = inline ? "inline" : "attachment";
+      res.setHeader("Content-Disposition", `${disposition}; filename="Monatsbericht_${report.month}.pdf"`);
+      await objectService.downloadObject(file, res);
+    } catch (error) {
+      console.error("Failed to download monthly report:", error);
+      res.status(500).json({ error: "Failed to download monthly report" });
+    }
+  });
+
+  app.get("/api/restaurant/monthly-reports/preview/:month", async (req, res) => {
+    try {
+      const restaurantId = String(req.query.restaurantId || "");
+      const month = req.params.month;
+      if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      if (!MONTH_RE.test(month)) return res.status(400).json({ error: "month must be YYYY-MM" });
+      const payload = await computeMonthlyReport(restaurantId, month);
+      res.json(payload);
+    } catch (error) {
+      console.error("Failed to preview monthly report:", error);
+      res.status(500).json({ error: "Failed to preview monthly report" });
+    }
+  });
+
+  app.patch("/api/users/:id/monthly-report-opt-out", async (req, res) => {
+    try {
+      const { optOut } = req.body ?? {};
+      if (typeof optOut !== "boolean") return res.status(400).json({ error: "optOut must be boolean" });
+      const updated = await storage.updateUser(req.params.id, { monthlyReportOptOut: optOut } as any);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      res.json({ monthlyReportOptOut: updated.monthlyReportOptOut });
+    } catch (error) {
+      console.error("Failed to update opt-out:", error);
+      res.status(500).json({ error: "Failed to update opt-out" });
     }
   });
 
