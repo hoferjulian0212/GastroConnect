@@ -32,6 +32,8 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
   updateLastSeen(userId: string): Promise<void>;
+  getDashboardLayout(userId: string, role: string): Promise<Array<{ id: string; size: "full" | "half" }> | null>;
+  setDashboardLayout(userId: string, role: string, layout: Array<{ id: string; size: "full" | "half" }>): Promise<void>;
 
   // Products
   getProducts(): Promise<ProductWithSupplier[]>;
@@ -224,6 +226,21 @@ export class DatabaseStorage implements IStorage {
 
   async updateLastSeen(userId: string): Promise<void> {
     await db.update(users).set({ lastSeenAt: new Date() }).where(eq(users.id, userId));
+  }
+
+  async getDashboardLayout(userId: string, role: string): Promise<Array<{ id: string; size: "full" | "half" }> | null> {
+    const [u] = await db.select({ dashboardLayouts: users.dashboardLayouts }).from(users).where(eq(users.id, userId));
+    if (!u) return null;
+    const layouts = u.dashboardLayouts || {};
+    return layouts[role] ?? null;
+  }
+
+  async setDashboardLayout(userId: string, role: string, layout: Array<{ id: string; size: "full" | "half" }>): Promise<void> {
+    const [u] = await db.select({ dashboardLayouts: users.dashboardLayouts }).from(users).where(eq(users.id, userId));
+    if (!u) return;
+    const existing = u.dashboardLayouts || {};
+    const next = { ...existing, [role]: layout };
+    await db.update(users).set({ dashboardLayouts: next }).where(eq(users.id, userId));
   }
 
   // Products

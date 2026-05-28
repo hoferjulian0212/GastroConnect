@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, pgEnum, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, pgEnum, index, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -30,8 +30,20 @@ export const users = pgTable("users", {
   profileImageUrl: text("profile_image_url"),
   lastSeenAt: timestamp("last_seen_at"),
   monthlyRevenueTarget: decimal("monthly_revenue_target", { precision: 12, scale: 2 }),
+  dashboardLayouts: jsonb("dashboard_layouts").$type<Record<string, Array<{ id: string; size: "full" | "half" }>>>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export type DashboardCardSize = "full" | "half";
+export interface DashboardLayoutItem {
+  id: string;
+  size: DashboardCardSize;
+}
+export const dashboardLayoutItemSchema = z.object({
+  id: z.string().min(1).max(100),
+  size: z.enum(["full", "half"]),
+});
+export const dashboardLayoutSchema = z.array(dashboardLayoutItemSchema).max(50);
 
 export const products = pgTable("products", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -314,7 +326,7 @@ export const orderTemplateItems = pgTable("order_template_items", {
 ]);
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, dashboardLayouts: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });

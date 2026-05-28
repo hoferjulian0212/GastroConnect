@@ -18,6 +18,7 @@ import {
   SortableContext,
   useSortable,
 } from "@dnd-kit/sortable";
+import { apiRequest } from "@/lib/queryClient";
 
 type CardSize = "full" | "half";
 
@@ -50,18 +51,49 @@ function getStorageKey(userId: string, role: string) {
   return `dashboard-grid-${userId}-${role}`;
 }
 
+function defaultLayout(sections: CardSection[]): LayoutItem[] {
+  return sections.map(s => ({ id: s.id, size: s.defaultSize || "full" }));
+}
+
+function reconcileLayout(saved: unknown, sections: CardSection[]): LayoutItem[] | null {
+  if (!Array.isArray(saved)) return null;
+  const defaultIds = sections.map(s => s.id);
+  const cleaned: LayoutItem[] = [];
+  for (const entry of saved) {
+    if (!entry || typeof entry !== "object") continue;
+    const id = (entry as any).id;
+    const size = (entry as any).size;
+    if (typeof id !== "string" || !defaultIds.includes(id)) continue;
+    if (size !== "full" && size !== "half") continue;
+    if (cleaned.some(c => c.id === id)) continue;
+    cleaned.push({ id, size });
+  }
+  // Append any new sections (added after the layout was saved) at the end with their default size.
+  for (const s of sections) {
+    if (!cleaned.some(c => c.id === s.id)) {
+      cleaned.push({ id: s.id, size: s.defaultSize || "full" });
+    }
+  }
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 function loadLayout(userId: string, role: string, sections: CardSection[]): LayoutItem[] {
   try {
     const saved = localStorage.getItem(getStorageKey(userId, role));
     if (saved) {
-      const parsed = JSON.parse(saved) as LayoutItem[];
-      const defaultIds = sections.map(s => s.id);
-      const allExist = defaultIds.every(id => parsed.some(p => p.id === id));
-      const noExtras = parsed.every(p => defaultIds.includes(p.id));
-      if (allExist && noExtras) return parsed;
+      const reconciled = reconcileLayout(JSON.parse(saved), sections);
+      if (reconciled) return reconciled;
     }
   } catch {}
-  return sections.map(s => ({ id: s.id, size: s.defaultSize || "full" }));
+  return defaultLayout(sections);
+}
+
+function layoutsEqual(a: LayoutItem[], b: LayoutItem[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id || a[i].size !== b[i].size) return false;
+  }
+  return true;
 }
 
 // Collision detection: closest-center against frozen positions, excluding the active card.
@@ -343,22 +375,73 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
 
   useEffect(() => {
     const defaultIds = sections.map(s => s.id);
-    const currentIds = layout.map(l => l.id);
+    const currentIds = layoutRef.current.map(l => l.id);
     const newIds = defaultIds.filter(id => !currentIds.includes(id));
     const removedIds = currentIds.filter(id => !defaultIds.includes(id));
     if (newIds.length > 0 || removedIds.length > 0) {
-      const updated = layout
+      const updated = layoutRef.current
         .filter(l => defaultIds.includes(l.id))
-        .concat(newIds.map(id => ({ id, size: sections.find(s => s.id === id)?.defaultSize || "full" as CardSize })));
+        .concat(newIds.map(id => ({ id, size: (sections.find(s => s.id === id)?.defaultSize || "full") as CardSize })));
       setLayout(updated);
-      localStorage.setItem(getStorageKey(userId, role), JSON.stringify(updated));
+      try { localStorage.setItem(getStorageKey(userId, role), JSON.stringify(updated)); } catch {}
     }
-  }, [sections.map(s => s.id).join(",")]);
+  }, [sections.map(s => s.id).join(","), userId, role]);
+
+  // Fetch the persisted layout from the server on mount (or when user/role changes).
+  // While the request is in flight we keep the localStorage-seeded layout so the dashboard
+  // renders instantly. Once the server responds we adopt its version (server wins on
+  // conflict) and update localStorage so it stays a fresh offline cache.
+  useEffect(() => {
+    if (!userId || !role) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/users/${encodeURIComponent(userId)}/dashboard-layout/${encodeURIComponent(role)}`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const reconciled = reconcileLayout(data?.layout, sections);
+        if (cancelled || !reconciled) return;
+        setLayout(prev => {
+          if (layoutsEqual(prev, reconciled)) return prev;
+          try { localStorage.setItem(getStorageKey(userId, role), JSON.stringify(reconciled)); } catch {}
+          return reconciled;
+        });
+      } catch {
+        // Network error / offline — keep the localStorage layout we already loaded.
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, role, sections.map(s => s.id).join(",")]);
+
+  // Push the layout back to the server, debounced so rapid swaps don't spam the API.
+  // Always writes localStorage immediately so reloads are instant even without network.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistRemote = useCallback((next: LayoutItem[]) => {
+    if (!userId || !role) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      apiRequest(
+        "PUT",
+        `/api/users/${encodeURIComponent(userId)}/dashboard-layout/${encodeURIComponent(role)}`,
+        { layout: next },
+      ).catch(() => {
+        // Server unreachable — localStorage already has the change, we'll sync on next save.
+      });
+    }, 400);
+  }, [userId, role]);
+
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+  }, []);
 
   const saveLayout = useCallback((newLayout: LayoutItem[]) => {
     setLayout(newLayout);
-    localStorage.setItem(getStorageKey(userId, role), JSON.stringify(newLayout));
-  }, [userId, role]);
+    try { localStorage.setItem(getStorageKey(userId, role), JSON.stringify(newLayout)); } catch {}
+    persistRemote(newLayout);
+  }, [userId, role, persistRemote]);
 
   const toggleSize = useCallback((id: string) => {
     const newLayout = layout.map(item =>

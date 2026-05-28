@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
-import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema } from "@shared/schema";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 
 const insertProductSchema = _insertProductSchema.strict();
@@ -492,6 +492,36 @@ export async function registerRoutes(
       res.json({ ok: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to update heartbeat" });
+    }
+  });
+
+  app.get("/api/users/:id/dashboard-layout/:role", async (req, res) => {
+    try {
+      const role = req.params.role;
+      if (role !== "restaurant" && role !== "supplier") {
+        return res.status(400).json({ error: "Invalid role" });
+      }
+      const layout = await storage.getDashboardLayout(req.params.id, role);
+      res.json({ layout });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch dashboard layout" });
+    }
+  });
+
+  app.put("/api/users/:id/dashboard-layout/:role", async (req, res) => {
+    try {
+      const role = req.params.role;
+      if (role !== "restaurant" && role !== "supplier") {
+        return res.status(400).json({ error: "Invalid role" });
+      }
+      const parsed = dashboardLayoutSchema.parse(req.body?.layout ?? req.body);
+      await storage.setDashboardLayout(req.params.id, role, parsed);
+      res.json({ ok: true, layout: parsed });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid layout", details: error.issues });
+      }
+      res.status(500).json({ error: "Failed to save dashboard layout" });
     }
   });
 
