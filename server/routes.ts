@@ -4,9 +4,9 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
-import { eq, and, desc, asc, sql, or, ilike } from "drizzle-orm";
-import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, insertSupplierRatingSchema, updateSupplierRatingSchema } from "@shared/schema";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
+import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, insertSupplierRatingSchema, updateSupplierRatingSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 
 const insertProductSchema = _insertProductSchema.strict();
@@ -660,6 +660,178 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid layout", details: error.issues });
       }
       res.status(500).json({ error: "Failed to save dashboard layout" });
+    }
+  });
+
+  app.get("/api/users/:id/dashboard-widgets/:role", async (req, res) => {
+    try {
+      const role = req.params.role;
+      if (role !== "restaurant" && role !== "supplier") {
+        return res.status(400).json({ error: "Invalid role" });
+      }
+      const widgets = await storage.getDashboardWidgets(req.params.id, role);
+      res.json({ widgets });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch dashboard widgets" });
+    }
+  });
+
+  app.put("/api/users/:id/dashboard-widgets/:role", async (req, res) => {
+    try {
+      const role = req.params.role;
+      if (role !== "restaurant" && role !== "supplier") {
+        return res.status(400).json({ error: "Invalid role" });
+      }
+      const parsed = dashboardWidgetsSchema.parse(req.body?.widgets ?? req.body);
+      await storage.setDashboardWidgets(req.params.id, role, parsed);
+      res.json({ ok: true, widgets: parsed });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid widgets", details: error.issues });
+      }
+      res.status(500).json({ error: "Failed to save dashboard widgets" });
+    }
+  });
+
+  // Promo performance: for each currently-active promotion, return units & revenue sold
+  // since promo.startDate (status != cancelled). Sorted by revenue desc.
+  app.get("/api/supplier/promo-performance", async (req, res) => {
+    try {
+      const supplierId = String(req.query.supplierId || "");
+      if (!supplierId) return res.status(400).json({ error: "supplierId required" });
+      const now = new Date();
+
+      const active = await db
+        .select()
+        .from(promotions)
+        .where(and(
+          eq(promotions.supplierId, supplierId),
+          eq(promotions.isActive, true),
+          lte(promotions.startDate, now),
+          gte(promotions.endDate, now),
+        ))
+        .orderBy(desc(promotions.startDate));
+
+      if (active.length === 0) return res.json([]);
+
+      const productIds = Array.from(new Set(active.map(p => p.productId)));
+      const productRows = await db
+        .select({ id: products.id, name: products.name, price: products.price, imageUrl: products.imageUrl, unit: products.unit })
+        .from(products)
+        .where(inArray(products.id, productIds));
+      const productMap = new Map(productRows.map(p => [p.id, p]));
+
+      const results = await Promise.all(active.map(async (promo) => {
+        const rows = await db
+          .select({
+            qty: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)`,
+            revenue: sql<number>`COALESCE(SUM(${orderItems.totalPrice}), 0)`,
+            orderCount: sql<number>`COUNT(DISTINCT ${orders.id})`,
+          })
+          .from(orderItems)
+          .innerJoin(orders, eq(orderItems.orderId, orders.id))
+          .where(and(
+            eq(orders.supplierId, supplierId),
+            eq(orderItems.productId, promo.productId),
+            ne(orders.status, "cancelled"),
+            gte(orders.createdAt, promo.startDate),
+          ));
+        const r = rows[0];
+        const product = productMap.get(promo.productId);
+        return {
+          promotionId: promo.id,
+          productId: promo.productId,
+          productName: product?.name || "",
+          productImageUrl: product?.imageUrl || null,
+          unit: product?.unit || "",
+          discountPercent: promo.discountPercent,
+          startDate: promo.startDate,
+          endDate: promo.endDate,
+          unitsSold: Number(r?.qty) || 0,
+          revenue: Number(r?.revenue) || 0,
+          orderCount: Number(r?.orderCount) || 0,
+        };
+      }));
+
+      results.sort((a, b) => b.revenue - a.revenue);
+      res.json(results);
+    } catch (error) {
+      console.error("promo-performance error", error);
+      res.status(500).json({ error: "Failed to fetch promo performance" });
+    }
+  });
+
+  // Average supplier response time: avg seconds between a restaurant message
+  // and the supplier's next reply, over the last 30 days.
+  app.get("/api/supplier/response-time", async (req, res) => {
+    try {
+      const supplierId = String(req.query.supplierId || "");
+      if (!supplierId) return res.status(400).json({ error: "supplierId required" });
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const convs = await db
+        .select({ id: conversations.id, restaurantId: conversations.restaurantId })
+        .from(conversations)
+        .where(eq(conversations.supplierId, supplierId));
+
+      if (convs.length === 0) {
+        return res.json({ avgSeconds: null, sampleCount: 0, conversationCount: 0 });
+      }
+
+      const convIds = convs.map(c => c.id);
+      const restaurantByConv = new Map(convs.map(c => [c.id, c.restaurantId]));
+
+      const msgs = await db
+        .select({
+          conversationId: messages.conversationId,
+          senderId: messages.senderId,
+          createdAt: messages.createdAt,
+        })
+        .from(messages)
+        .where(and(
+          inArray(messages.conversationId, convIds),
+          gte(messages.createdAt, since),
+        ))
+        .orderBy(asc(messages.conversationId), asc(messages.createdAt));
+
+      let totalSeconds = 0;
+      let sampleCount = 0;
+      const respondingConvs = new Set<string>();
+
+      const byConv = new Map<string, typeof msgs>();
+      for (const m of msgs) {
+        const arr = byConv.get(m.conversationId) || [];
+        arr.push(m);
+        byConv.set(m.conversationId, arr);
+      }
+
+      for (const [convId, arr] of byConv) {
+        const restId = restaurantByConv.get(convId);
+        if (!restId) continue;
+        let pendingRestaurantAt: Date | null = null;
+        for (const m of arr) {
+          if (m.senderId === restId) {
+            if (pendingRestaurantAt === null) pendingRestaurantAt = m.createdAt;
+          } else if (pendingRestaurantAt !== null) {
+            const diff = (m.createdAt.getTime() - pendingRestaurantAt.getTime()) / 1000;
+            if (diff >= 0 && diff < 7 * 24 * 3600) {
+              totalSeconds += diff;
+              sampleCount += 1;
+              respondingConvs.add(convId);
+            }
+            pendingRestaurantAt = null;
+          }
+        }
+      }
+
+      res.json({
+        avgSeconds: sampleCount > 0 ? Math.round(totalSeconds / sampleCount) : null,
+        sampleCount,
+        conversationCount: respondingConvs.size,
+      });
+    } catch (error) {
+      console.error("response-time error", error);
+      res.status(500).json({ error: "Failed to compute response time" });
     }
   });
 

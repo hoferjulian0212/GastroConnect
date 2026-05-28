@@ -35,6 +35,8 @@ export interface IStorage {
   updateLastSeen(userId: string): Promise<void>;
   getDashboardLayout(userId: string, role: string): Promise<Array<{ id: string; size: "full" | "half" }> | null>;
   setDashboardLayout(userId: string, role: string, layout: Array<{ id: string; size: "full" | "half" }>): Promise<void>;
+  getDashboardWidgets(userId: string, role: string): Promise<string[] | null>;
+  setDashboardWidgets(userId: string, role: string, widgets: string[]): Promise<void>;
 
   // Products
   getProducts(): Promise<ProductWithSupplier[]>;
@@ -253,6 +255,21 @@ export class DatabaseStorage implements IStorage {
     const existing = u.dashboardLayouts || {};
     const next = { ...existing, [role]: layout };
     await db.update(users).set({ dashboardLayouts: next }).where(eq(users.id, userId));
+  }
+
+  async getDashboardWidgets(userId: string, role: string): Promise<string[] | null> {
+    const [u] = await db.select({ dashboardWidgets: users.dashboardWidgets }).from(users).where(eq(users.id, userId));
+    if (!u) return null;
+    const widgets = u.dashboardWidgets || {};
+    return widgets[role] ?? null;
+  }
+
+  async setDashboardWidgets(userId: string, role: string, widgets: string[]): Promise<void> {
+    const [u] = await db.select({ dashboardWidgets: users.dashboardWidgets }).from(users).where(eq(users.id, userId));
+    if (!u) return;
+    const existing = u.dashboardWidgets || {};
+    const next = { ...existing, [role]: widgets };
+    await db.update(users).set({ dashboardWidgets: next }).where(eq(users.id, userId));
   }
 
   // Products

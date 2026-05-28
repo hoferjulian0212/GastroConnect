@@ -40,6 +40,7 @@ import SupplierHomeMobile from "./HomeMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductImage } from "@/components/ProductImage";
 import SupplierRatingsList from "@/components/SupplierRatingsList";
+import { LagerWarnungenWidget, OffeneReklamationenWidget, HeuteZuLiefernWidget, TopKunden30dWidget, PromoPerformanceWidget, AntwortzeitWidget } from "@/components/SupplierDashboardWidgets";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
@@ -580,7 +581,34 @@ export default function SupplierHome() {
       <DraggableCardGrid
         userId={currentUser?.id || ""}
         role="supplier"
+        managerTitle={t("supplierHome", "manageWidgets")}
+        managerDescription={t("supplierHome", "manageWidgetsDesc")}
+        managerButtonLabel={t("supplierHome", "manageWidgets")}
         sections={[
+          { id: "w-lager-warnungen", optional: true, defaultEnabled: true, defaultSize: "half" as const,
+            title: t("supplierHome", "widgetLowStock"), description: t("supplierHome", "widgetLowStockDesc"),
+            content: <LagerWarnungenWidget supplierId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-offene-reklamationen", optional: true, defaultEnabled: true, defaultSize: "half" as const,
+            title: t("supplierHome", "widgetOpenComplaints"), description: t("supplierHome", "widgetOpenComplaintsDesc"),
+            content: <OffeneReklamationenWidget supplierId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-heute-zu-liefern", optional: true, defaultEnabled: true, defaultSize: "half" as const,
+            title: t("supplierHome", "widgetTodayDeliveries"), description: t("supplierHome", "widgetTodayDeliveriesDesc"),
+            content: <HeuteZuLiefernWidget supplierId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-top-kunden-30d", optional: true, defaultEnabled: true, defaultSize: "half" as const,
+            title: t("supplierHome", "widgetTopCustomers"), description: t("supplierHome", "widgetTopCustomersDesc"),
+            content: <TopKunden30dWidget supplierId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-promo-performance", optional: true, defaultEnabled: true, defaultSize: "half" as const,
+            title: t("supplierHome", "widgetPromoPerformance"), description: t("supplierHome", "widgetPromoPerformanceDesc"),
+            content: <PromoPerformanceWidget supplierId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-antwortzeit", optional: true, defaultEnabled: true, defaultSize: "half" as const,
+            title: t("supplierHome", "widgetResponseTime"), description: t("supplierHome", "widgetResponseTimeDesc"),
+            content: <AntwortzeitWidget supplierId={currentUser?.id || ""} lang={lang} />,
+          },
           { id: "upcoming-deliveries", defaultSize: "full" as const, content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">

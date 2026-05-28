@@ -1,5 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, useRef, memo } from "react";
-import { GripVertical, Maximize2, Columns2, Settings2, Check } from "lucide-react";
+import { GripVertical, Maximize2, Columns2, Settings2, Check, LayoutGrid } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import {
   DndContext,
   closestCenter,
@@ -26,12 +29,19 @@ interface CardSection {
   id: string;
   content: React.ReactNode;
   defaultSize?: CardSize;
+  title?: string;
+  description?: string;
+  optional?: boolean;
+  defaultEnabled?: boolean;
 }
 
 interface DraggableCardGridProps {
   userId: string;
   role: string;
   sections: CardSection[];
+  managerTitle?: string;
+  managerDescription?: string;
+  managerButtonLabel?: string;
 }
 
 interface LayoutItem {
@@ -49,6 +59,50 @@ const GAP = 24;
 
 function getStorageKey(userId: string, role: string) {
   return `dashboard-grid-${userId}-${role}`;
+}
+
+function getWidgetsStorageKey(userId: string, role: string) {
+  return `dashboard-widgets-${userId}-${role}`;
+}
+
+function defaultEnabledIds(sections: CardSection[]): string[] {
+  return sections
+    .filter(s => !s.optional || s.defaultEnabled !== false)
+    .map(s => s.id);
+}
+
+function reconcileEnabledIds(saved: unknown, sections: CardSection[]): string[] | null {
+  if (!Array.isArray(saved)) return null;
+  const validIds = new Set(sections.map(s => s.id));
+  const requiredIds = sections.filter(s => !s.optional).map(s => s.id);
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const v of saved) {
+    if (typeof v !== "string") continue;
+    if (!validIds.has(v)) continue;
+    if (seen.has(v)) continue;
+    seen.add(v);
+    result.push(v);
+  }
+  // Required (non-optional) sections are always enabled, regardless of saved state.
+  for (const id of requiredIds) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      result.push(id);
+    }
+  }
+  return result;
+}
+
+function loadEnabledIds(userId: string, role: string, sections: CardSection[]): string[] {
+  try {
+    const saved = localStorage.getItem(getWidgetsStorageKey(userId, role));
+    if (saved) {
+      const r = reconcileEnabledIds(JSON.parse(saved), sections);
+      if (r) return r;
+    }
+  } catch {}
+  return defaultEnabledIds(sections);
 }
 
 function defaultLayout(sections: CardSection[]): LayoutItem[] {
@@ -243,8 +297,17 @@ const measuringConfig = {
   },
 };
 
-export default function DraggableCardGrid({ userId, role, sections }: DraggableCardGridProps) {
-  const [layout, setLayout] = useState<LayoutItem[]>(() => loadLayout(userId, role, sections));
+export default function DraggableCardGrid({ userId, role, sections, managerTitle, managerDescription, managerButtonLabel }: DraggableCardGridProps) {
+  const [enabledIds, setEnabledIds] = useState<string[]>(() => loadEnabledIds(userId, role, sections));
+  const enabledSet = useMemo(() => new Set(enabledIds), [enabledIds]);
+  const effectiveSections = useMemo(
+    () => sections.filter(s => !s.optional || enabledSet.has(s.id)),
+    [sections, enabledSet]
+  );
+  const optionalSections = useMemo(() => sections.filter(s => s.optional), [sections]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const [layout, setLayout] = useState<LayoutItem[]>(() => loadLayout(userId, role, effectiveSections));
   const [editMode, setEditMode] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -374,18 +437,18 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   }, []);
 
   useEffect(() => {
-    const defaultIds = sections.map(s => s.id);
+    const defaultIds = effectiveSections.map(s => s.id);
     const currentIds = layoutRef.current.map(l => l.id);
     const newIds = defaultIds.filter(id => !currentIds.includes(id));
     const removedIds = currentIds.filter(id => !defaultIds.includes(id));
     if (newIds.length > 0 || removedIds.length > 0) {
       const updated = layoutRef.current
         .filter(l => defaultIds.includes(l.id))
-        .concat(newIds.map(id => ({ id, size: (sections.find(s => s.id === id)?.defaultSize || "full") as CardSize })));
+        .concat(newIds.map(id => ({ id, size: (effectiveSections.find(s => s.id === id)?.defaultSize || "full") as CardSize })));
       setLayout(updated);
       try { localStorage.setItem(getStorageKey(userId, role), JSON.stringify(updated)); } catch {}
     }
-  }, [sections.map(s => s.id).join(","), userId, role]);
+  }, [effectiveSections.map(s => s.id).join(","), userId, role]);
 
   // Fetch the persisted layout from the server on mount (or when user/role changes).
   // While the request is in flight we keep the localStorage-seeded layout so the dashboard
@@ -401,7 +464,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
         });
         if (!res.ok) return;
         const data = await res.json();
-        const reconciled = reconcileLayout(data?.layout, sections);
+        const reconciled = reconcileLayout(data?.layout, effectiveSections);
         if (cancelled || !reconciled) return;
         setLayout(prev => {
           if (layoutsEqual(prev, reconciled)) return prev;
@@ -414,7 +477,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, role, sections.map(s => s.id).join(",")]);
+  }, [userId, role, effectiveSections.map(s => s.id).join(",")]);
 
   // Push the layout back to the server, debounced so rapid swaps don't spam the API.
   // Always writes localStorage immediately so reloads are instant even without network.
@@ -436,6 +499,59 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   useEffect(() => () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
   }, []);
+
+  // Fetch persisted enabled widget IDs from the server (server wins on conflict).
+  useEffect(() => {
+    if (!userId || !role) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/users/${encodeURIComponent(userId)}/dashboard-widgets/${encodeURIComponent(role)}`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const reconciled = reconcileEnabledIds(data?.widgets, sections);
+        if (cancelled || !reconciled) return;
+        setEnabledIds(prev => {
+          const a = prev.slice().sort().join(",");
+          const b = reconciled.slice().sort().join(",");
+          if (a === b) return prev;
+          try { localStorage.setItem(getWidgetsStorageKey(userId, role), JSON.stringify(reconciled)); } catch {}
+          return reconciled;
+        });
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, role, sections.map(s => s.id).join(",")]);
+
+  const widgetSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistWidgetsRemote = useCallback((next: string[]) => {
+    if (!userId || !role) return;
+    if (widgetSaveTimer.current) clearTimeout(widgetSaveTimer.current);
+    widgetSaveTimer.current = setTimeout(() => {
+      apiRequest(
+        "PUT",
+        `/api/users/${encodeURIComponent(userId)}/dashboard-widgets/${encodeURIComponent(role)}`,
+        { widgets: next },
+      ).catch(() => {});
+    }, 400);
+  }, [userId, role]);
+
+  useEffect(() => () => {
+    if (widgetSaveTimer.current) clearTimeout(widgetSaveTimer.current);
+  }, []);
+
+  const toggleWidget = useCallback((id: string) => {
+    setEnabledIds(prev => {
+      const has = prev.includes(id);
+      const next = has ? prev.filter(x => x !== id) : [...prev, id];
+      try { localStorage.setItem(getWidgetsStorageKey(userId, role), JSON.stringify(next)); } catch {}
+      persistWidgetsRemote(next);
+      return next;
+    });
+  }, [userId, role, persistWidgetsRemote]);
 
   const saveLayout = useCallback((newLayout: LayoutItem[]) => {
     setLayout(newLayout);
@@ -505,7 +621,7 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     rafId.current = requestAnimationFrame(recalcPositions);
   }, [recalcPositions]);
 
-  const sectionMap = useMemo(() => new Map(sections.map(s => [s.id, s])), [sections]);
+  const sectionMap = useMemo(() => new Map(effectiveSections.map(s => [s.id, s])), [effectiveSections]);
   const layoutIds = useMemo(() => layout.map(l => l.id), [layout]);
 
   const activeItem = activeId ? layout.find(l => l.id === activeId) : null;
@@ -513,7 +629,18 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
 
   return (
     <div className="relative">
-      <div className="flex justify-end mb-3 md:mb-4">
+      <div className="flex justify-end gap-1 mb-3 md:mb-4">
+        {!editMode && optionalSections.length > 0 && (
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors"
+            data-testid="button-manage-widgets"
+            title={managerButtonLabel || "Widgets verwalten"}
+            aria-label={managerButtonLabel || "Widgets verwalten"}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+          </button>
+        )}
         {editMode ? (
           <button
             onClick={() => setEditMode(false)}
@@ -536,6 +663,46 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
           </button>
         )}
       </div>
+
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-manage-widgets">
+          <DialogHeader>
+            <DialogTitle>{managerTitle || "Widgets verwalten"}</DialogTitle>
+            {managerDescription ? (
+              <DialogDescription>{managerDescription}</DialogDescription>
+            ) : null}
+          </DialogHeader>
+          <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto">
+            {optionalSections.map(s => {
+              const checked = enabledSet.has(s.id);
+              return (
+                <div
+                  key={s.id}
+                  className="flex items-start justify-between gap-3 rounded-lg border border-border/40 bg-muted/20 px-3 py-2.5"
+                  data-testid={`widget-toggle-row-${s.id}`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium leading-tight">{s.title || s.id}</div>
+                    {s.description ? (
+                      <div className="text-xs text-muted-foreground mt-0.5">{s.description}</div>
+                    ) : null}
+                  </div>
+                  <Switch
+                    checked={checked}
+                    onCheckedChange={() => toggleWidget(s.id)}
+                    data-testid={`widget-switch-${s.id}`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setPickerOpen(false)} data-testid="button-close-manage-widgets">
+              Fertig
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <DndContext
         sensors={sensors}
