@@ -32,6 +32,8 @@ export const users = pgTable("users", {
   monthlyRevenueTarget: decimal("monthly_revenue_target", { precision: 12, scale: 2 }),
   dashboardLayouts: jsonb("dashboard_layouts").$type<Record<string, Array<{ id: string; size: "full" | "half" }>>>(),
   dashboardWidgets: jsonb("dashboard_widgets").$type<Record<string, string[]>>(),
+  onboardingCompletedAt: timestamp("onboarding_completed_at"),
+  dismissedHelpTopics: jsonb("dismissed_help_topics").$type<string[]>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -329,7 +331,7 @@ export const orderTemplateItems = pgTable("order_template_items", {
 ]);
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, dashboardLayouts: true, dashboardWidgets: true });
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, dashboardLayouts: true, dashboardWidgets: true, onboardingCompletedAt: true, dismissedHelpTopics: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });

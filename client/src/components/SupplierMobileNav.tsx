@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Package, ClipboardList, AlertCircle, Settings, FileText, Store, Tag, User, Warehouse, CalendarDays } from "lucide-react";
+import { Home, MessageSquare, Package, ClipboardList, AlertCircle, Settings, FileText, Store, Tag, User, Warehouse, CalendarDays, HelpCircle } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -26,6 +26,7 @@ export function SupplierMobileNav() {
     { title: t("common", "documents"), url: "/supplier/documents", icon: FileText },
     { title: t("common", "profile"), url: "/supplier/profile", icon: User },
     { title: t("common", "settings"), url: "/supplier/settings", icon: Settings },
+    { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/supplier/help", icon: HelpCircle },
   ];
 
   const { data: unreadCount } = useQuery<{ count: number }>({

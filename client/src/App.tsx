@@ -58,6 +58,9 @@ import Documents from "@/pages/Documents";
 import OrderDetail from "@/pages/OrderDetail";
 import ComplaintDetail from "@/pages/ComplaintDetail";
 import CalendarPage from "@/pages/Calendar";
+import Help from "@/pages/Help";
+import { TourProvider } from "@/components/tour/TourProvider";
+import { HelpButton } from "@/components/HelpButton";
 
 function RestaurantRouter() {
   return (
@@ -80,6 +83,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/cost-analysis" component={RestaurantCostAnalysis} />
       <Route path="/restaurant/price-comparison" component={RestaurantPriceComparison} />
       <Route path="/restaurant/calendar">{() => <CalendarPage role="restaurant" />}</Route>
+      <Route path="/restaurant/help" component={Help} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -102,6 +106,7 @@ function SupplierRouter() {
       <Route path="/supplier/profile" component={SupplierProfile} />
       <Route path="/supplier/documents" component={Documents} />
       <Route path="/supplier/calendar">{() => <CalendarPage role="supplier" />}</Route>
+      <Route path="/supplier/help" component={Help} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -554,6 +559,7 @@ function AppLayout() {
                       <CartButton />
                     </div>
                   )}
+                  <HelpButton />
                   <NotificationBell />
                   <DesktopProfileButton />
                 </div>
@@ -584,8 +590,10 @@ function App() {
             <UserProvider>
               <HeroProvider>
               <ChatProvider>
-                <AppLayout />
-                <Toaster />
+                <TourProvider>
+                  <AppLayout />
+                  <Toaster />
+                </TourProvider>
               </ChatProvider>
               </HeroProvider>
             </UserProvider>

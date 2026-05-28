@@ -37,6 +37,9 @@ export interface IStorage {
   setDashboardLayout(userId: string, role: string, layout: Array<{ id: string; size: "full" | "half" }>): Promise<void>;
   getDashboardWidgets(userId: string, role: string): Promise<string[] | null>;
   setDashboardWidgets(userId: string, role: string, widgets: string[]): Promise<void>;
+  completeOnboarding(userId: string): Promise<User | undefined>;
+  resetOnboarding(userId: string): Promise<User | undefined>;
+  dismissHelpTopic(userId: string, topicId: string): Promise<User | undefined>;
 
   // Products
   getProducts(): Promise<ProductWithSupplier[]>;
@@ -270,6 +273,26 @@ export class DatabaseStorage implements IStorage {
     const existing = u.dashboardWidgets || {};
     const next = { ...existing, [role]: widgets };
     await db.update(users).set({ dashboardWidgets: next }).where(eq(users.id, userId));
+  }
+
+  async completeOnboarding(userId: string): Promise<User | undefined> {
+    const [updated] = await db.update(users).set({ onboardingCompletedAt: new Date() }).where(eq(users.id, userId)).returning();
+    return updated;
+  }
+
+  async resetOnboarding(userId: string): Promise<User | undefined> {
+    const [updated] = await db.update(users).set({ onboardingCompletedAt: null }).where(eq(users.id, userId)).returning();
+    return updated;
+  }
+
+  async dismissHelpTopic(userId: string, topicId: string): Promise<User | undefined> {
+    const [u] = await db.select({ dismissedHelpTopics: users.dismissedHelpTopics }).from(users).where(eq(users.id, userId));
+    if (!u) return undefined;
+    const existing = u.dismissedHelpTopics || [];
+    if (existing.includes(topicId)) return undefined;
+    const next = [...existing, topicId];
+    const [updated] = await db.update(users).set({ dismissedHelpTopics: next }).where(eq(users.id, userId)).returning();
+    return updated;
   }
 
   // Products

@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Package, ShoppingCart, ShoppingBag, AlertCircle, Settings, Truck, FileText, User, Calculator, ArrowUpDown, CalendarDays } from "lucide-react";
+import { Home, MessageSquare, Package, ShoppingCart, ShoppingBag, AlertCircle, Settings, Truck, FileText, User, Calculator, ArrowUpDown, CalendarDays, HelpCircle } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -27,6 +27,7 @@ export function RestaurantMobileNav() {
     { title: t("common", "costAnalysis"), url: "/restaurant/cost-analysis", icon: Calculator },
     { title: t("common", "profile"), url: "/restaurant/profile", icon: User },
     { title: t("common", "settings"), url: "/restaurant/settings", icon: Settings },
+    { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/restaurant/help", icon: HelpCircle },
   ];
 
   const { data: unreadCount } = useQuery<{ count: number }>({

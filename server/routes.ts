@@ -857,6 +857,37 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/users/:id/onboarding/complete", async (req, res) => {
+    try {
+      const updated = await storage.completeOnboarding(req.params.id);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to complete onboarding" });
+    }
+  });
+
+  app.post("/api/users/:id/onboarding/reset", async (req, res) => {
+    try {
+      const updated = await storage.resetOnboarding(req.params.id);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset onboarding" });
+    }
+  });
+
+  app.post("/api/users/:id/help-topics/:topicId/dismiss", async (req, res) => {
+    try {
+      const topicId = String(req.params.topicId || "").slice(0, 100);
+      if (!topicId) return res.status(400).json({ error: "topicId required" });
+      const updated = await storage.dismissHelpTopic(req.params.id, topicId);
+      res.json(updated || { ok: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to dismiss help topic" });
+    }
+  });
+
   app.patch("/api/users/:id", async (req, res) => {
     try {
       const validated = updateUserSchema.parse(req.body);
