@@ -106,7 +106,9 @@ export function OffeneReklamationenWidget({ supplierId, lang }: { supplierId: st
     },
     enabled: !!supplierId,
   });
-  const complaints = (data?.openComplaints || []).slice(0, 4);
+  const allOpen = data?.openComplaints || [];
+  const complaints = allOpen.slice(0, 3);
+  const totalOpen = allOpen.length;
   return (
     <div className={CARD_BASE} data-testid="widget-offene-reklamationen">
       <div className={HEADER}>
@@ -116,9 +118,16 @@ export function OffeneReklamationenWidget({ supplierId, lang }: { supplierId: st
           desc={t("supplierHome", "widgetOpenComplaintsDesc")}
           testId="text-widget-offene-reklamationen-title"
         />
-        <Link href="/supplier/complaints" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 shrink-0" data-testid="link-widget-complaints-all">
-          {t("common", "all")}<ArrowRight className="h-3 w-3" />
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          {totalOpen > 0 && (
+            <Badge variant="outline" className="bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 text-[11px] tabular-nums" data-testid="badge-open-complaints-count">
+              {totalOpen}
+            </Badge>
+          )}
+          <Link href="/supplier/complaints" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1" data-testid="link-widget-complaints-all">
+            {t("common", "all")}<ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
       </div>
       <div className={BODY}>
         {isLoading ? (
@@ -170,7 +179,8 @@ export function HeuteZuLiefernWidget({ supplierId, lang }: { supplierId: string;
     },
     enabled: !!supplierId,
   });
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const today = (data || []).filter(o => o.requestedDeliveryDate === todayStr).slice(0, 5);
   return (
     <div className={CARD_BASE} data-testid="widget-heute-zu-liefern">

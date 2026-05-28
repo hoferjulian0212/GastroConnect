@@ -29,6 +29,20 @@
       "when": 1779986071730,
       "tag": "0003_dashboard_layouts",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779986071740,
+      "tag": "0004_supplier_ratings",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779989900000,
+      "tag": "0005_dashboard_widgets",
+      "breakpoints": true
     }
   ]
 }
