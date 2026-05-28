@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, RefreshCw, Flame } from "lucide-react";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
+import { DeliveryNoteCard } from "@/components/DeliveryNoteCard";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -1948,47 +1949,11 @@ export default function RestaurantInbox() {
                                     );
                                   })()
                                 ) : message.messageType === "document" ? (
-                                  (() => {
-                                    let docData: { title?: string; orderId?: string; fileUrl?: string } = {};
-                                    try { docData = JSON.parse(message.content); } catch {}
-                                    return (
-                                      <div className="w-[75%] max-w-sm rounded-2xl border bg-white dark:bg-card shadow-sm overflow-hidden border-border">
-                                        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
-                                          <div className="flex items-center gap-2">
-                                            <FileText className="h-3.5 w-3.5 text-foreground" />
-                                            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t("inbox", "deliveryNote")} {docData.orderId ? `#${(docData as any).orderNumber || formatOrderNumber({orderNumber: null, id: docData.orderId})}` : ""}</span>
-                                          </div>
-                                          <span className="text-[10px] text-muted-foreground">
-                                            {format(messageDate, "HH:mm")}
-                                          </span>
-                                        </div>
-                                        <div className="px-4 py-2">
-                                          <p className="text-sm font-medium">{docData.title || t("inbox", "documentMessage")}</p>
-                                          {docData.orderId && (
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                              {t("orders", "order")} #{(docData as any).orderNumber || formatOrderNumber({orderNumber: null, id: docData.orderId})}
-                                            </p>
-                                          )}
-                                        </div>
-                                        {docData.orderId && (
-                                          <div className="px-4 pb-3 pt-1">
-                                            <Button
-                                              variant="default"
-                                              size="sm"
-                                              className="w-full"
-                                              onClick={() => {
-                                                const a = document.createElement("a"); a.href = `/api/orders/${docData.orderId}/delivery-note/download`; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                                              }}
-                                              data-testid={`button-download-doc-${message.id}`}
-                                            >
-                                              <Download className="h-4 w-4 mr-2" />
-                                              {t("inbox", "downloadDeliveryNote")}
-                                            </Button>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })()
+                                  <DeliveryNoteCard
+                                    content={message.content}
+                                    timestamp={messageDate}
+                                    conversationId={selectedConversation || undefined}
+                                  />
                                 ) : message.messageType === "delivery_status" ? (
                                   (() => {
                                     let dsData: { type?: string; orderId?: string; orderNumber?: string; requestedDeliveryDate?: string | null; deliveryNotes?: string | null } = {};

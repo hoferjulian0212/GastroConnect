@@ -2032,6 +2032,10 @@ export async function registerRoutes(
                 orderId: order.id,
                 orderNumber: formatOrderNumber(order),
                 fileUrl: objectPath,
+                supplierName: order.supplier?.companyName || order.supplier?.name || "",
+                totalAmount: order.totalAmount,
+                itemCount: order.items?.length ?? 0,
+                deliveryDate: new Date().toISOString().slice(0, 10),
               }),
               orderId: order.id,
               documentUrl: objectPath,
@@ -2050,6 +2054,10 @@ export async function registerRoutes(
                 orderId: order.id,
                 orderNumber: formatOrderNumber(order),
                 fileUrl: existingNote.fileUrl,
+                supplierName: order.supplier?.companyName || order.supplier?.name || "",
+                totalAmount: order.totalAmount,
+                itemCount: order.items?.length ?? 0,
+                deliveryDate: new Date(existingNote.createdAt).toISOString().slice(0, 10),
               }),
               orderId: order.id,
               documentUrl: existingNote.fileUrl,
@@ -4000,17 +4008,19 @@ export async function registerRoutes(
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
+      const inline = req.query.inline === "1" || req.query.disposition === "inline";
+      const disposition = inline ? "inline" : "attachment";
       const docs = await storage.getDocumentsByOrder(order.id);
       const deliveryNote = docs.find(d => d.type === "delivery_note");
       if (deliveryNote) {
         const objectService = new ObjectStorageService();
         const objectFile = await objectService.getObjectEntityFile(deliveryNote.fileUrl);
-        res.setHeader("Content-Disposition", `attachment; filename="Lieferschein_${formatOrderNumber(order)}.pdf"`);
+        res.setHeader("Content-Disposition", `${disposition}; filename="Lieferschein_${formatOrderNumber(order)}.pdf"`);
         await objectService.downloadObject(objectFile, res);
       } else {
         const pdfBuffer = await generateDeliveryNotePDF(order);
         res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `inline; filename="Lieferschein_${formatOrderNumber(order)}.pdf"`);
+        res.setHeader("Content-Disposition", `${disposition}; filename="Lieferschein_${formatOrderNumber(order)}.pdf"`);
         res.send(pdfBuffer);
       }
     } catch (error) {
@@ -4080,6 +4090,10 @@ export async function registerRoutes(
           orderId: order.id,
           orderNumber: formatOrderNumber(order),
           fileUrl: objectPath,
+          supplierName: order.supplier?.companyName || order.supplier?.name || "",
+          totalAmount: order.totalAmount,
+          itemCount: order.items?.length ?? 0,
+          deliveryDate: new Date().toISOString().slice(0, 10),
         }),
         orderId: order.id,
         documentUrl: objectPath,
