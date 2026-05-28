@@ -38,9 +38,9 @@ export function MobileEmptyState({
           {icon}
         </div>
       )}
-      <h3 className="text-[17px] font-semibold text-foreground leading-tight">{title}</h3>
+      <h3 className="m-type-h1 text-foreground">{title}</h3>
       {description && (
-        <p className="text-[13px] text-muted-foreground mt-1.5 max-w-[300px] leading-relaxed">
+        <p className="m-type-meta mt-1.5 max-w-[300px] leading-relaxed">
           {description}
         </p>
       )}
