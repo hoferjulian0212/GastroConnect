@@ -12,9 +12,9 @@ export function MobileSection({ title, action, children, testId, className }: Mo
   return (
     <section className={`px-4 ${className || ""}`} data-testid={testId}>
       {(title || action) && (
-        <div className="flex items-end justify-between mb-3">
+        <div className="flex items-end justify-between mb-2.5">
           {title && (
-            <h2 className="text-[15px] font-semibold text-foreground tracking-tight">{title}</h2>
+            <h2 className="text-[14px] font-semibold text-foreground tracking-tight">{title}</h2>
           )}
           {action}
         </div>

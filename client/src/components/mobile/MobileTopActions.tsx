@@ -31,10 +31,10 @@ interface MobileTopActionsProps {
 }
 
 const ACTION_BTN_DARK =
-  "relative shrink-0 inline-flex items-center justify-center h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/15 active:bg-white/20 transition-colors";
+  "relative shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full bg-white/10 text-white hover:bg-white/15 active:bg-white/20 transition-colors before:absolute before:inset-[-2px] before:content-['']";
 
 const ACTION_BTN_LIGHT =
-  "relative shrink-0 inline-flex items-center justify-center h-9 w-9 rounded-full bg-foreground/[0.06] text-foreground hover:bg-foreground/10 active:bg-foreground/15 transition-colors";
+  "relative shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full bg-foreground/[0.06] text-foreground hover:bg-foreground/10 active:bg-foreground/15 transition-colors before:absolute before:inset-[-2px] before:content-['']";
 
 export function MobileTopActions({
   variant = "dark",

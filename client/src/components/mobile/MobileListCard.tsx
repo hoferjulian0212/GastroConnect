@@ -40,15 +40,15 @@ export function MobileListCard({
     <Comp
       onClick={onClick}
       data-testid={testId}
-      className={`w-full text-left flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-border ${accentBorder[accent]} ${
+      className={`w-full text-left flex items-center gap-3 min-h-[56px] p-3 rounded-2xl bg-card border border-border ${accentBorder[accent]} ${
         onClick ? "active:scale-[0.98] transition-transform" : ""
       } ${className || ""}`}
     >
       {leading && <div className="shrink-0">{leading}</div>}
       <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-semibold text-foreground truncate">{title}</div>
+        <div className="text-[14px] font-semibold text-foreground truncate leading-tight">{title}</div>
         {subtitle && <div className="text-[12px] text-muted-foreground truncate mt-0.5">{subtitle}</div>}
-        {meta && <div className="text-[11px] text-muted-foreground mt-1">{meta}</div>}
+        {meta && <div className="text-[11px] text-muted-foreground mt-0.5">{meta}</div>}
       </div>
       {trailing && <div className="shrink-0">{trailing}</div>}
       {showChevron && <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />}

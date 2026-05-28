@@ -133,17 +133,17 @@ export default function SupplierHomeMobile({
         className="pb-[var(--mobile-bottom-pad)]"
       >
         <div
-          className="bg-[#161921] text-white px-5 pb-5 rounded-3xl mx-2 overflow-hidden"
+          className="bg-[#161921] text-white px-4 pb-4 rounded-3xl mx-2 overflow-hidden"
           style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
           data-testid="mobile-header-supplier-home"
         >
-          <div className="pt-2 pb-5 flex items-start gap-3">
+          <div className="pt-1 pb-3.5 flex items-start gap-2">
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-white/60">{greeting},</p>
-              <h1 className="text-[26px] font-bold leading-tight mt-1 text-white truncate">
+              <p className="text-[12px] font-medium text-white/60 truncate">{greeting},</p>
+              <h1 className="text-[20px] font-bold leading-tight mt-0.5 text-white line-clamp-2 break-words">
                 {currentUser?.companyName || currentUser?.name || ""}
               </h1>
-              <p className="text-[12px] text-white/55 mt-1.5">
+              <p className="text-[11px] text-white/55 mt-1">
                 {lang === "de"
                   ? `${newOrdersCount} ${newOrdersCount === 1 ? "neue Bestellung" : "neue Bestellungen"} · ${todayDeliveries.length} ${todayDeliveries.length === 1 ? "Lieferung heute" : "Lieferungen heute"}`
                   : `${newOrdersCount} ${newOrdersCount === 1 ? "nuovo ordine" : "nuovi ordini"} · ${todayDeliveries.length} ${todayDeliveries.length === 1 ? "consegna oggi" : "consegne oggi"}`}
@@ -151,19 +151,19 @@ export default function SupplierHomeMobile({
             </div>
             <MobileTopActions variant="dark" />
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2">
             {kpis.map((k) => (
               <button
                 key={k.testId}
                 onClick={k.onClick}
                 data-testid={k.testId}
-                className="text-left rounded-2xl bg-white/[0.07] border border-white/[0.10] p-3.5 active:scale-[0.98] transition-transform"
+                className="text-left rounded-2xl bg-white/[0.07] border border-white/[0.10] p-3 min-h-[72px] active:scale-[0.98] transition-transform"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-white/55">{k.label}</span>
-                  <div className={`flex items-center justify-center h-7 w-7 rounded-lg ${k.tone}`}>{k.icon}</div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-white/55 truncate">{k.label}</span>
+                  <div className={`flex items-center justify-center h-6 w-6 rounded-lg ${k.tone}`}>{k.icon}</div>
                 </div>
-                <div className="mt-2.5 text-[22px] font-bold leading-none text-white">{k.value}</div>
+                <div className="mt-2 text-[18px] font-bold leading-none text-white tabular-nums">{k.value}</div>
               </button>
             ))}
           </div>
@@ -192,19 +192,19 @@ export default function SupplierHomeMobile({
 
         <MobileSection
           title={lang === "de" ? "Schnellaktionen" : "Azioni rapide"}
-          className="mt-6"
+          className="mt-5"
         >
           <div className="-mx-4 px-4 overflow-x-auto scrollbar-hide">
-            <div className="flex items-stretch gap-2.5 min-w-min pr-4">
+            <div className="flex items-stretch gap-2 min-w-min pr-4">
               {quickActions.map((qa) => (
                 <Link
                   key={qa.label}
                   href={qa.to}
                   data-testid={`mobile-s-quick-${qa.label}`}
-                  className="flex flex-col items-center justify-center gap-2 w-[88px] h-[84px] rounded-2xl bg-card border border-border active:scale-95 transition-transform no-underline"
+                  className="flex flex-col items-center justify-center gap-1.5 w-[72px] h-[68px] rounded-2xl bg-card border border-border active:scale-95 transition-transform no-underline"
                 >
-                  <div className={`flex items-center justify-center h-10 w-10 rounded-full ${qa.color}`}>{qa.icon}</div>
-                  <span className="text-[11px] font-semibold text-foreground text-center leading-tight">{qa.label}</span>
+                  <div className={`flex items-center justify-center h-9 w-9 rounded-full ${qa.color}`}>{qa.icon}</div>
+                  <span className="text-[10px] font-semibold text-foreground text-center leading-tight truncate max-w-full px-1">{qa.label}</span>
                 </Link>
               ))}
             </div>
@@ -266,7 +266,7 @@ export default function SupplierHomeMobile({
 
         <MobileSection
           title={t("supplierHome", "statistics")}
-          className="mt-6"
+          className="mt-5"
           testId="mobile-s-section-stats"
           action={
             <button onClick={onExportStats} data-testid="button-export-stats-mobile" className="text-[12px] font-semibold text-primary inline-flex items-center gap-1">
@@ -499,7 +499,7 @@ export default function SupplierHomeMobile({
         <MobileSection
           title={lang === "de" ? "Letzte Bestellungen" : "Ordini recenti"}
           action={<MobileSectionLink onClick={() => navigate("/supplier/orders")}>{lang === "de" ? "Alle" : "Tutti"}</MobileSectionLink>}
-          className="mt-6"
+          className="mt-5"
           testId="mobile-s-section-recent"
         >
           {ordersLoading ? (
