@@ -155,10 +155,12 @@ app.use((req, res, next) => {
     if (now.getUTCDate() !== 1) return;
     const tag = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
     if (tag === lastRunYearMonth) return;
-    lastRunYearMonth = tag;
     try {
       log("[monthly-report] running scheduled batch", "scheduler");
       const result = await runMonthlyReportsForAll();
+      // Only mark this month as "done" after a successful batch — failures
+      // (DB hiccup, GCS auth flake) will be retried on the next 6h tick.
+      lastRunYearMonth = tag;
       log(`[monthly-report] generated=${result.generated} skipped=${result.skipped} failed=${result.failed}`, "scheduler");
     } catch (err) {
       console.error("[monthly-report] scheduled batch failed:", err);

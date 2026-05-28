@@ -5318,10 +5318,30 @@ export async function registerRoutes(
   // ===== MONTHLY COMPARISON REPORTS (Task #45) =====
   const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
+  // Resolve actor from trust header (project convention — same as elsewhere
+  // in this codebase). Returns null if header missing or user not found.
+  async function resolveActor(req: any): Promise<{ id: string; role: string } | null> {
+    const actorId = String(req.header("x-user-id") || "");
+    if (!actorId) return null;
+    const u = await storage.getUser(actorId);
+    return u ? { id: u.id, role: u.role } : null;
+  }
+
+  // Guard: caller must be the same restaurant they target. If x-user-id is
+  // omitted (legacy callers, scripts), fall back to allowing the query-supplied
+  // restaurantId — but if the header IS present it MUST match.
+  function assertRestaurantOwnership(req: any, targetRestaurantId: string): string | null {
+    const actorId = String(req.header("x-user-id") || "");
+    if (actorId && actorId !== targetRestaurantId) return "Forbidden";
+    return null;
+  }
+
   app.get("/api/restaurant/monthly-reports", async (req, res) => {
     try {
       const restaurantId = String(req.query.restaurantId || "");
       if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      const denied = assertRestaurantOwnership(req, restaurantId);
+      if (denied) return res.status(403).json({ error: denied });
       const reports = await storage.getMonthlyReportsByRestaurant(restaurantId);
       res.json(reports);
     } catch (error) {
@@ -5334,6 +5354,8 @@ export async function registerRoutes(
     try {
       const report = await storage.getMonthlyReport(req.params.id);
       if (!report) return res.status(404).json({ error: "Report not found" });
+      const denied = assertRestaurantOwnership(req, report.restaurantId);
+      if (denied) return res.status(403).json({ error: denied });
       res.json(report);
     } catch (error) {
       console.error("Failed to fetch monthly report:", error);
@@ -5350,6 +5372,8 @@ export async function registerRoutes(
       if (!month || typeof month !== "string" || !MONTH_RE.test(month)) {
         return res.status(400).json({ error: "month must be YYYY-MM" });
       }
+      const denied = assertRestaurantOwnership(req, restaurantId);
+      if (denied) return res.status(403).json({ error: denied });
       const now = new Date();
       const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
       if (month >= currentMonth) {
@@ -5371,6 +5395,8 @@ export async function registerRoutes(
     try {
       const report = await storage.getMonthlyReport(req.params.id);
       if (!report) return res.status(404).json({ error: "Report not found" });
+      const denied = assertRestaurantOwnership(req, report.restaurantId);
+      if (denied) return res.status(403).json({ error: denied });
       if (!report.fileUrl) return res.status(409).json({ error: "PDF nicht verfügbar — bitte Bericht neu erstellen." });
       const objectService = new ObjectStorageService();
       const file = await objectService.getObjectEntityFile(report.fileUrl);
@@ -5389,6 +5415,8 @@ export async function registerRoutes(
       const restaurantId = String(req.query.restaurantId || "");
       const month = req.params.month;
       if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      const denied = assertRestaurantOwnership(req, restaurantId);
+      if (denied) return res.status(403).json({ error: denied });
       if (!MONTH_RE.test(month)) return res.status(400).json({ error: "month must be YYYY-MM" });
       const payload = await computeMonthlyReport(restaurantId, month);
       res.json(payload);
@@ -5402,6 +5430,9 @@ export async function registerRoutes(
     try {
       const { optOut } = req.body ?? {};
       if (typeof optOut !== "boolean") return res.status(400).json({ error: "optOut must be boolean" });
+      // Only allow self-update when x-user-id header is present.
+      const actorId = String(req.header("x-user-id") || "");
+      if (actorId && actorId !== req.params.id) return res.status(403).json({ error: "Forbidden" });
       const updated = await storage.updateUser(req.params.id, { monthlyReportOptOut: optOut } as any);
       if (!updated) return res.status(404).json({ error: "User not found" });
       res.json({ monthlyReportOptOut: updated.monthlyReportOptOut });
