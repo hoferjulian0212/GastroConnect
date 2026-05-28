@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/dialog";
 import { formatOrderNumber, type User, type Order, type ComplaintWithDetails, type ComplaintCommentWithUser } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import PhotoComplaintWizard from "@/components/PhotoComplaintWizard";
+import { Camera } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus, getComplaintStatus } from "@/lib/translations";
 
@@ -61,6 +63,7 @@ export default function Complaints() {
  const [priorityImmediate, setPriorityImmediate] = useState(false);
  const [affectedItems, setAffectedItems] = useState<{ productId: string; productName: string; quantity: number; unitPrice: string }[]>([]);
  const [showCreateDialog, setShowCreateDialog] = useState(false);
+ const [showPhotoWizard, setShowPhotoWizard] = useState(false);
  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
  
  const [reason, setReason] = useState<ComplaintReason | "">("");
@@ -569,10 +572,18 @@ export default function Complaints() {
  </div>
  </div></HeroPortal>
 
- <Button size="sm" onClick={() => setShowCreateDialog(true)} className="md:hidden w-full gap-2" data-testid="button-new-complaint-mobile">
+ <div className="md:hidden flex flex-col gap-2">
+ <Button size="lg" onClick={() => setShowPhotoWizard(true)} className="w-full h-14 gap-2 rounded-2xl text-base" data-testid="button-photo-complaint-mobile">
+ <Camera className="h-5 w-5" />
+ {lang === "de" ? "Mit Foto melden" : "Segnala con foto"}
+ </Button>
+ <Button size="sm" variant="outline" onClick={() => setShowCreateDialog(true)} className="w-full gap-2" data-testid="button-new-complaint-mobile">
  <AlertCircle className="h-4 w-4" />
  {t("complaints", "newComplaint")}
  </Button>
+ </div>
+
+ <PhotoComplaintWizard open={showPhotoWizard} onClose={() => setShowPhotoWizard(false)} />
 
  {/* Toolbar (Suchen · Sortieren · Filter) — page-content area, right-aligned */}
  <div className="flex items-center gap-2 flex-wrap justify-start">
