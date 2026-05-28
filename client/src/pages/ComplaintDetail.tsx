@@ -19,6 +19,7 @@ import { ProductImage } from "@/components/ProductImage";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatComplaintNumber, formatOrderNumber, type ComplaintWithDetails, type ComplaintStatusHistoryWithUser, type ComplaintCommentWithUser } from "@shared/schema";
+import { HeroPortal } from "@/context/HeroContext";
 
 type ConfirmAction = "in_progress" | "resolved" | "closed" | "reopen" | "follow_up" | "comment" | "proposal" | "rejected" | "partially_resolved" | null;
 type ProposalKind = "credit" | "redelivery" | "cancel";
@@ -583,10 +584,86 @@ export default function ComplaintDetail() {
   return (
     <div ref={stickyBarContainerRef} className="min-h-dvh bg-background flex flex-col pb-[var(--mobile-action-bar-h,112px)] md:!pb-0" data-testid="page-complaint-detail">
       <div className="w-full">
-        {/* Dark hero: matches design used on list pages */}
+        {/* Desktop: inject title + status + actions into the global dark app header (one continuous black header) */}
+        <HeroPortal desktopOnly>
+          <div className="px-6 pt-2 pb-5" data-testid="complaint-detail-hero-desktop">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`flex h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-500/15" : "bg-white/10"} items-center justify-center shrink-0`}>
+                  <div className={isUrgent ? "text-red-400" : "text-white"}>
+                    {isUrgent ? <Flame className="h-6 w-6" /> : getStatusIcon(complaint.status, "h-6 w-6")}
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider">
+                    {lang === "de" ? "Reklamation" : "Reclamo"} · #{formatComplaintNumber(complaint)}
+                  </p>
+                  <p className="text-xl md:text-2xl font-semibold text-white truncate">{complaint.title}</p>
+                  <p className="text-xs text-white/60 truncate mt-0.5">{counterpartyName}</p>
+                  <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                    <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
+                      <span className="inline-flex items-center gap-1">
+                        {getStatusIcon(complaint.status, "h-3.5 w-3.5")}
+                        {getComplaintStatus(complaint.status, lang)}
+                      </span>
+                    </Badge>
+                    {isUrgent && (
+                      <Badge className="bg-red-500/15 text-red-400 rounded-full px-2.5 py-1 text-[11px] font-medium border-0" variant="outline">
+                        <Flame className="h-3 w-3 mr-1" />
+                        {lang === "de" ? "Dringend" : "Urgente"}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {groupedActions.length > 0 && !confirmAction && (
+                <div className="flex items-stretch gap-3 flex-wrap justify-end max-w-[70vw] xl:max-w-[60vw]" data-testid="actions-row-inline-desktop">
+                  {groupedActions.map(({ cat, items }, gIdx) => (
+                    <div
+                      key={cat}
+                      className={`flex flex-col gap-1.5 ${gIdx > 0 ? "pl-3 border-l border-white/10" : ""}`}
+                      data-testid={`actions-group-desktop-${cat}`}
+                    >
+                      <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-white/40 px-0.5">
+                        {categoryLabels[cat][lang]}
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {items.map((action) => {
+                          const Icon = action.icon;
+                          const isDestructive = action.category === "destructive";
+                          const baseCls = isDestructive
+                            ? "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25"
+                            : getButtonClasses(action.style);
+                          const disabledCls = action.disabled
+                            ? "bg-white/5 text-white/40 border border-white/10 cursor-not-allowed hover:bg-white/5"
+                            : baseCls;
+                          return (
+                            <button
+                              key={action.testId}
+                              className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
+                              onClick={action.disabled ? undefined : action.action}
+                              disabled={action.disabled}
+                              title={action.disabled ? action.disabledReason : undefined}
+                              data-testid={`${action.testId}-desktop`}
+                            >
+                              <Icon className="h-3.5 w-3.5 shrink-0" />
+                              <span>{action.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </HeroPortal>
+
+        {/* Mobile-only dark hero (app header shell is hidden on mobile, so the page provides its own) */}
         <div
-          className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 max-md:rounded-3xl max-md:mx-2 max-md:overflow-hidden md:rounded-b-3xl mb-3 md:mb-4"
-          style={{ marginTop: typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches ? undefined : "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+          className="md:hidden dark bg-[#161921] px-3 pt-3 pb-4 rounded-3xl mx-2 overflow-hidden mb-3"
+          style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
           data-testid="complaint-detail-hero"
         >
           {/* Compact mobile top bar inside the hero */}

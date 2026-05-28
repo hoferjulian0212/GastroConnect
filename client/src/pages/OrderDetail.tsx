@@ -22,6 +22,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialog";
 import { formatOrderNumber, type OrderWithDetails, type OrderStatusHistoryWithUser } from "@shared/schema";
+import { HeroPortal } from "@/context/HeroContext";
 
 export default function OrderDetail() {
   const [, setLocation] = useLocation();
@@ -558,10 +559,79 @@ export default function OrderDetail() {
   return (
     <div ref={stickyBarContainerRef} className="min-h-dvh bg-background pb-[var(--mobile-action-bar-h,112px)] md:!pb-0" data-testid="page-order-detail">
       <div className="w-full">
-        {/* Dark hero: matches Reklamationsdetails design */}
+        {/* Desktop: inject title + status + actions into the global dark app header (one continuous black header) */}
+        <HeroPortal desktopOnly>
+          <div className="px-6 pt-2 pb-5" data-testid="order-detail-hero-desktop">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`flex h-12 w-12 rounded-2xl ${getStatusBg(order.status)} items-center justify-center shrink-0`}>
+                  <div className={getStatusTextColor(order.status)}>
+                    {getStatusIcon(order.status, "h-6 w-6")}
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider">
+                    {lang === "de" ? "Bestellung" : "Ordine"} · #{formatOrderNumber(order)}
+                  </p>
+                  <p className="text-xl md:text-2xl font-semibold text-white truncate">{counterpartyName}</p>
+                  <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                    <Badge className={`${getStatusBadgeColor(order.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
+                      <span className="inline-flex items-center gap-1">
+                        {getStatusIcon(order.status, "h-3.5 w-3.5")}
+                        {getOrderStatus(order.status, lang, isSupplier)}
+                      </span>
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              {groupedActions.length > 0 && !confirmAction && (
+                <div className="flex items-stretch gap-3 flex-wrap justify-end max-w-[70vw] xl:max-w-[60vw]" data-testid="actions-row-inline-desktop">
+                  {groupedActions.map(({ cat, items }, gIdx) => (
+                    <div
+                      key={cat}
+                      className={`flex flex-col gap-1.5 ${gIdx > 0 ? "pl-3 border-l border-white/10" : ""}`}
+                      data-testid={`actions-group-desktop-${cat}`}
+                    >
+                      <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-white/40 px-0.5">
+                        {categoryLabels[cat][lang]}
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {items.map((action) => {
+                          const Icon = action.icon;
+                          const isDestructive = action.category === "destructive";
+                          const baseCls = isDestructive
+                            ? "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25"
+                            : getButtonClasses(action.style);
+                          const disabledCls = action.disabled
+                            ? "bg-white/5 text-white/40 border border-white/10 cursor-not-allowed hover:bg-white/5"
+                            : baseCls;
+                          return (
+                            <button
+                              key={action.testId}
+                              className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
+                              onClick={action.disabled ? undefined : action.action}
+                              disabled={action.disabled}
+                              title={action.disabled ? action.disabledReason : undefined}
+                              data-testid={`${action.testId}-desktop`}
+                            >
+                              <Icon className="h-3.5 w-3.5 shrink-0" />
+                              <span>{action.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </HeroPortal>
+
+        {/* Mobile-only dark hero (app header shell is hidden on mobile, so the page provides its own) */}
         <div
-          className="dark bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 max-md:rounded-3xl max-md:mx-2 max-md:overflow-hidden md:rounded-b-3xl mb-3 md:mb-4"
-          style={{ marginTop: typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches ? undefined : "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+          className="md:hidden dark bg-[#161921] px-3 pt-3 pb-4 rounded-3xl mx-2 overflow-hidden mb-3"
+          style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
           data-testid="order-detail-hero"
         >
           {/* Compact mobile top bar inside the hero — back + status pill on the right of the hero handled by the existing badge below */}
