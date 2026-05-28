@@ -140,7 +140,7 @@ export default function SupplierHomeMobile({
           <div className="pt-1 pb-3.5 flex items-start gap-2">
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-medium text-white/60 truncate">{greeting},</p>
-              <h1 className="text-[20px] font-bold leading-tight mt-0.5 text-white line-clamp-2 break-words">
+              <h1 className="text-[20px] font-bold leading-tight mt-0.5 text-white truncate">
                 {currentUser?.companyName || currentUser?.name || ""}
               </h1>
               <p className="text-[11px] text-white/55 mt-1">

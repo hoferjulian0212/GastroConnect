@@ -1399,7 +1399,7 @@ export default function SupplierInbox() {
                                   const isDismissed = message.dismissed;
                                   if (isDismissed) {
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`promotion-dismissed-${message.id}`}>
+                                      <div className="max-w-[88%] md:w-[75%] md:max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`promotion-dismissed-${message.id}`}>
                                         <div className="flex items-center justify-between px-3 py-2 gap-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1414,7 +1414,7 @@ export default function SupplierInbox() {
                                     );
                                   }
                                   return (
-                                    <div className={`w-[75%] max-w-sm rounded-2xl border-2 shadow-sm overflow-hidden ${isExpired ? "border-muted bg-muted/20 opacity-60" : "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"}`} data-testid={`promotion-card-${message.id}`}>
+                                    <div className={`max-w-[88%] md:w-[75%] md:max-w-sm rounded-2xl border-2 shadow-sm overflow-hidden ${isExpired ? "border-muted bg-muted/20 opacity-60" : "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"}`} data-testid={`promotion-card-${message.id}`}>
                                       <div className={`flex items-center justify-between gap-2 px-4 pt-3 pb-1 ${isExpired ? "" : ""}`}>
                                         <div className="flex items-center gap-2">
                                           <Tag className={`h-4 w-4 ${isExpired ? "text-muted-foreground" : "text-green-600 dark:text-green-400"}`} />
@@ -1454,7 +1454,7 @@ export default function SupplierInbox() {
                                   const inactive = orderStatus ? isOrderInactive(orderStatus) : false;
                                   if (inactive) {
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-order-${message.id}`}>
+                                      <div className="max-w-[88%] md:w-[75%] md:max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-order-${message.id}`}>
                                         <div className="flex items-center justify-between px-3 py-2 gap-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1486,7 +1486,7 @@ export default function SupplierInbox() {
                                   }
                                   const statusStyle = getStatusCardBg(orderStatus || "pending");
                                   return (
-                                    <div className={`w-[75%] max-w-sm rounded-2xl border shadow-sm overflow-hidden ${statusStyle.card}`}>
+                                    <div className={`max-w-[88%] md:w-[75%] md:max-w-sm rounded-2xl border shadow-sm overflow-hidden ${statusStyle.card}`}>
                                       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <ClipboardList className={`h-3.5 w-3.5 ${statusStyle.icon}`} />
@@ -1630,7 +1630,7 @@ export default function SupplierInbox() {
                                   const inactive = complaintStatus ? isComplaintInactive(complaintStatus) : false;
                                   if (inactive) {
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-complaint-${message.id}`}>
+                                      <div className="max-w-[88%] md:w-[75%] md:max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-complaint-${message.id}`}>
                                         <div className="flex items-center justify-between px-3 py-2 gap-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <AlertCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1667,7 +1667,7 @@ export default function SupplierInbox() {
                                     );
                                   }
                                   return (
-                                    <div className="w-[75%] max-w-sm rounded-2xl border bg-card shadow-sm overflow-hidden border-2 border-red-500/30 shadow-lg">
+                                    <div className="max-w-[88%] md:w-[75%] md:max-w-sm rounded-2xl border bg-card shadow-sm overflow-hidden border-2 border-red-500/30 shadow-lg">
                                       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
@@ -1827,7 +1827,7 @@ export default function SupplierInbox() {
                                   try { dsData = JSON.parse(message.content); } catch {}
                                   const orderRef = dsData.orderNumber || (dsData.orderId ? formatOrderNumber({ orderNumber: null, id: dsData.orderId }) : "");
                                   return (
-                                    <div className="w-[75%] max-w-sm rounded-2xl border border-purple-200 dark:border-purple-800/50 bg-white dark:bg-card shadow-sm overflow-hidden" data-testid={`delivery-status-${message.id}`}>
+                                    <div className="max-w-[88%] md:w-[75%] md:max-w-sm rounded-2xl border border-purple-200 dark:border-purple-800/50 bg-white dark:bg-card shadow-sm overflow-hidden" data-testid={`delivery-status-${message.id}`}>
                                       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <Truck className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
@@ -1873,7 +1873,7 @@ export default function SupplierInbox() {
                                   if (changeData.type === "partial_confirmation") {
                                     const pcData = changeData as { type?: string; orderId?: string; status?: string; message?: string; items?: { name: string; ordered: number; confirmed: number; rejected: number; price: string }[]; total?: string; originalTotal?: string };
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-2xl border bg-white dark:bg-card shadow-sm overflow-hidden border-border" data-testid={`partial-confirmation-${message.id}`}>
+                                      <div className="max-w-[88%] md:w-[75%] md:max-w-sm rounded-2xl border bg-white dark:bg-card shadow-sm overflow-hidden border-border" data-testid={`partial-confirmation-${message.id}`}>
                                         <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                           <div className="flex items-center gap-2">
                                             <AlertTriangle className="h-3.5 w-3.5 text-orange-600" />
@@ -1934,7 +1934,7 @@ export default function SupplierInbox() {
                                   const label = isEdited ? "Bestellung angepasst" : isResponse ? (changeData.approved ? "Änderung genehmigt" : "Änderung abgelehnt") : "Änderungsanfrage";
                                   if (changeInactive) {
                                     return (
-                                      <div className="w-[75%] max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-change-${message.id}`}>
+                                      <div className="max-w-[88%] md:w-[75%] md:max-w-sm rounded-2xl border border-muted bg-muted/20 opacity-50 overflow-hidden" data-testid={`inactive-change-${message.id}`}>
                                         <div className="flex items-center justify-between px-3 py-2 gap-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <Pencil className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1963,7 +1963,7 @@ export default function SupplierInbox() {
                                     );
                                   }
                                   return (
-                                    <div className="w-[75%] max-w-sm rounded-2xl border bg-white dark:bg-card shadow-sm overflow-hidden border-border">
+                                    <div className="max-w-[88%] md:w-[75%] md:max-w-sm rounded-2xl border bg-white dark:bg-card shadow-sm overflow-hidden border-border">
                                       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
                                         <div className="flex items-center gap-2">
                                           <Pencil className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
@@ -2026,7 +2026,7 @@ export default function SupplierInbox() {
                                   const senderName = isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || "");
                                   const isImportant = message.priority === "important";
                                   return (
-                                    <div className={`max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
+                                    <div className={`max-w-[85%] md:max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
                                       <div className="flex-1 min-w-0">
                                         {showSenderName && (
                                           <p className={`text-[11px] font-semibold mb-0.5 px-1 flex items-center gap-1 ${isOwn ? "justify-end" : ""} ${isImportant ? (isOwn ? "text-red-400" : "text-red-500") : (isOwn ? "text-secondary-foreground/70" : "text-indigo-600 dark:text-indigo-400")}`}>
