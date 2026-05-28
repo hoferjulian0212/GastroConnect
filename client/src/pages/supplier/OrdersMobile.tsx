@@ -235,9 +235,6 @@ export default function SupplierOrdersMobile({
                               </span>
                             )}
                           </div>
-                          <div className="text-[10px] text-muted-foreground/70 mt-1 truncate">
-                            {formatOrderNumber(o)}
-                          </div>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
                       </button>

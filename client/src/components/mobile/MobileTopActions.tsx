@@ -79,6 +79,12 @@ export function MobileTopActions({
     currentRole === "restaurant" && !hideCart && !onCart;
 
   const overflowActions: OverflowAction[] = [];
+  overflowActions.push({
+    icon: <SearchIcon className="h-5 w-5" />,
+    label: lang === "it" ? "Cerca" : "Suchen",
+    onClick: () => { setMoreOpen(false); openGlobalSearch(); },
+    testId: "button-mobile-more-search",
+  });
   if (showCart) {
     overflowActions.push({
       icon: <ShoppingCart className="h-5 w-5" />,
@@ -115,14 +121,6 @@ export function MobileTopActions({
         className={`flex items-center gap-1.5 ${className ?? ""}`}
         data-testid="mobile-top-actions"
       >
-        <button
-          onClick={() => openGlobalSearch()}
-          className={btnCls}
-          data-testid="button-mobile-search"
-          aria-label="Search"
-        >
-          <SearchIcon className="h-[18px] w-[18px]" />
-        </button>
         <button
           onClick={() => setNotifOpen(true)}
           className={btnCls}

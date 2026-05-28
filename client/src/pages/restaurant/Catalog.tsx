@@ -503,17 +503,17 @@ export default function RestaurantCatalog() {
  </div>
 
  {supplierCards.length > 1 && (
- <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+ <div className="flex gap-2 md:gap-1.5 overflow-x-auto pb-1 scrollbar-hide -mx-3 md:mx-0 px-3 md:px-0 [mask-image:linear-gradient(to_right,transparent_0,black_16px,black_calc(100%-16px),transparent_100%)] md:[mask-image:none]">
  <button
  onClick={() => { setSelectedSupplier("all"); }}
- className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
+ className={`flex items-center gap-1.5 min-h-[40px] md:min-h-0 px-3.5 py-2 md:px-2.5 md:py-1.5 rounded-full text-[14px] md:text-xs font-medium transition-all shrink-0 border ${
  selectedSupplier === "all"
  ? "border-white/40 bg-white/20 text-white shadow-sm"
  : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
  }`}
  data-testid="filter-supplier-all-inner"
  >
- <Store className="h-3.5 w-3.5 shrink-0" />
+ <Store className="h-4 w-4 md:h-3.5 md:w-3.5 shrink-0" />
  <span>{t("common", "all")}</span>
  </button>
  {supplierCards.map(supplier => {
@@ -522,20 +522,20 @@ export default function RestaurantCatalog() {
  <button
  key={supplier.id}
  onClick={() => setSelectedSupplier(supplier.id)}
- className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border ${
+ className={`flex items-center gap-1.5 min-h-[40px] md:min-h-0 px-3.5 py-2 md:px-2.5 md:py-1.5 rounded-full text-[14px] md:text-xs font-medium transition-all shrink-0 border ${
  isActive
  ? "border-white/40 bg-white/20 text-white shadow-sm"
  : "border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/15"
  }`}
  data-testid={`filter-supplier-inner-${supplier.id}`}
  >
- <Avatar className="h-4 w-4 shrink-0">
+ <Avatar className="h-5 w-5 md:h-4 md:w-4 shrink-0">
  <AvatarImage src={supplier.profileImageUrl || undefined} />
- <AvatarFallback className="text-[7px] font-semibold bg-white/20 text-white">
+ <AvatarFallback className="text-[8px] md:text-[7px] font-semibold bg-white/20 text-white">
  {supplier.name.substring(0, 2).toUpperCase()}
  </AvatarFallback>
  </Avatar>
- <span className="max-w-[80px] truncate">{supplier.name}</span>
+ <span className="max-w-[120px] md:max-w-[80px] truncate">{supplier.name}</span>
  </button>
  );
  })}
@@ -564,7 +564,7 @@ export default function RestaurantCatalog() {
  }}
  onFocus={() => { if (searchQuery.length >= 2) setShowSuggestions(true); }}
  onKeyDown={handleSearchKeyDown}
- className="pl-8 md:pl-9 h-9 md:h-10 text-sm"
+ className="pl-9 h-11 md:h-10 text-[14px]"
  data-testid="input-search-products"
  />
  {renderSuggestionDropdown(false)}
