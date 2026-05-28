@@ -62,7 +62,8 @@ export default function RestaurantMonthlyReports() {
 
   const generateMutation = useMutation({
     mutationFn: async (month: string) => {
-      return apiRequest("POST", "/api/restaurant/monthly-reports/generate", { restaurantId, month });
+      const res = await apiRequest("POST", "/api/restaurant/monthly-reports/generate", { restaurantId, month });
+      return res.json();
     },
     onSuccess: (created: any) => {
       toast({ title: "Bericht erstellt", description: `Vergleichsbericht für ${formatMonthLabel(created.month)} ist verfügbar.` });
