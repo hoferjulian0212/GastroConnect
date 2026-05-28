@@ -530,6 +530,28 @@ export type InsertMinimumOrderValue = z.infer<typeof insertMinimumOrderValueSche
 export type MinimumOrderValue = typeof minimumOrderValues.$inferSelect;
 
 
+export const priceChangeLog = pgTable("price_change_log", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id),
+  userName: text("user_name"),
+  oldPrice: decimal("old_price", { precision: 10, scale: 2 }),
+  newPrice: decimal("new_price", { precision: 10, scale: 2 }),
+  oldMinOrderQuantity: integer("old_min_order_quantity"),
+  newMinOrderQuantity: integer("new_min_order_quantity"),
+  source: text("source").default("manual").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_price_change_log_product_id").on(table.productId),
+  index("idx_price_change_log_supplier_id").on(table.supplierId),
+  index("idx_price_change_log_created_at").on(table.createdAt),
+]);
+
+export const insertPriceChangeLogSchema = createInsertSchema(priceChangeLog).omit({ id: true, createdAt: true });
+export type PriceChangeLog = typeof priceChangeLog.$inferSelect;
+export type InsertPriceChangeLog = z.infer<typeof insertPriceChangeLogSchema>;
+
 // ─── Display helpers for business numbers ────────────────────────────────
 // Each order/complaint has ONE unique business-facing number that appears
 // everywhere in the UI so both parties (restaurant + supplier) reference the

@@ -22,6 +22,7 @@ import type { Product, StockMovement, PromotionWithProduct } from "@shared/schem
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
+import BulkPriceUpdateDialog from "@/components/BulkPriceUpdateDialog";
 import { z } from "zod";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -1094,6 +1095,7 @@ export default function SupplierProducts() {
  const [isUploading, setIsUploading] = useState(false);
  const [previewImage, setPreviewImage] = useState<string | null>(null);
  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
+ const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
  const fileInputRef = useRef<HTMLInputElement>(null);
 
  const form = useForm<ProductFormData>({
@@ -1375,18 +1377,40 @@ export default function SupplierProducts() {
  {t("supplierProducts", "manageProducts")}
  </p>
  </div>
+ <div className="flex items-center gap-2">
+ <Button className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" variant="ghost" onClick={() => setIsBulkUpdateOpen(true)} data-testid="button-bulk-update">
+ <Upload className="h-4 w-4" />
+ <span className="hidden sm:inline">{lang === "de" ? "Massen-Update" : "Aggiornamento in massa"}</span>
+ </Button>
  <Button className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
  <Plus className="h-4 w-4" />
  <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}</span>
  <span className="sm:hidden">{t("common", "add")}</span>
  </Button>
  </div>
+ </div>
  </div></HeroPortal>
 
- <Button className="md:hidden w-full gap-2" size="sm" onClick={openCreateDialog} data-testid="button-add-product-mobile">
- <Plus className="h-4 w-4" />
- {lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}
+ <div className="md:hidden grid grid-cols-2 gap-2">
+ <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsBulkUpdateOpen(true)} data-testid="button-bulk-update-mobile">
+ <Upload className="h-4 w-4" />
+ {lang === "de" ? "Massen-Update" : "In massa"}
  </Button>
+ <Button className="gap-2" size="sm" onClick={openCreateDialog} data-testid="button-add-product-mobile">
+ <Plus className="h-4 w-4" />
+ {lang === "de" ? "Produkt" : "Prodotto"}
+ </Button>
+ </div>
+
+ {currentUser && (
+ <BulkPriceUpdateDialog
+ open={isBulkUpdateOpen}
+ onOpenChange={setIsBulkUpdateOpen}
+ supplierId={currentUser.id}
+ userId={currentUser.id}
+ lang={lang as "de" | "it"}
+ />
+ )}
 
  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
  <DialogContent className="!max-w-4xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[92vh] overflow-y-auto">

@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, insertSupplierRatingSchema, updateSupplierRatingSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
@@ -1126,6 +1126,225 @@ export async function registerRoutes(
       res.json(products);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
+  // ===== BULK PRICE UPDATE (Task #42) =====
+  // CSV column order — kept in sync between server export, server import and client UI.
+  const BULK_CSV_HEADER = [
+    "productId",
+    "articleNumber",
+    "name",
+    "unit",
+    "currentPrice",
+    "newPrice",
+    "currentMinOrderQuantity",
+    "newMinOrderQuantity",
+    "currentStockQuantity",
+    "newStockQuantity",
+  ];
+
+  function csvCell(val: string | number | null | undefined): string {
+    const s = val === null || val === undefined ? "" : String(val);
+    if (/[;\n\r"]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    if (/^[=+\-@]/.test(s)) return `'${s}`;
+    return s;
+  }
+
+  function parseCsv(text: string, delim = ";"): string[][] {
+    const rows: string[][] = [];
+    let cur = "";
+    let row: string[] = [];
+    let inQ = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQ) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { cur += '"'; i++; } else inQ = false;
+        } else { cur += c; }
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === delim) { row.push(cur); cur = ""; }
+        else if (c === "\n") { row.push(cur); rows.push(row); row = []; cur = ""; }
+        else if (c === "\r") { /* skip */ }
+        else cur += c;
+      }
+    }
+    if (cur.length > 0 || row.length > 0) { row.push(cur); rows.push(row); }
+    return rows;
+  }
+
+  app.get("/api/supplier/products/csv-export", async (req, res) => {
+    try {
+      const supplierId = String(req.query.supplierId || "");
+      if (!supplierId) return res.status(400).json({ error: "Supplier ID required" });
+      const list = await storage.getProductsBySupplier(supplierId);
+      const header = BULK_CSV_HEADER.join(";");
+      const rows = list.map(p => [
+        csvCell(p.id),
+        csvCell(p.articleNumber || ""),
+        csvCell(p.name),
+        csvCell(p.unit),
+        csvCell(p.price),
+        "", // newPrice — leave empty for user to fill
+        csvCell(p.minOrderQuantity ?? 1),
+        "", // newMinOrderQuantity
+        csvCell(p.stockQuantity ?? ""),
+        "", // newStockQuantity
+      ].join(";"));
+      const csv = "\uFEFF" + header + "\n" + rows.join("\n") + "\n";
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="Produkte_Massen-Update_${new Date().toISOString().slice(0, 10)}.csv"`);
+      return res.send(csv);
+    } catch (e) {
+      console.error("[csv-export] failed:", e);
+      res.status(500).json({ error: "Export failed" });
+    }
+  });
+
+  const bulkUpdateRowSchema = z.object({
+    productId: uuidField,
+    newPrice: z.string().regex(/^\d+(\.\d{1,2})?$/).optional().nullable(),
+    newMinOrderQuantity: z.number().int().min(1).max(999999).optional().nullable(),
+    newStockQuantity: z.number().int().min(0).max(999999).optional().nullable(),
+  }).strict();
+
+  const bulkUpdateSchema = z.object({
+    supplierId: uuidField,
+    userId: uuidField.optional(),
+    rows: z.array(bulkUpdateRowSchema).min(1).max(2000),
+  }).strict();
+
+  app.post("/api/supplier/products/csv-import", async (req, res) => {
+    try {
+      const parsed = bulkUpdateSchema.parse(req.body);
+      const { supplierId, userId, rows } = parsed;
+
+      // Load supplier products to validate ownership & compute diffs.
+      const productList = await storage.getProductsBySupplier(supplierId);
+      const productMap = new Map(productList.map(p => [p.id, p]));
+
+      let actor: { id: string; name?: string | null } | null = null;
+      if (userId) {
+        const u = await storage.getUser(userId);
+        if (u) actor = { id: u.id, name: u.name };
+      }
+
+      const errors: Array<{ rowIndex: number; productId?: string; field?: string; message: string }> = [];
+      const changes: Array<{
+        rowIndex: number;
+        product: typeof productList[number];
+        priceChanged: boolean;
+        moqChanged: boolean;
+        stockChanged: boolean;
+        newPrice?: string;
+        newMinOrderQuantity?: number;
+        newStockQuantity?: number;
+      }> = [];
+
+      rows.forEach((r, idx) => {
+        const product = productMap.get(r.productId);
+        if (!product) {
+          errors.push({ rowIndex: idx, productId: r.productId, message: "Produkt nicht gefunden oder gehört nicht zu diesem Lieferanten" });
+          return;
+        }
+        const newPrice = r.newPrice ? r.newPrice.trim() : "";
+        const newMoq = r.newMinOrderQuantity ?? null;
+        const newStock = r.newStockQuantity ?? null;
+
+        const priceChanged = newPrice !== "" && Number(newPrice) !== Number(product.price);
+        const moqChanged = newMoq !== null && newMoq !== (product.minOrderQuantity ?? 1);
+        const stockChanged = newStock !== null && newStock !== (product.stockQuantity ?? 0);
+
+        if (priceChanged && Number(newPrice) <= 0) {
+          errors.push({ rowIndex: idx, productId: r.productId, field: "newPrice", message: "Preis muss größer als 0 sein" });
+          return;
+        }
+
+        if (!priceChanged && !moqChanged && !stockChanged) return; // skip no-op rows
+
+        changes.push({
+          rowIndex: idx,
+          product,
+          priceChanged,
+          moqChanged,
+          stockChanged,
+          newPrice: priceChanged ? newPrice : undefined,
+          newMinOrderQuantity: moqChanged ? newMoq! : undefined,
+          newStockQuantity: stockChanged ? newStock! : undefined,
+        });
+      });
+
+      if (errors.length > 0) {
+        return res.status(400).json({ error: "validation_failed", errors, updated: 0 });
+      }
+
+      if (changes.length === 0) {
+        return res.json({ updated: 0, changes: [] });
+      }
+
+      const applied = await db.transaction(async (tx) => {
+        const summary: Array<{ productId: string; name: string; priceChanged: boolean; moqChanged: boolean; stockChanged: boolean }> = [];
+        for (const c of changes) {
+          const setData: Partial<typeof products.$inferInsert> = {};
+          if (c.priceChanged) setData.price = c.newPrice!;
+          if (c.moqChanged) setData.minOrderQuantity = c.newMinOrderQuantity!;
+          if (c.stockChanged) {
+            setData.stockQuantity = c.newStockQuantity!;
+            setData.inStock = c.newStockQuantity! > 0;
+          }
+
+          await tx.update(products).set(setData).where(and(eq(products.id, c.product.id), eq(products.supplierId, supplierId)));
+
+          if (c.priceChanged || c.moqChanged) {
+            await tx.insert(priceChangeLog).values({
+              productId: c.product.id,
+              supplierId,
+              userId: actor?.id ?? null,
+              userName: actor?.name ?? null,
+              oldPrice: c.priceChanged ? c.product.price : null,
+              newPrice: c.priceChanged ? c.newPrice! : null,
+              oldMinOrderQuantity: c.moqChanged ? (c.product.minOrderQuantity ?? null) : null,
+              newMinOrderQuantity: c.moqChanged ? c.newMinOrderQuantity! : null,
+              source: "bulk_csv",
+            });
+          }
+
+          if (c.stockChanged) {
+            const previousStock = c.product.stockQuantity ?? 0;
+            const newStock = c.newStockQuantity!;
+            await tx.insert(stockMovements).values({
+              productId: c.product.id,
+              supplierId,
+              orderId: null,
+              userId: actor?.id ?? null,
+              userName: actor?.name ?? null,
+              type: "manual_set",
+              quantity: Math.abs(newStock - previousStock),
+              previousStock,
+              newStock,
+              note: "Massen-Update (CSV)",
+            });
+          }
+
+          summary.push({
+            productId: c.product.id,
+            name: c.product.name,
+            priceChanged: c.priceChanged,
+            moqChanged: c.moqChanged,
+            stockChanged: c.stockChanged,
+          });
+        }
+        return summary;
+      });
+
+      return res.json({ updated: applied.length, changes: applied });
+    } catch (error: any) {
+      if (error?.issues) {
+        return res.status(400).json({ error: "invalid_payload", details: error.issues });
+      }
+      console.error("[csv-import] failed:", error);
+      res.status(500).json({ error: "Import failed" });
     }
   });
 
