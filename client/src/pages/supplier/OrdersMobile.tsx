@@ -190,7 +190,7 @@ export default function SupplierOrdersMobile({
                         key={o.id}
                         onClick={() => setLocation(`/supplier/orders/${o.id}`)}
                         data-testid={`card-order-${o.id}`}
-                        className={`w-full text-left flex items-center gap-3 p-3 rounded-2xl bg-card border border-border border-l-4 ${
+                        className={`w-full text-left flex items-center gap-3 p-3.5 min-h-[68px] rounded-2xl bg-card border border-border border-l-4 ${
                           accent === "amber" ? "border-l-amber-500" :
                           accent === "blue" ? "border-l-blue-500" :
                           accent === "indigo" ? "border-l-indigo-500" :
@@ -210,11 +210,11 @@ export default function SupplierOrdersMobile({
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <div className="text-[14px] font-semibold text-foreground truncate flex-1">
+                            <div className="text-[15px] font-semibold text-foreground truncate flex-1">
                               {o.restaurant?.companyName ||
                                 (lang === "it" ? "Cliente" : "Kunde")}
                             </div>
-                            <div className="text-[14px] font-bold tabular-nums">
+                            <div className="text-[15px] font-bold tabular-nums">
                               {total.toFixed(2)} €
                             </div>
                           </div>

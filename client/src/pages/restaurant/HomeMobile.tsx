@@ -134,19 +134,19 @@ export default function RestaurantHomeMobile({
             </div>
             <MobileTopActions variant="dark" />
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             {kpis.map((k) => (
               <button
                 key={k.testId}
                 onClick={k.onClick}
                 data-testid={k.testId}
-                className="text-left rounded-2xl bg-white/[0.07] border border-white/[0.10] p-3 min-h-[72px] active:scale-[0.98] transition-transform"
+                className="text-left rounded-2xl bg-white/[0.07] border border-white/[0.10] p-4 min-h-[92px] flex flex-col justify-between active:scale-[0.98] transition-transform"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-white/55 truncate">{k.label}</span>
-                  <div className={`flex items-center justify-center h-6 w-6 rounded-lg ${k.tone}`}>{k.icon}</div>
+                <div className={`flex items-center justify-center h-7 w-7 rounded-lg ${k.tone}`}>{k.icon}</div>
+                <div className="mt-2">
+                  <div className="text-[22px] font-bold leading-none text-white tabular-nums">{k.value}</div>
+                  <div className="mt-1.5 text-[12px] font-medium text-white/65 leading-tight line-clamp-2 break-words">{k.label}</div>
                 </div>
-                <div className="mt-2 text-[18px] font-bold leading-none text-white tabular-nums">{k.value}</div>
               </button>
             ))}
           </div>

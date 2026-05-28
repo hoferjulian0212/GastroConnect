@@ -12,6 +12,9 @@ import {
   CheckCheck,
   ExternalLink,
   Search as SearchIcon,
+  MoreHorizontal,
+  User as UserIcon,
+  HelpCircle,
 } from "lucide-react";
 import { openGlobalSearch } from "@/components/GlobalSearch";
 import { useUser } from "@/context/UserContext";
@@ -32,6 +35,14 @@ interface MobileTopActionsProps {
   className?: string;
 }
 
+interface OverflowAction {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  badge?: number;
+  testId: string;
+}
+
 const ACTION_BTN_DARK =
   "relative shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full bg-white/10 text-white hover:bg-white/15 active:bg-white/20 transition-colors before:absolute before:inset-[-2px] before:content-['']";
 
@@ -44,8 +55,10 @@ export function MobileTopActions({
   className,
 }: MobileTopActionsProps) {
   const { currentUser, currentRole } = useUser();
+  const { lang } = useLanguage();
   const [location, setLocation] = useLocation();
   const [notifOpen, setNotifOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const btnCls = variant === "dark" ? ACTION_BTN_DARK : ACTION_BTN_LIGHT;
 
@@ -65,6 +78,37 @@ export function MobileTopActions({
   const showCart =
     currentRole === "restaurant" && !hideCart && !onCart;
 
+  const overflowActions: OverflowAction[] = [];
+  if (showCart) {
+    overflowActions.push({
+      icon: <ShoppingCart className="h-5 w-5" />,
+      label: lang === "it" ? "Carrello" : "Warenkorb",
+      onClick: () => { setMoreOpen(false); setLocation("/restaurant/cart"); },
+      badge: cartTotal,
+      testId: "button-mobile-more-cart",
+    });
+  }
+  overflowActions.push({
+    icon: <UserIcon className="h-5 w-5" />,
+    label: lang === "it" ? "Profilo" : "Profil",
+    onClick: () => { setMoreOpen(false); setLocation(`/${currentRole}/profile`); },
+    testId: "button-mobile-more-profile",
+  });
+  overflowActions.push({
+    icon: <SettingsIcon className="h-5 w-5" />,
+    label: lang === "it" ? "Impostazioni" : "Einstellungen",
+    onClick: () => { setMoreOpen(false); setLocation(`/${currentRole}/settings`); },
+    testId: "button-mobile-more-settings",
+  });
+  overflowActions.push({
+    icon: <HelpCircle className="h-5 w-5" />,
+    label: lang === "it" ? "Aiuto" : "Hilfe",
+    onClick: () => { setMoreOpen(false); setLocation(`/${currentRole}/help`); },
+    testId: "button-mobile-more-help",
+  });
+
+  const totalBadge = (showCart ? cartTotal : 0);
+
   return (
     <>
       <div
@@ -77,30 +121,15 @@ export function MobileTopActions({
           data-testid="button-mobile-search"
           aria-label="Search"
         >
-          <SearchIcon className="h-4 w-4" />
+          <SearchIcon className="h-[18px] w-[18px]" />
         </button>
-        {showCart && (
-          <button
-            onClick={() => setLocation("/restaurant/cart")}
-            className={btnCls}
-            data-testid="button-mobile-cart"
-            aria-label="Cart"
-          >
-            <ShoppingCart className="h-4 w-4" />
-            {cartTotal > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-primary text-primary-foreground rounded-full">
-                {cartTotal > 99 ? "99+" : cartTotal}
-              </span>
-            )}
-          </button>
-        )}
         <button
           onClick={() => setNotifOpen(true)}
           className={btnCls}
           data-testid="button-mobile-notifications"
           aria-label="Notifications"
         >
-          <Bell className="h-4 w-4" />
+          <Bell className="h-[18px] w-[18px]" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-primary text-primary-foreground rounded-full">
               {unreadCount > 99 ? "99+" : unreadCount}
@@ -108,17 +137,78 @@ export function MobileTopActions({
           )}
         </button>
         <button
-          onClick={() => setLocation(`/${currentRole}/settings`)}
+          onClick={() => setMoreOpen(true)}
           className={btnCls}
-          data-testid="button-mobile-settings"
-          aria-label="Settings"
+          data-testid="button-mobile-more"
+          aria-label="More"
         >
-          <SettingsIcon className="h-4 w-4" />
+          <MoreHorizontal className="h-[18px] w-[18px]" />
+          {totalBadge > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-primary text-primary-foreground rounded-full">
+              {totalBadge > 99 ? "99+" : totalBadge}
+            </span>
+          )}
         </button>
       </div>
 
       <NotificationsSheet open={notifOpen} onOpenChange={setNotifOpen} />
+      <OverflowSheet
+        open={moreOpen}
+        onOpenChange={setMoreOpen}
+        actions={overflowActions}
+        title={lang === "it" ? "Altro" : "Mehr"}
+      />
     </>
+  );
+}
+
+function OverflowSheet({
+  open,
+  onOpenChange,
+  actions,
+  title,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  actions: OverflowAction[];
+  title: string;
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="p-0 rounded-t-3xl max-h-[60dvh] flex flex-col"
+        data-testid="sheet-mobile-overflow"
+      >
+        <div className="flex flex-col items-center pt-2 pb-1 shrink-0">
+          <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+        </div>
+        <SheetHeader className="px-5 pt-2 pb-3 shrink-0">
+          <SheetTitle className="text-base text-left">{title}</SheetTitle>
+        </SheetHeader>
+        <div className="px-3 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] space-y-1">
+          {actions.map((a) => (
+            <button
+              key={a.testId}
+              type="button"
+              onClick={a.onClick}
+              data-testid={a.testId}
+              className="w-full flex items-center gap-4 px-3 py-3.5 rounded-2xl text-left transition-colors hover:bg-muted/50 active:bg-muted/70"
+            >
+              <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-muted/60 text-foreground">
+                {a.icon}
+                {a.badge && a.badge > 0 ? (
+                  <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                    {a.badge > 99 ? "99+" : a.badge}
+                  </span>
+                ) : null}
+              </div>
+              <span className="flex-1 text-[15px] font-medium text-foreground">{a.label}</span>
+            </button>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -901,41 +901,36 @@ export default function Complaints() {
  </div>
 
  {/* Mobile row — stacked card */}
- <div className="md:hidden flex items-center gap-2.5 p-2.5 relative">
+ <div className="md:hidden flex items-stretch gap-3 p-3.5 min-h-[72px] relative">
  <div className={`w-1 self-stretch rounded-full shrink-0 ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />
- <div className="min-w-0 flex-1">
+ <div className="min-w-0 flex-1 flex flex-col justify-center">
  <div className="flex items-center gap-1.5">
  {(complaint as any).priority === "urgent" && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
- <span className={`font-medium text-sm line-clamp-1 ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</span>
+ <span className={`font-semibold text-[15px] line-clamp-1 ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : "text-foreground"}`}>{complaint.title}</span>
  </div>
- <div className="flex items-center gap-1.5 mt-1 flex-wrap">
- <Badge variant={statusInfo.variant} className="text-[9px] px-1.5 py-0 h-4 shrink-0">
- <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
+ <p className="text-[13px] text-muted-foreground line-clamp-1 mt-1">{complaint.description}</p>
+ <div className="flex items-center gap-1.5 mt-2 flex-wrap text-[12px] text-muted-foreground">
+ <Badge variant={statusInfo.variant} className="text-[11px] px-2 py-0 h-5 shrink-0">
+ <StatusIcon className="h-3 w-3 mr-1" />
  {statusInfo.label}
  </Badge>
- </div>
- <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{complaint.description}</p>
- <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground flex-wrap">
  <span className="font-mono font-semibold">#{complaint.order ? formatOrderNumber(complaint.order) : formatOrderNumber({orderNumber: null, id: complaint.orderId})}</span>
  <span>·</span>
- <span>{complaint.supplier?.companyName || t("orders", "unknownSupplier")}</span>
+ <span className="truncate max-w-[130px]">{complaint.supplier?.companyName || t("orders", "unknownSupplier")}</span>
  <span>·</span>
  <span>{formatDate(complaint.createdAt)}</span>
  {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
- <>
- <span>·</span>
- <span className="flex items-center gap-0.5"><FileImage className="h-2.5 w-2.5" />{complaint.mediaUrls.length}</span>
- </>
+ <span className="flex items-center gap-0.5"><FileImage className="h-3 w-3" />{complaint.mediaUrls.length}</span>
  )}
  </div>
  </div>
  {canEdit && (
  <div className="flex items-center gap-0.5 shrink-0">
- <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEditDialog(complaint); }} data-testid={`button-edit-complaint-mobile-${complaint.id}`}>
- <Pencil className="h-3 w-3" />
+ <Button size="icon" variant="ghost" className="h-9 w-9" onClick={(e) => { e.stopPropagation(); openEditDialog(complaint); }} data-testid={`button-edit-complaint-mobile-${complaint.id}`}>
+ <Pencil className="h-4 w-4" />
  </Button>
- <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setWithdrawComplaintId(complaint.id); }} data-testid={`button-withdraw-complaint-mobile-${complaint.id}`}>
- <XCircle className="h-3 w-3 text-destructive" />
+ <Button size="icon" variant="ghost" className="h-9 w-9" onClick={(e) => { e.stopPropagation(); setWithdrawComplaintId(complaint.id); }} data-testid={`button-withdraw-complaint-mobile-${complaint.id}`}>
+ <XCircle className="h-4 w-4 text-destructive" />
  </Button>
  </div>
  )}

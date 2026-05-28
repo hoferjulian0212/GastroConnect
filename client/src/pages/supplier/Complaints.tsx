@@ -754,55 +754,47 @@ export default function SupplierComplaints() {
                     </div>
 
                     {/* Mobile row */}
-                    <div className="md:hidden flex items-center gap-2.5 p-2.5 relative">
+                    <div className="md:hidden flex items-stretch gap-3 p-3.5 min-h-[72px] relative">
                       <div className={`w-1 self-stretch rounded-full shrink-0 ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />
-                      <Avatar className="h-8 w-8 shrink-0">
+                      <Avatar className="h-10 w-10 shrink-0 self-center">
                         <AvatarImage src={complaint.restaurant?.profileImageUrl || undefined} alt={complaint.restaurant?.name} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
+                        <AvatarFallback className="bg-primary/10 text-primary text-[11px]">
                           {complaint.restaurant?.companyName?.substring(0, 2).toUpperCase() || "??"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 flex flex-col justify-center">
                         <div className="flex items-center gap-1.5">
                           {(complaint as any).priority === "urgent" && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
-                          <span className={`font-medium text-sm line-clamp-1 ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</span>
+                          <span className={`font-semibold text-[15px] line-clamp-1 ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : "text-foreground"}`}>{complaint.title}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          <Badge variant={statusInfo.variant} className="text-[9px] px-1.5 py-0 h-4 shrink-0">
-                            <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
+                        <p className="text-[13px] text-muted-foreground line-clamp-1 mt-1">{complaint.description}</p>
+                        <div className="flex items-center gap-1.5 mt-2 flex-wrap text-[12px] text-muted-foreground">
+                          <Badge variant={statusInfo.variant} className="text-[11px] px-2 py-0 h-5 shrink-0">
+                            <StatusIcon className="h-3 w-3 mr-1" />
                             {statusInfo.label}
                           </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{complaint.description}</p>
-                        <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground flex-wrap">
-                          <span>{complaint.restaurant?.companyName || t("common", "unknown")}</span>
+                          <span className="truncate max-w-[120px]">{complaint.restaurant?.companyName || t("common", "unknown")}</span>
                           <span>·</span>
                           <span className="font-mono font-semibold">#{complaint.order ? formatOrderNumber(complaint.order) : formatOrderNumber({orderNumber: null, id: complaint.orderId})}</span>
                           <span>·</span>
                           <span>{formatShortDate(complaint.createdAt)}</span>
                           {complaint.status === "open" && daysOpen(complaint.createdAt) >= 1 && (
-                            <>
-                              <span>·</span>
-                              <span className={`inline-flex items-center gap-0.5 px-1 py-0 rounded-full text-[9px] font-semibold ${daysOpen(complaint.createdAt) >= 3 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"}`} data-testid={`age-badge-mobile-${complaint.id}`}>
-                                <Hourglass className="h-2 w-2" />
-                                {daysOpen(complaint.createdAt)}d
-                              </span>
-                            </>
+                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0 rounded-full text-[11px] font-semibold ${daysOpen(complaint.createdAt) >= 3 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"}`} data-testid={`age-badge-mobile-${complaint.id}`}>
+                              <Hourglass className="h-2.5 w-2.5" />
+                              {daysOpen(complaint.createdAt)}d
+                            </span>
                           )}
                           {complaint.mediaUrls && complaint.mediaUrls.length > 0 && (
-                            <>
-                              <span>·</span>
-                              <span className="flex items-center gap-0.5"><FileImage className="h-2.5 w-2.5" />{complaint.mediaUrls.length}</span>
-                            </>
+                            <span className="flex items-center gap-0.5"><FileImage className="h-3 w-3" />{complaint.mediaUrls.length}</span>
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-0.5 shrink-0">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openStatusWizard(complaint); }} data-testid={`button-change-status-mobile-${complaint.id}`}>
-                          <Settings className="h-3 w-3" />
+                        <Button size="icon" variant="ghost" className="h-9 w-9" onClick={(e) => { e.stopPropagation(); openStatusWizard(complaint); }} data-testid={`button-change-status-mobile-${complaint.id}`}>
+                          <Settings className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openCommentWizard(complaint); }} data-testid={`button-add-comment-mobile-${complaint.id}`}>
-                          <MessageSquare className="h-3 w-3" />
+                        <Button size="icon" variant="ghost" className="h-9 w-9" onClick={(e) => { e.stopPropagation(); openCommentWizard(complaint); }} data-testid={`button-add-comment-mobile-${complaint.id}`}>
+                          <MessageSquare className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
