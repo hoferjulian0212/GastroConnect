@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock, StickyNote, AlertCircle, Check } from "lucide-react";
+import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock, StickyNote, AlertCircle, Check, ChevronLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import QuantityInput from "@/components/QuantityInput";
 import { Calendar } from "@/components/ui/calendar";
@@ -16,9 +16,115 @@ import { formatOrderNumber, type CartItemWithProduct, type DeliverySchedule, typ
 import { ProductImage } from "@/components/ProductImage";
 
 type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion | null };
+
+type WheelOption = { value: string; label: string };
+
+function WheelDatePicker({
+  options,
+  value,
+  onChange,
+  testId,
+}: {
+  options: WheelOption[];
+  value: string;
+  onChange: (v: string) => void;
+  testId?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const ITEM_H = 40;
+  const VISIBLE = 5;
+  const HEIGHT = ITEM_H * VISIBLE;
+  const PAD = (HEIGHT - ITEM_H) / 2;
+  const timer = useRef<number | null>(null);
+  const lastEmitted = useRef<string>(value);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const idx = Math.max(0, options.findIndex(o => o.value === value));
+    ref.current.scrollTop = idx * ITEM_H;
+    lastEmitted.current = value;
+  }, [value, options]);
+
+  const handleScroll = useCallback(() => {
+    if (!ref.current) return;
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      if (!ref.current) return;
+      const idx = Math.round(ref.current.scrollTop / ITEM_H);
+      const clamped = Math.max(0, Math.min(options.length - 1, idx));
+      const targetTop = clamped * ITEM_H;
+      if (Math.abs(ref.current.scrollTop - targetTop) > 1) {
+        ref.current.scrollTo({ top: targetTop, behavior: "smooth" });
+      }
+      const next = options[clamped]?.value;
+      if (next && next !== lastEmitted.current) {
+        lastEmitted.current = next;
+        onChange(next);
+      }
+    }, 120);
+  }, [options, onChange]);
+
+  return (
+    <div className="relative select-none" style={{ height: HEIGHT }} data-testid={testId}>
+      <div
+        className="absolute inset-x-0 pointer-events-none rounded-xl border-y border-border bg-muted/40"
+        style={{ top: PAD, height: ITEM_H }}
+      />
+      <div
+        className="absolute inset-x-0 top-0 pointer-events-none z-10"
+        style={{
+          height: PAD,
+          background: "linear-gradient(to bottom, hsl(var(--background)) 0%, hsla(var(--background)/0) 100%)",
+        }}
+      />
+      <div
+        className="absolute inset-x-0 bottom-0 pointer-events-none z-10"
+        style={{
+          height: PAD,
+          background: "linear-gradient(to top, hsl(var(--background)) 0%, hsla(var(--background)/0) 100%)",
+        }}
+      />
+      <div
+        ref={ref}
+        onScroll={handleScroll}
+        className="h-full overflow-y-auto snap-y snap-mandatory scrollbar-hide"
+        style={{ scrollSnapType: "y mandatory" }}
+      >
+        <div style={{ height: PAD }} />
+        {options.map((o) => {
+          const isActive = o.value === value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => {
+                const idx = options.findIndex(x => x.value === o.value);
+                if (ref.current && idx >= 0) {
+                  ref.current.scrollTo({ top: idx * ITEM_H, behavior: "smooth" });
+                }
+                if (o.value !== lastEmitted.current) {
+                  lastEmitted.current = o.value;
+                  onChange(o.value);
+                }
+              }}
+              className={`w-full snap-center flex items-center justify-center text-center transition-all ${
+                isActive ? "text-foreground font-semibold text-[15px]" : "text-muted-foreground text-[13px]"
+              }`}
+              style={{ height: ITEM_H, scrollSnapAlign: "center" }}
+              data-testid={`wheel-option-${o.value}`}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+        <div style={{ height: PAD }} />
+      </div>
+    </div>
+  );
+}
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { format, addDays, startOfDay, parse } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -47,6 +153,30 @@ export default function RestaurantCart() {
   } | null>(null);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const [sendingSupplier, setSendingSupplier] = useState<string | null>(null);
+  const [mobileStep, setMobileStep] = useState<"preview" | "summary">("preview");
+  const [mobileValidationError, setMobileValidationError] = useState<string | null>(null);
+  useEffect(() => {
+    if (mobileStep !== "summary") return;
+    setDeliveryOptions(prev => {
+      let optsChanged = false;
+      const nextOpts = { ...prev };
+      const nextDates: Record<string, string> = { ...selectedDeliveryDates };
+      let datesChanged = false;
+      for (const sid of supplierIds) {
+        const allowedDates = (perSupplierDeliveryDates[sid] || []).map(d => d.value);
+        const cur = nextOpts[sid];
+        const curDate = nextDates[sid];
+        if (cur === "date" && curDate && !allowedDates.includes(curDate)) {
+          nextOpts[sid] = "asap";
+          nextDates[sid] = "";
+          optsChanged = true;
+          datesChanged = true;
+        }
+      }
+      if (datesChanged) setSelectedDeliveryDates(nextDates);
+      return optsChanged ? nextOpts : prev;
+    });
+  }, [mobileStep, supplierIds, perSupplierDeliveryDates]); // eslint-disable-line react-hooks/exhaustive-deps
   const [preConfirmDialog, setPreConfirmDialog] = useState<{
     mode: "all" | "single";
     supplierId?: string;
@@ -491,7 +621,7 @@ export default function RestaurantCart() {
                     ))}
                   </div>
                 </CardContent>
-                <div className="border-t border-border px-3 md:px-6 py-3 md:py-4 space-y-3">
+                <div className="hidden md:block border-t border-border px-3 md:px-6 py-3 md:py-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
                       <CalendarDays className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -634,7 +764,7 @@ export default function RestaurantCart() {
                     </p>
                   </div>
                 )}
-                <CardFooter className="border-t border-border pt-3 md:pt-4 p-3 md:p-6">
+                <CardFooter className="hidden md:flex border-t border-border pt-3 md:pt-4 p-3 md:p-6">
                   <div className="flex items-center justify-between w-full gap-3">
                     <div className="flex items-center gap-2 text-sm md:text-base">
                       <span className="text-muted-foreground">{t("common", "subtotal")}</span>
@@ -676,7 +806,7 @@ export default function RestaurantCart() {
             ))}
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="hidden lg:block lg:col-span-1">
             <Card className="sticky top-4">
               <CardHeader className="p-3 md:p-6">
                 <CardTitle className="text-base md:text-lg">{t("cart", "orderSummary")}</CardTitle>
@@ -818,7 +948,7 @@ export default function RestaurantCart() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    {cartItems && cartItems.length > 0 && !orderConfirmation && (
+    {cartItems && cartItems.length > 0 && !orderConfirmation && mobileStep === "preview" && (
       <div
         ref={stickyBarRef}
         className="md:hidden fixed left-3 right-3 z-30 rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.18)] p-3 flex items-center gap-3"
@@ -835,30 +965,166 @@ export default function RestaurantCart() {
         </div>
         <Button
           className="h-12 px-5 rounded-full font-semibold gap-2"
-          onClick={() => {
-            const allSuppliers = Object.entries(groupedBySupplier || {});
-            const supplierNames = allSuppliers.map(([, g]) => g.supplier.companyName || g.supplier.name).join(", ");
-            const allItems = allSuppliers.flatMap(([, g]) => g.items.map(item => ({ name: item.product.name, quantity: item.quantity, price: (getEffectivePrice(item) * item.quantity).toFixed(2), unit: item.product.unit })));
-            const firstDate = Object.entries(selectedDeliveryDates).find(([sid, d]) => d && deliveryOptions[sid] === "date");
-            const deliveryDateStr = firstDate ? format(parse(firstDate[1], "yyyy-MM-dd", new Date()), "EEEE, dd. MMMM yyyy", { locale: dateLocale }) : null;
-            setPreConfirmDialog({
-              mode: "all",
-              supplierName: supplierNames,
-              items: allItems,
-              total: grandTotal,
-              deliveryDate: deliveryDateStr,
-              notes: Object.values(orderNotes).filter(n => n.trim()).join("; "),
-            });
-          }}
-          disabled={createOrderMutation.isPending || createSupplierOrderMutation.isPending || supplierIds.some(sid => isBelowMov(sid, (groupedBySupplier || {})[sid]?.items || [])) || supplierIds.some(sid => deliveryOptions[sid] === "date" && !selectedDeliveryDates[sid] && (perSupplierDeliveryDates[sid] || []).length > 0)}
-          data-testid="button-mobile-checkout"
+          onClick={() => setMobileStep("summary")}
+          data-testid="button-mobile-continue"
         >
-          {Object.keys(groupedBySupplier || {}).length > 1 ? t("cart", "placeAllOrders") : t("cart", "placeOrder")}
+          {lang === "de" ? "Weiter" : "Avanti"}
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
     )}
     </PullToRefreshWrapper>
+    {cartItems && cartItems.length > 0 && !orderConfirmation && mobileStep === "summary" && (() => {
+      const supplierEntries = Object.entries(groupedBySupplier || {});
+      const hasMovError = supplierIds.some(sid => isBelowMov(sid, (groupedBySupplier || {})[sid]?.items || []));
+      const wheelOptionsFor = (sid: string): WheelOption[] => {
+        const dates = perSupplierDeliveryDates[sid] || [];
+        const asap: WheelOption = { value: "asap", label: lang === "de" ? "Schnellstmöglich" : "Il prima possibile" };
+        const dateOpts: WheelOption[] = dates.map(d => ({
+          value: d.value,
+          label: format(parse(d.value, "yyyy-MM-dd", new Date()), "EEE, dd. MMM", { locale: dateLocale }),
+        }));
+        return [asap, ...dateOpts];
+      };
+      const wheelValueFor = (sid: string) => {
+        if (deliveryOptions[sid] === "date" && selectedDeliveryDates[sid]) return selectedDeliveryDates[sid];
+        return "asap";
+      };
+      const setWheelValueFor = (sid: string, v: string) => {
+        setMobileValidationError(null);
+        if (v === "asap") {
+          setDeliveryOptions(prev => ({ ...prev, [sid]: "asap" }));
+          setSelectedDeliveryDates(prev => ({ ...prev, [sid]: "" }));
+        } else {
+          setDeliveryOptions(prev => ({ ...prev, [sid]: "date" }));
+          setSelectedDeliveryDates(prev => ({ ...prev, [sid]: v }));
+        }
+      };
+      const submit = () => {
+        if (hasMovError) {
+          setMobileValidationError(lang === "de" ? "Mindestbestellwert nicht erreicht." : "Valore minimo d'ordine non raggiunto.");
+          return;
+        }
+        setMobileValidationError(null);
+        createOrderMutation.mutate();
+      };
+      return (
+        <div
+          className="md:hidden fixed inset-0 z-[60] bg-background flex flex-col animate-in slide-in-from-bottom duration-300"
+          data-testid="mobile-cart-summary"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+        >
+          <div className="flex items-center gap-2 px-3 py-3 border-b border-border">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-full"
+              onClick={() => setMobileStep("preview")}
+              data-testid="button-mobile-summary-back"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-bold leading-tight">
+                {lang === "de" ? "Bestellübersicht" : "Riepilogo ordine"}
+              </h2>
+              <p className="text-[11px] text-muted-foreground">
+                {supplierEntries.length} {supplierEntries.length === 1 ? (lang === "de" ? "Lieferant" : "Fornitore") : (lang === "de" ? "Lieferanten" : "Fornitori")} · {cartItems.length} {t("common", "items")}
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("common", "total")}</div>
+              <div className="text-base font-bold tabular-nums">{grandTotal} €</div>
+            </div>
+          </div>
+
+          <div
+            className="flex-1 overflow-y-auto px-3 py-4 space-y-4"
+            style={{ paddingBottom: "calc(120px + env(safe-area-inset-bottom))" }}
+          >
+            {supplierEntries.map(([supplierId, { supplier, items }]) => {
+              const opts = wheelOptionsFor(supplierId);
+              const curValue = wheelValueFor(supplierId);
+              const supplierTotal = calculateTotal(items);
+              const belowMov = isBelowMov(supplierId, items);
+              const mov = getSupplierMov(supplierId);
+              return (
+                <div
+                  key={supplierId}
+                  className="rounded-2xl border border-border bg-card p-4 space-y-3"
+                  data-testid={`mobile-summary-supplier-${supplierId}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold truncate">{supplier.companyName || supplier.name}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {items.length} {t("common", "items")} · {supplierTotal}€
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                      <CalendarDays className="h-3 w-3" />
+                      {t("cart", "deliveryDate")}
+                    </div>
+                    <WheelDatePicker
+                      options={opts}
+                      value={curValue}
+                      onChange={(v) => setWheelValueFor(supplierId, v)}
+                      testId={`mobile-wheel-${supplierId}`}
+                    />
+                  </div>
+
+                  <Textarea
+                    placeholder={t("cart", "orderNotesPlaceholder")}
+                    value={orderNotes[supplierId] || ""}
+                    onChange={(e) => setOrderNotes(prev => ({ ...prev, [supplierId]: e.target.value }))}
+                    className="resize-none text-xs min-h-0"
+                    rows={2}
+                    data-testid={`mobile-textarea-notes-${supplierId}`}
+                  />
+
+                  {belowMov && (
+                    <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 px-3 py-2">
+                      <AlertCircle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
+                      <p className="text-xs text-red-700 dark:text-red-300 font-medium" data-testid={`mobile-mov-warning-${supplierId}`}>
+                        {t("cart", "belowMinOrderValue").replace("{min}", mov.toFixed(2))}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            className="border-t border-border bg-background/95 backdrop-blur-md px-3 pt-3"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+          >
+            {mobileValidationError && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-red-600 dark:text-red-400" data-testid="mobile-validation-error">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>{mobileValidationError}</span>
+              </div>
+            )}
+            <Button
+              className="w-full h-12 rounded-full font-semibold gap-2"
+              onClick={submit}
+              disabled={createOrderMutation.isPending || hasMovError}
+              data-testid="button-mobile-send-order"
+            >
+              {createOrderMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              {lang === "de" ? "Bestellung senden" : "Invia ordine"} · {grandTotal} €
+            </Button>
+          </div>
+        </div>
+      );
+    })()}
     </div>
   );
 }
