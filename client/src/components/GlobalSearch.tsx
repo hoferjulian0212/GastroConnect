@@ -1,0 +1,502 @@
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import {
+  ShoppingBag,
+  Package,
+  Users,
+  MessageSquare,
+  AlertCircle,
+  FileText,
+  Search as SearchIcon,
+  ArrowRight,
+} from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useUser } from "@/context/UserContext";
+import { useLanguage } from "@/context/LanguageContext";
+
+const OPEN_EVENT = "gc:open-search";
+
+export function openGlobalSearch() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(OPEN_EVENT));
+  }
+}
+
+interface SearchResults {
+  orders: Array<{
+    id: string;
+    orderNumber: string;
+    status: string;
+    totalAmount: string;
+    createdAt: string;
+    snippet: string | null;
+  }>;
+  products: Array<{
+    id: string;
+    name: string;
+    articleNumber: string | null;
+    supplierId: string;
+    category: string | null;
+    price: string;
+  }>;
+  partners: Array<{
+    id: string;
+    name: string;
+    companyName: string | null;
+    profileImageUrl: string | null;
+  }>;
+  messages: Array<{
+    id: string;
+    conversationId: string;
+    content: string;
+    createdAt: string;
+    partnerId: string;
+    partnerName: string;
+    partnerCompany: string | null;
+  }>;
+  complaints: Array<{
+    id: string;
+    complaintNumber: string;
+    title: string;
+    description: string;
+    status: string;
+    createdAt: string;
+  }>;
+  documents: Array<{
+    id: string;
+    title: string;
+    type: string;
+    orderId: string;
+    fileUrl: string;
+    createdAt: string;
+  }>;
+}
+
+const PER_GROUP = 5;
+
+export function GlobalSearch() {
+  const { currentUser, currentRole } = useUser();
+  const { lang } = useLanguage();
+  const [, setLocation] = useLocation();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isK = e.key === "k" || e.key === "K";
+      if ((e.metaKey || e.ctrlKey) && isK) {
+        e.preventDefault();
+        setOpen((o) => !o);
+      }
+    };
+    const onOpenEvt = () => setOpen(true);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener(OPEN_EVENT, onOpenEvt as EventListener);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener(OPEN_EVENT, onOpenEvt as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      setDebounced("");
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 200);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const enabled = !!currentUser?.id && debounced.length >= 2 && open;
+  const { data, isFetching } = useQuery<SearchResults>({
+    queryKey: ["/api/search", debounced, currentUser?.id, currentRole],
+    queryFn: async () => {
+      const sp = new URLSearchParams({
+        q: debounced,
+        userId: currentUser?.id || "",
+        role: currentRole,
+      });
+      const res = await fetch(`/api/search?${sp.toString()}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Search failed");
+      return res.json();
+    },
+    enabled,
+    staleTime: 10_000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const t = (de: string, it: string) => (lang === "it" ? it : de);
+  const role = currentRole;
+
+  const go = (path: string) => {
+    setOpen(false);
+    setLocation(path);
+  };
+
+  const hasAny =
+    !!data &&
+    (data.orders.length ||
+      data.products.length ||
+      data.partners.length ||
+      data.messages.length ||
+      data.complaints.length ||
+      data.documents.length);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent
+        className="overflow-hidden p-0 shadow-xl max-w-2xl gap-0 top-[15%] translate-y-0"
+        data-testid="dialog-global-search"
+      >
+        <Command
+          shouldFilter={false}
+          className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-muted-foreground"
+        >
+          <CommandInput
+            placeholder={t(
+              "Bestellungen, Produkte, Nachrichten suchen…",
+              "Cerca ordini, prodotti, messaggi…",
+            )}
+            value={query}
+            onValueChange={setQuery}
+            data-testid="input-global-search"
+          />
+          <CommandList className="max-h-[60vh]">
+            {debounced.length < 2 ? (
+              <div
+                className="py-10 px-4 text-center text-sm text-muted-foreground"
+                data-testid="search-hint"
+              >
+                {t(
+                  "Mindestens 2 Zeichen eingeben",
+                  "Inserisci almeno 2 caratteri",
+                )}
+              </div>
+            ) : isFetching && !data ? (
+              <div className="py-10 px-4 text-center text-sm text-muted-foreground">
+                {t("Suche…", "Ricerca…")}
+              </div>
+            ) : !hasAny ? (
+              <CommandEmpty>
+                {t("Keine Ergebnisse", "Nessun risultato")}
+              </CommandEmpty>
+            ) : (
+              <>
+                {data!.orders.length > 0 && (
+                  <CommandGroup heading={t("Bestellungen", "Ordini")}>
+                    {data!.orders.map((o) => (
+                      <CommandItem
+                        key={o.id}
+                        value={`order-${o.id}`}
+                        onSelect={() => go(`/${role}/orders/${o.id}`)}
+                        data-testid={`search-order-${o.id}`}
+                      >
+                        <ShoppingBag className="text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">
+                              {o.orderNumber}
+                            </span>
+                            <span className="text-xs text-muted-foreground capitalize">
+                              · {o.status.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                          {o.snippet && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {o.snippet}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          €{Number(o.totalAmount).toFixed(2)}
+                        </span>
+                      </CommandItem>
+                    ))}
+                    {data!.orders.length === PER_GROUP && (
+                      <CommandItem
+                        value="more-orders"
+                        onSelect={() => go(`/${role}/orders`)}
+                        data-testid="search-more-orders"
+                      >
+                        <ArrowRight className="text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          {t("Alle Bestellungen anzeigen", "Mostra tutti gli ordini")}
+                        </span>
+                      </CommandItem>
+                    )}
+                  </CommandGroup>
+                )}
+
+                {data!.products.length > 0 && (
+                  <CommandGroup heading={t("Produkte", "Prodotti")}>
+                    {data!.products.map((p) => (
+                      <CommandItem
+                        key={p.id}
+                        value={`product-${p.id}`}
+                        onSelect={() =>
+                          go(
+                            role === "restaurant"
+                              ? `/restaurant/product/${p.id}`
+                              : `/supplier/products`,
+                          )
+                        }
+                        data-testid={`search-product-${p.id}`}
+                      >
+                        <Package className="text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{p.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {p.articleNumber ? `${p.articleNumber}` : ""}
+                            {p.articleNumber && p.category ? " · " : ""}
+                            {p.category || ""}
+                          </p>
+                        </div>
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          €{Number(p.price).toFixed(2)}
+                        </span>
+                      </CommandItem>
+                    ))}
+                    {data!.products.length === PER_GROUP && (
+                      <CommandItem
+                        value="more-products"
+                        onSelect={() =>
+                          go(
+                            role === "restaurant"
+                              ? "/restaurant/catalog"
+                              : "/supplier/products",
+                          )
+                        }
+                        data-testid="search-more-products"
+                      >
+                        <ArrowRight className="text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          {t("Alle Produkte anzeigen", "Mostra tutti i prodotti")}
+                        </span>
+                      </CommandItem>
+                    )}
+                  </CommandGroup>
+                )}
+
+                {data!.partners.length > 0 && (
+                  <CommandGroup
+                    heading={
+                      role === "restaurant"
+                        ? t("Lieferanten", "Fornitori")
+                        : t("Kunden", "Clienti")
+                    }
+                  >
+                    {data!.partners.map((u) => (
+                      <CommandItem
+                        key={u.id}
+                        value={`partner-${u.id}`}
+                        onSelect={() => go(`/${role}/inbox`)}
+                        data-testid={`search-partner-${u.id}`}
+                      >
+                        <Users className="text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">
+                            {u.companyName || u.name}
+                          </p>
+                          {u.companyName && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {u.name}
+                            </p>
+                          )}
+                        </div>
+                      </CommandItem>
+                    ))}
+                    {data!.partners.length === PER_GROUP && (
+                      <CommandItem
+                        value="more-partners"
+                        onSelect={() =>
+                          go(
+                            role === "restaurant"
+                              ? "/restaurant/suppliers"
+                              : "/supplier/restaurants",
+                          )
+                        }
+                        data-testid="search-more-partners"
+                      >
+                        <ArrowRight className="text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          {role === "restaurant"
+                            ? t("Alle Lieferanten", "Tutti i fornitori")
+                            : t("Alle Kunden", "Tutti i clienti")}
+                        </span>
+                      </CommandItem>
+                    )}
+                  </CommandGroup>
+                )}
+
+                {data!.messages.length > 0 && (
+                  <CommandGroup heading={t("Nachrichten", "Messaggi")}>
+                    {data!.messages.map((m) => (
+                      <CommandItem
+                        key={m.id}
+                        value={`message-${m.id}`}
+                        onSelect={() =>
+                          go(
+                            `/${role}/inbox?conversationId=${m.conversationId}`,
+                          )
+                        }
+                        data-testid={`search-message-${m.id}`}
+                      >
+                        <MessageSquare className="text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">
+                            {m.partnerCompany || m.partnerName}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {m.content}
+                          </p>
+                        </div>
+                      </CommandItem>
+                    ))}
+                    {data!.messages.length === PER_GROUP && (
+                      <CommandItem
+                        value="more-messages"
+                        onSelect={() => go(`/${role}/inbox`)}
+                        data-testid="search-more-messages"
+                      >
+                        <ArrowRight className="text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          {t("Inbox öffnen", "Apri inbox")}
+                        </span>
+                      </CommandItem>
+                    )}
+                  </CommandGroup>
+                )}
+
+                {data!.complaints.length > 0 && (
+                  <CommandGroup heading={t("Reklamationen", "Reclami")}>
+                    {data!.complaints.map((c) => (
+                      <CommandItem
+                        key={c.id}
+                        value={`complaint-${c.id}`}
+                        onSelect={() => go(`/${role}/complaints/${c.id}`)}
+                        data-testid={`search-complaint-${c.id}`}
+                      >
+                        <AlertCircle className="text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">
+                              {c.complaintNumber}
+                            </span>
+                            <span className="text-xs text-muted-foreground capitalize">
+                              · {c.status.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {c.title}
+                          </p>
+                        </div>
+                      </CommandItem>
+                    ))}
+                    {data!.complaints.length === PER_GROUP && (
+                      <CommandItem
+                        value="more-complaints"
+                        onSelect={() => go(`/${role}/complaints`)}
+                        data-testid="search-more-complaints"
+                      >
+                        <ArrowRight className="text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          {t("Alle Reklamationen", "Tutti i reclami")}
+                        </span>
+                      </CommandItem>
+                    )}
+                  </CommandGroup>
+                )}
+
+                {data!.documents.length > 0 && (
+                  <CommandGroup heading={t("Dokumente", "Documenti")}>
+                    {data!.documents.map((d) => (
+                      <CommandItem
+                        key={d.id}
+                        value={`doc-${d.id}`}
+                        onSelect={() => go(`/${role}/documents`)}
+                        data-testid={`search-document-${d.id}`}
+                      >
+                        <FileText className="text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{d.title}</p>
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {d.type.replace(/_/g, " ")}
+                          </p>
+                        </div>
+                      </CommandItem>
+                    ))}
+                    {data!.documents.length === PER_GROUP && (
+                      <CommandItem
+                        value="more-documents"
+                        onSelect={() => go(`/${role}/documents`)}
+                        data-testid="search-more-documents"
+                      >
+                        <ArrowRight className="text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          {t("Alle Dokumente", "Tutti i documenti")}
+                        </span>
+                      </CommandItem>
+                    )}
+                  </CommandGroup>
+                )}
+              </>
+            )}
+          </CommandList>
+          <div className="hidden md:flex items-center justify-end gap-2 border-t px-3 py-2 text-[11px] text-muted-foreground">
+            <kbd className="rounded border bg-muted px-1.5 py-0.5 font-sans">↑</kbd>
+            <kbd className="rounded border bg-muted px-1.5 py-0.5 font-sans">↓</kbd>
+            <span>{t("Navigation", "Naviga")}</span>
+            <kbd className="ml-2 rounded border bg-muted px-1.5 py-0.5 font-sans">↵</kbd>
+            <span>{t("Öffnen", "Apri")}</span>
+            <kbd className="ml-2 rounded border bg-muted px-1.5 py-0.5 font-sans">Esc</kbd>
+            <span>{t("Schließen", "Chiudi")}</span>
+          </div>
+        </Command>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface DesktopSearchButtonProps {
+  className?: string;
+}
+
+export function DesktopSearchButton({ className }: DesktopSearchButtonProps) {
+  const { lang } = useLanguage();
+  return (
+    <button
+      type="button"
+      onClick={() => openGlobalSearch()}
+      className={
+        className ??
+        "hidden md:flex items-center gap-2 h-9 px-3 rounded-full border border-white/20 bg-white/[0.07] hover:bg-white/15 transition-colors text-xs text-white/70"
+      }
+      data-testid="button-open-search"
+      aria-label={lang === "it" ? "Cerca" : "Suchen"}
+    >
+      <SearchIcon className="h-3.5 w-3.5" />
+      <span className="hidden lg:inline">
+        {lang === "it" ? "Cerca…" : "Suchen…"}
+      </span>
+      <kbd className="hidden lg:inline-flex items-center gap-0.5 ml-1 px-1.5 h-5 rounded border border-white/15 bg-white/[0.06] text-[10px] text-white/60 font-sans">
+        ⌘K
+      </kbd>
+    </button>
+  );
+}

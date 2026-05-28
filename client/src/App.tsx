@@ -18,6 +18,7 @@ import logoImg from "@assets/logo_no_bg.png";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
+import { GlobalSearch, DesktopSearchButton } from "@/components/GlobalSearch";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
 import { useEffect, useCallback, useState, useRef, useLayoutEffect, lazy, Suspense } from "react";
@@ -535,6 +536,7 @@ function AppLayout() {
                 </div>
                 <HeaderNav />
                 <div className="flex items-center gap-2 shrink-0 md:flex-1 md:min-w-0 md:justify-end">
+                  <DesktopSearchButton />
                   <div className="hidden md:block">
                     <RoleSwitcher />
                   </div>
@@ -561,6 +563,7 @@ function AppLayout() {
             </main>
           </div>
           {!isDetailPage && (currentRole === "supplier" ? <SupplierMobileNav /> : <RestaurantMobileNav />)}
+          <GlobalSearch />
         </div>
       )}
     </>

@@ -11,7 +11,9 @@ import {
   MessageCircle,
   CheckCheck,
   ExternalLink,
+  Search as SearchIcon,
 } from "lucide-react";
+import { openGlobalSearch } from "@/components/GlobalSearch";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -69,6 +71,14 @@ export function MobileTopActions({
         className={`flex items-center gap-1.5 ${className ?? ""}`}
         data-testid="mobile-top-actions"
       >
+        <button
+          onClick={() => openGlobalSearch()}
+          className={btnCls}
+          data-testid="button-mobile-search"
+          aria-label="Search"
+        >
+          <SearchIcon className="h-4 w-4" />
+        </button>
         {showCart && (
           <button
             onClick={() => setLocation("/restaurant/cart")}

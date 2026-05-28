@@ -4,8 +4,8 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
-import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
+import { eq, and, desc, asc, sql, or, ilike } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, insertSupplierRatingSchema, updateSupplierRatingSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 
@@ -467,6 +467,144 @@ export async function registerRoutes(
   } catch (err) {
     console.error("Complaint number backfill failed:", err);
   }
+
+  // ===== GLOBAL SEARCH (Task #36) =====
+  app.get("/api/search", async (req, res) => {
+    try {
+      const q = String(req.query.q || "").trim();
+      const userId = String(req.query.userId || "");
+      const role = String(req.query.role || "");
+      const empty = { orders: [], products: [], partners: [], messages: [], complaints: [], documents: [] };
+      if (!userId || (role !== "restaurant" && role !== "supplier")) return res.json(empty);
+      if (q.length < 2) return res.json(empty);
+
+      const safe = q.replace(/[\\%_]/g, (m) => "\\" + m);
+      const pattern = `%${safe}%`;
+      const PER = 5;
+
+      const ownOrderCol = role === "restaurant" ? orders.restaurantId : orders.supplierId;
+      const ownComplaintCol = role === "restaurant" ? complaints.restaurantId : complaints.supplierId;
+      const ownDocCol = role === "restaurant" ? documents.restaurantId : documents.supplierId;
+      const ownConvCol = role === "restaurant" ? conversations.restaurantId : conversations.supplierId;
+      const partnerConvCol = role === "restaurant" ? conversations.supplierId : conversations.restaurantId;
+      const partnerRole = role === "restaurant" ? "supplier" : "restaurant";
+
+      const ordersSelect = {
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        totalAmount: orders.totalAmount,
+        createdAt: orders.createdAt,
+        notes: orders.notes,
+      } as const;
+
+      const [ordersByMeta, ordersByItem, productsList, partnersList, messagesList, complaintsList, documentsList] = await Promise.all([
+        db.select(ordersSelect)
+          .from(orders)
+          .where(and(eq(ownOrderCol, userId), or(ilike(orders.orderNumber, pattern), ilike(orders.notes, pattern))))
+          .orderBy(desc(orders.createdAt))
+          .limit(PER),
+        db.selectDistinct(ordersSelect)
+          .from(orders)
+          .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
+          .where(and(eq(ownOrderCol, userId), ilike(orderItems.productName, pattern)))
+          .orderBy(desc(orders.createdAt))
+          .limit(PER),
+        role === "restaurant"
+          ? db.select({ id: products.id, name: products.name, articleNumber: products.articleNumber, supplierId: products.supplierId, category: products.category, price: products.price })
+              .from(products)
+              .where(or(ilike(products.name, pattern), ilike(products.articleNumber, pattern), ilike(products.category, pattern)))
+              .orderBy(desc(products.createdAt))
+              .limit(PER)
+          : db.select({ id: products.id, name: products.name, articleNumber: products.articleNumber, supplierId: products.supplierId, category: products.category, price: products.price })
+              .from(products)
+              .where(and(eq(products.supplierId, userId), or(ilike(products.name, pattern), ilike(products.articleNumber, pattern), ilike(products.category, pattern))))
+              .orderBy(desc(products.createdAt))
+              .limit(PER),
+        db.selectDistinct({ id: users.id, name: users.name, companyName: users.companyName, profileImageUrl: users.profileImageUrl })
+          .from(users)
+          .innerJoin(conversations, eq(partnerConvCol, users.id))
+          .where(and(
+            eq(users.role, partnerRole as any),
+            eq(ownConvCol, userId),
+            or(ilike(users.name, pattern), ilike(users.companyName, pattern)),
+          ))
+          .limit(PER),
+        db.select({
+          id: messages.id,
+          conversationId: messages.conversationId,
+          content: messages.content,
+          createdAt: messages.createdAt,
+          partnerId: users.id,
+          partnerName: users.name,
+          partnerCompany: users.companyName,
+        })
+          .from(messages)
+          .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+          .innerJoin(users, eq(users.id, partnerConvCol))
+          .where(and(
+            eq(ownConvCol, userId),
+            eq(messages.messageType, "text"),
+            ilike(messages.content, pattern),
+          ))
+          .orderBy(desc(messages.createdAt))
+          .limit(PER),
+        db.select({
+          id: complaints.id,
+          complaintNumber: complaints.complaintNumber,
+          title: complaints.title,
+          description: complaints.description,
+          status: complaints.status,
+          createdAt: complaints.createdAt,
+        })
+          .from(complaints)
+          .where(and(
+            eq(ownComplaintCol, userId),
+            or(ilike(complaints.title, pattern), ilike(complaints.description, pattern), ilike(complaints.complaintNumber, pattern)),
+          ))
+          .orderBy(desc(complaints.createdAt))
+          .limit(PER),
+        db.select({
+          id: documents.id,
+          title: documents.title,
+          type: documents.type,
+          orderId: documents.orderId,
+          fileUrl: documents.fileUrl,
+          createdAt: documents.createdAt,
+        })
+          .from(documents)
+          .where(and(eq(ownDocCol, userId), ilike(documents.title, pattern)))
+          .orderBy(desc(documents.createdAt))
+          .limit(PER),
+      ]);
+
+      const orderMap = new Map<string, typeof ordersByMeta[number]>();
+      for (const o of [...ordersByMeta, ...ordersByItem]) orderMap.set(o.id, o);
+      const ordersList = Array.from(orderMap.values())
+        .sort((a, b) => (b.createdAt?.getTime?.() ?? 0) - (a.createdAt?.getTime?.() ?? 0))
+        .slice(0, PER)
+        .map((o) => ({
+          id: o.id,
+          orderNumber: formatOrderNumber(o),
+          status: o.status,
+          totalAmount: o.totalAmount,
+          createdAt: o.createdAt,
+          snippet: o.notes || null,
+        }));
+
+      res.json({
+        orders: ordersList,
+        products: productsList,
+        partners: partnersList,
+        messages: messagesList,
+        complaints: complaintsList.map((c) => ({ ...c, complaintNumber: formatComplaintNumber(c) })),
+        documents: documentsList,
+      });
+    } catch (error) {
+      console.error("[search] failed:", error);
+      res.status(500).json({ error: "Search failed" });
+    }
+  });
 
   // ===== USERS =====
   app.get("/api/users", async (req, res) => {
