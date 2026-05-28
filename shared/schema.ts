@@ -5,7 +5,7 @@ import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]);
-export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion"]);
+export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion", "voice"]);
 export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);
 export const complaintStatusEnum = pgEnum("complaint_status", ["open", "in_progress", "resolved", "closed", "rejected", "partially_resolved"]);
@@ -149,6 +149,8 @@ export const conversations = pgTable("conversations", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  pinnedByRestaurant: boolean("pinned_by_restaurant").default(false).notNull(),
+  pinnedBySupplier: boolean("pinned_by_supplier").default(false).notNull(),
   lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
@@ -165,6 +167,8 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   orderId: varchar("order_id", { length: 36 }).references(() => orders.id),
   documentUrl: text("document_url"),
+  audioUrl: text("audio_url"),
+  audioDurationMs: integer("audio_duration_ms"),
   priority: text("priority").default("standard").notNull(),
   isRead: boolean("is_read").default(false).notNull(),
   dismissed: boolean("dismissed").default(false).notNull(),

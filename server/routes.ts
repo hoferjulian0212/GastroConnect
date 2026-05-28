@@ -411,10 +411,22 @@ const changeRequestRespondSchema = z.object({
 
 const sendMessageSchema = z.object({
   senderId: uuidField,
-  content: z.string().min(1).max(50000),
-  messageType: z.enum(["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request"]).optional(),
+  content: z.string().min(0).max(50000),
+  messageType: z.enum(["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "voice"]).optional(),
   priority: z.enum(["standard", "important"]).optional(),
-}).strict();
+  audioUrl: z.string().max(2048).optional(),
+  audioDurationMs: z.number().int().min(0).max(60 * 60 * 1000).optional(),
+}).strict().refine(
+  (d) => d.messageType !== "voice" || (!!d.audioUrl && d.audioUrl.length > 0),
+  { message: "audioUrl is required for voice messages", path: ["audioUrl"] }
+).refine(
+  (d) => {
+    const t = d.messageType ?? "text";
+    if (t === "voice" || t === "attachment") return true;
+    return d.content.trim().length > 0;
+  },
+  { message: "content must not be empty", path: ["content"] }
+);
 
 const markReadSchema = z.object({
   userId: uuidField,
@@ -3279,6 +3291,8 @@ export async function registerRoutes(
         messageType: validated.messageType || "text",
         content: validated.content,
         priority: validated.priority || "standard",
+        audioUrl: validated.audioUrl,
+        audioDurationMs: validated.audioDurationMs,
       });
       
       const conversation = await storage.getConversation(req.params.id);
@@ -3316,6 +3330,26 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid input", details: error.errors });
       }
       res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
+  app.patch("/api/conversations/:id/pin", async (req, res) => {
+    try {
+      const schema = z.object({ userId: uuidField, isPinned: z.boolean() }).strict();
+      const { userId, isPinned } = schema.parse(req.body);
+      const conv = await storage.getConversation(req.params.id);
+      if (!conv) return res.status(404).json({ error: "Conversation not found" });
+      let role: "restaurant" | "supplier" | null = null;
+      if (conv.restaurantId === userId) role = "restaurant";
+      else if (conv.supplierId === userId) role = "supplier";
+      if (!role) return res.status(403).json({ error: "Not a participant" });
+      await storage.setConversationPinned(req.params.id, role, isPinned);
+      res.json({ success: true, isPinned });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update pin" });
     }
   });
 

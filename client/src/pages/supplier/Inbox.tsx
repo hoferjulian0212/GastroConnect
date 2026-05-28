@@ -15,7 +15,11 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ProductImage } from "@/components/ProductImage";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, Plus, RefreshCw, Flame, Ban } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, Plus, RefreshCw, Flame, Ban, Mic, Pin, PinOff } from "lucide-react";
+import { QuickReplyChips } from "@/components/chat/QuickReplyChips";
+import { VoiceRecorder } from "@/components/chat/VoiceRecorder";
+import { VoiceMessage } from "@/components/chat/VoiceMessage";
+import { useUpload } from "@/hooks/use-upload";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
@@ -704,12 +708,14 @@ export default function SupplierInbox() {
   };
 
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ content, messageType = "text", priority = "standard" }: { content: string; messageType?: string; priority?: string }) => {
+    mutationFn: async ({ content, messageType = "text", priority = "standard", audioUrl, audioDurationMs }: { content: string; messageType?: string; priority?: string; audioUrl?: string; audioDurationMs?: number }) => {
       return apiRequest("POST", `/api/conversations/${selectedConversation}/messages`, {
         content,
         messageType,
         senderId: currentUser?.id,
         priority,
+        ...(audioUrl ? { audioUrl } : {}),
+        ...(audioDurationMs !== undefined ? { audioDurationMs } : {}),
       });
     },
     onSuccess: () => {
@@ -877,6 +883,47 @@ export default function SupplierInbox() {
     }
   };
 
+  const { uploadFile: uploadVoice, isUploading: isUploadingVoice } = useUpload();
+  const handleSendVoice = async (blob: Blob, durationMs: number) => {
+    if (!selectedConversation) return;
+    const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
+    const res = await uploadVoice(file);
+    if (!res) return;
+    sendMessageMutation.mutate({
+      content: "",
+      messageType: "voice",
+      priority: messagePriority,
+      audioUrl: res.objectPath,
+      audioDurationMs: Math.round(durationMs),
+    });
+  };
+
+  const pinConvMutation = useMutation({
+    mutationFn: async ({ conversationId, isPinned }: { conversationId: string; isPinned: boolean }) => {
+      return apiRequest("PATCH", `/api/conversations/${conversationId}/pin`, { userId: currentUser?.id, isPinned });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+    },
+  });
+
+  const quickReplySuggestions = useMemo<string[]>(() => {
+    if (!messages || messages.length === 0 || !currentUser) return [];
+    const last = messages[messages.length - 1];
+    if (last.senderId === currentUser.id) return [];
+    const isDe = lang === "de";
+    if (last.messageType === "order") {
+      return isDe ? ["Bestätigt!", "Wird bearbeitet", "Wann brauchen Sie es?"] : ["Confermato!", "In lavorazione", "Quando vi serve?"];
+    }
+    if (last.messageType === "complaint") {
+      return isDe ? ["Entschuldigung!", "Wir kümmern uns", "Nachlieferung folgt"] : ["Ci scusiamo", "Ce ne occupiamo", "Riconsegna in arrivo"];
+    }
+    if (last.messageType === "order_change_request") {
+      return isDe ? ["Ok, machen wir", "Bitte um Details", "Geht leider nicht"] : ["Ok, va bene", "Dettagli per favore", "Non possibile"];
+    }
+    return isDe ? ["Erledigt!", "Danke!", "Ok"] : ["Fatto!", "Grazie!", "Ok"];
+  }, [messages, currentUser, lang]);
+
   const handleBackToList = () => {
     setSelectedConversation(null);
     setReplyToMessage(null);
@@ -930,7 +977,9 @@ export default function SupplierInbox() {
                         try { isFollowUpOrder = JSON.parse(conv.lastMessage.content)?.isFollowUp === true; } catch {}
                       }
                       const lastOid = conv.lastMessage?.orderId ? ` #${formatOrderNumber({orderNumber: conv.lastMessage.orderNumber, id: conv.lastMessage.orderId})}` : "";
-                      const messagePreview = conv.lastMessage?.messageType === "order" 
+                      const messagePreview = conv.lastMessage?.messageType === "voice"
+                        ? (lang === "de" ? "🎤 Sprachnachricht" : "🎤 Messaggio vocale")
+                        : conv.lastMessage?.messageType === "order" 
                         ? (isFollowUpOrder ? (lang === "de" ? "Nachlieferung" : "Riconsegna") : (lang === "de" ? "Bestellung" : "Ordine")) + lastOid
                         : conv.lastMessage?.messageType === "complaint"
                         ? (lang === "de" ? "Reklamation" : "Reclamo") + lastOid
@@ -950,19 +999,24 @@ export default function SupplierInbox() {
                       return (
                         <SwipeableRow
                           key={conv.id}
-                          leftActions={
-                            hasUnread
-                              ? [
-                                  {
-                                    icon: <Check className="h-5 w-5" />,
-                                    label: lang === "de" ? "Gelesen" : "Letto",
-                                    color: "bg-blue-500",
-                                    onClick: () => handleSelectConversation(conv.id),
-                                    testId: `swipe-read-${conv.id}`,
-                                  },
-                                ]
-                              : []
-                          }
+                          leftActions={[
+                            ...(hasUnread
+                              ? [{
+                                  icon: <Check className="h-5 w-5" />,
+                                  label: lang === "de" ? "Gelesen" : "Letto",
+                                  color: "bg-blue-500",
+                                  onClick: () => handleSelectConversation(conv.id),
+                                  testId: `swipe-read-${conv.id}`,
+                                }]
+                              : []),
+                            {
+                              icon: (conv as any).pinnedBySupplier ? <PinOff className="h-5 w-5" /> : <Pin className="h-5 w-5" />,
+                              label: (conv as any).pinnedBySupplier ? (lang === "de" ? "Lösen" : "Sblocca") : (lang === "de" ? "Anheften" : "Fissa"),
+                              color: "bg-amber-500",
+                              onClick: () => pinConvMutation.mutate({ conversationId: conv.id, isPinned: !(conv as any).pinnedBySupplier }),
+                              testId: `swipe-pin-${conv.id}`,
+                            },
+                          ]}
                           rightActions={[]}
                         >
                           <button
@@ -1000,6 +1054,9 @@ export default function SupplierInbox() {
                                     {conv.otherUser.companyName || conv.otherUser.name}
                                   </p>
                                   <div className="flex items-center gap-1.5 shrink-0">
+                                    {(conv as any).pinnedBySupplier && (
+                                      <Pin className="h-3 w-3 text-amber-500 fill-amber-500" data-testid={`icon-pinned-${conv.id}`} />
+                                    )}
                                     {lastMessageTime && (
                                       <span className={`text-[11px] md:text-[10px] ${hasUnread && isPriorityMsg ? "text-red-500 font-semibold" : hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
                                     )}
@@ -2014,6 +2071,15 @@ export default function SupplierInbox() {
                                   conversationId={selectedConversation || undefined}
                                   userId={currentUser?.id}
                                 />
+                              ) : message.messageType === "voice" && (message as any).audioUrl ? (
+                                <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-3 py-2 shadow-sm ${isOwn ? "bg-secondary/30" : "bg-muted"}`} data-testid={`voice-bubble-${message.id}`}>
+                                  <VoiceMessage
+                                    src={(message as any).audioUrl}
+                                    durationMs={(message as any).audioDurationMs}
+                                    testId={`voice-${message.id}`}
+                                  />
+                                  <p className={`text-[10px] mt-1 ${isOwn ? "text-right" : "text-left"} text-muted-foreground`}>{format(messageDate, "HH:mm")}</p>
+                                </div>
                               ) : (
                                 (() => {
                                   let refData: { refType?: string; refId?: string; refLabel?: string; refPreview?: string; text?: string } | null = null;
@@ -2205,6 +2271,16 @@ export default function SupplierInbox() {
                       </div>
                     </div>
                   )}
+                  {!messageText && !replyToMessage && !attachedOrderRef && !attachedComplaintRef && quickReplySuggestions.length > 0 && (
+                    <QuickReplyChips
+                      suggestions={quickReplySuggestions}
+                      onPick={(s) => {
+                        if (!selectedConversation) return;
+                        sendMessageMutation.mutate({ content: s, messageType: "text", priority: messagePriority });
+                      }}
+                      testIdPrefix="supplier-quick-reply"
+                    />
+                  )}
                   {messagePriority === "important" && (
                     <div className="flex items-center justify-between gap-2 mb-2 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800" data-testid="priority-important-banner">
                       <div className="flex items-center gap-1.5">
@@ -2278,19 +2354,23 @@ export default function SupplierInbox() {
                           handleSendMessage();
                         }
                       }}
-                      className="text-sm rounded-full"
+                      className="text-sm rounded-full min-h-12 md:min-h-10"
                       data-testid="input-message"
                     />
-                    <Button 
-                      variant="secondary"
-                      size="icon"
-                      onClick={handleSendMessage}
-                      disabled={!messageText.trim() || sendMessageMutation.isPending}
-                      className="rounded-full shrink-0"
-                      data-testid="button-send-message"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
+                    {!messageText.trim() ? (
+                      <VoiceRecorder onSend={handleSendVoice} isSending={isUploadingVoice || sendMessageMutation.isPending} lang={lang as "de" | "it"} />
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        onClick={handleSendMessage}
+                        disabled={!messageText.trim() || sendMessageMutation.isPending}
+                        className="rounded-full shrink-0 h-12 w-12 md:h-10 md:w-10"
+                        data-testid="button-send-message"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </>

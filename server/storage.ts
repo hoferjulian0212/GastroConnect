@@ -75,6 +75,7 @@ export interface IStorage {
   getConversations(userId: string, role: "restaurant" | "supplier"): Promise<ConversationWithUser[]>;
 
   getConversation(conversationId: string): Promise<Conversation | undefined>;
+  setConversationPinned(conversationId: string, role: "restaurant" | "supplier", isPinned: boolean): Promise<void>;
   getOrCreateConversation(restaurantId: string, supplierId: string): Promise<Conversation>;
   getMessages(conversationId: string): Promise<MessageWithOrderNumber[]>;
   getConversationStatuses(conversationId: string): Promise<{ orderStatuses: Record<string, string>; complaintStatuses: Record<string, { status: string; complaintId: string }> }>;
@@ -659,7 +660,10 @@ export class DatabaseStorage implements IStorage {
           ? eq(conversations.restaurantId, userId)
           : eq(conversations.supplierId, userId)
       )
-      .orderBy(desc(conversations.lastMessageAt));
+      .orderBy(
+        desc(role === "restaurant" ? conversations.pinnedByRestaurant : conversations.pinnedBySupplier),
+        desc(conversations.lastMessageAt)
+      );
 
     if (convs.length === 0) return [];
 
@@ -706,6 +710,13 @@ export class DatabaseStorage implements IStorage {
         unreadCount: unreadMap.get(conv.id) || 0
       };
     });
+  }
+
+  async setConversationPinned(conversationId: string, role: "restaurant" | "supplier", isPinned: boolean): Promise<void> {
+    await db
+      .update(conversations)
+      .set(role === "restaurant" ? { pinnedByRestaurant: isPinned } : { pinnedBySupplier: isPinned })
+      .where(eq(conversations.id, conversationId));
   }
 
   async getConversation(conversationId: string): Promise<Conversation | undefined> {

@@ -13,7 +13,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, RefreshCw, Flame } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, RefreshCw, Flame, Mic, Pin, PinOff } from "lucide-react";
+import { QuickReplyChips } from "@/components/chat/QuickReplyChips";
+import { VoiceRecorder } from "@/components/chat/VoiceRecorder";
+import { VoiceMessage } from "@/components/chat/VoiceMessage";
+import { useUpload } from "@/hooks/use-upload";
 import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
 import { DeliveryNoteCard } from "@/components/DeliveryNoteCard";
 import { StatusTimeline } from "@/components/StatusTimeline";
@@ -743,12 +747,14 @@ export default function RestaurantInbox() {
   };
 
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ content, messageType = "text", priority = "standard" }: { content: string; messageType?: string; priority?: string }) => {
+    mutationFn: async ({ content, messageType = "text", priority = "standard", audioUrl, audioDurationMs }: { content: string; messageType?: string; priority?: string; audioUrl?: string; audioDurationMs?: number }) => {
       return apiRequest("POST", `/api/conversations/${selectedConversation}/messages`, {
         content,
         messageType,
         senderId: currentUser?.id,
         priority,
+        ...(audioUrl ? { audioUrl } : {}),
+        ...(audioDurationMs !== undefined ? { audioDurationMs } : {}),
       });
     },
     onSuccess: () => {
@@ -1040,6 +1046,47 @@ export default function RestaurantInbox() {
     }
   };
 
+  const { uploadFile: uploadVoice, isUploading: isUploadingVoice } = useUpload();
+  const handleSendVoice = async (blob: Blob, durationMs: number) => {
+    if (!selectedConversation) return;
+    const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
+    const res = await uploadVoice(file);
+    if (!res) return;
+    sendMessageMutation.mutate({
+      content: "",
+      messageType: "voice",
+      priority: messagePriority,
+      audioUrl: res.objectPath,
+      audioDurationMs: Math.round(durationMs),
+    });
+  };
+
+  const pinConvMutation = useMutation({
+    mutationFn: async ({ conversationId, isPinned }: { conversationId: string; isPinned: boolean }) => {
+      return apiRequest("PATCH", `/api/conversations/${conversationId}/pin`, { userId: currentUser?.id, isPinned });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+    },
+  });
+
+  const quickReplySuggestions = useMemo<string[]>(() => {
+    if (!messages || messages.length === 0 || !currentUser) return [];
+    const last = messages[messages.length - 1];
+    if (last.senderId === currentUser.id) return [];
+    const isDe = lang === "de";
+    if (last.messageType === "order" || last.messageType === "confirmation") {
+      return isDe ? ["Danke!", "Wann kommt es?", "Alles klar"] : ["Grazie!", "Quando arriva?", "Va bene"];
+    }
+    if (last.messageType === "complaint") {
+      return isDe ? ["Danke fürs Update", "Bitte schnell", "Ok"] : ["Grazie", "Per favore presto", "Ok"];
+    }
+    if (last.messageType === "delivery_status") {
+      return isDe ? ["Super, danke!", "Geliefert ✓", "Alles gut"] : ["Grazie!", "Consegnato ✓", "Tutto bene"];
+    }
+    return isDe ? ["Danke!", "👍", "Ok"] : ["Grazie!", "👍", "Ok"];
+  }, [messages, currentUser, lang]);
+
   const updateOrderQuantity = (productId: string, delta: number) => {
     setOrderItems(prev => {
       const current = prev[productId] || 0;
@@ -1169,6 +1216,8 @@ export default function RestaurantInbox() {
                         ? (lang === "de" ? "Lieferhinweis" : "Avviso di consegna") + lastOid
                         : conv.lastMessage?.messageType === "promotion"
                         ? t("promotionsPage", "promotionMessage")
+                        : conv.lastMessage?.messageType === "voice"
+                        ? (lang === "de" ? "🎤 Sprachnachricht" : "🎤 Messaggio vocale")
                         : conv.lastMessage?.messageType === "attachment"
                         ? t("inbox", "file")
                         : msgPreviewText;
@@ -1177,19 +1226,24 @@ export default function RestaurantInbox() {
                       return (
                         <SwipeableRow
                           key={conv.id}
-                          leftActions={
-                            hasUnread
-                              ? [
-                                  {
-                                    icon: <Check className="h-5 w-5" />,
-                                    label: lang === "de" ? "Gelesen" : "Letto",
-                                    color: "bg-blue-500",
-                                    onClick: () => handleSelectConversation(conv.id),
-                                    testId: `swipe-read-${conv.id}`,
-                                  },
-                                ]
-                              : []
-                          }
+                          leftActions={[
+                            ...(hasUnread
+                              ? [{
+                                  icon: <Check className="h-5 w-5" />,
+                                  label: lang === "de" ? "Gelesen" : "Letto",
+                                  color: "bg-blue-500",
+                                  onClick: () => handleSelectConversation(conv.id),
+                                  testId: `swipe-read-${conv.id}`,
+                                }]
+                              : []),
+                            {
+                              icon: (conv as any).pinnedByRestaurant ? <PinOff className="h-5 w-5" /> : <Pin className="h-5 w-5" />,
+                              label: (conv as any).pinnedByRestaurant ? (lang === "de" ? "Lösen" : "Sblocca") : (lang === "de" ? "Anheften" : "Fissa"),
+                              color: "bg-amber-500",
+                              onClick: () => pinConvMutation.mutate({ conversationId: conv.id, isPinned: !(conv as any).pinnedByRestaurant }),
+                              testId: `swipe-pin-${conv.id}`,
+                            },
+                          ]}
                           rightActions={[]}
                         >
                           <button
@@ -1231,6 +1285,9 @@ export default function RestaurantInbox() {
                                     {conv.otherUser.companyName || conv.otherUser.name}
                                   </p>
                                   <div className="flex items-center gap-1.5 shrink-0">
+                                    {(conv as any).pinnedByRestaurant && (
+                                      <Pin className="h-3 w-3 text-amber-500 fill-amber-500" data-testid={`icon-pinned-${conv.id}`} />
+                                    )}
                                     {lastMessageTime && (
                                       <span className={`text-[11px] md:text-[10px] ${hasUnread && isPriorityMsg ? "text-red-500 font-semibold" : hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
                                     )}
@@ -2123,6 +2180,15 @@ export default function RestaurantInbox() {
                                     conversationId={selectedConversation || undefined}
                                     userId={currentUser?.id}
                                   />
+                                ) : message.messageType === "voice" && (message as any).audioUrl ? (
+                                  <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-3 py-2 shadow-sm ${isOwn ? "bg-primary/10" : "bg-muted"}`} data-testid={`voice-bubble-${message.id}`}>
+                                    <VoiceMessage
+                                      src={(message as any).audioUrl}
+                                      durationMs={(message as any).audioDurationMs}
+                                      testId={`voice-${message.id}`}
+                                    />
+                                    <p className={`text-[10px] mt-1 ${isOwn ? "text-right" : "text-left"} text-muted-foreground`}>{format(messageDate, "HH:mm")}</p>
+                                  </div>
                                 ) : (
                                   (() => {
                                     let refData: { refType?: string; refId?: string; refLabel?: string; refPreview?: string; text?: string } | null = null;
@@ -2705,6 +2771,16 @@ export default function RestaurantInbox() {
                       </button>
                     </div>
                   )}
+                  {!messageText && !replyToMessage && !attachedOrderRef && !attachedComplaintRef && quickReplySuggestions.length > 0 && (
+                    <QuickReplyChips
+                      suggestions={quickReplySuggestions}
+                      onPick={(s) => {
+                        if (!selectedConversation) return;
+                        sendMessageMutation.mutate({ content: s, messageType: "text", priority: messagePriority });
+                      }}
+                      testIdPrefix="restaurant-quick-reply"
+                    />
+                  )}
                   <div className="flex gap-2 items-center">
                     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                       <PopoverTrigger asChild>
@@ -2802,18 +2878,22 @@ export default function RestaurantInbox() {
                           handleSendMessage();
                         }
                       }}
-                      className="rounded-full"
+                      className="rounded-full min-h-12 md:min-h-10"
                       data-testid="input-message"
                     />
-                    <Button 
-                      onClick={handleSendMessage}
-                      disabled={!messageText.trim() || sendMessageMutation.isPending}
-                      className="rounded-full shrink-0"
-                      size="icon"
-                      data-testid="button-send-message"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
+                    {!messageText.trim() ? (
+                      <VoiceRecorder onSend={handleSendVoice} isSending={isUploadingVoice || sendMessageMutation.isPending} lang={lang as "de" | "it"} />
+                    ) : (
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={!messageText.trim() || sendMessageMutation.isPending}
+                        className="rounded-full shrink-0 h-12 w-12 md:h-10 md:w-10"
+                        size="icon"
+                        data-testid="button-send-message"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </>
