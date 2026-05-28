@@ -26,6 +26,8 @@ import { getComplaintReasonLabel } from "@/lib/complaintReasons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
+import SwipeableRow from "@/components/SwipeableRow";
+import { useHaptic } from "@/hooks/use-haptic";
 import {
  Dialog,
  DialogContent,
@@ -40,6 +42,7 @@ import PhotoComplaintWizard from "@/components/PhotoComplaintWizard";
 import { Camera } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus, getComplaintStatus } from "@/lib/translations";
+import { MobileEmptyState } from "@/components/mobile";
 
 
 export default function Complaints() {
@@ -48,6 +51,7 @@ export default function Complaints() {
  const { toast } = useToast();
  const { lang } = useLanguage();
  const t = useT(lang);
+ const haptic = useHaptic();
  const searchString = useSearch();
  const searchParams = new URLSearchParams(searchString);
  const highlightComplaintId = searchParams.get("complaintId");
@@ -841,9 +845,29 @@ export default function Complaints() {
  const StatusIcon = statusInfo.icon;
  const canEdit = complaint.status === "open";
  
+ const rightActions = canEdit
+   ? [{
+       icon: <XCircle className="h-5 w-5" />,
+       label: lang === "de" ? "Zurück" : "Ritira",
+       color: "bg-red-500",
+       onClick: () => { haptic("medium"); setWithdrawComplaintId(complaint.id); },
+       testId: `swipe-withdraw-${complaint.id}`,
+     }]
+   : [];
+ const leftActions = [{
+   icon: <MessageSquare className="h-5 w-5" />,
+   label: lang === "de" ? "Chat" : "Chat",
+   color: "bg-emerald-500",
+   onClick: () => {
+     haptic("light");
+     if (complaint.supplier?.id) navigate(`/restaurant/inbox?userId=${complaint.supplier.id}`);
+   },
+   testId: `swipe-message-complaint-${complaint.id}`,
+ }];
+
  return (
+ <SwipeableRow key={complaint.id} leftActions={leftActions} rightActions={rightActions}>
  <div
- key={complaint.id}
  className={`group/row cursor-pointer transition-colors ${(complaint as any).priority === "urgent" ? "bg-red-50/40 dark:bg-red-950/10 hover:bg-red-50/70 dark:hover:bg-red-950/20" : "hover:bg-muted/40"}`}
  onClick={() => navigate(`/restaurant/complaints/${complaint.id}`)}
  data-testid={`complaint-${complaint.id}`}
@@ -936,14 +960,23 @@ export default function Complaints() {
  )}
  </div>
  </div>
+ </SwipeableRow>
  );
  })}
  </div>
  ) : (
- <div className="text-center py-8 text-muted-foreground">
- <AlertCircle className="mx-auto h-10 w-10 mb-2 opacity-50" />
- <p className="text-sm">{t("complaints", "noComplaints")}</p>
- </div>
+ <MobileEmptyState
+   icon={<AlertCircle />}
+   tone="emerald"
+   title={lang === "de" ? "Alles in Ordnung" : "Tutto a posto"}
+   description={lang === "de" ? "Keine offenen Reklamationen. Bei Problemen kannst du sie hier melden." : "Nessun reclamo aperto. Puoi segnalare eventuali problemi qui."}
+   action={
+     <Button size="sm" onClick={() => setShowPhotoWizard(true)} data-testid="empty-state-cta-complaint">
+       <Camera className="h-4 w-4 mr-1.5" />
+       {lang === "de" ? "Mit Foto melden" : "Segnala con foto"}
+     </Button>
+   }
+ />
  )}
  </div>
 

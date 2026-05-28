@@ -24,6 +24,7 @@ import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useHaptic } from "@/hooks/use-haptic";
 import { Link, useSearch, useLocation } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
@@ -48,6 +49,7 @@ import SupplierOrdersMobile from "./OrdersMobile";
 export default function SupplierOrders() {
  const { currentUser } = useUser();
  const { toast } = useToast();
+ const haptic = useHaptic();
  const [, navTo] = useLocation();
  const { lang } = useLanguage();
  const t = useT(lang);
@@ -228,6 +230,7 @@ export default function SupplierOrders() {
  return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status, requestedDeliveryDate: requestedDeliveryDate || undefined, deliveryNotes: deliveryNotes || undefined });
  },
  onSuccess: (_, variables) => {
+ haptic(variables.status === "cancelled" ? "medium" : "success");
  queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
  queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
  queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.includes?.("/api/supplier/detailed-stats") });
@@ -311,9 +314,11 @@ export default function SupplierOrders() {
  title: lang === "de" ? `${data.confirmed} Bestellungen bestätigt` : `${data.confirmed} ordini confermati`,
  ...(data.failed > 0 ? { description: lang === "de" ? `${data.failed} fehlgeschlagen` : `${data.failed} falliti` } : {}),
  });
+ haptic("success");
  exitBatchMode();
  },
  onError: () => {
+ haptic("error");
  toast({ title: t("common", "error"), variant: "destructive" });
  },
  });
@@ -333,9 +338,11 @@ export default function SupplierOrders() {
  title: lang === "de" ? `${data.cancelled} Bestellungen storniert` : `${data.cancelled} ordini annullati`,
  ...(data.failed > 0 ? { description: lang === "de" ? `${data.failed} fehlgeschlagen` : `${data.failed} falliti` } : {}),
  });
+ haptic("success");
  exitBatchMode();
  },
  onError: () => {
+ haptic("error");
  toast({ title: t("common", "error"), variant: "destructive" });
  },
  });
@@ -1949,7 +1956,7 @@ export default function SupplierOrders() {
  <Button
  variant="destructive"
  className="flex-1"
- onClick={() => { if (cancelConfirmId) { updateStatusMutation.mutate({ orderId: cancelConfirmId, status: "cancelled" }); setCancelConfirmId(null); } }}
+ onClick={() => { if (cancelConfirmId) { haptic("medium"); updateStatusMutation.mutate({ orderId: cancelConfirmId, status: "cancelled" }); setCancelConfirmId(null); } }}
  disabled={updateStatusMutation.isPending}
  data-testid="button-cancel-confirm"
  >

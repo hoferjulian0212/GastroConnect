@@ -25,6 +25,7 @@ import { de, it } from "date-fns/locale";
 import { Link, useSearch, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useHaptic } from "@/hooks/use-haptic";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import SwipeableRow from "@/components/SwipeableRow";
@@ -56,6 +57,7 @@ interface EditableItem {
 export default function RestaurantOrders() {
  const { currentUser } = useUser();
  const { toast } = useToast();
+ const haptic = useHaptic();
  const { lang } = useLanguage();
  const t = useT(lang);
  const dateLocale = lang === "it" ? it : de;
@@ -343,12 +345,14 @@ export default function RestaurantOrders() {
  queryClient.invalidateQueries({ queryKey: ["/api/restaurant/stats"] });
  queryClient.invalidateQueries({ queryKey: ["/api/orders/recent"] });
  queryClient.invalidateQueries({ queryKey: ["/api/restaurant/upcoming-deliveries"] });
+ haptic("success");
  toast({ title: lang === "de" ? "Bestellung storniert" : "Ordine annullato" });
  if (detailOrder) {
  setDetailOrder(null);
  }
  },
  onError: () => {
+ haptic("error");
  toast({ title: t("common", "error"), variant: "destructive" });
  },
  });
@@ -2345,7 +2349,7 @@ export default function RestaurantOrders() {
  <Button
  variant="destructive"
  className="flex-1"
- onClick={() => { if (cancelConfirmId) { cancelOrderMutation.mutate(cancelConfirmId); setCancelConfirmId(null); } }}
+ onClick={() => { if (cancelConfirmId) { haptic("medium"); cancelOrderMutation.mutate(cancelConfirmId); setCancelConfirmId(null); } }}
  disabled={cancelOrderMutation.isPending}
  data-testid="button-cancel-confirm"
  >

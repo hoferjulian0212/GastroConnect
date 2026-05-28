@@ -319,7 +319,7 @@ function NotificationsSheet({
       case "order_status":
         return {
           icon: <ShoppingBag className="h-3.5 w-3.5" />,
-          bg: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+          bg: "bg-primary/10 text-primary",
         };
       case "new_complaint":
         return {

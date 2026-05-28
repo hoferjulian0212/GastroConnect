@@ -27,6 +27,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import SwipeableRow from "@/components/SwipeableRow";
+import { useHaptic } from "@/hooks/use-haptic";
+import { MobileEmptyState } from "@/components/mobile";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { AlertCircle, Calendar, FileVideo, FileImage, Clock, Loader2, CheckCircle, XCircle, Settings, MessageSquare, Send, X, Store, RefreshCw, Truck, Plus, Flame, Search, ArrowUpDown, ArrowUp, ArrowDown, Check, Filter as FilterIcon, Ban, AlertTriangle, Hourglass } from "lucide-react";
 import { COMPLAINT_REASONS, type ComplaintReason } from "@shared/schema";
@@ -41,6 +44,7 @@ import { useT, getComplaintStatus } from "@/lib/translations";
 export default function SupplierComplaints() {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const haptic = useHaptic();
   const [, navTo] = useLocation();
   const { lang } = useLanguage();
   const t = useT(lang);
@@ -696,9 +700,23 @@ export default function SupplierComplaints() {
                 const statusInfo = formatComplaintStatusInfo(complaint.status);
                 const StatusIcon = statusInfo.icon;
 
+                const leftActions = [{
+                  icon: <MessageSquare className="h-5 w-5" />,
+                  label: lang === "de" ? "Antwort" : "Risposta",
+                  color: "bg-emerald-500",
+                  onClick: () => { haptic("light"); openCommentWizard(complaint); },
+                  testId: `swipe-reply-complaint-${complaint.id}`,
+                }];
+                const rightActions = [{
+                  icon: <Settings className="h-5 w-5" />,
+                  label: "Status",
+                  color: "bg-slate-600",
+                  onClick: () => { haptic("light"); openStatusWizard(complaint); },
+                  testId: `swipe-status-complaint-${complaint.id}`,
+                }];
                 return (
+                  <SwipeableRow key={complaint.id} leftActions={leftActions} rightActions={rightActions}>
                   <div
-                    key={complaint.id}
                     className={`group/row cursor-pointer transition-colors ${(complaint as any).priority === "urgent" ? "bg-red-50/40 dark:bg-red-950/10 hover:bg-red-50/70 dark:hover:bg-red-950/20" : "hover:bg-muted/40"}`}
                     onClick={() => navTo(`/supplier/complaints/${complaint.id}`)}
                     data-testid={`complaint-${complaint.id}`}
@@ -799,15 +817,17 @@ export default function SupplierComplaints() {
                       </div>
                     </div>
                   </div>
+                  </SwipeableRow>
                 );
               })}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <AlertCircle className="mx-auto h-10 w-10 mb-2 opacity-50" />
-              <p className="text-sm font-medium">{lang === "de" ? "Keine Reklamationen" : "Nessun reclamo"}</p>
-              <p className="text-xs">{lang === "de" ? "Keine Reklamationen erhalten." : "Nessun reclamo ricevuto."}</p>
-            </div>
+            <MobileEmptyState
+              icon={<AlertCircle />}
+              tone="emerald"
+              title={lang === "de" ? "Keine Reklamationen" : "Nessun reclamo"}
+              description={lang === "de" ? "Bisher sind keine Reklamationen eingegangen." : "Finora non è stato ricevuto alcun reclamo."}
+            />
           )}
       </div>
 

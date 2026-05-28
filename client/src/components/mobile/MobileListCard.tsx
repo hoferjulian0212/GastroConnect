@@ -18,7 +18,9 @@ const accentBorder: Record<string, string> = {
   emerald: "border-l-4 border-l-emerald-500",
   amber: "border-l-4 border-l-amber-500",
   red: "border-l-4 border-l-red-500",
-  indigo: "border-l-4 border-l-indigo-500",
+  // Status meaning preserved (blue = in_delivery / info). Decorative `indigo`
+  // collapses to the neutral primary accent — no stray decorative purple/indigo.
+  indigo: "border-l-4 border-l-primary",
   blue: "border-l-4 border-l-blue-500",
   neutral: "",
 };

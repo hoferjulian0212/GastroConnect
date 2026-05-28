@@ -43,6 +43,54 @@
   --mobile-bottom-pad: calc(var(--mobile-cta-offset) + 16px);
 }
 
+/* ============================================================
+   MOBILE TYPE LADDER (Task #66)
+   Single source of truth for mobile typography. Mobile-only —
+   desktop sizing comes from default Tailwind classes & tokens.
+
+     .m-type-display   28px / 700 / leading-tight    page hero headline
+     .m-type-h1        20px / 700 / leading-tight    primary heading
+     .m-type-body      15px / 500 / leading-snug     card title / body
+     .m-type-meta      13px / 400                    secondary / meta
+     .m-type-micro     11px / 500 / uppercase trk    label / caption
+
+   Values (numeric) always use `font-variant-numeric: tabular-nums`
+   for visual alignment in KPI tiles.
+   ============================================================ */
+@media (max-width: 767px) {
+  .m-type-display { font-size: 28px; font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; }
+  .m-type-h1      { font-size: 20px; font-weight: 700; line-height: 1.2;  letter-spacing: -0.005em; }
+  .m-type-body    { font-size: 15px; font-weight: 500; line-height: 1.35; }
+  .m-type-meta    { font-size: 13px; font-weight: 400; line-height: 1.35; color: hsl(var(--muted-foreground)); }
+  .m-type-micro   { font-size: 11px; font-weight: 600; line-height: 1.3; letter-spacing: 0.02em; text-transform: uppercase; color: hsl(var(--muted-foreground)); }
+  .m-num          { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+  /* Single mobile card style — white-on-neutral, no static border,
+     subtle elevation only on press. Desktop unaffected. */
+  .m-card {
+    background-color: hsl(var(--card));
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.04);
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  .m-card:active,
+  button.m-card:active,
+  a.m-card:active {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+    transform: scale(0.985);
+  }
+  .dark .m-card {
+    background-color: hsl(var(--card));
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 1px 2px rgba(0,0,0,0.4);
+  }
+  .dark .m-card:active,
+  .dark button.m-card:active,
+  .dark a.m-card:active {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.35);
+  }
+}
+
 /* Mobile-only: ensure form inputs hit at least 44px and font-size 16px so
    iOS Safari does NOT auto-zoom on focus, and tap targets are thumb-friendly. */
 @media (max-width: 767px) {

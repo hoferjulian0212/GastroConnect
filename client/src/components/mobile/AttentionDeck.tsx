@@ -19,18 +19,20 @@ const accentBg: Record<AttentionAccent, string> = {
   amber: "bg-amber-500/10 border-amber-500/20",
   rose: "bg-rose-500/10 border-rose-500/20",
   emerald: "bg-emerald-500/10 border-emerald-500/20",
-  indigo: "bg-indigo-500/10 border-indigo-500/20",
-  sky: "bg-sky-500/10 border-sky-500/20",
-  violet: "bg-violet-500/10 border-violet-500/20",
+  // Decorative indigo/sky/violet collapse to neutral/primary — only status
+  // colors (amber/rose/emerald) keep their meaning.
+  indigo: "bg-primary/10 border-primary/20",
+  sky: "bg-primary/10 border-primary/20",
+  violet: "bg-muted/40 border-border",
   neutral: "bg-muted/40 border-border",
 };
 const accentIcon: Record<AttentionAccent, string> = {
   amber: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
   rose: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
   emerald: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-  indigo: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
-  sky: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
-  violet: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+  indigo: "bg-primary/15 text-primary",
+  sky: "bg-primary/15 text-primary",
+  violet: "bg-muted text-foreground",
   neutral: "bg-muted text-foreground",
 };
 
