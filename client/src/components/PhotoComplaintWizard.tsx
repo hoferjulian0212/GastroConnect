@@ -110,6 +110,7 @@ export default function PhotoComplaintWizard({ open, onClose }: PhotoComplaintWi
           name: file.name,
           size: file.size,
           contentType: file.type || "image/jpeg",
+          prefix: "complaint-photos",
         });
         const { uploadURL, objectPath } = await r.json();
         const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type || "image/jpeg" } });

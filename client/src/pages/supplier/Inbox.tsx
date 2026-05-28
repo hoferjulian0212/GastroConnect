@@ -1705,6 +1705,15 @@ export default function SupplierInbox() {
                                                 {getComplaintReasonLabel((complaintData as any).reason, lang)}
                                               </div>
                                             )}
+                                            {(complaintData as any).mediaUrls && (complaintData as any).mediaUrls.length > 0 && (
+                                              <div className="mt-2 grid grid-cols-3 gap-1.5" data-testid={`complaint-media-${message.id}`}>
+                                                {((complaintData as any).mediaUrls as string[]).slice(0, 6).map((url, i) => (
+                                                  <a key={i} href={getMediaSrc(url)} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-lg overflow-hidden border hover-elevate">
+                                                    <img src={getMediaSrc(url)} alt="" className="h-full w-full object-cover" loading="lazy" />
+                                                  </a>
+                                                ))}
+                                              </div>
+                                            )}
                                             {complaintData.affectedItems && complaintData.affectedItems.length > 0 && (
                                               <div className="mt-2 p-2 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
                                                 <div className="flex items-center gap-1.5 mb-1.5">

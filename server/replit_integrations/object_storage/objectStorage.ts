@@ -131,7 +131,7 @@ export class ObjectStorageService {
   }
 
   // Gets the upload URL for an object entity.
-  async getObjectEntityUploadURL(): Promise<string> {
+  async getObjectEntityUploadURL(prefix?: string): Promise<string> {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {
       throw new Error(
@@ -141,7 +141,8 @@ export class ObjectStorageService {
     }
 
     const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    const safePrefix = (prefix || "uploads").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64) || "uploads";
+    const fullPath = `${privateObjectDir}/${safePrefix}/${objectId}`;
 
     const { bucketName, objectName } = parseObjectPath(fullPath);
 

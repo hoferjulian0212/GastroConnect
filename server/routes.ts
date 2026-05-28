@@ -3128,6 +3128,7 @@ export async function registerRoutes(
         complaintNumber: formatComplaintNumber(complaint),
         reason: complaint.reason || null,
         affectedItems: hasAffectedItems ? affectedItems : undefined,
+        mediaUrls: Array.isArray(validated.mediaUrls) && validated.mediaUrls.length > 0 ? validated.mediaUrls : undefined,
       });
       await storage.sendMessage({
         conversationId: conversation.id,

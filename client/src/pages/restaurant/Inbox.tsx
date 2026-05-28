@@ -66,6 +66,12 @@ const parseOrderContent = (content: string): OrderContent | null => {
   }
 };
 
+const getComplaintMediaSrc = (url: string) => {
+  if (url.startsWith("/objects/")) return url;
+  if (url.startsWith("http")) return url;
+  return `/objects/${url}`;
+};
+
 const parseComplaintContent = (content: string): ComplaintContent | null => {
   try {
     return JSON.parse(content);
@@ -1884,6 +1890,15 @@ export default function RestaurantInbox() {
                                                 <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-[10px] font-medium" data-testid={`complaint-reason-${message.id}`}>
                                                   <AlertCircle className="h-2.5 w-2.5" />
                                                   {getComplaintReasonLabel((complaintData as any).reason, lang)}
+                                                </div>
+                                              )}
+                                              {(complaintData as any).mediaUrls && (complaintData as any).mediaUrls.length > 0 && (
+                                                <div className="mt-2 grid grid-cols-3 gap-1.5" data-testid={`complaint-media-${message.id}`}>
+                                                  {((complaintData as any).mediaUrls as string[]).slice(0, 6).map((url, i) => (
+                                                    <a key={i} href={getComplaintMediaSrc(url)} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-lg overflow-hidden border hover-elevate">
+                                                      <img src={getComplaintMediaSrc(url)} alt="" className="h-full w-full object-cover" loading="lazy" />
+                                                    </a>
+                                                  ))}
                                                 </div>
                                               )}
                                               {complaintData.affectedItems && complaintData.affectedItems.length > 0 && (
