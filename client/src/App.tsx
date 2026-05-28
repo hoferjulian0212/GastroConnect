@@ -57,6 +57,7 @@ import About from "@/pages/About";
 import Documents from "@/pages/Documents";
 import OrderDetail from "@/pages/OrderDetail";
 import ComplaintDetail from "@/pages/ComplaintDetail";
+import CalendarPage from "@/pages/Calendar";
 
 function RestaurantRouter() {
   return (
@@ -78,6 +79,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/documents" component={Documents} />
       <Route path="/restaurant/cost-analysis" component={RestaurantCostAnalysis} />
       <Route path="/restaurant/price-comparison" component={RestaurantPriceComparison} />
+      <Route path="/restaurant/calendar">{() => <CalendarPage role="restaurant" />}</Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -99,6 +101,7 @@ function SupplierRouter() {
       <Route path="/supplier/settings" component={SupplierSettings} />
       <Route path="/supplier/profile" component={SupplierProfile} />
       <Route path="/supplier/documents" component={Documents} />
+      <Route path="/supplier/calendar">{() => <CalendarPage role="supplier" />}</Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -302,6 +305,7 @@ function HeaderNav() {
       children: [
         { href: '/restaurant/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
         { href: '/restaurant/templates', label: lang === 'de' ? 'Bestellvorlagen' : "Modelli d'ordine" },
+        { href: '/restaurant/calendar', label: lang === 'de' ? 'Lieferkalender' : 'Calendario consegne' },
         { href: '/restaurant/complaints', label: lang === 'de' ? 'Reklamationen' : 'Reclami' },
         { href: '/restaurant/documents', label: lang === 'de' ? 'Dokumente' : 'Documenti' },
       ],
@@ -327,6 +331,7 @@ function HeaderNav() {
       label: lang === 'de' ? 'Bestellungen' : 'Ordini',
       children: [
         { href: '/supplier/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
+        { href: '/supplier/calendar', label: lang === 'de' ? 'Lieferkalender' : 'Calendario consegne' },
         { href: '/supplier/complaints', label: lang === 'de' ? 'Reklamationen' : 'Reclami' },
         { href: '/supplier/documents', label: lang === 'de' ? 'Dokumente' : 'Documenti' },
       ],

@@ -2990,6 +2990,109 @@ export async function registerRoutes(
     }
   });
 
+  // ===== DELIVERY CALENDAR (Task #37) =====
+  // Returns orders with a delivery date in [from, to], rolespecific.
+  // Used by the calendar month/week views.
+  app.get("/api/calendar/deliveries", async (req, res) => {
+    try {
+      const userId = String(req.query.userId || "");
+      const role = String(req.query.role || "");
+      const from = String(req.query.from || "");
+      const to = String(req.query.to || "");
+      if (!userId || (role !== "restaurant" && role !== "supplier")) return res.json([]);
+      const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRe.test(from) || !dateRe.test(to)) return res.json([]);
+
+      const all = role === "restaurant"
+        ? await storage.getOrdersByRestaurant(userId, { status: ["confirmed", "partially_confirmed", "in_delivery", "delivered"] })
+        : await storage.getOrdersBySupplier(userId, { status: ["confirmed", "partially_confirmed", "in_delivery", "delivered"] });
+
+      const result = all.filter(o => {
+        if (!o.requestedDeliveryDate) return false;
+        return o.requestedDeliveryDate >= from && o.requestedDeliveryDate <= to;
+      });
+      res.json(result);
+    } catch (error) {
+      console.error("calendar deliveries error", error);
+      res.status(500).json({ error: "Failed to fetch calendar deliveries" });
+    }
+  });
+
+  // ICS export of the next 60 days of deliveries.
+  app.get("/api/calendar/deliveries.ics", async (req, res) => {
+    try {
+      const userId = String(req.query.userId || "");
+      const role = String(req.query.role || "");
+      if (!userId || (role !== "restaurant" && role !== "supplier")) {
+        return res.status(400).send("Missing userId/role");
+      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const end = new Date(today);
+      end.setDate(end.getDate() + 60);
+      const fmtDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      const fromStr = fmtDate(today);
+      const toStr = fmtDate(end);
+
+      const all = role === "restaurant"
+        ? await storage.getOrdersByRestaurant(userId, { status: ["confirmed", "partially_confirmed", "in_delivery", "delivered"] })
+        : await storage.getOrdersBySupplier(userId, { status: ["confirmed", "partially_confirmed", "in_delivery", "delivered"] });
+
+      const relevant = all.filter(o => o.requestedDeliveryDate && o.requestedDeliveryDate >= fromStr && o.requestedDeliveryDate <= toStr);
+
+      const dtNow = new Date();
+      const dtstamp = `${dtNow.getUTCFullYear()}${String(dtNow.getUTCMonth()+1).padStart(2,"0")}${String(dtNow.getUTCDate()).padStart(2,"0")}T${String(dtNow.getUTCHours()).padStart(2,"0")}${String(dtNow.getUTCMinutes()).padStart(2,"0")}${String(dtNow.getUTCSeconds()).padStart(2,"0")}Z`;
+
+      const escapeIcs = (s: string) => s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+
+      const lines: string[] = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//GastroConnect//Deliveries//DE",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        `X-WR-CALNAME:${role === "restaurant" ? "GastroConnect Lieferungen" : "GastroConnect Auslieferungen"}`,
+      ];
+
+      for (const o of relevant) {
+        if (!o.requestedDeliveryDate) continue;
+        const dateCompact = o.requestedDeliveryDate.replace(/-/g, "");
+        const nextDate = new Date(o.requestedDeliveryDate + "T00:00:00");
+        nextDate.setDate(nextDate.getDate() + 1);
+        const endCompact = `${nextDate.getFullYear()}${String(nextDate.getMonth()+1).padStart(2,"0")}${String(nextDate.getDate()).padStart(2,"0")}`;
+        const counterparty = role === "restaurant" ? (o.supplier?.companyName || o.supplier?.name || "") : (o.restaurant?.companyName || o.restaurant?.name || "");
+        const orderNo = formatOrderNumber({ orderNumber: o.orderNumber, id: o.id });
+        const summary = `${role === "restaurant" ? "Lieferung von" : "Lieferung an"} ${counterparty} (#${orderNo})`;
+        const itemsList = (o.items || []).map(i => `- ${i.quantity}x ${i.productName}`).join("\n");
+        const description = [
+          `Status: ${o.status}`,
+          `Bestellung: #${orderNo}`,
+          itemsList ? `\nArtikel:\n${itemsList}` : "",
+          o.notes ? `\nNotizen: ${o.notes}` : "",
+        ].filter(Boolean).join("\n");
+        lines.push(
+          "BEGIN:VEVENT",
+          `UID:gastroconnect-order-${o.id}@gastroconnect`,
+          `DTSTAMP:${dtstamp}`,
+          `DTSTART;VALUE=DATE:${dateCompact}`,
+          `DTEND;VALUE=DATE:${endCompact}`,
+          `SUMMARY:${escapeIcs(summary)}`,
+          `DESCRIPTION:${escapeIcs(description)}`,
+          `STATUS:CONFIRMED`,
+          "END:VEVENT",
+        );
+      }
+      lines.push("END:VCALENDAR");
+
+      res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="gastroconnect-${role}-deliveries.ics"`);
+      res.send(lines.join("\r\n"));
+    } catch (error) {
+      console.error("calendar ics error", error);
+      res.status(500).send("Failed to generate calendar");
+    }
+  });
+
   app.get("/api/restaurant/stats", async (req, res) => {
     try {
       const restaurantId = (req.query.restaurantId || req.query.userId) as string;
