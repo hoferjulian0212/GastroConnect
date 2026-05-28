@@ -20,6 +20,7 @@ export function VoiceRecorder({ onSend, isSending, lang = "de" }: VoiceRecorderP
   const [recording, setRecording] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [levels, setLevels] = useState<number[]>([]);
+  const [locked, setLocked] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -29,6 +30,9 @@ export function VoiceRecorder({ onSend, isSending, lang = "de" }: VoiceRecorderP
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
   const cancelledRef = useRef(false);
+  const lockedRef = useRef(false);
+  const pointerDownRef = useRef(false);
+  const pointerStartYRef = useRef(0);
   const { toast } = useToast();
 
   const stopAll = () => {
@@ -69,6 +73,8 @@ export function VoiceRecorder({ onSend, isSending, lang = "de" }: VoiceRecorderP
         const duration = Date.now() - startRef.current;
         stopAll();
         setRecording(false);
+        setLocked(false);
+        lockedRef.current = false;
         setElapsedMs(0);
         setLevels([]);
         if (cancelledRef.current) return;
@@ -127,9 +133,41 @@ export function VoiceRecorder({ onSend, isSending, lang = "de" }: VoiceRecorderP
     } else {
       stopAll();
       setRecording(false);
+      setLocked(false);
+      lockedRef.current = false;
       setElapsedMs(0);
       setLevels([]);
     }
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    pointerDownRef.current = true;
+    pointerStartYRef.current = e.clientY;
+    start();
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!pointerDownRef.current || lockedRef.current) return;
+    // Swipe up >60px to lock recording (hands-free mode)
+    if (pointerStartYRef.current - e.clientY > 60) {
+      lockedRef.current = true;
+      setLocked(true);
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (!pointerDownRef.current) return;
+    pointerDownRef.current = false;
+    if (lockedRef.current) return; // locked: wait for explicit send/cancel
+    stop(false);
+  };
+
+  const handlePointerCancel = () => {
+    if (!pointerDownRef.current) return;
+    pointerDownRef.current = false;
+    if (lockedRef.current) return;
+    stop(true);
   };
 
   if (!recording) {
@@ -138,10 +176,14 @@ export function VoiceRecorder({ onSend, isSending, lang = "de" }: VoiceRecorderP
         type="button"
         variant="secondary"
         size="icon"
-        className="rounded-full shrink-0 h-12 w-12 md:h-10 md:w-10"
-        onClick={start}
+        className="rounded-full shrink-0 h-12 w-12 md:h-10 md:w-10 touch-none select-none"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onPointerLeave={handlePointerCancel}
         disabled={isSending}
-        aria-label={lang === "de" ? "Sprachnachricht aufnehmen" : "Registra messaggio vocale"}
+        aria-label={lang === "de" ? "Sprachnachricht — gedrückt halten" : "Messaggio vocale — tieni premuto"}
+        title={lang === "de" ? "Gedrückt halten zum Aufnehmen, nach oben wischen zum Sperren" : "Tieni premuto per registrare, scorri su per bloccare"}
         data-testid="button-voice-record"
       >
         {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
@@ -150,7 +192,13 @@ export function VoiceRecorder({ onSend, isSending, lang = "de" }: VoiceRecorderP
   }
 
   return (
-    <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-full bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 min-h-12" data-testid="voice-recorder-active">
+    <div
+      className="flex-1 flex items-center gap-2 px-3 py-2 rounded-full bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 min-h-12 touch-none select-none"
+      data-testid="voice-recorder-active"
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+    >
       <Button
         type="button"
         variant="ghost"
@@ -174,6 +222,11 @@ export function VoiceRecorder({ onSend, isSending, lang = "de" }: VoiceRecorderP
           />
         ))}
       </div>
+      {!locked && (
+        <span className="text-[10px] text-red-600/80 dark:text-red-400/80 shrink-0 hidden sm:inline">
+          {lang === "de" ? "↑ sperren" : "↑ blocca"}
+        </span>
+      )}
       <Button
         type="button"
         variant="default"

@@ -2187,7 +2187,14 @@ export default function RestaurantInbox() {
                                       durationMs={(message as any).audioDurationMs}
                                       testId={`voice-${message.id}`}
                                     />
-                                    <p className={`text-[10px] mt-1 ${isOwn ? "text-right" : "text-left"} text-muted-foreground`}>{format(messageDate, "HH:mm")}</p>
+                                    <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
+                                      <span className="text-[10px] text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                      {isOwn && (
+                                        message.isRead
+                                          ? <CheckCheck className={`h-3 w-3 ${newlyReadIds.has(message.id) ? "animate-read-receipt" : ""} text-muted-foreground`} />
+                                          : <Check className="h-3 w-3 text-muted-foreground" />
+                                      )}
+                                    </div>
                                   </div>
                                 ) : (
                                   (() => {

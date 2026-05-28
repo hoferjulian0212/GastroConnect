@@ -57,6 +57,13 @@
       "when": 1779992283699,
       "tag": "0007_monthly_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780005860576,
+      "tag": "0008_opposite_sunset_bain",
+      "breakpoints": true
     }
   ]
 }
