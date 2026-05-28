@@ -25,7 +25,7 @@ import logoImg from "@assets/logo_no_bg.png";
 import shotHome from "@assets/landing-home.jpg";
 import shotMobile from "@assets/landing-mobile.png";
 import shotMobileSupplier from "@assets/landing-mobile-supplier.png";
-import shotPrice from "@assets/landing-price-comparison.jpg";
+import shotPrice from "@assets/landing-story/price-2-savings.jpg";
 import shotInbox from "@assets/landing-inbox.jpg";
 import shotPriceOverview from "@assets/landing-story/price-1-overview.jpg";
 import shotPriceCatalog from "@assets/landing-story/price-3-catalog.jpg";
