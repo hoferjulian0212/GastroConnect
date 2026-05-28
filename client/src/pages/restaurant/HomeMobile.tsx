@@ -1,13 +1,14 @@
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { format, isToday, isTomorrow, formatDistanceToNow } from "date-fns";
-import { MessageSquare, Calculator, ShoppingBag, Euro, Truck, AlertTriangle, ChevronRight, Plus, FileText, Package, BarChart3, Calendar } from "lucide-react";
+import { MessageSquare, Calculator, ShoppingBag, Euro, Truck, AlertTriangle, ChevronRight, Plus, FileText, Calendar, RotateCcw, Inbox } from "lucide-react";
 import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { queryClient } from "@/lib/queryClient";
-import { MobilePageHeader, MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, MobileTopActions, statusToTone } from "@/components/mobile";
-import type { OrderWithDetails } from "@shared/schema";
+import { MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, MobileTopActions, statusToTone, AttentionDeck, type AttentionCard } from "@/components/mobile";
+import type { OrderWithDetails, ConversationWithUser, OrderTemplateWithItems } from "@shared/schema";
 import { getOrderStatus } from "@/lib/translations";
 
 interface Props {
@@ -36,6 +37,15 @@ export default function RestaurantHomeMobile({
   allOrders,
   dateLocale,
 }: Props) {
+  const { data: conversations } = useQuery<ConversationWithUser[]>({
+    queryKey: [`/api/conversations?userId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+  const { data: templates } = useQuery<OrderTemplateWithItems[]>({
+    queryKey: [`/api/order-templates?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
   const greeting = (() => {
     const h = new Date().getHours();
     if (lang === "de") return h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend";
@@ -48,23 +58,100 @@ export default function RestaurantHomeMobile({
     .slice()
     .sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime())
     .slice(0, 5);
+  const unreadConvs = (conversations || []).filter(c => c.unreadCount > 0);
 
   const fmtPrice = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
+
+  const cpgNum = parseFloat(costAnalysis?.costPerGuest || "0");
+  const cpgTarget = parseFloat(costAnalysis?.targetCost || "0");
+  const cpgDiff = cpgTarget > 0 ? cpgNum - cpgTarget : 0;
+  const cpgStatus: "ok" | "over" | "under" | "none" = !cpgTarget
+    ? "none"
+    : cpgDiff > 0.3
+    ? "over"
+    : cpgDiff < -0.3
+    ? "under"
+    : "ok";
+
+  const leadParts: string[] = [];
+  if (todayDeliveries.length > 0) {
+    leadParts.push(lang === "de"
+      ? `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "Lieferung" : "Lieferungen"} heute`
+      : `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "consegna" : "consegne"} oggi`);
+  }
+  if (unreadConvs.length > 0) {
+    leadParts.push(lang === "de"
+      ? `${unreadConvs.length} ungelesen`
+      : `${unreadConvs.length} non letti`);
+  }
+  if (pendingOrdersCount > 0) {
+    leadParts.push(lang === "de" ? `${pendingOrdersCount} offen` : `${pendingOrdersCount} aperti`);
+  }
+  const leadLine = leadParts.length
+    ? leadParts.join(" · ")
+    : lang === "de" ? "Heute ist nichts dringend." : "Niente di urgente oggi.";
+
+  // Build attention deck
+  const deck: AttentionCard[] = [];
+  todayDeliveries.slice(0, 3).forEach((o) => {
+    deck.push({
+      id: `del-${o.id}`,
+      icon: <Truck className="h-4 w-4" />,
+      accent: "amber",
+      eyebrow: lang === "de" ? "Heute" : "Oggi",
+      title: o.supplier?.companyName || "",
+      subtitle: `${o.items?.length || 0} ${lang === "de" ? "Artikel" : "art."} · ${fmtPrice(parseFloat(o.totalAmount as any || "0"))}`,
+      cta: lang === "de" ? "Öffnen" : "Apri",
+      onClick: () => navigate(`/restaurant/orders/${o.id}`),
+      testId: `mobile-attention-delivery-${o.id}`,
+    });
+  });
+  unreadConvs.slice(0, 2).forEach((c: any) => {
+    const name = c.otherUser?.companyName || c.otherUser?.name || (lang === "de" ? "Nachricht" : "Messaggio");
+    deck.push({
+      id: `msg-${c.id}`,
+      icon: <MessageSquare className="h-4 w-4" />,
+      accent: "sky",
+      eyebrow: lang === "de" ? "Neu" : "Nuovo",
+      title: name,
+      subtitle: `${c.unreadCount} ${lang === "de" ? "ungelesen" : "non letti"}`,
+      cta: lang === "de" ? "Antworten" : "Rispondi",
+      onClick: () => navigate(`/restaurant/inbox?conv=${c.id}`),
+      testId: `mobile-attention-msg-${c.id}`,
+    });
+  });
+  (templates || []).slice(0, 2).forEach((tmpl: any) => {
+    deck.push({
+      id: `tmpl-${tmpl.id}`,
+      icon: <RotateCcw className="h-4 w-4" />,
+      accent: "emerald",
+      eyebrow: lang === "de" ? "Schnellbestellung" : "Riordino",
+      title: tmpl.name,
+      subtitle: `${tmpl.items?.length || 0} ${lang === "de" ? "Artikel" : "art."}`,
+      cta: lang === "de" ? "Bestellen" : "Ordina",
+      onClick: () => navigate(`/restaurant/templates?use=${tmpl.id}`),
+      testId: `mobile-attention-tmpl-${tmpl.id}`,
+    });
+  });
+
+  const quickActions = [
+    { icon: <Plus className="h-5 w-5" />, label: lang === "de" ? "Bestellen" : "Ordina", to: "/restaurant/catalog", color: "bg-foreground text-background" },
+    { icon: <FileText className="h-5 w-5" />, label: lang === "de" ? "Vorlagen" : "Modelli", to: "/restaurant/templates", color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" },
+    { icon: <AlertTriangle className="h-5 w-5" />, label: lang === "de" ? "Reklamation" : "Reclami", to: "/restaurant/complaints", color: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
+  ];
 
   const kpis = [
     {
       label: lang === "de" ? "Nachrichten" : "Messaggi",
       value: convLoading ? "..." : <CountUp end={totalUnread} duration={800} />,
-      icon: <MessageSquare className="h-4 w-4" />,
-      tone: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+      icon: <MessageSquare className="h-3.5 w-3.5" />,
       onClick: () => navigate("/restaurant/inbox"),
       testId: "mobile-kpi-messages",
     },
     {
-      label: lang === "de" ? "Offen" : "Aperti",
+      label: lang === "de" ? "Offene Bestellungen" : "Ordini aperti",
       value: ordersLoading ? "..." : <CountUp end={pendingOrdersCount} duration={800} />,
-      icon: <ShoppingBag className="h-4 w-4" />,
-      tone: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
+      icon: <ShoppingBag className="h-3.5 w-3.5" />,
       onClick: () => navigate("/restaurant/orders"),
       testId: "mobile-kpi-orders",
     },
@@ -72,34 +159,24 @@ export default function RestaurantHomeMobile({
       label: lang === "de" ? "Kosten/Gast" : "Costo/ospite",
       value: costLoading
         ? "..."
-        : costAnalysis?.costPerGuest && parseFloat(costAnalysis.costPerGuest) > 0
-        ? <CountUp end={parseFloat(costAnalysis.costPerGuest)} duration={1000} decimals={2} suffix="€" />
+        : cpgNum > 0
+        ? <CountUp end={cpgNum} duration={1000} decimals={2} suffix="€" />
         : "--",
-      icon: <Calculator className="h-4 w-4" />,
-      tone: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+      icon: <Calculator className="h-3.5 w-3.5" />,
       onClick: () => navigate("/restaurant/cost-analysis"),
       testId: "mobile-kpi-cost-per-guest",
     },
     {
-      label: lang === "de" ? "Monat" : "Mese",
+      label: lang === "de" ? "Monatskosten" : "Costi mese",
       value: costLoading
         ? "..."
         : costAnalysis?.totalCosts && parseFloat(costAnalysis.totalCosts) > 0
         ? <CountUp end={parseFloat(costAnalysis.totalCosts)} duration={1200} suffix="€" formatter={(v: number) => Math.round(v).toLocaleString(lang === "de" ? "de-DE" : "it-IT")} />
         : "--",
-      icon: <Euro className="h-4 w-4" />,
-      tone: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+      icon: <Euro className="h-3.5 w-3.5" />,
       onClick: () => navigate("/restaurant/cost-analysis"),
       testId: "mobile-kpi-spending",
     },
-  ];
-
-  const quickActions = [
-    { icon: <Plus className="h-5 w-5" />, label: lang === "de" ? "Bestellen" : "Ordina", to: "/restaurant/catalog", color: "bg-foreground text-background" },
-    { icon: <FileText className="h-5 w-5" />, label: lang === "de" ? "Vorlagen" : "Modelli", to: "/restaurant/templates", color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" },
-    { icon: <AlertTriangle className="h-5 w-5" />, label: lang === "de" ? "Reklamation" : "Reclami", to: "/restaurant/complaints", color: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
-    { icon: <BarChart3 className="h-5 w-5" />, label: lang === "de" ? "Vergleich" : "Confronto", to: "/restaurant/price-comparison", color: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
-    { icon: <Package className="h-5 w-5" />, label: lang === "de" ? "Lieferanten" : "Fornitori", to: "/restaurant/suppliers", color: "bg-teal-500/15 text-teal-600 dark:text-teal-400" },
   ];
 
   return (
@@ -116,60 +193,85 @@ export default function RestaurantHomeMobile({
         className="pb-[var(--mobile-bottom-pad)]"
       >
         <div
-          className="bg-[#161921] text-white px-4 pb-4 rounded-3xl mx-2 overflow-hidden"
+          className="bg-[#161921] text-white px-4 pb-5 rounded-3xl mx-2 overflow-hidden"
           style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
           data-testid="mobile-header-restaurant-home"
         >
-          <div className="pt-1 pb-3.5 flex items-start gap-2">
+          <div className="pt-1 pb-2 flex items-start gap-2">
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-medium text-white/60 truncate">{greeting},</p>
-              <h1 className="text-[20px] font-bold leading-tight mt-0.5 text-white truncate">
+              <h1 className="text-[22px] font-bold leading-tight mt-0.5 text-white truncate">
                 {currentUser?.companyName || currentUser?.name || ""}
               </h1>
-              <p className="text-[11px] text-white/55 mt-1">
-                {lang === "de"
-                  ? `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "Lieferung" : "Lieferungen"} heute · ${pendingOrdersCount} offen`
-                  : `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "consegna" : "consegne"} oggi · ${pendingOrdersCount} aperti`}
-              </p>
             </div>
             <MobileTopActions variant="dark" />
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
+          <p className="text-[14px] text-white/85 leading-snug mt-1" data-testid="mobile-home-lead">
+            {leadLine}
+          </p>
+          {cpgStatus !== "none" && (
+            <button
+              onClick={() => navigate("/restaurant/cost-analysis")}
+              data-testid="mobile-home-cpg-line"
+              className="mt-3 w-full flex items-center justify-between gap-2 rounded-xl bg-white/[0.06] border border-white/[0.10] px-3 py-2 active:scale-[0.98] transition-transform"
+            >
+              <span className="flex items-center gap-2 text-[12px] text-white/75">
+                <Calculator className="h-3.5 w-3.5" />
+                {lang === "de" ? "Kosten/Gast" : "Costo/ospite"}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="text-[13px] font-bold tabular-nums text-white">{cpgNum.toFixed(2)}€</span>
+                <span className={`text-[11px] tabular-nums font-semibold ${cpgStatus === "over" ? "text-rose-300" : cpgStatus === "under" ? "text-emerald-300" : "text-white/70"}`}>
+                  {cpgDiff > 0 ? "+" : ""}{cpgDiff.toFixed(2)}€
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 text-white/50" />
+              </span>
+            </button>
+          )}
+        </div>
+
+        {deck.length > 0 && (
+          <MobileSection className="mt-4" testId="mobile-section-briefing">
+            <AttentionDeck cards={deck} testId="mobile-attention-deck" />
+          </MobileSection>
+        )}
+
+        <MobileSection className="mt-4">
+          <div className="grid grid-cols-3 gap-2">
+            {quickActions.map((qa) => (
+              <Link
+                key={qa.label}
+                href={qa.to}
+                data-testid={`mobile-quick-${qa.label}`}
+                className="flex flex-col items-center justify-center gap-1.5 h-[72px] rounded-2xl bg-card border border-border active:scale-95 transition-transform no-underline"
+              >
+                <div className={`flex items-center justify-center h-9 w-9 rounded-full ${qa.color}`}>{qa.icon}</div>
+                <span className="text-[10px] font-semibold text-foreground text-center leading-tight">{qa.label}</span>
+              </Link>
+            ))}
+          </div>
+        </MobileSection>
+
+        <MobileSection
+          title={lang === "de" ? "Übersicht" : "Panoramica"}
+          className="mt-5"
+          testId="mobile-section-overview"
+        >
+          <div className="grid grid-cols-2 gap-2">
             {kpis.map((k) => (
               <button
                 key={k.testId}
                 onClick={k.onClick}
                 data-testid={k.testId}
-                className="text-left rounded-2xl bg-white/[0.07] border border-white/[0.10] p-4 min-h-[92px] flex flex-col justify-between active:scale-[0.98] transition-transform"
+                className="text-left rounded-2xl bg-card border border-border p-3 active:scale-[0.98] transition-transform"
               >
-                <div className={`flex items-center justify-center h-7 w-7 rounded-lg ${k.tone}`}>{k.icon}</div>
-                <div className="mt-2">
-                  <div className="text-[22px] font-bold leading-none text-white tabular-nums">{k.value}</div>
-                  <div className="mt-1.5 text-[12px] font-medium text-white/65 leading-tight line-clamp-2 break-words">{k.label}</div>
+                <div className="flex items-center gap-1.5 text-muted-foreground mb-1.5">
+                  {k.icon}
+                  <span className="text-[11px] font-medium truncate">{k.label}</span>
                 </div>
+                <div className="text-[20px] font-bold leading-none tabular-nums text-foreground">{k.value}</div>
               </button>
             ))}
-          </div>
-        </div>
-
-        <MobileSection
-          title={lang === "de" ? "Schnellaktionen" : "Azioni rapide"}
-          className="mt-5"
-        >
-          <div className="-mx-4 px-4 overflow-x-auto scrollbar-hide">
-            <div className="flex items-stretch gap-2 min-w-min pr-4">
-              {quickActions.map((qa) => (
-                <Link
-                  key={qa.label}
-                  href={qa.to}
-                  data-testid={`mobile-quick-${qa.label}`}
-                  className="flex flex-col items-center justify-center gap-1.5 w-[72px] h-[68px] rounded-2xl bg-card border border-border active:scale-95 transition-transform no-underline"
-                >
-                  <div className={`flex items-center justify-center h-9 w-9 rounded-full ${qa.color}`}>{qa.icon}</div>
-                  <span className="text-[10px] font-semibold text-foreground text-center leading-tight truncate max-w-full px-1">{qa.label}</span>
-                </Link>
-              ))}
-            </div>
           </div>
         </MobileSection>
 

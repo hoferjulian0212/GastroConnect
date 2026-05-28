@@ -7,3 +7,5 @@ export { MobileSection, MobileSectionLink } from "./MobileSection";
 export { MobileListCard } from "./MobileListCard";
 export { MobileStatusPill, statusToTone } from "./MobileStatusPill";
 export { MobileEmptyState } from "./MobileEmptyState";
+export { AttentionDeck } from "./AttentionDeck";
+export type { AttentionCard, AttentionAccent } from "./AttentionDeck";

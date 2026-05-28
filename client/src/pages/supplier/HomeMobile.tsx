@@ -1,17 +1,18 @@
 import { Link } from "wouter";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { format, isToday, isTomorrow, formatDistanceToNow } from "date-fns";
-import { MessageSquare, ClipboardList, BarChart3, AlertTriangle, ChevronRight, Plus, Package, Tag, FileText, Building2, Truck, Calendar, Target, Sparkles, TrendingUp, TrendingDown, Download, Users, Euro, Hash } from "lucide-react";
+import { MessageSquare, ClipboardList, BarChart3, AlertTriangle, ChevronRight, Plus, Package, Tag, Building2, Truck, Calendar, Target, Sparkles, TrendingUp, TrendingDown, Download, Users, Euro, Hash } from "lucide-react";
 import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ComposedChart, Line } from "recharts";
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ComposedChart, Line, Bar } from "recharts";
 import { queryClient } from "@/lib/queryClient";
-import { MobilePageHeader, MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, MobileTopActions, statusToTone } from "@/components/mobile";
-import type { OrderWithDetails, Product } from "@shared/schema";
+import { MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, MobileTopActions, statusToTone, AttentionDeck, type AttentionCard } from "@/components/mobile";
+import type { OrderWithDetails, Product, ConversationWithUser } from "@shared/schema";
 import { getOrderStatus } from "@/lib/translations";
 
 type StatsPeriod = "7d" | "30d" | "6m" | "12m";
@@ -60,6 +61,11 @@ export default function SupplierHomeMobile({
   chartData, monthRevenue, goalProgress, calcDelta,
 }: Props) {
   const [statsTab, setStatsTab] = useState<"products" | "customers">("products");
+  const { data: conversations } = useQuery<ConversationWithUser[]>({
+    queryKey: [`/api/conversations?userId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+  const unreadConvs = (conversations || []).filter((c) => c.unreadCount > 0);
   const greeting = (() => {
     const h = new Date().getHours();
     if (lang === "de") return h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend";
@@ -80,44 +86,115 @@ export default function SupplierHomeMobile({
     {
       label: lang === "de" ? "Nachrichten" : "Messaggi",
       value: convLoading ? "..." : <CountUp end={totalUnread} duration={800} />,
-      icon: <MessageSquare className="h-4 w-4" />,
-      tone: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+      icon: <MessageSquare className="h-3.5 w-3.5" />,
       onClick: () => navigate("/supplier/inbox"),
       testId: "mobile-kpi-s-messages",
     },
     {
-      label: lang === "de" ? "Neue" : "Nuovi",
+      label: lang === "de" ? "Neue Bestellungen" : "Nuovi ordini",
       value: ordersLoading ? "..." : <CountUp end={newOrdersCount} duration={800} />,
-      icon: <ClipboardList className="h-4 w-4" />,
-      tone: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+      icon: <ClipboardList className="h-3.5 w-3.5" />,
       onClick: () => navigate("/supplier/orders?status=pending"),
       testId: "mobile-kpi-s-orders",
     },
     {
-      label: lang === "de" ? "Heute" : "Oggi",
+      label: lang === "de" ? "Heute Umsatz" : "Oggi fatt.",
       value: <CountUp end={todayRevenue} duration={1000} suffix="€" formatter={(v: number) => Math.round(v).toLocaleString(lang === "de" ? "de-DE" : "it-IT")} />,
-      icon: <BarChart3 className="h-4 w-4" />,
-      tone: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+      icon: <Euro className="h-3.5 w-3.5" />,
       onClick: () => navigate("/supplier/orders"),
       testId: "mobile-kpi-s-revenue",
     },
     {
-      label: lang === "de" ? "Bestand" : "Scorte",
+      label: lang === "de" ? "Niedriger Bestand" : "Scorte basse",
       value: lowStockLoading ? "..." : <CountUp end={lowStockProducts?.length || 0} duration={800} />,
-      icon: <AlertTriangle className="h-4 w-4" />,
-      tone: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
       onClick: () => navigate("/supplier/products"),
       testId: "mobile-kpi-s-lowstock",
     },
   ];
 
   const quickActions = [
-    { icon: <Plus className="h-5 w-5" />, label: lang === "de" ? "Produkt" : "Prodotto", to: "/supplier/products?new=1", color: "bg-primary text-primary-foreground" },
+    { icon: <ClipboardList className="h-5 w-5" />, label: lang === "de" ? "Bestellungen" : "Ordini", to: "/supplier/orders?status=pending", color: "bg-foreground text-background" },
     { icon: <Tag className="h-5 w-5" />, label: lang === "de" ? "Aktion" : "Promo", to: "/supplier/promotions", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
     { icon: <Package className="h-5 w-5" />, label: lang === "de" ? "Lager" : "Magazzino", to: "/supplier/inventory", color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" },
-    { icon: <Building2 className="h-5 w-5" />, label: lang === "de" ? "Kunden" : "Clienti", to: "/supplier/restaurants", color: "bg-teal-500/15 text-teal-600 dark:text-teal-400" },
-    { icon: <AlertTriangle className="h-5 w-5" />, label: lang === "de" ? "Reklamationen" : "Reclami", to: "/supplier/complaints", color: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
   ];
+
+  const leadParts: string[] = [];
+  if (newOrdersCount > 0) {
+    leadParts.push(lang === "de"
+      ? `${newOrdersCount} ${newOrdersCount === 1 ? "neue Bestellung" : "neue Bestellungen"}`
+      : `${newOrdersCount} ${newOrdersCount === 1 ? "nuovo ordine" : "nuovi ordini"}`);
+  }
+  if (todayDeliveries.length > 0) {
+    leadParts.push(lang === "de"
+      ? `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "Lieferung" : "Lieferungen"} heute`
+      : `${todayDeliveries.length} ${todayDeliveries.length === 1 ? "consegna" : "consegne"} oggi`);
+  }
+  if (openComplaints > 0) {
+    leadParts.push(lang === "de"
+      ? `${openComplaints} ${openComplaints === 1 ? "Reklamation" : "Reklamationen"}`
+      : `${openComplaints} ${openComplaints === 1 ? "reclamo" : "reclami"}`);
+  }
+  if (unreadConvs.length > 0) {
+    leadParts.push(lang === "de" ? `${unreadConvs.length} ungelesen` : `${unreadConvs.length} non letti`);
+  }
+  const leadLine = leadParts.length
+    ? leadParts.slice(0, 3).join(" · ")
+    : lang === "de" ? "Heute ist nichts dringend." : "Niente di urgente oggi.";
+
+  const deck: AttentionCard[] = [];
+  todayDeliveries.slice(0, 3).forEach((o) => {
+    deck.push({
+      id: `del-${o.id}`,
+      icon: <Truck className="h-4 w-4" />,
+      accent: "amber",
+      eyebrow: lang === "de" ? "Heute liefern" : "Da consegnare",
+      title: o.restaurant?.companyName || "",
+      subtitle: `${o.items?.length || 0} ${lang === "de" ? "Artikel" : "art."} · ${fmtPrice(parseFloat(o.totalAmount as any || "0"))}`,
+      cta: lang === "de" ? "Öffnen" : "Apri",
+      onClick: () => navigate(`/supplier/orders/${o.id}`),
+      testId: `mobile-attention-s-del-${o.id}`,
+    });
+  });
+  (recentOrders || []).filter((o) => o.status === "pending").slice(0, 2).forEach((o) => {
+    deck.push({
+      id: `new-${o.id}`,
+      icon: <ClipboardList className="h-4 w-4" />,
+      accent: "indigo",
+      eyebrow: lang === "de" ? "Neue Bestellung" : "Nuovo ordine",
+      title: o.restaurant?.companyName || "",
+      subtitle: `${o.items?.length || 0} ${lang === "de" ? "Artikel" : "art."} · ${fmtPrice(parseFloat(o.totalAmount as any || "0"))}`,
+      cta: lang === "de" ? "Bestätigen" : "Conferma",
+      onClick: () => navigate(`/supplier/orders/${o.id}`),
+      testId: `mobile-attention-s-new-${o.id}`,
+    });
+  });
+  (actionRequired?.openComplaints || []).slice(0, 1).forEach((c: any) => {
+    deck.push({
+      id: `cmp-${c.id}`,
+      icon: <AlertTriangle className="h-4 w-4" />,
+      accent: "rose",
+      eyebrow: lang === "de" ? "Reklamation" : "Reclamo",
+      title: c.restaurant?.companyName || c.title || (lang === "de" ? "Reklamation" : "Reclamo"),
+      subtitle: c.title ? String(c.title).replace("[PRIORITY IMMEDIATE] ", "") : undefined,
+      cta: lang === "de" ? "Ansehen" : "Apri",
+      onClick: () => navigate(`/supplier/complaints/${c.id}`),
+      testId: `mobile-attention-s-cmp-${c.id}`,
+    });
+  });
+  (lowStockProducts || []).slice(0, 2).forEach((p) => {
+    deck.push({
+      id: `low-${p.id}`,
+      icon: <Package className="h-4 w-4" />,
+      accent: "violet",
+      eyebrow: lang === "de" ? "Bestand" : "Scorte",
+      title: p.name,
+      subtitle: `${p.stockQuantity ?? 0} ${lang === "de" ? "verbleibend" : "rimasti"}`,
+      cta: lang === "de" ? "Auffüllen" : "Rifornire",
+      onClick: () => navigate(`/supplier/products?highlight=${p.id}`),
+      testId: `mobile-attention-s-low-${p.id}`,
+    });
+  });
 
   return (
     <div className="md:hidden">
@@ -140,74 +217,59 @@ export default function SupplierHomeMobile({
           <div className="pt-1 pb-3.5 flex items-start gap-2">
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-medium text-white/60 truncate">{greeting},</p>
-              <h1 className="text-[20px] font-bold leading-tight mt-0.5 text-white truncate">
+              <h1 className="text-[22px] font-bold leading-tight mt-0.5 text-white truncate">
                 {currentUser?.companyName || currentUser?.name || ""}
               </h1>
-              <p className="text-[11px] text-white/55 mt-1">
-                {lang === "de"
-                  ? `${newOrdersCount} ${newOrdersCount === 1 ? "neue Bestellung" : "neue Bestellungen"} · ${todayDeliveries.length} ${todayDeliveries.length === 1 ? "Lieferung heute" : "Lieferungen heute"}`
-                  : `${newOrdersCount} ${newOrdersCount === 1 ? "nuovo ordine" : "nuovi ordini"} · ${todayDeliveries.length} ${todayDeliveries.length === 1 ? "consegna oggi" : "consegne oggi"}`}
-              </p>
             </div>
             <MobileTopActions variant="dark" />
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
+          <p className="text-[14px] text-white/85 leading-snug mt-1" data-testid="mobile-home-lead-supplier">
+            {leadLine}
+          </p>
+        </div>
+
+        {deck.length > 0 && (
+          <MobileSection className="mt-4" testId="mobile-s-section-briefing">
+            <AttentionDeck cards={deck} testId="mobile-s-attention-deck" />
+          </MobileSection>
+        )}
+
+        <MobileSection className="mt-4">
+          <div className="grid grid-cols-3 gap-2">
+            {quickActions.map((qa) => (
+              <Link
+                key={qa.label}
+                href={qa.to}
+                data-testid={`mobile-s-quick-${qa.label}`}
+                className="flex flex-col items-center justify-center gap-1.5 h-[72px] rounded-2xl bg-card border border-border active:scale-95 transition-transform no-underline"
+              >
+                <div className={`flex items-center justify-center h-9 w-9 rounded-full ${qa.color}`}>{qa.icon}</div>
+                <span className="text-[10px] font-semibold text-foreground text-center leading-tight">{qa.label}</span>
+              </Link>
+            ))}
+          </div>
+        </MobileSection>
+
+        <MobileSection
+          title={lang === "de" ? "Übersicht" : "Panoramica"}
+          className="mt-5"
+          testId="mobile-s-section-overview"
+        >
+          <div className="grid grid-cols-2 gap-2">
             {kpis.map((k) => (
               <button
                 key={k.testId}
                 onClick={k.onClick}
                 data-testid={k.testId}
-                className="text-left rounded-2xl bg-white/[0.07] border border-white/[0.10] p-4 min-h-[92px] flex flex-col justify-between active:scale-[0.98] transition-transform"
+                className="text-left rounded-2xl bg-card border border-border p-3 active:scale-[0.98] transition-transform"
               >
-                <div className={`flex items-center justify-center h-7 w-7 rounded-lg ${k.tone}`}>{k.icon}</div>
-                <div className="mt-2">
-                  <div className="text-[22px] font-bold leading-none text-white tabular-nums">{k.value}</div>
-                  <div className="mt-1.5 text-[12px] font-medium text-white/65 leading-tight line-clamp-2 break-words">{k.label}</div>
+                <div className="flex items-center gap-1.5 text-muted-foreground mb-1.5">
+                  {k.icon}
+                  <span className="text-[11px] font-medium truncate">{k.label}</span>
                 </div>
+                <div className="text-[20px] font-bold leading-none tabular-nums text-foreground">{k.value}</div>
               </button>
             ))}
-          </div>
-        </div>
-
-        {openComplaints > 0 && (
-          <MobileSection className="mt-4">
-            <button
-              onClick={() => navigate("/supplier/complaints")}
-              data-testid="mobile-action-required-banner"
-              className="w-full flex items-center gap-3 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 active:scale-[0.98] transition-transform"
-            >
-              <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
-                <AlertTriangle className="h-5 w-5" />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="text-[13px] font-semibold text-foreground">
-                  {openComplaints} {lang === "de" ? "offene Reklamation" : "reclamo aperto"}{openComplaints > 1 ? (lang === "de" ? "en" : "i") : ""}
-                </div>
-                <div className="text-[11px] text-muted-foreground">{lang === "de" ? "Aktion erforderlich" : "Azione richiesta"}</div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </MobileSection>
-        )}
-
-        <MobileSection
-          title={lang === "de" ? "Schnellaktionen" : "Azioni rapide"}
-          className="mt-5"
-        >
-          <div className="-mx-4 px-4 overflow-x-auto scrollbar-hide">
-            <div className="flex items-stretch gap-2 min-w-min pr-4">
-              {quickActions.map((qa) => (
-                <Link
-                  key={qa.label}
-                  href={qa.to}
-                  data-testid={`mobile-s-quick-${qa.label}`}
-                  className="flex flex-col items-center justify-center gap-1.5 w-[72px] h-[68px] rounded-2xl bg-card border border-border active:scale-95 transition-transform no-underline"
-                >
-                  <div className={`flex items-center justify-center h-9 w-9 rounded-full ${qa.color}`}>{qa.icon}</div>
-                  <span className="text-[10px] font-semibold text-foreground text-center leading-tight truncate max-w-full px-1">{qa.label}</span>
-                </Link>
-              ))}
-            </div>
           </div>
         </MobileSection>
 
