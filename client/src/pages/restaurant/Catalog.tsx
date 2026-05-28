@@ -143,6 +143,9 @@ export default function RestaurantCatalog() {
  const supplierFiltered = selectedSupplier === "all"
  ? products
  : products.filter(p => p.supplierId === selectedSupplier);
+ if (cat === "__all__") {
+ return supplierFiltered;
+ }
  if (cat === "Sonstiges") {
  return supplierFiltered.filter(p => !p.category || p.category === "Sonstiges" || !knownCategories.includes(p.category));
  }
@@ -451,6 +454,27 @@ export default function RestaurantCatalog() {
  </div>
  ) : categoriesWithProducts.length > 0 ? (
  <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+ {(() => {
+ const allCount = productsByCategory("__all__").length;
+ return (
+ <button
+ key="__all__"
+ onClick={() => { setSelectedCategory("__all__"); setSearchQuery(""); }}
+ className="flex flex-col items-center gap-3 p-5 md:p-6 rounded-xl border border-border bg-background hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
+ data-testid="category-button-all"
+ >
+ <div className="flex items-center justify-center h-16 w-16 md:h-20 md:w-20 rounded-full bg-foreground text-background shadow-lg group-hover:scale-105 transition-transform">
+ <Package className="h-8 w-8 md:h-10 md:w-10" />
+ </div>
+ <span className="text-sm md:text-base font-semibold text-center leading-tight">
+ {lang === "it" ? "Tutti" : "Alle"}
+ </span>
+ <span className="text-xs text-muted-foreground">
+ {allCount} {allCount === 1 ? (lang === "de" ? "Produkt" : "prodotto") : (lang === "de" ? "Produkte" : "prodotti")}
+ </span>
+ </button>
+ );
+ })()}
  {categoriesWithProducts.map(cat => {
  const conf = categoryConfig[cat];
  const CatIcon = conf.icon;
@@ -487,15 +511,17 @@ export default function RestaurantCatalog() {
  <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="catalog-category-hero">
  <div className="flex items-center gap-2">
  {(() => {
- const conf = categoryConfig[selectedCategory];
+ const isAll = selectedCategory === "__all__";
+ const conf = isAll ? null : categoryConfig[selectedCategory];
  const CatIcon = conf?.icon || Package;
+ const title = isAll ? (lang === "it" ? "Tutti" : "Alle") : (lang === "it" ? conf?.it : conf?.de);
  return (
  <>
- <div className={`flex items-center justify-center h-8 w-8 rounded-full ${conf?.color || "bg-gray-500"} text-white shrink-0`}>
+ <div className={`flex items-center justify-center h-8 w-8 rounded-full ${isAll ? "bg-foreground text-background" : `${conf?.color || "bg-gray-500"} text-white`} shrink-0`}>
  <CatIcon className="h-4 w-4" />
  </div>
  <h2 className="text-lg md:text-xl font-bold text-white truncate">
- {lang === "it" ? conf?.it : conf?.de}
+ {title}
  </h2>
  </>
  );
