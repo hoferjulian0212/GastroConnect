@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialog";
+import RatingCard from "@/components/RatingCard";
 import { formatOrderNumber, type OrderWithDetails, type OrderStatusHistoryWithUser } from "@shared/schema";
 import { HeroPortal } from "@/context/HeroContext";
 
@@ -1053,6 +1054,17 @@ export default function OrderDetail() {
                     </p>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Rating prompt — restaurant + delivered orders only */}
+            {!isSupplier && order.status === "delivered" && (
+              <div className={`mb-5 ${tabClsDetails}`} data-testid="section-rating">
+                <RatingCard
+                  orderId={order.id}
+                  supplierId={order.supplierId}
+                  supplierName={order.supplier?.companyName || order.supplier?.name}
+                />
               </div>
             )}
 

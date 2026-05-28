@@ -12,6 +12,7 @@ import { Link, useLocation } from "wouter";
 import type { User } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import { StarRating } from "@/components/StarRating";
 
 export default function RestaurantSuppliers() {
   const { currentUser } = useUser();
@@ -28,6 +29,18 @@ export default function RestaurantSuppliers() {
   const { data: movData } = useQuery<Record<string, { minimumValue: string; zone: string | null }>>({
     queryKey: [`/api/minimum-order-values/for-restaurant?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
+  });
+
+  const supplierIds = (suppliers ?? []).map(s => s.id).sort().join(",");
+  const { data: ratingSummaries } = useQuery<Record<string, { avg: number; count: number }>>({
+    queryKey: ["/api/supplier-ratings/summary", supplierIds],
+    queryFn: async () => {
+      if (!supplierIds) return {};
+      const res = await fetch(`/api/supplier-ratings/summary?supplierIds=${encodeURIComponent(supplierIds)}`);
+      if (!res.ok) throw new Error("Failed to fetch summaries");
+      return res.json();
+    },
+    enabled: !!supplierIds,
   });
 
   const filteredSuppliers = suppliers?.filter(supplier =>
@@ -105,6 +118,16 @@ export default function RestaurantSuppliers() {
                         </span>
                       )}
                     </p>
+                    {ratingSummaries?.[supplier.id] && ratingSummaries[supplier.id].count > 0 && (
+                      <StarRating
+                        value={ratingSummaries[supplier.id].avg}
+                        size="sm"
+                        showValue
+                        count={ratingSummaries[supplier.id].count}
+                        className="mt-0.5"
+                        data-testid={`supplier-rating-${supplier.id}`}
+                      />
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>

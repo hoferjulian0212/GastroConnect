@@ -3,7 +3,7 @@ import { eq, and, desc, or, sql, ne, inArray, gte, isNull } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
-  orderTemplates, orderTemplateItems, costSettings, overnightStays, minimumOrderValues,
+  orderTemplates, orderTemplateItems, costSettings, overnightStays, minimumOrderValues, supplierRatings,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -20,7 +20,8 @@ import {
   type CustomPrice, type InsertCustomPrice,
   type StockMovement, type InsertStockMovement, type StockMovementWithProduct,
   type OrderTemplate, type InsertOrderTemplate, type InsertOrderTemplateItem, type OrderTemplateWithItems,
-  pushSubscriptions, type InsertPushSubscription, type PushSubscription
+  pushSubscriptions, type InsertPushSubscription, type PushSubscription,
+  type SupplierRating, type InsertSupplierRating, type UpdateSupplierRating
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -194,6 +195,17 @@ export interface IStorage {
   getPushSubscriptions(userId: string): Promise<PushSubscription[]>;
   savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription>;
   deletePushSubscription(endpoint: string): Promise<void>;
+
+  // Supplier Ratings
+  getRatingByOrder(orderId: string): Promise<SupplierRating | undefined>;
+  getRatingById(id: string): Promise<SupplierRating | undefined>;
+  getRatingsBySupplier(supplierId: string, limit?: number): Promise<(SupplierRating & { restaurant: User })[]>;
+  getSupplierRatingSummary(supplierId: string): Promise<{ avg: number; count: number }>;
+  getSupplierRatingSummaries(supplierIds: string[]): Promise<Record<string, { avg: number; count: number }>>;
+  createRating(data: InsertSupplierRating): Promise<SupplierRating>;
+  updateRating(id: string, data: UpdateSupplierRating): Promise<SupplierRating | undefined>;
+  deleteRating(id: string): Promise<void>;
+  flagRating(id: string, reason?: string): Promise<SupplierRating | undefined>;
 
   // Seed
   seedData(): Promise<void>;
@@ -1466,6 +1478,82 @@ export class DatabaseStorage implements IStorage {
   async deleteOrderTemplate(id: string): Promise<void> {
     await db.delete(orderTemplateItems).where(eq(orderTemplateItems.templateId, id));
     await db.delete(orderTemplates).where(eq(orderTemplates.id, id));
+  }
+
+  // ===== Supplier Ratings =====
+  async getRatingByOrder(orderId: string): Promise<SupplierRating | undefined> {
+    const [r] = await db.select().from(supplierRatings).where(eq(supplierRatings.orderId, orderId));
+    return r;
+  }
+
+  async getRatingById(id: string): Promise<SupplierRating | undefined> {
+    const [r] = await db.select().from(supplierRatings).where(eq(supplierRatings.id, id));
+    return r;
+  }
+
+  async getRatingsBySupplier(supplierId: string, limit = 50): Promise<(SupplierRating & { restaurant: User })[]> {
+    const rows = await db
+      .select()
+      .from(supplierRatings)
+      .leftJoin(users, eq(supplierRatings.restaurantId, users.id))
+      .where(eq(supplierRatings.supplierId, supplierId))
+      .orderBy(desc(supplierRatings.createdAt))
+      .limit(limit);
+    return rows.map(r => ({ ...r.supplier_ratings, restaurant: r.users! }));
+  }
+
+  async getSupplierRatingSummary(supplierId: string): Promise<{ avg: number; count: number }> {
+    const [row] = await db
+      .select({
+        avg: sql<string>`COALESCE(AVG(${supplierRatings.stars}), 0)`,
+        count: sql<string>`COUNT(*)`,
+      })
+      .from(supplierRatings)
+      .where(eq(supplierRatings.supplierId, supplierId));
+    return { avg: Number(row?.avg || 0), count: Number(row?.count || 0) };
+  }
+
+  async getSupplierRatingSummaries(supplierIds: string[]): Promise<Record<string, { avg: number; count: number }>> {
+    const out: Record<string, { avg: number; count: number }> = {};
+    if (supplierIds.length === 0) return out;
+    const rows = await db
+      .select({
+        supplierId: supplierRatings.supplierId,
+        avg: sql<string>`AVG(${supplierRatings.stars})`,
+        count: sql<string>`COUNT(*)`,
+      })
+      .from(supplierRatings)
+      .where(inArray(supplierRatings.supplierId, supplierIds))
+      .groupBy(supplierRatings.supplierId);
+    for (const r of rows) out[r.supplierId] = { avg: Number(r.avg || 0), count: Number(r.count || 0) };
+    return out;
+  }
+
+  async createRating(data: InsertSupplierRating): Promise<SupplierRating> {
+    const [created] = await db.insert(supplierRatings).values(data).returning();
+    return created;
+  }
+
+  async updateRating(id: string, data: UpdateSupplierRating): Promise<SupplierRating | undefined> {
+    const [updated] = await db
+      .update(supplierRatings)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(supplierRatings.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRating(id: string): Promise<void> {
+    await db.delete(supplierRatings).where(eq(supplierRatings.id, id));
+  }
+
+  async flagRating(id: string, reason?: string): Promise<SupplierRating | undefined> {
+    const [updated] = await db
+      .update(supplierRatings)
+      .set({ flaggedAt: new Date(), flaggedReason: reason ?? null })
+      .where(eq(supplierRatings.id, id))
+      .returning();
+    return updated;
   }
 
   async seedData(): Promise<void> {

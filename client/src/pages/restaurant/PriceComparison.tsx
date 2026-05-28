@@ -24,6 +24,7 @@ import {
  AlertTriangle, Truck, Clock, CheckCircle2, ArrowRight,
 } from "lucide-react";
 import type { ProductWithSupplierAndPromotion } from "@shared/schema";
+import { StarRating } from "@/components/StarRating";
 
 interface OrderItemLite {
  productId: string;
@@ -129,6 +130,23 @@ export default function PriceComparison() {
  const { data: movMap } = useQuery<Record<string, { minimumValue: string; zone: string | null }>>({
  queryKey: [`/api/minimum-order-values/for-restaurant?restaurantId=${currentUser?.id}`],
  enabled: !!currentUser?.id,
+ });
+
+ const ratingSupplierIds = useMemo(() => {
+ const ids = new Set<string>();
+ (products ?? []).forEach(p => { if (p.supplierId) ids.add(p.supplierId); });
+ return Array.from(ids).sort().join(",");
+ }, [products]);
+
+ const { data: ratingSummaries } = useQuery<Record<string, { avg: number; count: number }>>({
+ queryKey: ["/api/supplier-ratings/summary", ratingSupplierIds],
+ queryFn: async () => {
+ if (!ratingSupplierIds) return {};
+ const res = await fetch(`/api/supplier-ratings/summary?supplierIds=${encodeURIComponent(ratingSupplierIds)}`);
+ if (!res.ok) throw new Error("Failed");
+ return res.json();
+ },
+ enabled: !!ratingSupplierIds,
  });
 
  const currentMonth = useMemo(() => {
@@ -763,6 +781,7 @@ export default function PriceComparison() {
  onVisitSupplier={() => handleVisitSupplier(g)}
  movMap={movMap}
  totalOvernights={totalOvernightsNum}
+ ratingMap={ratingSummaries}
  />
  ))}
 
@@ -911,9 +930,10 @@ interface ComparisonCardProps {
  onVisitSupplier: () => void;
  movMap?: Record<string, { minimumValue: string; zone: string | null }>;
  totalOvernights: number;
+ ratingMap?: Record<string, { avg: number; count: number }>;
 }
 
-function ComparisonCard({ group, rank, lang, expanded, onToggle, onVisitSupplier, movMap, totalOvernights }: ComparisonCardProps) {
+function ComparisonCard({ group, rank, lang, expanded, onToggle, onVisitSupplier, movMap, totalOvernights, ratingMap }: ComparisonCardProps) {
  const cheapest = group.cheapestOffer;
  const current = group.currentOffer;
  const anyPromo = group.offers.some(o => o.hasPromo);
@@ -1169,6 +1189,15 @@ function ComparisonCard({ group, rank, lang, expanded, onToggle, onVisitSupplier
  <div className="text-sm font-medium truncate flex items-center gap-1.5">
  {supName}
  {isCurrent && <Badge variant="outline" className="text-[9px] px-1 py-0">{lang === "de" ? "Aktuell" : "Attuale"}</Badge>}
+ {ratingMap?.[offer.product.supplierId] && ratingMap[offer.product.supplierId].count > 0 && (
+ <StarRating
+ value={ratingMap[offer.product.supplierId].avg}
+ size="sm"
+ showValue
+ count={ratingMap[offer.product.supplierId].count}
+ data-testid={`offer-supplier-rating-${offer.product.supplierId}`}
+ />
+ )}
  </div>
  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
  {offer.hasPromo && (

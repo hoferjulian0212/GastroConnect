@@ -39,6 +39,7 @@ import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import SupplierHomeMobile from "./HomeMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductImage } from "@/components/ProductImage";
+import SupplierRatingsList from "@/components/SupplierRatingsList";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
@@ -1418,6 +1419,9 @@ export default function SupplierHome() {
             )}
             </div>
           </div>
+          )},
+          { id: "ratings", defaultSize: "half" as const, content: (
+            <SupplierRatingsList supplierId={currentUser?.id || ""} limit={5} showFlag />
           )},
           { id: "statistics", defaultSize: "full" as const, content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">

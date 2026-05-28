@@ -16,6 +16,7 @@ import { z } from "zod";
 import { useRef, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import SupplierRatingsList from "@/components/SupplierRatingsList";
 
 const profileSchema = z.object({
   name: z.string().min(1, "Name ist erforderlich"),
@@ -361,6 +362,10 @@ export default function SupplierProfile() {
               </div>
             </CardContent>
           </Card>
+
+          <div className="mt-4">
+            <SupplierRatingsList supplierId={currentUser?.id || ""} limit={10} showFlag />
+          </div>
         </div>
       </div>
     </div>

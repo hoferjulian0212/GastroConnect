@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
-import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema } from "@shared/schema";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, insertSupplierRatingSchema, updateSupplierRatingSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 
 const insertProductSchema = _insertProductSchema.strict();
@@ -570,6 +570,161 @@ export async function registerRoutes(
       res.json(suppliers);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch suppliers" });
+    }
+  });
+
+  // ===== Supplier Ratings =====
+  const EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+  // Summary for many suppliers at once (used in lists/PriceComparison)
+  app.get("/api/supplier-ratings/summary", async (req, res) => {
+    try {
+      const idsParam = (req.query.supplierIds as string) || "";
+      const ids = idsParam.split(",").map(s => s.trim()).filter(Boolean);
+      const summaries = await storage.getSupplierRatingSummaries(ids);
+      res.json(summaries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch summaries" });
+    }
+  });
+
+  // Public list of a single supplier's ratings + summary
+  app.get("/api/suppliers/:id/ratings", async (req, res) => {
+    try {
+      const supplierId = req.params.id;
+      const limit = Math.min(parseInt((req.query.limit as string) || "20", 10) || 20, 100);
+      const [summary, ratings] = await Promise.all([
+        storage.getSupplierRatingSummary(supplierId),
+        storage.getRatingsBySupplier(supplierId, limit),
+      ]);
+      res.json({
+        ...summary,
+        ratings: ratings.map(r => ({
+          id: r.id,
+          orderId: r.orderId,
+          restaurantId: r.restaurantId,
+          stars: r.stars,
+          comment: r.comment,
+          flaggedAt: r.flaggedAt,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+          restaurant: r.restaurant ? {
+            id: r.restaurant.id,
+            name: r.restaurant.name,
+            companyName: r.restaurant.companyName,
+            profileImageUrl: r.restaurant.profileImageUrl,
+          } : null,
+        })),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch ratings" });
+    }
+  });
+
+  // Get the rating attached to a specific order (or null)
+  app.get("/api/orders/:orderId/rating", async (req, res) => {
+    try {
+      const rating = await storage.getRatingByOrder(req.params.orderId);
+      res.json(rating ?? null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch rating" });
+    }
+  });
+
+  // Create rating — restaurant only, order must be delivered, owned by them
+  app.post("/api/ratings", async (req, res) => {
+    try {
+      const parsed = insertSupplierRatingSchema.parse(req.body);
+      const order = await storage.getOrder(parsed.orderId);
+      if (!order) return res.status(404).json({ error: "Order not found" });
+      if (order.restaurantId !== parsed.restaurantId) {
+        return res.status(403).json({ error: "Not your order" });
+      }
+      if (order.supplierId !== parsed.supplierId) {
+        return res.status(400).json({ error: "Supplier mismatch" });
+      }
+      if (order.status !== "delivered") {
+        return res.status(400).json({ error: "Order is not delivered" });
+      }
+      const existing = await storage.getRatingByOrder(parsed.orderId);
+      if (existing) return res.status(409).json({ error: "Rating already exists", rating: existing });
+      const rating = await storage.createRating({
+        ...parsed,
+        comment: parsed.comment?.trim() || null,
+      });
+      // Notify supplier
+      try {
+        await createNotificationWithPush({
+          userId: order.supplierId,
+          type: "new_message",
+          title: "Neue Bewertung",
+          message: `${rating.stars}/5 Sterne erhalten`,
+          referenceId: rating.id,
+        }, "supplier");
+      } catch {}
+      res.status(201).json(rating);
+    } catch (error: any) {
+      if (error?.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("createRating failed", error);
+      res.status(500).json({ error: "Failed to create rating" });
+    }
+  });
+
+  // Update rating — owner only, within 7 days
+  app.patch("/api/ratings/:id", async (req, res) => {
+    try {
+      const userId = (req.header("x-user-id") || req.body?.restaurantId || "") as string;
+      const existing = await storage.getRatingById(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Not found" });
+      if (existing.restaurantId !== userId) return res.status(403).json({ error: "Not yours" });
+      if (Date.now() - new Date(existing.createdAt).getTime() > EDIT_WINDOW_MS) {
+        return res.status(403).json({ error: "Edit window closed" });
+      }
+      const parsed = updateSupplierRatingSchema.parse(req.body);
+      const updated = await storage.updateRating(req.params.id, {
+        ...parsed,
+        ...(parsed.comment !== undefined ? { comment: parsed.comment?.trim() || null } : {}),
+      });
+      res.json(updated);
+    } catch (error: any) {
+      if (error?.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update rating" });
+    }
+  });
+
+  // Delete rating — owner only, within 7 days
+  app.delete("/api/ratings/:id", async (req, res) => {
+    try {
+      const userId = (req.header("x-user-id") || (req.query.restaurantId as string) || "") as string;
+      const existing = await storage.getRatingById(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Not found" });
+      if (existing.restaurantId !== userId) return res.status(403).json({ error: "Not yours" });
+      if (Date.now() - new Date(existing.createdAt).getTime() > EDIT_WINDOW_MS) {
+        return res.status(403).json({ error: "Edit window closed" });
+      }
+      await storage.deleteRating(req.params.id);
+      res.status(204).end();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete rating" });
+    }
+  });
+
+  // Flag rating — only the rated supplier
+  app.post("/api/ratings/:id/flag", async (req, res) => {
+    try {
+      const userId = (req.header("x-user-id") || req.body?.supplierId || "") as string;
+      const existing = await storage.getRatingById(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Not found" });
+      if (existing.supplierId !== userId) return res.status(403).json({ error: "Not your rating" });
+      const reason = typeof req.body?.reason === "string" ? String(req.body.reason).slice(0, 500) : undefined;
+      const updated = await storage.flagRating(req.params.id, reason);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to flag rating" });
     }
   });
 

@@ -350,6 +350,39 @@ export const insertStockMovementSchema = createInsertSchema(stockMovements).omit
 export const insertOrderTemplateSchema = createInsertSchema(orderTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderTemplateItemSchema = createInsertSchema(orderTemplateItems).omit({ id: true });
 
+export const supplierRatings = pgTable("supplier_ratings", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id", { length: 36 }).notNull().references(() => orders.id),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  stars: integer("stars").notNull(),
+  comment: text("comment"),
+  flaggedAt: timestamp("flagged_at"),
+  flaggedReason: text("flagged_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_supplier_ratings_order_id").on(table.orderId),
+  index("idx_supplier_ratings_supplier_id").on(table.supplierId),
+  index("idx_supplier_ratings_restaurant_id").on(table.restaurantId),
+]);
+
+export const insertSupplierRatingSchema = createInsertSchema(supplierRatings).omit({
+  id: true, createdAt: true, updatedAt: true, flaggedAt: true, flaggedReason: true,
+}).extend({
+  stars: z.number().int().min(1).max(5),
+  comment: z.string().trim().max(280).optional().nullable(),
+});
+
+export const updateSupplierRatingSchema = z.object({
+  stars: z.number().int().min(1).max(5).optional(),
+  comment: z.string().trim().max(280).optional().nullable(),
+});
+
+export type SupplierRating = typeof supplierRatings.$inferSelect;
+export type InsertSupplierRating = z.infer<typeof insertSupplierRatingSchema>;
+export type UpdateSupplierRating = z.infer<typeof updateSupplierRatingSchema>;
+
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
