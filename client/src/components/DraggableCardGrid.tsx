@@ -3,7 +3,6 @@ import { GripVertical, Maximize2, Columns2, Settings2, Check } from "lucide-reac
 import {
   DndContext,
   closestCenter,
-  pointerWithin,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -18,8 +17,6 @@ import {
 import {
   SortableContext,
   useSortable,
-  verticalListSortingStrategy,
-  arrayMove,
 } from "@dnd-kit/sortable";
 
 type CardSize = "full" | "half";
@@ -67,11 +64,10 @@ function loadLayout(userId: string, role: string, sections: CardSection[]): Layo
   return sections.map(s => ({ id: s.id, size: s.defaultSize || "full" }));
 }
 
-const customCollision: CollisionDetection = (args) => {
-  const pw = pointerWithin(args);
-  const filtered = pw.filter(({ id }) => id !== args.active.id);
-  if (filtered.length > 0) return filtered;
-
+// Collision detection: closest-center against frozen positions, excluding the active card.
+// Because we don't shuffle the layout during drag, droppable rects stay stable and target
+// detection is calm/predictable.
+const swapCollision: CollisionDetection = (args) => {
   const cc = closestCenter(args);
   return cc.filter(({ id }) => id !== args.active.id);
 };
@@ -93,10 +89,24 @@ interface SortableCardProps {
   masonryPos?: MasonryPosition;
   targetWidth?: number;
   isReady: boolean;
+  isSwapTarget: boolean;
+  isAnyDragging: boolean;
   onRefChange: (id: string, el: HTMLDivElement | null) => void;
 }
 
-function SortableCard({ item, section, editMode, onToggleSize, isMd, masonryPos, targetWidth, isReady, onRefChange }: SortableCardProps) {
+function SortableCard({
+  item,
+  section,
+  editMode,
+  onToggleSize,
+  isMd,
+  masonryPos,
+  targetWidth,
+  isReady,
+  isSwapTarget,
+  isAnyDragging,
+  onRefChange,
+}: SortableCardProps) {
   const {
     attributes,
     listeners,
@@ -115,16 +125,23 @@ function SortableCard({ item, section, editMode, onToggleSize, isMd, masonryPos,
   const isFull = item.size === "full";
   const width = masonryPos?.width ?? targetWidth ?? '100%';
 
+  // While any card is being dragged we suspend transitions on the non-dragged cards
+  // so their positions are visually nailed in place (no jitter from any layout work).
+  // When the drag ends and positions actually change (the swapped pair), the transition
+  // is re-enabled and the two cards glide to their new spots.
+  const transitionEnabled = isReady && !isAnyDragging;
+
   const style: React.CSSProperties = {
     position: 'absolute',
     top: masonryPos?.top ?? 0,
     left: masonryPos?.left ?? 0,
     width,
-    opacity: isReady ? 1 : 0,
-    transition: isReady
-      ? 'top 350ms cubic-bezier(0.25,1,0.5,1), left 350ms cubic-bezier(0.25,1,0.5,1), width 350ms cubic-bezier(0.25,1,0.5,1), opacity 200ms ease'
-      : 'none',
+    opacity: isReady ? (isDragging ? 0.18 : 1) : 0,
+    transition: transitionEnabled
+      ? 'top 320ms cubic-bezier(0.22, 1, 0.36, 1), left 320ms cubic-bezier(0.22, 1, 0.36, 1), width 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease'
+      : 'opacity 150ms ease',
     zIndex: isDragging ? 0 : 1,
+    willChange: isAnyDragging ? 'auto' : undefined,
   };
 
   return (
@@ -134,13 +151,15 @@ function SortableCard({ item, section, editMode, onToggleSize, isMd, masonryPos,
       className={`${editMode ? "ring-1 ring-border/40 rounded-xl" : ""}`}
       data-testid={`draggable-card-${item.id}`}
     >
-      {isDragging && (
+      {/* Drop-target indicator: the card that will swap with the dragged one */}
+      {isSwapTarget && !isDragging && (
         <div
-          className="absolute inset-0 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5"
-          style={{ zIndex: 10 }}
+          className="pointer-events-none absolute inset-0 rounded-xl border-2 border-dashed border-primary/60 bg-primary/[0.06]"
+          style={{ zIndex: 10, transition: 'opacity 120ms ease' }}
+          data-testid={`swap-target-${item.id}`}
         />
       )}
-      <div style={{ opacity: isDragging ? 0.06 : 1, transition: "opacity 150ms ease" }}>
+      <div style={{ opacity: isDragging ? 0.3 : 1, transition: "opacity 150ms ease" }}>
         {editMode && !isDragging && (
           <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
             {isMd && (
@@ -183,9 +202,12 @@ function SortableCard({ item, section, editMode, onToggleSize, isMd, masonryPos,
   );
 }
 
+// We measure droppables only before drag starts. Since we keep the layout frozen
+// during the drag, BeforeDragging is enough and avoids the jitter that
+// MeasuringStrategy.Always introduces when masonry positions change.
 const measuringConfig = {
   droppable: {
-    strategy: MeasuringStrategy.Always,
+    strategy: MeasuringStrategy.BeforeDragging,
   },
 };
 
@@ -193,9 +215,11 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
   const [layout, setLayout] = useState<LayoutItem[]>(() => loadLayout(userId, role, sections));
   const [editMode, setEditMode] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
   const [isLg, setIsLg] = useState(() => window.matchMedia("(min-width: 1024px)").matches);
   const [isMd, setIsMd] = useState(() => window.matchMedia("(min-width: 768px)").matches);
   const layoutRef = useRef<LayoutItem[]>(layout);
+  const draggingRef = useRef(false);
   const [dragWidth, setDragWidth] = useState<number>(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -287,15 +311,21 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     setIsReady(true);
   }, [containerWidth, isLg]);
 
+  // Recalculate masonry when layout/container/breakpoint changes,
+  // but NEVER while a drag is in flight — that's exactly what produced
+  // the "random hin und her springen" feel.
   useEffect(() => {
     if (containerWidth === 0) return;
+    if (draggingRef.current) return;
     cancelAnimationFrame(rafId.current);
     rafId.current = requestAnimationFrame(recalcPositions);
   }, [layout, containerWidth, isLg, recalcPositions]);
 
+  // ResizeObserver on the cards themselves — also skipped during drag.
   useEffect(() => {
     if (containerWidth === 0) return;
     const ro = new ResizeObserver(() => {
+      if (draggingRef.current) return;
       cancelAnimationFrame(rafId.current);
       rafId.current = requestAnimationFrame(recalcPositions);
     });
@@ -337,37 +367,60 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
     saveLayout(newLayout);
   }, [layout, saveLayout]);
 
-  const dragStartLayoutRef = useRef<LayoutItem[]>([]);
-
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const id = event.active.id as string;
-    dragStartLayoutRef.current = layoutRef.current;
+    draggingRef.current = true;
     const el = document.querySelector(`[data-testid="draggable-card-${id}"]`) as HTMLElement | null;
     setDragWidth(el ? el.offsetWidth : 0);
     setActiveId(id);
+    setOverId(null);
   }, []);
 
+  // Only track which card the cursor is currently over — DO NOT mutate the layout here.
+  // The layout stays exactly as it was at drag start, so the other cards don't shuffle.
   const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    setLayout((prev) => {
-      const oldIndex = prev.findIndex(l => l.id === active.id);
-      const newIndex = prev.findIndex(l => l.id === over.id);
-      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return prev;
-      return arrayMove(prev, oldIndex, newIndex);
-    });
+    if (!over || over.id === active.id) {
+      setOverId(null);
+      return;
+    }
+    setOverId(String(over.id));
   }, []);
 
-  const handleDragEnd = useCallback((_event: DragEndEvent) => {
+  // On drop: swap the dragged card and the drop-target card in place. Nothing else moves.
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const aId = String(event.active.id);
+    const oId = event.over ? String(event.over.id) : null;
+    draggingRef.current = false;
     setActiveId(null);
-    saveLayout(layoutRef.current);
-  }, [saveLayout]);
+    setOverId(null);
+
+    if (oId && oId !== aId) {
+      const current = layoutRef.current;
+      const i = current.findIndex(l => l.id === aId);
+      const j = current.findIndex(l => l.id === oId);
+      if (i !== -1 && j !== -1 && i !== j) {
+        const next = current.slice();
+        const tmp = next[i];
+        next[i] = next[j];
+        next[j] = tmp;
+        saveLayout(next);
+        return;
+      }
+    }
+    // No valid swap target: also kick a recalc to re-enable transitions cleanly.
+    cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(recalcPositions);
+  }, [saveLayout, recalcPositions]);
 
   const handleDragCancel = useCallback(() => {
+    draggingRef.current = false;
     setActiveId(null);
-    setLayout(dragStartLayoutRef.current);
-  }, []);
+    setOverId(null);
+    // Layout was never mutated during the drag, so there's nothing to revert.
+    cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(recalcPositions);
+  }, [recalcPositions]);
 
   const sectionMap = useMemo(() => new Map(sections.map(s => [s.id, s])), [sections]);
   const layoutIds = useMemo(() => layout.map(l => l.id), [layout]);
@@ -403,14 +456,14 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
 
       <DndContext
         sensors={sensors}
-        collisionDetection={customCollision}
+        collisionDetection={swapCollision}
         measuring={measuringConfig}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <SortableContext items={layoutIds} strategy={verticalListSortingStrategy}>
+        <SortableContext items={layoutIds}>
           <div
             ref={containerRef}
             className="relative"
@@ -430,6 +483,8 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
                   masonryPos={masonryPositions.get(item.id)}
                   targetWidth={targetWidths.get(item.id)}
                   isReady={isReady}
+                  isSwapTarget={overId === item.id && activeId !== null}
+                  isAnyDragging={activeId !== null}
                   onRefChange={handleRefChange}
                 />
               );
@@ -437,20 +492,19 @@ export default function DraggableCardGrid({ userId, role, sections }: DraggableC
           </div>
         </SortableContext>
 
-        <DragOverlay
-          dropAnimation={{
-            duration: 300,
-            easing: "cubic-bezier(0.25, 1, 0.5, 1)",
-          }}
-        >
+        {/* No drop-animation: the overlay disappears at the drop point, and the underlying
+            SortableCard slides to its new masonry position via its own CSS transition.
+            That gives the desired "two cards swap" feel without a double animation. */}
+        <DragOverlay dropAnimation={null}>
           {activeItem && activeSection ? (
             <div
-              className="rounded-xl overflow-hidden ring-2 ring-primary/20"
+              className="rounded-xl overflow-hidden ring-2 ring-primary/30"
               style={{
                 width: dragWidth > 0 ? dragWidth : undefined,
-                opacity: 0.95,
+                opacity: 0.96,
                 boxShadow: "0 20px 60px rgba(0,0,0,0.25), 0 8px 20px rgba(0,0,0,0.15)",
                 transform: "scale(1.02)",
+                cursor: "grabbing",
               }}
             >
               <div className="pointer-events-none select-none">
