@@ -1,21 +1,25 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { HeroPortal } from "@/context/HeroContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, Coffee, Droplets, Check } from "lucide-react";
+import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, Coffee, Droplets, Check, Trash2, ArrowRight } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import type { User, ProductWithSupplierAndPromotion } from "@shared/schema";
+import type { User, ProductWithSupplierAndPromotion, CartItemWithProduct, Promotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { ProductImage } from "@/components/ProductImage";
 import { ShoppingCart, ChevronRight as ChevronRightIcon } from "lucide-react";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
+import QuantityInput from "@/components/QuantityInput";
+
+type CartItemWithPromo = CartItemWithProduct & { activePromotion?: Promotion | null };
 
 
 const categoryConfig: Record<string, { de: string; it: string; icon: typeof Package; color: string }> = {
@@ -45,30 +49,141 @@ const categoryConfig: Record<string, { de: string; it: string; icon: typeof Pack
 const allCategories = Object.keys(categoryConfig);
 
 function CartPillMobile({ lang, setLocation }: { lang: string; setLocation: (p: string) => void }) {
- const { currentUser } = useUser();
- const { data } = useQuery<{ count: string | number }>({
- queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`],
- enabled: !!currentUser?.id,
- refetchInterval: 5000,
- });
- const count = Number(data?.count || 0);
- if (!count) return null;
- return (
- <button
- onClick={() => setLocation("/restaurant/cart")}
- data-testid="button-mobile-cart-pill"
- className="md:hidden fixed left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-2 h-12 pl-3 pr-4 rounded-full bg-foreground text-background shadow-[0_8px_24px_rgba(0,0,0,0.25)] active:scale-95 transition-transform"
- style={{ bottom: "var(--mobile-cta-offset)" }}
- >
- <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-background/15">
- <ShoppingCart className="h-4 w-4" />
- </span>
- <span className="text-[13px] font-semibold tabular-nums">
- {count} {lang === "de" ? "im Warenkorb" : "nel carrello"}
- </span>
- <ChevronRightIcon className="h-4 w-4 opacity-70" />
- </button>
- );
+  const { currentUser } = useUser();
+  const [open, setOpen] = useState(false);
+  const { data: countData } = useQuery<{ count: string | number }>({
+    queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+    refetchInterval: 5000,
+  });
+  const count = Number(countData?.count || 0);
+  const { data: cartItems } = useQuery<CartItemWithPromo[]>({
+    queryKey: [`/api/cart?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id && open,
+  });
+  const updateQtyMut = useMutation({
+    mutationFn: async ({ id, quantity }: { id: string; quantity: number }) =>
+      apiRequest("PATCH", `/api/cart/${id}`, { quantity }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+    },
+  });
+  const removeMut = useMutation({
+    mutationFn: async (id: string) => apiRequest("DELETE", `/api/cart/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+    },
+  });
+
+  const effPrice = (item: CartItemWithPromo) => {
+    const base = parseFloat(item.product.price);
+    return item.activePromotion ? base * (1 - item.activePromotion.discountPercent / 100) : base;
+  };
+
+  const grouped = useMemo(() => {
+    if (!cartItems) return {} as Record<string, { supplier: CartItemWithPromo["supplier"]; items: CartItemWithPromo[] }>;
+    const g: Record<string, { supplier: CartItemWithPromo["supplier"]; items: CartItemWithPromo[] }> = {};
+    for (const it of cartItems) {
+      if (!g[it.supplierId]) g[it.supplierId] = { supplier: it.supplier, items: [] };
+      g[it.supplierId].items.push(it);
+    }
+    return g;
+  }, [cartItems]);
+
+  const total = useMemo(() => {
+    if (!cartItems) return "0.00";
+    return cartItems.reduce((s, it) => s + effPrice(it) * it.quantity, 0).toFixed(2);
+  }, [cartItems]);
+
+  if (!count) return null;
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        data-testid="button-mobile-cart-pill"
+        className="md:hidden fixed left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-2 h-12 pl-3 pr-4 rounded-full bg-foreground text-background shadow-[0_8px_24px_rgba(0,0,0,0.25)] active:scale-95 transition-transform"
+        style={{ bottom: "var(--mobile-cta-offset)" }}
+      >
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-background/15">
+          <ShoppingCart className="h-4 w-4" />
+        </span>
+        <span className="text-[13px] font-semibold tabular-nums">
+          {count} {lang === "de" ? "im Warenkorb" : "nel carrello"}
+        </span>
+        <ChevronRightIcon className="h-4 w-4 opacity-70" />
+      </button>
+      <Drawer open={open} onOpenChange={setOpen}>
+        <DrawerContent className="md:hidden max-h-[85vh]" data-testid="mobile-cart-sheet">
+          <DrawerHeader className="px-4 pt-2 pb-2 text-left">
+            <DrawerTitle className="text-base">
+              {lang === "de" ? "Warenkorb" : "Carrello"}
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                {count} {count === 1 ? (lang === "de" ? "Artikel" : "Articolo") : (lang === "de" ? "Artikel" : "Articoli")}
+              </span>
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="flex-1 overflow-y-auto px-4 space-y-4 pb-2" data-testid="mobile-cart-sheet-body">
+            {Object.entries(grouped).map(([sid, { supplier, items }]) => (
+              <div key={sid} className="space-y-2">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {supplier.companyName || supplier.name}
+                </div>
+                {items.map((it) => (
+                  <div key={it.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0" data-testid={`sheet-cart-item-${it.id}`}>
+                    <ProductImage src={it.product.imageUrl} alt={it.product.name} className="h-12 w-12 rounded-lg shrink-0" iconClassName="h-4 w-4" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{it.product.name}</div>
+                      <div className="text-xs text-muted-foreground tabular-nums">
+                        {effPrice(it).toFixed(2)}€/{it.product.unit}
+                      </div>
+                    </div>
+                    <QuantityInput
+                      value={it.quantity}
+                      onChange={(v) => updateQtyMut.mutate({ id: it.id, quantity: v })}
+                      min={it.product?.minOrderQuantity || 1}
+                      disabled={updateQtyMut.isPending}
+                      size="sm"
+                      testIdPrefix={`sheet-qty-${it.id}`}
+                    />
+                    <button
+                      onClick={() => removeMut.mutate(it.id)}
+                      disabled={removeMut.isPending}
+                      className="h-8 w-8 inline-flex items-center justify-center rounded-full text-destructive active:scale-95"
+                      data-testid={`sheet-remove-${it.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ))}
+            {cartItems && cartItems.length === 0 && (
+              <div className="py-10 text-center text-sm text-muted-foreground">
+                {lang === "de" ? "Warenkorb ist leer" : "Carrello vuoto"}
+              </div>
+            )}
+          </div>
+          <DrawerFooter className="px-4 pt-3 pb-4 border-t border-border" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
+            <div className="flex items-center justify-between text-sm mb-1">
+              <span className="text-muted-foreground">{lang === "de" ? "Zwischensumme" : "Subtotale"}</span>
+              <span className="font-bold tabular-nums text-base" data-testid="sheet-total">{total} €</span>
+            </div>
+            <Button
+              className="w-full h-12 rounded-full font-semibold gap-2"
+              onClick={() => { setOpen(false); setLocation("/restaurant/cart?step=summary"); }}
+              disabled={!cartItems || cartItems.length === 0}
+              data-testid="sheet-button-continue"
+            >
+              {lang === "de" ? "Weiter zur Übersicht" : "Vai al riepilogo"}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    </>
+  );
 }
 
 export default function RestaurantCatalog() {

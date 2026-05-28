@@ -144,6 +144,7 @@ export default function RestaurantCart() {
   const [calendarOpen, setCalendarOpen] = useState<Record<string, boolean>>({});
   const [orderConfirmation, setOrderConfirmation] = useState<{
     orderId: string;
+    orderUuid: string | null;
     total: string;
     itemCount: number;
     suppliers: string[];
@@ -153,7 +154,7 @@ export default function RestaurantCart() {
   } | null>(null);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const [sendingSupplier, setSendingSupplier] = useState<string | null>(null);
-  const [mobileStep, setMobileStep] = useState<"preview" | "summary">("preview");
+  const [mobileStep, setMobileStep] = useState<"preview" | "summary">("summary");
   const [mobileValidationError, setMobileValidationError] = useState<string | null>(null);
   useEffect(() => {
     if (mobileStep !== "summary") return;
@@ -188,7 +189,7 @@ export default function RestaurantCart() {
   } | null>(null);
   const { lang } = useLanguage();
   const t = useT(lang);
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const fromTemplate = typeof window !== "undefined" && new URLSearchParams(location.split("?")[1] || window.location.search).get("from") === "template";
 
   const { data: cartItems, isLoading } = useQuery<CartItemWithPromotion[]>({
@@ -244,10 +245,12 @@ export default function RestaurantCart() {
       const itemCount = cartItems?.length || 0;
       const orders = Array.isArray(data) ? data : [data];
       const orderId = orders.length === 1 ? formatOrderNumber(orders[0]) : orders.map(o => formatOrderNumber(o)).join(", ");
+      const firstOrderUuid: string | null = (orders[0] as { id?: string } | undefined)?.id || null;
       const firstDeliveryDate = Object.values(selectedDeliveryDates).find(d => d) || null;
       const allNotes = Object.values(orderNotes).filter(n => n.trim()).join("; ");
       setOrderConfirmation({
         orderId: orderId || "",
+        orderUuid: firstOrderUuid,
         total: grandTotal,
         itemCount,
         suppliers: supplierNames,
@@ -265,10 +268,12 @@ export default function RestaurantCart() {
       queryClient.invalidateQueries({ queryKey: ['/api/supplier/orders/recent'] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
     },
-    onError: () => {
+    onError: (err: unknown) => {
+      const msg = (err as { message?: string })?.message || t("cart", "orderError");
+      setMobileValidationError(msg);
       toast({
         title: t("common", "error"),
-        description: t("cart", "orderError"),
+        description: msg,
         variant: "destructive",
       });
     },
@@ -492,26 +497,20 @@ export default function RestaurantCart() {
 
           <div className={`flex flex-col sm:flex-row gap-3 transition-all duration-500 delay-500 ${confirmationVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
             <Button className="flex-1 gap-2" asChild>
-              <Link href="/restaurant/orders" data-testid="link-view-orders">
+              <Link
+                href={orderConfirmation.orderUuid ? `/restaurant/orders/${orderConfirmation.orderUuid}` : "/restaurant/orders"}
+                data-testid="link-track-order"
+              >
                 <ClipboardList className="h-4 w-4" />
-                {t("cart", "viewOrders")}
+                {lang === "de" ? "Status verfolgen" : "Traccia stato"}
               </Link>
             </Button>
-            {fromTemplate ? (
-              <Button variant="outline" className="flex-1 gap-2" asChild>
-                <Link href="/restaurant" data-testid="link-done">
-                  <Check className="h-4 w-4" />
-                  {t("cart", "done")}
-                </Link>
-              </Button>
-            ) : (
-              <Button variant="outline" className="flex-1 gap-2" asChild>
-                <Link href="/restaurant/catalog" data-testid="link-continue-shopping">
-                  <ShoppingBag className="h-4 w-4" />
-                  {t("cart", "continueShopping")}
-                </Link>
-              </Button>
-            )}
+            <Button variant="outline" className="flex-1 gap-2" asChild>
+              <Link href="/restaurant" data-testid="link-home">
+                <Check className="h-4 w-4" />
+                {lang === "de" ? "Zur Startseite" : "Vai alla home"}
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -948,31 +947,6 @@ export default function RestaurantCart() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    {cartItems && cartItems.length > 0 && !orderConfirmation && mobileStep === "preview" && (
-      <div
-        ref={stickyBarRef}
-        className="md:hidden fixed left-3 right-3 z-30 rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.18)] p-3 flex items-center gap-3"
-        style={{ bottom: "max(var(--mobile-cta-offset), calc(var(--mobile-keyboard-inset, 0px) + 8px))" }}
-        data-testid="mobile-cart-sticky-footer"
-      >
-        <div className="flex-1 min-w-0">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-            {t("common", "total")}
-          </div>
-          <div className="text-[20px] font-bold leading-tight tabular-nums" data-testid="text-mobile-total">
-            {grandTotal} €
-          </div>
-        </div>
-        <Button
-          className="h-12 px-5 rounded-full font-semibold gap-2"
-          onClick={() => setMobileStep("summary")}
-          data-testid="button-mobile-continue"
-        >
-          {lang === "de" ? "Weiter" : "Avanti"}
-          <ArrowRight className="h-4 w-4" />
-        </Button>
-      </div>
-    )}
     </PullToRefreshWrapper>
     {cartItems && cartItems.length > 0 && !orderConfirmation && mobileStep === "summary" && (() => {
       const supplierEntries = Object.entries(groupedBySupplier || {});
@@ -1019,7 +993,7 @@ export default function RestaurantCart() {
               variant="ghost"
               size="icon"
               className="h-10 w-10 rounded-full"
-              onClick={() => setMobileStep("preview")}
+              onClick={() => setLocation("/restaurant/catalog")}
               data-testid="button-mobile-summary-back"
             >
               <ChevronLeft className="h-5 w-5" />
