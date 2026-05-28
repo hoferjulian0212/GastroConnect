@@ -523,7 +523,7 @@ function AppLayout() {
         </div>
       ) : (
         <div className="flex h-dvh w-full">
-          <div ref={scrollContainerRef} className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} ${isInChat ? '' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
+          <div ref={scrollContainerRef} className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} px-3 md:px-6 pt-3 md:pt-6`}>
             <div className={`dark hidden md:block bg-[#161921] shrink-0 rounded-3xl overflow-hidden mb-3 md:mb-4 ${isInChat || isDetailPage ? 'md:block' : ''}`} data-testid="app-header-shell">
               <header className="flex items-center gap-3 md:gap-4 px-3 py-2.5 md:px-6 md:py-2.5">
                 <div className="flex items-center gap-3 shrink-0 md:flex-1 md:min-w-0">
@@ -553,7 +553,7 @@ function AppLayout() {
               </header>
               <HeroOutlet />
             </div>
-            <main className={`flex-1 flex flex-col min-h-0 ${isInChat || isDetailPage ? 'p-0 pb-0' : isInboxPage ? 'pt-0 pb-0 md:pb-4' : 'pt-0 pb-0 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
+            <main className={`flex-1 flex flex-col min-h-0 ${isDetailPage ? 'p-0 pb-0' : isInboxPage ? 'pt-0 pb-0 md:pb-4' : 'pt-0 pb-0 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
               <div key={location.split("?")[0]} className="animate-page-enter flex-1 flex flex-col min-h-0">
                 <PageHero />
                 {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
