@@ -1212,13 +1212,70 @@ export async function registerRoutes(
   const bulkUpdateSchema = z.object({
     supplierId: uuidField,
     userId: uuidField.optional(),
-    rows: z.array(bulkUpdateRowSchema).min(1).max(2000),
-  }).strict();
+    rows: z.array(bulkUpdateRowSchema).min(1).max(2000).optional(),
+    csv: z.string().min(1).max(2_000_000).optional(),
+  }).strict().refine(d => !!d.rows || !!d.csv, { message: "rows or csv required" });
+
+  function parseBulkCsv(text: string): { rows: z.infer<typeof bulkUpdateRowSchema>[]; errors: Array<{ rowIndex: number; field?: string; message: string; productId?: string }> } {
+    const errors: Array<{ rowIndex: number; field?: string; message: string; productId?: string }> = [];
+    const rows: z.infer<typeof bulkUpdateRowSchema>[] = [];
+    const stripped = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+    const firstNl = stripped.indexOf("\n");
+    const headerLine = firstNl === -1 ? stripped : stripped.slice(0, firstNl);
+    const delim = [";", ",", "\t"].reduce((best, d) => headerLine.split(d).length > headerLine.split(best).length ? d : best, ";");
+    const raw = parseCsv(stripped, delim).filter(r => r.some(c => c && c.trim() !== ""));
+    if (raw.length === 0) { errors.push({ rowIndex: -1, message: "Keine Daten gefunden" }); return { rows, errors }; }
+    const header = raw[0].map(h => h.trim());
+    const required = ["productId", "newPrice", "newMinOrderQuantity", "newStockQuantity"];
+    const missing = required.filter(h => !header.includes(h));
+    if (missing.length > 0) { errors.push({ rowIndex: -1, message: `Fehlende Spalten: ${missing.join(", ")}` }); return { rows, errors }; }
+    const idx = (k: string) => header.indexOf(k);
+    const seen = new Set<string>();
+    for (let i = 1; i < raw.length; i++) {
+      const r = raw[i];
+      const productId = (r[idx("productId")] || "").trim();
+      const newPriceRaw = (r[idx("newPrice")] || "").trim().replace(",", ".");
+      const newMoqRaw = (r[idx("newMinOrderQuantity")] || "").trim();
+      const newStockRaw = (r[idx("newStockQuantity")] || "").trim();
+      if (!productId) { errors.push({ rowIndex: i, field: "productId", message: "productId fehlt" }); continue; }
+      if (seen.has(productId)) { errors.push({ rowIndex: i, productId, field: "productId", message: "Doppelte productId in CSV" }); continue; }
+      seen.add(productId);
+      let newPrice: string | null = null;
+      let newMinOrderQuantity: number | null = null;
+      let newStockQuantity: number | null = null;
+      if (newPriceRaw) {
+        if (!/^\d+(\.\d{1,2})?$/.test(newPriceRaw)) { errors.push({ rowIndex: i, productId, field: "newPrice", message: "Ungültiger Preis (z.B. 12.50)" }); continue; }
+        newPrice = newPriceRaw;
+      }
+      if (newMoqRaw) {
+        if (!/^\d+$/.test(newMoqRaw)) { errors.push({ rowIndex: i, productId, field: "newMinOrderQuantity", message: "Ganzzahl erforderlich" }); continue; }
+        newMinOrderQuantity = Number(newMoqRaw);
+        if (newMinOrderQuantity < 1) { errors.push({ rowIndex: i, productId, field: "newMinOrderQuantity", message: "Min. 1" }); continue; }
+      }
+      if (newStockRaw) {
+        if (!/^\d+$/.test(newStockRaw)) { errors.push({ rowIndex: i, productId, field: "newStockQuantity", message: "Ganzzahl erforderlich" }); continue; }
+        newStockQuantity = Number(newStockRaw);
+      }
+      rows.push({ productId, newPrice, newMinOrderQuantity, newStockQuantity });
+    }
+    return { rows, errors };
+  }
 
   app.post("/api/supplier/products/csv-import", async (req, res) => {
     try {
       const parsed = bulkUpdateSchema.parse(req.body);
-      const { supplierId, userId, rows } = parsed;
+      const { supplierId, userId, csv } = parsed;
+      let rows = parsed.rows ?? [];
+      if (csv) {
+        const out = parseBulkCsv(csv);
+        if (out.errors.length > 0) {
+          return res.status(400).json({ error: "validation_failed", errors: out.errors, updated: 0 });
+        }
+        rows = out.rows;
+        if (rows.length === 0) {
+          return res.status(400).json({ error: "validation_failed", errors: [{ rowIndex: -1, message: "Keine Datenzeilen in CSV" }], updated: 0 });
+        }
+      }
 
       // Load supplier products to validate ownership & compute diffs.
       const productList = await storage.getProductsBySupplier(supplierId);
@@ -1231,6 +1288,13 @@ export async function registerRoutes(
       }
 
       const errors: Array<{ rowIndex: number; productId?: string; field?: string; message: string }> = [];
+      const seenIds = new Set<string>();
+      rows.forEach((r, idx) => {
+        if (seenIds.has(r.productId)) {
+          errors.push({ rowIndex: idx, productId: r.productId, field: "productId", message: "Doppelte productId" });
+        }
+        seenIds.add(r.productId);
+      });
       const changes: Array<{
         rowIndex: number;
         product: typeof productList[number];
