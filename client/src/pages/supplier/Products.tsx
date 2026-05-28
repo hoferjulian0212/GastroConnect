@@ -579,7 +579,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  adjustMode === mode
  ? mode === "manual_in" ? "bg-green-600 text-white shadow-sm" :
  mode === "manual_out" ? "bg-red-600 text-white shadow-sm" :
- "bg-blue-600 text-white shadow-sm"
+ "bg-neutral-900 text-white shadow-sm"
  : "text-muted-foreground hover:text-foreground"
  }`}
  onClick={() => {
@@ -667,7 +667,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  className={`flex-1 rounded-lg ${
  adjustMode === "manual_in" ? "bg-green-600 hover:bg-green-700" :
  adjustMode === "manual_out" ? "bg-red-600 hover:bg-red-700" :
- "bg-blue-600 hover:bg-blue-700"
+ "bg-neutral-900 hover:bg-neutral-800 text-white"
  } text-white`}
  onClick={handleAdjustSubmit}
  disabled={stockMovementMutation.isPending || (adjustMode !== "manual_set" && adjustQty < 1)}

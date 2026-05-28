@@ -242,24 +242,24 @@ html, body, #root {
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .06);
   --elevate-2: rgba(0,0,0, .12);
-  --background: 60 14% 95%;
+  --background: 0 0% 98%;
   --foreground: 220 13% 13%;
-  --border: 40 10% 88%;
+  --border: 0 0% 90%;
   --card: 0 0% 100%;
   --card-foreground: 220 13% 13%;
   --card-border: 220 13% 91%;
   --sidebar: 0 0% 100%;
   --sidebar-foreground: 220 13% 18%;
   --sidebar-border: 220 13% 91%;
-  --sidebar-primary: 239 84% 67%;
+  --sidebar-primary: 0 0% 9%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 220 14% 96%;
   --sidebar-accent-foreground: 220 13% 18%;
-  --sidebar-ring: 239 84% 67%;
+  --sidebar-ring: 0 0% 20%;
   --popover: 0 0% 100%;
   --popover-foreground: 220 13% 18%;
   --popover-border: 220 13% 91%;
-  --primary: 209.84deg 77.33% 51.57%;
+  --primary: 0 0% 9%;
   --primary-foreground: 0 0% 100%;
   --secondary: 220 14% 96%;
   --secondary-foreground: 220 13% 32%;
@@ -270,7 +270,7 @@ html, body, #root {
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   --input: 220 13% 91%;
-  --ring: 239 84% 67%;
+  --ring: 0 0% 20%;
   --chart-1: 239 84% 67%;
   --chart-2: 160 60% 45%;
   --chart-3: 30 80% 55%;
@@ -335,16 +335,16 @@ html, body, #root {
   --sidebar: 224 14% 12%;
   --sidebar-foreground: 220 13% 90%;
   --sidebar-border: 220 10% 18%;
-  --sidebar-primary: 239 84% 67%;
-  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-primary: 0 0% 98%;
+  --sidebar-primary-foreground: 0 0% 9%;
   --sidebar-accent: 224 14% 18%;
   --sidebar-accent-foreground: 220 13% 88%;
-  --sidebar-ring: 239 84% 67%;
+  --sidebar-ring: 0 0% 90%;
   --popover: 224 14% 16%;
   --popover-foreground: 220 13% 88%;
   --popover-border: 220 10% 22%;
-  --primary: 239 84% 67%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 0 0% 9%;
   --secondary: 224 14% 20%;
   --secondary-foreground: 220 13% 88%;
   --muted: 224 14% 18%;
@@ -354,7 +354,7 @@ html, body, #root {
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   --input: 220 10% 25%;
-  --ring: 239 84% 67%;
+  --ring: 0 0% 90%;
   --chart-1: 239 84% 70%;
   --chart-2: 160 60% 50%;
   --chart-3: 30 80% 60%;
@@ -413,13 +413,13 @@ html, body, #root {
      No image file — fully generated via CSS + SVG. Fixed attachment so the surface
      stays put while content scrolls, like a massive piece of stone. */
   html:not(.dark) body {
-    background-color: #ededea;
+    background-color: #f7f7f6;
     background-image:
-      radial-gradient(ellipse 60% 50% at 15% 10%, rgba(255, 253, 248, 0.85) 0%, rgba(255, 253, 248, 0) 70%),
-      radial-gradient(ellipse 70% 60% at 85% 25%, rgba(218, 215, 206, 0.55) 0%, rgba(218, 215, 206, 0) 70%),
-      radial-gradient(ellipse 80% 60% at 50% 75%, rgba(255, 252, 246, 0.7) 0%, rgba(255, 252, 246, 0) 70%),
-      radial-gradient(ellipse 60% 70% at 90% 90%, rgba(210, 207, 198, 0.5) 0%, rgba(210, 207, 198, 0) 70%),
-      radial-gradient(ellipse 70% 60% at 10% 60%, rgba(228, 224, 214, 0.6) 0%, rgba(228, 224, 214, 0) 70%);
+      radial-gradient(ellipse 60% 50% at 15% 10%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 70%),
+      radial-gradient(ellipse 70% 60% at 85% 25%, rgba(232, 232, 230, 0.45) 0%, rgba(232, 232, 230, 0) 70%),
+      radial-gradient(ellipse 80% 60% at 50% 75%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 70%),
+      radial-gradient(ellipse 60% 70% at 90% 90%, rgba(226, 226, 224, 0.4) 0%, rgba(226, 226, 224, 0) 70%),
+      radial-gradient(ellipse 70% 60% at 10% 60%, rgba(238, 238, 236, 0.5) 0%, rgba(238, 238, 236, 0) 70%);
     background-attachment: fixed;
     background-repeat: no-repeat;
   }

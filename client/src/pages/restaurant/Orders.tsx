@@ -822,7 +822,7 @@ export default function RestaurantOrders() {
  const primary = canEditOrder(order)
  ? { label: t("orders", "editOrder"), icon: Pencil, color: "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20", action: () => openEditDialog(order), testId: `button-edit-order-${order.id}` }
  : canRequestChange(order)
- ? { label: t("orders", "requestChange"), icon: MessageSquareText, color: "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20", action: () => setChangeRequestOrder(order), testId: `button-change-request-${order.id}` }
+ ? { label: t("orders", "requestChange"), icon: MessageSquareText, color: "bg-neutral-900 hover:bg-neutral-800 text-white shadow-md shadow-black/20", action: () => setChangeRequestOrder(order), testId: `button-change-request-${order.id}` }
  : order.status === "delivered"
  ? { label: lang === "de" ? "Nachbestellen" : "Riordinare", icon: ClipboardList, color: "bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-600/20", action: () => reorderMutation.mutate(order.id), testId: `button-reorder-${order.id}`, isPending: reorderMutation.isPending }
  : null;

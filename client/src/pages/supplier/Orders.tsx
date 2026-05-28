@@ -1752,7 +1752,7 @@ export default function SupplierOrders() {
  </Button>
  )}
  {(detailOrder.status === "confirmed" || detailOrder.status === "partially_confirmed") && (
- <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId })} disabled={updateStatusMutation.isPending} data-testid="button-status-in_delivery">
+ <Button size="sm" className="bg-neutral-900 hover:bg-neutral-800 text-white" onClick={() => setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId })} disabled={updateStatusMutation.isPending} data-testid="button-status-in_delivery">
  <Truck className="h-3.5 w-3.5 mr-1.5" />
  {lang === "de" ? "In Lieferung" : "In consegna"}
  </Button>

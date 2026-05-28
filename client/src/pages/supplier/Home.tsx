@@ -825,7 +825,7 @@ export default function SupplierHome() {
                       {t("supplierHome", "unreadMessages")}
                     </h2>
                     {totalUnread > 0 && (
-                      <Badge className="bg-blue-600 text-white text-[10px] px-1.5 py-0 min-w-[20px] flex items-center justify-center" data-testid="badge-unread-count">
+                      <Badge className="bg-neutral-900 text-white text-[10px] px-1.5 py-0 min-w-[20px] flex items-center justify-center" data-testid="badge-unread-count">
                         {totalUnread}
                       </Badge>
                     )}
@@ -871,7 +871,7 @@ export default function SupplierHome() {
                               {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-blue-600"}`} data-testid={`badge-unread-conv-${conv.id}`}>
+                          <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-neutral-900"}`} data-testid={`badge-unread-conv-${conv.id}`}>
                             {conv.unreadCount}
                           </Badge>
                         </div>
@@ -937,7 +937,7 @@ export default function SupplierHome() {
                             <p className={`text-xs truncate flex-1 ${isPriority ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`} data-testid={`text-unread-preview-desktop-${conv.id}`}>
                               {getMessagePreview(conv)}
                             </p>
-                            <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-blue-600"}`} data-testid={`badge-unread-conv-desktop-${conv.id}`}>
+                            <Badge className={`text-white text-[9px] px-1.5 py-0 min-w-[18px] flex items-center justify-center shrink-0 ${isPriority ? "bg-red-600" : "bg-neutral-900"}`} data-testid={`badge-unread-conv-desktop-${conv.id}`}>
                               {conv.unreadCount}
                             </Badge>
                           </div>
