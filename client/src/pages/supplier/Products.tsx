@@ -505,7 +505,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
 
  <div className="flex items-center gap-1.5 shrink-0">
  <div className="flex flex-col items-center min-w-[44px]">
- <span className={`text-lg font-bold tabular-nums leading-tight ${
+ <span className={`text-lg font-bold m-num leading-tight ${
  status === "out" ? "text-red-600 dark:text-red-400" :
  status === "low" ? "text-orange-600 dark:text-orange-400" : ""
  }`}>
@@ -1370,7 +1370,7 @@ export default function SupplierProducts() {
  <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="products-hero">
  <div className="flex items-center justify-between gap-3">
  <div>
- <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
+ <h1 className="m-type-display text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
  {lang === "de" ? "Produkte" : "Prodotti"}
  </h1>
  <p className="text-sm text-white/50 mt-1">

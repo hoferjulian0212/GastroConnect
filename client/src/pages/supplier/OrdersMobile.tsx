@@ -126,7 +126,7 @@ export default function SupplierOrdersMobile({
                   {lang === "it" ? f.labelIt : f.labelDe}
                   {cnt > 0 && (
                     <span
-                      className={`ml-1 text-[10px] tabular-nums ${
+                      className={`ml-1 text-[10px] m-num ${
                         filterStatus === f.key ? "text-[#161921]/70" : "text-white/55"
                       }`}
                     >
@@ -164,7 +164,7 @@ export default function SupplierOrdersMobile({
           ) : (
             grouped.map(([dayKey, list]) => (
               <div key={dayKey}>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+                <div className="m-type-micro tracking-wider mb-2 px-1">
                   {dayLabel(dayKey)}
                 </div>
                 <div className="space-y-2">
@@ -210,11 +210,11 @@ export default function SupplierOrdersMobile({
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <div className="text-[15px] font-semibold text-foreground truncate flex-1">
+                            <div className="m-type-body font-semibold text-foreground truncate flex-1">
                               {o.restaurant?.companyName ||
                                 (lang === "it" ? "Cliente" : "Kunde")}
                             </div>
-                            <div className="text-[15px] font-bold tabular-nums">
+                            <div className="text-[15px] font-bold m-num">
                               {total.toFixed(2)} €
                             </div>
                           </div>

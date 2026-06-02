@@ -109,7 +109,7 @@ function CartPillMobile({ lang, setLocation }: { lang: string; setLocation: (p: 
         <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-background/15">
           <ShoppingCart className="h-4 w-4" />
         </span>
-        <span className="text-[13px] font-semibold tabular-nums">
+        <span className="text-[13px] font-semibold m-num">
           {count} {lang === "de" ? "im Warenkorb" : "nel carrello"}
         </span>
         <ChevronRightIcon className="h-4 w-4 opacity-70" />
@@ -494,7 +494,7 @@ export default function RestaurantCatalog() {
  <>
  <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="catalog-hero">
  <div>
- <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
+ <h1 className="m-type-display text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
  {lang === "de" ? "Produktkatalog" : "Catalogo prodotti"}
  </h1>
  <p className="text-sm text-white/50 mt-1">
@@ -635,7 +635,7 @@ export default function RestaurantCatalog() {
  <div className={`flex items-center justify-center h-8 w-8 rounded-full ${isAll ? "bg-foreground text-background" : `${conf?.color || "bg-gray-500"} text-white`} shrink-0`}>
  <CatIcon className="h-4 w-4" />
  </div>
- <h2 className="text-lg md:text-xl font-bold text-white truncate">
+ <h2 className="m-type-h1 text-lg md:text-xl font-bold text-white truncate">
  {title}
  </h2>
  </>

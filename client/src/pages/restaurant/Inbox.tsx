@@ -1292,7 +1292,7 @@ export default function RestaurantInbox() {
                                       <span className={`text-[11px] md:text-[10px] ${hasUnread && isPriorityMsg ? "text-red-500 font-semibold" : hasUnread ? "text-primary font-semibold" : "text-muted-foreground"}`}>{lastMessageTime}</span>
                                     )}
                                     {hasUnread && (
-                                      <span className={`flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold ${isPriorityMsg ? "bg-red-500 text-white" : "bg-primary text-primary-foreground"}`}>
+                                      <span className={`flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold m-num ${isPriorityMsg ? "bg-red-500 text-white" : "bg-primary text-primary-foreground"}`}>
                                         {conv.unreadCount}
                                       </span>
                                     )}
@@ -1346,7 +1346,7 @@ export default function RestaurantInbox() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <p className="font-medium text-sm md:text-base truncate" data-testid="text-conversation-partner">
+                        <p className="m-type-body font-medium text-sm md:text-base truncate" data-testid="text-conversation-partner">
                           {selectedConv.otherUser.companyName || selectedConv.otherUser.name}
                         </p>
                         <OnlineStatus userId={selectedConv.otherUser.id} size="sm" />

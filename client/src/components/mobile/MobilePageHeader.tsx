@@ -54,7 +54,7 @@ export function MobilePageHeader({
           </button>
         )}
         <div className="flex-1 min-w-0">
-          <h1 className="text-[20px] font-bold leading-tight truncate">{title}</h1>
+          <h1 className="m-type-h1 leading-tight truncate">{title}</h1>
           {subtitle && (
             <p className="text-[11px] text-white/55 mt-0.5 truncate">{subtitle}</p>
           )}

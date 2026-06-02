@@ -198,7 +198,7 @@ export default function RestaurantHomeMobile({
           <div className="pt-4 pb-2 flex items-start gap-2">
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-medium text-white/60 truncate">{greeting},</p>
-              <h1 className="text-[22px] font-bold leading-tight mt-0.5 text-white truncate">
+              <h1 className="m-type-display leading-tight mt-0.5 text-white truncate">
                 {currentUser?.companyName || currentUser?.name || ""}
               </h1>
             </div>
@@ -225,7 +225,7 @@ export default function RestaurantHomeMobile({
                 key={qa.label}
                 href={qa.to}
                 data-testid={`mobile-quick-${qa.label}`}
-                className="flex flex-col items-center justify-center gap-1.5 h-[72px] rounded-2xl bg-card border border-border active:scale-95 transition-transform no-underline"
+                className="flex flex-col items-center justify-center gap-1.5 h-[72px] m-card active:scale-95 transition-transform no-underline"
               >
                 <div className={`flex items-center justify-center h-9 w-9 rounded-full ${qa.color}`}>{qa.icon}</div>
                 <span className="text-[10px] font-semibold text-foreground text-center leading-tight">{qa.label}</span>
@@ -245,13 +245,13 @@ export default function RestaurantHomeMobile({
                 key={k.testId}
                 onClick={k.onClick}
                 data-testid={k.testId}
-                className="text-left rounded-2xl bg-card border border-border p-3 active:scale-[0.98] transition-transform"
+                className="text-left m-card p-3 active:scale-[0.98] transition-transform"
               >
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-1.5">
                   {k.icon}
-                  <span className="text-[11px] font-medium truncate">{k.label}</span>
+                  <span className="m-type-micro truncate">{k.label}</span>
                 </div>
-                <div className="text-[20px] font-bold leading-none tabular-nums text-foreground">{k.value}</div>
+                <div className="text-[20px] font-bold leading-none m-num text-foreground">{k.value}</div>
               </button>
             ))}
           </div>

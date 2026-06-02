@@ -48,9 +48,9 @@ export function MobileListCard({
     >
       {leading && <div className="shrink-0">{leading}</div>}
       <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-semibold text-foreground truncate leading-tight">{title}</div>
-        {subtitle && <div className="text-[12px] text-muted-foreground truncate mt-0.5">{subtitle}</div>}
-        {meta && <div className="text-[11px] text-muted-foreground mt-0.5">{meta}</div>}
+        <div className="m-type-body text-foreground truncate leading-tight">{title}</div>
+        {subtitle && <div className="m-type-meta truncate mt-0.5">{subtitle}</div>}
+        {meta && <div className="m-type-meta mt-0.5">{meta}</div>}
       </div>
       {trailing && <div className="shrink-0">{trailing}</div>}
       {showChevron && <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />}

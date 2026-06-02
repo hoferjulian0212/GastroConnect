@@ -789,15 +789,15 @@ function SupplierStatsCard({ restaurantId, supplierId, lang, currentRole }: { re
         </div>
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="text-center">
-            <div className="text-lg font-bold text-foreground" data-testid={`stat-total-orders-${supplierId}`}>{stats.totalOrders}</div>
+            <div className="text-lg font-bold text-foreground m-num" data-testid={`stat-total-orders-${supplierId}`}>{stats.totalOrders}</div>
             <div className="text-[10px] text-muted-foreground">{lang === "de" ? "Bestellungen" : "Ordini"}</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-bold text-foreground" data-testid={`stat-total-spent-${supplierId}`}>{Number(stats.totalSpent).toLocaleString("de-DE", { minimumFractionDigits: 2 })} EUR</div>
+            <div className="text-lg font-bold text-foreground m-num" data-testid={`stat-total-spent-${supplierId}`}>{Number(stats.totalSpent).toLocaleString("de-DE", { minimumFractionDigits: 2 })} EUR</div>
             <div className="text-[10px] text-muted-foreground">{lang === "de" ? "Gesamt" : "Totale"}</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-bold text-foreground" data-testid={`stat-avg-order-${supplierId}`}>{Number(stats.avgOrderValue).toLocaleString("de-DE", { minimumFractionDigits: 2 })} EUR</div>
+            <div className="text-lg font-bold text-foreground m-num" data-testid={`stat-avg-order-${supplierId}`}>{Number(stats.avgOrderValue).toLocaleString("de-DE", { minimumFractionDigits: 2 })} EUR</div>
             <div className="text-[10px] text-muted-foreground">{lang === "de" ? "Durchschn." : "Media"}</div>
           </div>
         </div>

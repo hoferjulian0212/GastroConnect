@@ -2,3 +2,4 @@
 - [Centralized chat uploads](chat-attachments.md) — reuse the shared chat file-upload helpers for any new attach surface; verify the PUT before sending.
 - [Wouter location has query string](routing-location-query.md) — page checks must use pathOnly; $-anchored route regexes break when a query string is present.
 - [Decorative color normalization](decorative-color-normalization.md) — decorative blue→primary/muted; status/info blues kept; always-dark hero uses white-based neutrals not theme primary.
+- [Mobile type ladder](mobile-type-ladder.md) — m-type-*/m-num/m-card are <=767px-scoped; m-type-meta/micro force muted color+uppercase, m-type-body forces weight — don't clobber dark-hero white text, Inbox conditional-state rows, or status-accent cards.

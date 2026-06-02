@@ -144,7 +144,7 @@ export default function RestaurantOrdersMobile({
           ) : (
             grouped.map(([dayKey, list]) => (
               <div key={dayKey}>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+                <div className="m-type-micro tracking-wider mb-2 px-1">
                   {dayLabel(dayKey)}
                 </div>
                 <div className="space-y-2">
@@ -190,11 +190,11 @@ export default function RestaurantOrdersMobile({
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <div className="text-[15px] font-semibold text-foreground truncate flex-1">
+                            <div className="m-type-body font-semibold text-foreground truncate flex-1">
                               {o.supplier?.companyName ||
                                 (lang === "it" ? "Fornitore" : "Lieferant")}
                             </div>
-                            <div className="text-[15px] font-bold tabular-nums">
+                            <div className="text-[15px] font-bold m-num">
                               {total.toFixed(2)} €
                             </div>
                           </div>

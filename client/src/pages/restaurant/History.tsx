@@ -71,7 +71,7 @@ export default function RestaurantHistory() {
   return (
     <div className="space-y-4 md:space-y-6 overflow-x-hidden pb-[var(--mobile-bottom-pad)] md:pb-0">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Bestellhistorie</h1>
+        <h1 className="m-type-h1 text-xl md:text-2xl font-bold" data-testid="text-page-title">Bestellhistorie</h1>
         <p className="text-xs md:text-sm text-muted-foreground">Vergangene Bestellungen und Nachbestellungen</p>
       </div>
 

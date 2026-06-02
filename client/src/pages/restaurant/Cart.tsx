@@ -441,7 +441,7 @@ export default function RestaurantCart() {
           </div>
 
           <div className={`space-y-2 transition-all duration-500 delay-200 ${confirmationVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            <h1 className="text-2xl font-bold" data-testid="text-order-sent-title">{t("cart", "orderSentTitle")}</h1>
+            <h1 className="m-type-display text-2xl font-bold" data-testid="text-order-sent-title">{t("cart", "orderSentTitle")}</h1>
             <p className="text-muted-foreground text-sm">{t("cart", "orderSentDesc")}</p>
           </div>
 
@@ -1009,7 +1009,7 @@ export default function RestaurantCart() {
             </div>
             <div className="text-right shrink-0">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("common", "total")}</div>
-              <div className="text-base font-bold tabular-nums">{grandTotal} €</div>
+              <div className="text-base font-bold m-num">{grandTotal} €</div>
             </div>
           </div>
 
