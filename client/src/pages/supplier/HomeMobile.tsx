@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ComposedChart, Line, Bar } from "recharts";
 import { queryClient } from "@/lib/queryClient";
-import { MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, MobileTopActions, statusToTone, AttentionDeck, type AttentionCard } from "@/components/mobile";
+import { MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, statusToTone, AttentionDeck, type AttentionCard } from "@/components/mobile";
 import type { OrderWithDetails, Product, ConversationWithUser } from "@shared/schema";
 import { getOrderStatus } from "@/lib/translations";
 
@@ -220,7 +220,7 @@ export default function SupplierHomeMobile({
       >
         <div
           className="bg-[#161921] text-white px-4 pb-4 rounded-3xl mx-2 overflow-hidden"
-          style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+          style={{ marginTop: "0.25rem" }}
           data-testid="mobile-header-supplier-home"
         >
           <div className="pt-1 pb-3.5 flex items-start gap-2">
@@ -230,7 +230,6 @@ export default function SupplierHomeMobile({
                 {currentUser?.companyName || currentUser?.name || ""}
               </h1>
             </div>
-            <MobileTopActions variant="dark" />
           </div>
           <button
             onClick={() => navigate(leadHref)}

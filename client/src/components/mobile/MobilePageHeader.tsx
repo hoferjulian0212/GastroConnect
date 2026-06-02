@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import { ChevronLeft } from "lucide-react";
 import { useLocation } from "wouter";
-import { MobileTopActions } from "./MobileTopActions";
 
 interface MobilePageHeaderProps {
   title: string;
@@ -41,7 +40,7 @@ export function MobilePageHeader({
   return (
     <div
       className={`md:hidden bg-[#161921] text-white px-4 ${compact ? "pt-3 pb-3" : "pt-3 pb-4"} rounded-3xl mx-2`}
-      style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+      style={{ marginTop: "0.25rem" }}
       data-testid={testId || "mobile-page-header"}
     >
       <div className="flex items-center gap-2 min-h-[44px]">
@@ -61,7 +60,6 @@ export function MobilePageHeader({
           )}
         </div>
         {rightAction}
-        {!hideTopActions && <MobileTopActions variant="dark" />}
       </div>
       {search && <div className="mt-2.5">{search}</div>}
       {filters && (

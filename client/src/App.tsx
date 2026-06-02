@@ -22,6 +22,7 @@ import { GlobalSearch, DesktopSearchButton } from "@/components/GlobalSearch";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
+import { MobileTopActions } from "@/components/mobile/MobileTopActions";
 import { useEffect, useCallback, useState, useRef, useLayoutEffect, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { navigate } from "wouter/use-browser-location";
@@ -374,18 +375,20 @@ function PageHero() {
   const { lang } = useLanguage();
   const { currentRole } = useUser();
 
-  const isHomePage = location === `/${currentRole}`;
-  const isDetailPage = /^\/(restaurant|supplier)\/(complaints|orders)\/[^/]+$/.test(location);
-  const isProductDetailPage = /^\/restaurant\/product\/[^/]+$/.test(location);
+  const pathOnly = location.split("?")[0];
 
-  const isOrdersPage = /^\/(restaurant|supplier)\/orders$/.test(location);
-  const isComplaintsPage = /^\/(restaurant|supplier)\/complaints$/.test(location);
-  const isProductsPage = /^\/(restaurant\/catalog|supplier\/products)$/.test(location);
-  const isCostAnalysisPage = location === "/restaurant/cost-analysis";
-  const isPriceComparisonPage = location === "/restaurant/price-comparison";
-  const isPromotionsPage = location === "/supplier/promotions";
-  const isSupplierRestaurantsPage = location === "/supplier/restaurants";
-  const isSettingsPage = /^\/(restaurant|supplier)\/settings$/.test(location);
+  const isHomePage = pathOnly === `/${currentRole}`;
+  const isDetailPage = /^\/(restaurant|supplier)\/(complaints|orders)\/[^/]+$/.test(pathOnly);
+  const isProductDetailPage = /^\/restaurant\/product\/[^/]+$/.test(pathOnly);
+
+  const isOrdersPage = /^\/(restaurant|supplier)\/orders$/.test(pathOnly);
+  const isComplaintsPage = /^\/(restaurant|supplier)\/complaints$/.test(pathOnly);
+  const isProductsPage = /^\/(restaurant\/catalog|supplier\/products)$/.test(pathOnly);
+  const isCostAnalysisPage = pathOnly === "/restaurant/cost-analysis";
+  const isPriceComparisonPage = pathOnly === "/restaurant/price-comparison";
+  const isPromotionsPage = pathOnly === "/supplier/promotions";
+  const isSupplierRestaurantsPage = pathOnly === "/supplier/restaurants";
+  const isSettingsPage = /^\/(restaurant|supplier)\/settings$/.test(pathOnly);
 
   if (isHomePage || isDetailPage || isProductDetailPage || isOrdersPage || isComplaintsPage || isProductsPage || isCostAnalysisPage || isPriceComparisonPage || isPromotionsPage || isSupplierRestaurantsPage || isSettingsPage) return null;
 
@@ -499,11 +502,11 @@ function AppLayout() {
     return () => document.removeEventListener("click", handler, true);
   }, []);
 
-  const isDetailPage = /^\/(restaurant|supplier)\/(complaints|orders)\/[^/]+$/.test(location);
-  const isHomePage = location === '/restaurant' || location === '/supplier';
-  const isInboxPage = location === '/restaurant/inbox' || location === '/supplier/inbox';
-
   const pathOnly = location.split("?")[0];
+
+  const isDetailPage = /^\/(restaurant|supplier)\/(complaints|orders)\/[^/]+$/.test(pathOnly);
+  const isHomePage = pathOnly === '/restaurant' || pathOnly === '/supplier';
+  const isInboxPage = pathOnly === '/restaurant/inbox' || pathOnly === '/supplier/inbox';
 
   if (pathOnly === "/") {
     return (
@@ -570,6 +573,15 @@ function AppLayout() {
               </header>
               <HeroOutlet />
             </div>
+            {!isDetailPage && (
+              <div
+                className="md:hidden flex items-center justify-end px-2 pb-2 shrink-0"
+                style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+                data-testid="mobile-top-bar"
+              >
+                <MobileTopActions variant="light" />
+              </div>
+            )}
             <main className={`flex-1 flex flex-col min-h-0 ${isDetailPage ? 'p-0 pb-0' : isInboxPage ? 'pt-0 pb-0 md:pb-4' : 'pt-0 pb-0 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
               <div key={location.split("?")[0]} className="animate-page-enter flex-1 flex flex-col min-h-0">
                 <PageHero />

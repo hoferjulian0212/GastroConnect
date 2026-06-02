@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { MobileTopActions } from "@/components/mobile/MobileTopActions";
 
 type Ctx = { el: HTMLElement | null; setEl: (el: HTMLElement | null) => void };
 
@@ -49,13 +48,10 @@ export function HeroPortal({ children, desktopOnly = false, mobileWrapperClassNa
   return (
     <div
       className={`dark bg-[#161921] rounded-3xl overflow-hidden mx-2 mb-3 relative ${mobileWrapperClassName ?? ""}`}
-      style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+      style={{ marginTop: "0.25rem" }}
       data-hero-mobile
     >
-      <div className="absolute top-3 right-3 z-10">
-        <MobileTopActions variant="dark" />
-      </div>
-      <div className="[&_h1]:pr-[124px] [&_h1+p]:pr-[124px]">{children}</div>
+      <div>{children}</div>
     </div>
   );
 }

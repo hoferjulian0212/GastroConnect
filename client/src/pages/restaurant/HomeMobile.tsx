@@ -7,7 +7,7 @@ import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { queryClient } from "@/lib/queryClient";
-import { MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, MobileTopActions, statusToTone, AttentionDeck, type AttentionCard } from "@/components/mobile";
+import { MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, statusToTone, AttentionDeck, type AttentionCard } from "@/components/mobile";
 import type { OrderWithDetails, ConversationWithUser, OrderTemplateWithItems } from "@shared/schema";
 import { getOrderStatus } from "@/lib/translations";
 
@@ -201,7 +201,7 @@ export default function RestaurantHomeMobile({
       >
         <div
           className="bg-[#161921] text-white px-4 pb-5 rounded-3xl mx-2 overflow-hidden"
-          style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+          style={{ marginTop: "0.25rem" }}
           data-testid="mobile-header-restaurant-home"
         >
           <div className="pt-1 pb-2 flex items-start gap-2">
@@ -211,7 +211,6 @@ export default function RestaurantHomeMobile({
                 {currentUser?.companyName || currentUser?.name || ""}
               </h1>
             </div>
-            <MobileTopActions variant="dark" />
           </div>
           <button
             onClick={() => navigate(leadHref)}

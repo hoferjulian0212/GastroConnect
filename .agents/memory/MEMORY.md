@@ -1,2 +1,3 @@
 - [Command bar already exists](command-bar.md) — don't build a second search/command palette; extend the existing one.
 - [Centralized chat uploads](chat-attachments.md) — reuse the shared chat file-upload helpers for any new attach surface; verify the PUT before sending.
+- [Wouter location has query string](routing-location-query.md) — page checks must use pathOnly; $-anchored route regexes break when a query string is present.
