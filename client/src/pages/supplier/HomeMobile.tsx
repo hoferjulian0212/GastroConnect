@@ -223,7 +223,7 @@ export default function SupplierHomeMobile({
           style={{ marginTop: "0.25rem" }}
           data-testid="mobile-header-supplier-home"
         >
-          <div className="pt-1 pb-3.5 flex items-start gap-2">
+          <div className="pt-4 pb-3.5 flex items-start gap-2">
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-medium text-white/60 truncate">{greeting},</p>
               <h1 className="text-[22px] font-bold leading-tight mt-0.5 text-white truncate">
