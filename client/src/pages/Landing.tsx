@@ -574,7 +574,7 @@ const mobileBulletIcons = [BellRing, WifiOff, Hand, Bookmark];
 
 export default function Landing() {
   const [, setLocation] = useLocation();
-  const { currentUser, currentRole } = useUser();
+  const { currentUser, currentRole, switchRole } = useUser();
   const [scrolled, setScrolled] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [lang, setLang] = useState<Lang>("de");
@@ -634,6 +634,7 @@ export default function Landing() {
   const a = animationStrings[lang];
 
   function handleStart(role: "restaurant" | "supplier") {
+    switchRole(role);
     setLocation(`/${role}`);
   }
 
