@@ -3,7 +3,7 @@ import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Trash2, Search, Save, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Trash2, Search, Save, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame, Star } from "lucide-react";
 import DraggableCardGrid from "@/components/DraggableCardGrid";
 import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
@@ -91,6 +91,15 @@ export default function RestaurantHome() {
     queryKey: [`/api/order-templates?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
+
+  // Favorites first (stable order), then newest non-favorites fill remaining slots
+  const orderedTemplates = useMemo(() => {
+    if (!templates) return [];
+    return [
+      ...templates.filter(t => t.isFavorite),
+      ...templates.filter(t => !t.isFavorite),
+    ];
+  }, [templates]);
 
   const costCurrentMonth = useMemo(() => {
     const now = new Date();
@@ -1644,7 +1653,7 @@ export default function RestaurantHome() {
                     className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
                     style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
                   >
-                    {templates.slice(0, 5).map((tmpl) => {
+                    {orderedTemplates.slice(0, 5).map((tmpl) => {
                       const inStockItems = tmpl.items.filter(i => i.product.inStock !== false);
                       const outOfStockCount = tmpl.items.length - inStockItems.length;
                       const total = inStockItems.reduce((sum, i) => sum + parseFloat(i.product.price) * i.quantity, 0);
@@ -1660,6 +1669,9 @@ export default function RestaurantHome() {
                             <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 shrink-0">
                               <ClipboardList className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                             </div>
+                            {tmpl.isFavorite && (
+                              <Star className="h-4 w-4 text-amber-500 fill-current shrink-0" data-testid={`icon-favorite-${tmpl.id}`} />
+                            )}
                             {outOfStockCount > 0 && (
                               <Badge variant="outline" className="text-[10px] border-red-200 text-red-500 px-1 ml-auto">
                                 {outOfStockCount} {lang === "de" ? "n.v." : "n.d."}
@@ -1683,7 +1695,7 @@ export default function RestaurantHome() {
 
                   {/* Desktop: expandable stacked list */}
                   <div className="hidden md:block space-y-2">
-                    {templates.slice(0, 3).map((tmpl) => {
+                    {orderedTemplates.slice(0, 3).map((tmpl) => {
                       const inStockItems = tmpl.items.filter(i => i.product.inStock !== false);
                       const outOfStockCount = tmpl.items.length - inStockItems.length;
                       const total = inStockItems.reduce((sum, i) => sum + parseFloat(i.product.price) * i.quantity, 0);
@@ -1702,6 +1714,9 @@ export default function RestaurantHome() {
                           >
                             <div className="flex items-center gap-2 min-w-0 flex-1">
                               <ClipboardList className={`h-4 w-4 shrink-0 ${outOfStockCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-orange-500"}`} />
+                              {tmpl.isFavorite && (
+                                <Star className="h-3.5 w-3.5 text-amber-500 fill-current shrink-0" data-testid={`icon-favorite-desktop-${tmpl.id}`} />
+                              )}
                               <div className="min-w-0 flex-1">
                                 <h3 className="text-sm font-semibold truncate">{tmpl.name}</h3>
                                 {outOfStockCount > 0 && (

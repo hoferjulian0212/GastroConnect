@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
-  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle, Copy, Store, Pencil, AlertCircle
+  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle, Copy, Store, Pencil, AlertCircle, Star
 } from "lucide-react";
 import QuantityInput from "@/components/QuantityInput";
 import SwipeableRow from "@/components/SwipeableRow";
@@ -96,6 +96,23 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/order-templates'] });
       toast({ title: t("templates", "templateDuplicated") });
+    },
+  });
+
+  const favoriteMutation = useMutation({
+    mutationFn: async ({ id, isFavorite }: { id: string; isFavorite: boolean }) => {
+      await apiRequest("PATCH", `/api/order-templates/${id}/favorite`, { isFavorite });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/order-templates'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/order-templates?restaurantId=${currentUser?.id}`] });
+    },
+    onError: (err: any) => {
+      if (typeof err?.message === "string" && err.message.includes("MAX_FAVORITES")) {
+        toast({ title: t("templates", "maxFavorites"), description: t("templates", "maxFavoritesDesc"), variant: "destructive" });
+      } else {
+        toast({ title: t("common", "error"), variant: "destructive" });
+      }
     },
   });
 
@@ -304,6 +321,17 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={`h-6 w-6 shrink-0 ${tmpl.isFavorite ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground/50 hover:text-amber-500"}`}
+                              onClick={() => favoriteMutation.mutate({ id: tmpl.id, isFavorite: !tmpl.isFavorite })}
+                              disabled={favoriteMutation.isPending}
+                              title={tmpl.isFavorite ? t("templates", "removeFavorite") : t("templates", "markFavorite")}
+                              data-testid={`button-favorite-${tmpl.id}`}
+                            >
+                              <Star className={`h-3.5 w-3.5 ${tmpl.isFavorite ? "fill-current" : ""}`} />
+                            </Button>
                             <h3
                               className="text-sm md:text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
                               onClick={() => { setEditingNameId(tmpl.id); setEditNameValue(tmpl.name); }}

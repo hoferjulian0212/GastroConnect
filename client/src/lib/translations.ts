@@ -350,6 +350,10 @@ const t = {
     inStock: { de: "Auf Lager", it: "Disponibile" },
     editName: { de: "Name bearbeiten", it: "Modifica nome" },
     saveName: { de: "Name speichern", it: "Salva nome" },
+    markFavorite: { de: "Als Favorit markieren", it: "Segna come preferito" },
+    removeFavorite: { de: "Favorit entfernen", it: "Rimuovi preferito" },
+    maxFavorites: { de: "Maximal 3 Favoriten", it: "Massimo 3 preferiti" },
+    maxFavoritesDesc: { de: "Entferne zuerst einen Favoriten, um einen neuen hinzuzufügen.", it: "Rimuovi prima un preferito per aggiungerne uno nuovo." },
   },
   supplierOrders: {
     incomingOrders: { de: "Eingehende Bestellungen verwalten", it: "Gestisci ordini in arrivo" },

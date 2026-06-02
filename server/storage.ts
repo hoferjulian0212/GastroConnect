@@ -203,6 +203,7 @@ export interface IStorage {
   getOrderTemplate(id: string): Promise<OrderTemplateWithItems | undefined>;
   createOrderTemplate(template: InsertOrderTemplate, items: InsertOrderTemplateItem[]): Promise<OrderTemplate>;
   updateOrderTemplate(id: string, name: string, items: InsertOrderTemplateItem[]): Promise<OrderTemplate | undefined>;
+  setOrderTemplateFavorite(id: string, isFavorite: boolean): Promise<OrderTemplate | undefined>;
   deleteOrderTemplate(id: string): Promise<void>;
 
   // Push Subscriptions
@@ -1531,6 +1532,23 @@ export class DatabaseStorage implements IStorage {
     for (const item of items) {
       await db.insert(orderTemplateItems).values({ ...item, id: randomUUID(), templateId: id });
     }
+    return updated;
+  }
+
+  async setOrderTemplateFavorite(id: string, isFavorite: boolean): Promise<OrderTemplate | undefined> {
+    const [template] = await db.select().from(orderTemplates).where(eq(orderTemplates.id, id));
+    if (!template) return undefined;
+    if (isFavorite && !template.isFavorite) {
+      const favorites = await db.select().from(orderTemplates)
+        .where(and(eq(orderTemplates.restaurantId, template.restaurantId), eq(orderTemplates.isFavorite, true)));
+      if (favorites.length >= 3) {
+        throw new Error("MAX_FAVORITES");
+      }
+    }
+    const [updated] = await db.update(orderTemplates)
+      .set({ isFavorite })
+      .where(eq(orderTemplates.id, id))
+      .returning();
     return updated;
   }
 

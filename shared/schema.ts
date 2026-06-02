@@ -320,6 +320,7 @@ export const orderTemplates = pgTable("order_templates", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   name: text("name").notNull(),
+  isFavorite: boolean("is_favorite").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -357,7 +358,7 @@ export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: t
 export const insertCustomMinOrderQuantitySchema = createInsertSchema(customMinOrderQuantities).omit({ id: true, createdAt: true });
 export const insertCustomPriceSchema = createInsertSchema(customPrices).omit({ id: true, createdAt: true });
 export const insertStockMovementSchema = createInsertSchema(stockMovements).omit({ id: true, createdAt: true });
-export const insertOrderTemplateSchema = createInsertSchema(orderTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertOrderTemplateSchema = createInsertSchema(orderTemplates).omit({ id: true, createdAt: true, updatedAt: true, isFavorite: true });
 export const insertOrderTemplateItemSchema = createInsertSchema(orderTemplateItems).omit({ id: true });
 
 export const supplierRatings = pgTable("supplier_ratings", {

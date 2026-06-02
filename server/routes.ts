@@ -3468,6 +3468,27 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/order-templates/:id/favorite", async (req, res) => {
+    try {
+      const { isFavorite } = req.body;
+      if (typeof isFavorite !== "boolean") {
+        return res.status(400).json({ error: "isFavorite must be a boolean" });
+      }
+      try {
+        const updated = await storage.setOrderTemplateFavorite(req.params.id, isFavorite);
+        if (!updated) return res.status(404).json({ error: "Template not found" });
+        res.json(updated);
+      } catch (e: any) {
+        if (e?.message === "MAX_FAVORITES") {
+          return res.status(400).json({ error: "MAX_FAVORITES" });
+        }
+        throw e;
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update favorite" });
+    }
+  });
+
   app.delete("/api/order-templates/:id", async (req, res) => {
     try {
       await storage.deleteOrderTemplate(req.params.id);
