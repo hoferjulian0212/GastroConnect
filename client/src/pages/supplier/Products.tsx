@@ -202,11 +202,11 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  "Fleisch": { de: "Fleisch", it: "Carne", icon: Beef, dot: "bg-rose-700" },
  "Wurst": { de: "Wurst", it: "Salumi", icon: Beef, dot: "bg-rose-800" },
  "Fisch": { de: "Fisch", it: "Pesce", icon: Fish, dot: "bg-cyan-600" },
- "Meeresfrüchte": { de: "Meeresfrüchte", it: "Frutti di mare", icon: Fish, dot: "bg-blue-600" },
+ "Meeresfrüchte": { de: "Meeresfrüchte", it: "Frutti di mare", icon: Fish, dot: "bg-teal-600" },
  "Käse": { de: "Käse", it: "Formaggi", icon: Milk, dot: "bg-yellow-500" },
- "Milchprodukte": { de: "Milchprodukte", it: "Latticini", icon: Milk, dot: "bg-blue-400" },
+ "Milchprodukte": { de: "Milchprodukte", it: "Latticini", icon: Milk, dot: "bg-teal-400" },
  "Wein": { de: "Wein", it: "Vino", icon: Wine, dot: "bg-purple-700" },
- "Spirituosen": { de: "Spirituosen", it: "Liquori", icon: Wine, dot: "bg-indigo-700" },
+ "Spirituosen": { de: "Spirituosen", it: "Liquori", icon: Wine, dot: "bg-fuchsia-700" },
  "Getränke": { de: "Getränke", it: "Bevande", icon: Droplets, dot: "bg-purple-600" },
  "Kaffee": { de: "Kaffee", it: "Caffè", icon: Coffee, dot: "bg-amber-800" },
  "Pasta": { de: "Pasta", it: "Pasta", icon: Wheat, dot: "bg-amber-500" },
@@ -641,7 +641,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  <span className={`font-bold tabular-nums text-base ${
  adjustMode === "manual_in" ? "text-green-600 dark:text-green-400" :
  adjustMode === "manual_out" ? "text-red-600 dark:text-red-400" :
- "text-blue-600 dark:text-blue-400"
+ "text-foreground"
  }`}>{getPreviewStock()}</span>
  <span className="text-muted-foreground text-xs">{adjustProduct?.unit}</span>
  </div>
@@ -709,12 +709,12 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  return (
  <div key={movement.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/30" data-testid={`stock-movement-${movement.id}`}>
  <div className={`flex items-center justify-center h-8 w-8 rounded-lg shrink-0 ${
- isSet ? "bg-blue-100 dark:bg-blue-900/30" :
+ isSet ? "bg-muted" :
  isIncrease ? "bg-green-100 dark:bg-green-900/30" :
  "bg-red-100 dark:bg-red-900/30"
  }`}>
  {isSet ? (
- <RefreshCw className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+ <RefreshCw className="h-3.5 w-3.5 text-foreground" />
  ) : isIncrease ? (
  <ArrowDown className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
  ) : (
@@ -725,7 +725,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  <div className="flex items-center justify-between gap-2">
  <span className="text-xs font-medium truncate">{getMovementTypeLabel(movement.type)}</span>
  <span className={`text-xs font-bold tabular-nums shrink-0 ${
- isSet ? "text-blue-600 dark:text-blue-400" :
+ isSet ? "text-foreground" :
  isIncrease ? "text-green-600 dark:text-green-400" :
  "text-red-600 dark:text-red-400"
  }`}>
@@ -1318,11 +1318,11 @@ export default function SupplierProducts() {
  "Fleisch": { de: "Fleisch", it: "Carne", icon: Beef, color: "bg-rose-700" },
  "Wurst": { de: "Wurst", it: "Salumi", icon: Beef, color: "bg-rose-800" },
  "Fisch": { de: "Fisch", it: "Pesce", icon: Fish, color: "bg-cyan-600" },
- "Meeresfrüchte": { de: "Meeresfrüchte", it: "Frutti di mare", icon: Fish, color: "bg-blue-600" },
+ "Meeresfrüchte": { de: "Meeresfrüchte", it: "Frutti di mare", icon: Fish, color: "bg-teal-600" },
  "Käse": { de: "Käse", it: "Formaggi", icon: Milk, color: "bg-yellow-500" },
- "Milchprodukte": { de: "Milchprodukte", it: "Latticini", icon: Milk, color: "bg-blue-400" },
+ "Milchprodukte": { de: "Milchprodukte", it: "Latticini", icon: Milk, color: "bg-teal-400" },
  "Wein": { de: "Wein", it: "Vino", icon: Wine, color: "bg-purple-700" },
- "Spirituosen": { de: "Spirituosen", it: "Liquori", icon: Wine, color: "bg-indigo-700" },
+ "Spirituosen": { de: "Spirituosen", it: "Liquori", icon: Wine, color: "bg-fuchsia-700" },
  "Getränke": { de: "Getränke", it: "Bevande", icon: Droplets, color: "bg-purple-600" },
  "Kaffee": { de: "Kaffee", it: "Caffè", icon: Coffee, color: "bg-amber-800" },
  "Pasta": { de: "Pasta", it: "Pasta", icon: Wheat, color: "bg-amber-500" },

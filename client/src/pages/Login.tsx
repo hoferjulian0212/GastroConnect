@@ -78,7 +78,7 @@ export default function Login() {
               className="w-full rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.10] p-5 flex items-center gap-4 text-left transition-colors"
               data-testid="button-login-restaurant"
             >
-              <div className="h-12 w-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+              <div className="h-12 w-12 rounded-xl bg-white/10 text-white flex items-center justify-center shrink-0">
                 <Utensils className="h-6 w-6" />
               </div>
               <div className="flex-1 min-w-0">

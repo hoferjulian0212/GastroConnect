@@ -381,7 +381,7 @@ export function AntwortzeitWidget({ supplierId, lang }: { supplierId: string; la
     <div className={CARD_BASE} data-testid="widget-antwortzeit">
       <div className={HEADER}>
         <WidgetTitle
-          icon={<Clock className="h-4 w-4 text-blue-500" />}
+          icon={<Clock className="h-4 w-4 text-primary" />}
           title={t("supplierHome", "widgetResponseTime")}
           desc={t("supplierHome", "widgetResponseTimeDesc")}
           testId="text-widget-antwortzeit-title"

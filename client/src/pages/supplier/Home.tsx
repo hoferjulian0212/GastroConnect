@@ -529,8 +529,8 @@ export default function SupplierHome() {
                 <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Nachrichten" : "Messaggi"}</span><span className="hidden md:inline">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
                   <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : <CountUp end={totalUnread} duration={800} />}</p>
-                  <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-blue-500/20">
-                    <MessageSquare className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
+                  <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-white/10">
+                    <MessageSquare className="h-4 w-4 md:h-5 md:w-5 text-white" />
                   </div>
                 </div>
               </div>
@@ -867,7 +867,7 @@ export default function SupplierHome() {
                             {conv.otherUser.profileImageUrl ? (
                               <AvatarImage src={conv.otherUser.profileImageUrl} alt={conv.otherUser.companyName || conv.otherUser.name} />
                             ) : null}
-                            <AvatarFallback className={`text-xs font-bold ${isPriority ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"}`}>
+                            <AvatarFallback className={`text-xs font-bold ${isPriority ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-primary/10 text-primary dark:bg-primary/20"}`}>
                               {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -900,7 +900,7 @@ export default function SupplierHome() {
                     return (
                       <div
                         key={conv.id}
-                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md ${isPriority ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20 hover:border-red-400" : "border-border bg-card hover:border-blue-300/40"}`}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md ${isPriority ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20 hover:border-red-400" : "border-border bg-card hover:border-primary/30"}`}
                         onClick={() => navigate(`/supplier/inbox?chat=${conv.id}`)}
                         data-testid={`unread-chat-desktop-${conv.id}`}
                       >
@@ -914,7 +914,7 @@ export default function SupplierHome() {
                             {conv.otherUser.profileImageUrl ? (
                               <AvatarImage src={conv.otherUser.profileImageUrl} alt={conv.otherUser.companyName || conv.otherUser.name} />
                             ) : null}
-                            <AvatarFallback className="bg-blue-100 text-blue-700 text-xs dark:bg-blue-900/30 dark:text-blue-400">
+                            <AvatarFallback className="bg-primary/10 text-primary text-xs dark:bg-primary/20">
                               {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -1502,10 +1502,10 @@ export default function SupplierHome() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
               {([
-                { id: "revenue", label: t("supplierHome", "totalRevenue"), value: detailedStats.totalRevenue, prev: detailedStats.previous?.totalRevenue ?? 0, isCurrency: true, icon: <Euro className="h-3.5 w-3.5 text-indigo-600 shrink-0" /> },
+                { id: "revenue", label: t("supplierHome", "totalRevenue"), value: detailedStats.totalRevenue, prev: detailedStats.previous?.totalRevenue ?? 0, isCurrency: true, icon: <Euro className="h-3.5 w-3.5 text-primary shrink-0" /> },
                 { id: "orders", label: t("supplierHome", "totalOrders"), value: detailedStats.totalOrders, prev: detailedStats.previous?.totalOrders ?? 0, isCurrency: false, icon: <Hash className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> },
                 { id: "avg", label: t("supplierHome", "avgOrderValue"), value: detailedStats.avgOrderValue, prev: detailedStats.previous?.avgOrderValue ?? 0, isCurrency: true, icon: <TrendingUp className="h-3.5 w-3.5 text-amber-600 shrink-0" /> },
-                { id: "active-customers", label: t("supplierHome", "activeCustomers"), value: detailedStats.activeCustomers, prev: detailedStats.previous?.activeCustomers ?? 0, isCurrency: false, icon: <Users className="h-3.5 w-3.5 text-sky-600 shrink-0" /> },
+                { id: "active-customers", label: t("supplierHome", "activeCustomers"), value: detailedStats.activeCustomers, prev: detailedStats.previous?.activeCustomers ?? 0, isCurrency: false, icon: <Users className="h-3.5 w-3.5 text-primary shrink-0" /> },
               ] as const).map(k => {
                 const delta = calcDelta(k.value as number, k.prev as number);
                 const isUp = delta > 0;
@@ -1689,7 +1689,7 @@ export default function SupplierHome() {
                             <span className="text-xs md:text-sm font-medium truncate flex-1">{c.name}</span>
                           </div>
                           <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
-                            <div className="h-full bg-sky-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                            <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                           </div>
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-[10px] md:text-xs text-muted-foreground tabular-nums">{c.orders} {t("supplierHome", "chartOrders")}</span>

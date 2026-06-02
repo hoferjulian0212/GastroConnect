@@ -896,8 +896,8 @@ export default function RestaurantHome() {
                 <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Nachrichten" : "Messaggi"}</span><span className="hidden md:inline">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
                   <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : <CountUp end={totalUnread} duration={800} />}</p>
-                  <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-blue-500/20">
-                    <MessageSquare className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
+                  <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-white/10">
+                    <MessageSquare className="h-4 w-4 md:h-5 md:w-5 text-white" />
                   </div>
                 </div>
               </div>
@@ -1341,7 +1341,7 @@ export default function RestaurantHome() {
                             {conv.otherUser.profileImageUrl ? (
                               <AvatarImage src={conv.otherUser.profileImageUrl} alt={conv.otherUser.companyName || conv.otherUser.name} />
                             ) : null}
-                            <AvatarFallback className={`text-xs font-bold ${isPriority ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"}`}>
+                            <AvatarFallback className={`text-xs font-bold ${isPriority ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-primary/10 text-primary dark:bg-primary/20"}`}>
                               {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -1374,7 +1374,7 @@ export default function RestaurantHome() {
                     return (
                     <div
                       key={conv.id}
-                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md ${isPriority ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20 hover:border-red-400" : "border-border bg-card hover:border-blue-300/40"}`}
+                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md ${isPriority ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20 hover:border-red-400" : "border-border bg-card hover:border-primary/30"}`}
                       onClick={() => navigate(`/restaurant/inbox?chat=${conv.id}`)}
                       data-testid={`unread-chat-desktop-${conv.id}`}
                     >
@@ -1388,7 +1388,7 @@ export default function RestaurantHome() {
                         {conv.otherUser.profileImageUrl ? (
                           <AvatarImage src={conv.otherUser.profileImageUrl} alt={conv.otherUser.companyName || conv.otherUser.name} />
                         ) : null}
-                        <AvatarFallback className="bg-blue-100 text-blue-700 text-xs dark:bg-blue-900/30 dark:text-blue-400">
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs dark:bg-primary/20">
                           {(conv.otherUser.companyName || conv.otherUser.name || "?").slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>

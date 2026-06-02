@@ -117,7 +117,7 @@ export default function SupplierHomeMobile({
   const quickActions = [
     { icon: <ClipboardList className="h-5 w-5" />, label: lang === "de" ? "Bestellungen" : "Ordini", to: "/supplier/orders?status=pending", color: "bg-foreground text-background" },
     { icon: <Tag className="h-5 w-5" />, label: lang === "de" ? "Aktion" : "Promo", to: "/supplier/promotions", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-    { icon: <Package className="h-5 w-5" />, label: lang === "de" ? "Lager" : "Magazzino", to: "/supplier/inventory", color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" },
+    { icon: <Package className="h-5 w-5" />, label: lang === "de" ? "Lager" : "Magazzino", to: "/supplier/inventory", color: "bg-primary/10 text-primary dark:text-primary" },
   ];
 
   const leadParts: string[] = [];
@@ -367,7 +367,7 @@ export default function SupplierHomeMobile({
                 aria-expanded={statsExpanded}
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="flex items-center justify-center h-7 w-7 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                  <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-primary dark:text-primary">
                     <TrendingUp className="h-3.5 w-3.5" />
                   </div>
                   <span className="text-[13px] font-semibold text-foreground tabular-nums truncate">{summary}</span>
@@ -406,10 +406,10 @@ export default function SupplierHomeMobile({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 {([
-                  { id: "revenue", label: t("supplierHome", "totalRevenue"), value: detailedStats.totalRevenue, prev: detailedStats.previous?.totalRevenue ?? 0, isCurrency: true, icon: <Euro className="h-3 w-3 text-indigo-600" /> },
+                  { id: "revenue", label: t("supplierHome", "totalRevenue"), value: detailedStats.totalRevenue, prev: detailedStats.previous?.totalRevenue ?? 0, isCurrency: true, icon: <Euro className="h-3 w-3 text-primary" /> },
                   { id: "orders", label: t("supplierHome", "totalOrders"), value: detailedStats.totalOrders, prev: detailedStats.previous?.totalOrders ?? 0, isCurrency: false, icon: <Hash className="h-3 w-3 text-emerald-600" /> },
                   { id: "avg", label: t("supplierHome", "avgOrderValue"), value: detailedStats.avgOrderValue, prev: detailedStats.previous?.avgOrderValue ?? 0, isCurrency: true, icon: <TrendingUp className="h-3 w-3 text-amber-600" /> },
-                  { id: "active-customers", label: t("supplierHome", "activeCustomers"), value: detailedStats.activeCustomers, prev: detailedStats.previous?.activeCustomers ?? 0, isCurrency: false, icon: <Users className="h-3 w-3 text-sky-600" /> },
+                  { id: "active-customers", label: t("supplierHome", "activeCustomers"), value: detailedStats.activeCustomers, prev: detailedStats.previous?.activeCustomers ?? 0, isCurrency: false, icon: <Users className="h-3 w-3 text-primary" /> },
                 ] as const).map(k => {
                   const delta = calcDelta(k.value as number, k.prev as number);
                   const isUp = delta > 0; const isDown = delta < 0;
@@ -561,7 +561,7 @@ export default function SupplierHomeMobile({
                               <span className="text-xs font-medium truncate flex-1">{c.name}</span>
                               <span className="text-xs font-semibold tabular-nums">{c.revenue.toLocaleString(lang === "de" ? "de-DE" : "it-IT", { maximumFractionDigits: 0 })}€</span>
                             </div>
-                            <div className="h-1 bg-muted rounded-full overflow-hidden mb-1"><div className="h-full bg-sky-500 rounded-full" style={{ width: `${pct}%` }} /></div>
+                            <div className="h-1 bg-muted rounded-full overflow-hidden mb-1"><div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} /></div>
                             <span className="text-[10px] text-muted-foreground tabular-nums">{c.orders} {t("supplierHome", "chartOrders")}</span>
                           </button>
                         );

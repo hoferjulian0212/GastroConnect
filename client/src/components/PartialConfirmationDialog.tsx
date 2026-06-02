@@ -136,7 +136,7 @@ export function PartialConfirmationDialog({
 
         <div className="px-5 pt-5 pb-2">
           <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-blue-600" />
+            <CheckCircle className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-semibold">{lang === "it" ? "Conferma ordine" : "Bestellung bestätigen"}</h3>
             <Badge variant="outline" className="ml-auto text-xs">
               #{formatOrderNumber(order)}

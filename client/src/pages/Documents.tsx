@@ -371,8 +371,8 @@ export default function Documents() {
                   onClick={() => toggleSupplier(supplierId)}
                   data-testid={`button-toggle-supplier-${supplierId}`}
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30 shrink-0">
-                    <Building2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 dark:bg-primary/20 shrink-0">
+                    <Building2 className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm md:text-base">{supplierName}</p>
@@ -780,24 +780,24 @@ function SupplierStatsCard({ restaurantId, supplierId, lang, currentRole }: { re
 
   return (
     <div className="px-4 py-3" data-testid={`supplier-stats-${supplierId}`}>
-      <div className="rounded-lg bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20 border border-indigo-100 dark:border-indigo-800/30 p-4">
+      <div className="rounded-lg bg-muted/30 border border-border p-4">
         <div className="flex items-center gap-2 mb-3">
-          <BarChart3 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-          <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">
             {lang === "de" ? "Bestellstatistik" : "Statistiche ordini"}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="text-center">
-            <div className="text-lg font-bold text-indigo-700 dark:text-indigo-300" data-testid={`stat-total-orders-${supplierId}`}>{stats.totalOrders}</div>
+            <div className="text-lg font-bold text-foreground" data-testid={`stat-total-orders-${supplierId}`}>{stats.totalOrders}</div>
             <div className="text-[10px] text-muted-foreground">{lang === "de" ? "Bestellungen" : "Ordini"}</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-bold text-indigo-700 dark:text-indigo-300" data-testid={`stat-total-spent-${supplierId}`}>{Number(stats.totalSpent).toLocaleString("de-DE", { minimumFractionDigits: 2 })} EUR</div>
+            <div className="text-lg font-bold text-foreground" data-testid={`stat-total-spent-${supplierId}`}>{Number(stats.totalSpent).toLocaleString("de-DE", { minimumFractionDigits: 2 })} EUR</div>
             <div className="text-[10px] text-muted-foreground">{lang === "de" ? "Gesamt" : "Totale"}</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-bold text-indigo-700 dark:text-indigo-300" data-testid={`stat-avg-order-${supplierId}`}>{Number(stats.avgOrderValue).toLocaleString("de-DE", { minimumFractionDigits: 2 })} EUR</div>
+            <div className="text-lg font-bold text-foreground" data-testid={`stat-avg-order-${supplierId}`}>{Number(stats.avgOrderValue).toLocaleString("de-DE", { minimumFractionDigits: 2 })} EUR</div>
             <div className="text-[10px] text-muted-foreground">{lang === "de" ? "Durchschn." : "Media"}</div>
           </div>
         </div>
@@ -815,7 +815,7 @@ function SupplierStatsCard({ restaurantId, supplierId, lang, currentRole }: { re
                   )}
                 </div>
                 <div
-                  className="w-full rounded-t-sm bg-indigo-400 dark:bg-indigo-500 min-h-[2px]"
+                  className="w-full rounded-t-sm bg-primary min-h-[2px]"
                   style={{ height: `${Math.max((m.total / maxTotal) * 48, 2)}px` }}
                 />
                 <span className="text-[8px] text-muted-foreground">{m.month}</span>

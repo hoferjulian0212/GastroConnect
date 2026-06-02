@@ -682,8 +682,8 @@ function CreateEditDialog({
               onClick={() => setMode("from_order")}
               data-testid="button-mode-from-order"
             >
-              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-950/30 shrink-0">
-                <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 dark:bg-primary/20 shrink-0">
+                <FileText className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">{t("templates", "createFromOrder")}</p>

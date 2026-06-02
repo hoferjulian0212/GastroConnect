@@ -134,7 +134,7 @@ export default function RestaurantHomeMobile({
 
   const quickActions = [
     { icon: <Plus className="h-5 w-5" />, label: lang === "de" ? "Bestellen" : "Ordina", to: "/restaurant/catalog", color: "bg-foreground text-background" },
-    { icon: <FileText className="h-5 w-5" />, label: lang === "de" ? "Vorlagen" : "Modelli", to: "/restaurant/templates", color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" },
+    { icon: <FileText className="h-5 w-5" />, label: lang === "de" ? "Vorlagen" : "Modelli", to: "/restaurant/templates", color: "bg-primary/10 text-primary dark:text-primary" },
     { icon: <AlertTriangle className="h-5 w-5" />, label: lang === "de" ? "Reklamation" : "Reclami", to: "/restaurant/complaints", color: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
   ];
 

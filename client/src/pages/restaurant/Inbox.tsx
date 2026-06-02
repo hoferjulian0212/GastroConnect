@@ -2217,7 +2217,7 @@ export default function RestaurantInbox() {
                                       <div className={`max-w-[85%] md:max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
                                         <div className="flex-1 min-w-0">
                                           {showSenderName && (
-                                            <p className={`text-[11px] font-semibold mb-0.5 px-1 flex items-center gap-1 ${isOwn ? "justify-end" : ""} ${isImportant ? (isOwn ? "text-red-400" : "text-red-500") : (isOwn ? "text-primary/70" : "text-indigo-600 dark:text-indigo-400")}`}>
+                                            <p className={`text-[11px] font-semibold mb-0.5 px-1 flex items-center gap-1 ${isOwn ? "justify-end" : ""} ${isImportant ? (isOwn ? "text-red-400" : "text-red-500") : (isOwn ? "text-primary/70" : "text-primary")}`}>
                                               {isImportant && <Flame className="h-3 w-3 text-red-500" />}
                                               {senderName}
                                             </p>
@@ -2256,7 +2256,7 @@ export default function RestaurantInbox() {
                                                 }}
                                                 data-testid={`ref-link-${message.id}`}
                                               >
-                                                <p className={`text-[11px] font-semibold ${isOwn ? "text-primary-foreground/80" : "text-indigo-600 dark:text-indigo-400"}`}>
+                                                <p className={`text-[11px] font-semibold ${isOwn ? "text-primary-foreground/80" : "text-primary"}`}>
                                                   {refData.refLabel}
                                                 </p>
                                                 <p className={`text-[11px] truncate ${isOwn ? "text-primary-foreground/60" : "text-muted-foreground"}`}>

@@ -623,8 +623,8 @@ export default function RestaurantCart() {
                 </CardContent>
                 <div className="hidden md:block border-t border-border px-3 md:px-6 py-3 md:py-4 space-y-3">
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
-                      <CalendarDays className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-primary/10 dark:bg-primary/20">
+                      <CalendarDays className="h-3.5 w-3.5 text-primary" />
                     </div>
                     <Label className="text-xs md:text-sm font-semibold">
                       {t("cart", "deliveryDate")}
@@ -635,7 +635,7 @@ export default function RestaurantCart() {
                       type="button"
                       className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                         (deliveryOptions[supplierId] || "asap") === "asap"
-                          ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-sm"
+                          ? "border-primary bg-primary/10 dark:bg-primary/20 shadow-sm"
                           : "border-border hover:border-muted-foreground/30"
                       }`}
                       onClick={() => {
@@ -646,18 +646,18 @@ export default function RestaurantCart() {
                     >
                       <div className={`flex items-center justify-center h-8 w-8 rounded-full transition-colors ${
                         (deliveryOptions[supplierId] || "asap") === "asap"
-                          ? "bg-indigo-100 dark:bg-indigo-800/30"
+                          ? "bg-primary/15 dark:bg-primary/25"
                           : "bg-muted"
                       }`}>
                         <Clock className={`h-4 w-4 ${
                           (deliveryOptions[supplierId] || "asap") === "asap"
-                            ? "text-indigo-600 dark:text-indigo-400"
+                            ? "text-primary"
                             : "text-muted-foreground"
                         }`} />
                       </div>
                       <span className={`text-xs font-medium ${
                         (deliveryOptions[supplierId] || "asap") === "asap"
-                          ? "text-indigo-700 dark:text-indigo-300"
+                          ? "text-primary"
                           : "text-muted-foreground"
                       }`}>{t("cart", "asap")}</span>
                     </button>
@@ -673,25 +673,25 @@ export default function RestaurantCart() {
                           type="button"
                           className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                             deliveryOptions[supplierId] === "date"
-                              ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-sm"
+                              ? "border-primary bg-primary/10 dark:bg-primary/20 shadow-sm"
                               : "border-border hover:border-muted-foreground/30"
                           }`}
                           data-testid={`radio-delivery-date-${supplierId}`}
                         >
                           <div className={`flex items-center justify-center h-8 w-8 rounded-full transition-colors ${
                             deliveryOptions[supplierId] === "date"
-                              ? "bg-indigo-100 dark:bg-indigo-800/30"
+                              ? "bg-primary/15 dark:bg-primary/25"
                               : "bg-muted"
                           }`}>
                             <Truck className={`h-4 w-4 ${
                               deliveryOptions[supplierId] === "date"
-                                ? "text-indigo-600 dark:text-indigo-400"
+                                ? "text-primary"
                                 : "text-muted-foreground"
                             }`} />
                           </div>
                           <span className={`text-xs font-medium ${
                             deliveryOptions[supplierId] === "date"
-                              ? "text-indigo-700 dark:text-indigo-300"
+                              ? "text-primary"
                               : "text-muted-foreground"
                           }`}>{t("cart", "selectDeliveryDay")}</span>
                         </button>
