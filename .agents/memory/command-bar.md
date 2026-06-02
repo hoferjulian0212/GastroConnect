@@ -1,8 +1,9 @@
 ---
-name: Global command bar & search
-description: Where the command-bar / global search lives and how to extend it
+name: Command bar already exists
+description: Avoid rebuilding the global search / command palette
 ---
-- `client/src/components/GlobalSearch.tsx` is a full cmdk command bar: Cmd/Ctrl+K toggles it, `openGlobalSearch()` fires a `gc:open-search` CustomEvent, and `DesktopSearchButton` is the header trigger. Mounted in `App.tsx`.
-- Backend search is `/api/search` in `server/routes.ts` (role-scoped; returns orders/products/partners/messages/complaints/documents, PER=5).
-- When query < 2 chars it shows a role-aware "Aktionen/Azioni" quick-nav group instead of a hint.
-- **How to apply:** add new searchable types or quick actions here rather than building a second palette.
+A full global command palette already ships in the app (cmdk-based, Cmd/Ctrl+K, role-scoped backend search). It also exposes a programmatic open helper and a header trigger button.
+
+**Why:** it's easy to miss and accidentally build a parallel palette. New searchable entities or quick actions belong in the existing component, not a new one.
+
+**How to apply:** before adding any search/command/shortcut-launcher UI, grep for the existing GlobalSearch component and `/api/search`, and extend those.

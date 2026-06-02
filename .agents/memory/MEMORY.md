@@ -1,2 +1,2 @@
-- [Global command bar & search](command-bar.md) — GlobalSearch.tsx + /api/search already implement Cmd/Ctrl+K search; extend, don't rebuild.
-- [Chat attachments & drag-drop](chat-attachments.md) — reusable upload helpers + ChatDropZone live in ChatAttachment.tsx; validation 10MB + pdf/jpg/png/webp/docx.
+- [Command bar already exists](command-bar.md) — don't build a second search/command palette; extend the existing one.
+- [Centralized chat uploads](chat-attachments.md) — reuse the shared chat file-upload helpers for any new attach surface; verify the PUT before sending.

@@ -1,8 +1,9 @@
 ---
-name: Chat attachments & drag-drop
-description: Reusable chat file-upload flow and drag-and-drop overlay
+name: Centralized chat uploads
+description: Reuse the shared chat upload helpers; pitfalls to avoid
 ---
-- `client/src/components/ChatAttachment.tsx` exports `validateChatFile`, `uploadChatFile`, and `ChatDropZone` (drag overlay), plus AttachmentPopover/AttachmentMessageCard.
-- Upload flow: POST `/api/attachments/request-url` -> PUT to presigned URL (must check `res.ok`) -> `onSendAttachment(JSON)`. Validation: 10MB max, mime pdf/jpg/png/webp/docx.
-- ChatDropZone wraps the active-conversation branch in both `pages/restaurant/Inbox.tsx` and `pages/supplier/Inbox.tsx`; it's bilingual via a `lang` prop and ignores drops while uploading.
-- **Why:** the upload logic was duplicated; centralizing it keeps the popover and drop-zone in sync. Any new chat upload surface should reuse these helpers.
+Chat file uploads are centralized in `client/src/components/ChatAttachment.tsx` (shared validate + upload helpers plus a drag-drop overlay). Both restaurant and supplier inboxes consume them.
+
+**Why:** the upload + validation logic was duplicated and drifted; centralizing keeps the attach button and drag-drop in sync. A presigned PUT can succeed at the request-url step but fail on the actual upload — always check the PUT response before posting the attachment message, or chat shows a file that doesn't exist.
+
+**How to apply:** any new chat attach surface should call the shared helpers rather than re-implementing the presigned-URL flow.
