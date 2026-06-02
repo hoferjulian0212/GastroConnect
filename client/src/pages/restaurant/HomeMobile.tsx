@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { format, isToday, isTomorrow, formatDistanceToNow } from "date-fns";
-import { MessageSquare, Calculator, ShoppingBag, Euro, Truck, AlertTriangle, ChevronRight, Plus, FileText, Calendar, RotateCcw, Inbox } from "lucide-react";
+import { MessageSquare, Calculator, ShoppingBag, Euro, Truck, AlertTriangle, Plus, FileText, Calendar, RotateCcw, Inbox } from "lucide-react";
 import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -63,15 +63,6 @@ export default function RestaurantHomeMobile({
   const fmtPrice = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
 
   const cpgNum = parseFloat(costAnalysis?.costPerGuest || "0");
-  const cpgTarget = parseFloat(costAnalysis?.targetCost || "0");
-  const cpgDiff = cpgTarget > 0 ? cpgNum - cpgTarget : 0;
-  const cpgStatus: "ok" | "over" | "under" | "none" = !cpgTarget
-    ? "none"
-    : cpgDiff > 0.3
-    ? "over"
-    : cpgDiff < -0.3
-    ? "under"
-    : "ok";
 
   const leadParts: string[] = [];
   if (todayDeliveries.length > 0) {
@@ -361,26 +352,6 @@ export default function RestaurantHomeMobile({
         testId="mobile-fab-order"
       />
 
-      {cpgStatus !== "none" && (
-        <button
-          onClick={() => navigate("/restaurant/cost-analysis")}
-          data-testid="mobile-home-cpg-sticky"
-          className="fixed left-3 right-3 z-40 flex items-center justify-between gap-2 rounded-2xl bg-card/95 backdrop-blur border border-border shadow-lg px-3.5 py-2.5 active:scale-[0.98] transition-transform"
-          style={{ bottom: "var(--mobile-cta-offset)" }}
-        >
-          <span className="flex items-center gap-2 text-[12px] font-medium text-muted-foreground">
-            <Calculator className="h-3.5 w-3.5" />
-            {lang === "de" ? "Kosten/Gast" : "Costo/ospite"}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="text-[14px] font-bold tabular-nums text-foreground">{cpgNum.toFixed(2)}€</span>
-            <span className={`text-[11px] tabular-nums font-semibold ${cpgStatus === "over" ? "text-rose-600 dark:text-rose-400" : cpgStatus === "under" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-              {cpgDiff > 0 ? "+" : ""}{cpgDiff.toFixed(2)}€
-            </span>
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-          </span>
-        </button>
-      )}
     </div>
   );
 }
