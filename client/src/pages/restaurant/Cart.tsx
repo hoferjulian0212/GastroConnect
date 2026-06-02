@@ -156,28 +156,6 @@ export default function RestaurantCart() {
   const [sendingSupplier, setSendingSupplier] = useState<string | null>(null);
   const [mobileStep, setMobileStep] = useState<"preview" | "summary">("summary");
   const [mobileValidationError, setMobileValidationError] = useState<string | null>(null);
-  useEffect(() => {
-    if (mobileStep !== "summary") return;
-    setDeliveryOptions(prev => {
-      let optsChanged = false;
-      const nextOpts = { ...prev };
-      const nextDates: Record<string, string> = { ...selectedDeliveryDates };
-      let datesChanged = false;
-      for (const sid of supplierIds) {
-        const allowedDates = (perSupplierDeliveryDates[sid] || []).map(d => d.value);
-        const cur = nextOpts[sid];
-        const curDate = nextDates[sid];
-        if (cur === "date" && curDate && !allowedDates.includes(curDate)) {
-          nextOpts[sid] = "asap";
-          nextDates[sid] = "";
-          optsChanged = true;
-          datesChanged = true;
-        }
-      }
-      if (datesChanged) setSelectedDeliveryDates(nextDates);
-      return optsChanged ? nextOpts : prev;
-    });
-  }, [mobileStep, supplierIds, perSupplierDeliveryDates]); // eslint-disable-line react-hooks/exhaustive-deps
   const [preConfirmDialog, setPreConfirmDialog] = useState<{
     mode: "all" | "single";
     supplierId?: string;
@@ -386,6 +364,29 @@ export default function RestaurantCart() {
     }
     return result;
   }, [allDeliverySchedules, supplierIds]);
+
+  useEffect(() => {
+    if (mobileStep !== "summary") return;
+    setDeliveryOptions(prev => {
+      let optsChanged = false;
+      const nextOpts = { ...prev };
+      const nextDates: Record<string, string> = { ...selectedDeliveryDates };
+      let datesChanged = false;
+      for (const sid of supplierIds) {
+        const allowedDates = (perSupplierDeliveryDates[sid] || []).map(d => d.value);
+        const cur = nextOpts[sid];
+        const curDate = nextDates[sid];
+        if (cur === "date" && curDate && !allowedDates.includes(curDate)) {
+          nextOpts[sid] = "asap";
+          nextDates[sid] = "";
+          optsChanged = true;
+          datesChanged = true;
+        }
+      }
+      if (datesChanged) setSelectedDeliveryDates(nextDates);
+      return optsChanged ? nextOpts : prev;
+    });
+  }, [mobileStep, supplierIds, perSupplierDeliveryDates]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getEffectivePrice = (item: CartItemWithPromotion) => {
     const originalPrice = parseFloat(item.product.price);
