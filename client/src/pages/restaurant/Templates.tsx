@@ -18,6 +18,7 @@ import {
   Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle, Copy, Store, Pencil, AlertCircle
 } from "lucide-react";
 import QuantityInput from "@/components/QuantityInput";
+import SwipeableRow from "@/components/SwipeableRow";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { ProductImage } from "@/components/ProductImage";
@@ -236,9 +237,28 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
             const availableCount = getAvailableCount(tmpl);
             const unavailableCount = tmpl.items.length - availableCount;
             const isEditingName = editingNameId === tmpl.id;
+            const swipeLeftActions = isEditingName ? [] : [
+              {
+                icon: <ShoppingCart className="h-5 w-5" />,
+                label: lang === "de" ? "Warenkorb" : "Carrello",
+                color: "bg-emerald-500",
+                onClick: () => setUseTemplate(tmpl),
+                testId: `swipe-add-cart-${tmpl.id}`,
+              },
+            ];
+            const swipeRightActions = isEditingName ? [] : [
+              {
+                icon: <Trash2 className="h-5 w-5" />,
+                label: lang === "de" ? "Löschen" : "Elimina",
+                color: "bg-red-500",
+                onClick: () => setDeleteId(tmpl.id),
+                testId: `swipe-delete-${tmpl.id}`,
+              },
+            ];
 
             return (
-              <Card key={tmpl.id} className="overflow-hidden" data-testid={`template-card-${tmpl.id}`}>
+              <SwipeableRow key={tmpl.id} leftActions={swipeLeftActions} rightActions={swipeRightActions}>
+              <Card className="overflow-hidden" data-testid={`template-card-${tmpl.id}`}>
                 <CardContent className="p-0">
                   <div className="p-3 md:p-4">
                     <div className="flex items-start gap-3">
@@ -448,6 +468,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
                   </div>
                 </CardContent>
               </Card>
+              </SwipeableRow>
             );
           })}
         </div>
