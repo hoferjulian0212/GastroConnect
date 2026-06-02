@@ -309,13 +309,31 @@ export function GlobalSearch() {
                     {data!.products.length === PER_GROUP && (
                       <CommandItem
                         value="more-products"
-                        onSelect={() =>
+                        onSelect={() => {
+                          if (role !== "restaurant") {
+                            go("/supplier/products");
+                            return;
+                          }
+                          const counts = new Map<string, number>();
+                          for (const p of data!.products) {
+                            if (p.category) {
+                              counts.set(p.category, (counts.get(p.category) || 0) + 1);
+                            }
+                          }
+                          let topCategory: string | null = null;
+                          let topCount = 0;
+                          for (const [cat, c] of counts) {
+                            if (c > topCount) {
+                              topCount = c;
+                              topCategory = cat;
+                            }
+                          }
                           go(
-                            role === "restaurant"
-                              ? "/restaurant/catalog"
-                              : "/supplier/products",
-                          )
-                        }
+                            topCategory
+                              ? `/restaurant/catalog?category=${encodeURIComponent(topCategory)}`
+                              : "/restaurant/catalog",
+                          );
+                        }}
                         data-testid="search-more-products"
                       >
                         <ArrowRight className="text-muted-foreground" />
@@ -492,15 +510,6 @@ export function GlobalSearch() {
               </>
             )}
           </CommandList>
-          <div className="hidden md:flex items-center justify-end gap-2 border-t px-3 py-2 text-[11px] text-muted-foreground">
-            <kbd className="rounded border bg-muted px-1.5 py-0.5 font-sans">↑</kbd>
-            <kbd className="rounded border bg-muted px-1.5 py-0.5 font-sans">↓</kbd>
-            <span>{t("Navigation", "Naviga")}</span>
-            <kbd className="ml-2 rounded border bg-muted px-1.5 py-0.5 font-sans">↵</kbd>
-            <span>{t("Öffnen", "Apri")}</span>
-            <kbd className="ml-2 rounded border bg-muted px-1.5 py-0.5 font-sans">Esc</kbd>
-            <span>{t("Schließen", "Chiudi")}</span>
-          </div>
         </Command>
       </DialogContent>
     </Dialog>
