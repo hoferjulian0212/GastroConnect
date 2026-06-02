@@ -1,0 +1,2 @@
+- [Global command bar & search](command-bar.md) — GlobalSearch.tsx + /api/search already implement Cmd/Ctrl+K search; extend, don't rebuild.
+- [Chat attachments & drag-drop](chat-attachments.md) — reusable upload helpers + ChatDropZone live in ChatAttachment.tsx; validation 10MB + pdf/jpg/png/webp/docx.

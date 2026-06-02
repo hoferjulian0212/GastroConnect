@@ -39,6 +39,179 @@ function getFileTypeLabel(type: string): string {
   return "Datei";
 }
 
+export type ChatFileError = "type" | "size";
+
+export function validateChatFile(file: File): ChatFileError | null {
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) return "type";
+  if (file.size > MAX_FILE_SIZE) return "size";
+  return null;
+}
+
+export async function uploadChatFile(
+  file: File,
+  conversationId: string,
+  senderId: string,
+): Promise<string> {
+  const urlRes = await apiRequest("POST", "/api/attachments/request-url", {
+    name: file.name,
+    size: file.size,
+    contentType: file.type,
+    conversationId,
+    senderId,
+  });
+  const { uploadURL, objectPath } = await urlRes.json();
+
+  const putRes = await fetch(uploadURL, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+  if (!putRes.ok) {
+    throw new Error("Failed to upload file to storage");
+  }
+
+  return JSON.stringify({
+    fileName: file.name,
+    fileType: file.type,
+    fileSize: file.size,
+    fileUrl: objectPath,
+  });
+}
+
+interface ChatDropZoneProps {
+  conversationId: string;
+  senderId: string;
+  onSendAttachment: (content: string) => void;
+  lang: "de" | "it";
+  className?: string;
+  children: React.ReactNode;
+}
+
+export function ChatDropZone({
+  conversationId,
+  senderId,
+  onSendAttachment,
+  lang,
+  className,
+  children,
+}: ChatDropZoneProps) {
+  const { toast } = useToast();
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const dragCounter = useRef(0);
+  const t = (de: string, it: string) => (lang === "it" ? it : de);
+
+  const hasFiles = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer?.types || []).includes("Files");
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragCounter.current += 1;
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!hasFiles(e)) return;
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragCounter.current = 0;
+    setIsDragging(false);
+
+    if (isUploading) return;
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    const err = validateChatFile(file);
+    if (err === "type") {
+      toast({
+        title: t("Dateityp nicht erlaubt", "Tipo di file non consentito"),
+        description: t(
+          "Erlaubte Formate: PDF, JPG, PNG, WEBP, DOCX",
+          "Formati consentiti: PDF, JPG, PNG, WEBP, DOCX",
+        ),
+        variant: "destructive",
+      });
+      return;
+    }
+    if (err === "size") {
+      toast({
+        title: t("Datei zu groß", "File troppo grande"),
+        description: t("Maximale Dateigröße: 10 MB", "Dimensione massima: 10 MB"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const content = await uploadChatFile(file, conversationId, senderId);
+      onSendAttachment(content);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      toast({
+        title: t("Upload fehlgeschlagen", "Caricamento non riuscito"),
+        description: t(
+          "Die Datei konnte nicht hochgeladen werden.",
+          "Impossibile caricare il file.",
+        ),
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div
+      className={`relative ${className || ""}`}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      data-testid="chat-dropzone"
+    >
+      {children}
+      {(isDragging || isUploading) && (
+        <div
+          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-primary bg-background/90 backdrop-blur-sm pointer-events-none"
+          data-testid="chat-dropzone-overlay"
+        >
+          {isUploading ? (
+            <Loader2 className="h-10 w-10 text-primary animate-spin" />
+          ) : (
+            <Upload className="h-10 w-10 text-primary" />
+          )}
+          <p className="text-sm font-medium text-foreground">
+            {isUploading
+              ? t("Wird hochgeladen…", "Caricamento…")
+              : t("Datei hier ablegen", "Rilascia il file qui")}
+          </p>
+          {!isUploading && (
+            <p className="text-xs text-muted-foreground">
+              PDF, JPG, PNG, WEBP, DOCX · max 10 MB
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface AttachmentPopoverProps {
   conversationId: string;
   senderId: string;
@@ -72,7 +245,8 @@ export function AttachmentPopover({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    const err = validateChatFile(file);
+    if (err === "type") {
       toast({
         title: "Dateityp nicht erlaubt",
         description: "Erlaubte Formate: PDF, JPG, PNG, WEBP, DOCX",
@@ -80,8 +254,7 @@ export function AttachmentPopover({
       });
       return;
     }
-
-    if (file.size > MAX_FILE_SIZE) {
+    if (err === "size") {
       toast({
         title: "Datei zu groß",
         description: "Maximale Dateigröße: 10 MB",
@@ -94,28 +267,8 @@ export function AttachmentPopover({
     setIsOpen(false);
 
     try {
-      const urlRes = await apiRequest("POST", "/api/attachments/request-url", {
-        name: file.name,
-        size: file.size,
-        contentType: file.type,
-        conversationId,
-        senderId,
-      });
-      const { uploadURL, objectPath } = await urlRes.json();
-
-      await fetch(uploadURL, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-
-      const attachmentData = {
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-        fileUrl: objectPath,
-      };
-      onSendAttachment(JSON.stringify(attachmentData));
+      const content = await uploadChatFile(file, conversationId, senderId);
+      onSendAttachment(content);
     } catch (error) {
       console.error("Upload failed:", error);
       toast({

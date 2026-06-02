@@ -22,7 +22,7 @@ import { VoiceMessage } from "@/components/chat/VoiceMessage";
 import { useUpload } from "@/hooks/use-upload";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
+import { AttachmentPopover, AttachmentMessageCard, ChatDropZone } from "@/components/ChatAttachment";
 import { DeliveryNoteCard } from "@/components/DeliveryNoteCard";
 import OnlineStatus from "@/components/OnlineStatus";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
@@ -1089,7 +1089,13 @@ export default function SupplierInbox() {
 
           <div className={`flex-1 min-w-0 flex flex-col overflow-hidden ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && selectedConv ? (
-              <>
+              <ChatDropZone
+                conversationId={selectedConversation}
+                senderId={currentUser?.id || ""}
+                onSendAttachment={handleSendAttachment}
+                lang={lang as "de" | "it"}
+                className="flex-1 flex flex-col overflow-hidden h-full"
+              >
                 <div className="border-b border-border px-3 py-3.5 md:px-4 md:py-4 bg-background">
                   <div className="flex items-center gap-2.5 md:gap-3 min-h-[44px]">
                     <Button
@@ -2380,7 +2386,7 @@ export default function SupplierInbox() {
                     )}
                   </div>
                 </div>
-              </>
+              </ChatDropZone>
             ) : (
               <div className="flex-1 flex flex-col">
                 {selectedConversation && (

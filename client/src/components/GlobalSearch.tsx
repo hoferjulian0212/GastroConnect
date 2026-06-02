@@ -10,6 +10,9 @@ import {
   FileText,
   Search as SearchIcon,
   ArrowRight,
+  Home,
+  ShoppingCart,
+  BarChart3,
 } from "lucide-react";
 import {
   Command,
@@ -149,6 +152,27 @@ export function GlobalSearch() {
     setLocation(path);
   };
 
+  const actions =
+    role === "restaurant"
+      ? [
+          { icon: Home, label: t("Startseite", "Home"), path: "/restaurant", testid: "action-home" },
+          { icon: ShoppingBag, label: t("Bestellungen", "Ordini"), path: "/restaurant/orders", testid: "action-orders" },
+          { icon: ShoppingCart, label: t("Warenkorb", "Carrello"), path: "/restaurant/cart", testid: "action-cart" },
+          { icon: Package, label: t("Katalog", "Catalogo"), path: "/restaurant/catalog", testid: "action-catalog" },
+          { icon: BarChart3, label: t("Preisvergleich", "Confronto prezzi"), path: "/restaurant/price-comparison", testid: "action-price-comparison" },
+          { icon: MessageSquare, label: t("Posteingang", "Posta in arrivo"), path: "/restaurant/inbox", testid: "action-inbox" },
+          { icon: AlertCircle, label: t("Reklamationen", "Reclami"), path: "/restaurant/complaints", testid: "action-complaints" },
+          { icon: FileText, label: t("Dokumente", "Documenti"), path: "/restaurant/documents", testid: "action-documents" },
+        ]
+      : [
+          { icon: Home, label: t("Startseite", "Home"), path: "/supplier", testid: "action-home" },
+          { icon: ShoppingBag, label: t("Bestellungen", "Ordini"), path: "/supplier/orders", testid: "action-orders" },
+          { icon: Package, label: t("Produkte", "Prodotti"), path: "/supplier/products", testid: "action-products" },
+          { icon: MessageSquare, label: t("Posteingang", "Posta in arrivo"), path: "/supplier/inbox", testid: "action-inbox" },
+          { icon: AlertCircle, label: t("Reklamationen", "Reclami"), path: "/supplier/complaints", testid: "action-complaints" },
+          { icon: FileText, label: t("Dokumente", "Documenti"), path: "/supplier/documents", testid: "action-documents" },
+        ];
+
   const hasAny =
     !!data &&
     (data.orders.length ||
@@ -179,15 +203,25 @@ export function GlobalSearch() {
           />
           <CommandList className="max-h-[60vh]">
             {debounced.length < 2 ? (
-              <div
-                className="py-10 px-4 text-center text-sm text-muted-foreground"
-                data-testid="search-hint"
-              >
-                {t(
-                  "Mindestens 2 Zeichen eingeben",
-                  "Inserisci almeno 2 caratteri",
-                )}
-              </div>
+              <CommandGroup heading={t("Aktionen", "Azioni")}>
+                {actions.map((a) => {
+                  const Icon = a.icon;
+                  return (
+                    <CommandItem
+                      key={a.path}
+                      value={a.testid}
+                      onSelect={() => go(a.path)}
+                      data-testid={a.testid}
+                    >
+                      <Icon className="text-muted-foreground" />
+                      <span className="flex-1 min-w-0 font-medium truncate">
+                        {a.label}
+                      </span>
+                      <ArrowRight className="text-muted-foreground" />
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
             ) : isFetching && !data ? (
               <div className="py-10 px-4 text-center text-sm text-muted-foreground">
                 {t("Suche…", "Ricerca…")}

@@ -19,6 +19,7 @@ import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { GlobalSearch, DesktopSearchButton } from "@/components/GlobalSearch";
+import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
 import { useEffect, useCallback, useState, useRef, useLayoutEffect, lazy, Suspense } from "react";
@@ -578,6 +579,7 @@ function AppLayout() {
           </div>
           {!isDetailPage && (currentRole === "supplier" ? <SupplierMobileNav /> : <RestaurantMobileNav />)}
           <GlobalSearch />
+          <KeyboardShortcuts />
         </div>
       )}
     </>

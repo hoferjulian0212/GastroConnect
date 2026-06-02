@@ -18,7 +18,7 @@ import { QuickReplyChips } from "@/components/chat/QuickReplyChips";
 import { VoiceRecorder } from "@/components/chat/VoiceRecorder";
 import { VoiceMessage } from "@/components/chat/VoiceMessage";
 import { useUpload } from "@/hooks/use-upload";
-import { AttachmentPopover, AttachmentMessageCard } from "@/components/ChatAttachment";
+import { AttachmentPopover, AttachmentMessageCard, ChatDropZone } from "@/components/ChatAttachment";
 import { DeliveryNoteCard } from "@/components/DeliveryNoteCard";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Textarea } from "@/components/ui/textarea";
@@ -1320,7 +1320,13 @@ export default function RestaurantInbox() {
 
           <div className={`flex-1 min-w-0 flex flex-col overflow-hidden ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && selectedConv ? (
-              <>
+              <ChatDropZone
+                conversationId={selectedConversation}
+                senderId={currentUser?.id || ""}
+                onSendAttachment={handleSendAttachment}
+                lang={lang as "de" | "it"}
+                className="flex-1 flex flex-col overflow-hidden h-full"
+              >
                 <div className="border-b border-border px-3 py-3.5 md:px-4 md:py-4 bg-background">
                   <div className="flex items-center justify-between gap-2 min-h-[44px]">
                     <div className="flex items-center gap-2.5 md:gap-3">
@@ -2903,7 +2909,7 @@ export default function RestaurantInbox() {
                     )}
                   </div>
                 </div>
-              </>
+              </ChatDropZone>
             ) : (
               <div className="flex-1 flex flex-col h-full min-h-[calc(100dvh-200px)]">
                 {selectedConversation && (
