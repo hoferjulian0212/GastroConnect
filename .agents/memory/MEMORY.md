@@ -1,11 +1,4 @@
-- [No-login auth model](no-login-auth-model.md) — GastroConnect has no login/session; the "current user" comes from request IDs which are trusted.
-- [No server-side auth](no-server-auth.md) — Express backend has no auth middleware or ownership checks on `/api/*` routes.
-- [DB schema changes](db-schema-push.md) — schema is in `shared/schema.ts` (Drizzle); NO migration files, apply changes with `drizzle-kit push`.
-- [Three-bucket stock model](three-bucket-stock.md) — MAIN/ITI(reserved)/Outbounded buckets; invariants for any order-lifecycle stock change (reserve/return/outbound, atomicity, locking).
-- [Cross-supplier product matching](product-matching.md) — "same product across suppliers" matching for price comparison, substitution and OCR import lives in `shared/productMatch.ts`.
-- [Centralized chat uploads](chat-attachments.md) — reuse the shared chat upload helpers in ChatAttachment.tsx; don't rebuild per-inbox.
-- [Command bar exists](command-bar.md) — a global cmdk command palette (Cmd/Ctrl+K, role-scoped search) already ships; don't rebuild it.
-- [Mobile bottom-bar clearance](mobile-bottom-bar-clearance.md) — reserve space so fixed mobile bottom bars never cover page content.
-- [Mobile type ladder](mobile-type-ladder.md) — how `m-type-*`/`m-num`/`m-card` mobile typography utilities behave and where NOT to apply them.
-- [Decorative color normalization](decorative-color-normalization.md) — which blue/indigo accents are decorative (normalized) vs meaningful status/info (kept).
-- [Wouter location has query string](routing-location-query.md) — `useLocation()` includes `?query`; strip it before path/regex matching for page detection.
+# Memory Index
+
+- [Backend hot-reload](backend-hot-reload.md) — new/changed server modules need a workflow restart; symptom: new API route returns SPA HTML, not JSON.
+- [No-auth trusted identity](no-auth-trusted-identity.md) — app has NO auth; every endpoint trusts client userId/role by design. Don't "fix" per-endpoint.

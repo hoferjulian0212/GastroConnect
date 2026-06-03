@@ -34,6 +34,7 @@ const insertCustomMinOrderQuantitySchema = _insertCustomMinOrderQuantitySchema.s
 const insertCustomPriceSchema = _insertCustomPriceSchema.strict();
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { registerOcrImportRoutes } from "./ocrImport";
+import { registerAiSearchRoutes } from "./aiSearch";
 import { objectStorageClient, ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
 import PDFDocument from "pdfkit";
 import { randomUUID } from "crypto";
@@ -401,6 +402,7 @@ export async function registerRoutes(
   registerObjectStorageRoutes(app);
   // AI-powered OCR price-list import (supplier)
   registerOcrImportRoutes(app);
+  registerAiSearchRoutes(app);
 
   // Serve static images from client/public - ensures images work in both dev and production
   const clientPublicPath = path.resolve(process.cwd(), "client", "public");

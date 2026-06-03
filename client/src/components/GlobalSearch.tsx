@@ -13,6 +13,9 @@ import {
   Home,
   ShoppingCart,
   BarChart3,
+  Sparkles,
+  Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import {
   Command,
@@ -22,6 +25,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -84,6 +88,16 @@ interface SearchResults {
   }>;
 }
 
+interface AiAction {
+  kind: "open_inbox" | "open_order";
+  label: string;
+  href: string;
+  orderId?: string;
+  orderNumber?: string;
+  partnerId?: string;
+  suggestedMessage?: string;
+}
+
 const PER_GROUP = 5;
 
 export function GlobalSearch() {
@@ -93,6 +107,12 @@ export function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
+  const [aiMode, setAiMode] = useState(false);
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiAnswer, setAiAnswer] = useState("");
+  const [aiActions, setAiActions] = useState<AiAction[]>([]);
+  const [aiError, setAiError] = useState("");
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -115,6 +135,12 @@ export function GlobalSearch() {
     if (!open) {
       setQuery("");
       setDebounced("");
+      setAiMode(false);
+      setAiQuestion("");
+      setAiLoading(false);
+      setAiAnswer("");
+      setAiActions([]);
+      setAiError("");
     }
   }, [open]);
 
@@ -150,6 +176,50 @@ export function GlobalSearch() {
   const go = (path: string) => {
     setOpen(false);
     setLocation(path);
+  };
+
+  const exitAiMode = () => {
+    setAiMode(false);
+    setAiAnswer("");
+    setAiActions([]);
+    setAiError("");
+    setAiLoading(false);
+  };
+
+  const runAi = async (question: string) => {
+    const q = question.trim();
+    if (!q || !currentUser?.id) return;
+    setAiMode(true);
+    setAiQuestion(q);
+    setAiLoading(true);
+    setAiAnswer("");
+    setAiActions([]);
+    setAiError("");
+    try {
+      const res = await fetch("/api/search/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ question: q, userId: currentUser.id, role: currentRole, lang }),
+      });
+      if (!res.ok) {
+        if (res.status === 503) {
+          setAiError(t("Der KI-Assistent ist noch nicht eingerichtet.", "L'assistente AI non è ancora configurato."));
+        } else if (res.status === 429) {
+          setAiError(t("Zu viele Anfragen. Bitte in ein paar Minuten erneut versuchen.", "Troppe richieste. Riprova tra qualche minuto."));
+        } else {
+          setAiError(t("Es ist ein Fehler aufgetreten. Bitte erneut versuchen.", "Si è verificato un errore. Riprova."));
+        }
+        return;
+      }
+      const result = (await res.json()) as { answer?: string; actions?: AiAction[] };
+      setAiAnswer(result.answer || "");
+      setAiActions(Array.isArray(result.actions) ? result.actions : []);
+    } catch {
+      setAiError(t("Es ist ein Fehler aufgetreten. Bitte erneut versuchen.", "Si è verificato un errore. Riprova."));
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const actions =
@@ -194,14 +264,94 @@ export function GlobalSearch() {
         >
           <CommandInput
             placeholder={t(
-              "Bestellungen, Produkte, Nachrichten suchen…",
-              "Cerca ordini, prodotti, messaggi…",
+              "Suchen oder eine Frage stellen…",
+              "Cerca o fai una domanda…",
             )}
             value={query}
-            onValueChange={setQuery}
+            onValueChange={(v) => {
+              setQuery(v);
+              if (aiMode) exitAiMode();
+            }}
             data-testid="input-global-search"
           />
           <CommandList className="max-h-[60vh]">
+            {aiMode ? (
+              <div className="p-4" data-testid="ai-answer-panel">
+                <button
+                  type="button"
+                  onClick={exitAiMode}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-3"
+                  data-testid="button-ai-back"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  {t("Zurück zur Suche", "Torna alla ricerca")}
+                </button>
+                <div className="flex items-start gap-2.5">
+                  <div className="mt-0.5 shrink-0 rounded-full bg-primary/10 p-1.5 text-primary">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground mb-1 truncate" data-testid="text-ai-question">
+                      {aiQuestion}
+                    </p>
+                    {aiLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-2" data-testid="ai-loading">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {t("Denke nach…", "Sto pensando…")}
+                      </div>
+                    ) : aiError ? (
+                      <p className="text-sm text-destructive" data-testid="text-ai-error">
+                        {aiError}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-sm text-foreground whitespace-pre-wrap" data-testid="text-ai-answer">
+                          {aiAnswer}
+                        </p>
+                        {aiActions.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-3" data-testid="ai-actions">
+                            {aiActions.map((a, i) => (
+                              <Button
+                                key={i}
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="rounded-full h-8 px-3 text-xs gap-1.5"
+                                onClick={() => go(a.href)}
+                                data-testid={`button-ai-action-${i}`}
+                              >
+                                {a.kind === "open_inbox" ? (
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                ) : (
+                                  <ShoppingBag className="h-3.5 w-3.5" />
+                                )}
+                                {a.label}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+            {debounced.length >= 2 && (
+              <CommandGroup heading={t("KI-Assistent", "Assistente AI")}>
+                <CommandItem
+                  value="ask-ai"
+                  onSelect={() => runAi(debounced)}
+                  data-testid="search-ask-ai"
+                >
+                  <Sparkles className="text-primary" />
+                  <span className="flex-1 min-w-0 truncate">
+                    {t(`KI fragen: „${debounced}"`, `Chiedi all'AI: "${debounced}"`)}
+                  </span>
+                  <ArrowRight className="text-muted-foreground" />
+                </CommandItem>
+              </CommandGroup>
+            )}
             {debounced.length < 2 ? (
               <CommandGroup heading={t("Aktionen", "Azioni")}>
                 {actions.map((a) => {
@@ -227,9 +377,9 @@ export function GlobalSearch() {
                 {t("Suche…", "Ricerca…")}
               </div>
             ) : !hasAny ? (
-              <CommandEmpty>
+              <div className="py-10 px-4 text-center text-sm text-muted-foreground" data-testid="search-empty">
                 {t("Keine Ergebnisse", "Nessun risultato")}
-              </CommandEmpty>
+              </div>
             ) : (
               <>
                 {data!.orders.length > 0 && (
@@ -507,6 +657,8 @@ export function GlobalSearch() {
                     )}
                   </CommandGroup>
                 )}
+              </>
+            )}
               </>
             )}
           </CommandList>

@@ -275,6 +275,10 @@ export default function RestaurantInbox() {
       setSelectedComplaintId(complaintIdParam);
       setShowComplaintDetail(true);
     }
+    const prefillParam = params.get("prefill") || params.get("suggestedMessage");
+    if (prefillParam) {
+      setMessageText(prefillParam);
+    }
   }, [searchString, currentUser?.id]);
 
   const { data: orderDetail } = useQuery<OrderWithDetails>({

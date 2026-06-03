@@ -311,6 +311,10 @@ export default function SupplierInbox() {
       const label = `${lang === "de" ? "Reklamation" : "Reclamo"} #${display}`;
       setAttachedComplaintRef({ id: complaintRefIdParam, label });
     }
+    const prefillParam = params.get("prefill") || params.get("suggestedMessage");
+    if (prefillParam) {
+      setMessageText(prefillParam);
+    }
   }, [searchString, currentUser?.id, lang]);
 
   const { data: orderDetail, refetch: refetchOrderDetail } = useQuery<OrderWithDetails>({
