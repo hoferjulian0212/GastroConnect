@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { HeroPortal } from "@/context/HeroContext";
+import { SectionTabs } from "@/components/SectionTabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
@@ -492,7 +493,7 @@ export default function RestaurantCatalog() {
  >
  {!selectedCategory ? (
  <>
- <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="catalog-hero">
+ <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="catalog-hero"><SectionTabs />
  <div>
  <h1 className="m-type-display text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">
  {lang === "de" ? "Produktkatalog" : "Catalogo prodotti"}

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, Fragment } from "react";
 import { HeroPortal } from "@/context/HeroContext";
+import { SectionTabs } from "@/components/SectionTabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1385,7 +1386,7 @@ export default function SupplierProducts() {
  }}
  className="space-y-4 md:space-y-6 pb-[var(--mobile-bottom-pad)] md:pb-0"
  >
- <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="products-hero">
+ <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="products-hero"><SectionTabs />
  <div className="flex items-center justify-between gap-3">
  <div>
  <h1 className="m-type-display text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">

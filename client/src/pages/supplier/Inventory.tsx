@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { HeroPortal } from "@/context/HeroContext";
+import { SectionTabs } from "@/components/SectionTabs";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -36,7 +37,7 @@ export default function SupplierInventory() {
       }}
       className="space-y-4 md:space-y-6 pb-[var(--mobile-bottom-pad)] md:pb-0"
     >
-      <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-4" data-testid="inventory-hero">
+      <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-4" data-testid="inventory-hero"><SectionTabs />
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("supplierProducts", "stockManagement")}</h1>

@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Package, ShoppingCart, ShoppingBag, AlertCircle, Settings, Truck, FileText, User, Calculator, ArrowUpDown, CalendarDays, HelpCircle } from "lucide-react";
+import { Home, MessageSquare, Package, ShoppingCart, ShoppingBag, AlertCircle, Settings, Truck, FileText, User, Calculator, ArrowUpDown, HelpCircle } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -20,7 +20,6 @@ export function RestaurantMobileNav() {
   const moreMenuItems = [
     { title: t("common", "suppliers"), url: "/restaurant/suppliers", icon: Truck },
     { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag },
-    { title: lang === "de" ? "Lieferkalender" : "Calendario consegne", url: "/restaurant/calendar", icon: CalendarDays },
     { title: t("common", "cart"), url: "/restaurant/cart", icon: ShoppingCart, hasBadge: true },
     { title: t("common", "complaints"), url: "/restaurant/complaints", icon: AlertCircle },
     { title: t("common", "documents"), url: "/restaurant/documents", icon: FileText },

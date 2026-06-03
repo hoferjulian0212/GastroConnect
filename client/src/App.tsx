@@ -314,8 +314,6 @@ function HeaderNav() {
       label: lang === 'de' ? 'Bestellungen' : 'Ordini',
       children: [
         { href: '/restaurant/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
-        { href: '/restaurant/templates', label: lang === 'de' ? 'Bestellvorlagen' : "Modelli d'ordine" },
-        { href: '/restaurant/calendar', label: lang === 'de' ? 'Lieferkalender' : 'Calendario consegne' },
         { href: '/restaurant/complaints', label: lang === 'de' ? 'Reklamationen' : 'Reclami' },
         { href: '/restaurant/documents', label: lang === 'de' ? 'Dokumente' : 'Documenti' },
         { href: '/restaurant/monthly-reports', label: lang === 'de' ? 'Monatsberichte' : 'Report mensili' },
@@ -327,7 +325,6 @@ function HeaderNav() {
       children: [
         { href: '/restaurant/catalog', label: lang === 'de' ? 'Katalog' : 'Catalogo' },
         { href: '/restaurant/suppliers', label: lang === 'de' ? 'Lieferanten' : 'Fornitori' },
-        { href: '/restaurant/price-comparison', label: lang === 'de' ? 'Preisvergleich' : 'Confronto prezzi' },
         { href: '/restaurant/cost-analysis', label: lang === 'de' ? 'Kostenanalyse' : 'Analisi costi' },
       ],
     },
@@ -342,7 +339,6 @@ function HeaderNav() {
       label: lang === 'de' ? 'Bestellungen' : 'Ordini',
       children: [
         { href: '/supplier/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
-        { href: '/supplier/calendar', label: lang === 'de' ? 'Lieferkalender' : 'Calendario consegne' },
         { href: '/supplier/complaints', label: lang === 'de' ? 'Reklamationen' : 'Reclami' },
         { href: '/supplier/documents', label: lang === 'de' ? 'Dokumente' : 'Documenti' },
       ],
@@ -352,8 +348,6 @@ function HeaderNav() {
       label: lang === 'de' ? 'Produkte' : 'Prodotti',
       children: [
         { href: '/supplier/products', label: lang === 'de' ? 'Katalog' : 'Catalogo' },
-        { href: '/supplier/inventory', label: lang === 'de' ? 'Bestandsverwaltung' : 'Gestione magazzino' },
-        { href: '/supplier/promotions', label: lang === 'de' ? 'Aktionen' : 'Promozioni' },
         { href: '/supplier/restaurants', label: lang === 'de' ? 'Kunden' : 'Clienti' },
       ],
     },

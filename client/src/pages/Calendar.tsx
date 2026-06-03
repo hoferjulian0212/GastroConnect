@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DarkHero } from "@/components/DarkHero";
+import { SectionTabs } from "@/components/SectionTabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatOrderNumber, type OrderWithDetails } from "@shared/schema";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -154,6 +155,7 @@ export default function CalendarPage({ role }: CalendarProps) {
   return (
     <>
       <DarkHero testId="calendar-hero">
+        <SectionTabs />
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-xl md:text-3xl font-bold text-white">

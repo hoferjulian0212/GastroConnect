@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { HeroPortal } from "@/context/HeroContext";
+import { SectionTabs } from "@/components/SectionTabs";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
@@ -437,7 +438,7 @@ export default function PriceComparison() {
  if (isLoading) {
  return (
  <div className="space-y-4 md:space-y-6 pb-4 md:pb-6">
- <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3">
+ <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3"><SectionTabs />
  <Skeleton className="h-8 w-48 bg-white/10" />
  <Skeleton className="h-12 w-72 bg-white/10" />
  </div></HeroPortal>
@@ -467,7 +468,7 @@ export default function PriceComparison() {
  return (
  <div className="space-y-4 md:space-y-6 pb-[var(--mobile-bottom-pad)] md:pb-6">
  {/* ─── HERO (slim, single headline) ─────────────────────────────── */}
- <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 md:" data-testid="price-comparison-hero">
+ <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 md:" data-testid="price-comparison-hero"><SectionTabs />
  <div className="flex items-start justify-between gap-3 mb-3">
  <div>
  <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">

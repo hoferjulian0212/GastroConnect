@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { HeroPortal } from "@/context/HeroContext";
+import { SectionTabs } from "@/components/SectionTabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -945,7 +946,7 @@ export default function SupplierOrders() {
 
  return (
  <div className="space-y-4 md:space-y-6">
- <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="orders-hero">
+ <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="orders-hero"><SectionTabs />
  <div className="flex items-start justify-between gap-3">
  <div>
  <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{lang === "de" ? "Aufträge" : "Ordini"}</h1>
