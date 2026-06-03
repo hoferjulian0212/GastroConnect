@@ -1,2 +1,1 @@
-- [No server-side auth](no-server-auth.md) — Express routes trust client-side currentUser; no session/authz/ownership checks. New routes that mutate by ID are IDOR-prone by design.
-- [DB schema changes](db-schema-push.md) — project uses drizzle-kit push (no migration files); run `npm run db:push -- --force` after editing shared/schema.ts.
+- [Mobile bottom-bar clearance](mobile-bottom-bar-clearance.md) — reserve space for fixed mobile bottom bars with pure-CSS env(safe-area-inset-bottom) vars, not JS-measured px fallbacks (under-reserve on large-inset devices).

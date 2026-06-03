@@ -12,7 +12,6 @@ import { ProductImage } from "@/components/ProductImage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useStickyActionBarHeight } from "@/hooks/use-sticky-action-bar";
 import { TONE, orderStatusTone } from "@/lib/status-colors";
 import { motion } from "framer-motion";
 import { ReorderSheet } from "@/components/ReorderSheet";
@@ -44,7 +43,6 @@ export default function OrderDetail() {
   const [changeRequestText, setChangeRequestText] = useState("");
   const [mobileTab, setMobileTab] = useState<"updates" | "details">("updates");
   const isMobile = useIsMobile();
-  const { containerRef: stickyBarContainerRef, barRef: stickyBarRef } = useStickyActionBarHeight();
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
 
   const { data: order, isLoading } = useQuery<OrderWithDetails>({
@@ -558,7 +556,7 @@ export default function OrderDetail() {
   const tabClsDetails = mobileTab === "details" ? "" : "max-md:hidden";
 
   return (
-    <div ref={stickyBarContainerRef} className="min-h-dvh bg-background pb-[var(--mobile-action-bar-h,112px)] md:!pb-0" data-testid="page-order-detail">
+    <div className="min-h-dvh bg-background pb-[var(--mobile-detail-bottom-pad)] md:!pb-0" data-testid="page-order-detail">
       <div className="w-full">
         {/* Desktop: inject title + status + actions into the global dark app header (one continuous black header) */}
         <HeroPortal desktopOnly>
@@ -1292,10 +1290,12 @@ export default function OrderDetail() {
         />
       )}
 
-      {/* Mobile sticky bottom CTA bar */}
+      {/* Mobile sticky bottom CTA bar.
+          Height = border-t(1px) + pt-3(12px) + h-12 row(48px) + pb(safe-area+12px) ~= safe-area+73px.
+          The page root reserves space via --mobile-detail-bottom-pad (index.css); if this
+          structure/height changes, update --mobile-detail-cta-h to match so content stays clear. */}
       {!confirmAction && (mobilePrimary || mobileSecondaryByCat.length > 0) && (
         <div
-          ref={stickyBarRef}
           className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]"
           data-testid="mobile-action-bar"
         >

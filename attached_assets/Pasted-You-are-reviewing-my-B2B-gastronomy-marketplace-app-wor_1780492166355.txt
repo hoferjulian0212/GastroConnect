@@ -1,0 +1,37 @@
+You are reviewing my B2B gastronomy marketplace app (working name: GastroConnect),
+modeled loosely on Choco — connecting food/beverage SUPPLIERS with RESTAURANTS.
+
+STEP 1 — AUDIT THE ACTUAL CODE FIRST. Do not assume.
+- List every feature/page/route that currently exists.
+- Map the data model (tables, relationships) and the main user flows for BOTH
+  sides: supplier and restaurant.
+- Identify the current ordering flow end-to-end (browse → cart → order →
+  confirmation → supplier receives it).
+- Tell me what's half-built, broken, or duplicated.
+
+STEP 2 — MEASURE AGAINST WHAT THIS APP SHOULD BE.
+Core jobs a Choco-style B2B platform must nail:
+- Restaurant: find suppliers, browse catalogs/prices, reorder fast, track orders.
+- Supplier: manage catalog/prices/stock, receive & confirm orders, manage customers.
+- Both: order history, simple messaging, clean mobile UX (staff order on phones).
+For each core job: is it present, partial, or missing? Be specific.
+
+STEP 3 — KEEP THE SCOPE LEAN. This is an MVP, not an ERP.
+- Tell me which existing features are NOT needed for launch and add complexity.
+- Tell me what's missing that's actually essential.
+- Flag anything that should be cut, simplified, or deferred to v2.
+
+STEP 4 — IMPROVE WHAT MATTERS.
+- Top 5 concrete improvements ranked by impact-to-effort.
+- Note the single biggest risk (technical or product) you see.
+- Pay attention to my Preisvergleich (price comparison) feature — is it built well,
+  and is the data model right for comparing the same product across suppliers?
+
+STEP 5 — ONE KILLER AI FEATURE TO BEAT COMPETITORS.
+Propose 2-3 AI features realistic to build here. For each: what it does, why a
+restaurant or supplier would care, and rough effort. Then pick your single
+recommendation. Think: auto-reorder prediction, OCR'd invoice/price-list import,
+smart substitution when a product is out of stock, or AI price-anomaly alerts.
+
+Give me the answer as a clear report, not code changes yet. Be blunt about
+weaknesses. Don't over-explain.
