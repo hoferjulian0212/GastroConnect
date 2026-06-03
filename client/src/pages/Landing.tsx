@@ -21,7 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import logoImg from "@assets/logo_no_bg.png";
+import logoImg from "@assets/logo_fat.png";
 import shotHome from "@assets/landing-home.jpg";
 import shotMobile from "@assets/landing-mobile.png";
 import shotMobileSupplier from "@assets/landing-mobile-supplier.png";
