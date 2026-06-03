@@ -555,10 +555,10 @@ export default function ComplaintDetail() {
   };
 
   const categoryLabels: Record<ActionCategory, { de: string; it: string }> = {
-    primary: { de: "Status", it: "Stato" },
+    primary: { de: "Statusänderung", it: "Modifica stato" },
     fulfillment: { de: "Abwicklung", it: "Gestione" },
     communication: { de: "Kommunikation", it: "Comunicazione" },
-    destructive: { de: "Gefahrenzone", it: "Zona pericolo" },
+    destructive: { de: "Abschluss", it: "Chiusura" },
   };
   const categoryOrder: ActionCategory[] = ["primary", "fulfillment", "communication", "destructive"];
   const groupedActions = categoryOrder
