@@ -1,0 +1,240 @@
+IMPORTANT:
+Before making any changes, analyze the entire existing codebase and understand exactly how the current "Wareneinsatz pro Gast" feature works.
+Do NOT rebuild the feature from scratch.
+Do NOT create duplicate logic.
+Reuse all existing calculations, database structures, permissions, components, services and UI patterns wherever possible.
+The goal is to upgrade the existing feature to become PMS/API-first while keeping manual guest entry as a fallback.
+BUSINESS GOAL
+Today, users manually enter guest counts.
+Going forward:
+PMS integration must become the primary workflow.
+Manual guest entry must remain available as a fallback.
+The platform must be fully prepared for future PMS API integrations.
+Hotels should be able to request PMS integration directly from the interface.
+Admins must receive integration requests immediately.
+Architecture must support future integrations without major refactoring.
+EXISTING FEATURE ANALYSIS
+First inspect:
+Wareneinsatz Pro Gast page
+Guest count logic
+Wareneinsatz calculations
+Dashboard widgets
+Hotel settings
+User permissions
+Existing email system
+Existing database schema
+Document internally:
+Where guest counts are currently stored
+How calculations are triggered
+Which services depend on guest counts
+Which tables must be extended
+Only then implement the changes.
+UI CHANGES
+Inside the existing Wareneinsatz Pro Gast section:
+Replace the current UX hierarchy.
+Current:
+Manual guest entry is the primary action.
+New:
+PMS Connection becomes the primary action.
+Layout:
+==================================================
+Guest Data Source
+Connection Status:
+Not Connected
+[ Connect PMS ]
+OR
+Connection Status:
+Connected
+PMS:
+Mews
+Last Sync:
+Today 06:00
+Guests Imported:
+124
+[ Manage Connection ]
+==================================================
+Manual Guest Entry (Fallback)
+This should only be shown as a secondary section.
+Add explanatory text:
+"If no PMS connection is available, guest counts can be entered manually."
+==================================================
+Keep all existing Wareneinsatz calculations unchanged.
+CONNECT PMS WIZARD
+Create a multi-step modal.
+Step 1
+Which PMS are you using?
+Options:
+ASA Hotel
+Mews
+Apaleo
+Opera
+Protel
+Cloudbeds
+Other
+Step 2
+Collect:
+Hotel Name
+Contact Person
+Email
+Phone Number
+Number of Rooms
+Step 3
+Ask:
+Which data should GastroConnect synchronize?
+Checkboxes:
+Guest Counts
+Occupancy
+Forecast Data
+Reservations
+Step 4
+Display:
+"We will review your PMS and contact you to activate automatic synchronization."
+Submit Request
+DATABASE
+Create proper future-proof PMS architecture.
+Table:
+pms_providers
+Fields:
+id
+name
+slug
+status
+created_at
+Table:
+hotel_pms_connections
+Fields:
+id
+hotel_id
+provider_id
+status
+Possible status:
+pending
+requested
+contacted
+setup_in_progress
+connected
+disabled
+provider_name
+api_key
+access_token
+refresh_token
+external_hotel_id
+last_sync_at
+sync_enabled
+created_at
+updated_at
+Table:
+pms_connection_requests
+Fields:
+id
+hotel_id
+pms_provider
+hotel_name
+contact_person
+email
+phone
+room_count
+requested_sync_features
+status
+notes
+created_at
+Table:
+guest_count_imports
+Fields:
+id
+hotel_id
+source
+Possible source:
+manual
+api
+pms
+import
+guest_count
+date
+created_at
+API FOUNDATION
+Build API architecture NOW.
+Even if PMS integrations are not active yet.
+Create endpoints:
+POST /api/pms/request
+Create PMS connection request.
+POST /api/pms/webhook/guest-count
+Accept:
+{
+hotelId,
+date,
+guestCount
+}
+This endpoint should already update the existing Wareneinsatz calculations.
+POST /api/pms/webhook/occupancy
+Store occupancy data.
+GET /api/pms/providers
+Return available PMS providers.
+GET /api/pms/status
+Return current connection status.
+GUEST COUNT PRIORITY SYSTEM
+Implement source hierarchy:
+Priority 1:
+PMS/API synced guest count
+Priority 2:
+Manual guest entry
+If PMS data exists for a date:
+Always use PMS data.
+Only use manual data if PMS data does not exist.
+Do not break existing calculations.
+EMAIL NOTIFICATIONS
+When a PMS request is submitted:
+Send email to admin.
+Subject:
+New PMS Integration Request
+Include:
+Hotel
+Contact
+PMS
+Room Count
+Requested Features
+ADMIN PANEL
+Create admin page:
+PMS Requests
+Columns:
+Hotel
+PMS
+Contact
+Date
+Status
+Statuses:
+Pending
+Contacted
+Setup In Progress
+Connected
+Rejected
+Allow admins to:
+Update status
+Add notes
+View hotel information
+FUTURE PMS INTEGRATION READINESS
+Design architecture so future integrations can be added through provider adapters.
+Create service layer:
+PmsProviderInterface
+Methods:
+connect()
+disconnect()
+syncGuests()
+syncOccupancy()
+syncForecast()
+Create provider stubs:
+ASAHotelProvider
+MewsProvider
+ApaleoProvider
+OperaProvider
+ProtelProvider
+CloudbedsProvider
+Implement interfaces but use placeholder methods for now.
+This allows real API integrations to be added later without changing business logic.
+FINAL REQUIREMENT
+The result must feel like PMS synchronization was always part of the original GastroConnect product.
+The existing Wareneinsatz Pro Gast feature must continue working exactly as before.
+No breaking changes.
+No duplicated calculations.
+No duplicate guest count logic.
+Build everything production-ready, scalable and prepared for real PMS API integrations.
