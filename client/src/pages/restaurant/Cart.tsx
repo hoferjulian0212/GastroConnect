@@ -131,7 +131,7 @@ import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
-import { useStickyActionBarHeight, useMobileKeyboardInset } from "@/hooks/use-sticky-action-bar";
+import { useMobileKeyboardInset } from "@/hooks/use-sticky-action-bar";
 
 function extractErrorMessage(err: unknown): string | null {
   const raw = (err as { message?: string })?.message;
@@ -153,7 +153,6 @@ function extractErrorMessage(err: unknown): string | null {
 export default function RestaurantCart() {
   const { currentUser } = useUser();
   const { toast } = useToast();
-  const { containerRef: stickyBarContainerRef, barRef: stickyBarRef } = useStickyActionBarHeight();
   useMobileKeyboardInset();
   const [orderNotes, setOrderNotes] = useState<Record<string, string>>({});
   const [deliveryOptions, setDeliveryOptions] = useState<Record<string, "asap" | "date">>({});
@@ -538,7 +537,7 @@ export default function RestaurantCart() {
   }
 
   return (
-    <div ref={stickyBarContainerRef}>
+    <div>
     <PullToRefreshWrapper
       onRefresh={async () => {
         await queryClient.invalidateQueries({
@@ -548,7 +547,7 @@ export default function RestaurantCart() {
           },
         });
       }}
-      className="space-y-4 md:space-y-6 md:pb-6 pb-[calc(var(--mobile-cta-offset)+var(--mobile-action-bar-h,80px))]"
+      className="space-y-4 md:space-y-6 md:pb-6 pb-[var(--mobile-cart-bottom-pad)]"
     >
       <MobilePageHeader
         title={lang === "de" ? "Warenkorb" : "Carrello"}

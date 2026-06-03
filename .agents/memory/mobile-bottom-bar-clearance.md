@@ -26,6 +26,8 @@ overlap that is hard to reproduce on desktop emulation.
   changes (extra row, taller buttons), update the var. Comments by each bar note this.
 - `min-h-dvh` + border-box bottom padding on the root still reserves scroll space
   correctly — the padding is not absorbed by min-height.
-- Exception: `restaurant/Cart.tsx` still uses the JS hook because its checkout bar
-  also lifts above the on-screen keyboard (`useMobileKeyboardInset`); same
-  under-reservation risk remains there (tracked as a follow-up).
+- `restaurant/Cart.tsx` now uses the pure-CSS `--mobile-cart-bottom-pad`
+  (`= --mobile-cta-offset + ~112px`) too. Its `stickyBarRef` was never actually
+  attached, so the old JS hook only ever set the 112px fallback. The keyboard-lift
+  hook `useMobileKeyboardInset` is kept, but note `--mobile-keyboard-inset` is not
+  consumed by any CSS — the keyboard-lift may be inert.

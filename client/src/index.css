@@ -47,6 +47,12 @@
      Pure CSS (no JS measurement) so it stays reliable across devices and safe-area insets. */
   --mobile-detail-cta-h: calc(env(safe-area-inset-bottom, 0px) + 76px);
   --mobile-detail-bottom-pad: calc(var(--mobile-detail-cta-h) + 16px);
+  /* Restaurant Cart mobile checkout bar reservation. Pure CSS (no JS measurement)
+     so the last cart row never hides under the checkout bar — reliable from first
+     paint and across safe-area insets (env is included via --mobile-cta-offset).
+     The cart bar lifts above the keyboard via useMobileKeyboardInset; this var only
+     reserves normal (no-keyboard) scroll space. ~112px = bar height + tab-bar gap. */
+  --mobile-cart-bottom-pad: calc(var(--mobile-cta-offset) + 112px);
 }
 
 /* ============================================================
