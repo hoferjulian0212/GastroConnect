@@ -22,5 +22,8 @@ no open dialog, no toasts):
 (not `visibility:hidden`) on the siblings is required — `visibility:hidden`
 elements still occupy page space and produce blank printed pages.
 
-**How to apply:** Used by `client/src/pages/restaurant/MonthlyReports.tsx`
-(`ReportPrintView`). Reuse this for any "print this report/receipt" feature.
+**How to apply:** Reuse for any "print this one report/receipt/view" feature.
+When triggering print after mounting the portal, wait for paint (double rAF) then
+call `window.print()`, and tear the portal down on the `afterprint` event (with a
+long timeout fallback) rather than a fixed delay — some WebKit browsers run
+`window.print()` non-blocking, so unmounting too early yields a blank printout.

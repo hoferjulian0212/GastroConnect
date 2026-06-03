@@ -48,6 +48,63 @@ function lastNMonths(n: number): string[] {
   return out;
 }
 
+type ToastFn = (props: { title: string; description?: string }) => void;
+
+function buildReportMail(report: MonthlyReport, payload: MonthlyReportPayload) {
+  const monthLabel = formatMonthLabel(report.month);
+  const subject = `Monatsbericht ${monthLabel} – ${payload.restaurantName}`;
+  const body = [
+    `Anbei der Monatsbericht für ${monthLabel}.`,
+    "",
+    `Gesamtausgaben: ${fmtEuro(payload.totalSpent)}`,
+    `Bestellungen: ${payload.orderCount}`,
+    `Einsparpotenzial: ${fmtEuro(payload.totalSavingPotential)}`,
+    "",
+    "Erstellt mit GastroConnect.",
+  ].join("\n");
+  return { subject, body };
+}
+
+// Share the report PDF via the native share sheet (mobile / supported browsers),
+// falling back to a prefilled mailto draft. Used by both the list quick actions
+// and the detail dialog toolbar.
+async function shareOrMailReport(report: MonthlyReport, toast: ToastFn): Promise<void> {
+  const payload = report.payload as MonthlyReportPayload | undefined;
+  if (!payload) return;
+  const { subject, body } = buildReportMail(report, payload);
+
+  if (report.fileUrl && typeof navigator !== "undefined" && (navigator as any).canShare) {
+    try {
+      const res = await fetch(`/api/restaurant/monthly-reports/${report.id}/download?inline=1`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const file = new File([blob], `Monatsbericht_${report.month}.pdf`, { type: "application/pdf" });
+        if ((navigator as any).canShare({ files: [file] })) {
+          await (navigator as any).share({ files: [file], title: subject, text: body });
+          return;
+        }
+      }
+    } catch (err: any) {
+      if (err?.name === "AbortError") return;
+      // fall through to mailto
+    }
+  }
+
+  // Fallback: mailto cannot attach files, so trigger the PDF download and tell
+  // the user to attach it to the draft.
+  if (report.fileUrl) {
+    window.open(`/api/restaurant/monthly-reports/${report.id}/download`, "_blank");
+    toast({
+      title: "PDF heruntergeladen",
+      description: "Dein E-Mail-Entwurf wird geöffnet. Bitte hänge die soeben heruntergeladene PDF manuell an.",
+    });
+  }
+  const mailtoBody = report.fileUrl
+    ? body + "\n\n(Bitte die heruntergeladene PDF an diese E-Mail anhängen.)"
+    : body;
+  window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(mailtoBody)}`;
+}
+
 export default function RestaurantMonthlyReports() {
   const { currentUser } = useUser();
   const { toast } = useToast();
@@ -55,6 +112,8 @@ export default function RestaurantMonthlyReports() {
   const restaurantId = currentUser?.id;
   const [selectedMonth, setSelectedMonth] = useState<string>(lastNMonths(1)[0]);
   const [openReportId, setOpenReportId] = useState<string | null>(null);
+  const [emailingIds, setEmailingIds] = useState<Set<string>>(new Set());
+  const [printTarget, setPrintTarget] = useState<MonthlyReport | null>(null);
 
   const { data: reports = [], isLoading } = useQuery<MonthlyReport[]>({
     queryKey: ["/api/restaurant/monthly-reports", restaurantId],
@@ -104,6 +163,46 @@ export default function RestaurantMonthlyReports() {
 
   const handleRefresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/restaurant/monthly-reports", restaurantId] });
+  };
+
+  // Print a report straight from the list: mount its print-only portal, wait for
+  // it to paint (double rAF), call print(), then tear down on `afterprint` (with
+  // a long fallback) so the layout stays mounted until the browser is done.
+  useEffect(() => {
+    if (!printTarget) return;
+    let fallback: ReturnType<typeof setTimeout> | undefined;
+    let raf2 = 0;
+    const cleanup = () => {
+      window.removeEventListener("afterprint", cleanup);
+      if (fallback) clearTimeout(fallback);
+      setPrintTarget(null);
+    };
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        window.addEventListener("afterprint", cleanup);
+        window.print();
+        fallback = setTimeout(cleanup, 60000);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      window.removeEventListener("afterprint", cleanup);
+      if (fallback) clearTimeout(fallback);
+    };
+  }, [printTarget]);
+
+  const handleQuickEmail = async (r: MonthlyReport) => {
+    setEmailingIds(prev => new Set(prev).add(r.id));
+    try {
+      await shareOrMailReport(r, toast);
+    } finally {
+      setEmailingIds(prev => {
+        const next = new Set(prev);
+        next.delete(r.id);
+        return next;
+      });
+    }
   };
 
   return (
@@ -242,19 +341,41 @@ export default function RestaurantMonthlyReports() {
                         )}
                       </div>
                     </div>
-                    {r.fileUrl && (
+                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(`/api/restaurant/monthly-reports/${r.id}/download`, "_blank");
-                        }}
-                        data-testid={`button-download-${r.month}`}
+                        className="h-9 w-9"
+                        disabled={!r.fileUrl}
+                        title={r.fileUrl ? "Als PDF herunterladen" : "PDF nicht verfügbar"}
+                        onClick={() => window.open(`/api/restaurant/monthly-reports/${r.id}/download`, "_blank")}
+                        data-testid={`button-quick-download-${r.month}`}
                       >
                         <Download className="h-4 w-4" />
                       </Button>
-                    )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9"
+                        disabled={!r.fileUrl || emailingIds.has(r.id)}
+                        title={r.fileUrl ? "Per E-Mail senden" : "PDF nicht verfügbar"}
+                        onClick={() => handleQuickEmail(r)}
+                        data-testid={`button-quick-email-${r.month}`}
+                      >
+                        {emailingIds.has(r.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9"
+                        disabled={!r.payload}
+                        title="Drucken"
+                        onClick={() => setPrintTarget(r)}
+                        data-testid={`button-quick-print-${r.month}`}
+                      >
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   </CardContent>
                 </Card>
@@ -264,6 +385,12 @@ export default function RestaurantMonthlyReports() {
         )}
 
         <ReportDetailDialog reportId={openReportId} reports={reports} onClose={() => setOpenReportId(null)} />
+
+        {/* Print-only layout for the list quick-print action (hidden on screen). */}
+        {printTarget && printTarget.payload && createPortal(
+          <ReportPrintView report={printTarget} payload={printTarget.payload as MonthlyReportPayload} />,
+          document.body,
+        )}
       </div>
     </PullToRefreshWrapper>
   );
@@ -338,53 +465,12 @@ function ReportDetailDialog({ reportId, reports, onClose }: { reportId: string |
 
   const handleEmail = async () => {
     if (!report || !payload) return;
-    const monthLabel = formatMonthLabel(report.month);
-    const subject = `Monatsbericht ${monthLabel} – ${payload.restaurantName}`;
-    const bodyLines = [
-      `Anbei der Monatsbericht für ${monthLabel}.`,
-      "",
-      `Gesamtausgaben: ${fmtEuro(payload.totalSpent)}`,
-      `Bestellungen: ${payload.orderCount}`,
-      `Einsparpotenzial: ${fmtEuro(payload.totalSavingPotential)}`,
-      "",
-      "Erstellt mit GastroConnect.",
-    ];
-    const body = bodyLines.join("\n");
-
-    // Prefer native share with the PDF file attached (mobile / supported browsers).
-    if (report.fileUrl && typeof navigator !== "undefined" && (navigator as any).canShare) {
-      setSharing(true);
-      try {
-        const res = await fetch(`/api/restaurant/monthly-reports/${report.id}/download?inline=1`);
-        if (res.ok) {
-          const blob = await res.blob();
-          const file = new File([blob], `Monatsbericht_${report.month}.pdf`, { type: "application/pdf" });
-          if ((navigator as any).canShare({ files: [file] })) {
-            await (navigator as any).share({ files: [file], title: subject, text: body });
-            setSharing(false);
-            return;
-          }
-        }
-      } catch (err: any) {
-        if (err?.name === "AbortError") { setSharing(false); return; }
-        // fall through to mailto
-      }
+    setSharing(true);
+    try {
+      await shareOrMailReport(report, toast);
+    } finally {
       setSharing(false);
     }
-
-    // Fallback: open the user's mail app with a prefilled draft. mailto cannot
-    // attach files, so trigger the PDF download and tell the user to attach it.
-    if (report.fileUrl) {
-      window.open(`/api/restaurant/monthly-reports/${report.id}/download`, "_blank");
-      toast({
-        title: "PDF heruntergeladen",
-        description: "Dein E-Mail-Entwurf wird geöffnet. Bitte hänge die soeben heruntergeladene PDF manuell an.",
-      });
-    }
-    const mailtoBody = report.fileUrl
-      ? body + "\n\n(Bitte die heruntergeladene PDF an diese E-Mail anhängen.)"
-      : body;
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(mailtoBody)}`;
   };
 
   return (
