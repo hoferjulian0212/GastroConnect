@@ -16,7 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich, ChevronDown, ChevronRight, User as UserIcon, Sparkles } from "lucide-react";
+import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich, ChevronDown, ChevronRight, User as UserIcon } from "lucide-react";
 import { ProductImage } from "@/components/ProductImage";
 
 import type { Product, StockMovement, PromotionWithProduct } from "@shared/schema";
@@ -1398,7 +1398,7 @@ export default function SupplierProducts() {
  </div>
  <div className="flex items-center gap-2">
  <Button className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" variant="ghost" onClick={() => setIsImportOpen(true)} data-testid="button-import-price-list">
- <Sparkles className="h-4 w-4" />
+ <Upload className="h-4 w-4" />
  <span className="hidden sm:inline">{lang === "de" ? "Preisliste importieren" : "Importa listino"}</span>
  </Button>
  <Button className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" variant="ghost" onClick={() => setIsBulkUpdateOpen(true)} data-testid="button-bulk-update">
@@ -1416,7 +1416,7 @@ export default function SupplierProducts() {
 
  <div className="md:hidden grid grid-cols-3 gap-2">
  <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsImportOpen(true)} data-testid="button-import-price-list-mobile">
- <Sparkles className="h-4 w-4" />
+ <Upload className="h-4 w-4" />
  {lang === "de" ? "Preisliste" : "Listino"}
  </Button>
  <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsBulkUpdateOpen(true)} data-testid="button-bulk-update-mobile">

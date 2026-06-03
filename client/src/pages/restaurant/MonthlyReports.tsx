@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowDownRight, ArrowUpRight, Download, FileText, Loader2, Sparkles, TrendingDown, TrendingUp, Plus, ChevronRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Download, FileText, Loader2, TrendingDown, TrendingUp, Plus, ChevronRight } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
@@ -104,7 +104,7 @@ export default function RestaurantMonthlyReports() {
             </div>
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 p-3 md:p-4 rounded-2xl bg-white/[0.06] border border-white/[0.08]">
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <Sparkles className="h-4 w-4 text-yellow-300 shrink-0" />
+                <FileText className="h-4 w-4 text-white/70 shrink-0" />
                 <span className="text-sm text-white/90">Neuen Bericht erstellen für:</span>
               </div>
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>

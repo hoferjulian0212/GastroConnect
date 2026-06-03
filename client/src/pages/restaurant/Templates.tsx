@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
-  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle, Copy, Store, Pencil, AlertCircle, Star, Sparkles
+  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle, Copy, Store, Pencil, AlertCircle, Star, RefreshCw
 } from "lucide-react";
 import QuantityInput from "@/components/QuantityInput";
 import SwipeableRow from "@/components/SwipeableRow";
@@ -287,7 +287,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Sparkles className="h-4 w-4" />
+                <RefreshCw className="h-4 w-4" />
               </div>
               <div>
                 <h2 className="text-sm font-semibold" data-testid="text-suggestions-title">

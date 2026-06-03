@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, isToday, isTomorrow, formatDistanceToNow } from "date-fns";
-import { MessageSquare, ClipboardList, BarChart3, AlertTriangle, ChevronRight, Plus, Package, Tag, Building2, Truck, Calendar, Target, Sparkles, TrendingUp, TrendingDown, Download, Users, Euro, Hash } from "lucide-react";
+import { MessageSquare, ClipboardList, BarChart3, AlertTriangle, ChevronRight, Plus, Package, Tag, Building2, Truck, Calendar, Target, Lightbulb, TrendingUp, TrendingDown, Download, Users, Euro, Hash } from "lucide-react";
 import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -574,7 +574,7 @@ export default function SupplierHomeMobile({
               {insights && insights.length > 0 && (
                 <div className="rounded-2xl border border-border bg-muted/30 p-3" data-testid="insights-box-mobile">
                   <div className="flex items-center gap-1.5 mb-2">
-                    <Sparkles className="h-3.5 w-3.5 text-fuchsia-600" />
+                    <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("supplierHome", "insights")}</span>
                   </div>
                   <div className="space-y-1.5">

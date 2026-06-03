@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/context/LanguageContext";
-import { Upload, Loader2, Trash2, Sparkles, FileText } from "lucide-react";
+import { Upload, Loader2, Trash2, FileText } from "lucide-react";
 
 interface ParsedRow {
   name: string;
@@ -72,7 +72,7 @@ export default function PriceListImportDialog({ open, onOpenChange, supplierId, 
       toast({
         title: tr("Lesen fehlgeschlagen", "Lettura non riuscita"),
         description: msg.includes("ai_not_configured")
-          ? tr("KI-Integration ist noch nicht eingerichtet.", "L'integrazione AI non è ancora configurata.")
+          ? tr("Die automatische Texterkennung ist noch nicht eingerichtet.", "Il riconoscimento automatico del testo non è ancora configurato.")
           : tr("Bitte ein klareres Bild oder PDF verwenden.", "Usa un'immagine o un PDF più chiaro."),
         variant: "destructive",
       });
@@ -127,13 +127,13 @@ export default function PriceListImportDialog({ open, onOpenChange, supplierId, 
       <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col" data-testid="dialog-price-list-import">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <FileText className="h-5 w-5 text-primary" />
             {tr("Preisliste importieren", "Importa listino prezzi")}
           </DialogTitle>
           <DialogDescription>
             {tr(
-              "Lade eine Preisliste als Bild oder PDF hoch. Die KI liest die Produkte aus – du prüfst sie vor dem Import.",
-              "Carica un listino come immagine o PDF. L'AI legge i prodotti — li verifichi prima dell'importazione.",
+              "Lade eine Preisliste als Bild oder PDF hoch. Die Produkte werden automatisch ausgelesen – du prüfst sie vor dem Import.",
+              "Carica un listino come immagine o PDF. I prodotti vengono letti automaticamente — li verifichi prima dell'importazione.",
             )}
           </DialogDescription>
         </DialogHeader>

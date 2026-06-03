@@ -47,7 +47,6 @@ import {
   Clock,
   Shield,
   Eye,
-  Sparkles,
   Wallet,
   Search,
   ChevronRight,
@@ -557,7 +556,7 @@ function detectInitialLang(): Lang {
 }
 
 const pillarRestaurantIcons = [Search, BarChart3, Wallet, Eye];
-const pillarSupplierIcons = [Package, Sparkles, FileText, BarChart3];
+const pillarSupplierIcons = [Package, Eye, FileText, BarChart3];
 const featureIcons = [
   MessageSquare,
   FileText,

@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { HeroPortal } from "@/context/HeroContext";
 import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, TrendingDown, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert, ChevronRight, Flame, Target, Users, Sparkles, Download } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle, ShoppingBag, User as UserIcon, Truck, Check, X, AlertTriangle, Package, MessageSquare, BarChart3, TrendingUp, TrendingDown, Euro, Hash, XCircle, CalendarDays, Calendar, FileText, Loader2, Send, ArrowRight, AlertCircle, CircleAlert, ChevronRight, Flame, Target, Users, Lightbulb, Download } from "lucide-react";
 import { formatOrderNumber, formatComplaintNumber, type OrderWithDetails, type Product, type ConversationWithUser, type ComplaintWithDetails } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -1710,7 +1710,7 @@ export default function SupplierHome() {
             {insights && insights.length > 0 && (
               <div className="rounded-xl border border-border bg-muted/30 p-3 md:p-4" data-testid="insights-box">
                 <div className="flex items-center gap-1.5 mb-2">
-                  <Sparkles className="h-3.5 w-3.5 text-fuchsia-600" />
+                  <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
                   <span className="text-[10px] md:text-xs text-muted-foreground font-semibold uppercase tracking-wide">{t("supplierHome", "insights")}</span>
                 </div>
                 <div className="space-y-1.5">

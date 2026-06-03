@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Tag, Plus, Trash2, Package, Calendar, Percent, Loader2, Send, Check, ChevronRight, ChevronLeft, ChevronDown, Users, MessageSquare, Search, X, AlertTriangle, Sparkles, Clock, Hourglass, Archive, Flame } from "lucide-react";
+import { Tag, Plus, Trash2, Package, Calendar, Percent, Loader2, Send, Check, ChevronRight, ChevronLeft, ChevronDown, Users, MessageSquare, Search, X, AlertTriangle, Clock, Hourglass, Archive, Flame } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -318,7 +318,7 @@ export default function SupplierPromotions() {
             scheduled: promotionGroups.filter(g => g.isActive && new Date(g.startDate) > now).length,
             expired: promotionGroups.filter(g => new Date(g.endDate) < now || !g.isActive).length,
           };
-          const filterPills: { key: typeof statusFilter; label: string; count: number; icon: typeof Sparkles; activeBg: string; activeText: string; dot: string }[] = [
+          const filterPills: { key: typeof statusFilter; label: string; count: number; icon: typeof Tag; activeBg: string; activeText: string; dot: string }[] = [
             { key: "all", label: lang === "de" ? "Alle" : "Tutte", count: counts.all, icon: Tag, activeBg: "bg-white text-[#161921]", activeText: "text-[#161921]", dot: "bg-white/60" },
             { key: "active", label: t("promotionsPage", "active"), count: counts.active, icon: Flame, activeBg: "bg-emerald-500/90 text-white", activeText: "text-white", dot: "bg-emerald-400" },
             { key: "scheduled", label: lang === "de" ? "Geplant" : "Pianificate", count: counts.scheduled, icon: Hourglass, activeBg: "bg-blue-500/90 text-white", activeText: "text-white", dot: "bg-blue-400" },
@@ -364,8 +364,8 @@ export default function SupplierPromotions() {
         ) : promotionGroups.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-10 md:p-14">
             <div className="flex flex-col items-center justify-center text-center">
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-100 to-blue-100 dark:from-emerald-900/30 dark:to-blue-900/30 flex items-center justify-center mb-3">
-                <Sparkles className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+              <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
+                <Tag className="h-7 w-7 text-muted-foreground" />
               </div>
               <p className="font-semibold">{t("promotionsPage", "noPromotions")}</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-xs">{t("promotionsPage", "noPromotionsDesc")}</p>

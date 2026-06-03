@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import {
  TrendingDown, Package, ChevronDown, ChevronUp, Tag, ShoppingCart, Search,
- ArrowUpDown, ArrowUp, ArrowDown, Filter as FilterIcon, X, Check, Sparkles,
+ ArrowUpDown, ArrowUp, ArrowDown, Filter as FilterIcon, X, Check,
  AlertTriangle, Truck, Clock, CheckCircle2, ArrowRight,
 } from "lucide-react";
 import type { ProductWithSupplierAndPromotion } from "@shared/schema";
@@ -487,7 +487,7 @@ export default function PriceComparison() {
  <div className="flex items-start justify-between gap-3 flex-wrap">
  <div className="flex-1 min-w-[200px]">
  <div className="text-[11px] uppercase tracking-wider text-emerald-300/80 font-semibold flex items-center gap-1.5">
- <Sparkles className="h-3 w-3" />
+ <TrendingDown className="h-3 w-3" />
  {lang === "de" ? "Möglicher Hebel" : "Risparmio potenziale"}
  </div>
  <div className="mt-1 flex items-baseline gap-2">
@@ -545,7 +545,7 @@ export default function PriceComparison() {
  {projectedCostPerGuestDelta > 0 && (
  <div className="flex items-center justify-between text-xs flex-wrap gap-2" data-testid="hero-cost-per-guest-projection">
  <span className="text-emerald-300/80 inline-flex items-center gap-1">
- <Sparkles className="h-3 w-3" />
+ <TrendingDown className="h-3 w-3" />
  {lang === "de" ? "Bei vollständigem Wechsel" : "A switch completo"}
  </span>
  <span className="tabular-nums">
@@ -812,7 +812,7 @@ export default function PriceComparison() {
  <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
  <DialogHeader className="px-5 pt-5 pb-3 border-b">
  <DialogTitle className="flex items-center gap-2">
- <Sparkles className="h-5 w-5 text-emerald-500" />
+ <ArrowRight className="h-5 w-5 text-emerald-500" />
  {lang === "de" ? "Wechselplan" : "Piano di switch"}
  </DialogTitle>
  <DialogDescription>
@@ -968,7 +968,7 @@ function ComparisonCard({ group, rank, lang, expanded, onToggle, onVisitSupplier
  <div className="flex items-center gap-2 flex-wrap">
  {isTopHebel && (
  <Badge className="text-[10px] px-1.5 py-0 bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 gap-0.5 font-bold" data-testid={`badge-top-hebel-${group.key}`}>
- <Sparkles className="h-2.5 w-2.5" />
+ <TrendingDown className="h-2.5 w-2.5" />
  {lang === "de" ? `Top-Hebel #${rank}` : `Top #${rank}`}
  </Badge>
  )}
