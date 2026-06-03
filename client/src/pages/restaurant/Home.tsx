@@ -3,11 +3,12 @@ import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Trash2, Search, Save, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame, Star } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Trash2, Search, Save, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame, Star, Building2, PencilLine, AlertCircle } from "lucide-react";
 import DraggableCardGrid from "@/components/DraggableCardGrid";
 import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
-import { formatOrderNumber, type OrderWithDetails, type ConversationWithUser, type ProductWithSupplierAndPromotion, type OrderTemplateWithItems } from "@shared/schema";
+import { formatOrderNumber, type OrderWithDetails, type ConversationWithUser, type ProductWithSupplierAndPromotion, type OrderTemplateWithItems, type HotelPmsConnection, type PmsProvider } from "@shared/schema";
+import { ConnectPmsDialog } from "@/components/ConnectPmsDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -122,6 +123,21 @@ export default function RestaurantHome() {
     queryKey: [`/api/restaurant/overnight-stays?restaurantId=${currentUser?.id}&month=${costCurrentMonth}`],
     enabled: !!currentUser?.id,
   });
+
+  const { data: pmsData, isLoading: pmsLoading } = useQuery<{
+    connection: (HotelPmsConnection & { provider: PmsProvider | null }) | null;
+    importedDays: number;
+    lastImport: { date: string; guestCount: number } | null;
+  }>({
+    queryKey: [`/api/restaurant/pms/connection?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+  const pmsConn = pmsData?.connection ?? null;
+  const pmsStatus = pmsConn?.status;
+  const pmsIsActive = pmsStatus === "active";
+  const pmsIsPending = pmsStatus === "pending";
+  const pmsIsError = pmsStatus === "error";
+  const [showPmsDialog, setShowPmsDialog] = useState(false);
 
   const [costStayDate, setCostStayDate] = useState(() => {
     const now = new Date();
@@ -857,7 +873,8 @@ export default function RestaurantHome() {
         pendingOrdersCount={pendingOrdersCount}
         ordersLoading={ordersLoading}
         costAnalysis={costAnalysis}
-        costLoading={costLoading}
+        costLoading={costLoading || pmsLoading}
+        pmsIsActive={pmsIsActive}
         upcomingDeliveries={upcomingDeliveries}
         isLoading={isLoading}
         allOrders={allOrders}
@@ -877,7 +894,8 @@ export default function RestaurantHome() {
       pendingOrdersCount={pendingOrdersCount}
       ordersLoading={ordersLoading}
       costAnalysis={costAnalysis}
-      costLoading={costLoading}
+      costLoading={costLoading || pmsLoading}
+      pmsIsActive={pmsIsActive}
       upcomingDeliveries={upcomingDeliveries}
       isLoading={isLoading}
       allOrders={allOrders}
@@ -914,9 +932,9 @@ export default function RestaurantHome() {
             <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 flex flex-col justify-between min-h-[100px] md:min-h-[120px]" data-testid="kpi-card-cost-per-guest">
               <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Kosten/Gast" : "Costo/ospite"}</span><span className="hidden md:inline">{lang === "de" ? "Wareneinsatz/Gast" : "Costo per ospite"}</span></span>
               <div className="flex items-end justify-between mt-auto">
-                {costLoading ? (
+                {costLoading || pmsLoading ? (
                   <Skeleton className="h-8 w-16 md:h-10 md:w-20 bg-white/10" />
-                ) : costAnalysis?.costPerGuest && parseFloat(costAnalysis.costPerGuest) > 0 ? (
+                ) : pmsIsActive && costAnalysis?.costPerGuest && parseFloat(costAnalysis.costPerGuest) > 0 ? (
                   <p className="text-2xl md:text-4xl font-bold text-white leading-none" data-testid="kpi-cost-per-guest"><CountUp end={parseFloat(costAnalysis.costPerGuest)} duration={1000} decimals={2} suffix="€" /></p>
                 ) : (
                   <p className="text-3xl md:text-4xl font-bold text-gray-500 leading-none" data-testid="kpi-cost-per-guest">--</p>
@@ -1852,10 +1870,58 @@ export default function RestaurantHome() {
               </Button>
             </div>
             <div className="md:px-5 md:pb-5">
-              {costLoading ? (
+              {costLoading || pmsLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-16 w-full rounded-lg" />
                   <Skeleton className="h-10 w-full rounded-lg" />
+                </div>
+              ) : !pmsIsActive ? (
+                <div className="flex flex-col items-center text-center py-6 px-2" data-testid="card-home-connect-pms-cta">
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full mb-3 ${
+                    pmsIsError
+                      ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
+                      : pmsIsPending
+                      ? "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400"
+                      : "bg-primary/10 text-primary"
+                  }`}>
+                    {pmsIsError ? <AlertCircle className="w-6 h-6" /> : pmsIsPending ? <Clock className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
+                  </div>
+                  <h3 className="text-sm md:text-base font-bold" data-testid="text-home-cta-headline">
+                    {pmsIsError
+                      ? t("costAnalysis", "pmsErrorHeadline")
+                      : pmsIsPending
+                      ? t("costAnalysis", "pmsPendingHeadline")
+                      : t("costAnalysis", "pmsFirstHeadline")}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1.5 max-w-sm" data-testid="text-home-cta-desc">
+                    {pmsIsError
+                      ? t("costAnalysis", "pmsErrorHeadlineDesc")
+                      : pmsIsPending
+                      ? t("costAnalysis", "pmsPendingHeadlineDesc")
+                      : t("costAnalysis", "pmsFirstDesc")}
+                  </p>
+                  <Button
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => setShowPmsDialog(true)}
+                    data-testid="button-home-connect-pms"
+                  >
+                    <Building2 className="w-4 h-4 mr-2" />
+                    {pmsIsPending
+                      ? t("costAnalysis", "managePms")
+                      : pmsIsError
+                      ? t("costAnalysis", "retry")
+                      : t("costAnalysis", "connectPms")}
+                  </Button>
+                  <Link href="/restaurant/cost-analysis/manual">
+                    <button
+                      className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+                      data-testid="link-home-manual-entry"
+                    >
+                      <PencilLine className="w-3.5 h-3.5" />
+                      {t("costAnalysis", "enterDataManually")}
+                    </button>
+                  </Link>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1969,6 +2035,11 @@ export default function RestaurantHome() {
           </div>
           )},
         ]}
+      />
+      <ConnectPmsDialog
+        open={showPmsDialog}
+        onOpenChange={setShowPmsDialog}
+        restaurantId={currentUser?.id || ""}
       />
       <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
         <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">

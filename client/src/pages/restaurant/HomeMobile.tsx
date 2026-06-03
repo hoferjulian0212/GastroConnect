@@ -22,6 +22,7 @@ interface Props {
   ordersLoading: boolean;
   costAnalysis: any;
   costLoading: boolean;
+  pmsIsActive?: boolean;
   upcomingDeliveries: OrderWithDetails[] | undefined;
   isLoading: boolean;
   allOrders: OrderWithDetails[] | undefined;
@@ -32,7 +33,7 @@ export default function RestaurantHomeMobile({
   currentUser, lang, t, navigate,
   totalUnread, convLoading,
   pendingOrdersCount, ordersLoading,
-  costAnalysis, costLoading,
+  costAnalysis, costLoading, pmsIsActive,
   upcomingDeliveries, isLoading,
   allOrders,
   dateLocale,
@@ -62,7 +63,7 @@ export default function RestaurantHomeMobile({
 
   const fmtPrice = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
 
-  const cpgNum = parseFloat(costAnalysis?.costPerGuest || "0");
+  const cpgNum = pmsIsActive ? parseFloat(costAnalysis?.costPerGuest || "0") : 0;
 
   const leadParts: string[] = [];
   if (todayDeliveries.length > 0) {
@@ -168,7 +169,7 @@ export default function RestaurantHomeMobile({
       label: lang === "de" ? "Monatskosten" : "Costi mese",
       value: costLoading
         ? "..."
-        : costAnalysis?.totalCosts && parseFloat(costAnalysis.totalCosts) > 0
+        : pmsIsActive && costAnalysis?.totalCosts && parseFloat(costAnalysis.totalCosts) > 0
         ? <CountUp end={parseFloat(costAnalysis.totalCosts)} duration={1200} suffix="€" formatter={(v: number) => Math.round(v).toLocaleString(lang === "de" ? "de-DE" : "it-IT")} />
         : "--",
       icon: <Euro className="h-3.5 w-3.5" />,
