@@ -14,7 +14,7 @@ export const complaintReasonEnum = pgEnum("complaint_reason", ["damaged", "short
 export const COMPLAINT_REASONS = ["damaged", "short", "wrong", "quality", "late", "other"] as const;
 export type ComplaintReason = typeof COMPLAINT_REASONS[number];
 
-export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["manual_in", "manual_out", "order_confirmed", "order_reversed", "order_cancelled", "manual_set"]);
+export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["manual_in", "manual_out", "order_confirmed", "order_reversed", "order_cancelled", "manual_set", "order_reserved", "order_returned", "order_outbounded"]);
 
 export const users = pgTable("users", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -63,6 +63,7 @@ export const products = pgTable("products", {
   category: text("category"),
   inStock: boolean("in_stock").default(true).notNull(),
   stockQuantity: integer("stock_quantity").default(0),
+  reservedQuantity: integer("reserved_quantity").default(0).notNull(),
   lowStockThreshold: integer("low_stock_threshold").default(0),
   minOrderQuantity: integer("min_order_quantity").default(1).notNull(),
   imageUrl: text("image_url"),

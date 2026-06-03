@@ -362,12 +362,19 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  {product.category || <span className="text-muted-foreground/40">—</span>}
  </div>
  {/* Stock */}
- <div className="text-right tabular-nums pr-2">
+ <div className="text-right tabular-nums pr-2 !flex-col !items-end !justify-center gap-0.5">
+ <div>
  <span className={`font-semibold ${
  status === "out" ? "text-red-600 dark:text-red-400" :
  status === "low" ? "text-orange-600 dark:text-orange-400" : ""
  }`}>{currentStock}</span>
  <span className="text-muted-foreground text-[11px] ml-1">{product.unit}</span>
+ </div>
+ {(product.reservedQuantity ?? 0) > 0 && (
+ <span className="text-[10px] text-blue-600 dark:text-blue-400" data-testid={`text-reserved-${product.id}`}>
+ {lang === "de" ? "reserviert" : "riservato"}: {product.reservedQuantity}
+ </span>
+ )}
  </div>
  {/* Threshold */}
  <div className="text-right tabular-nums text-muted-foreground pr-2">
@@ -514,6 +521,11 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  {currentStock}
  </span>
  <span className="text-[9px] text-muted-foreground leading-tight">{product.unit}</span>
+ {(product.reservedQuantity ?? 0) > 0 && (
+ <span className="text-[9px] text-blue-600 dark:text-blue-400 leading-tight" data-testid={`text-reserved-mobile-${product.id}`}>
+ {lang === "de" ? "res." : "ris."} {product.reservedQuantity}
+ </span>
+ )}
  </div>
 
  <Button

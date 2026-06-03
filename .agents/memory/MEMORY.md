@@ -1,2 +1,1 @@
-- [No-login auth model](no-login-auth-model.md) — app intentionally has NO login; IDs come from query/body and are trusted. Don't "fix" as IDOR.
-- [Cross-supplier product matching](product-matching.md) — match by GTIN first, fall back to name+unit (gtin omitted) so partial-barcode coverage still groups.
+- [Three-bucket stock model](three-bucket-stock.md) — MAIN/ITI(reserved)/Outbounded buckets; invariants for any order-lifecycle stock change (reserve/return/outbound, atomicity, locking).

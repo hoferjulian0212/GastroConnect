@@ -4,11 +4,22 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
+import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, insertSupplierRatingSchema, updateSupplierRatingSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
+
+// Sentinel used inside the atomic order-edit transaction to signal the order
+// is no longer pending (detected after taking the row lock) so we can roll back
+// and return a clean 400.
+class OrderNotPendingError extends Error {
+  constructor() {
+    super("Order is not pending");
+    this.name = "OrderNotPendingError";
+  }
+}
 
 const insertProductSchema = _insertProductSchema.strict();
 const insertCartItemSchema = _insertCartItemSchema.strict();
@@ -103,7 +114,7 @@ type OrderForTransition = {
   items: Array<{ id: string; productId: string; productName: string; quantity: number; confirmedQuantity?: number | null; unitPrice: string }>;
 };
 
-type StockMovementType = "order_confirmed" | "order_cancelled" | "order_reversed";
+type StockMovementType = "order_reserved" | "order_returned" | "order_outbounded";
 
 interface TransitionOpts {
   order: OrderForTransition;
@@ -127,26 +138,6 @@ interface TransitionOpts {
 }
 
 /**
- * Cycle-aware stock-movement gate. The order can pass through multiple
- * confirm → reverse → confirm cycles, so plain "movement of this type
- * exists" is not enough. We compute the current outstanding deduction
- * count: +1 per order_confirmed, -1 per order_reversed/order_cancelled.
- *
- *  - order_confirmed   → only apply if no current deduction is outstanding.
- *  - order_reversed    → only apply if a deduction is currently outstanding.
- *  - order_cancelled   → only apply if a deduction is currently outstanding.
- */
-function shouldApplyStockMovement(existing: Array<{ type: string }>, newType: StockMovementType): boolean {
-  let active = 0;
-  for (const m of existing) {
-    if (m.type === "order_confirmed") active++;
-    else if (m.type === "order_reversed" || m.type === "order_cancelled") active--;
-  }
-  if (newType === "order_confirmed") return active <= 0;
-  return active > 0;
-}
-
-/**
  * Atomically updates an order's status, history, optional per-item confirmed
  * quantities, optional totalAmount and the related stock movements & product
  * stock adjustments — all in a single DB transaction. Idempotent for stock:
@@ -157,13 +148,6 @@ class OrderTransitionConflictError extends Error {
   constructor(public actualStatus: string | null, public expectedStatus: string) {
     super(`Order status changed concurrently: expected ${expectedStatus}, found ${actualStatus}`);
     this.name = "OrderTransitionConflictError";
-  }
-}
-
-class InsufficientStockError extends Error {
-  constructor(public productId: string, public productName: string, public requested: number) {
-    super(`Insufficient stock for ${productName} (${requested})`);
-    this.name = "InsufficientStockError";
   }
 }
 
@@ -209,69 +193,26 @@ async function transitionOrderWithStock(opts: TransitionOpts) {
       }
     }
 
-    if (opts.movementType) {
-      const existing = await tx.select({ type: stockMovements.type }).from(stockMovements).where(eq(stockMovements.orderId, opts.order.id));
-      if (shouldApplyStockMovement(existing, opts.movementType)) {
-        for (const item of opts.order.items) {
-          let qty: number;
-          if (opts.movementType === "order_confirmed" && opts.confirmedQuantitiesByItemId) {
-            qty = opts.confirmedQuantitiesByItemId[item.id] ?? item.confirmedQuantity ?? item.quantity;
-          } else {
-            qty = item.confirmedQuantity ?? item.quantity;
-          }
-          if (qty <= 0) continue;
-
-          // Strict conditional updates: the DB enforces both race-safety and
-          // stock sufficiency. For untracked products (stock_quantity IS NULL)
-          // the WHERE clause never matches and we skip the movement entirely.
-          type StockUpdateRow = { new_stock: number | string | null };
-          const updateRes = opts.movementType === "order_confirmed"
-            ? await tx.execute<StockUpdateRow>(sql`
-                UPDATE ${products}
-                   SET stock_quantity = stock_quantity - ${qty},
-                       in_stock      = (stock_quantity - ${qty}) > 0
-                 WHERE id = ${item.productId}
-                   AND stock_quantity IS NOT NULL
-                   AND stock_quantity >= ${qty}
-                 RETURNING stock_quantity AS new_stock
-              `)
-            : await tx.execute<StockUpdateRow>(sql`
-                UPDATE ${products}
-                   SET stock_quantity = stock_quantity + ${qty},
-                       in_stock      = (stock_quantity + ${qty}) > 0
-                 WHERE id = ${item.productId}
-                   AND stock_quantity IS NOT NULL
-                 RETURNING stock_quantity AS new_stock
-              `);
-          const updRow = updateRes.rows[0];
-          if (!updRow) {
-            // Either untracked stock (skip cleanly) or — for confirm — actual
-            // insufficient stock. Distinguish so we hard-fail confirms that
-            // would otherwise silently under-deduct.
-            if (opts.movementType === "order_confirmed") {
-              const [p] = await tx.select().from(products).where(eq(products.id, item.productId));
-              if (p && p.stockQuantity !== null && p.stockQuantity !== undefined) {
-                throw new InsufficientStockError(item.productId, item.productName, qty);
-              }
-            }
-            continue;
-          }
-          const newStock: number = Number(updRow.new_stock ?? 0);
-          const delta = opts.movementType === "order_confirmed" ? -qty : qty;
-          const previousStock = Math.max(0, newStock - delta);
-          await tx.insert(stockMovements).values({
-            productId: item.productId,
-            supplierId: opts.order.supplierId,
-            orderId: opts.order.id,
-            userId: opts.changedBy ?? opts.order.supplierId,
-            userName: opts.actorName ?? null,
-            type: opts.movementType,
-            quantity: qty,
-            previousStock,
-            newStock,
-            note: opts.noteFn ? opts.noteFn(item, qty) : "",
-          });
-        }
+    // Three-bucket stock movements (ITI model). order_returned / order_outbounded
+    // release exactly what is still reserved (ITI) for this order, computed from
+    // its own bucket movements. This is naturally idempotent: an already-released
+    // order has 0 remaining and produces no further movement.
+    if (opts.movementType === "order_returned" || opts.movementType === "order_outbounded") {
+      const remaining = await getReservedRemainingByProduct(tx, opts.order.id);
+      for (const [productId, qty] of remaining) {
+        if (qty <= 0) continue;
+        const item = opts.order.items.find(i => i.productId === productId);
+        await applyBucketMovement(tx, {
+          orderId: opts.order.id,
+          supplierId: opts.order.supplierId,
+          productId,
+          productName: item?.productName ?? "",
+          type: opts.movementType,
+          qty,
+          actorId: opts.changedBy ?? opts.order.supplierId,
+          actorName: opts.actorName ?? null,
+          note: item && opts.noteFn ? opts.noteFn(item, qty) : "",
+        });
       }
     }
 
@@ -2167,9 +2108,14 @@ export async function registerRoutes(
         const supplierNotes = perSupplierNotes?.[supplierId] || notes || null;
         const order = await storage.createOrder(
           { restaurantId, supplierId, totalAmount, status: "pending", notes: supplierNotes, requestedDeliveryDate: supplierDeliveryDate, createdByUserId: createdByUserId || restaurantId },
-          orderItems as any
+          orderItems as any,
+          { reserveStock: true, strictReserve: true }
         );
         createdOrders.push(order);
+        // MAIN was debited (reserved) at placement; check low-stock now.
+        for (const item of orderItems) {
+          await checkAndNotifyLowStock(item.productId, supplierId);
+        }
         
         await storage.addOrderStatusHistory(order.id, null, "pending", createdByUserId || restaurantId);
 
@@ -2213,6 +2159,12 @@ export async function registerRoutes(
 
       res.status(201).json(createdOrders);
     } catch (error) {
+      if (error instanceof InsufficientStockError) {
+        return res.status(400).json({
+          error: "insufficient_stock",
+          message: `Nicht genügend Lagerbestand: ${error.productName} (nur ${error.available} verfügbar).`,
+        });
+      }
       console.error("Create order error:", error);
       res.status(500).json({ error: "Failed to create order" });
     }
@@ -2280,8 +2232,13 @@ export async function registerRoutes(
 
       const order = await storage.createOrder(
         { restaurantId, supplierId, totalAmount, status: "pending", notes: notes || "", createdByUserId: createdByUserId || restaurantId },
-        orderItems as any
+        orderItems as any,
+        { reserveStock: true, strictReserve: true }
       );
+      // MAIN was debited (reserved) at placement; check low-stock now.
+      for (const item of orderItems) {
+        await checkAndNotifyLowStock(item.productId, supplierId);
+      }
       
       await storage.addOrderStatusHistory(order.id, null, "pending", createdByUserId || restaurantId);
 
@@ -2313,6 +2270,12 @@ export async function registerRoutes(
 
       res.status(201).json(order);
     } catch (error) {
+      if (error instanceof InsufficientStockError) {
+        return res.status(400).json({
+          error: "insufficient_stock",
+          message: `Nicht genügend Lagerbestand: ${error.productName} (nur ${error.available} verfügbar).`,
+        });
+      }
       console.error("Direct order error:", error);
       res.status(500).json({ error: "Failed to create order" });
     }
@@ -2366,27 +2329,15 @@ export async function registerRoutes(
             results.push({ orderId, success: false, error: "Offene Änderungsanfrage – bitte zuerst beantworten." });
             continue;
           }
-          const stockErrors: string[] = [];
-          for (const item of order.items) {
-            const product = await storage.getProduct(item.productId);
-            if (product && product.stockQuantity !== null && product.stockQuantity !== undefined) {
-              const qty = item.confirmedQuantity ?? item.quantity;
-              if (qty > product.stockQuantity) {
-                stockErrors.push(`${item.productName}: ${qty} > ${product.stockQuantity}`);
-              }
-            }
-          }
-          if (stockErrors.length > 0) {
-            results.push({ orderId, success: false, error: `Insufficient stock: ${stockErrors.join(", ")}` });
-            continue;
-          }
+          // Stock was already reserved (MAIN -> ITI) at placement; confirming
+          // does not move stock in the three-bucket model.
           await transitionOrderWithStock({
             order,
             newStatus: "confirmed",
             previousStatus: "pending",
             changedBy: supplierId,
             actorName,
-            movementType: "order_confirmed",
+            movementType: null,
             noteFn: () => `Batch: Bestellung #${formatOrderNumber(order)} bestätigt`,
           });
           results.push({ orderId, success: true });
@@ -2421,18 +2372,15 @@ export async function registerRoutes(
             continue;
           }
           const previousStatus = order.status;
-          const needsReversal =
-            previousStatus === "confirmed" ||
-            previousStatus === "partially_confirmed" ||
-            previousStatus === "in_delivery";
+          // Any non-delivered order has its qty in ITI; cancelling returns it to MAIN.
           await transitionOrderWithStock({
             order,
             newStatus: "cancelled",
             previousStatus,
             changedBy: supplierId,
             actorName: actorNameCancel,
-            movementType: needsReversal ? "order_cancelled" : null,
-            noteFn: () => `Batch: Bestellung #${formatOrderNumber(order)} storniert`,
+            movementType: "order_returned",
+            noteFn: () => `Batch: Bestellung #${formatOrderNumber(order)} storniert – zurück ins Hauptlager`,
           });
           results.push({ orderId, success: true });
         } catch (err: any) {
@@ -2464,35 +2412,24 @@ export async function registerRoutes(
         });
       }
 
-      // Stock check before confirming via legacy flow
-      if (status === "confirmed" && previousStatus === "pending") {
-        const stockErrors: string[] = [];
-        for (const item of order.items) {
-          const product = await storage.getProduct(item.productId);
-          if (product && product.stockQuantity !== null && product.stockQuantity !== undefined) {
-            const qty = item.confirmedQuantity ?? item.quantity;
-            if (qty > product.stockQuantity) {
-              stockErrors.push(`${item.productName}: ${qty} bestätigt, aber nur ${product.stockQuantity} auf Lager`);
-            }
-          }
-        }
-        if (stockErrors.length > 0) {
-          return res.status(400).json({ error: "insufficient_stock", details: stockErrors });
-        }
-      }
-
-      // Determine if this transition needs an atomic stock movement write.
+      // Three-bucket stock model: qty was reserved (MAIN -> ITI) at placement.
+      // Confirming does not move stock. Cancelling a non-delivered order returns
+      // the reserved qty (ITI -> MAIN). Delivering outbounds it (ITI -> gone).
       let movementType: StockMovementType | null = null;
       let noteFn: TransitionOpts["noteFn"] | undefined;
-      if (status === "confirmed" && previousStatus === "pending") {
-        movementType = "order_confirmed";
-        noteFn = () => `Bestellung #${formatOrderNumber(order)} bestätigt`;
-      } else if (
+      if (
         status === "cancelled" &&
-        (previousStatus === "confirmed" || previousStatus === "partially_confirmed" || previousStatus === "in_delivery")
+        previousStatus !== "delivered" &&
+        previousStatus !== "cancelled"
       ) {
-        movementType = "order_cancelled";
-        noteFn = () => `Bestellung #${formatOrderNumber(order)} storniert`;
+        movementType = "order_returned";
+        noteFn = () => `Bestellung #${formatOrderNumber(order)} storniert – zurück ins Hauptlager`;
+      } else if (
+        status === "delivered" &&
+        (previousStatus === "in_delivery" || previousStatus === "confirmed" || previousStatus === "partially_confirmed")
+      ) {
+        movementType = "order_outbounded";
+        noteFn = () => `Bestellung #${formatOrderNumber(order)} geliefert – aus Zwischenlager ausgebucht`;
       }
 
       const actorId = changedBy ?? order.supplierId;
@@ -2511,12 +2448,8 @@ export async function registerRoutes(
         deliveryNotes: deliveryNotes ?? undefined,
       });
 
-      // Trigger low-stock notifications outside the transaction
-      if (movementType === "order_confirmed") {
-        for (const item of order.items) {
-          await checkAndNotifyLowStock(item.productId, order.supplierId);
-        }
-      }
+      // MAIN is debited at placement (reserve), so low-stock is checked there.
+      // No low-stock notification is needed for confirm/cancel/deliver transitions.
 
       // Post a "delivery_status" chat message when supplier marks order as in_delivery,
       // so the restaurant sees the delivery date + optional supplier note in the chat thread.
@@ -2668,24 +2601,9 @@ export async function registerRoutes(
         }
       }
 
-      // Check stock availability before confirming
-      const stockErrors: string[] = [];
-      for (const confirmItem of validated.items) {
-        if (confirmItem.confirmedQuantity > 0) {
-          const orderItem = order.items.find(i => i.id === confirmItem.orderItemId)!;
-          const product = await storage.getProduct(orderItem.productId);
-          if (product && product.stockQuantity !== null && product.stockQuantity !== undefined) {
-            const available = product.stockQuantity;
-            if (confirmItem.confirmedQuantity > available) {
-              stockErrors.push(`${orderItem.productName}: ${confirmItem.confirmedQuantity} bestätigt, aber nur ${available} auf Lager`);
-            }
-          }
-        }
-      }
-      if (stockErrors.length > 0) {
-        return res.status(400).json({ error: "insufficient_stock", details: stockErrors });
-      }
-
+      // No stock pre-check needed: the full ordered qty was already reserved
+      // (MAIN -> ITI) at placement. Confirming keeps the confirmed qty reserved
+      // and returns the rejected portion (ITI -> MAIN) via txExtra below.
       let totalConfirmedAmount = 0;
       let allFullyConfirmed = true;
       let allRejected = true;
@@ -2732,9 +2650,39 @@ export async function registerRoutes(
         previousStatus: "pending",
         changedBy: validated.changedBy ?? null,
         actorName: actorNamePC,
-        movementType: allRejected ? null : "order_confirmed",
+        movementType: null,
         confirmedQuantitiesByItemId,
         totalAmountOverride: totalConfirmedAmount.toFixed(2),
+        // Keep the confirmed qty reserved (ITI) and return the rejected portion
+        // (reserved - confirmed) back to MAIN. Clamped against the actually
+        // reserved remaining so under-reserved (lenient) orders never over-return.
+        txExtra: async (tx) => {
+          const remaining = await getReservedRemainingByProduct(tx, order.id);
+          const confirmedByProduct = new Map<string, number>();
+          const nameByProduct = new Map<string, string>();
+          for (const ci of validated.items) {
+            const oi = order.items.find(i => i.id === ci.orderItemId)!;
+            confirmedByProduct.set(oi.productId, (confirmedByProduct.get(oi.productId) ?? 0) + ci.confirmedQuantity);
+            nameByProduct.set(oi.productId, oi.productName);
+          }
+          for (const [productId, reservedQty] of remaining) {
+            const keep = confirmedByProduct.get(productId) ?? 0;
+            const toReturn = reservedQty - keep;
+            if (toReturn > 0) {
+              await applyBucketMovement(tx, {
+                orderId: order.id,
+                supplierId: order.supplierId,
+                productId,
+                productName: nameByProduct.get(productId) ?? "",
+                type: "order_returned",
+                qty: toReturn,
+                actorId: actorIdPC,
+                actorName: actorNamePC,
+                note: `Bestellung #${formatOrderNumber(order)}: ${toReturn} abgelehnt – zurück ins Hauptlager`,
+              });
+            }
+          }
+        },
         noteFn: (item, qty) => {
           const orig = order.items.find(i => i.id === item.id)?.quantity ?? qty;
           return finalStatus === "partially_confirmed"
@@ -2744,16 +2692,6 @@ export async function registerRoutes(
       });
       if (!updated) {
         return res.status(500).json({ error: "Failed to update order status" });
-      }
-
-      // Low-stock notifications outside transaction
-      if (!allRejected) {
-        for (const confirmItem of validated.items) {
-          if (confirmItem.confirmedQuantity > 0) {
-            const orderItem = order.items.find(i => i.id === confirmItem.orderItemId)!;
-            await checkAndNotifyLowStock(orderItem.productId, order.supplierId);
-          }
-        }
       }
 
       // Send notification to restaurant
@@ -2952,7 +2890,84 @@ export async function registerRoutes(
         .reduce((sum: number, item: any) => sum + parseFloat(item.totalPrice), 0)
         .toFixed(2);
 
-      const updated = await storage.updateOrderItems(req.params.id, orderItems as any, totalAmount, requestedDeliveryDate);
+      // Three-bucket reservation diff: the pending order already has its qty
+      // reserved (MAIN -> ITI). Compute per-product change between the currently
+      // reserved amount and the new desired quantity, then move stock to match.
+      // Everything below runs in ONE transaction that first locks the order row
+      // and re-checks status, so a concurrent cancel/deliver cannot race between
+      // the diff computation and applying the item update + stock movements.
+      const newQtyByProduct = new Map<string, { qty: number; name: string }>();
+      for (const oi of orderItems) {
+        const cur = newQtyByProduct.get(oi.productId);
+        if (cur) cur.qty += oi.quantity;
+        else newQtyByProduct.set(oi.productId, { qty: oi.quantity, name: oi.productName });
+      }
+
+      let updated: Awaited<ReturnType<typeof storage.updateOrderItems>>;
+      try {
+        updated = await db.transaction(async (tx) => {
+          // Lock the order row and re-verify it is still pending inside the tx.
+          const lockRes: any = await tx.execute(sql`SELECT status FROM orders WHERE id = ${req.params.id} FOR UPDATE`);
+          const lockRow = lockRes.rows?.[0];
+          if (!lockRow || lockRow.status !== "pending") {
+            throw new OrderNotPendingError();
+          }
+
+          const reservedRemaining = await getReservedRemainingByProduct(tx, order.id);
+          const affectedProductIds = new Set<string>([
+            ...reservedRemaining.keys(),
+            ...newQtyByProduct.keys(),
+          ]);
+
+          for (const pid of affectedProductIds) {
+            const oldQty = reservedRemaining.get(pid) ?? 0;
+            const newInfo = newQtyByProduct.get(pid);
+            const newQty = newInfo?.qty ?? 0;
+            const name = newInfo?.name ?? order.items.find(i => i.productId === pid)?.productName ?? "";
+            const diff = newQty - oldQty;
+            if (diff > 0) {
+              // strict (default): throws InsufficientStockError if MAIN is too
+              // low at apply time, rolling back the whole edit.
+              await applyBucketMovement(tx, {
+                orderId: order.id,
+                supplierId: order.supplierId,
+                productId: pid,
+                productName: name,
+                type: "order_reserved",
+                qty: diff,
+                actorId: order.restaurantId,
+                note: `Bestellung #${formatOrderNumber(order)} angepasst – ${diff} zusätzlich reserviert`,
+              });
+            } else if (diff < 0) {
+              await applyBucketMovement(tx, {
+                orderId: order.id,
+                supplierId: order.supplierId,
+                productId: pid,
+                productName: name,
+                type: "order_returned",
+                qty: -diff,
+                actorId: order.restaurantId,
+                note: `Bestellung #${formatOrderNumber(order)} angepasst – ${-diff} zurück ins Hauptlager`,
+              });
+            }
+          }
+
+          // Apply the item/total update inside the same transaction.
+          return await storage.updateOrderItems(req.params.id, orderItems as any, totalAmount, requestedDeliveryDate, tx);
+        });
+      } catch (txErr) {
+        if (txErr instanceof OrderNotPendingError) {
+          return res.status(400).json({ error: "Only pending orders can be edited" });
+        }
+        if (txErr instanceof InsufficientStockError) {
+          return res.status(400).json({
+            error: "insufficient_stock",
+            productName: txErr.productName,
+            message: `Nicht genügend Lagerbestand: ${txErr.productName} (nur ${txErr.available} verfügbar).`,
+          });
+        }
+        throw txErr;
+      }
 
       const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
       const restaurant = await storage.getUser(order.restaurantId);
@@ -3071,10 +3086,8 @@ export async function registerRoutes(
 
       if (approved) {
         const previousStatus = order.status;
-        const needsStockReverse =
-          previousStatus === "confirmed" ||
-          previousStatus === "partially_confirmed" ||
-          previousStatus === "in_delivery";
+        // Three-bucket model: the order's qty stays reserved (ITI) while it goes
+        // back to pending for editing. No stock movement on approval.
 
         // Status transition + response chat message must be atomic. Otherwise
         // a failed message insert would leave the order in `pending` while
@@ -3094,7 +3107,7 @@ export async function registerRoutes(
           previousStatus,
           changedBy: supplierId,
           actorName: supplier?.name ?? null,
-          movementType: needsStockReverse ? "order_reversed" : null,
+          movementType: null,
           noteFn: () => `Bestellung #${formatOrderNumber(order)} zurück auf ausstehend (Änderungsanfrage genehmigt)`,
           txExtra: async (tx) => {
             await tx.insert(messages).values({
@@ -4226,7 +4239,8 @@ export async function registerRoutes(
           requestedDeliveryDate: deliveryDate,
           createdByUserId: effectiveSupplierId
         },
-        orderItems as any
+        orderItems as any,
+        { reserveStock: true, strictReserve: false }
       );
 
       await storage.addOrderStatusHistory(order.id, null, "pending", effectiveSupplierId);

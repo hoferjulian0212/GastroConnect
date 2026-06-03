@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { applyBucketMovement } from "./stockBuckets";
 import { eq, and, desc, or, sql, ne, inArray, gte, isNull } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
@@ -656,15 +657,53 @@ export class DatabaseStorage implements IStorage {
     return this.generateOrderNumber() + "-" + Date.now().toString(36).toUpperCase();
   }
 
-  async createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order> {
+  async createOrder(
+    order: InsertOrder,
+    items: InsertOrderItem[],
+    opts?: { reserveStock?: boolean; strictReserve?: boolean },
+  ): Promise<Order> {
     const orderNumber = await this.generateUniqueOrderNumber();
-    const [created] = await db.insert(orders).values({ ...order, orderNumber }).returning();
-    
-    for (const item of items) {
-      await db.insert(orderItems).values({ ...item, orderId: created.id });
-    }
-    
-    return created;
+    const reserveStock = opts?.reserveStock ?? false;
+    const strict = opts?.strictReserve ?? true;
+
+    return await db.transaction(async (tx) => {
+      const [created] = await tx.insert(orders).values({ ...order, orderNumber }).returning();
+
+      const insertedItems = [] as InsertOrderItem[];
+      for (const item of items) {
+        await tx.insert(orderItems).values({ ...item, orderId: created.id });
+        insertedItems.push(item);
+      }
+
+      // Three-bucket warehouse: reserve ordered qty MAIN -> ITI at placement.
+      if (reserveStock) {
+        const reserveByProduct = new Map<string, { qty: number; name: string }>();
+        for (const item of insertedItems) {
+          const pid = (item as any).productId as string;
+          const qty = Number((item as any).quantity) || 0;
+          const name = (item as any).productName as string;
+          if (!pid || qty <= 0) continue;
+          const cur = reserveByProduct.get(pid);
+          if (cur) cur.qty += qty;
+          else reserveByProduct.set(pid, { qty, name });
+        }
+        for (const [productId, { qty, name }] of reserveByProduct) {
+          await applyBucketMovement(tx, {
+            orderId: created.id,
+            supplierId: order.supplierId,
+            productId,
+            productName: name,
+            type: "order_reserved",
+            qty,
+            actorId: order.createdByUserId ?? order.restaurantId,
+            note: `Bestellung #${orderNumber} aufgegeben – ins Zwischenlager reserviert`,
+            strict,
+          });
+        }
+      }
+
+      return created;
+    });
   }
 
   async backfillOrderNumbers(): Promise<number> {
@@ -694,8 +733,8 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string, requestedDeliveryDate?: string | null): Promise<Order | undefined> {
-    return await db.transaction(async (tx) => {
+  async updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string, requestedDeliveryDate?: string | null, executor?: any): Promise<Order | undefined> {
+    const run = async (tx: any) => {
       await tx.delete(orderItems).where(eq(orderItems.orderId, id));
       if (items.length > 0) {
         await tx.insert(orderItems).values(items.map(item => ({ ...item, orderId: id })));
@@ -710,7 +749,10 @@ export class DatabaseStorage implements IStorage {
         .where(eq(orders.id, id))
         .returning();
       return updated;
-    });
+    };
+    // When an executor (an in-progress tx) is supplied, run inline so the
+    // caller can keep item updates and stock movements in one atomic unit.
+    return executor ? run(executor) : await db.transaction(run);
   }
 
   async updateOrderItemConfirmation(orderItemId: string, confirmedQuantity: number, rejectedQuantity: number): Promise<OrderItem | undefined> {
