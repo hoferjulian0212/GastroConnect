@@ -564,7 +564,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  )}
 
  <Dialog open={!!adjustProduct} onOpenChange={(open) => { if (!open) { setAdjustProduct(null); setAdjustQty(1); setAdjustNote(""); } }}>
- <DialogContent className="max-w-sm">
+ <DialogContent className="p-0 gap-0 max-w-sm">
  <DialogHeader className="sr-only">
  <DialogTitle>{t("supplierProducts", "adjustStock")}</DialogTitle>
  </DialogHeader>
@@ -697,7 +697,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  </Dialog>
 
  <Dialog open={!!historyProduct} onOpenChange={(open) => { if (!open) setHistoryProduct(null); }}>
- <DialogContent className="max-w-lg max-h-[85vh]">
+ <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh]">
  <DialogHeader className="sr-only">
  <DialogTitle>{t("supplierProducts", "stockMovements")}</DialogTitle>
  </DialogHeader>
@@ -993,7 +993,7 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
  )}
 
  <Dialog open={isDialogOpen} onOpenChange={(open) => !open && resetForm()}>
- <DialogContent className="max-w-md">
+ <DialogContent className="p-0 gap-0 max-w-md">
  <DialogHeader className="sr-only">
  <DialogTitle>{editingPromo ? t("promotionsPage", "editPromotion") : lang === "de" ? "Neue Aktion erstellen" : "Crea nuova promozione"}</DialogTitle>
  </DialogHeader>
@@ -1450,7 +1450,7 @@ export default function SupplierProducts() {
  )}
 
  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
- <DialogContent className="!max-w-4xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[92vh] overflow-y-auto">
+ <DialogContent className="p-0 gap-0 !max-w-4xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[92vh] overflow-y-auto">
  <DialogHeader className="sr-only">
  <DialogTitle>{editingProduct ? t("supplierProducts", "editProduct") : t("supplierProducts", "addProduct")}</DialogTitle>
  </DialogHeader>

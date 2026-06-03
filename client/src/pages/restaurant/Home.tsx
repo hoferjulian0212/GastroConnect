@@ -1971,7 +1971,7 @@ export default function RestaurantHome() {
         ]}
       />
       <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">
+        <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-home-order-detail">
           <DialogHeader className="sr-only">
             <DialogTitle>{t("orders", "order")} #{formatOrderNumber(detailOrder)}</DialogTitle>
           </DialogHeader>
@@ -2046,7 +2046,7 @@ export default function RestaurantHome() {
         </DialogContent>
       </Dialog>
       <Dialog open={!!wizardTemplate} onOpenChange={(open) => { if (!open && wizardStep !== "done") setWizardTemplate(null); }}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0" data-testid="dialog-template-wizard">
+        <DialogContent className="gap-0 max-w-md max-h-[90vh] overflow-y-auto p-0" data-testid="dialog-template-wizard">
           <DialogHeader className="sr-only">
             <DialogTitle>{wizardTemplate?.name}</DialogTitle>
             <DialogDescription>{lang === "de" ? "Bestellung aus Vorlage" : "Ordine da modello"}</DialogDescription>

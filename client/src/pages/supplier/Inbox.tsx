@@ -2418,7 +2418,7 @@ export default function SupplierInbox() {
       </Card>
 
       <Dialog open={!!orderDetailId} onOpenChange={(open) => { if (!open) { setOrderDetailId(null); setShowCancelOrderConfirm(false); } }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
+        <DialogContent className="gap-0 max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
           <DialogHeader className="sr-only"><DialogTitle>{lang === "de" ? "Bestelldetails" : "Dettagli ordine"}</DialogTitle></DialogHeader>
           <div className="px-6 pt-6 pb-2">
             <div className="flex items-center justify-between gap-3">
@@ -2620,7 +2620,7 @@ export default function SupplierInbox() {
           setLoadingComplaintDetail(false);
         }
       }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
+        <DialogContent className="gap-0 max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
           <DialogHeader className="sr-only"><DialogTitle>{lang === "de" ? "Reklamationsdetails" : "Dettagli reclamo"}</DialogTitle></DialogHeader>
           {(loadingComplaintDetail || isLoadingComplaintDetail) ? (
             <div className="p-6 space-y-4">
@@ -2878,7 +2878,7 @@ export default function SupplierInbox() {
 
       {/* Complaint Status Change Dialog */}
       <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="p-0 gap-0 max-w-md">
           <DialogHeader className="sr-only">
             <DialogTitle>Status ändern</DialogTitle>
           </DialogHeader>
@@ -2958,7 +2958,7 @@ export default function SupplierInbox() {
 
       {/* Complaint Comment Dialog */}
       <Dialog open={showCommentDialog} onOpenChange={setShowCommentDialog}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="p-0 gap-0 max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader className="sr-only">
             <DialogTitle>Kommentare</DialogTitle>
           </DialogHeader>
@@ -3086,7 +3086,7 @@ export default function SupplierInbox() {
       )}
 
       <Dialog open={showFollowUpDialog} onOpenChange={setShowFollowUpDialog}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader className="sr-only">
             <DialogTitle>{lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}</DialogTitle>
           </DialogHeader>

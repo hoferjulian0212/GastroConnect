@@ -586,7 +586,7 @@ export default function Documents() {
       </Dialog>
 
       <Dialog open={!!selectedDoc} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="dialog-delivery-note-preview">
+        <DialogContent className="p-0 gap-0 max-w-lg max-h-[90vh] overflow-y-auto" data-testid="dialog-delivery-note-preview">
           <DialogHeader className="sr-only">
             <DialogTitle>{selectedDoc?.title}</DialogTitle>
           </DialogHeader>

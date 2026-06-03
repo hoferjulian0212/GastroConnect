@@ -75,7 +75,7 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm" data-testid="dialog-delivery-date-picker">
+      <DialogContent className="p-0 gap-0 max-w-sm" data-testid="dialog-delivery-date-picker">
         <DialogHeader className="sr-only">
           <DialogTitle>{t("supplierOrders", "selectDeliveryDate")}</DialogTitle>
         </DialogHeader>

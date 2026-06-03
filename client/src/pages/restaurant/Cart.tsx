@@ -891,7 +891,7 @@ export default function RestaurantCart() {
       )}
 
       <Dialog open={!!preConfirmDialog} onOpenChange={(open) => { if (!open) setPreConfirmDialog(null); }}>
-        <DialogContent className="!max-w-2xl w-[calc(100vw-2rem)]" data-testid="dialog-order-confirm">
+        <DialogContent className="p-0 gap-0 !max-w-2xl w-[calc(100vw-2rem)]" data-testid="dialog-order-confirm">
           <DialogHeader className="px-8 pt-8 pb-3">
             <DialogTitle className="flex items-center gap-2.5 text-xl">
               <ShoppingBag className="h-5 w-5 text-primary" />

@@ -1885,7 +1885,7 @@ export default function RestaurantOrders() {
  </div>
 
  <Dialog open={!!detailOrder} onOpenChange={(open) => { if (!open) { setDetailOrder(null); setShowMessageInput(false); setOrderMessage(""); } }}>
- <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">
+ <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">
  <DialogHeader className="sr-only">
  <DialogTitle>{t("orders", "order")} #{formatOrderNumber(detailOrder)}</DialogTitle>
  </DialogHeader>
@@ -2075,7 +2075,7 @@ export default function RestaurantOrders() {
  </Dialog>
 
  <Dialog open={!!editingOrder} onOpenChange={(open) => !open && setEditingOrder(null)}>
- <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+ <DialogContent className="p-0 gap-0 max-w-xl max-h-[90vh] overflow-y-auto">
  <DialogHeader className="sr-only">
  <DialogTitle>{t("orders", "editOrder")}</DialogTitle>
  </DialogHeader>
@@ -2287,7 +2287,7 @@ export default function RestaurantOrders() {
  </Dialog>
 
  <Dialog open={!!changeRequestOrder} onOpenChange={(open) => { if (!open) { setChangeRequestOrder(null); setChangeRequestReason(""); } }}>
- <DialogContent className="max-w-md">
+ <DialogContent className="p-0 gap-0 max-w-md">
  <DialogHeader className="sr-only">
  <DialogTitle>{t("orders", "requestChange")}</DialogTitle>
  </DialogHeader>

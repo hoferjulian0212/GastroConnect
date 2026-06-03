@@ -129,7 +129,7 @@ export function PartialConfirmationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader className="sr-only">
           <DialogTitle data-testid="dialog-confirm-order-title">{lang === "it" ? "Conferma ordine" : "Bestellung bestätigen"}</DialogTitle>
         </DialogHeader>
@@ -162,7 +162,7 @@ export function PartialConfirmationDialog({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-1 px-5" data-testid="confirm-items-list">
+        <div className="flex-1 overflow-y-auto space-y-2 px-5" data-testid="confirm-items-list">
           {order.items.map((item) => {
             const confirmed = confirmedQuantities[item.id] ?? item.quantity;
             const rejected = item.quantity - confirmed;

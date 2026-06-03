@@ -1619,7 +1619,7 @@ export default function SupplierOrders() {
  </div>
 
  <Dialog open={!!detailOrder} onOpenChange={(open) => { if (!open) { setDetailOrder(null); setShowMessageInput(false); setOrderMessage(""); } }}>
- <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">
+ <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-order-detail">
  <DialogHeader className="sr-only">
  <DialogTitle>{lang === "de" ? "Auftrag" : "Ordine"} #{formatOrderNumber(detailOrder)}</DialogTitle>
  </DialogHeader>

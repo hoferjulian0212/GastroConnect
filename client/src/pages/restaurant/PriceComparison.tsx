@@ -809,7 +809,7 @@ export default function PriceComparison() {
 
  {/* ─── WECHSELPLAN DIALOG ───────────────────────────────────────── */}
  <Dialog open={wechselplanOpen} onOpenChange={setWechselplanOpen}>
- <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+ <DialogContent className="gap-0 max-w-2xl max-h-[90vh] flex flex-col p-0">
  <DialogHeader className="px-5 pt-5 pb-3 border-b">
  <DialogTitle className="flex items-center gap-2">
  <ArrowRight className="h-5 w-5 text-emerald-500" />

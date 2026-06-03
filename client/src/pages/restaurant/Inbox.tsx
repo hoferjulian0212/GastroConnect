@@ -2941,7 +2941,7 @@ export default function RestaurantInbox() {
       </Card>
 
       <Dialog open={!!orderDetailId} onOpenChange={(open) => !open && setOrderDetailId(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
+        <DialogContent className="gap-0 max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
           <DialogHeader className="sr-only"><DialogTitle>{lang === "de" ? "Bestelldetails" : "Dettagli ordine"}</DialogTitle></DialogHeader>
           <div className="px-6 pt-6 pb-2">
             <div className="flex items-center justify-between gap-3">
@@ -3129,7 +3129,7 @@ export default function RestaurantInbox() {
           setLoadingComplaintDetail(false);
         }
       }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
+        <DialogContent className="gap-0 max-w-lg max-h-[85vh] overflow-y-auto p-0" aria-describedby={undefined}>
           <DialogHeader className="sr-only"><DialogTitle>{lang === "de" ? "Reklamationsdetails" : "Dettagli reclamo"}</DialogTitle></DialogHeader>
           {(loadingComplaintDetail || isLoadingComplaintDetail) ? (
             <div className="p-6 space-y-4">
@@ -3415,7 +3415,7 @@ export default function RestaurantInbox() {
       </Dialog>
 
       <Dialog open={!!editingOrderInbox} onOpenChange={(open) => !open && setEditingOrderInbox(null)}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="p-0 gap-0 max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="sr-only">
             <DialogTitle>{t("orders", "editOrder")}</DialogTitle>
           </DialogHeader>

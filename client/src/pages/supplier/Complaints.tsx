@@ -832,7 +832,7 @@ export default function SupplierComplaints() {
       </div>
 
       <Dialog open={showDetailDialog} onOpenChange={(open) => { if (!open) { setShowDetailDialog(false); setSelectedComplaint(null); setNewComment(""); setShowComplaintMessageInput(false); setComplaintMessage(""); } }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">
+        <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">
           <DialogHeader className="sr-only">
             <DialogTitle>{lang === "de" ? "Reklamation" : "Reclamo"}</DialogTitle>
           </DialogHeader>
@@ -1072,7 +1072,7 @@ export default function SupplierComplaints() {
       </Dialog>
 
       <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="p-0 gap-0 max-w-md">
           <DialogHeader className="sr-only">
             <DialogTitle>{t("supplierComplaints", "updateStatus")}</DialogTitle>
           </DialogHeader>
@@ -1150,7 +1150,7 @@ export default function SupplierComplaints() {
       </Dialog>
 
       <Dialog open={showCommentDialog} onOpenChange={setShowCommentDialog}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="p-0 gap-0 max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader className="sr-only">
             <DialogTitle>{lang === "de" ? "Kommentare" : "Commenti"}</DialogTitle>
           </DialogHeader>
@@ -1229,7 +1229,7 @@ export default function SupplierComplaints() {
       </Dialog>
 
       <Dialog open={showFollowUpDialog} onOpenChange={setShowFollowUpDialog}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader className="sr-only">
             <DialogTitle>{lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}</DialogTitle>
           </DialogHeader>

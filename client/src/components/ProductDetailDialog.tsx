@@ -21,7 +21,7 @@ export default function ProductDetailDialog({ product, open, onOpenChange, suppl
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto" data-testid="dialog-product-detail">
+      <DialogContent className="p-0 gap-0 max-w-md max-h-[85vh] overflow-y-auto" data-testid="dialog-product-detail">
         <DialogHeader className="sr-only">
           <DialogTitle>{lang === "de" ? "Produktdetails" : "Dettagli prodotto"}</DialogTitle>
         </DialogHeader>

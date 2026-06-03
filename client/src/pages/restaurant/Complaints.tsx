@@ -981,7 +981,7 @@ export default function Complaints() {
  </div>
 
  <Dialog open={showCreateDialog} onOpenChange={(open) => { if (!open) resetForm(); }}>
- <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-create-complaint">
+ <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-create-complaint">
  <DialogHeader className="sr-only">
  <DialogTitle>{t("complaints", "newComplaint")}</DialogTitle>
  </DialogHeader>
@@ -1325,7 +1325,7 @@ export default function Complaints() {
  </Dialog>
 
  <Dialog open={!!detailComplaint} onOpenChange={(open) => { if (!open) { setDetailComplaint(null); setNewComment(""); setShowComplaintMessageInput(false); setComplaintMessage(""); } }}>
- <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">
+ <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] overflow-hidden flex flex-col" data-testid="dialog-complaint-detail">
  <DialogHeader className="sr-only">
  <DialogTitle>{t("common", "complaints")}</DialogTitle>
  </DialogHeader>
@@ -1649,7 +1649,7 @@ export default function Complaints() {
  </Dialog>
 
  <Dialog open={!!withdrawComplaintId} onOpenChange={(open) => { if (!open) { setWithdrawComplaintId(null); setWithdrawReason(""); } }}>
- <DialogContent className="max-w-sm">
+ <DialogContent className="p-0 gap-0 max-w-sm">
  <DialogHeader className="sr-only">
  <DialogTitle>{t("complaints", "withdrawComplaint")}</DialogTitle>
  </DialogHeader>

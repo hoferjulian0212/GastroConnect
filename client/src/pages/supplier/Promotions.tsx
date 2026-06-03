@@ -582,7 +582,7 @@ export default function SupplierPromotions() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader className="sr-only">
             <DialogTitle>{t("promotionsPage", "createPromotion")}</DialogTitle>
           </DialogHeader>

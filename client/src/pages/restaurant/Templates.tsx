@@ -669,7 +669,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
       )}
 
       <Dialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="p-0 gap-0 max-w-sm">
           <DialogHeader className="sr-only">
             <DialogTitle>{t("templates", "deleteTemplate")}</DialogTitle>
           </DialogHeader>
@@ -812,7 +812,7 @@ function CreateEditDialog({
   if (mode === "choose") {
     return (
       <Dialog open onOpenChange={(o) => !o && onClose()}>
-        <DialogContent className="max-w-md" data-testid="dialog-choose-template-mode">
+        <DialogContent className="p-0 gap-0 max-w-md" data-testid="dialog-choose-template-mode">
           <DialogHeader className="sr-only">
             <DialogTitle>{t("templates", "newTemplate")}</DialogTitle>
           </DialogHeader>
@@ -861,7 +861,7 @@ function CreateEditDialog({
     const sortedOrders = orders ? [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : [];
     return (
       <Dialog open onOpenChange={(o) => !o && onClose()}>
-        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-from-order">
+        <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-from-order">
           <DialogHeader className="sr-only">
             <DialogTitle>{t("templates", "selectOrder")}</DialogTitle>
           </DialogHeader>
@@ -931,7 +931,7 @@ function CreateEditDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-create-template">
+      <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-create-template">
         <DialogHeader className="sr-only">
           <DialogTitle>{template ? t("templates", "editTemplate") : t("templates", "newTemplate")}</DialogTitle>
         </DialogHeader>
@@ -1159,7 +1159,7 @@ function UseTemplateDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-use-template">
+      <DialogContent className="p-0 gap-0 max-w-lg max-h-[85vh] flex flex-col" data-testid="dialog-use-template">
         <DialogHeader className="sr-only">
           <DialogTitle>{template.name}</DialogTitle>
         </DialogHeader>
