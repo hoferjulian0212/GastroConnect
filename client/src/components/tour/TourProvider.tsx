@@ -4,14 +4,17 @@ import { useLocation } from "wouter";
 import { X, ChevronRight, ChevronLeft } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { getQuickTour, type TourStep } from "@/lib/onboardingTour";
+import { getQuickTour, getPageTutorials, getPageIntroForPath, type TourStep } from "@/lib/onboardingTour";
 
 interface TourContextValue {
   isActive: boolean;
-  start: (steps: TourStep[], opts?: { markCompleteOnFinish?: boolean }) => void;
+  start: (steps: TourStep[], opts?: { markCompleteOnFinish?: boolean; pageIntroId?: string }) => void;
   stop: () => void;
   startQuickTour: () => void;
+  startPageIntro: (introId: string) => void;
+  resetPageIntros: () => Promise<void>;
 }
 
 const TourContext = createContext<TourContextValue | undefined>(undefined);
@@ -49,7 +52,8 @@ function clampPopover(top: number, left: number, vw: number, vh: number, h: numb
 export function TourProvider({ children }: { children: ReactNode }) {
   const { currentUser, currentRole, setCurrentUser } = useUser();
   const { lang } = useLanguage();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const isMobile = useIsMobile();
   const [steps, setSteps] = useState<TourStep[]>([]);
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -57,10 +61,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const [tick, setTick] = useState(0);
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const markCompleteRef = useRef(false);
-  const autoStartedForRef = useRef<string | null>(null);
+  const activePageIntroRef = useRef<string | null>(null);
+  const autoTriggeredRef = useRef<Set<string>>(new Set());
+  const lastUserIdRef = useRef<string | null>(null);
 
   const isActive = steps.length > 0;
   const step = isActive ? steps[index] : null;
+  const view = isMobile ? "mobile" : "web";
 
   const stop = useCallback(() => {
     setSteps([]);
@@ -70,23 +77,59 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const finish = useCallback(async () => {
     const shouldMark = markCompleteRef.current && currentUser?.id;
+    const pageIntroId = activePageIntroRef.current;
+    activePageIntroRef.current = null;
     stop();
-    if (shouldMark && currentUser) {
-      try {
+    if (!currentUser?.id) return;
+    try {
+      if (pageIntroId) {
+        const res = await apiRequest("POST", `/api/users/${currentUser.id}/page-intros/seen`, { introId: pageIntroId });
+        const updated = await res.json();
+        setCurrentUser(updated);
+        queryClient.invalidateQueries({ queryKey: [`/api/users?role=${currentRole}`] });
+      } else if (shouldMark) {
         const res = await apiRequest("POST", `/api/users/${currentUser.id}/onboarding/complete`);
         const updated = await res.json();
         setCurrentUser(updated);
         queryClient.invalidateQueries({ queryKey: [`/api/users?role=${currentRole}`] });
-      } catch {
-        // Ignore — non-blocking
       }
+    } catch {
+      // Ignore — non-blocking
     }
   }, [currentUser, currentRole, setCurrentUser, stop]);
 
+  const skipAll = useCallback(async () => {
+    activePageIntroRef.current = null;
+    stop();
+    if (!currentUser?.id) return;
+    try {
+      const res = await apiRequest("POST", `/api/users/${currentUser.id}/page-intros/skip-all`, { value: true });
+      const updated = await res.json();
+      setCurrentUser(updated);
+      queryClient.invalidateQueries({ queryKey: [`/api/users?role=${currentRole}`] });
+    } catch {
+      // Ignore — non-blocking
+    }
+  }, [currentUser, currentRole, setCurrentUser, stop]);
+
+  const resetPageIntros = useCallback(async () => {
+    if (!currentUser?.id) return;
+    try {
+      const res = await apiRequest("POST", `/api/users/${currentUser.id}/page-intros/reset`);
+      const updated = await res.json();
+      setCurrentUser(updated);
+      autoTriggeredRef.current = new Set();
+      queryClient.invalidateQueries({ queryKey: [`/api/users?role=${currentRole}`] });
+    } catch {
+      // Ignore — non-blocking
+    }
+  }, [currentUser, currentRole, setCurrentUser]);
+
   const start = useCallback(
-    (next: TourStep[], opts?: { markCompleteOnFinish?: boolean }) => {
+    (next: TourStep[], opts?: { markCompleteOnFinish?: boolean; pageIntroId?: string }) => {
       if (!next.length) return;
       markCompleteRef.current = opts?.markCompleteOnFinish === true;
+      activePageIntroRef.current = opts?.pageIntroId ?? null;
       setSteps(next);
       setIndex(0);
     },
@@ -96,6 +139,15 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const startQuickTour = useCallback(() => {
     start(getQuickTour(currentRole, lang), { markCompleteOnFinish: true });
   }, [currentRole, lang, start]);
+
+  const startPageIntro = useCallback(
+    (introId: string) => {
+      const tut = getPageTutorials(currentRole, view, lang).find((p) => p.id === introId);
+      if (!tut) return;
+      start(tut.steps, { pageIntroId: tut.id });
+    },
+    [currentRole, view, lang, start],
+  );
 
   // Navigate to step.page if needed when step changes.
   useEffect(() => {
@@ -135,28 +187,56 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }
   }, [index, tick, popoverH]);
 
-  // Auto-start for first-time users.
+  // Auto-start a per-page intro on first visit (per role + view), unless opted out.
   useEffect(() => {
     if (!currentUser) return;
-    if (autoStartedForRef.current === currentUser.id) return;
-    if (currentUser.onboardingCompletedAt) {
-      autoStartedForRef.current = currentUser.id;
-      return;
-    }
-    // Don't auto-start on detail pages or chat
-    if (typeof window !== "undefined") {
-      const p = window.location.pathname;
-      if (/^\/(restaurant|supplier)\/(orders|complaints)\/[^/]+$/.test(p)) return;
-      if (/^\/(restaurant|supplier)\/help$/.test(p)) return;
-      if (p === "/" || p === "/login" || p === "/about" || p === "/help") return;
-    }
-    autoStartedForRef.current = currentUser.id;
+    if (isActive) return;
+    if (currentUser.skipAllPageIntros) return;
+    const role = currentUser.role as "restaurant" | "supplier";
+    const pathOnly = location.split("?")[0];
+    // Skip detail/chat/help/auth pages
+    if (/^\/(restaurant|supplier)\/(orders|complaints)\/[^/]+$/.test(pathOnly)) return;
+    if (/^\/(restaurant|supplier)\/help$/.test(pathOnly)) return;
+    if (pathOnly === "/" || pathOnly === "/login" || pathOnly === "/about" || pathOnly === "/help") return;
+    const intro = getPageIntroForPath(pathOnly, role, view, lang);
+    if (!intro) return;
+    if ((currentUser.seenPageIntros || []).includes(intro.id)) return;
+    if (autoTriggeredRef.current.has(intro.id)) return;
+    autoTriggeredRef.current.add(intro.id);
     // Small delay to let the page render first
+    let fired = false;
     const id = window.setTimeout(() => {
-      start(getQuickTour(currentUser.role as "restaurant" | "supplier", lang), { markCompleteOnFinish: true });
+      fired = true;
+      start(intro.steps, { pageIntroId: intro.id });
     }, 600);
-    return () => window.clearTimeout(id);
-  }, [currentUser, lang, start]);
+    return () => {
+      window.clearTimeout(id);
+      // If we navigated away before the intro actually showed, allow it to
+      // re-trigger on a genuine future visit instead of suppressing it.
+      if (!fired) autoTriggeredRef.current.delete(intro.id);
+    };
+  }, [currentUser, location, view, lang, isActive, start]);
+
+  // Clear the per-session auto-trigger cache when the active user changes
+  // (e.g. account switcher) so one user's attempts never suppress another's.
+  useEffect(() => {
+    if (currentUser?.id && lastUserIdRef.current !== currentUser.id) {
+      lastUserIdRef.current = currentUser.id;
+      autoTriggeredRef.current = new Set();
+    }
+  }, [currentUser?.id]);
+
+  // Re-evaluate web vs mobile steps if the viewport crosses the breakpoint mid-tour.
+  useEffect(() => {
+    const introId = activePageIntroRef.current;
+    if (!introId || !currentUser) return;
+    const role = currentUser.role as "restaurant" | "supplier";
+    const tut = getPageTutorials(role, view, lang).find((p) => p.id === introId);
+    if (!tut) return;
+    setSteps(tut.steps);
+    setIndex(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
 
   const next = () => {
     if (index < steps.length - 1) setIndex(index + 1);
@@ -166,7 +246,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
     if (index > 0) setIndex(index - 1);
   };
 
-  const value: TourContextValue = { isActive, start, stop, startQuickTour };
+  const value: TourContextValue = { isActive, start, stop, startQuickTour, startPageIntro, resetPageIntros };
+  const isPageIntro = activePageIntroRef.current !== null;
 
   // Compute popover position
   let popoverPos: { top: number; left: number } | null = null;
@@ -306,6 +387,17 @@ export function TourProvider({ children }: { children: ReactNode }) {
                     </button>
                   </div>
                 </div>
+                {isPageIntro && (
+                  <div className="mt-3 pt-3 border-t border-border text-center">
+                    <button
+                      onClick={() => void skipAll()}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      data-testid="button-tour-skip-all"
+                    >
+                      {lang === "it" ? "Non mostrare più le introduzioni" : "Einführungen nicht mehr anzeigen"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>,

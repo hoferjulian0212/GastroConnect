@@ -1,20 +1,28 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronLeft, Search, Play, HelpCircle } from "lucide-react";
+import { ChevronLeft, Search, Play, HelpCircle, RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
 import { useTour } from "@/components/tour/TourProvider";
-import { getHelpTopics, getQuickTour } from "@/lib/onboardingTour";
+import { getHelpTopics, getQuickTour, getPageTutorials } from "@/lib/onboardingTour";
 
 export default function Help() {
   const { currentRole } = useUser();
   const { lang } = useLanguage();
   const [, setLocation] = useLocation();
-  const { start } = useTour();
+  const isMobile = useIsMobile();
+  const { toast } = useToast();
+  const { start, startPageIntro, resetPageIntros } = useTour();
   const [query, setQuery] = useState("");
 
   const topics = useMemo(() => getHelpTopics(currentRole, lang), [currentRole, lang]);
+  const pageTutorials = useMemo(
+    () => getPageTutorials(currentRole, isMobile ? "mobile" : "web", lang),
+    [currentRole, isMobile, lang],
+  );
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return topics;
@@ -81,6 +89,48 @@ export default function Help() {
           {lang === "it" ? "Riavvia la guida rapida" : "Kurz-Tour erneut starten"}
         </button>
       </div>
+
+      <section className="mb-8" data-testid="section-page-tutorials">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <h2 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+            {lang === "it" ? "Introduzioni delle pagine" : "Seiten-Einführungen"}
+          </h2>
+          <button
+            onClick={async () => {
+              await resetPageIntros();
+              toast({
+                title: lang === "it" ? "Introduzioni reimpostate" : "Einführungen zurückgesetzt",
+                description: lang === "it"
+                  ? "Le introduzioni verranno mostrate di nuovo alla prima apertura di ogni pagina."
+                  : "Die Einführungen werden bei der nächsten Öffnung jeder Seite wieder angezeigt.",
+              });
+            }}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+            data-testid="button-reset-page-intros"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            {lang === "it" ? "Reimposta tutte" : "Alle zurücksetzen"}
+          </button>
+        </div>
+        <p className="text-sm text-muted-foreground mb-3">
+          {lang === "it"
+            ? "Ogni pagina mostra una breve introduzione alla prima visita. Riavviatela qui in qualsiasi momento."
+            : "Jede Seite zeigt beim ersten Besuch eine kurze Einführung. Hier können Sie sie jederzeit erneut starten."}
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {pageTutorials.map((tut) => (
+            <button
+              key={tut.id}
+              onClick={() => startPageIntro(tut.id)}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 transition-colors"
+              data-testid={`button-replay-intro-${tut.id}`}
+            >
+              <Play className="h-3.5 w-3.5 shrink-0 text-primary" />
+              {tut.label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       {groups.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center text-sm text-muted-foreground" data-testid="help-empty">

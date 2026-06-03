@@ -27,6 +27,310 @@ export interface HelpTopic {
 
 const t = (de: string, it: string, lang: Lang) => (lang === "it" ? it : de);
 
+export type TourView = "web" | "mobile";
+
+export interface PageTutorial {
+  /** Stable id persisted in user.seenPageIntros, e.g. "restaurant:catalog". View-independent. */
+  id: string;
+  /** Exact wouter path that triggers this tutorial on first visit. */
+  path: string;
+  /** Short human label for the Help Center replay list. */
+  label: string;
+  steps: TourStep[];
+}
+
+/** Short one-time welcome shown as the first step of the home tutorial. */
+function welcomeStep(role: "restaurant" | "supplier", lang: Lang): TourStep {
+  return {
+    id: "welcome",
+    title: t("Willkommen bei GastroConnect", "Benvenuto in GastroConnect", lang),
+    body: t(
+      "Schön, dass Sie da sind! Wir begrüßen Sie hier nur kurz — danach zeigen wir Ihnen jede Seite mit einer kleinen Einführung, sobald Sie sie zum ersten Mal öffnen. Sie können jede Einführung überspringen oder alle auf einmal ausblenden.",
+      "Che bello avervi qui! Questo è solo un breve benvenuto — poi, alla prima apertura di ogni pagina, vi mostreremo una piccola introduzione. Potete saltare ogni introduzione o nasconderle tutte in una volta.",
+      lang,
+    ),
+    page: `/${role}`,
+    placement: "center",
+  };
+}
+
+export function getPageTutorials(role: "restaurant" | "supplier", view: TourView, lang: Lang): PageTutorial[] {
+  const mobile = view === "mobile";
+  if (role === "restaurant") {
+    return [
+      {
+        id: "restaurant:home",
+        path: "/restaurant",
+        label: t("Startseite", "Home", lang),
+        steps: [
+          welcomeStep("restaurant", lang),
+          {
+            id: "home-kpis",
+            targetTestId: "kpi-card-active-orders",
+            title: t("Ihr Dashboard", "La vostra dashboard", lang),
+            body: t(
+              "Die Kacheln oben zeigen ungelesene Nachrichten, offene Bestellungen, Wareneinsatz und monatliche Ausgaben auf einen Blick.",
+              "Le card in alto mostrano messaggi non letti, ordini in sospeso, costo merce e spesa mensile a colpo d'occhio.",
+              lang,
+            ),
+            page: "/restaurant",
+            placement: "bottom",
+          },
+        ],
+      },
+      {
+        id: "restaurant:catalog",
+        path: "/restaurant/catalog",
+        label: t("Katalog", "Catalogo", lang),
+        steps: [
+          {
+            id: "catalog-intro",
+            targetTestId: mobile ? "restaurant-mobile-nav-catalog" : "nav-link-catalog",
+            title: t("Bestellung anlegen", "Creare un ordine", lang),
+            body: t(
+              "Hier sehen Sie alle Produkte Ihrer Lieferanten. Wählen Sie Artikel und Mengen, legen Sie sie in den Warenkorb und senden die Bestellung in einem Schritt ab.",
+              "Qui trovate tutti i prodotti dei vostri fornitori. Scegliete articoli e quantità, aggiungeteli al carrello e inviate l'ordine in un colpo solo.",
+              lang,
+            ),
+            page: "/restaurant/catalog",
+            placement: mobile ? "top" : "bottom",
+          },
+        ],
+      },
+      {
+        id: "restaurant:inbox",
+        path: "/restaurant/inbox",
+        label: t("Inbox", "Inbox", lang),
+        steps: [
+          {
+            id: "inbox-intro",
+            targetTestId: mobile ? "restaurant-mobile-nav-inbox" : "nav-link-inbox",
+            title: t("Inbox & Chat", "Inbox e chat", lang),
+            body: t(
+              "Hier sprechen Sie direkt mit Ihren Lieferanten — pro Bestellung, mit Lieferschein, Reklamationen und Statusupdates.",
+              "Qui comunicate direttamente con i fornitori — per ordine, con bolla di consegna, reclami e aggiornamenti di stato.",
+              lang,
+            ),
+            page: "/restaurant/inbox",
+            placement: mobile ? "top" : "bottom",
+          },
+        ],
+      },
+      {
+        id: "restaurant:orders",
+        path: "/restaurant/orders",
+        label: t("Bestellungen", "Ordini", lang),
+        steps: [
+          {
+            id: "orders-intro",
+            targetTestId: mobile ? "restaurant-mobile-nav-more" : "nav-link-orders",
+            title: t("Bestellungen & Reklamationen", "Ordini e reclami", lang),
+            body: mobile
+              ? t(
+                  "Offene und vergangene Bestellungen verwalten Sie hier. Über „Mehr“ erreichen Sie auch Vorlagen, Lieferkalender, Dokumente und Reklamationen.",
+                  "Qui gestite ordini aperti e passati. Da „Altro“ raggiungete anche modelli, calendario, documenti e reclami.",
+                  lang,
+                )
+              : t(
+                  "Hier finden Sie offene und vergangene Bestellungen, Vorlagen, den Lieferkalender und das Reklamationsformular für beschädigte oder fehlende Ware.",
+                  "Qui trovate ordini aperti e passati, modelli, calendario di consegna e il modulo reclami per merce mancante o danneggiata.",
+                  lang,
+                ),
+            page: "/restaurant/orders",
+            placement: mobile ? "top" : "bottom",
+          },
+        ],
+      },
+      {
+        id: "restaurant:price-comparison",
+        path: "/restaurant/price-comparison",
+        label: t("Preisvergleich", "Confronto prezzi", lang),
+        steps: [
+          {
+            id: "price-comp-intro",
+            targetTestId: mobile ? "restaurant-mobile-nav-price-comparison" : "nav-link-catalog",
+            title: t("Preisvergleich", "Confronto prezzi", lang),
+            body: t(
+              "Vergleichen Sie identische Produkte über alle Lieferanten nebeneinander und finden Sie den günstigsten Preis. Sortieren Sie nach Ersparnis, Name oder Preis.",
+              "Confrontate prodotti identici di tutti i fornitori uno accanto all'altro e trovate il prezzo più conveniente. Ordinate per risparmio, nome o prezzo.",
+              lang,
+            ),
+            page: "/restaurant/price-comparison",
+            placement: mobile ? "top" : "bottom",
+          },
+        ],
+      },
+      {
+        id: "restaurant:cost-analysis",
+        path: "/restaurant/cost-analysis",
+        label: t("Kostenanalyse", "Analisi costi", lang),
+        steps: [
+          {
+            id: "cost-analysis-intro",
+            targetTestId: mobile ? "restaurant-mobile-nav-more" : "nav-link-catalog",
+            title: t("Wareneinsatz / Kostenanalyse", "Costo merce / Analisi costi", lang),
+            body: t(
+              "Setzen Sie ein monatliches Ziel, tragen Sie täglich die Übernachtungen ein und verfolgen Sie Wareneinsatz pro Gast samt Trends im Chart.",
+              "Impostate un obiettivo mensile, inserite ogni giorno i pernottamenti e monitorate il costo merce per ospite con le tendenze nel grafico.",
+              lang,
+            ),
+            page: "/restaurant/cost-analysis",
+            placement: mobile ? "top" : "bottom",
+          },
+        ],
+      },
+      {
+        id: "restaurant:documents",
+        path: "/restaurant/documents",
+        label: t("Dokumente", "Documenti", lang),
+        steps: [
+          {
+            id: "documents-intro",
+            targetTestId: mobile ? "restaurant-mobile-nav-more" : "nav-link-orders",
+            title: t("Lieferscheine & Rechnungen", "Bolle e fatture", lang),
+            body: t(
+              "Alle Lieferscheine und Monatsrechnungen sind hier nach Lieferant geordnet — mit Statistik und Mini-Chart pro Lieferant.",
+              "Tutte le bolle e fatture mensili sono ordinate per fornitore — con statistiche e mini-grafico per ogni fornitore.",
+              lang,
+            ),
+            page: "/restaurant/documents",
+            placement: mobile ? "top" : "bottom",
+          },
+        ],
+      },
+    ];
+  }
+
+  return [
+    {
+      id: "supplier:home",
+      path: "/supplier",
+      label: t("Startseite", "Home", lang),
+      steps: [
+        welcomeStep("supplier", lang),
+        {
+          id: "home-stats",
+          targetTestId: "kpi-card-stats",
+          title: t("Statistiken & Dashboard", "Statistiche e dashboard", lang),
+          body: t(
+            "Umsatz, Top-Produkte und Trends sehen Sie direkt auf der Startseite. Das Dashboard können Sie selbst zusammenstellen.",
+            "Fatturato, prodotti top e tendenze sono visibili direttamente in home. Potete personalizzare la dashboard.",
+            lang,
+          ),
+          page: "/supplier",
+          placement: "bottom",
+        },
+      ],
+    },
+    {
+      id: "supplier:orders",
+      path: "/supplier/orders",
+      label: t("Bestellungen", "Ordini", lang),
+      steps: [
+        {
+          id: "orders-intro",
+          targetTestId: mobile ? "supplier-mobile-nav-orders" : "nav-link-orders",
+          title: t("Eingehende Bestellungen", "Ordini in arrivo", lang),
+          body: t(
+            "Hier sehen Sie alle Bestellungen Ihrer Kunden. Bestätigen, teil-bestätigen, anpassen oder als geliefert markieren — alles aus einer Liste.",
+            "Qui vedete tutti gli ordini dei vostri clienti. Confermate, confermate parzialmente, modificate o segnate come consegnato — tutto da una lista.",
+            lang,
+          ),
+          page: "/supplier/orders",
+          placement: mobile ? "top" : "bottom",
+        },
+      ],
+    },
+    {
+      id: "supplier:products",
+      path: "/supplier/products",
+      label: t("Produkte", "Prodotti", lang),
+      steps: [
+        {
+          id: "products-intro",
+          targetTestId: mobile ? "supplier-mobile-nav-products" : "nav-link-products",
+          title: t("Produkte & Bestand", "Prodotti e magazzino", lang),
+          body: t(
+            "Pflegen Sie Ihr Sortiment, Lagerbestände, Aktionen und kundenspezifische Preise zentral unter „Produkte“.",
+            "Gestite il vostro assortimento, le scorte, le promozioni e i prezzi specifici per cliente in „Prodotti“.",
+            lang,
+          ),
+          page: "/supplier/products",
+          placement: mobile ? "top" : "bottom",
+        },
+      ],
+    },
+    {
+      id: "supplier:inbox",
+      path: "/supplier/inbox",
+      label: t("Inbox", "Inbox", lang),
+      steps: [
+        {
+          id: "inbox-intro",
+          targetTestId: mobile ? "supplier-mobile-nav-inbox" : "nav-link-inbox",
+          title: t("Inbox & Reklamationen", "Inbox e reclami", lang),
+          body: t(
+            "Chatten Sie direkt mit Ihren Kunden, beantworten Sie Reklamationen und erstellen Sie Nachlieferungen mit einem Klick.",
+            "Chattate direttamente con i clienti, gestite i reclami e create consegne successive con un clic.",
+            lang,
+          ),
+          page: "/supplier/inbox",
+          placement: mobile ? "top" : "bottom",
+        },
+      ],
+    },
+    {
+      id: "supplier:inventory",
+      path: "/supplier/inventory",
+      label: t("Bestandsverwaltung", "Gestione magazzino", lang),
+      steps: [
+        {
+          id: "inventory-intro",
+          targetTestId: mobile ? "supplier-mobile-nav-more" : "nav-link-products",
+          title: t("Bestandsverwaltung", "Gestione magazzino", lang),
+          body: t(
+            "Hier sehen Sie alle Produkte mit aktuellem Bestand. Bestätigte Bestellungen reduzieren den Bestand automatisch, und Sie werden bei niedrigem Bestand gewarnt.",
+            "Qui vedete tutti i prodotti con la scorta attuale. Gli ordini confermati riducono automaticamente la scorta e vi avvisiamo in caso di scorte basse.",
+            lang,
+          ),
+          page: "/supplier/inventory",
+          placement: mobile ? "top" : "bottom",
+        },
+      ],
+    },
+    {
+      id: "supplier:promotions",
+      path: "/supplier/promotions",
+      label: t("Aktionen", "Promozioni", lang),
+      steps: [
+        {
+          id: "promotions-intro",
+          targetTestId: mobile ? "supplier-mobile-nav-more" : "nav-link-products",
+          title: t("Aktionen / Promotions", "Promozioni", lang),
+          body: t(
+            "Legen Sie zeitlich begrenzte Rabatte an — optional gezielt für ausgewählte Kunden. Aktionen werden Kunden im Katalog hervorgehoben.",
+            "Create sconti a tempo limitato — opzionalmente mirati a clienti specifici. Le promozioni vengono evidenziate ai clienti nel catalogo.",
+            lang,
+          ),
+          page: "/supplier/promotions",
+          placement: mobile ? "top" : "bottom",
+        },
+      ],
+    },
+  ];
+}
+
+/** Resolve the page tutorial (if any) for an exact path, given role + view. */
+export function getPageIntroForPath(
+  path: string,
+  role: "restaurant" | "supplier",
+  view: TourView,
+  lang: Lang,
+): PageTutorial | null {
+  const clean = path.split("?")[0];
+  return getPageTutorials(role, view, lang).find((tut) => tut.path === clean) || null;
+}
+
 export function getQuickTour(role: "restaurant" | "supplier", lang: Lang): TourStep[] {
   if (role === "restaurant") {
     return [

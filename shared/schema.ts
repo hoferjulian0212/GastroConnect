@@ -34,6 +34,8 @@ export const users = pgTable("users", {
   dashboardWidgets: jsonb("dashboard_widgets").$type<Record<string, string[]>>(),
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
   dismissedHelpTopics: jsonb("dismissed_help_topics").$type<string[]>(),
+  seenPageIntros: jsonb("seen_page_intros").$type<string[]>(),
+  skipAllPageIntros: boolean("skip_all_page_intros").default(false).notNull(),
   monthlyReportOptOut: boolean("monthly_report_opt_out").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -340,7 +342,7 @@ export const orderTemplateItems = pgTable("order_template_items", {
 ]);
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, dashboardLayouts: true, dashboardWidgets: true, onboardingCompletedAt: true, dismissedHelpTopics: true });
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, dashboardLayouts: true, dashboardWidgets: true, onboardingCompletedAt: true, dismissedHelpTopics: true, seenPageIntros: true, skipAllPageIntros: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });

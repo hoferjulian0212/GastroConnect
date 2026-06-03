@@ -60,6 +60,9 @@ export interface IStorage {
   completeOnboarding(userId: string): Promise<User | undefined>;
   resetOnboarding(userId: string): Promise<User | undefined>;
   dismissHelpTopic(userId: string, topicId: string): Promise<User | undefined>;
+  markPageIntroSeen(userId: string, introId: string): Promise<User | undefined>;
+  setSkipAllPageIntros(userId: string, value: boolean): Promise<User | undefined>;
+  resetPageIntros(userId: string): Promise<User | undefined>;
 
   // Products
   getProducts(): Promise<ProductWithSupplier[]>;
@@ -324,6 +327,29 @@ export class DatabaseStorage implements IStorage {
     if (existing.includes(topicId)) return undefined;
     const next = [...existing, topicId];
     const [updated] = await db.update(users).set({ dismissedHelpTopics: next }).where(eq(users.id, userId)).returning();
+    return updated;
+  }
+
+  async markPageIntroSeen(userId: string, introId: string): Promise<User | undefined> {
+    const [u] = await db.select({ seenPageIntros: users.seenPageIntros }).from(users).where(eq(users.id, userId));
+    if (!u) return undefined;
+    const existing = u.seenPageIntros || [];
+    if (existing.includes(introId)) {
+      const [current] = await db.select().from(users).where(eq(users.id, userId));
+      return current;
+    }
+    const next = [...existing, introId];
+    const [updated] = await db.update(users).set({ seenPageIntros: next }).where(eq(users.id, userId)).returning();
+    return updated;
+  }
+
+  async setSkipAllPageIntros(userId: string, value: boolean): Promise<User | undefined> {
+    const [updated] = await db.update(users).set({ skipAllPageIntros: value }).where(eq(users.id, userId)).returning();
+    return updated;
+  }
+
+  async resetPageIntros(userId: string): Promise<User | undefined> {
+    const [updated] = await db.update(users).set({ seenPageIntros: [], skipAllPageIntros: false }).where(eq(users.id, userId)).returning();
     return updated;
   }
 

@@ -849,6 +849,39 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/users/:id/page-intros/seen", async (req, res) => {
+    try {
+      const introId = String(req.body?.introId || "").slice(0, 100);
+      if (!introId) return res.status(400).json({ error: "introId required" });
+      const updated = await storage.markPageIntroSeen(req.params.id, introId);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark page intro seen" });
+    }
+  });
+
+  app.post("/api/users/:id/page-intros/skip-all", async (req, res) => {
+    try {
+      const value = req.body?.value === undefined ? true : req.body.value === true;
+      const updated = await storage.setSkipAllPageIntros(req.params.id, value);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update page intro preference" });
+    }
+  });
+
+  app.post("/api/users/:id/page-intros/reset", async (req, res) => {
+    try {
+      const updated = await storage.resetPageIntros(req.params.id);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset page intros" });
+    }
+  });
+
   app.patch("/api/users/:id", async (req, res) => {
     try {
       const validated = updateUserSchema.parse(req.body);
