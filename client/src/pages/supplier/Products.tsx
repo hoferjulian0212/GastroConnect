@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich, ChevronDown, ChevronRight, User as UserIcon } from "lucide-react";
+import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich, ChevronDown, ChevronRight, User as UserIcon, Sparkles } from "lucide-react";
 import { ProductImage } from "@/components/ProductImage";
 
 import type { Product, StockMovement, PromotionWithProduct } from "@shared/schema";
@@ -23,6 +23,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
 import BulkPriceUpdateDialog from "@/components/BulkPriceUpdateDialog";
+import PriceListImportDialog from "@/components/PriceListImportDialog";
 import { z } from "zod";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -44,6 +45,7 @@ import {
 
 const productSchema = z.object({
  articleNumber: z.string().max(64, "Max 64 Zeichen").optional(),
+ gtin: z.string().max(20, "Max 20 Zeichen").optional(),
  name: z.string().min(1, "Name ist erforderlich"),
  description: z.string().optional(),
  price: z.string().min(1, "Preis ist erforderlich"),
@@ -1096,12 +1098,14 @@ export default function SupplierProducts() {
  const [previewImage, setPreviewImage] = useState<string | null>(null);
  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
  const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
+ const [isImportOpen, setIsImportOpen] = useState(false);
  const fileInputRef = useRef<HTMLInputElement>(null);
 
  const form = useForm<ProductFormData>({
  resolver: zodResolver(productSchema),
  defaultValues: {
  articleNumber: "",
+ gtin: "",
  name: "",
  description: "",
  price: "",
@@ -1121,7 +1125,7 @@ export default function SupplierProducts() {
  });
 
  const createProductMutation = useMutation({
- mutationFn: async (data: ProductFormData) => {
+ mutationFn: async (data: Omit<ProductFormData, "gtin"> & { gtin: string | null }) => {
  return apiRequest("POST", "/api/products", {
  ...data,
  supplierId: currentUser?.id,
@@ -1149,7 +1153,7 @@ export default function SupplierProducts() {
  });
 
  const updateProductMutation = useMutation({
- mutationFn: async (data: ProductFormData & { id: string }) => {
+ mutationFn: async (data: Omit<ProductFormData, "gtin"> & { id: string; gtin: string | null }) => {
  const { id, ...body } = data;
  return apiRequest("PATCH", `/api/products/${id}`, body);
  },
@@ -1207,6 +1211,7 @@ export default function SupplierProducts() {
  setEditingProduct(product);
  form.reset({
  articleNumber: product.articleNumber || "",
+ gtin: product.gtin || "",
  name: product.name,
  description: product.description || "",
  price: product.price,
@@ -1304,10 +1309,11 @@ export default function SupplierProducts() {
  };
 
  const onSubmit = (data: ProductFormData) => {
+ const cleaned = { ...data, gtin: data.gtin?.trim() ? data.gtin.trim() : null };
  if (editingProduct) {
- updateProductMutation.mutate({ ...data, id: editingProduct.id });
+ updateProductMutation.mutate({ ...cleaned, id: editingProduct.id });
  } else {
- createProductMutation.mutate(data);
+ createProductMutation.mutate(cleaned);
  }
  };
 
@@ -1378,6 +1384,10 @@ export default function SupplierProducts() {
  </p>
  </div>
  <div className="flex items-center gap-2">
+ <Button className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" variant="ghost" onClick={() => setIsImportOpen(true)} data-testid="button-import-price-list">
+ <Sparkles className="h-4 w-4" />
+ <span className="hidden sm:inline">{lang === "de" ? "Preisliste importieren" : "Importa listino"}</span>
+ </Button>
  <Button className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" variant="ghost" onClick={() => setIsBulkUpdateOpen(true)} data-testid="button-bulk-update">
  <Upload className="h-4 w-4" />
  <span className="hidden sm:inline">{lang === "de" ? "Massen-Update" : "Aggiornamento in massa"}</span>
@@ -1391,7 +1401,11 @@ export default function SupplierProducts() {
  </div>
  </div></HeroPortal>
 
- <div className="md:hidden grid grid-cols-2 gap-2">
+ <div className="md:hidden grid grid-cols-3 gap-2">
+ <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsImportOpen(true)} data-testid="button-import-price-list-mobile">
+ <Sparkles className="h-4 w-4" />
+ {lang === "de" ? "Preisliste" : "Listino"}
+ </Button>
  <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsBulkUpdateOpen(true)} data-testid="button-bulk-update-mobile">
  <Upload className="h-4 w-4" />
  {lang === "de" ? "Massen-Update" : "In massa"}
@@ -1409,6 +1423,16 @@ export default function SupplierProducts() {
  supplierId={currentUser.id}
  userId={currentUser.id}
  lang={lang as "de" | "it"}
+ />
+ )}
+
+ {currentUser && (
+ <PriceListImportDialog
+ open={isImportOpen}
+ onOpenChange={setIsImportOpen}
+ supplierId={currentUser.id}
+ userId={currentUser.id}
+ userName={currentUser.name}
  />
  )}
 
@@ -1499,6 +1523,32 @@ export default function SupplierProducts() {
  {...field}
  value={field.value ?? ""}
  data-testid="input-product-article-number"
+ />
+ </FormControl>
+ <FormMessage />
+ </FormItem>
+ )}
+ />
+
+ <FormField
+ control={form.control}
+ name="gtin"
+ render={({ field }) => (
+ <FormItem>
+ <FormLabel>
+ {lang === "de" ? "Barcode / GTIN" : "Codice a barre / GTIN"}
+ <span className="ml-2 text-xs font-normal text-muted-foreground">
+ {lang === "de" ? "(optional, für Preisvergleich über Lieferanten)" : "(opzionale, per confronto prezzi tra fornitori)"}
+ </span>
+ </FormLabel>
+ <FormControl>
+ <Input
+ placeholder={lang === "de" ? "z. B. 4006381333931" : "es. 4006381333931"}
+ inputMode="numeric"
+ autoComplete="off"
+ {...field}
+ value={field.value ?? ""}
+ data-testid="input-product-gtin"
  />
  </FormControl>
  <FormMessage />

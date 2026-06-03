@@ -20,6 +20,7 @@ const insertPromotionSchema = _insertPromotionSchema.strict();
 const insertCustomMinOrderQuantitySchema = _insertCustomMinOrderQuantitySchema.strict();
 const insertCustomPriceSchema = _insertCustomPriceSchema.strict();
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { registerOcrImportRoutes } from "./ocrImport";
 import { objectStorageClient, ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
 import PDFDocument from "pdfkit";
 import { randomUUID } from "crypto";
@@ -300,6 +301,7 @@ const updateUserSchema = z.object({
 
 const updateProductSchema = z.object({
   articleNumber: safeShortString.optional().nullable(),
+  gtin: safeShortString.optional().nullable(),
   name: safeShortString.optional(),
   description: safeString.optional().nullable(),
   price: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
@@ -451,6 +453,8 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Register object storage routes for file uploads
   registerObjectStorageRoutes(app);
+  // AI-powered OCR price-list import (supplier)
+  registerOcrImportRoutes(app);
 
   // Serve static images from client/public - ensures images work in both dev and production
   const clientPublicPath = path.resolve(process.cwd(), "client", "public");
@@ -2110,6 +2114,32 @@ export async function registerRoutes(
         }
       }
 
+      // Enforce stock availability at order placement to prevent overselling.
+      // Mirror confirm-time semantics but stay lenient: only block on an explicit
+      // out-of-stock flag, or when actively-tracked stock (>0) is exceeded.
+      // Products with stockQuantity 0/null + inStock are treated as untracked and
+      // allowed (stock is re-checked at supplier confirmation).
+      const stockProblems: { name: string; requested: number; available: number }[] = [];
+      for (const item of cartItems) {
+        const p = item.product;
+        if (!p) continue;
+        if (p.inStock === false) {
+          stockProblems.push({ name: p.name, requested: item.quantity, available: 0 });
+        } else if (p.stockQuantity !== null && p.stockQuantity !== undefined && p.stockQuantity > 0 && item.quantity > p.stockQuantity) {
+          stockProblems.push({ name: p.name, requested: item.quantity, available: p.stockQuantity });
+        }
+      }
+      if (stockProblems.length > 0) {
+        const detail = stockProblems
+          .map(s => s.available > 0 ? `${s.name} (nur ${s.available} verfügbar)` : `${s.name} (nicht verfügbar)`)
+          .join(", ");
+        return res.status(400).json({
+          error: "insufficient_stock",
+          message: `Nicht genügend Lagerbestand: ${detail}.`,
+          items: stockProblems,
+        });
+      }
+
       // Create orders for each supplier
       const createdOrders = [];
       for (const [supplierId, items] of Object.entries(bySupplier)) {
@@ -2206,10 +2236,18 @@ export async function registerRoutes(
       }
 
       const orderItems = [];
+      const directStockProblems: { name: string; requested: number; available: number }[] = [];
       for (const item of items as { productId: string; quantity: number }[]) {
         const product = productMap.get(item.productId);
         if (!product) {
           return res.status(400).json({ error: `Product ${item.productId} not found` });
+        }
+        // Stock guard (mirrors POST /api/orders): block out-of-stock or
+        // over-tracked-quantity; untracked stock (0/null + inStock) is allowed.
+        if (product.inStock === false) {
+          directStockProblems.push({ name: product.name, requested: item.quantity, available: 0 });
+        } else if (product.stockQuantity !== null && product.stockQuantity !== undefined && product.stockQuantity > 0 && item.quantity > product.stockQuantity) {
+          directStockProblems.push({ name: product.name, requested: item.quantity, available: product.stockQuantity });
         }
         const promo = promoMap.get(item.productId);
         const originalPrice = parseFloat(product.price);
@@ -2222,6 +2260,17 @@ export async function registerRoutes(
           quantity: item.quantity,
           unitPrice: effectivePrice.toFixed(2),
           totalPrice: (effectivePrice * item.quantity).toFixed(2)
+        });
+      }
+
+      if (directStockProblems.length > 0) {
+        const detail = directStockProblems
+          .map(s => s.available > 0 ? `${s.name} (nur ${s.available} verfügbar)` : `${s.name} (nicht verfügbar)`)
+          .join(", ");
+        return res.status(400).json({
+          error: "insufficient_stock",
+          message: `Nicht genügend Lagerbestand: ${detail}.`,
+          items: directStockProblems,
         });
       }
 
@@ -2865,20 +2914,37 @@ export async function registerRoutes(
         }
       }
 
+      // Price lock: the unit price is snapshotted at order creation. When a
+      // restaurant edits a pending order, products already on the order keep
+      // their original unit price even if the supplier changed master/promo
+      // pricing in the meantime. Only genuinely new line items are priced at
+      // the current master+promo (recomputed server-side to prevent tampering).
+      const existingUnitPriceByProduct = new Map<string, string>();
+      for (const existing of order.items) {
+        existingUnitPriceByProduct.set(existing.productId, existing.unitPrice);
+      }
+
       const orderItems = items.map((item) => {
         const product = productMap.get(item.productId)!;
-        const promo = promoMap.get(item.productId);
-        const originalPrice = parseFloat(product.price);
-        const effectivePrice = promo
-          ? originalPrice * (1 - promo.discountPercent / 100)
-          : originalPrice;
-        const unitPriceStr = effectivePrice.toFixed(2);
+        const lockedUnitPrice = existingUnitPriceByProduct.get(item.productId);
+        let unitPriceStr: string;
+        if (lockedUnitPrice !== undefined) {
+          unitPriceStr = lockedUnitPrice;
+        } else {
+          const promo = promoMap.get(item.productId);
+          const originalPrice = parseFloat(product.price);
+          const effectivePrice = promo
+            ? originalPrice * (1 - promo.discountPercent / 100)
+            : originalPrice;
+          unitPriceStr = effectivePrice.toFixed(2);
+        }
+        const unitPriceNum = parseFloat(unitPriceStr);
         return {
           productId: item.productId,
           productName: product.name,
           quantity: item.quantity,
           unitPrice: unitPriceStr,
-          totalPrice: (effectivePrice * item.quantity).toFixed(2)
+          totalPrice: (unitPriceNum * item.quantity).toFixed(2)
         };
       });
 
@@ -5166,6 +5232,18 @@ export async function registerRoutes(
       res.json({ days, volumes });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch product volumes" });
+    }
+  });
+
+  app.get("/api/restaurant/reorder-suggestions", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      const suggestions = await storage.getReorderSuggestions(restaurantId);
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Reorder suggestions error:", error);
+      res.status(500).json({ error: "Failed to fetch reorder suggestions" });
     }
   });
 

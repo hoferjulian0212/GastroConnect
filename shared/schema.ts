@@ -55,6 +55,7 @@ export const products = pgTable("products", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   articleNumber: text("article_number"),
+  gtin: text("gtin"),
   name: text("name").notNull(),
   description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
@@ -69,6 +70,7 @@ export const products = pgTable("products", {
 }, (table) => [
   index("idx_products_supplier_id").on(table.supplierId),
   index("idx_products_category").on(table.category),
+  index("idx_products_gtin").on(table.gtin),
   uniqueIndex("uniq_products_supplier_article").on(table.supplierId, table.articleNumber),
 ]);
 

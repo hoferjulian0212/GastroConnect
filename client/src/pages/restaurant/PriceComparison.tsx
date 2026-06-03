@@ -24,6 +24,7 @@ import {
  AlertTriangle, Truck, Clock, CheckCircle2, ArrowRight,
 } from "lucide-react";
 import type { ProductWithSupplierAndPromotion } from "@shared/schema";
+import { productMatchKey } from "@shared/productMatch";
 import { StarRating } from "@/components/StarRating";
 
 interface OrderItemLite {
@@ -210,7 +211,9 @@ export default function PriceComparison() {
  const groups = new Map<string, GroupedProduct>();
 
  for (const product of inStock) {
- const key = `${product.name.trim().toLowerCase()}__${product.unit}`;
+ // Match the "same product" across suppliers: prefer a shared barcode (GTIN),
+ // otherwise a normalized name + unit (case/accent/unit-synonym insensitive).
+ const key = productMatchKey({ name: product.name, unit: product.unit, gtin: product.gtin });
  const basePrice = parseFloat(product.price);
  const customPrice = customPriceMap.get(product.id);
  let effectivePrice = customPrice ?? basePrice;

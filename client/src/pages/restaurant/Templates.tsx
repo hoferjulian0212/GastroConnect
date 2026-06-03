@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
-  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle, Copy, Store, Pencil, AlertCircle, Star
+  Plus, Trash2, ShoppingCart, Search, Package, Edit2, ClipboardList, Check, X, ChevronRight, ArrowLeft, FileText, CheckCircle, Copy, Store, Pencil, AlertCircle, Star, Sparkles
 } from "lucide-react";
 import QuantityInput from "@/components/QuantityInput";
 import SwipeableRow from "@/components/SwipeableRow";
@@ -24,6 +24,24 @@ import { de, it } from "date-fns/locale";
 import { ProductImage } from "@/components/ProductImage";
 
 type ProductWithSupplier = Product & { supplier: User };
+
+interface ReorderSuggestion {
+  productId: string;
+  productName: string;
+  unit: string;
+  price: string;
+  imageUrl: string | null;
+  inStock: boolean;
+  supplierId: string;
+  supplierName: string;
+  timesOrdered: number;
+  avgIntervalDays: number;
+  daysSinceLast: number;
+  dueInDays: number;
+  dueRatio: number;
+  suggestedQuantity: number;
+  lastOrderedAt: string;
+}
 
 export default function RestaurantTemplates({ embedded = false }: { embedded?: boolean }) {
   const { currentUser } = useUser();
@@ -38,7 +56,46 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
+  const [addingSuggestionId, setAddingSuggestionId] = useState<string | null>(null);
 
+  const { data: reorderSuggestions } = useQuery<ReorderSuggestion[]>({
+    queryKey: ['/api/restaurant/reorder-suggestions', currentUser?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/restaurant/reorder-suggestions?restaurantId=${currentUser?.id}`);
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    },
+    enabled: !!currentUser?.id,
+  });
+
+  const addSuggestionToCartMutation = useMutation({
+    mutationFn: async (s: ReorderSuggestion) => {
+      await apiRequest("POST", "/api/cart", {
+        restaurantId: currentUser?.id,
+        productId: s.productId,
+        supplierId: s.supplierId,
+        quantity: s.suggestedQuantity,
+        mode: "add",
+      });
+    },
+    onMutate: (s) => setAddingSuggestionId(s.productId),
+    onSuccess: (_data, s) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cart/count'] });
+      setDismissedSuggestions((prev) => [...prev, s.productId]);
+      toast({ title: t("templates", "addedToCart") });
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), variant: "destructive" });
+    },
+    onSettled: () => setAddingSuggestionId(null),
+  });
+
+  const visibleSuggestions = useMemo(
+    () => (reorderSuggestions || []).filter((s) => !dismissedSuggestions.includes(s.productId)),
+    [reorderSuggestions, dismissedSuggestions],
+  );
 
   const { data: templates, isLoading } = useQuery<OrderTemplateWithItems[]>({
     queryKey: ['/api/order-templates', currentUser?.id],
@@ -222,6 +279,80 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
             <span className="hidden sm:inline">{t("templates", "newTemplate")}</span>
           </Button>
         </div>
+      )}
+
+      {visibleSuggestions.length > 0 && (
+        <Card className="overflow-hidden border-primary/30 bg-primary/[0.03]" data-testid="card-reorder-suggestions">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold" data-testid="text-suggestions-title">
+                  {lang === "de" ? "Zeit zum Nachbestellen" : "È ora di riordinare"}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {lang === "de"
+                    ? "Basierend auf deinem Bestellrhythmus"
+                    : "In base alla frequenza dei tuoi ordini"}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {visibleSuggestions.map((s) => {
+                const overdue = s.dueInDays < 0;
+                return (
+                  <div
+                    key={s.productId}
+                    className="flex items-center gap-3 rounded-xl border bg-background p-2.5"
+                    data-testid={`suggestion-${s.productId}`}
+                  >
+                    <ProductImage src={s.imageUrl} alt={s.productName} className="h-10 w-10 rounded-lg" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium" data-testid={`text-suggestion-name-${s.productId}`}>
+                        {s.productName}
+                      </p>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">
+                          {s.suggestedQuantity}× · {s.supplierName}
+                        </span>
+                        <Badge
+                          variant={overdue ? "destructive" : "secondary"}
+                          className="text-[10px] px-1.5 py-0"
+                          data-testid={`badge-suggestion-due-${s.productId}`}
+                        >
+                          {overdue
+                            ? (lang === "de" ? "überfällig" : "in ritardo")
+                            : (lang === "de" ? `in ${s.dueInDays} Tg.` : `tra ${s.dueInDays} g`)}
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="h-8 gap-1.5"
+                      disabled={addingSuggestionId === s.productId}
+                      onClick={() => addSuggestionToCartMutation.mutate(s)}
+                      data-testid={`button-suggestion-add-${s.productId}`}
+                    >
+                      <ShoppingCart className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">{lang === "de" ? "Hinzufügen" : "Aggiungi"}</span>
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-muted-foreground"
+                      onClick={() => setDismissedSuggestions((prev) => [...prev, s.productId])}
+                      data-testid={`button-suggestion-dismiss-${s.productId}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {isLoading ? (

@@ -133,6 +133,23 @@ import { useT } from "@/lib/translations";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { useStickyActionBarHeight, useMobileKeyboardInset } from "@/hooks/use-sticky-action-bar";
 
+function extractErrorMessage(err: unknown): string | null {
+  const raw = (err as { message?: string })?.message;
+  if (!raw) return null;
+  // apiRequest throws "<status>: <body>"; body is usually JSON like { message }.
+  const jsonStart = raw.indexOf("{");
+  if (jsonStart >= 0) {
+    try {
+      const parsed = JSON.parse(raw.slice(jsonStart));
+      if (parsed?.message) return parsed.message as string;
+      if (parsed?.error) return parsed.error as string;
+    } catch {
+      /* fall through */
+    }
+  }
+  return raw;
+}
+
 export default function RestaurantCart() {
   const { currentUser } = useUser();
   const { toast } = useToast();
@@ -247,7 +264,7 @@ export default function RestaurantCart() {
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
     },
     onError: (err: unknown) => {
-      const msg = (err as { message?: string })?.message || t("cart", "orderError");
+      const msg = extractErrorMessage(err) || t("cart", "orderError");
       setMobileValidationError(msg);
       toast({
         title: t("common", "error"),
@@ -285,11 +302,13 @@ export default function RestaurantCart() {
       queryClient.invalidateQueries({ queryKey: ['/api/orders/recent', currentUser?.id] });
       queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
     },
-    onError: () => {
+    onError: (err: unknown) => {
       setSendingSupplier(null);
+      const msg = extractErrorMessage(err) || t("cart", "orderError");
+      setMobileValidationError(msg);
       toast({
         title: t("common", "error"),
-        description: t("cart", "orderError"),
+        description: msg,
         variant: "destructive",
       });
     },

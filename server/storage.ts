@@ -26,6 +26,24 @@ import {
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
+export interface ReorderSuggestion {
+  productId: string;
+  productName: string;
+  unit: string;
+  price: string;
+  imageUrl: string | null;
+  inStock: boolean;
+  supplierId: string;
+  supplierName: string;
+  timesOrdered: number;
+  avgIntervalDays: number;
+  daysSinceLast: number;
+  dueInDays: number; // negative => overdue
+  dueRatio: number; // daysSinceLast / avgIntervalDays
+  suggestedQuantity: number;
+  lastOrderedAt: Date;
+}
+
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
@@ -91,6 +109,9 @@ export interface IStorage {
     orderCount: number;
     lastOrderedAt: Date | null;
   }>>;
+
+  // Auto-reorder prediction (recurring products that are due to be reordered)
+  getReorderSuggestions(restaurantId: string): Promise<ReorderSuggestion[]>;
 
   // Stats
   getRestaurantStats(restaurantId: string): Promise<{
@@ -464,6 +485,129 @@ export class DatabaseStorage implements IStorage {
       orderCount: Number(r.orderCount) || 0,
       lastOrderedAt: r.lastOrderedAt,
     }));
+  }
+
+  async getReorderSuggestions(restaurantId: string): Promise<ReorderSuggestion[]> {
+    const DAYS_WINDOW = 180;
+    const MIN_ORDERS = 3; // need a few data points to detect a cadence
+    const DUE_RATIO_THRESHOLD = 0.6; // surface items at 60%+ of their usual interval
+    const since = new Date(Date.now() - DAYS_WINDOW * 24 * 60 * 60 * 1000);
+
+    // One row per (order, product) for non-cancelled orders in the window.
+    const rows = await db
+      .select({
+        productId: orderItems.productId,
+        supplierId: orders.supplierId,
+        orderId: orders.id,
+        createdAt: orders.createdAt,
+        quantity: sql<number>`COALESCE(${orderItems.confirmedQuantity}, ${orderItems.quantity})::int`,
+      })
+      .from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(and(
+        eq(orders.restaurantId, restaurantId),
+        gte(orders.createdAt, since),
+        ne(orders.status, "cancelled"),
+      ));
+
+    type Acc = { supplierId: string; dates: number[]; quantities: number[] };
+    const byProduct = new Map<string, Acc>();
+    for (const r of rows) {
+      if (!r.createdAt) continue;
+      const acc = byProduct.get(r.productId) ?? { supplierId: r.supplierId, dates: [], quantities: [] };
+      acc.dates.push(new Date(r.createdAt).getTime());
+      acc.quantities.push(Number(r.quantity) || 0);
+      acc.supplierId = r.supplierId;
+      byProduct.set(r.productId, acc);
+    }
+
+    const DAY = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const median = (nums: number[]): number => {
+      if (nums.length === 0) return 0;
+      const s = [...nums].sort((a, b) => a - b);
+      const mid = Math.floor(s.length / 2);
+      return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
+    };
+
+    const prelim: Array<{
+      productId: string; supplierId: string; timesOrdered: number;
+      avgIntervalDays: number; daysSinceLast: number; dueRatio: number;
+      suggestedQuantity: number; lastOrderedAt: Date;
+    }> = [];
+
+    const entries: Array<[string, Acc]> = Array.from(byProduct.entries());
+    for (const [productId, acc] of entries) {
+      // Collapse to distinct order days (sorted) to derive a reorder cadence.
+      const dayBuckets: number[] = acc.dates.map((d: number) => Math.floor(d / DAY));
+      const uniqueDays: number[] = Array.from(new Set<number>(dayBuckets)).sort((a, b) => a - b);
+      const timesOrdered = uniqueDays.length;
+      if (timesOrdered < MIN_ORDERS) continue;
+
+      let intervalSum = 0;
+      for (let i = 1; i < uniqueDays.length; i++) intervalSum += uniqueDays[i] - uniqueDays[i - 1];
+      const avgIntervalDays = intervalSum / (uniqueDays.length - 1);
+      if (!Number.isFinite(avgIntervalDays) || avgIntervalDays <= 0) continue;
+
+      const lastDayMs = Math.max(...acc.dates);
+      const daysSinceLast = (now - lastDayMs) / DAY;
+      const dueRatio = daysSinceLast / avgIntervalDays;
+      if (dueRatio < DUE_RATIO_THRESHOLD) continue;
+
+      prelim.push({
+        productId,
+        supplierId: acc.supplierId,
+        timesOrdered,
+        avgIntervalDays: Math.round(avgIntervalDays * 10) / 10,
+        daysSinceLast: Math.round(daysSinceLast),
+        dueRatio: Math.round(dueRatio * 100) / 100,
+        suggestedQuantity: Math.max(1, median(acc.quantities)),
+        lastOrderedAt: new Date(lastDayMs),
+      });
+    }
+
+    if (prelim.length === 0) return [];
+
+    // Attach current product + supplier details (skip deleted products).
+    const productIds = prelim.map(p => p.productId);
+    const supplierIds = Array.from(new Set(prelim.map(p => p.supplierId)));
+    const productRows = await db
+      .select({ id: products.id, name: products.name, unit: products.unit, price: products.price, imageUrl: products.imageUrl, inStock: products.inStock })
+      .from(products)
+      .where(inArray(products.id, productIds));
+    const supplierRows = await db
+      .select({ id: users.id, name: users.name, companyName: users.companyName })
+      .from(users)
+      .where(inArray(users.id, supplierIds));
+    const productMap = new Map(productRows.map(p => [p.id, p]));
+    const supplierMap = new Map(supplierRows.map(s => [s.id, s]));
+
+    const suggestions: ReorderSuggestion[] = [];
+    for (const p of prelim) {
+      const prod = productMap.get(p.productId);
+      if (!prod) continue;
+      const supp = supplierMap.get(p.supplierId);
+      suggestions.push({
+        productId: p.productId,
+        productName: prod.name,
+        unit: prod.unit,
+        price: prod.price,
+        imageUrl: prod.imageUrl,
+        inStock: prod.inStock,
+        supplierId: p.supplierId,
+        supplierName: supp?.companyName || supp?.name || "",
+        timesOrdered: p.timesOrdered,
+        avgIntervalDays: p.avgIntervalDays,
+        daysSinceLast: p.daysSinceLast,
+        dueInDays: Math.round(p.avgIntervalDays - p.daysSinceLast),
+        dueRatio: p.dueRatio,
+        suggestedQuantity: p.suggestedQuantity,
+        lastOrderedAt: p.lastOrderedAt,
+      });
+    }
+
+    suggestions.sort((a, b) => b.dueRatio - a.dueRatio);
+    return suggestions;
   }
 
   async getRecentOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]> {

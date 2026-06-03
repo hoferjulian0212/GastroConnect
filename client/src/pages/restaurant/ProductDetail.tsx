@@ -12,6 +12,7 @@ import QuantityInput from "@/components/QuantityInput";
 import { differenceInDays, differenceInHours, format } from "date-fns";
 import { de, it } from "date-fns/locale";
 import type { ProductWithSupplierAndPromotion, CartItemWithProduct } from "@shared/schema";
+import { productMatchKey, normalizeName } from "@shared/productMatch";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
@@ -89,35 +90,46 @@ export default function ProductDetail() {
 
   const outOfStockAlternatives = product && products && !product.inStock
     ? (() => {
-        const nameWords = product.name.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        // When a product is out of stock, the strongest substitute is the SAME
+        // product offered by a different supplier (matched by barcode, else by
+        // a normalized name+unit key). After exact matches we fall back to the
+        // same category / similar name, breaking ties by price closeness.
+        const targetKey = productMatchKey({ name: product.name, unit: product.unit, gtin: product.gtin });
+        const nameWords = normalizeName(product.name).split(/\s+/).filter(w => w.length > 2);
+        const targetPrice = parseFloat(product.price);
 
         const candidates = products
           .filter(p => p.id !== product.id && p.inStock)
           .map(p => {
+            const isExactMatch = productMatchKey({ name: p.name, unit: p.unit, gtin: p.gtin }) === targetKey;
             const isSameSupplier = p.supplierId === product.supplierId;
             const isSameCategory = !!(product.category && p.category && p.category === product.category);
-            const pNameLower = p.name.toLowerCase();
-            const nameMatchCount = nameWords.filter(w => pNameLower.includes(w)).length;
+            const pNameNorm = normalizeName(p.name);
+            const nameMatchCount = nameWords.filter(w => pNameNorm.includes(w)).length;
             const nameMatchRatio = nameWords.length > 0 ? nameMatchCount / nameWords.length : 0;
             const unitMatch = p.unit === product.unit;
+            const priceDelta = Number.isFinite(targetPrice) ? Math.abs(parseFloat(p.price) - targetPrice) : 0;
 
-            if (!isSameSupplier && !isSameCategory && nameMatchRatio === 0) return null;
+            if (!isExactMatch && !isSameCategory && nameMatchRatio === 0) return null;
 
             return {
               product: p,
+              isExactMatch,
               isSameSupplier,
               isSameCategory,
               nameMatchRatio,
               unitMatch,
+              priceDelta,
             };
           })
           .filter((a): a is NonNullable<typeof a> => a !== null)
           .sort((a, b) => {
-            if (a.isSameSupplier !== b.isSameSupplier) return a.isSameSupplier ? -1 : 1;
+            if (a.isExactMatch !== b.isExactMatch) return a.isExactMatch ? -1 : 1;
             if (a.isSameCategory !== b.isSameCategory) return a.isSameCategory ? -1 : 1;
             if (a.nameMatchRatio !== b.nameMatchRatio) return b.nameMatchRatio - a.nameMatchRatio;
             if (a.unitMatch !== b.unitMatch) return a.unitMatch ? -1 : 1;
-            return 0;
+            if (a.isSameSupplier !== b.isSameSupplier) return a.isSameSupplier ? -1 : 1;
+            return a.priceDelta - b.priceDelta;
           })
           .slice(0, 6);
 
@@ -174,6 +186,12 @@ export default function ProductDetail() {
           </div>
           <div className="mt-1.5 min-w-0 flex-1 flex flex-col">
             <h3 className="font-medium text-sm truncate">{p.name}</h3>
+            {product && p.supplierId !== product.supplierId && (p.supplier?.companyName || p.supplier?.name) && (
+              <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground truncate" data-testid={`text-related-supplier-${p.id}`}>
+                <Store className="h-3 w-3 shrink-0" />
+                <span className="truncate">{p.supplier?.companyName || p.supplier?.name}</span>
+              </div>
+            )}
             <div className="flex items-baseline gap-1 mt-0.5">
               {hasPromo ? (
                 <>
