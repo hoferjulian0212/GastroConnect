@@ -5452,8 +5452,14 @@ export async function registerRoutes(
       if (!parsed.success) return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
       const data = parsed.data;
 
+      const features = data.requestedFeatures ?? ["guests"];
       let providerName = data.pmsName;
       let providerMessage: string | undefined;
+      // Provider used for the pending connection placeholder. For the
+      // "Other / not listed" flow there is no providerId, so map to the
+      // generic "other" provider row so a pending connection can still be
+      // created and surfaced as "pending" in the UI.
+      let connectionProviderId: string | null = data.providerId ?? null;
       if (data.providerId) {
         const provider = await storage.getPmsProvider(data.providerId);
         if (!provider) return res.status(400).json({ error: "Unknown PMS provider" });
@@ -5462,9 +5468,11 @@ export async function registerRoutes(
         const adapter = getPmsProviderAdapter(provider.slug);
         const result = await adapter.connect({ externalHotelId: null });
         providerMessage = result.message;
+      } else {
+        const providers = await storage.getPmsProviders();
+        connectionProviderId = providers.find((p) => p.slug === "other")?.id ?? null;
       }
 
-      const features = data.requestedFeatures ?? ["guests"];
       const request = await storage.createPmsConnectionRequest({
         restaurantId: data.restaurantId,
         providerId: data.providerId ?? null,
@@ -5478,13 +5486,14 @@ export async function registerRoutes(
         message: data.message ?? null,
       });
 
-      // Create a pending connection placeholder so the restaurant sees status.
-      if (data.providerId) {
+      // Always create a pending connection placeholder so EVERY submission
+      // (including "Other / not listed") reflects a "pending" status.
+      if (connectionProviderId) {
         const existing = await storage.getHotelConnection(data.restaurantId);
         if (!existing) {
           await storage.createHotelConnection({
             restaurantId: data.restaurantId,
-            providerId: data.providerId,
+            providerId: connectionProviderId,
             status: "pending",
             syncGuests: features.includes("guests"),
             syncOccupancy: features.includes("occupancy"),
@@ -5493,33 +5502,58 @@ export async function registerRoutes(
         }
       }
 
-      // Notify admin: email if configured, otherwise in-app fallback so the
-      // submission never silently fails.
-      const emailSent = isAdminEmailConfigured() && await sendAdminEmail({
-        subject: `New PMS connection request: ${providerName} (${data.hotelName})`,
-        text: [
-          `Hotel: ${data.hotelName}`,
-          `PMS: ${providerName}`,
-          `Contact: ${data.contactName} <${data.contactEmail}>`,
-          data.contactPhone ? `Phone: ${data.contactPhone}` : null,
-          data.roomCount != null ? `Rooms: ${data.roomCount}` : null,
-          `Features: ${features.join(", ")}`,
-          data.message ? `Message: ${data.message}` : null,
-          `Request ID: ${request.id}`,
-        ].filter(Boolean).join("\n"),
-      });
+      // Confirm to the requesting restaurant that their request was received.
+      await createNotificationWithPush({
+        userId: data.restaurantId,
+        type: "pms_request",
+        title: "PMS-Anfrage gesendet",
+        message: `Ihre Anfrage zur Verbindung von ${providerName} wurde übermittelt. Unser Team meldet sich in Kürze.`,
+        referenceId: request.id,
+      }, "restaurant");
 
-      if (!emailSent) {
-        await createNotificationWithPush({
-          userId: data.restaurantId,
-          type: "pms_request",
-          title: "PMS-Anfrage gesendet",
-          message: `Ihre Anfrage zur Verbindung von ${providerName} wurde übermittelt. Unser Team meldet sich in Kürze.`,
-          referenceId: request.id,
-        }, "restaurant");
+      // Notify the admin/operator: email if configured, otherwise an in-app
+      // notification to the configured operator account (ADMIN_USER_ID). This
+      // is a separate operator channel — never the requesting restaurant. If no
+      // channel is configured the request is still persisted and visible at
+      // /admin, so the submission never silently fails.
+      let emailSent = false;
+      if (isAdminEmailConfigured()) {
+        emailSent = await sendAdminEmail({
+          subject: `New PMS connection request: ${providerName} (${data.hotelName})`,
+          text: [
+            `Hotel: ${data.hotelName}`,
+            `PMS: ${providerName}`,
+            `Contact: ${data.contactName} <${data.contactEmail}>`,
+            data.contactPhone ? `Phone: ${data.contactPhone}` : null,
+            data.roomCount != null ? `Rooms: ${data.roomCount}` : null,
+            `Features: ${features.join(", ")}`,
+            data.message ? `Message: ${data.message}` : null,
+            `Request ID: ${request.id}`,
+          ].filter(Boolean).join("\n"),
+        });
       }
 
-      res.status(201).json({ request, emailSent: !!emailSent, providerMessage });
+      let adminInApp = false;
+      if (!emailSent) {
+        const adminUserId = process.env.ADMIN_USER_ID;
+        if (adminUserId) {
+          await createNotificationWithPush({
+            userId: adminUserId,
+            type: "pms_request",
+            title: "Neue PMS-Anfrage",
+            message: `${providerName} – ${data.hotelName} (${data.contactName})`,
+            referenceId: request.id,
+          }, "restaurant");
+          adminInApp = true;
+        } else {
+          console.warn(
+            "[pms] No admin notification channel configured (set SENDGRID_API_KEY+ADMIN_EMAIL or ADMIN_USER_ID). Request visible at /admin:",
+            request.id,
+          );
+        }
+      }
+
+      res.status(201).json({ request, emailSent, adminNotified: emailSent || adminInApp, providerMessage });
     } catch (error) {
       console.error("PMS connection request error:", error);
       res.status(500).json({ error: "Failed to submit PMS connection request" });
