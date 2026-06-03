@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, AlertTriangle, RotateCcw, User as UserIcon, Download, RefreshCw, Check, MoreVertical, Search, Columns3, ArrowUpDown, ArrowUp, ArrowDown, Filter as FilterIcon } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, AlertTriangle, RotateCcw, User as UserIcon, Download, RefreshCw, Check, MoreVertical, Search, Columns3, ArrowUpDown, ArrowUp, ArrowDown, Filter as FilterIcon, ChevronRight } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -769,14 +769,18 @@ export default function SupplierOrders() {
  )}
  </div>
  )}
+ <div>
  <Link
  href={`/supplier/orders/${order.id}`}
- className="font-mono text-[13px] text-primary hover:underline truncate"
+ className="group/orderid inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-muted/50 pl-2 pr-1.5 py-1 font-mono text-[12px] font-semibold text-foreground/80 transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
  data-testid={`link-order-${order.id}`}
  onClick={(e) => e.stopPropagation()}
+ title={lang === "de" ? "Details öffnen" : "Apri dettagli"}
  >
- #{formatOrderNumber(order)}
+ <span className="truncate">#{formatOrderNumber(order)}</span>
+ <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground transition-transform group-hover/orderid:translate-x-0.5 group-hover/orderid:text-primary" />
  </Link>
+ </div>
  {visibleColumns.has("status") && (
  <div>
  <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
