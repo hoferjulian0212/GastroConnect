@@ -580,8 +580,8 @@ export default function ComplaintDetail() {
   const tabClsDetails = mobileTab === "details" ? "" : "max-md:hidden";
 
   return (
-    <div className="min-h-dvh bg-background flex flex-col pb-[var(--mobile-detail-bottom-pad)] md:!pb-0" data-testid="page-complaint-detail">
-      <div className="w-full">
+    <div className="min-h-dvh bg-background flex flex-col md:!pb-0" data-testid="page-complaint-detail">
+      <div className="w-full flex-1">
         {/* Desktop: inject title + status + actions into the global dark app header (one continuous black header) */}
         <HeroPortal desktopOnly>
           <div className="px-6 pt-2 pb-5" data-testid="complaint-detail-hero-desktop">
@@ -1402,13 +1402,13 @@ export default function ComplaintDetail() {
         </div>
       </div>
 
-      {/* Mobile sticky bottom CTA bar.
-          Height = border-t(1px) + pt-3(12px) + h-12 row(48px) + pb(safe-area+12px) ~= safe-area+73px.
-          The page root reserves space via --mobile-detail-bottom-pad (index.css); if this
-          structure/height changes, update --mobile-detail-cta-h to match so content stays clear. */}
+      {/* Mobile bottom CTA bar — in-flow `sticky bottom-0` as the last child of the
+          page scroll content. Because it occupies real layout space, content above can
+          never be hidden underneath it (no fixed-position + guessed-padding mismatch).
+          Mobile-only (md:hidden); desktop actions live in the dark header. */}
       {!confirmAction && (mobilePrimary || mobileSecondaryByCat.length > 0) && (
         <div
-          className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]"
+          className="md:hidden sticky bottom-0 z-40 mt-auto bg-background/95 backdrop-blur-md border-t border-border px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]"
           data-testid="mobile-action-bar"
         >
           <div className="flex gap-2">

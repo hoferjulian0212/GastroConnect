@@ -41,12 +41,9 @@
 :root {
   --mobile-cta-offset: calc(env(safe-area-inset-bottom, 0px) + 88px);
   --mobile-bottom-pad: calc(var(--mobile-cta-offset) + 16px);
-  /* Detail-page bottom action bar (OrderDetail / ComplaintDetail) reservation.
-     Bar height ~= env(safe-area-inset-bottom) + ~73px (top border + pt-3 + h-12 row + pb).
-     Reserve that plus a breathing gap so page content never hides underneath it.
-     Pure CSS (no JS measurement) so it stays reliable across devices and safe-area insets. */
-  --mobile-detail-cta-h: calc(env(safe-area-inset-bottom, 0px) + 76px);
-  --mobile-detail-bottom-pad: calc(var(--mobile-detail-cta-h) + 16px);
+  /* Detail-page action bars (OrderDetail / ComplaintDetail) now use an in-flow
+     `sticky bottom-0` element as the last child of the page scroll content, so no
+     fixed-bar padding reservation is needed (the bar occupies real layout space). */
   /* Restaurant Cart mobile checkout bar reservation. Pure CSS (no JS measurement)
      so the last cart row never hides under the checkout bar — reliable from first
      paint and across safe-area insets (env is included via --mobile-cta-offset).
