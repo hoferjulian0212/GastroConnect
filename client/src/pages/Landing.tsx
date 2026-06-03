@@ -667,16 +667,16 @@ export default function Landing() {
               e.preventDefault();
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
-            className="flex items-center gap-2 shrink-0"
+            className="flex items-center gap-0 shrink-0"
             data-testid="link-brand"
           >
             <img
               src={logoImg}
               alt="GastroConnect Logo"
-              className="h-10 w-10 md:h-12 md:w-12 object-contain dark:invert -mr-1"
+              className="h-14 w-14 md:h-16 md:w-16 object-contain dark:invert"
             />
             <span
-              className="font-semibold text-base md:text-lg tracking-tight"
+              className="font-bold text-base md:text-lg tracking-tight -ml-1"
               data-testid="text-brand-name"
             >
               GastroConnect
@@ -748,13 +748,13 @@ export default function Landing() {
               </SheetTrigger>
               <SheetContent side="right" className="w-[280px] p-0">
                 <div className="flex flex-col h-full">
-                  <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+                  <div className="px-5 py-4 border-b border-border flex items-center gap-0">
                     <img
                       src={logoImg}
                       alt=""
-                      className="h-9 w-9 object-contain dark:invert"
+                      className="h-12 w-12 object-contain dark:invert"
                     />
-                    <span className="font-semibold tracking-tight">
+                    <span className="font-bold tracking-tight -ml-1">
                       GastroConnect
                     </span>
                   </div>
