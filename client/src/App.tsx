@@ -44,6 +44,7 @@ import RestaurantComplaints from "@/pages/restaurant/Complaints";
 import RestaurantTemplates from "@/pages/restaurant/Templates";
 import RestaurantSuppliers from "@/pages/restaurant/Suppliers";
 import RestaurantCostAnalysis from "@/pages/restaurant/CostAnalysis";
+import RestaurantCostAnalysisManual from "@/pages/restaurant/CostAnalysisManual";
 import RestaurantPriceComparison from "@/pages/restaurant/PriceComparison";
 import RestaurantMonthlyReports from "@/pages/restaurant/MonthlyReports";
 import SupplierHome from "@/pages/supplier/Home";
@@ -85,6 +86,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/profile" component={RestaurantProfile} />
       <Route path="/restaurant/documents" component={Documents} />
       <Route path="/restaurant/monthly-reports" component={RestaurantMonthlyReports} />
+      <Route path="/restaurant/cost-analysis/manual" component={RestaurantCostAnalysisManual} />
       <Route path="/restaurant/cost-analysis" component={RestaurantCostAnalysis} />
       <Route path="/restaurant/price-comparison" component={RestaurantPriceComparison} />
       <Route path="/restaurant/calendar">{() => <CalendarPage role="restaurant" />}</Route>
@@ -379,7 +381,7 @@ function PageHero() {
   const isOrdersPage = /^\/(restaurant|supplier)\/orders$/.test(pathOnly);
   const isComplaintsPage = /^\/(restaurant|supplier)\/complaints$/.test(pathOnly);
   const isProductsPage = /^\/(restaurant\/catalog|supplier\/products)$/.test(pathOnly);
-  const isCostAnalysisPage = pathOnly === "/restaurant/cost-analysis";
+  const isCostAnalysisPage = pathOnly === "/restaurant/cost-analysis" || pathOnly === "/restaurant/cost-analysis/manual";
   const isPriceComparisonPage = pathOnly === "/restaurant/price-comparison";
   const isPromotionsPage = pathOnly === "/supplier/promotions";
   const isSupplierRestaurantsPage = pathOnly === "/supplier/restaurants";
