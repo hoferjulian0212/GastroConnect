@@ -888,6 +888,31 @@ html, body, #root {
   animation: pull-spinner 0.8s linear infinite;
 }
 
+/* Monthly report print layout */
+.print-report {
+  display: none;
+}
+@media print {
+  /* Hide every top-level node (app root, dialog/toast portals) and show only
+     the print layout, which is portaled as a direct child of <body>. Using
+     display:none (not visibility) so hidden content takes no page space. */
+  body > * {
+    display: none !important;
+  }
+  body > .print-report {
+    display: block;
+    position: static;
+    width: 100%;
+    padding: 0;
+    background: #ffffff;
+    color: #161921;
+    font-size: 12px;
+  }
+  @page {
+    margin: 14mm;
+  }
+}
+
 /* Landing — global reduced-motion fallback (A6) */
 @media (prefers-reduced-motion: reduce) {
   html {
