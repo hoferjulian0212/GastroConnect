@@ -1,1 +1,2 @@
-- [Mobile bottom-bar clearance](mobile-bottom-bar-clearance.md) — reserve space for fixed mobile bottom bars with pure-CSS env(safe-area-inset-bottom) vars, not JS-measured px fallbacks (under-reserve on large-inset devices).
+- [No-login auth model](no-login-auth-model.md) — app intentionally has NO login; IDs come from query/body and are trusted. Don't "fix" as IDOR.
+- [Cross-supplier product matching](product-matching.md) — match by GTIN first, fall back to name+unit (gtin omitted) so partial-barcode coverage still groups.

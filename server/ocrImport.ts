@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { db } from "./db";
 import { products, priceChangeLog } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
@@ -69,8 +70,19 @@ function normalizeParsed(raw: any): ParsedPriceListItem[] {
 export function registerOcrImportRoutes(app: Express) {
   const bigJson = express.json({ limit: "25mb" });
 
+  // Each parse call hits a paid AI vision model, so it gets a tighter limit than
+  // the global API limiter to guard against cost-amplification / abuse.
+  const parseLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Zu viele Importe. Bitte versuchen Sie es in ein paar Minuten erneut." },
+    validate: { trustProxy: false, xForwardedForHeader: false, ip: false },
+  });
+
   // Parse an uploaded price list (image or PDF) into structured product rows via AI vision.
-  app.post("/api/supplier/price-list/parse", bigJson, async (req: Request, res: Response) => {
+  app.post("/api/supplier/price-list/parse", parseLimiter, bigJson, async (req: Request, res: Response) => {
     try {
       const { fileData, mimeType } = req.body as { fileData?: string; mimeType?: string };
       if (!fileData || typeof fileData !== "string") {
@@ -136,19 +148,25 @@ export function registerOcrImportRoutes(app: Express) {
       if (rows.length === 0) return res.status(400).json({ error: "Keine Produkte zum Importieren" });
 
       const existing = await db.select().from(products).where(eq(products.supplierId, supplierId));
-      const byGtin = new Map<string, typeof existing[number]>();
-      const byArticle = new Map<string, typeof existing[number]>();
-      const byKey = new Map<string, typeof existing[number]>();
-      for (const p of existing) {
+      type ProductRow = typeof existing[number];
+      const byGtin = new Map<string, ProductRow>();
+      const byArticle = new Map<string, ProductRow>();
+      // Name+unit key only (gtin deliberately omitted) so a row can match a
+      // counterpart that has no barcode — and vice versa — under partial GTIN
+      // coverage. GTIN is still tried first below as the authoritative key.
+      const byNameUnit = new Map<string, ProductRow>();
+      const register = (p: ProductRow) => {
         const g = normalizeGtin(p.gtin);
         if (g) byGtin.set(g, p);
         if (p.articleNumber) byArticle.set(p.articleNumber.trim().toLowerCase(), p);
-        byKey.set(productMatchKey({ name: p.name, unit: p.unit, gtin: p.gtin }), p);
-      }
+        byNameUnit.set(productMatchKey({ name: p.name, unit: p.unit, gtin: null }), p);
+      };
+      for (const p of existing) register(p);
 
       let created = 0;
       let updated = 0;
       const result = await db.transaction(async (tx) => {
+        const touched = new Set<string>();
         for (const r of rows) {
           const name = (r.name || "").trim();
           if (!name) continue;
@@ -157,17 +175,18 @@ export function registerOcrImportRoutes(app: Express) {
           const unit = (r.unit || "").trim() || "piece";
           const gtin = normalizeGtin(r.gtin);
           const articleNumber = r.articleNumber?.trim() || null;
+          const nameUnitKey = productMatchKey({ name, unit, gtin: null });
 
-          let match: typeof existing[number] | undefined;
+          let match: ProductRow | undefined;
           if (gtin) match = byGtin.get(gtin);
           if (!match && articleNumber) match = byArticle.get(articleNumber.toLowerCase());
-          if (!match) match = byKey.get(productMatchKey({ name, unit, gtin }));
+          if (!match) match = byNameUnit.get(nameUnitKey);
 
           if (match) {
             const newPriceStr = price.toFixed(2);
             const priceChanged = Number(newPriceStr) !== Number(match.price);
             const setData: Partial<typeof products.$inferInsert> = { price: newPriceStr };
-            if (gtin && !match.gtin) setData.gtin = gtin;
+            if (gtin && !normalizeGtin(match.gtin)) setData.gtin = gtin;
             await tx.update(products).set(setData).where(and(eq(products.id, match.id), eq(products.supplierId, supplierId)));
             if (priceChanged) {
               await tx.insert(priceChangeLog).values({
@@ -180,16 +199,28 @@ export function registerOcrImportRoutes(app: Express) {
                 source: "ocr",
               });
             }
-            updated++;
+            // Keep in-memory state current so duplicate rows within this same
+            // import update the row instead of creating a second copy.
+            match.price = newPriceStr;
+            if (setData.gtin) {
+              match.gtin = gtin;
+              byGtin.set(gtin!, match);
+            }
+            if (!touched.has(match.id)) {
+              updated++;
+              touched.add(match.id);
+            }
           } else {
-            await tx.insert(products).values({
+            const [inserted] = await tx.insert(products).values({
               supplierId,
               name,
               price: price.toFixed(2),
               unit,
               gtin: gtin ?? undefined,
               articleNumber: articleNumber ?? undefined,
-            });
+            }).returning();
+            register(inserted);
+            touched.add(inserted.id);
             created++;
           }
         }
