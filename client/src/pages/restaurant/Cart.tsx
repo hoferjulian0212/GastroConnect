@@ -939,7 +939,7 @@ export default function RestaurantCart() {
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2 sm:gap-0 px-8 pb-8 pt-5">
+          <DialogFooter className="gap-2 sm:gap-0 px-8 pb-8 pt-6">
             <Button variant="outline" onClick={() => setPreConfirmDialog(null)} data-testid="button-confirm-cancel">
               {lang === "de" ? "Zurück" : "Indietro"}
             </Button>

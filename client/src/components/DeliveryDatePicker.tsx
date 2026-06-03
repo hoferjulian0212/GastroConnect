@@ -80,7 +80,7 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
           <DialogTitle>{t("supplierOrders", "selectDeliveryDate")}</DialogTitle>
         </DialogHeader>
 
-        <div className="px-5 pt-5 pb-2">
+        <div className="px-6 pt-6 pb-2">
           <div className="flex items-center gap-2">
             <Truck className="h-4 w-4 text-purple-600" />
             <h3 className="text-sm font-semibold">{t("supplierOrders", "selectDeliveryDate")}</h3>
@@ -88,7 +88,7 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
           <p className="text-xs text-muted-foreground mt-0.5 pl-6">{t("supplierOrders", "selectDeliveryDateDesc")}</p>
         </div>
 
-        <div className="space-y-3 px-5 pb-5">
+        <div className="space-y-3 px-6 pb-6">
           {allowedDaysOfWeek !== null && (
             <div className="flex flex-wrap gap-1">
               {Array.from(allowedDaysOfWeek).sort().map(day => (

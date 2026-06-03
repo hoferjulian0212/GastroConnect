@@ -1135,7 +1135,7 @@ export default function SupplierInbox() {
                           <DialogTitle>{t("inbox", "openActions")}</DialogTitle>
                           <DialogDescription>{selectedConv.otherUser.companyName || selectedConv.otherUser.name}</DialogDescription>
                         </DialogHeader>
-                        <div className="px-5 pt-5 pb-2">
+                        <div className="px-6 pt-6 pb-2">
                           <div className="flex items-center gap-2">
                             <ClipboardList className="h-4 w-4 text-foreground" />
                             <h3 className="text-sm font-semibold text-foreground">{t("inbox", "openActions")}</h3>
@@ -2883,12 +2883,12 @@ export default function SupplierInbox() {
             <DialogTitle>Status ändern</DialogTitle>
           </DialogHeader>
           
-          <div className="px-5 pt-5 pb-2">
+          <div className="px-6 pt-6 pb-2">
             <h3 className="text-sm font-semibold">Status ändern</h3>
             <p className="text-xs text-muted-foreground mt-0.5">Wählen Sie den neuen Status für diese Reklamation</p>
           </div>
 
-          <div className="px-5 pb-5 space-y-3">
+          <div className="px-6 pb-6 space-y-3">
             {complaintDetail && (
               <>
                 <div className="p-3 rounded-xl bg-muted/30">
@@ -2963,13 +2963,13 @@ export default function SupplierInbox() {
             <DialogTitle>Kommentare</DialogTitle>
           </DialogHeader>
           
-          <div className="px-5 pt-5 pb-2">
+          <div className="px-6 pt-6 pb-2">
             <h3 className="text-sm font-semibold">Kommentare</h3>
             <p className="text-xs text-muted-foreground mt-0.5">Kommentare zur Reklamation anzeigen und hinzufügen</p>
           </div>
 
           {complaintDetail && (
-            <div className="flex flex-col flex-1 min-h-0 space-y-4 px-5 pb-5">
+            <div className="flex flex-col flex-1 min-h-0 space-y-4 px-6 pb-6">
               <div className="p-3 rounded-xl bg-muted/30 shrink-0">
                 <div className="font-medium text-sm">{complaintDetail.title}</div>
                 <div className="text-xs text-muted-foreground mt-1">
@@ -3091,7 +3091,7 @@ export default function SupplierInbox() {
             <DialogTitle>{lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}</DialogTitle>
           </DialogHeader>
 
-          <div className="px-5 pt-5 pb-2">
+          <div className="px-6 pt-6 pb-2">
             <h3 className="text-sm font-semibold">{lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               {lang === "de"
@@ -3100,7 +3100,7 @@ export default function SupplierInbox() {
             </p>
           </div>
 
-          <div className="space-y-4 px-5 pb-5">
+          <div className="space-y-4 px-6 pb-6">
             <div className="space-y-3">
               <Label className="text-sm font-medium">{lang === "de" ? "Produkte" : "Prodotti"}</Label>
               {followUpItems.map((item, idx) => (

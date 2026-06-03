@@ -568,7 +568,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  <DialogHeader className="sr-only">
  <DialogTitle>{t("supplierProducts", "adjustStock")}</DialogTitle>
  </DialogHeader>
- <div className="px-5 pt-5 pb-2">
+ <div className="px-6 pt-6 pb-2">
  <div className="flex items-center gap-2">
  <Package className="h-4 w-4" />
  <h3 className="text-sm font-semibold">{t("supplierProducts", "adjustStock")}</h3>
@@ -576,7 +576,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  <p className="text-xs text-muted-foreground mt-0.5 pl-6">{adjustProduct?.name}</p>
  </div>
 
- <div className="px-5 pb-5 space-y-4">
+ <div className="px-6 pb-6 space-y-4">
  <div className="rounded-xl bg-muted/30 p-4 text-center">
  <p className="text-xs text-muted-foreground mb-1">{lang === "de" ? "Aktueller Bestand" : "Scorta attuale"}</p>
  <p className="text-3xl font-bold tabular-nums">{adjustProduct?.stockQuantity ?? 0} <span className="text-sm font-normal text-muted-foreground">{adjustProduct?.unit}</span></p>
@@ -701,7 +701,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  <DialogHeader className="sr-only">
  <DialogTitle>{t("supplierProducts", "stockMovements")}</DialogTitle>
  </DialogHeader>
- <div className="px-5 pt-5 pb-2">
+ <div className="px-6 pt-6 pb-2">
  <div className="flex items-center gap-2">
  <History className="h-4 w-4" />
  <h3 className="text-sm font-semibold">{t("supplierProducts", "stockMovements")}</h3>
@@ -709,7 +709,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  <p className="text-xs text-muted-foreground mt-0.5 pl-6">{historyProduct?.name} — {historyProduct?.stockQuantity ?? 0} {historyProduct?.unit}</p>
  </div>
 
- <div className="px-5 pb-5">
+ <div className="px-6 pb-6">
  {stockMovementsLoading ? (
  <div className="space-y-1.5">
  {[1, 2, 3].map((i) => (
@@ -997,13 +997,13 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
  <DialogHeader className="sr-only">
  <DialogTitle>{editingPromo ? t("promotionsPage", "editPromotion") : lang === "de" ? "Neue Aktion erstellen" : "Crea nuova promozione"}</DialogTitle>
  </DialogHeader>
- <div className="px-5 pt-5 pb-2">
+ <div className="px-6 pt-6 pb-2">
  <h3 className="text-sm font-semibold">{editingPromo ? t("promotionsPage", "editPromotion") : lang === "de" ? "Neue Aktion erstellen" : "Crea nuova promozione"}</h3>
  <p className="text-xs text-muted-foreground mt-0.5">
  {editingPromo ? (lang === "de" ? "Ändern Sie die Rabattaktion." : "Modifica la promozione.") : (lang === "de" ? "Rabattaktion erstellen" : "Crea promozione")}
  </p>
  </div>
- <div className="space-y-4 px-5 pb-5">
+ <div className="space-y-4 px-6 pb-6">
  <div>
  <Label className="text-sm">{lang === "de" ? "Produkt" : "Prodotto"}</Label>
  <Select value={selectedProductId} onValueChange={setSelectedProductId}>
@@ -1454,7 +1454,7 @@ export default function SupplierProducts() {
  <DialogHeader className="sr-only">
  <DialogTitle>{editingProduct ? t("supplierProducts", "editProduct") : t("supplierProducts", "addProduct")}</DialogTitle>
  </DialogHeader>
- <div className="px-5 pt-5 pb-2">
+ <div className="px-6 pt-6 pb-2">
  <h3 className="text-sm font-semibold">{editingProduct ? t("supplierProducts", "editProduct") : t("supplierProducts", "addProduct")}</h3>
  <p className="text-xs text-muted-foreground mt-0.5">
  {editingProduct 
@@ -1463,7 +1463,7 @@ export default function SupplierProducts() {
  </p>
  </div>
  <Form {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-5 pb-5">
+ <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6 pb-6">
  <div className="space-y-2">
  <FormLabel>{t("supplierProducts", "productImage")}</FormLabel>
  <div className="flex flex-col gap-3">

@@ -1976,7 +1976,7 @@ export default function RestaurantHome() {
             <DialogTitle>{t("orders", "order")} #{formatOrderNumber(detailOrder)}</DialogTitle>
           </DialogHeader>
           {detailOrder && (
-            <div className="px-5 pt-5 pb-5 space-y-4">
+            <div className="px-6 pt-6 pb-6 space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-xs text-muted-foreground">{t("orders", "order")}</p>
@@ -2074,7 +2074,7 @@ export default function RestaurantHome() {
             </div>
           ) : (
             <>
-              <div className="px-5 pt-5 pb-3">
+              <div className="px-6 pt-6 pb-3">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-orange-500/10 shrink-0">
                     <ClipboardList className="h-5 w-5 text-orange-600" />
@@ -2096,7 +2096,7 @@ export default function RestaurantHome() {
               </div>
 
               {wizardStep === "items" && wizardTemplate && (
-                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-items">
+                <div className="px-6 pb-6 space-y-3" data-testid="wizard-step-items">
                   <p className="text-sm font-medium">
                     {lang === "de" ? "Produkte & Mengen" : "Prodotti e quantita"}
                   </p>
@@ -2181,7 +2181,7 @@ export default function RestaurantHome() {
               )}
 
               {wizardStep === "browse_supplier" && (
-                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-browse-supplier">
+                <div className="px-6 pb-6 space-y-3" data-testid="wizard-step-browse-supplier">
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setWizardStep("items")} data-testid="wizard-back-from-supplier">
                       <ArrowLeft className="h-4 w-4" />
@@ -2224,7 +2224,7 @@ export default function RestaurantHome() {
               )}
 
               {wizardStep === "browse_products" && (
-                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-browse-products">
+                <div className="px-6 pb-6 space-y-3" data-testid="wizard-step-browse-products">
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setWizardStep("browse_supplier")} data-testid="wizard-back-from-products">
                       <ArrowLeft className="h-4 w-4" />
@@ -2327,7 +2327,7 @@ export default function RestaurantHome() {
               )}
 
               {wizardStep === "review" && (
-                <div className="px-5 pb-5 space-y-3" data-testid="wizard-step-review">
+                <div className="px-6 pb-6 space-y-3" data-testid="wizard-step-review">
                   <p className="text-sm font-medium">
                     {lang === "de" ? "Bestellübersicht" : "Riepilogo ordine"}
                   </p>

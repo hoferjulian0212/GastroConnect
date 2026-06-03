@@ -810,7 +810,7 @@ export default function PriceComparison() {
  {/* ─── WECHSELPLAN DIALOG ───────────────────────────────────────── */}
  <Dialog open={wechselplanOpen} onOpenChange={setWechselplanOpen}>
  <DialogContent className="gap-0 max-w-2xl max-h-[90vh] flex flex-col p-0">
- <DialogHeader className="px-5 pt-5 pb-3 border-b">
+ <DialogHeader className="px-6 pt-6 pb-3 border-b">
  <DialogTitle className="flex items-center gap-2">
  <ArrowRight className="h-5 w-5 text-emerald-500" />
  {lang === "de" ? "Wechselplan" : "Piano di switch"}
@@ -822,7 +822,7 @@ export default function PriceComparison() {
  </DialogDescription>
  </DialogHeader>
 
- <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+ <div className="flex-1 overflow-y-auto px-6 py-3 space-y-2">
  {wechselplanCandidates.length === 0 ? (
  <div className="text-center py-12 text-sm text-muted-foreground">
  <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
@@ -891,7 +891,7 @@ export default function PriceComparison() {
  )}
  </div>
 
- <DialogFooter className="px-5 py-3 border-t bg-muted/30 flex-row items-center justify-between">
+ <DialogFooter className="px-6 py-3 border-t bg-muted/30 flex-row items-center justify-between">
  <div className="text-sm">
  <span className="text-muted-foreground">{lang === "de" ? "Geschätzte Ersparnis:" : "Risparmio stimato:"}</span>
  <span className="ml-2 font-bold text-emerald-700 dark:text-emerald-400 tabular-nums" data-testid="wechselplan-total">

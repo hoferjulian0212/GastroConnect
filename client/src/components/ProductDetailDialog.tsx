@@ -26,7 +26,7 @@ export default function ProductDetailDialog({ product, open, onOpenChange, suppl
           <DialogTitle>{lang === "de" ? "Produktdetails" : "Dettagli prodotto"}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 px-5 pt-5 pb-5">
+        <div className="space-y-4 px-6 pt-6 pb-6">
           <ProductImage src={product.imageUrl} alt={product.name} className="w-full h-48 rounded-xl" iconClassName="h-16 w-16" fallbackIconColor="text-muted-foreground/20" />
 
           <div>

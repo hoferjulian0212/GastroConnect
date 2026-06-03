@@ -837,7 +837,7 @@ export default function SupplierComplaints() {
             <DialogTitle>{lang === "de" ? "Reklamation" : "Reclamo"}</DialogTitle>
           </DialogHeader>
           {selectedComplaint && (
-            <div className="flex flex-col flex-1 min-h-0 px-5 pt-5 pb-5 space-y-4">
+            <div className="flex flex-col flex-1 min-h-0 px-6 pt-6 pb-6 space-y-4">
               <div className="space-y-3 shrink-0">
                 {(selectedComplaint as any).priority === "urgent" && (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
@@ -1077,12 +1077,12 @@ export default function SupplierComplaints() {
             <DialogTitle>{t("supplierComplaints", "updateStatus")}</DialogTitle>
           </DialogHeader>
           
-          <div className="px-5 pt-5 pb-2">
+          <div className="px-6 pt-6 pb-2">
             <h3 className="text-sm font-semibold">{t("supplierComplaints", "updateStatus")}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">{lang === "de" ? "Wählen Sie den neuen Status" : "Seleziona il nuovo stato"}</p>
           </div>
 
-          <div className="px-5 pb-5 space-y-3">
+          <div className="px-6 pb-6 space-y-3">
             {selectedComplaint && (
               <div className="p-3 rounded-xl bg-muted/30">
                 <div className="font-medium text-sm">{selectedComplaint.title}</div>
@@ -1155,13 +1155,13 @@ export default function SupplierComplaints() {
             <DialogTitle>{lang === "de" ? "Kommentare" : "Commenti"}</DialogTitle>
           </DialogHeader>
           
-          <div className="px-5 pt-5 pb-2">
+          <div className="px-6 pt-6 pb-2">
             <h3 className="text-sm font-semibold">{lang === "de" ? "Kommentare" : "Commenti"}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">{lang === "de" ? "Kommentare anzeigen und hinzufügen" : "Visualizza e aggiungi commenti"}</p>
           </div>
 
           {selectedComplaint && (
-            <div className="flex flex-col flex-1 min-h-0 space-y-4 px-5 pb-5">
+            <div className="flex flex-col flex-1 min-h-0 space-y-4 px-6 pb-6">
               <div className="p-3 rounded-xl bg-muted/30 shrink-0">
                 <div className="font-medium text-sm">{selectedComplaint.title}</div>
                 <div className="text-xs text-muted-foreground mt-1">
@@ -1234,7 +1234,7 @@ export default function SupplierComplaints() {
             <DialogTitle>{lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}</DialogTitle>
           </DialogHeader>
 
-          <div className="px-5 pt-5 pb-2">
+          <div className="px-6 pt-6 pb-2">
             <h3 className="text-sm font-semibold">{lang === "de" ? "Nachlieferung erstellen" : "Crea riconsegna"}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               {lang === "de"
@@ -1243,7 +1243,7 @@ export default function SupplierComplaints() {
             </p>
           </div>
 
-          <div className="space-y-4 px-5 pb-5">
+          <div className="space-y-4 px-6 pb-6">
             <div className="space-y-3">
               <Label className="text-sm font-medium">{lang === "de" ? "Produkte" : "Prodotti"}</Label>
               {followUpItems.map((item, idx) => (

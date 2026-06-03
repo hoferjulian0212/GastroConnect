@@ -985,7 +985,7 @@ export default function Complaints() {
  <DialogHeader className="sr-only">
  <DialogTitle>{t("complaints", "newComplaint")}</DialogTitle>
  </DialogHeader>
- <div className="px-5 pt-5 pb-2">
+ <div className="px-6 pt-6 pb-2">
  <div className="flex items-center gap-2">
  <AlertCircle className="h-4 w-4" />
  <h3 className="text-sm font-semibold">{t("complaints", "newComplaint")}</h3>
@@ -1003,7 +1003,7 @@ export default function Complaints() {
  ))}
  </div>
  </div>
- <div className="space-y-3 md:space-y-4 px-5 pb-5">
+ <div className="space-y-3 md:space-y-4 px-6 pb-6">
  {wizardStep === 1 && (<>
  <div className="space-y-2">
  <Label>{t("complaints", "selectSupplier")}</Label>
@@ -1280,7 +1280,7 @@ export default function Complaints() {
  </>)}
  </div>
 
- <div className="flex gap-2 px-5 pb-5">
+ <div className="flex gap-2 px-6 pb-6">
  {wizardStep > 1 ? (
  <Button
  variant="outline"
@@ -1330,7 +1330,7 @@ export default function Complaints() {
  <DialogTitle>{t("common", "complaints")}</DialogTitle>
  </DialogHeader>
  {detailComplaint && (
- <div className="flex flex-col flex-1 min-h-0 px-5 pt-5 pb-5 space-y-4">
+ <div className="flex flex-col flex-1 min-h-0 px-6 pt-6 pb-6 space-y-4">
  <div className="space-y-3 shrink-0">
  {(detailComplaint as any).priority === "urgent" && (
  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
@@ -1540,10 +1540,10 @@ export default function Complaints() {
  <DialogTitle>{t("complaints", "editComplaint")}</DialogTitle>
  </DialogHeader>
 
- <div className="px-5 pt-5 pb-3 border-b shrink-0">
+ <div className="px-6 pt-6 pb-3 border-b shrink-0">
  <h3 className="text-base font-semibold">{t("complaints", "editComplaint")}</h3>
  </div>
- <div className="space-y-4 px-5 py-5 overflow-y-auto flex-1 min-h-0">
+ <div className="space-y-4 px-6 py-5 overflow-y-auto flex-1 min-h-0">
  <div className="space-y-2">
  <Label>{t("complaints", "subject")}</Label>
  <Input
@@ -1627,7 +1627,7 @@ export default function Complaints() {
  </div>
  </div>
 
- <div className="flex gap-2 px-5 py-4 border-t shrink-0 bg-background">
+ <div className="flex gap-2 px-6 py-4 border-t shrink-0 bg-background">
  <Button
  variant="outline"
  className="flex-1 rounded-lg"
@@ -1653,7 +1653,7 @@ export default function Complaints() {
  <DialogHeader className="sr-only">
  <DialogTitle>{t("complaints", "withdrawComplaint")}</DialogTitle>
  </DialogHeader>
- <div className="px-5 pt-5 pb-5 space-y-4">
+ <div className="px-6 pt-6 pb-6 space-y-4">
  <h3 className="text-sm font-semibold">{t("complaints", "withdrawComplaint")}</h3>
  <p className="text-sm text-muted-foreground">
  {t("complaints", "withdrawConfirm")}

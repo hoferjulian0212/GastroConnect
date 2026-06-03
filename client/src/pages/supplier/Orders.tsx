@@ -1624,7 +1624,7 @@ export default function SupplierOrders() {
  <DialogTitle>{lang === "de" ? "Auftrag" : "Ordine"} #{formatOrderNumber(detailOrder)}</DialogTitle>
  </DialogHeader>
  {detailOrder && (
- <div className="px-5 pt-5 pb-5 space-y-4">
+ <div className="px-6 pt-6 pb-6 space-y-4">
  <div className="flex items-center justify-between gap-2">
  <div>
  <p className="text-xs text-muted-foreground">{lang === "de" ? "Auftrag" : "Ordine"}</p>

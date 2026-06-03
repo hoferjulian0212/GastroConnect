@@ -1362,7 +1362,7 @@ export default function RestaurantInbox() {
                             <DialogTitle>{t("inbox", "openActions")}</DialogTitle>
                             <DialogDescription>{selectedConv.otherUser.companyName || selectedConv.otherUser.name}</DialogDescription>
                           </DialogHeader>
-                          <div className="px-5 pt-5 pb-2">
+                          <div className="px-6 pt-6 pb-2">
                             <div className="flex items-center gap-2">
                               <ClipboardList className="h-4 w-4 text-foreground" />
                               <h3 className="text-sm font-semibold text-foreground">{t("inbox", "openActions")}</h3>
@@ -3420,7 +3420,7 @@ export default function RestaurantInbox() {
             <DialogTitle>{t("orders", "editOrder")}</DialogTitle>
           </DialogHeader>
 
-          <div className="px-5 pt-5 pb-2">
+          <div className="px-6 pt-6 pb-2">
             <div className="flex items-center gap-2">
               <Pencil className="h-4 w-4" />
               <h3 className="text-sm font-semibold">{t("orders", "editOrder")}</h3>
@@ -3430,7 +3430,7 @@ export default function RestaurantInbox() {
             </p>
           </div>
 
-          <div className="space-y-4 px-5 pb-5">
+          <div className="space-y-4 px-6 pb-6">
             <div>
               <Label className="text-sm font-medium mb-2 block">{t("orders", "orderItems")}</Label>
               <div className="space-y-2">

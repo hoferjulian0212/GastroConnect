@@ -591,7 +591,7 @@ export default function Documents() {
             <DialogTitle>{selectedDoc?.title}</DialogTitle>
           </DialogHeader>
 
-          <div className="px-5 pt-5 pb-2">
+          <div className="px-6 pt-6 pb-2">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               <h3 className="text-sm font-semibold">{selectedDoc?.title}</h3>
@@ -610,7 +610,7 @@ export default function Documents() {
               <Skeleton className="h-40 w-full" />
             </div>
           ) : previewData && editData ? (
-            <div className="space-y-4 px-5 pb-5">
+            <div className="space-y-4 px-6 pb-6">
               {!isEditing ? (
                 <>
                   <div className="grid grid-cols-2 gap-4">

@@ -244,7 +244,7 @@ export default function PhotoComplaintWizard({ open, onClose }: PhotoComplaintWi
           </div>
         </DrawerHeader>
 
-        <div className="px-4 pb-4 overflow-y-auto">
+        <div className="px-4 pt-1 pb-5 overflow-y-auto">
           {step === "photo" && (
             <div className="space-y-3" data-testid="step-photo">
               <p className="text-sm text-muted-foreground">

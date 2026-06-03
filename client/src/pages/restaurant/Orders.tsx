@@ -1890,7 +1890,7 @@ export default function RestaurantOrders() {
  <DialogTitle>{t("orders", "order")} #{formatOrderNumber(detailOrder)}</DialogTitle>
  </DialogHeader>
  {detailOrder && (
- <div className="px-5 pt-5 pb-5 space-y-4">
+ <div className="px-6 pt-6 pb-6 space-y-4">
  <div className="flex items-center justify-between gap-2">
  <div>
  <p className="text-xs text-muted-foreground">{t("orders", "order")}</p>
@@ -2080,7 +2080,7 @@ export default function RestaurantOrders() {
  <DialogTitle>{t("orders", "editOrder")}</DialogTitle>
  </DialogHeader>
 
- <div className="px-5 pt-5 pb-2">
+ <div className="px-6 pt-6 pb-2">
  <div className="flex items-center gap-2">
  <Pencil className="h-4 w-4" />
  <h3 className="text-sm font-semibold">{t("orders", "editOrder")}</h3>
@@ -2090,7 +2090,7 @@ export default function RestaurantOrders() {
  </p>
  </div>
 
- <div className="space-y-4 px-5 pb-5">
+ <div className="space-y-4 px-6 pb-6">
  <div>
  <Label className="text-sm font-medium mb-2 block">{t("orders", "orderItems")}</Label>
  <div className="space-y-2">
@@ -2265,7 +2265,7 @@ export default function RestaurantOrders() {
  </div>
  </div>
 
- <div className="flex gap-2 px-5 pb-5">
+ <div className="flex gap-2 px-6 pb-6">
  <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setEditingOrder(null)} data-testid="button-cancel-edit">
  {t("common", "cancel")}
  </Button>
@@ -2291,7 +2291,7 @@ export default function RestaurantOrders() {
  <DialogHeader className="sr-only">
  <DialogTitle>{t("orders", "requestChange")}</DialogTitle>
  </DialogHeader>
- <div className="px-5 pt-5 pb-2">
+ <div className="px-6 pt-6 pb-2">
  <div className="flex items-center gap-2">
  <MessageSquareText className="h-4 w-4" />
  <h3 className="text-sm font-semibold">{t("orders", "requestChange")}</h3>
@@ -2300,7 +2300,7 @@ export default function RestaurantOrders() {
  {t("orders", "order")} #{formatOrderNumber(changeRequestOrder)}
  </p>
  </div>
- <div className="px-5 pb-5 space-y-4">
+ <div className="px-6 pb-6 space-y-4">
  <div>
  <label className="text-sm font-medium mb-1.5 block">{t("orders", "changeRequestReason")}</label>
  <Textarea

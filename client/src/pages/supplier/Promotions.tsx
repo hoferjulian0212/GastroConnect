@@ -587,7 +587,7 @@ export default function SupplierPromotions() {
             <DialogTitle>{t("promotionsPage", "createPromotion")}</DialogTitle>
           </DialogHeader>
 
-          <div className="px-5 pt-5 pb-2 space-y-2">
+          <div className="px-6 pt-6 pb-2 space-y-2">
             <h3 className="text-sm font-semibold">{t("promotionsPage", "createPromotion")}</h3>
             <div className="flex items-center gap-2">
               {[1, 2, 3].map(step => (
@@ -608,7 +608,7 @@ export default function SupplierPromotions() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-5">
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
             {wizardStep === 1 && (
               <div className="space-y-4 py-2">
                 <div>
@@ -870,7 +870,7 @@ export default function SupplierPromotions() {
             )}
           </div>
 
-          <div className="flex gap-2 px-5 pb-5">
+          <div className="flex gap-2 px-6 pb-6">
             {wizardStep > 1 && (
               <Button variant="outline" className="rounded-lg" onClick={() => setWizardStep(wizardStep - 1)} data-testid="button-wizard-back">
                 <ChevronLeft className="h-4 w-4 mr-1" />
