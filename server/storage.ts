@@ -24,6 +24,11 @@ import {
   pushSubscriptions, type InsertPushSubscription, type PushSubscription,
   type SupplierRating, type InsertSupplierRating, type UpdateSupplierRating,
   type MonthlyReport, type InsertMonthlyReport,
+  pmsProviders, hotelPmsConnections, pmsConnectionRequests, guestCountImports,
+  type PmsProvider, type InsertPmsProvider,
+  type HotelPmsConnection, type InsertHotelPmsConnection,
+  type PmsConnectionRequest, type InsertPmsConnectionRequest,
+  type GuestCountImport, type InsertGuestCountImport,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -246,6 +251,21 @@ export interface IStorage {
   updateRating(id: string, data: UpdateSupplierRating): Promise<SupplierRating | undefined>;
   deleteRating(id: string): Promise<void>;
   flagRating(id: string, reason?: string): Promise<SupplierRating | undefined>;
+
+  // PMS Integration
+  ensurePmsProviders(): Promise<void>;
+  getPmsProviders(): Promise<PmsProvider[]>;
+  getPmsProvider(id: string): Promise<PmsProvider | undefined>;
+  getHotelConnection(restaurantId: string): Promise<(HotelPmsConnection & { provider: PmsProvider | null }) | undefined>;
+  createHotelConnection(data: InsertHotelPmsConnection): Promise<HotelPmsConnection>;
+  updateHotelConnection(id: string, data: Partial<InsertHotelPmsConnection>): Promise<HotelPmsConnection | undefined>;
+  createPmsConnectionRequest(data: InsertPmsConnectionRequest): Promise<PmsConnectionRequest>;
+  getPmsConnectionRequests(): Promise<(PmsConnectionRequest & { restaurant: User | null; provider: PmsProvider | null })[]>;
+  getPmsConnectionRequest(id: string): Promise<PmsConnectionRequest | undefined>;
+  updatePmsConnectionRequest(id: string, data: { status?: string; adminNotes?: string }): Promise<PmsConnectionRequest | undefined>;
+  upsertGuestCountImport(data: InsertGuestCountImport): Promise<GuestCountImport>;
+  getGuestCountImports(restaurantId: string): Promise<GuestCountImport[]>;
+  getEffectiveGuestCountsByDate(restaurantId: string): Promise<Map<string, number>>;
 
   // Seed
   seedData(): Promise<void>;
@@ -3312,6 +3332,127 @@ export class DatabaseStorage implements IStorage {
 
   async deletePushSubscription(endpoint: string): Promise<void> {
     await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+  }
+
+  // ===== PMS Integration =====
+  async ensurePmsProviders(): Promise<void> {
+    const seed = [
+      { slug: "asa", name: "ASA Hotel" },
+      { slug: "mews", name: "Mews" },
+      { slug: "apaleo", name: "Apaleo" },
+      { slug: "opera", name: "Oracle Opera" },
+      { slug: "protel", name: "Protel" },
+      { slug: "cloudbeds", name: "Cloudbeds" },
+      { slug: "other", name: "Other / Not listed" },
+    ];
+    for (const p of seed) {
+      const [existing] = await db.select().from(pmsProviders).where(eq(pmsProviders.slug, p.slug));
+      if (!existing) await db.insert(pmsProviders).values(p);
+    }
+  }
+
+  async getPmsProviders(): Promise<PmsProvider[]> {
+    return db.select().from(pmsProviders).where(eq(pmsProviders.isActive, true)).orderBy(pmsProviders.name);
+  }
+
+  async getPmsProvider(id: string): Promise<PmsProvider | undefined> {
+    const [provider] = await db.select().from(pmsProviders).where(eq(pmsProviders.id, id));
+    return provider;
+  }
+
+  async getHotelConnection(restaurantId: string): Promise<(HotelPmsConnection & { provider: PmsProvider | null }) | undefined> {
+    const [conn] = await db.select().from(hotelPmsConnections)
+      .where(eq(hotelPmsConnections.restaurantId, restaurantId))
+      .orderBy(desc(hotelPmsConnections.createdAt))
+      .limit(1);
+    if (!conn) return undefined;
+    const provider = conn.providerId ? await this.getPmsProvider(conn.providerId) : undefined;
+    return { ...conn, provider: provider ?? null };
+  }
+
+  async createHotelConnection(data: InsertHotelPmsConnection): Promise<HotelPmsConnection> {
+    const [created] = await db.insert(hotelPmsConnections).values(data).returning();
+    return created;
+  }
+
+  async updateHotelConnection(id: string, data: Partial<InsertHotelPmsConnection>): Promise<HotelPmsConnection | undefined> {
+    const [updated] = await db.update(hotelPmsConnections)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(hotelPmsConnections.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createPmsConnectionRequest(data: InsertPmsConnectionRequest): Promise<PmsConnectionRequest> {
+    const [created] = await db.insert(pmsConnectionRequests).values(data).returning();
+    return created;
+  }
+
+  async getPmsConnectionRequests(): Promise<(PmsConnectionRequest & { restaurant: User | null; provider: PmsProvider | null })[]> {
+    const reqs = await db.select().from(pmsConnectionRequests).orderBy(desc(pmsConnectionRequests.createdAt));
+    if (reqs.length === 0) return [];
+    const userIds = [...new Set(reqs.map(r => r.restaurantId))];
+    const providerIds = [...new Set(reqs.map(r => r.providerId).filter((p): p is string => !!p))];
+    const usersList = userIds.length ? await db.select().from(users).where(inArray(users.id, userIds)) : [];
+    const providersList = providerIds.length ? await db.select().from(pmsProviders).where(inArray(pmsProviders.id, providerIds)) : [];
+    const uMap = new Map(usersList.map(u => [u.id, u]));
+    const pMap = new Map(providersList.map(p => [p.id, p]));
+    return reqs.map(r => ({
+      ...r,
+      restaurant: uMap.get(r.restaurantId) ?? null,
+      provider: r.providerId ? pMap.get(r.providerId) ?? null : null,
+    }));
+  }
+
+  async getPmsConnectionRequest(id: string): Promise<PmsConnectionRequest | undefined> {
+    const [req] = await db.select().from(pmsConnectionRequests).where(eq(pmsConnectionRequests.id, id));
+    return req;
+  }
+
+  async updatePmsConnectionRequest(id: string, data: { status?: string; adminNotes?: string }): Promise<PmsConnectionRequest | undefined> {
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.status !== undefined) patch.status = data.status;
+    if (data.adminNotes !== undefined) patch.adminNotes = data.adminNotes;
+    const [updated] = await db.update(pmsConnectionRequests)
+      .set(patch)
+      .where(eq(pmsConnectionRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async upsertGuestCountImport(data: InsertGuestCountImport): Promise<GuestCountImport> {
+    const [existing] = await db.select().from(guestCountImports)
+      .where(and(eq(guestCountImports.restaurantId, data.restaurantId), eq(guestCountImports.date, data.date)));
+    if (existing) {
+      const [updated] = await db.update(guestCountImports)
+        .set({
+          guestCount: data.guestCount,
+          source: data.source ?? "pms",
+          providerId: data.providerId ?? null,
+          externalRef: data.externalRef ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(guestCountImports.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(guestCountImports).values(data).returning();
+    return created;
+  }
+
+  async getGuestCountImports(restaurantId: string): Promise<GuestCountImport[]> {
+    return db.select().from(guestCountImports)
+      .where(eq(guestCountImports.restaurantId, restaurantId))
+      .orderBy(desc(guestCountImports.date));
+  }
+
+  async getEffectiveGuestCountsByDate(restaurantId: string): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    const stays = await db.select().from(overnightStays).where(eq(overnightStays.restaurantId, restaurantId));
+    for (const s of stays) map.set(s.date, s.overnightStays);
+    const imports = await db.select().from(guestCountImports).where(eq(guestCountImports.restaurantId, restaurantId));
+    for (const i of imports) map.set(i.date, i.guestCount);
+    return map;
   }
 }
 

@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { ConnectPmsDialog } from "@/components/ConnectPmsDialog";
 import {
   Calculator,
   TrendingUp,
@@ -25,7 +27,12 @@ import {
   ShoppingBag,
   Minus,
   Check,
+  Building2,
+  Link2,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
+import type { HotelPmsConnection, PmsProvider } from "@shared/schema";
 import {
   BarChart,
   Bar,
@@ -88,6 +95,7 @@ export default function CostAnalysis() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [targetInput, setTargetInput] = useState("");
+  const [showPmsDialog, setShowPmsDialog] = useState(false);
 
   const formatMonth = (monthStr: string) => {
     const [year, month] = monthStr.split("-");
@@ -120,6 +128,15 @@ export default function CostAnalysis() {
 
   const { data: history } = useQuery<HistoryEntry[]>({
     queryKey: [`/api/restaurant/cost-analysis/history?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const { data: pmsData } = useQuery<{
+    connection: (HotelPmsConnection & { provider: PmsProvider | null }) | null;
+    importedDays: number;
+    lastImport: { date: string; guestCount: number } | null;
+  }>({
+    queryKey: [`/api/restaurant/pms/connection?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
 
@@ -384,13 +401,94 @@ export default function CostAnalysis() {
           </Card>
         )}
 
+        {(() => {
+          const conn = pmsData?.connection ?? null;
+          const status = conn?.status;
+          const providerName = conn?.provider?.name;
+          const isActive = status === "active";
+          const isPending = status === "pending";
+          const isError = status === "error";
+          const badge = isActive
+            ? { label: t("costAnalysis", "pmsConnected"), cls: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" }
+            : isPending
+            ? { label: t("costAnalysis", "pmsPending"), cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" }
+            : isError
+            ? { label: t("costAnalysis", "pmsError"), cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" }
+            : { label: t("costAnalysis", "pmsNotConnected"), cls: "bg-muted text-muted-foreground" };
+          return (
+            <Card data-testid="card-guest-data-source">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    {t("costAnalysis", "guestDataSource")}
+                  </CardTitle>
+                  <Badge variant="secondary" className={badge.cls} data-testid="badge-pms-status">
+                    {badge.label}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {isActive
+                    ? t("costAnalysis", "pmsActivePrimary")
+                    : isPending
+                    ? t("costAnalysis", "pmsPendingDesc")
+                    : t("costAnalysis", "guestDataSourceDesc")}
+                </p>
+
+                {conn && (
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                    {providerName && (
+                      <span className="flex items-center gap-1.5 font-medium" data-testid="text-pms-provider">
+                        <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                        {providerName}
+                      </span>
+                    )}
+                    {conn.lastSyncAt && (
+                      <span className="flex items-center gap-1.5 text-muted-foreground" data-testid="text-pms-last-sync">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        {t("costAnalysis", "lastSync")}: {new Date(conn.lastSyncAt).toLocaleDateString(lang === "de" ? "de-DE" : "it-IT")}
+                      </span>
+                    )}
+                    {!!pmsData?.importedDays && (
+                      <span className="flex items-center gap-1.5 text-muted-foreground" data-testid="text-pms-imported-days">
+                        <CalendarDays className="w-3.5 h-3.5" />
+                        {pmsData.importedDays} {t("costAnalysis", "importedDays")}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <Button
+                    variant={isActive || isPending ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => setShowPmsDialog(true)}
+                    data-testid="button-connect-pms"
+                  >
+                    <Building2 className="w-4 h-4 mr-1.5" />
+                    {isActive || isPending ? t("costAnalysis", "managePms") : t("costAnalysis", "connectPms")}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         <Card data-testid="card-overnight-entries">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <CalendarDays className="w-4 h-4" />
-                {t("costAnalysis", "overnightStays")}
-              </CardTitle>
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4" />
+                  {t("costAnalysis", "manualEntryFallback")}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1 flex items-start gap-1">
+                  <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                  {t("costAnalysis", "manualEntryFallbackDesc")}
+                </p>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -475,6 +573,14 @@ export default function CostAnalysis() {
         </Card>
         </div>
       </div>
+
+      {currentUser?.id && (
+        <ConnectPmsDialog
+          open={showPmsDialog}
+          onOpenChange={setShowPmsDialog}
+          restaurantId={currentUser.id}
+        />
+      )}
     </div>
   );
 }

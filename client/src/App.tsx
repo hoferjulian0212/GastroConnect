@@ -57,6 +57,7 @@ import SupplierRestaurants from "@/pages/supplier/Restaurants";
 import SupplierPromotions from "@/pages/supplier/Promotions";
 import SupplierInventory from "@/pages/supplier/Inventory";
 import About from "@/pages/About";
+import AdminPmsRequests from "@/pages/Admin";
 import Documents from "@/pages/Documents";
 import OrderDetail from "@/pages/OrderDetail";
 import ComplaintDetail from "@/pages/ComplaintDetail";
@@ -522,6 +523,10 @@ function AppLayout() {
 
   if (pathOnly === "/about") {
     return <About />;
+  }
+
+  if (pathOnly === "/admin") {
+    return <AdminPmsRequests />;
   }
 
   return (

@@ -6,7 +6,7 @@ import { z } from "zod";
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]);
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion", "voice"]);
-export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);
 export const complaintStatusEnum = pgEnum("complaint_status", ["open", "in_progress", "resolved", "closed", "rejected", "partially_resolved"]);
 export const complaintReasonEnum = pgEnum("complaint_reason", ["damaged", "short", "wrong", "quality", "late", "other"]);
@@ -449,6 +449,93 @@ export const minimumOrderValues = pgTable("minimum_order_values", {
 ]);
 
 export const insertMinimumOrderValueSchema = createInsertSchema(minimumOrderValues).omit({ id: true, createdAt: true, updatedAt: true });
+
+// ===== PMS (Property Management System) Integration =====
+export const pmsConnectionStatusEnum = pgEnum("pms_connection_status", ["pending", "active", "paused", "disconnected", "error"]);
+export const pmsRequestStatusEnum = pgEnum("pms_request_status", ["pending", "in_progress", "approved", "rejected", "completed"]);
+export const guestCountSourceEnum = pgEnum("guest_count_source", ["manual", "api", "pms", "import"]);
+
+export const PMS_REQUEST_STATUSES = ["pending", "in_progress", "approved", "rejected", "completed"] as const;
+export const PMS_SYNC_FEATURES = ["guests", "occupancy", "forecast"] as const;
+
+export const pmsProviders = pgTable("pms_providers", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull(),
+  name: text("name").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_pms_providers_slug").on(table.slug),
+]);
+
+export const hotelPmsConnections = pgTable("hotel_pms_connections", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  providerId: varchar("provider_id", { length: 36 }).notNull().references(() => pmsProviders.id),
+  status: pmsConnectionStatusEnum("status").default("pending").notNull(),
+  externalHotelId: text("external_hotel_id"),
+  lastSyncAt: timestamp("last_sync_at"),
+  guestsImported: integer("guests_imported").default(0).notNull(),
+  syncGuests: boolean("sync_guests").default(true).notNull(),
+  syncOccupancy: boolean("sync_occupancy").default(false).notNull(),
+  syncForecast: boolean("sync_forecast").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_hotel_pms_connections_restaurant_id").on(table.restaurantId),
+  index("idx_hotel_pms_connections_provider_id").on(table.providerId),
+]);
+
+export const pmsConnectionRequests = pgTable("pms_connection_requests", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  providerId: varchar("provider_id", { length: 36 }).references(() => pmsProviders.id),
+  pmsName: text("pms_name").notNull(),
+  hotelName: text("hotel_name").notNull(),
+  contactName: text("contact_name").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  contactPhone: text("contact_phone"),
+  roomCount: integer("room_count"),
+  requestedFeatures: text("requested_features").array(),
+  message: text("message"),
+  adminNotes: text("admin_notes"),
+  status: pmsRequestStatusEnum("status").default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_pms_connection_requests_restaurant_id").on(table.restaurantId),
+  index("idx_pms_connection_requests_status").on(table.status),
+]);
+
+export const guestCountImports = pgTable("guest_count_imports", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  date: varchar("date", { length: 10 }).notNull(),
+  guestCount: integer("guest_count").notNull(),
+  source: guestCountSourceEnum("source").default("pms").notNull(),
+  providerId: varchar("provider_id", { length: 36 }).references(() => pmsProviders.id),
+  externalRef: text("external_ref"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_guest_count_imports_restaurant_date").on(table.restaurantId, table.date),
+  uniqueIndex("uniq_guest_count_imports_restaurant_date").on(table.restaurantId, table.date),
+]);
+
+export const insertPmsProviderSchema = createInsertSchema(pmsProviders).omit({ id: true, createdAt: true });
+export const insertHotelPmsConnectionSchema = createInsertSchema(hotelPmsConnections).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPmsConnectionRequestSchema = createInsertSchema(pmsConnectionRequests).omit({ id: true, createdAt: true, updatedAt: true, status: true, adminNotes: true });
+export const insertGuestCountImportSchema = createInsertSchema(guestCountImports).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type PmsProvider = typeof pmsProviders.$inferSelect;
+export type InsertPmsProvider = z.infer<typeof insertPmsProviderSchema>;
+export type HotelPmsConnection = typeof hotelPmsConnections.$inferSelect;
+export type InsertHotelPmsConnection = z.infer<typeof insertHotelPmsConnectionSchema>;
+export type PmsConnectionRequest = typeof pmsConnectionRequests.$inferSelect;
+export type InsertPmsConnectionRequest = z.infer<typeof insertPmsConnectionRequestSchema>;
+export type GuestCountImport = typeof guestCountImports.$inferSelect;
+export type InsertGuestCountImport = z.infer<typeof insertGuestCountImportSchema>;
+export type PmsRequestStatus = typeof PMS_REQUEST_STATUSES[number];
 
 export const confirmOrderItemSchema = z.object({
   orderItemId: z.string(),

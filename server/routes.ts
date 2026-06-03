@@ -10,6 +10,8 @@ import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizz
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, insertSupplierRatingSchema, updateSupplierRatingSchema } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
+import { getPmsProviderAdapter } from "./pmsProviders";
+import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
 // is no longer pending (detected after taking the row lock) so we can roll back
@@ -60,6 +62,9 @@ async function createNotificationWithPush(notification: InsertNotification, role
       break;
     case "monthly_report":
       url = `/restaurant/monthly-reports?reportId=${notification.referenceId}`;
+      break;
+    case "pms_request":
+      url = `/${urlRole}/cost-analysis`;
       break;
   }
   sendPushNotification(notification.userId, {
@@ -407,6 +412,8 @@ export async function registerRoutes(
 
   // Seed data on startup
   await storage.seedData();
+  // Ensure the standard PMS providers exist (idempotent)
+  await storage.ensurePmsProviders();
   // Backfill article numbers for any existing products that lack one
   try {
     const backfilled = await storage.backfillArticleNumbers();
@@ -5301,16 +5308,18 @@ export async function registerRoutes(
       if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
       if (!month || !monthParamSchema.safeParse(month).success) return res.status(400).json({ error: "Valid month (YYYY-MM) required" });
 
-      const monthPrefix = month + "%";
-      const [staysAgg] = await db.select({
-        totalOvernights: sql<number>`COALESCE(SUM(${overnightStays.overnightStays}), 0)`,
-        daysWithData: sql<number>`COUNT(*)`,
-      }).from(overnightStays).where(and(
-        eq(overnightStays.restaurantId, restaurantId),
-        sql`${overnightStays.date} LIKE ${monthPrefix}`
-      ));
-      const totalOvernights = Number(staysAgg.totalOvernights);
-      const daysWithData = Number(staysAgg.daysWithData);
+      // Guest counts are sourced PMS-first: imported PMS/API counts override
+      // manual entries per date (see getEffectiveGuestCountsByDate). The cost
+      // math below is unchanged — only the per-date guest count sourcing differs.
+      const effectiveCounts = await storage.getEffectiveGuestCountsByDate(restaurantId);
+      let totalOvernights = 0;
+      let daysWithData = 0;
+      for (const [date, count] of effectiveCounts) {
+        if (date.startsWith(month + "-")) {
+          totalOvernights += count;
+          daysWithData += 1;
+        }
+      }
 
       const [ordersAgg] = await db.select({
         totalCosts: sql<number>`COALESCE(SUM(${orders.totalAmount}::numeric), 0)`,
@@ -5351,12 +5360,15 @@ export async function registerRoutes(
       const restaurantId = req.query.restaurantId as string;
       if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
 
-      const staysByMonth = await db.select({
-        month: sql<string>`SUBSTRING(${overnightStays.date}, 1, 7)`,
-        overnights: sql<number>`SUM(${overnightStays.overnightStays})`,
-      }).from(overnightStays)
-        .where(eq(overnightStays.restaurantId, restaurantId))
-        .groupBy(sql`SUBSTRING(${overnightStays.date}, 1, 7)`);
+      // PMS-first guest counts: imported counts override manual per date, then
+      // aggregated by month exactly as before.
+      const effectiveCounts = await storage.getEffectiveGuestCountsByDate(restaurantId);
+      const staysMonthMap = new Map<string, number>();
+      for (const [date, count] of effectiveCounts) {
+        const m = date.slice(0, 7);
+        staysMonthMap.set(m, (staysMonthMap.get(m) ?? 0) + count);
+      }
+      const staysByMonth = Array.from(staysMonthMap.entries()).map(([month, overnights]) => ({ month, overnights }));
 
       const ordersByMonth = await db.select({
         month: sql<string>`to_char(${orders.createdAt}, 'YYYY-MM')`,
@@ -5391,6 +5403,239 @@ export async function registerRoutes(
       res.json(history);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch cost analysis history" });
+    }
+  });
+
+  // ===== PMS INTEGRATION (Task #83) =====
+
+  app.get("/api/pms/providers", async (_req, res) => {
+    try {
+      const providers = await storage.getPmsProviders();
+      res.json(providers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch PMS providers" });
+    }
+  });
+
+  app.get("/api/restaurant/pms/connection", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      if (!restaurantId) return res.status(400).json({ error: "restaurantId required" });
+      const connection = await storage.getHotelConnection(restaurantId);
+      const imports = await storage.getGuestCountImports(restaurantId);
+      res.json({
+        connection: connection ?? null,
+        importedDays: imports.length,
+        lastImport: imports[0] ?? null,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch PMS connection" });
+    }
+  });
+
+  const pmsRequestBodySchema = z.object({
+    restaurantId: z.string().min(1),
+    providerId: z.string().min(1).optional(),
+    pmsName: z.string().min(1),
+    hotelName: z.string().min(1),
+    contactName: z.string().min(1),
+    contactEmail: z.string().email(),
+    contactPhone: z.string().optional(),
+    roomCount: z.number().int().min(0).optional(),
+    requestedFeatures: z.array(z.enum(["guests", "occupancy", "forecast"])).optional(),
+    message: z.string().optional(),
+  });
+
+  app.post("/api/pms/connection-requests", async (req, res) => {
+    try {
+      const parsed = pmsRequestBodySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+      const data = parsed.data;
+
+      let providerName = data.pmsName;
+      let providerMessage: string | undefined;
+      if (data.providerId) {
+        const provider = await storage.getPmsProvider(data.providerId);
+        if (!provider) return res.status(400).json({ error: "Unknown PMS provider" });
+        providerName = provider.name;
+        // Provider service layer: stub adapters return a "manual setup" message.
+        const adapter = getPmsProviderAdapter(provider.slug);
+        const result = await adapter.connect({ externalHotelId: null });
+        providerMessage = result.message;
+      }
+
+      const features = data.requestedFeatures ?? ["guests"];
+      const request = await storage.createPmsConnectionRequest({
+        restaurantId: data.restaurantId,
+        providerId: data.providerId ?? null,
+        pmsName: data.pmsName,
+        hotelName: data.hotelName,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone ?? null,
+        roomCount: data.roomCount ?? null,
+        requestedFeatures: features,
+        message: data.message ?? null,
+      });
+
+      // Create a pending connection placeholder so the restaurant sees status.
+      if (data.providerId) {
+        const existing = await storage.getHotelConnection(data.restaurantId);
+        if (!existing) {
+          await storage.createHotelConnection({
+            restaurantId: data.restaurantId,
+            providerId: data.providerId,
+            status: "pending",
+            syncGuests: features.includes("guests"),
+            syncOccupancy: features.includes("occupancy"),
+            syncForecast: features.includes("forecast"),
+          });
+        }
+      }
+
+      // Notify admin: email if configured, otherwise in-app fallback so the
+      // submission never silently fails.
+      const emailSent = isAdminEmailConfigured() && await sendAdminEmail({
+        subject: `New PMS connection request: ${providerName} (${data.hotelName})`,
+        text: [
+          `Hotel: ${data.hotelName}`,
+          `PMS: ${providerName}`,
+          `Contact: ${data.contactName} <${data.contactEmail}>`,
+          data.contactPhone ? `Phone: ${data.contactPhone}` : null,
+          data.roomCount != null ? `Rooms: ${data.roomCount}` : null,
+          `Features: ${features.join(", ")}`,
+          data.message ? `Message: ${data.message}` : null,
+          `Request ID: ${request.id}`,
+        ].filter(Boolean).join("\n"),
+      });
+
+      if (!emailSent) {
+        await createNotificationWithPush({
+          userId: data.restaurantId,
+          type: "pms_request",
+          title: "PMS-Anfrage gesendet",
+          message: `Ihre Anfrage zur Verbindung von ${providerName} wurde übermittelt. Unser Team meldet sich in Kürze.`,
+          referenceId: request.id,
+        }, "restaurant");
+      }
+
+      res.status(201).json({ request, emailSent: !!emailSent, providerMessage });
+    } catch (error) {
+      console.error("PMS connection request error:", error);
+      res.status(500).json({ error: "Failed to submit PMS connection request" });
+    }
+  });
+
+  // Webhook: PMS pushes guest counts → stored as the primary guest source.
+  const guestCountWebhookSchema = z.object({
+    restaurantId: z.string().min(1),
+    providerId: z.string().optional(),
+    counts: z.array(z.object({
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      guestCount: z.number().int().min(0),
+      externalRef: z.string().optional(),
+    })).min(1),
+  });
+
+  app.post("/api/pms/webhooks/guest-count", async (req, res) => {
+    try {
+      const parsed = guestCountWebhookSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+      const { restaurantId, providerId, counts } = parsed.data;
+
+      let imported = 0;
+      for (const c of counts) {
+        await storage.upsertGuestCountImport({
+          restaurantId,
+          date: c.date,
+          guestCount: c.guestCount,
+          source: "pms",
+          providerId: providerId ?? null,
+          externalRef: c.externalRef ?? null,
+        });
+        imported += 1;
+      }
+
+      const connection = await storage.getHotelConnection(restaurantId);
+      if (connection) {
+        await storage.updateHotelConnection(connection.id, {
+          status: "active",
+          lastSyncAt: new Date(),
+          guestsImported: (connection.guestsImported ?? 0) + imported,
+        });
+      }
+
+      res.json({ ok: true, imported });
+    } catch (error) {
+      console.error("PMS guest-count webhook error:", error);
+      res.status(500).json({ error: "Failed to import guest counts" });
+    }
+  });
+
+  // Webhook: occupancy data. Accepted + acknowledged for future use; no
+  // dashboards are built on it (out of scope for cost-per-guest).
+  const occupancyWebhookSchema = z.object({
+    restaurantId: z.string().min(1),
+    entries: z.array(z.object({
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      roomsOccupied: z.number().int().min(0),
+      roomsAvailable: z.number().int().min(0),
+    })).min(1),
+  });
+
+  app.post("/api/pms/webhooks/occupancy", async (req, res) => {
+    try {
+      const parsed = occupancyWebhookSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+      const { restaurantId, entries } = parsed.data;
+      const connection = await storage.getHotelConnection(restaurantId);
+      if (connection) {
+        await storage.updateHotelConnection(connection.id, { lastSyncAt: new Date() });
+      }
+      res.json({ ok: true, received: entries.length });
+    } catch (error) {
+      console.error("PMS occupancy webhook error:", error);
+      res.status(500).json({ error: "Failed to receive occupancy data" });
+    }
+  });
+
+  // ===== ADMIN: PMS connection requests =====
+  app.get("/api/admin/pms/requests", async (_req, res) => {
+    try {
+      const requests = await storage.getPmsConnectionRequests();
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch PMS requests" });
+    }
+  });
+
+  const updatePmsRequestSchema = z.object({
+    status: z.enum(["pending", "in_progress", "approved", "rejected", "completed"]).optional(),
+    adminNotes: z.string().optional(),
+  });
+
+  app.patch("/api/admin/pms/requests/:id", async (req, res) => {
+    try {
+      const parsed = updatePmsRequestSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request" });
+      const existing = await storage.getPmsConnectionRequest(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Request not found" });
+      const updated = await storage.updatePmsConnectionRequest(req.params.id, parsed.data);
+
+      // Reflect approved/completed/rejected status onto the hotel connection.
+      if (parsed.data.status) {
+        const conn = await storage.getHotelConnection(existing.restaurantId);
+        if (conn) {
+          let connStatus: "active" | "disconnected" | undefined;
+          if (parsed.data.status === "approved" || parsed.data.status === "completed") connStatus = "active";
+          else if (parsed.data.status === "rejected") connStatus = "disconnected";
+          if (connStatus) await storage.updateHotelConnection(conn.id, { status: connStatus });
+        }
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update PMS request error:", error);
+      res.status(500).json({ error: "Failed to update PMS request" });
     }
   });
 
