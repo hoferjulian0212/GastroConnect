@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
@@ -5,22 +6,40 @@ import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Warehouse } from "lucide-react";
-import type { Product } from "@shared/schema";
+import { Warehouse, Database, Clock, AlertCircle, Link2, RefreshCw } from "lucide-react";
+import type { Product, SupplierErpConnection, ErpProvider } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { InventoryView } from "./Products";
+import { ConnectErpDialog } from "@/components/ConnectErpDialog";
 
 export default function SupplierInventory() {
   const { currentUser } = useUser();
   const { lang } = useLanguage();
   const t = useT(lang);
 
+  const [showErpDialog, setShowErpDialog] = useState(false);
+
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: [`/api/supplier/products?supplierId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
+
+  const { data: erpData } = useQuery<{
+    connection: (SupplierErpConnection & { provider: ErpProvider | null }) | null;
+  }>({
+    queryKey: [`/api/supplier/erp/connection?supplierId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+  });
+
+  const erpConn = erpData?.connection ?? null;
+  const erpStatus = erpConn?.status;
+  const erpActive = erpStatus === "active";
+  const erpPending = erpStatus === "pending";
+  const erpError = erpStatus === "error";
+  const erpProviderName = erpConn?.provider?.name;
 
   const lowStockCount = (products ?? []).filter(p => p.lowStockThreshold && p.lowStockThreshold > 0 && (p.stockQuantity ?? 0) <= p.lowStockThreshold && (p.stockQuantity ?? 0) > 0).length;
   const outOfStockCount = (products ?? []).filter(p => (p.stockQuantity ?? 0) === 0).length;
@@ -67,7 +86,75 @@ export default function SupplierInventory() {
         </div>
       </div></HeroPortal>
 
-      <div className="px-3 md:px-6">
+      <div className="px-3 md:px-6 space-y-4 md:space-y-6">
+        <Card data-testid="card-connect-erp">
+          <CardContent className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 md:p-6">
+            <div className={`flex items-center justify-center w-12 h-12 rounded-full shrink-0 ${
+              erpError
+                ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
+                : erpPending
+                ? "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400"
+                : erpActive
+                ? "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400"
+                : "bg-primary/10 text-primary"
+            }`}>
+              {erpError ? <AlertCircle className="w-6 h-6" /> : erpPending ? <Clock className="w-6 h-6" /> : <Database className="w-6 h-6" />}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base md:text-lg font-bold" data-testid="text-erp-headline">
+                {erpError
+                  ? t("supplierErp", "erpErrorHeadline")
+                  : erpPending
+                  ? t("supplierErp", "erpPendingHeadline")
+                  : erpActive
+                  ? t("supplierErp", "erpActiveHeadline")
+                  : t("supplierErp", "erpFirstHeadline")}
+              </h2>
+              <p className="text-muted-foreground text-sm mt-1" data-testid="text-erp-desc">
+                {erpError
+                  ? t("supplierErp", "erpErrorHeadlineDesc")
+                  : erpPending
+                  ? t("supplierErp", "erpPendingHeadlineDesc")
+                  : erpActive
+                  ? t("supplierErp", "erpActiveHeadlineDesc")
+                  : t("supplierErp", "erpFirstDesc")}
+              </p>
+
+              {erpConn && (erpProviderName || erpConn.lastSyncAt) && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-2">
+                  {erpProviderName && (
+                    <span className="flex items-center gap-1.5 font-medium" data-testid="text-erp-provider">
+                      <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      {erpProviderName}
+                    </span>
+                  )}
+                  {erpConn.lastSyncAt && (
+                    <span className="flex items-center gap-1.5 text-muted-foreground" data-testid="text-erp-last-sync">
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      {t("supplierErp", "lastSync")}: {new Date(erpConn.lastSyncAt).toLocaleDateString(lang === "de" ? "de-DE" : "it-IT")}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Button
+              className="shrink-0"
+              onClick={() => setShowErpDialog(true)}
+              disabled={erpActive}
+              data-testid="button-connect-erp"
+            >
+              <Database className="w-4 h-4 mr-2" />
+              {erpPending
+                ? t("supplierErp", "manageErp")
+                : erpActive
+                ? t("supplierErp", "erpStatusActive")
+                : t("supplierErp", "connectErp")}
+            </Button>
+          </CardContent>
+        </Card>
+
         {isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3, 4].map((i) => (
@@ -85,6 +172,14 @@ export default function SupplierInventory() {
           </Card>
         )}
       </div>
+
+      {currentUser?.id && (
+        <ConnectErpDialog
+          open={showErpDialog}
+          onOpenChange={setShowErpDialog}
+          supplierId={currentUser.id}
+        />
+      )}
     </PullToRefreshWrapper>
   );
 }

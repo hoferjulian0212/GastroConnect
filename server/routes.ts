@@ -11,6 +11,7 @@ import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _i
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
 import { getPmsProviderAdapter } from "./pmsProviders";
+import { getErpProviderAdapter } from "./erpProviders";
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
@@ -66,6 +67,9 @@ async function createNotificationWithPush(notification: InsertNotification, role
       break;
     case "pms_request":
       url = `/${urlRole}/cost-analysis`;
+      break;
+    case "erp_request":
+      url = `/${urlRole}/inventory`;
       break;
   }
   sendPushNotification(notification.userId, {
@@ -416,6 +420,8 @@ export async function registerRoutes(
   await storage.seedData();
   // Ensure the standard PMS providers exist (idempotent)
   await storage.ensurePmsProviders();
+  // Ensure the standard ERP providers exist (idempotent)
+  await storage.ensureErpProviders();
   // Backfill article numbers for any existing products that lack one
   try {
     const backfilled = await storage.backfillArticleNumbers();
@@ -5672,6 +5678,204 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Update PMS request error:", error);
       res.status(500).json({ error: "Failed to update PMS request" });
+    }
+  });
+
+  // ===== ERP INTEGRATION (supplier stock) =====
+
+  app.get("/api/erp/providers", async (_req, res) => {
+    try {
+      const providers = await storage.getErpProviders();
+      res.json(providers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch ERP providers" });
+    }
+  });
+
+  app.get("/api/supplier/erp/connection", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) return res.status(400).json({ error: "supplierId required" });
+      const connection = await storage.getSupplierErpConnection(supplierId);
+      res.json({ connection: connection ?? null });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch ERP connection" });
+    }
+  });
+
+  const erpRequestBodySchema = z.object({
+    supplierId: z.string().min(1),
+    providerId: z.string().min(1).optional(),
+    erpName: z.string().min(1),
+    companyName: z.string().min(1),
+    contactName: z.string().min(1),
+    contactEmail: z.string().email(),
+    contactPhone: z.string().optional(),
+    productCount: z.number().int().min(0).optional(),
+    connectionMethod: z.enum(["api", "excel_email", "unsure"]).optional(),
+    preferredSyncTime: z.string().optional(),
+    message: z.string().optional(),
+  });
+
+  app.post("/api/erp/connection-requests", async (req, res) => {
+    try {
+      const parsed = erpRequestBodySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+      const data = parsed.data;
+
+      // Block duplicate open requests. Check BOTH the connection placeholder
+      // (pending/active) AND any unresolved request row (pending/in_progress)
+      // so a second submission is refused even if the two ever drift out of
+      // sync, keeping admins from handling duplicates.
+      const existingConn = await storage.getSupplierErpConnection(data.supplierId);
+      if (existingConn && (existingConn.status === "pending" || existingConn.status === "active")) {
+        return res.status(409).json({ error: "An ERP connection request is already open or active." });
+      }
+      const openRequest = await storage.getOpenErpConnectionRequest(data.supplierId);
+      if (openRequest) {
+        return res.status(409).json({ error: "An ERP connection request is already open or active." });
+      }
+
+      const connectionMethod = data.connectionMethod ?? "unsure";
+      const preferredSyncTime = data.preferredSyncTime?.trim() || null;
+      let providerName = data.erpName;
+      let providerMessage: string | undefined;
+      // Provider used for the pending connection placeholder. For the
+      // "Other / not listed" flow there is no providerId, so map to the
+      // generic "other" provider row so a pending connection can still be
+      // created and surfaced as "pending" in the UI.
+      let connectionProviderId: string | null = data.providerId ?? null;
+      if (data.providerId) {
+        const provider = await storage.getErpProvider(data.providerId);
+        if (!provider) return res.status(400).json({ error: "Unknown ERP provider" });
+        providerName = provider.name;
+        const adapter = getErpProviderAdapter(provider.slug);
+        const result = await adapter.connect({ externalSupplierId: null });
+        providerMessage = result.message;
+      } else {
+        const providers = await storage.getErpProviders();
+        connectionProviderId = providers.find((p) => p.slug === "other")?.id ?? null;
+      }
+
+      const request = await storage.createErpConnectionRequest({
+        supplierId: data.supplierId,
+        providerId: data.providerId ?? null,
+        erpName: data.erpName,
+        companyName: data.companyName,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone ?? null,
+        productCount: data.productCount ?? null,
+        connectionMethod,
+        preferredSyncTime,
+        message: data.message ?? null,
+      });
+
+      // Always create a pending connection placeholder so EVERY submission
+      // (including "Other / not listed") reflects a "pending" status.
+      if (connectionProviderId) {
+        await storage.createSupplierErpConnection({
+          supplierId: data.supplierId,
+          providerId: connectionProviderId,
+          status: "pending",
+          connectionMethod,
+          preferredSyncTime,
+        });
+      }
+
+      // Confirm to the requesting supplier that their request was received.
+      await createNotificationWithPush({
+        userId: data.supplierId,
+        type: "erp_request",
+        title: "ERP-Anfrage gesendet",
+        message: `Ihre Anfrage zur Verbindung von ${providerName} wurde übermittelt. Unser Team meldet sich in Kürze.`,
+        referenceId: request.id,
+      }, "supplier");
+
+      // Notify the admin/operator: email if configured, otherwise an in-app
+      // notification to the configured operator account (ADMIN_USER_ID).
+      let emailSent = false;
+      if (isAdminEmailConfigured()) {
+        emailSent = await sendAdminEmail({
+          subject: `New ERP connection request: ${providerName} (${data.companyName})`,
+          text: [
+            `Company: ${data.companyName}`,
+            `ERP: ${providerName}`,
+            `Contact: ${data.contactName} <${data.contactEmail}>`,
+            data.contactPhone ? `Phone: ${data.contactPhone}` : null,
+            data.productCount != null ? `Products/SKUs: ${data.productCount}` : null,
+            `Connection method: ${connectionMethod}`,
+            preferredSyncTime ? `Preferred sync time: ${preferredSyncTime}` : null,
+            data.message ? `Message: ${data.message}` : null,
+            `Request ID: ${request.id}`,
+          ].filter(Boolean).join("\n"),
+        });
+      }
+
+      let adminInApp = false;
+      if (!emailSent) {
+        const adminUserId = process.env.ADMIN_USER_ID;
+        if (adminUserId) {
+          await createNotificationWithPush({
+            userId: adminUserId,
+            type: "erp_request",
+            title: "Neue ERP-Anfrage",
+            message: `${providerName} – ${data.companyName} (${data.contactName})`,
+            referenceId: request.id,
+          }, "supplier");
+          adminInApp = true;
+        } else {
+          console.warn(
+            "[erp] No admin notification channel configured (set SENDGRID_API_KEY+ADMIN_EMAIL or ADMIN_USER_ID). Request visible at /admin:",
+            request.id,
+          );
+        }
+      }
+
+      res.status(201).json({ request, emailSent, adminNotified: emailSent || adminInApp, providerMessage });
+    } catch (error) {
+      console.error("ERP connection request error:", error);
+      res.status(500).json({ error: "Failed to submit ERP connection request" });
+    }
+  });
+
+  // ===== ADMIN: ERP connection requests =====
+  app.get("/api/admin/erp/requests", async (_req, res) => {
+    try {
+      const requests = await storage.getErpConnectionRequests();
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch ERP requests" });
+    }
+  });
+
+  const updateErpRequestSchema = z.object({
+    status: z.enum(["pending", "in_progress", "approved", "rejected", "completed"]).optional(),
+    adminNotes: z.string().optional(),
+  });
+
+  app.patch("/api/admin/erp/requests/:id", async (req, res) => {
+    try {
+      const parsed = updateErpRequestSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request" });
+      const existing = await storage.getErpConnectionRequest(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Request not found" });
+      const updated = await storage.updateErpConnectionRequest(req.params.id, parsed.data);
+
+      // Reflect approved/completed/rejected status onto the supplier connection.
+      if (parsed.data.status) {
+        const conn = await storage.getSupplierErpConnection(existing.supplierId);
+        if (conn) {
+          let connStatus: "active" | "disconnected" | undefined;
+          if (parsed.data.status === "approved" || parsed.data.status === "completed") connStatus = "active";
+          else if (parsed.data.status === "rejected") connStatus = "disconnected";
+          if (connStatus) await storage.updateSupplierErpConnection(conn.id, { status: connStatus });
+        }
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update ERP request error:", error);
+      res.status(500).json({ error: "Failed to update ERP request" });
     }
   });
 

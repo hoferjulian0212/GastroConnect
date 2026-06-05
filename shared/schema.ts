@@ -6,7 +6,7 @@ import { z } from "zod";
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]);
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion", "voice"]);
-export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request", "erp_request"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);
 export const complaintStatusEnum = pgEnum("complaint_status", ["open", "in_progress", "resolved", "closed", "rejected", "partially_resolved"]);
 export const complaintReasonEnum = pgEnum("complaint_reason", ["damaged", "short", "wrong", "quality", "late", "other"]);
@@ -536,6 +536,75 @@ export type InsertPmsConnectionRequest = z.infer<typeof insertPmsConnectionReque
 export type GuestCountImport = typeof guestCountImports.$inferSelect;
 export type InsertGuestCountImport = z.infer<typeof insertGuestCountImportSchema>;
 export type PmsRequestStatus = typeof PMS_REQUEST_STATUSES[number];
+
+// ===== Supplier ERP integration =====
+export const erpConnectionStatusEnum = pgEnum("erp_connection_status", ["pending", "active", "paused", "disconnected", "error"]);
+export const erpRequestStatusEnum = pgEnum("erp_request_status", ["pending", "in_progress", "approved", "rejected", "completed"]);
+export const erpConnectionMethodEnum = pgEnum("erp_connection_method", ["api", "excel_email", "unsure"]);
+
+export const ERP_REQUEST_STATUSES = ["pending", "in_progress", "approved", "rejected", "completed"] as const;
+export const ERP_CONNECTION_METHODS = ["api", "excel_email", "unsure"] as const;
+
+export const erpProviders = pgTable("erp_providers", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull(),
+  name: text("name").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_erp_providers_slug").on(table.slug),
+]);
+
+export const supplierErpConnections = pgTable("supplier_erp_connections", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  providerId: varchar("provider_id", { length: 36 }).notNull().references(() => erpProviders.id),
+  status: erpConnectionStatusEnum("status").default("pending").notNull(),
+  connectionMethod: erpConnectionMethodEnum("connection_method").default("unsure").notNull(),
+  preferredSyncTime: text("preferred_sync_time"),
+  externalSupplierId: text("external_supplier_id"),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_supplier_erp_connections_supplier_id").on(table.supplierId),
+  index("idx_supplier_erp_connections_provider_id").on(table.providerId),
+]);
+
+export const erpConnectionRequests = pgTable("erp_connection_requests", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  providerId: varchar("provider_id", { length: 36 }).references(() => erpProviders.id),
+  erpName: text("erp_name").notNull(),
+  companyName: text("company_name").notNull(),
+  contactName: text("contact_name").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  contactPhone: text("contact_phone"),
+  productCount: integer("product_count"),
+  connectionMethod: erpConnectionMethodEnum("connection_method").default("unsure").notNull(),
+  preferredSyncTime: text("preferred_sync_time"),
+  message: text("message"),
+  adminNotes: text("admin_notes"),
+  status: erpRequestStatusEnum("status").default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_erp_connection_requests_supplier_id").on(table.supplierId),
+  index("idx_erp_connection_requests_status").on(table.status),
+]);
+
+export const insertErpProviderSchema = createInsertSchema(erpProviders).omit({ id: true, createdAt: true });
+export const insertSupplierErpConnectionSchema = createInsertSchema(supplierErpConnections).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertErpConnectionRequestSchema = createInsertSchema(erpConnectionRequests).omit({ id: true, createdAt: true, updatedAt: true, status: true, adminNotes: true });
+
+export type ErpProvider = typeof erpProviders.$inferSelect;
+export type InsertErpProvider = z.infer<typeof insertErpProviderSchema>;
+export type SupplierErpConnection = typeof supplierErpConnections.$inferSelect;
+export type InsertSupplierErpConnection = z.infer<typeof insertSupplierErpConnectionSchema>;
+export type ErpConnectionRequest = typeof erpConnectionRequests.$inferSelect;
+export type InsertErpConnectionRequest = z.infer<typeof insertErpConnectionRequestSchema>;
+export type ErpRequestStatus = typeof ERP_REQUEST_STATUSES[number];
+export type ErpConnectionMethod = typeof ERP_CONNECTION_METHODS[number];
 
 export const confirmOrderItemSchema = z.object({
   orderItemId: z.string(),

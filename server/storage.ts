@@ -29,6 +29,10 @@ import {
   type HotelPmsConnection, type InsertHotelPmsConnection,
   type PmsConnectionRequest, type InsertPmsConnectionRequest,
   type GuestCountImport, type InsertGuestCountImport,
+  erpProviders, supplierErpConnections, erpConnectionRequests,
+  type ErpProvider,
+  type SupplierErpConnection, type InsertSupplierErpConnection,
+  type ErpConnectionRequest, type InsertErpConnectionRequest,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -266,6 +270,19 @@ export interface IStorage {
   upsertGuestCountImport(data: InsertGuestCountImport): Promise<GuestCountImport>;
   getGuestCountImports(restaurantId: string): Promise<GuestCountImport[]>;
   getEffectiveGuestCountsByDate(restaurantId: string): Promise<Map<string, number>>;
+
+  // ERP Integration (supplier stock)
+  ensureErpProviders(): Promise<void>;
+  getErpProviders(): Promise<ErpProvider[]>;
+  getErpProvider(id: string): Promise<ErpProvider | undefined>;
+  getSupplierErpConnection(supplierId: string): Promise<(SupplierErpConnection & { provider: ErpProvider | null }) | undefined>;
+  createSupplierErpConnection(data: InsertSupplierErpConnection): Promise<SupplierErpConnection>;
+  updateSupplierErpConnection(id: string, data: Partial<InsertSupplierErpConnection>): Promise<SupplierErpConnection | undefined>;
+  createErpConnectionRequest(data: InsertErpConnectionRequest): Promise<ErpConnectionRequest>;
+  getOpenErpConnectionRequest(supplierId: string): Promise<ErpConnectionRequest | undefined>;
+  getErpConnectionRequests(): Promise<(ErpConnectionRequest & { supplier: User | null; provider: ErpProvider | null })[]>;
+  getErpConnectionRequest(id: string): Promise<ErpConnectionRequest | undefined>;
+  updateErpConnectionRequest(id: string, data: { status?: string; adminNotes?: string }): Promise<ErpConnectionRequest | undefined>;
 
   // Seed
   seedData(): Promise<void>;
@@ -3453,6 +3470,104 @@ export class DatabaseStorage implements IStorage {
     const imports = await db.select().from(guestCountImports).where(eq(guestCountImports.restaurantId, restaurantId));
     for (const i of imports) map.set(i.date, i.guestCount);
     return map;
+  }
+
+  // ===== ERP Integration (supplier stock) =====
+  async ensureErpProviders(): Promise<void> {
+    const seed = [
+      { slug: "sap-b1", name: "SAP Business One" },
+      { slug: "dynamics365", name: "Microsoft Dynamics 365" },
+      { slug: "xentral", name: "Xentral" },
+      { slug: "weclapp", name: "weclapp" },
+      { slug: "lexware", name: "Lexware" },
+      { slug: "datev", name: "DATEV" },
+      { slug: "sage", name: "Sage" },
+      { slug: "other", name: "Other / Not listed" },
+    ];
+    for (const p of seed) {
+      const [existing] = await db.select().from(erpProviders).where(eq(erpProviders.slug, p.slug));
+      if (!existing) await db.insert(erpProviders).values(p);
+    }
+  }
+
+  async getErpProviders(): Promise<ErpProvider[]> {
+    return db.select().from(erpProviders).where(eq(erpProviders.isActive, true)).orderBy(erpProviders.name);
+  }
+
+  async getErpProvider(id: string): Promise<ErpProvider | undefined> {
+    const [provider] = await db.select().from(erpProviders).where(eq(erpProviders.id, id));
+    return provider;
+  }
+
+  async getSupplierErpConnection(supplierId: string): Promise<(SupplierErpConnection & { provider: ErpProvider | null }) | undefined> {
+    const [conn] = await db.select().from(supplierErpConnections)
+      .where(eq(supplierErpConnections.supplierId, supplierId))
+      .orderBy(desc(supplierErpConnections.createdAt))
+      .limit(1);
+    if (!conn) return undefined;
+    const provider = conn.providerId ? await this.getErpProvider(conn.providerId) : undefined;
+    return { ...conn, provider: provider ?? null };
+  }
+
+  async createSupplierErpConnection(data: InsertSupplierErpConnection): Promise<SupplierErpConnection> {
+    const [created] = await db.insert(supplierErpConnections).values(data).returning();
+    return created;
+  }
+
+  async updateSupplierErpConnection(id: string, data: Partial<InsertSupplierErpConnection>): Promise<SupplierErpConnection | undefined> {
+    const [updated] = await db.update(supplierErpConnections)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(supplierErpConnections.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createErpConnectionRequest(data: InsertErpConnectionRequest): Promise<ErpConnectionRequest> {
+    const [created] = await db.insert(erpConnectionRequests).values(data).returning();
+    return created;
+  }
+
+  async getErpConnectionRequests(): Promise<(ErpConnectionRequest & { supplier: User | null; provider: ErpProvider | null })[]> {
+    const reqs = await db.select().from(erpConnectionRequests).orderBy(desc(erpConnectionRequests.createdAt));
+    if (reqs.length === 0) return [];
+    const userIds = [...new Set(reqs.map(r => r.supplierId))];
+    const providerIds = [...new Set(reqs.map(r => r.providerId).filter((p): p is string => !!p))];
+    const usersList = userIds.length ? await db.select().from(users).where(inArray(users.id, userIds)) : [];
+    const providersList = providerIds.length ? await db.select().from(erpProviders).where(inArray(erpProviders.id, providerIds)) : [];
+    const uMap = new Map(usersList.map(u => [u.id, u]));
+    const pMap = new Map(providersList.map(p => [p.id, p]));
+    return reqs.map(r => ({
+      ...r,
+      supplier: uMap.get(r.supplierId) ?? null,
+      provider: r.providerId ? pMap.get(r.providerId) ?? null : null,
+    }));
+  }
+
+  async getOpenErpConnectionRequest(supplierId: string): Promise<ErpConnectionRequest | undefined> {
+    const [req] = await db.select().from(erpConnectionRequests)
+      .where(and(
+        eq(erpConnectionRequests.supplierId, supplierId),
+        inArray(erpConnectionRequests.status, ["pending", "in_progress"]),
+      ))
+      .orderBy(desc(erpConnectionRequests.createdAt))
+      .limit(1);
+    return req;
+  }
+
+  async getErpConnectionRequest(id: string): Promise<ErpConnectionRequest | undefined> {
+    const [req] = await db.select().from(erpConnectionRequests).where(eq(erpConnectionRequests.id, id));
+    return req;
+  }
+
+  async updateErpConnectionRequest(id: string, data: { status?: string; adminNotes?: string }): Promise<ErpConnectionRequest | undefined> {
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.status !== undefined) patch.status = data.status;
+    if (data.adminNotes !== undefined) patch.adminNotes = data.adminNotes;
+    const [updated] = await db.update(erpConnectionRequests)
+      .set(patch)
+      .where(eq(erpConnectionRequests.id, id))
+      .returning();
+    return updated;
   }
 }
 
