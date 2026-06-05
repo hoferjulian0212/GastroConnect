@@ -29,12 +29,14 @@ import {
   type HotelPmsConnection, type InsertHotelPmsConnection,
   type PmsConnectionRequest, type InsertPmsConnectionRequest,
   type GuestCountImport, type InsertGuestCountImport,
-  erpProviders, supplierErpConnections, erpConnectionRequests,
+  erpProviders, supplierErpConnections, erpConnectionRequests, supplierErpCredentials,
   type ErpProvider,
   type SupplierErpConnection, type InsertSupplierErpConnection,
   type ErpConnectionRequest, type InsertErpConnectionRequest,
+  type ErpCredentialType, type ErpCredentialPublicMeta,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { encryptJson, decryptJson } from "./erpCrypto";
 
 export interface ReorderSuggestion {
   productId: string;
@@ -280,9 +282,22 @@ export interface IStorage {
   updateSupplierErpConnection(id: string, data: Partial<InsertSupplierErpConnection>): Promise<SupplierErpConnection | undefined>;
   createErpConnectionRequest(data: InsertErpConnectionRequest): Promise<ErpConnectionRequest>;
   getOpenErpConnectionRequest(supplierId: string): Promise<ErpConnectionRequest | undefined>;
-  getErpConnectionRequests(): Promise<(ErpConnectionRequest & { supplier: User | null; provider: ErpProvider | null })[]>;
+  getErpConnectionRequests(): Promise<(ErpConnectionRequest & { supplier: User | null; provider: ErpProvider | null; hasCredentials: boolean; credentialMeta: ErpCredentialPublicMeta | null })[]>;
   getErpConnectionRequest(id: string): Promise<ErpConnectionRequest | undefined>;
   updateErpConnectionRequest(id: string, data: { status?: string; adminNotes?: string }): Promise<ErpConnectionRequest | undefined>;
+  // ERP credentials (encrypted at rest; secret values never returned to clients)
+  upsertErpCredentials(input: {
+    connectionId: string;
+    supplierId: string;
+    credentialType: ErpCredentialType;
+    secrets: Record<string, string>;
+    hint?: string | null;
+  }): Promise<ErpCredentialPublicMeta>;
+  getErpCredentialMeta(connectionId: string): Promise<ErpCredentialPublicMeta | undefined>;
+  getErpCredentialMetaForSupplier(supplierId: string): Promise<ErpCredentialPublicMeta | undefined>;
+  getErpCredentialMetaForSuppliers(supplierIds: string[]): Promise<Map<string, ErpCredentialPublicMeta>>;
+  getErpCredentialSecrets(connectionId: string): Promise<Record<string, string> | undefined>;
+  deleteErpCredentials(connectionId: string): Promise<void>;
 
   // Seed
   seedData(): Promise<void>;
@@ -3527,20 +3542,27 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getErpConnectionRequests(): Promise<(ErpConnectionRequest & { supplier: User | null; provider: ErpProvider | null })[]> {
+  async getErpConnectionRequests(): Promise<(ErpConnectionRequest & { supplier: User | null; provider: ErpProvider | null; hasCredentials: boolean; credentialMeta: ErpCredentialPublicMeta | null })[]> {
     const reqs = await db.select().from(erpConnectionRequests).orderBy(desc(erpConnectionRequests.createdAt));
     if (reqs.length === 0) return [];
     const userIds = [...new Set(reqs.map(r => r.supplierId))];
     const providerIds = [...new Set(reqs.map(r => r.providerId).filter((p): p is string => !!p))];
     const usersList = userIds.length ? await db.select().from(users).where(inArray(users.id, userIds)) : [];
     const providersList = providerIds.length ? await db.select().from(erpProviders).where(inArray(erpProviders.id, providerIds)) : [];
+    const credMap = await this.getErpCredentialMetaForSuppliers(userIds);
     const uMap = new Map(usersList.map(u => [u.id, u]));
     const pMap = new Map(providersList.map(p => [p.id, p]));
-    return reqs.map(r => ({
-      ...r,
-      supplier: uMap.get(r.supplierId) ?? null,
-      provider: r.providerId ? pMap.get(r.providerId) ?? null : null,
-    }));
+    return reqs.map(r => {
+      const credentialMeta = credMap.get(r.supplierId) ?? null;
+      return {
+        ...r,
+        supplier: uMap.get(r.supplierId) ?? null,
+        provider: r.providerId ? pMap.get(r.providerId) ?? null : null,
+        // Admin visibility: credentials EXIST (+ masked hint) without values.
+        hasCredentials: !!credentialMeta,
+        credentialMeta,
+      };
+    });
   }
 
   async getOpenErpConnectionRequest(supplierId: string): Promise<ErpConnectionRequest | undefined> {
@@ -3568,6 +3590,105 @@ export class DatabaseStorage implements IStorage {
       .where(eq(erpConnectionRequests.id, id))
       .returning();
     return updated;
+  }
+
+  // ----- ERP credentials (encrypted at rest) -----
+  private toErpCredentialMeta(row: typeof supplierErpCredentials.$inferSelect): ErpCredentialPublicMeta {
+    return {
+      id: row.id,
+      connectionId: row.connectionId,
+      supplierId: row.supplierId,
+      credentialType: row.credentialType as ErpCredentialType,
+      fieldsSet: row.fieldsSet ?? [],
+      hint: row.hint ?? null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  async upsertErpCredentials(input: {
+    connectionId: string;
+    supplierId: string;
+    credentialType: ErpCredentialType;
+    secrets: Record<string, string>;
+    hint?: string | null;
+  }): Promise<ErpCredentialPublicMeta> {
+    const encrypted = encryptJson(input.secrets);
+    const fieldsSet = Object.keys(input.secrets);
+    const now = new Date();
+    const [row] = await db.insert(supplierErpCredentials)
+      .values({
+        connectionId: input.connectionId,
+        supplierId: input.supplierId,
+        credentialType: input.credentialType,
+        ciphertext: encrypted.ciphertext,
+        iv: encrypted.iv,
+        authTag: encrypted.authTag,
+        fieldsSet,
+        hint: input.hint ?? null,
+      })
+      .onConflictDoUpdate({
+        target: supplierErpCredentials.connectionId,
+        set: {
+          supplierId: input.supplierId,
+          credentialType: input.credentialType,
+          ciphertext: encrypted.ciphertext,
+          iv: encrypted.iv,
+          authTag: encrypted.authTag,
+          fieldsSet,
+          hint: input.hint ?? null,
+          updatedAt: now,
+        },
+      })
+      .returning();
+    return this.toErpCredentialMeta(row);
+  }
+
+  async getErpCredentialMeta(connectionId: string): Promise<ErpCredentialPublicMeta | undefined> {
+    const [row] = await db.select().from(supplierErpCredentials)
+      .where(eq(supplierErpCredentials.connectionId, connectionId))
+      .limit(1);
+    return row ? this.toErpCredentialMeta(row) : undefined;
+  }
+
+  async getErpCredentialMetaForSupplier(supplierId: string): Promise<ErpCredentialPublicMeta | undefined> {
+    const [row] = await db.select().from(supplierErpCredentials)
+      .where(eq(supplierErpCredentials.supplierId, supplierId))
+      .orderBy(desc(supplierErpCredentials.updatedAt))
+      .limit(1);
+    return row ? this.toErpCredentialMeta(row) : undefined;
+  }
+
+  async getErpCredentialMetaForSuppliers(supplierIds: string[]): Promise<Map<string, ErpCredentialPublicMeta>> {
+    const map = new Map<string, ErpCredentialPublicMeta>();
+    if (supplierIds.length === 0) return map;
+    const rows = await db.select().from(supplierErpCredentials)
+      .where(inArray(supplierErpCredentials.supplierId, supplierIds))
+      .orderBy(desc(supplierErpCredentials.updatedAt));
+    // First (most recent) row per supplier wins.
+    for (const row of rows) {
+      if (!map.has(row.supplierId)) map.set(row.supplierId, this.toErpCredentialMeta(row));
+    }
+    return map;
+  }
+
+  // Server-internal ONLY: decrypts and returns the secret values. Must never be
+  // wired into a client-facing response.
+  async getErpCredentialSecrets(connectionId: string): Promise<Record<string, string> | undefined> {
+    const [row] = await db.select().from(supplierErpCredentials)
+      .where(eq(supplierErpCredentials.connectionId, connectionId))
+      .limit(1);
+    if (!row) return undefined;
+    return decryptJson<Record<string, string>>({
+      ciphertext: row.ciphertext,
+      iv: row.iv,
+      authTag: row.authTag,
+    });
+  }
+
+  async deleteErpCredentials(connectionId: string): Promise<void> {
+    await db.delete(supplierErpCredentials)
+      .where(eq(supplierErpCredentials.connectionId, connectionId));
   }
 }
 

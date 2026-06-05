@@ -14,8 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Building2, Mail, Phone, Hotel, RefreshCw, Database, Clock } from "lucide-react";
-import type { PmsConnectionRequest, PmsProvider, ErpConnectionRequest, ErpProvider, User } from "@shared/schema";
+import { Building2, Mail, Phone, Hotel, RefreshCw, Database, Clock, ShieldCheck, ShieldAlert } from "lucide-react";
+import type { PmsConnectionRequest, PmsProvider, ErpConnectionRequest, ErpProvider, ErpCredentialPublicMeta, User } from "@shared/schema";
 
 type AdminRequest = PmsConnectionRequest & {
   restaurant: User | null;
@@ -25,6 +25,8 @@ type AdminRequest = PmsConnectionRequest & {
 type AdminErpRequest = ErpConnectionRequest & {
   supplier: User | null;
   provider: ErpProvider | null;
+  hasCredentials?: boolean;
+  credentialMeta?: ErpCredentialPublicMeta | null;
 };
 
 const ERP_METHOD_LABELS: Record<string, string> = {
@@ -202,6 +204,23 @@ function ErpRequestRow({ request }: { request: AdminErpRequest }) {
           )}
           {request.productCount != null && <span>Products: {request.productCount}</span>}
           <span>Created: {new Date(request.createdAt).toLocaleDateString()}</span>
+          {request.hasCredentials ? (
+            <span
+              className="flex items-center gap-1.5 text-green-600 dark:text-green-400"
+              data-testid={`erp-credentials-set-${request.id}`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Credentials stored{request.credentialMeta?.hint ? ` (${request.credentialMeta.hint})` : ""}
+            </span>
+          ) : (
+            <span
+              className="flex items-center gap-1.5 text-muted-foreground"
+              data-testid={`erp-credentials-missing-${request.id}`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              No credentials
+            </span>
+          )}
         </div>
 
         {request.message && (

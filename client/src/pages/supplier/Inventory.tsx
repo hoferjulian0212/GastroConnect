@@ -8,12 +8,13 @@ import { useT } from "@/lib/translations";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Warehouse, Database, Clock, AlertCircle, Link2, RefreshCw } from "lucide-react";
-import type { Product, SupplierErpConnection, ErpProvider } from "@shared/schema";
+import { Warehouse, Database, Clock, AlertCircle, Link2, RefreshCw, ShieldCheck, KeyRound } from "lucide-react";
+import type { Product, SupplierErpConnection, ErpProvider, ErpCredentialPublicMeta, ErpCredentialType } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { InventoryView } from "./Products";
 import { ConnectErpDialog } from "@/components/ConnectErpDialog";
+import { ErpCredentialsDialog } from "@/components/ErpCredentialsDialog";
 
 export default function SupplierInventory() {
   const { currentUser } = useUser();
@@ -21,6 +22,7 @@ export default function SupplierInventory() {
   const t = useT(lang);
 
   const [showErpDialog, setShowErpDialog] = useState(false);
+  const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: [`/api/supplier/products?supplierId=${currentUser?.id}`],
@@ -29,12 +31,16 @@ export default function SupplierInventory() {
 
   const { data: erpData } = useQuery<{
     connection: (SupplierErpConnection & { provider: ErpProvider | null }) | null;
+    credentials: ErpCredentialPublicMeta | null;
   }>({
     queryKey: [`/api/supplier/erp/connection?supplierId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
 
   const erpConn = erpData?.connection ?? null;
+  const erpCredentials = erpData?.credentials ?? null;
+  const credentialDefaultType: ErpCredentialType =
+    erpConn?.connectionMethod === "excel_email" ? "excel_email" : "api";
   const erpStatus = erpConn?.status;
   const erpActive = erpStatus === "active";
   const erpPending = erpStatus === "pending";
@@ -139,19 +145,36 @@ export default function SupplierInventory() {
               )}
             </div>
 
-            <Button
-              className="shrink-0"
-              onClick={() => setShowErpDialog(true)}
-              disabled={erpActive}
-              data-testid="button-connect-erp"
-            >
-              <Database className="w-4 h-4 mr-2" />
-              {erpPending
-                ? t("supplierErp", "manageErp")
-                : erpActive
-                ? t("supplierErp", "erpStatusActive")
-                : t("supplierErp", "connectErp")}
-            </Button>
+            <div className="flex flex-col gap-2 shrink-0">
+              <Button
+                onClick={() => setShowErpDialog(true)}
+                disabled={erpActive}
+                data-testid="button-connect-erp"
+              >
+                <Database className="w-4 h-4 mr-2" />
+                {erpPending
+                  ? t("supplierErp", "manageErp")
+                  : erpActive
+                  ? t("supplierErp", "erpStatusActive")
+                  : t("supplierErp", "connectErp")}
+              </Button>
+              {erpConn && (erpPending || erpActive) && (
+                <Button
+                  variant={erpCredentials ? "outline" : "secondary"}
+                  onClick={() => setShowCredentialsDialog(true)}
+                  data-testid="button-erp-credentials"
+                >
+                  {erpCredentials ? (
+                    <ShieldCheck className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <KeyRound className="w-4 h-4 mr-2" />
+                  )}
+                  {erpCredentials
+                    ? t("supplierErp", "erpCredentialsUpdate")
+                    : t("supplierErp", "erpCredentialsButton")}
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -178,6 +201,16 @@ export default function SupplierInventory() {
           open={showErpDialog}
           onOpenChange={setShowErpDialog}
           supplierId={currentUser.id}
+        />
+      )}
+
+      {currentUser?.id && (
+        <ErpCredentialsDialog
+          open={showCredentialsDialog}
+          onOpenChange={setShowCredentialsDialog}
+          supplierId={currentUser.id}
+          defaultType={credentialDefaultType}
+          existingMeta={erpCredentials}
         />
       )}
     </PullToRefreshWrapper>

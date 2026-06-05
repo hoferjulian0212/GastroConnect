@@ -593,6 +593,31 @@ export const erpConnectionRequests = pgTable("erp_connection_requests", {
   index("idx_erp_connection_requests_status").on(table.status),
 ]);
 
+// Per-connection ERP credentials (API key or mailbox login), encrypted at rest.
+// The secret values live ONLY inside the AES-256-GCM ciphertext blob and are
+// NEVER returned to any client. Non-sensitive metadata (which fields are set, a
+// masked hint) may be shown so suppliers/admins can confirm credentials exist.
+export const erpCredentialTypeEnum = pgEnum("erp_credential_type", ["api", "excel_email"]);
+
+export const supplierErpCredentials = pgTable("supplier_erp_credentials", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  connectionId: varchar("connection_id", { length: 36 }).notNull().references(() => supplierErpConnections.id, { onDelete: "cascade" }),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  credentialType: erpCredentialTypeEnum("credential_type").notNull(),
+  // Encrypted secret payload (AES-256-GCM). Never sent to clients.
+  ciphertext: text("ciphertext").notNull(),
+  iv: text("iv").notNull(),
+  authTag: text("auth_tag").notNull(),
+  // Non-sensitive metadata safe to expose.
+  fieldsSet: text("fields_set").array().notNull().default(sql`'{}'::text[]`),
+  hint: text("hint"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_supplier_erp_credentials_connection").on(table.connectionId),
+  index("idx_supplier_erp_credentials_supplier").on(table.supplierId),
+]);
+
 export const insertErpProviderSchema = createInsertSchema(erpProviders).omit({ id: true, createdAt: true });
 export const insertSupplierErpConnectionSchema = createInsertSchema(supplierErpConnections).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertErpConnectionRequestSchema = createInsertSchema(erpConnectionRequests).omit({ id: true, createdAt: true, updatedAt: true, status: true, adminNotes: true });
@@ -605,6 +630,19 @@ export type ErpConnectionRequest = typeof erpConnectionRequests.$inferSelect;
 export type InsertErpConnectionRequest = z.infer<typeof insertErpConnectionRequestSchema>;
 export type ErpRequestStatus = typeof ERP_REQUEST_STATUSES[number];
 export type ErpConnectionMethod = typeof ERP_CONNECTION_METHODS[number];
+export type SupplierErpCredential = typeof supplierErpCredentials.$inferSelect;
+export type ErpCredentialType = "api" | "excel_email";
+// Client-safe view of a credential: presence + masked hint only, NO secret values.
+export type ErpCredentialPublicMeta = {
+  id: string;
+  connectionId: string;
+  supplierId: string;
+  credentialType: ErpCredentialType;
+  fieldsSet: string[];
+  hint: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export const confirmOrderItemSchema = z.object({
   orderItemId: z.string(),

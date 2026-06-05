@@ -12,6 +12,7 @@ import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
 import { getPmsProviderAdapter } from "./pmsProviders";
 import { getErpProviderAdapter } from "./erpProviders";
+import { isErpCredentialsKeyConfigured, maskHint } from "./erpCrypto";
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
@@ -5697,9 +5698,102 @@ export async function registerRoutes(
       const supplierId = req.query.supplierId as string;
       if (!supplierId) return res.status(400).json({ error: "supplierId required" });
       const connection = await storage.getSupplierErpConnection(supplierId);
-      res.json({ connection: connection ?? null });
+      let credentials = null;
+      if (connection) {
+        const meta = await storage.getErpCredentialMeta(connection.id);
+        // Expose ONLY non-sensitive metadata, never the secret values.
+        credentials = meta ?? null;
+      }
+      res.json({ connection: connection ?? null, credentials });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch ERP connection" });
+    }
+  });
+
+  // Read-only credential STATUS for the supplier (presence + masked hint).
+  // Secret values are never returned by any endpoint.
+  app.get("/api/supplier/erp/credentials", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string;
+      if (!supplierId) return res.status(400).json({ error: "supplierId required" });
+      const connection = await storage.getSupplierErpConnection(supplierId);
+      if (!connection) return res.json({ credentials: null });
+      const meta = await storage.getErpCredentialMeta(connection.id);
+      res.json({ credentials: meta ?? null });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch ERP credentials" });
+    }
+  });
+
+  // Write-only credential capture. The supplier submits the actual API key or
+  // mailbox login; it is encrypted at rest and the response echoes back only
+  // non-sensitive metadata (which fields are set + a masked hint).
+  const erpCredentialsBodySchema = z.object({
+    supplierId: z.string().min(1),
+    credentialType: z.enum(["api", "excel_email"]),
+    apiKey: z.string().trim().min(1).optional(),
+    apiBaseUrl: z.string().trim().min(1).optional(),
+    externalSupplierId: z.string().trim().min(1).optional(),
+    mailboxHost: z.string().trim().min(1).optional(),
+    mailboxPort: z.string().trim().min(1).optional(),
+    mailboxUser: z.string().trim().min(1).optional(),
+    mailboxPassword: z.string().trim().min(1).optional(),
+  });
+
+  app.put("/api/supplier/erp/credentials", async (req, res) => {
+    try {
+      if (!isErpCredentialsKeyConfigured()) {
+        return res.status(503).json({
+          error: "Credential storage is not configured. Set the ERP_CREDENTIALS_KEY secret to enable encrypted credential storage.",
+          code: "ERP_CREDENTIALS_KEY_MISSING",
+        });
+      }
+      const parsed = erpCredentialsBodySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+      const data = parsed.data;
+
+      const connection = await storage.getSupplierErpConnection(data.supplierId);
+      if (!connection) return res.status(404).json({ error: "No ERP connection found. Request a connection first." });
+
+      // Build the secret bundle for the chosen method. Require at least the
+      // primary secret so we never store an empty credential.
+      const secrets: Record<string, string> = {};
+      let primary: string | undefined;
+      if (data.credentialType === "api") {
+        if (!data.apiKey) return res.status(400).json({ error: "apiKey is required for the API method" });
+        secrets.apiKey = data.apiKey;
+        if (data.apiBaseUrl) secrets.apiBaseUrl = data.apiBaseUrl;
+        if (data.externalSupplierId) secrets.externalSupplierId = data.externalSupplierId;
+        primary = data.apiKey;
+      } else {
+        if (!data.mailboxHost || !data.mailboxUser || !data.mailboxPassword) {
+          return res.status(400).json({ error: "mailboxHost, mailboxUser and mailboxPassword are required for the email method" });
+        }
+        secrets.mailboxHost = data.mailboxHost;
+        if (data.mailboxPort) secrets.mailboxPort = data.mailboxPort;
+        secrets.mailboxUser = data.mailboxUser;
+        secrets.mailboxPassword = data.mailboxPassword;
+        primary = data.mailboxPassword;
+      }
+
+      const meta = await storage.upsertErpCredentials({
+        connectionId: connection.id,
+        supplierId: data.supplierId,
+        credentialType: data.credentialType,
+        secrets,
+        hint: primary ? maskHint(primary) : null,
+      });
+
+      // Keep the connection's recorded method in sync with the supplied
+      // credentials so the admin view stays consistent.
+      if (connection.connectionMethod !== data.credentialType) {
+        await storage.updateSupplierErpConnection(connection.id, { connectionMethod: data.credentialType });
+      }
+
+      res.status(200).json({ ok: true, credentials: meta });
+    } catch (error) {
+      console.error("ERP credentials save error:", error);
+      res.status(500).json({ error: "Failed to save ERP credentials" });
     }
   });
 
