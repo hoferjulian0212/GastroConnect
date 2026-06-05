@@ -1,5 +1,7 @@
 import { MobilePageHeader, MobileSearchBar } from "@/components/mobile";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { PartnerMap } from "@/components/PartnerMap";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,6 +83,20 @@ export default function RestaurantSuppliers() {
           data-testid="input-search-suppliers"
         />
       </div>
+
+      <PartnerMap
+        partners={filteredSuppliers ?? []}
+        lang={lang}
+        messageLabel={lang === "de" ? "Nachricht" : "Messaggio"}
+        onMessage={handleMessage}
+        primaryActionLabel={lang === "de" ? "Katalog" : "Catalogo"}
+        primaryActionIcon={<Package className="mr-1.5 h-3.5 w-3.5" />}
+        onPrimaryAction={handleViewCatalog}
+        onBackfilled={() =>
+          queryClient.invalidateQueries({ queryKey: ["/api/users?role=supplier"] })
+        }
+        testIdPrefix="suppliers"
+      />
 
       {isLoading ? (
         <div className="grid gap-2.5 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">

@@ -14,6 +14,7 @@ import { getPmsProviderAdapter } from "./pmsProviders";
 import { getErpProviderAdapter } from "./erpProviders";
 import { isErpCredentialsKeyConfigured, maskHint } from "./erpCrypto";
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
+import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
 // is no longer pending (detected after taking the row lock) so we can roll back
@@ -901,7 +902,31 @@ export async function registerRoutes(
   app.patch("/api/users/:id", async (req, res) => {
     try {
       const validated = updateUserSchema.parse(req.body);
-      const updated = await storage.updateUser(req.params.id, validated);
+
+      // Re-geocode whenever any address component is part of this update, so the
+      // map pin always reflects the latest stored address. Coordinates are
+      // derived server-side and persisted (cached) — never supplied by the client.
+      const touchesAddress =
+        "address" in validated || "city" in validated || "postalCode" in validated;
+      let coords: { latitude: string | null; longitude: string | null } | undefined;
+      if (touchesAddress && isGeocodingConfigured()) {
+        const existing = await storage.getUser(req.params.id);
+        const merged = {
+          address: "address" in validated ? validated.address : existing?.address,
+          city: "city" in validated ? validated.city : existing?.city,
+          postalCode: "postalCode" in validated ? validated.postalCode : existing?.postalCode,
+        };
+        const geo = await geocodeAddress(merged);
+        coords = {
+          latitude: geo ? String(geo.lat) : null,
+          longitude: geo ? String(geo.lng) : null,
+        };
+      }
+
+      const updated = await storage.updateUser(req.params.id, {
+        ...validated,
+        ...(coords ?? {}),
+      });
       if (!updated) {
         return res.status(404).json({ error: "User not found" });
       }
@@ -1756,6 +1781,21 @@ export async function registerRoutes(
   });
 
   // ===== SUPPLIER CUSTOMERS =====
+  // Idempotently geocode any users that have an address but no coordinates yet.
+  // Called lazily by the partner map so existing suppliers/restaurants show up
+  // immediately without manual lat/lng entry. Safe to call repeatedly.
+  app.post("/api/geocode/backfill", async (_req, res) => {
+    try {
+      if (!isGeocodingConfigured()) {
+        return res.json({ configured: false, geocoded: 0, failed: 0, skipped: 0 });
+      }
+      const result = await backfillMissingCoordinates();
+      res.json({ configured: true, ...result });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to backfill coordinates" });
+    }
+  });
+
   app.get("/api/supplier/customers", async (req, res) => {
     try {
       const supplierId = req.query.supplierId as string;

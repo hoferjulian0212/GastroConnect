@@ -25,6 +25,8 @@ export const users = pgTable("users", {
   address: text("address"),
   city: text("city"),
   postalCode: text("postal_code"),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
   companyName: text("company_name"),
   description: text("description"),
   profileImageUrl: text("profile_image_url"),

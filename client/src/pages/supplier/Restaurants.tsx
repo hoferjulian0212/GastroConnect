@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Search, ArrowLeft, MessageSquare, Phone, ClipboardList, CalendarDays, Tag, Package, Save, Loader2, Trash2, MapPin, Mail, Euro, Plus, Minus, Clock } from "lucide-react";
 import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { PartnerMap } from "@/components/PartnerMap";
 import { useToast } from "@/hooks/use-toast";
 import type { User, Product, CustomMinOrderQuantity, DeliverySchedule, CustomPrice, MinimumOrderValue } from "@shared/schema";
 
@@ -73,7 +74,26 @@ export default function SupplierRestaurants() {
         </div>
       </div></HeroPortal>
 
-      <div className="px-3 md:px-6 max-w-6xl mx-auto w-full">
+      <div className="px-3 md:px-6 max-w-6xl mx-auto w-full space-y-4 md:space-y-6">
+
+      <PartnerMap
+        partners={filteredRestaurants ?? []}
+        lang={lang}
+        messageLabel={lang === "de" ? "Nachricht" : "Messaggio"}
+        onMessage={(id) => setLocation(`/supplier/inbox?to=${id}`)}
+        primaryActionLabel={lang === "de" ? "Verwalten" : "Gestisci"}
+        primaryActionIcon={<Settings2Icon className="mr-1.5 h-3.5 w-3.5" />}
+        onPrimaryAction={(id) => {
+          const r = restaurants?.find((x) => x.id === id);
+          if (r) setSelectedRestaurant(r);
+        }}
+        onBackfilled={() =>
+          queryClient.invalidateQueries({
+            queryKey: [`/api/supplier/customers?supplierId=${currentUser?.id}`],
+          })
+        }
+        testIdPrefix="restaurants"
+      />
 
       {isLoading ? (
         <div className="grid gap-2.5 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
