@@ -13,7 +13,17 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShoppingCart, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useTheme } from "@/hooks/use-theme";
+import { useT } from "@/lib/translations";
+import { ShoppingCart, ChevronDown, Moon, Sun, LogOut } from "lucide-react";
 import logoImg from "@assets/logo_no_bg.png";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -179,26 +189,26 @@ function CartButton() {
 }
 
 function MobileProfileButton() {
-  const { currentUser, currentRole } = useUser();
-  const [, setLocation] = useLocation();
+  const { currentUser } = useUser();
 
   const initials = currentUser?.name
     ? currentUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
   return (
-    <button
-      onClick={() => setLocation(`/${currentRole}/settings`)}
-      className="md:hidden"
-      data-testid="button-mobile-profile"
-    >
-      <Avatar className="h-9 w-9">
-        <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name || ""} />
-        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
-    </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="md:hidden" data-testid="button-mobile-profile">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name || ""} />
+            <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        </button>
+      </DropdownMenuTrigger>
+      <ProfileMenuContent />
+    </DropdownMenu>
   );
 }
 
@@ -440,27 +450,83 @@ function PageHero() {
   );
 }
 
-function DesktopProfileButton() {
-  const { currentUser, currentRole } = useUser();
+function useProfileMenu() {
+  const { currentUser, setCurrentUser } = useUser();
+  const { isDark, toggleTheme } = useTheme();
+  const { lang } = useLanguage();
+  const t = useT(lang);
   const [, setLocation] = useLocation();
+
+  const handleLogout = () => {
+    try { localStorage.removeItem("gastroconnect_selected_restaurant_id"); } catch {}
+    try { localStorage.removeItem("gastroconnect_selected_supplier_id"); } catch {}
+    setCurrentUser(null);
+    queryClient.clear();
+    setLocation("/");
+  };
+
+  return { currentUser, isDark, toggleTheme, t, handleLogout };
+}
+
+function ProfileMenuContent() {
+  const { currentUser, isDark, toggleTheme, t, handleLogout } = useProfileMenu();
+  return (
+    <DropdownMenuContent align="end" className="w-56" data-testid="menu-profile">
+      <DropdownMenuLabel className="flex flex-col gap-0.5">
+        <span className="text-sm font-semibold truncate" data-testid="text-profile-name">
+          {currentUser?.companyName || currentUser?.name || ""}
+        </span>
+        {currentUser?.email && (
+          <span className="text-xs font-normal text-muted-foreground truncate" data-testid="text-profile-email">
+            {currentUser.email}
+          </span>
+        )}
+      </DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        onSelect={(e) => { e.preventDefault(); toggleTheme(); }}
+        data-testid="menu-item-dark-mode"
+      >
+        {isDark ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+        {t("settings", "darkMode")}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        onSelect={handleLogout}
+        className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+        data-testid="menu-item-logout"
+      >
+        <LogOut className="mr-2 h-4 w-4" />
+        {t("common", "logout")}
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  );
+}
+
+function DesktopProfileButton() {
+  const { currentUser } = useUser();
 
   const initials = currentUser?.name
     ? currentUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
   return (
-    <button
-      onClick={() => setLocation(`/${currentRole}/settings`)}
-      className="hidden md:flex items-center justify-center h-9 w-9 rounded-full border border-white/20 bg-white/[0.07] hover:bg-white/15 transition-colors"
-      data-testid="button-desktop-profile"
-    >
-      <Avatar className="h-7 w-7">
-        <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name || ""} />
-        <AvatarFallback className="bg-transparent text-white font-semibold text-xs">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
-    </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="hidden md:flex items-center justify-center h-9 w-9 rounded-full border border-white/20 bg-white/[0.07] hover:bg-white/15 transition-colors"
+          data-testid="button-desktop-profile"
+        >
+          <Avatar className="h-7 w-7">
+            <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name || ""} />
+            <AvatarFallback className="bg-transparent text-white font-semibold text-xs">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        </button>
+      </DropdownMenuTrigger>
+      <ProfileMenuContent />
+    </DropdownMenu>
   );
 }
 
