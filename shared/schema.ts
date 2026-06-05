@@ -14,7 +14,7 @@ export const complaintReasonEnum = pgEnum("complaint_reason", ["damaged", "short
 export const COMPLAINT_REASONS = ["damaged", "short", "wrong", "quality", "late", "other"] as const;
 export type ComplaintReason = typeof COMPLAINT_REASONS[number];
 
-export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["manual_in", "manual_out", "order_confirmed", "order_reversed", "order_cancelled", "manual_set", "order_reserved", "order_returned", "order_outbounded"]);
+export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["manual_in", "manual_out", "order_confirmed", "order_reversed", "order_cancelled", "manual_set", "order_reserved", "order_returned", "order_outbounded", "erp_sync"]);
 
 export const users = pgTable("users", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -72,11 +72,24 @@ export const products = pgTable("products", {
   lowStockThreshold: integer("low_stock_threshold").default(0),
   minOrderQuantity: integer("min_order_quantity").default(1).notNull(),
   imageUrl: text("image_url"),
+  // ERP sync ownership: when true, ERP-owned fields (name, description, unit,
+  // category, articleNumber, gtin, price, stockQuantity, inStock,
+  // minOrderQuantity) are managed by the supplier's ERP and read-only in the
+  // GastroConnect product UI. GastroConnect-owned fields (imageUrl,
+  // lowStockThreshold, promotions, per-restaurant prices/MOQ) stay editable.
+  erpManaged: boolean("erp_managed").default(false).notNull(),
+  // External primary key from the ERP feed (most authoritative match key).
+  erpExternalId: text("erp_external_id"),
+  // Soft-deactivation: product present in GastroConnect but missing from the
+  // latest ERP feed. Never hard-deleted so order history stays intact.
+  discontinued: boolean("discontinued").default(false).notNull(),
+  lastErpSyncAt: timestamp("last_erp_sync_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_products_supplier_id").on(table.supplierId),
   index("idx_products_category").on(table.category),
   index("idx_products_gtin").on(table.gtin),
+  index("idx_products_erp_external").on(table.supplierId, table.erpExternalId),
   uniqueIndex("uniq_products_supplier_article").on(table.supplierId, table.articleNumber),
 ]);
 
@@ -349,7 +362,7 @@ export const orderTemplateItems = pgTable("order_template_items", {
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, dashboardLayouts: true, dashboardWidgets: true, onboardingCompletedAt: true, dismissedHelpTopics: true, seenPageIntros: true, skipAllPageIntros: true });
-export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
+export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true, erpManaged: true, erpExternalId: true, discontinued: true, lastErpSyncAt: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true, createdAt: true });
@@ -547,6 +560,7 @@ export type PmsRequestStatus = typeof PMS_REQUEST_STATUSES[number];
 export const erpConnectionStatusEnum = pgEnum("erp_connection_status", ["pending", "active", "paused", "disconnected", "error"]);
 export const erpRequestStatusEnum = pgEnum("erp_request_status", ["pending", "in_progress", "approved", "rejected", "completed"]);
 export const erpConnectionMethodEnum = pgEnum("erp_connection_method", ["api", "excel_email", "unsure"]);
+export const erpSyncStatusEnum = pgEnum("erp_sync_status", ["idle", "running", "success", "error"]);
 
 export const ERP_REQUEST_STATUSES = ["pending", "in_progress", "approved", "rejected", "completed"] as const;
 export const ERP_CONNECTION_METHODS = ["api", "excel_email", "unsure"] as const;
@@ -570,6 +584,21 @@ export const supplierErpConnections = pgTable("supplier_erp_connections", {
   preferredSyncTime: text("preferred_sync_time"),
   externalSupplierId: text("external_supplier_id"),
   lastSyncAt: timestamp("last_sync_at"),
+  // ----- Automatic catalog sync state -----
+  // Whether the scheduled daily sync is enabled (manual "Sync now" works
+  // regardless). Off by default until the supplier confirms the first run.
+  syncEnabled: boolean("sync_enabled").default(false).notNull(),
+  // Current/last run lifecycle. "running" doubles as an overlap lock so two
+  // syncs never apply at once.
+  syncStatus: erpSyncStatusEnum("sync_status").default("idle").notNull(),
+  syncStartedAt: timestamp("sync_started_at"),
+  lastSyncError: text("last_sync_error"),
+  lastSyncCreated: integer("last_sync_created").default(0).notNull(),
+  lastSyncUpdated: integer("last_sync_updated").default(0).notNull(),
+  lastSyncDeactivated: integer("last_sync_deactivated").default(0).notNull(),
+  // The supplier must preview + confirm the first overwrite before scheduled
+  // syncs are allowed to run, so an unexpected feed can't silently wipe data.
+  firstSyncConfirmed: boolean("first_sync_confirmed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -625,7 +654,7 @@ export const supplierErpCredentials = pgTable("supplier_erp_credentials", {
 ]);
 
 export const insertErpProviderSchema = createInsertSchema(erpProviders).omit({ id: true, createdAt: true });
-export const insertSupplierErpConnectionSchema = createInsertSchema(supplierErpConnections).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSupplierErpConnectionSchema = createInsertSchema(supplierErpConnections).omit({ id: true, createdAt: true, updatedAt: true, syncStatus: true, syncStartedAt: true, lastSyncError: true, lastSyncCreated: true, lastSyncUpdated: true, lastSyncDeactivated: true });
 export const insertErpConnectionRequestSchema = createInsertSchema(erpConnectionRequests).omit({ id: true, createdAt: true, updatedAt: true, status: true, adminNotes: true });
 
 export type ErpProvider = typeof erpProviders.$inferSelect;

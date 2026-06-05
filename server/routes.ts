@@ -13,6 +13,7 @@ import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyRe
 import { getPmsProviderAdapter } from "./pmsProviders";
 import { getErpProviderAdapter } from "./erpProviders";
 import { isErpCredentialsKeyConfigured, maskHint } from "./erpCrypto";
+import { runSyncForConnection, startErpSyncScheduler, ErpSyncRunningError, ErpSyncConfigError } from "./erpSync";
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 
@@ -505,6 +506,8 @@ export async function registerRoutes(
   await storage.ensurePmsProviders();
   // Ensure the standard ERP providers exist (idempotent)
   await storage.ensureErpProviders();
+  // Start the automatic ERP catalog sync scheduler (1-minute tick).
+  startErpSyncScheduler();
   // Backfill article numbers for any existing products that lack one
   try {
     const backfilled = await storage.backfillArticleNumbers();
@@ -5810,6 +5813,82 @@ export async function registerRoutes(
     } catch (error) {
       console.error("ERP credentials save error:", error);
       res.status(500).json({ error: "Failed to save ERP credentials" });
+    }
+  });
+
+  // ===== ERP CATALOG SYNC (manual / dry-run + schedule config) =====
+
+  const erpSyncBodySchema = z.object({
+    supplierId: z.string().min(1),
+    dryRun: z.boolean().optional(),
+    userId: z.string().optional(),
+    userName: z.string().optional(),
+  });
+
+  // Run a sync now. dryRun=true previews the changes without writing anything
+  // (used before the first overwrite). A real run is overlap-safe via the
+  // connection's syncStatus lock.
+  app.post("/api/supplier/erp/sync", async (req, res) => {
+    try {
+      const parsed = erpSyncBodySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+      const { supplierId, dryRun, userId, userName } = parsed.data;
+
+      if (!isErpCredentialsKeyConfigured()) {
+        return res.status(503).json({
+          error: "Credential storage is not configured. Set the ERP_CREDENTIALS_KEY secret first.",
+          code: "ERP_CREDENTIALS_KEY_MISSING",
+        });
+      }
+
+      const connection = await storage.getSupplierErpConnection(supplierId);
+      if (!connection) return res.status(404).json({ error: "No ERP connection found." });
+      if (connection.status !== "active") {
+        return res.status(409).json({ error: "The ERP connection is not active yet." });
+      }
+
+      const result = await runSyncForConnection(connection, {
+        dryRun: !!dryRun,
+        trigger: "manual",
+        userId: userId ?? null,
+        userName: userName ?? "ERP-Sync",
+      });
+      res.json(result);
+    } catch (error) {
+      if (error instanceof ErpSyncRunningError) {
+        return res.status(409).json({ error: "A sync is already running for this connection.", code: "ERP_SYNC_RUNNING" });
+      }
+      if (error instanceof ErpSyncConfigError) {
+        return res.status(400).json({ error: error.message, code: "ERP_SYNC_CONFIG" });
+      }
+      console.error("ERP sync error:", error);
+      res.status(500).json({ error: "ERP sync failed" });
+    }
+  });
+
+  // Update the scheduled-sync configuration (enable/disable + preferred time).
+  const erpSyncConfigSchema = z.object({
+    supplierId: z.string().min(1),
+    syncEnabled: z.boolean().optional(),
+    preferredSyncTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  });
+
+  app.patch("/api/supplier/erp/sync-config", async (req, res) => {
+    try {
+      const parsed = erpSyncConfigSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+      const { supplierId, syncEnabled, preferredSyncTime } = parsed.data;
+      const connection = await storage.getSupplierErpConnection(supplierId);
+      if (!connection) return res.status(404).json({ error: "No ERP connection found." });
+
+      const patch: Partial<{ syncEnabled: boolean; preferredSyncTime: string }> = {};
+      if (syncEnabled !== undefined) patch.syncEnabled = syncEnabled;
+      if (preferredSyncTime !== undefined) patch.preferredSyncTime = preferredSyncTime;
+      const updated = await storage.updateSupplierErpConnection(connection.id, patch);
+      res.json({ ok: true, connection: updated });
+    } catch (error) {
+      console.error("ERP sync config error:", error);
+      res.status(500).json({ error: "Failed to update sync configuration" });
     }
   });
 

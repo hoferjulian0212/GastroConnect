@@ -16,7 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich, ChevronDown, ChevronRight, User as UserIcon } from "lucide-react";
+import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, ArrowDown, AlertTriangle, History, Warehouse, RefreshCw, Tag, Calendar, Percent, Loader2, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Droplets, Egg, Coffee, Sandwich, ChevronDown, ChevronRight, User as UserIcon, Database } from "lucide-react";
 import { ProductImage } from "@/components/ProductImage";
 
 import type { Product, StockMovement, PromotionWithProduct } from "@shared/schema";
@@ -1374,6 +1374,10 @@ export default function SupplierProducts() {
  )
  : [];
 
+ // ERP-managed products: the ERP is the source of truth, so its owned fields
+ // are read-only in this dialog (image + low-stock threshold stay editable).
+ const erpLocked = !!editingProduct?.erpManaged;
+
  return (
  <PullToRefreshWrapper
  onRefresh={async () => {
@@ -1462,6 +1466,12 @@ export default function SupplierProducts() {
  : (lang === "de" ? "Neues Produkt zum Katalog hinzufügen" : "Aggiungi un nuovo prodotto al catalogo")}
  </p>
  </div>
+ {erpLocked && (
+ <div className="mx-6 mb-2 flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs p-3" data-testid="banner-erp-managed">
+ <Database className="w-4 h-4 shrink-0 mt-0.5" />
+ <span>{t("supplierErp", "erpManagedHint")}</span>
+ </div>
+ )}
  <Form {...form}>
  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6 pb-6">
  <div className="space-y-2">
@@ -1533,6 +1543,7 @@ export default function SupplierProducts() {
  <Input
  placeholder={editingProduct?.articleNumber || (lang === "de" ? "z. B. ART-001 oder leer lassen" : "es. ART-001 o lasciare vuoto")}
  autoComplete="off"
+ disabled={erpLocked}
  {...field}
  value={field.value ?? ""}
  data-testid="input-product-article-number"
@@ -1559,6 +1570,7 @@ export default function SupplierProducts() {
  placeholder={lang === "de" ? "z. B. 4006381333931" : "es. 4006381333931"}
  inputMode="numeric"
  autoComplete="off"
+ disabled={erpLocked}
  {...field}
  value={field.value ?? ""}
  data-testid="input-product-gtin"
@@ -1576,7 +1588,7 @@ export default function SupplierProducts() {
  <FormItem>
  <FormLabel>{t("supplierProducts", "productName")}</FormLabel>
  <FormControl>
- <Input placeholder={t("supplierProducts", "productNamePlaceholder")} autoComplete="off" {...field} data-testid="input-product-name" />
+ <Input placeholder={t("supplierProducts", "productNamePlaceholder")} autoComplete="off" disabled={erpLocked} {...field} data-testid="input-product-name" />
  </FormControl>
  <FormMessage />
  </FormItem>
@@ -1594,6 +1606,7 @@ export default function SupplierProducts() {
  placeholder={lang === "de" ? "Produktbeschreibung..." : "Descrizione prodotto..."}
  className="resize-none"
  autoComplete="off"
+ disabled={erpLocked}
  {...field} 
  data-testid="textarea-product-description" 
  />
@@ -1611,7 +1624,7 @@ export default function SupplierProducts() {
  <FormItem>
  <FormLabel>{t("supplierProducts", "price")}</FormLabel>
  <FormControl>
- <Input type="number" step="0.01" placeholder="0.00" autoComplete="off" {...field} data-testid="input-product-price" />
+ <Input type="number" step="0.01" placeholder="0.00" autoComplete="off" disabled={erpLocked} {...field} data-testid="input-product-price" />
  </FormControl>
  <FormMessage />
  </FormItem>
@@ -1624,7 +1637,7 @@ export default function SupplierProducts() {
  render={({ field }) => (
  <FormItem>
  <FormLabel>{t("supplierProducts", "unit")}</FormLabel>
- <Select onValueChange={field.onChange} value={field.value}>
+ <Select onValueChange={field.onChange} value={field.value} disabled={erpLocked}>
  <FormControl>
  <SelectTrigger data-testid="select-product-unit">
  <SelectValue placeholder={lang === "de" ? "Einheit wählen" : "Scegli unità"} />
@@ -1651,7 +1664,7 @@ export default function SupplierProducts() {
  render={({ field }) => (
  <FormItem>
  <FormLabel>{t("common", "category")}</FormLabel>
- <Select onValueChange={field.onChange} value={field.value || ""}>
+ <Select onValueChange={field.onChange} value={field.value || ""} disabled={erpLocked}>
  <FormControl>
  <SelectTrigger data-testid="select-product-category">
  <SelectValue placeholder={lang === "de" ? "Kategorie wählen" : "Scegli categoria"} />
@@ -1679,6 +1692,7 @@ export default function SupplierProducts() {
  type="number"
  min={1}
  placeholder="1"
+ disabled={erpLocked}
  data-testid="input-product-moq"
  {...field}
  value={field.value ?? ""}
@@ -1713,6 +1727,7 @@ export default function SupplierProducts() {
  type="number"
  min={0}
  placeholder="0"
+ disabled={erpLocked}
  data-testid="input-product-stock"
  {...field}
  value={field.value ?? ""}
@@ -1780,6 +1795,7 @@ export default function SupplierProducts() {
  <Switch
  checked={field.value}
  onCheckedChange={field.onChange}
+ disabled={erpLocked}
  data-testid="switch-product-in-stock"
  />
  </FormControl>
@@ -1909,6 +1925,16 @@ export default function SupplierProducts() {
  <span className="text-[10px] md:text-xs text-muted-foreground">/{product.unit}</span>
  </div>
  <div className="flex items-center gap-1 md:gap-1.5 mt-1 md:mt-1.5 flex-wrap">
+ {product.discontinued && (
+ <Badge variant="outline" className="bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 text-[10px] md:text-xs px-1 md:px-1.5 py-0" data-testid={`badge-discontinued-${product.id}`}>
+ {t("supplierErp", "discontinuedBadge")}
+ </Badge>
+ )}
+ {product.erpManaged && !product.discontinued && (
+ <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0" data-testid={`badge-erp-managed-${product.id}`}>
+ {t("supplierErp", "erpManagedBadge")}
+ </Badge>
+ )}
  {product.inStock ? (
  <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
  {t("common", "available")}

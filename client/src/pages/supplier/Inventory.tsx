@@ -15,6 +15,7 @@ import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { InventoryView } from "./Products";
 import { ConnectErpDialog } from "@/components/ConnectErpDialog";
 import { ErpCredentialsDialog } from "@/components/ErpCredentialsDialog";
+import { ErpSyncCard } from "@/components/ErpSyncCard";
 
 export default function SupplierInventory() {
   const { currentUser } = useUser();
@@ -177,6 +178,16 @@ export default function SupplierInventory() {
             </div>
           </CardContent>
         </Card>
+
+        {erpActive && erpConn && (
+          <ErpSyncCard
+            connection={erpConn}
+            supplierId={currentUser!.id}
+            hasCredentials={!!erpCredentials}
+            lang={lang}
+            t={t}
+          />
+        )}
 
         {isLoading ? (
           <div className="space-y-2">
