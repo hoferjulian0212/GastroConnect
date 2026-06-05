@@ -731,7 +731,7 @@ export default function RestaurantHome() {
         )}
 
         <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
-          <span className="text-xs text-muted-foreground font-mono">#{formatOrderNumber(order)}</span>
+          <span className="text-xs font-mono text-blue-600 dark:text-blue-400 underline underline-offset-2">#{formatOrderNumber(order)}</span>
           <span className="text-base font-bold">{order.totalAmount}€</span>
         </div>
       </div>
@@ -1154,7 +1154,7 @@ export default function RestaurantHome() {
                                 className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
                                 style={{ gridTemplateColumns: deliveriesGridTemplate }}
                               >
-                                <span className={`font-mono text-[13px] text-primary truncate ${isChild ? "pl-4" : ""}`}>#{formatOrderNumber(order)}</span>
+                                <span className={`font-mono text-[13px] text-blue-600 dark:text-blue-400 underline underline-offset-2 truncate ${isChild ? "pl-4" : ""}`}>#{formatOrderNumber(order)}</span>
                                 <div>
                                   <Badge className={`${getStatusColor(order.status)} text-[11px] rounded-full px-2.5 py-0.5 font-medium border-0`} variant="outline">
                                     <span className="inline-flex items-center gap-1">

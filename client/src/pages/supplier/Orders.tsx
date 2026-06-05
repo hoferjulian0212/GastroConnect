@@ -772,14 +772,13 @@ export default function SupplierOrders() {
  <div>
  <Link
  href={`/supplier/orders/${order.id}`}
- className="group/orderid inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-muted/50 pl-2 pr-1.5 py-1 font-mono text-[12px] font-semibold text-foreground/80 transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+ className="font-mono text-[12px] font-semibold text-blue-600 dark:text-blue-400 underline underline-offset-2 transition-colors hover:text-blue-700 dark:hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 rounded-sm"
  data-testid={`link-order-${order.id}`}
  onClick={(e) => e.stopPropagation()}
  title={lang === "de" ? "Details öffnen" : "Apri dettagli"}
  >
- <span className="truncate">#{formatOrderNumber(order)}</span>
- <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground transition-transform group-hover/orderid:translate-x-0.5 group-hover/orderid:text-primary" />
- </Link>
+ #{formatOrderNumber(order)}
+  </Link>
  </div>
  {visibleColumns.has("status") && (
  <div>
