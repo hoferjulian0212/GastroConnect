@@ -204,8 +204,6 @@ const t = {
     chartOrders: { de: "Bestellungen", it: "Ordini" },
     manageWidgets: { de: "Widgets verwalten", it: "Gestisci widget" },
     manageWidgetsDesc: { de: "Wählen Sie aus, welche zusätzlichen Widgets auf Ihrem Dashboard angezeigt werden.", it: "Scegli quali widget aggiuntivi visualizzare sulla dashboard." },
-    widgetLowStock: { de: "Lager-Warnungen", it: "Avvisi scorte" },
-    widgetLowStockDesc: { de: "Produkte unter dem Lagerschwellenwert", it: "Prodotti sotto la soglia di magazzino" },
     widgetOpenComplaints: { de: "Offene Reklamationen", it: "Reclami aperti" },
     widgetOpenComplaintsDesc: { de: "Unbearbeitete Reklamationen von Kunden", it: "Reclami clienti non elaborati" },
     widgetTodayDeliveries: { de: "Heute zu liefern", it: "Consegne di oggi" },

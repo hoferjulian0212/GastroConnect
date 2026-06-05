@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { AlertTriangle, AlertCircle, Truck, Users, Tag, Clock, ArrowRight, Package } from "lucide-react";
+import { AlertCircle, Truck, Users, Tag, Clock, ArrowRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ProductImage } from "@/components/ProductImage";
 import { useT } from "@/lib/translations";
-import type { Product, ComplaintWithDetails, OrderWithDetails } from "@shared/schema";
+import type { ComplaintWithDetails, OrderWithDetails } from "@shared/schema";
 
 const CARD_BASE = "h-full md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]";
 const HEADER = "flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4";
@@ -29,66 +29,6 @@ function EmptyState({ icon, label }: { icon: React.ReactNode; label: string }) {
     <div className="flex flex-col items-center justify-center py-8 text-center">
       <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted/50 mb-3">{icon}</div>
       <p className="text-sm font-medium text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
-// ───────────────────────── Lager-Warnungen ─────────────────────────
-export function LagerWarnungenWidget({ supplierId, lang }: { supplierId: string; lang: "de" | "it" }) {
-  const t = useT(lang);
-  const [, navigate] = useLocation();
-  const { data, isLoading } = useQuery<Product[]>({
-    queryKey: ['/api/low-stock', supplierId],
-    queryFn: async () => {
-      const r = await fetch(`/api/low-stock?supplierId=${supplierId}`);
-      if (!r.ok) throw new Error("fail");
-      return r.json();
-    },
-    enabled: !!supplierId,
-  });
-  const items = (data || []).slice(0, 4);
-  return (
-    <div className={CARD_BASE} data-testid="widget-lager-warnungen">
-      <div className={HEADER}>
-        <WidgetTitle
-          icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
-          title={t("supplierHome", "widgetLowStock")}
-          desc={t("supplierHome", "widgetLowStockDesc")}
-          testId="text-widget-lager-warnungen-title"
-        />
-        <Link href="/supplier/products" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 shrink-0" data-testid="link-widget-lager-all">
-          {t("common", "all")}<ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
-      <div className={BODY}>
-        {isLoading ? (
-          <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}</div>
-        ) : items.length === 0 ? (
-          <EmptyState icon={<Package className="h-6 w-6 text-muted-foreground/40" />} label={t("supplierHome", "noLowStock")} />
-        ) : (
-          <div className="space-y-2">
-            {items.map(p => (
-              <div
-                key={p.id}
-                onClick={() => navigate("/supplier/products")}
-                className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20 cursor-pointer transition-all active:scale-[0.99]"
-                data-testid={`widget-lager-row-${p.id}`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <ProductImage src={p.imageUrl} className="h-9 w-9 rounded-lg" iconClassName="h-4 w-4" fallbackBg="bg-orange-100 dark:bg-orange-900/30" fallbackIconColor="text-orange-600" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{p.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{t("supplierHome", "threshold")}: {p.lowStockThreshold} {p.unit}</p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-xs shrink-0 whitespace-nowrap">
-                  <span className="tabular-nums">{p.stockQuantity ?? 0}</span> {p.unit}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

@@ -40,7 +40,7 @@ import SupplierHomeMobile from "./HomeMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductImage } from "@/components/ProductImage";
 import SupplierRatingsList from "@/components/SupplierRatingsList";
-import { LagerWarnungenWidget, OffeneReklamationenWidget, HeuteZuLiefernWidget, TopKunden30dWidget, PromoPerformanceWidget, AntwortzeitWidget } from "@/components/SupplierDashboardWidgets";
+import { OffeneReklamationenWidget, HeuteZuLiefernWidget, TopKunden30dWidget, PromoPerformanceWidget, AntwortzeitWidget } from "@/components/SupplierDashboardWidgets";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
@@ -585,10 +585,6 @@ export default function SupplierHome() {
         managerDescription={t("supplierHome", "manageWidgetsDesc")}
         managerButtonLabel={t("supplierHome", "manageWidgets")}
         sections={[
-          { id: "w-lager-warnungen", optional: true, defaultEnabled: true, defaultSize: "half" as const,
-            title: t("supplierHome", "widgetLowStock"), description: t("supplierHome", "widgetLowStockDesc"),
-            content: <LagerWarnungenWidget supplierId={currentUser?.id || ""} lang={lang} />,
-          },
           { id: "w-offene-reklamationen", optional: true, defaultEnabled: true, defaultSize: "half" as const,
             title: t("supplierHome", "widgetOpenComplaints"), description: t("supplierHome", "widgetOpenComplaintsDesc"),
             content: <OffeneReklamationenWidget supplierId={currentUser?.id || ""} lang={lang} />,
