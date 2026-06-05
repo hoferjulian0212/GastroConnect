@@ -17,8 +17,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/hooks/use-theme";
@@ -469,31 +467,27 @@ function useProfileMenu() {
 }
 
 function ProfileMenuContent() {
-  const { currentUser, isDark, toggleTheme, t, handleLogout } = useProfileMenu();
+  const { isDark, toggleTheme, t, handleLogout } = useProfileMenu();
+  const itemClass =
+    "block w-full px-4 py-2 text-sm transition-colors cursor-pointer rounded-none text-gray-400 focus:text-white focus:bg-white/5 hover:text-white hover:bg-white/5";
   return (
-    <DropdownMenuContent align="end" className="w-56" data-testid="menu-profile">
-      <DropdownMenuLabel className="flex flex-col gap-0.5">
-        <span className="text-sm font-semibold truncate" data-testid="text-profile-name">
-          {currentUser?.companyName || currentUser?.name || ""}
-        </span>
-        {currentUser?.email && (
-          <span className="text-xs font-normal text-muted-foreground truncate" data-testid="text-profile-email">
-            {currentUser.email}
-          </span>
-        )}
-      </DropdownMenuLabel>
-      <DropdownMenuSeparator />
+    <DropdownMenuContent
+      align="end"
+      sideOffset={4}
+      className="dark min-w-[180px] p-1 bg-[#1e2130] border border-white/10 rounded-xl shadow-xl"
+      data-testid="menu-profile"
+    >
       <DropdownMenuItem
         onSelect={(e) => { e.preventDefault(); toggleTheme(); }}
+        className={itemClass}
         data-testid="menu-item-dark-mode"
       >
         {isDark ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
         {t("settings", "darkMode")}
       </DropdownMenuItem>
-      <DropdownMenuSeparator />
       <DropdownMenuItem
         onSelect={handleLogout}
-        className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+        className={itemClass}
         data-testid="menu-item-logout"
       >
         <LogOut className="mr-2 h-4 w-4" />
