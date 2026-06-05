@@ -1,4 +1,2 @@
-# Memory Index
-
-- [Backend hot-reload](backend-hot-reload.md) — new/changed server modules need a workflow restart; symptom: new API route returns SPA HTML, not JSON.
-- [No-auth trusted identity](no-auth-trusted-identity.md) — app has NO auth; every endpoint trusts client userId/role by design. Don't "fix" per-endpoint.
+- [Schema source of truth](schema-source-of-truth.md) — GastroConnect applies DB schema via `db:push`, not migration files; `migrations/` is stale, don't generate new ones.
+- [No-auth architecture](no-auth-architecture.md) — app has NO login; every endpoint trusts caller-provided IDs by design, so per-endpoint IDOR findings are app-wide, not regressions.
