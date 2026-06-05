@@ -43,7 +43,85 @@ import PDFDocument from "pdfkit";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 
-import type { InsertNotification } from "@shared/schema";
+import type { InsertNotification, OrderWithDetails, Document } from "@shared/schema";
+
+// Ensures a delivery note PDF exists for an order. Creates and uploads it if
+// missing, otherwise returns the existing one. `created` signals whether a new
+// note was generated so callers can avoid duplicate chat messages.
+async function ensureDeliveryNoteForOrder(
+  order: OrderWithDetails,
+): Promise<{ document: Document; created: boolean }> {
+  const existingDocs = await storage.getDocumentsByOrder(order.id);
+  const existingNote = existingDocs.find((d) => d.type === "delivery_note");
+  if (existingNote) {
+    return { document: existingNote, created: false };
+  }
+
+  const pdfBuffer = await generateDeliveryNotePDF(order);
+  const objectService = new ObjectStorageService();
+  const privateDir = objectService.getPrivateObjectDir();
+  const fileId = randomUUID();
+  const fullPath = `${privateDir}/documents/${fileId}.pdf`;
+  const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+  const bucketName = pathParts[0];
+  const objectName = pathParts.slice(1).join("/");
+  const bucket = objectStorageClient.bucket(bucketName);
+  const file = bucket.file(objectName);
+  await file.save(pdfBuffer, {
+    contentType: "application/pdf",
+    metadata: { contentType: "application/pdf" },
+  });
+
+  const objectPath = `/objects/documents/${fileId}.pdf`;
+  try {
+    const document = await storage.createDocument({
+      orderId: order.id,
+      type: "delivery_note",
+      title: `Lieferschein (${formatOrderNumber(order)})`,
+      fileUrl: objectPath,
+      restaurantId: order.restaurantId,
+      supplierId: order.supplierId,
+    });
+    return { document, created: true };
+  } catch (err: any) {
+    // Concurrent caller won the race: a unique constraint
+    // (uq_documents_delivery_note_per_order) blocks the duplicate insert.
+    // Re-fetch the existing note and report it as not newly created.
+    if (err?.code === "23505") {
+      const docs = await storage.getDocumentsByOrder(order.id);
+      const note = docs.find((d) => d.type === "delivery_note");
+      if (note) return { document: note, created: false };
+    }
+    throw err;
+  }
+}
+
+// Posts a delivery-note document card into the order's chat thread.
+async function postDeliveryNoteChatMessage(
+  order: OrderWithDetails,
+  document: Document,
+): Promise<void> {
+  const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+  await storage.sendMessage({
+    conversationId: conversation.id,
+    senderId: order.supplierId,
+    messageType: "document",
+    content: JSON.stringify({
+      documentId: document.id,
+      title: document.title,
+      type: "delivery_note",
+      orderId: order.id,
+      orderNumber: formatOrderNumber(order),
+      fileUrl: document.fileUrl,
+      supplierName: order.supplier?.companyName || order.supplier?.name || "",
+      totalAmount: order.totalAmount,
+      itemCount: order.items?.length ?? 0,
+      deliveryDate: new Date(document.createdAt).toISOString().slice(0, 10),
+    }),
+    orderId: order.id,
+    documentUrl: document.fileUrl,
+  });
+}
 
 async function createNotificationWithPush(notification: InsertNotification, role?: string) {
   const created = await storage.createNotification(notification);
@@ -2566,81 +2644,25 @@ export async function registerRoutes(
         }
       }
 
-      // Auto-generate delivery note and send chat message when order is delivered
-      if (status === "delivered" && (previousStatus === "in_delivery" || previousStatus === "confirmed" || previousStatus === "partially_confirmed")) {
+      // Auto-generate the delivery note as soon as shipping starts (in_delivery)
+      // or, as a fallback, when the order is delivered without having passed
+      // through in_delivery (e.g. confirmed -> delivered). The note is created
+      // once; the document chat card is only posted when it's newly generated to
+      // avoid duplicate messages across the in_delivery -> delivered transition.
+      const shouldEnsureDeliveryNote =
+        (status === "in_delivery" && previousStatus !== "in_delivery") ||
+        (status === "delivered" &&
+          (previousStatus === "in_delivery" ||
+            previousStatus === "confirmed" ||
+            previousStatus === "partially_confirmed"));
+      if (shouldEnsureDeliveryNote) {
         try {
-          const existingDocs = await storage.getDocumentsByOrder(order.id);
-          const hasDeliveryNote = existingDocs.some(d => d.type === "delivery_note");
-          if (!hasDeliveryNote) {
-            const pdfBuffer = await generateDeliveryNotePDF(order);
-            const objectService = new ObjectStorageService();
-            const privateDir = objectService.getPrivateObjectDir();
-            const fileId = randomUUID();
-            const fullPath = `${privateDir}/documents/${fileId}.pdf`;
-            const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
-            const bucketName = pathParts[0];
-            const objectName = pathParts.slice(1).join("/");
-            const bucket = objectStorageClient.bucket(bucketName);
-            const file = bucket.file(objectName);
-            await file.save(pdfBuffer, {
-              contentType: "application/pdf",
-              metadata: { contentType: "application/pdf" },
-            });
-            const relativePath = `documents/${fileId}.pdf`;
-            const objectPath = `/objects/${relativePath}`;
-            const document = await storage.createDocument({
-              orderId: order.id,
-              type: "delivery_note",
-              title: `Lieferschein (${formatOrderNumber(order)})`,
-              fileUrl: objectPath,
-              restaurantId: order.restaurantId,
-              supplierId: order.supplierId,
-            });
-            const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
-            await storage.sendMessage({
-              conversationId: conversation.id,
-              senderId: order.supplierId,
-              messageType: "document",
-              content: JSON.stringify({
-                documentId: document.id,
-                title: document.title,
-                type: "delivery_note",
-                orderId: order.id,
-                orderNumber: formatOrderNumber(order),
-                fileUrl: objectPath,
-                supplierName: order.supplier?.companyName || order.supplier?.name || "",
-                totalAmount: order.totalAmount,
-                itemCount: order.items?.length ?? 0,
-                deliveryDate: new Date().toISOString().slice(0, 10),
-              }),
-              orderId: order.id,
-              documentUrl: objectPath,
-            });
-          } else {
-            const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
-            const existingNote = existingDocs.find(d => d.type === "delivery_note")!;
-            await storage.sendMessage({
-              conversationId: conversation.id,
-              senderId: order.supplierId,
-              messageType: "document",
-              content: JSON.stringify({
-                documentId: existingNote.id,
-                title: existingNote.title,
-                type: "delivery_note",
-                orderId: order.id,
-                orderNumber: formatOrderNumber(order),
-                fileUrl: existingNote.fileUrl,
-                supplierName: order.supplier?.companyName || order.supplier?.name || "",
-                totalAmount: order.totalAmount,
-                itemCount: order.items?.length ?? 0,
-                deliveryDate: new Date(existingNote.createdAt).toISOString().slice(0, 10),
-              }),
-              orderId: order.id,
-              documentUrl: existingNote.fileUrl,
-            });
+          const { document, created } = await ensureDeliveryNoteForOrder(order);
+          if (created) {
+            await postDeliveryNoteChatMessage(order, document);
           }
         } catch (err) {
-          console.error("Failed to auto-generate delivery note on delivered:", err);
+          console.error("Failed to auto-generate delivery note:", err);
         }
       }
 
@@ -4865,59 +4887,10 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Delivery note already exists", document: existingDocs.find(d => d.type === "delivery_note") });
       }
 
-      const pdfBuffer = await generateDeliveryNotePDF(order);
-
-      const objectService = new ObjectStorageService();
-      const privateDir = objectService.getPrivateObjectDir();
-      const fileId = randomUUID();
-      const fullPath = `${privateDir}/documents/${fileId}.pdf`;
-      const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
-      const bucketName = pathParts[0];
-      const objectName = pathParts.slice(1).join("/");
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectName);
-
-      await file.save(pdfBuffer, {
-        contentType: "application/pdf",
-        metadata: {
-          contentType: "application/pdf",
-        },
-      });
-
-      const entityDir = privateDir.endsWith("/") ? privateDir : `${privateDir}/`;
-      const relativePath = `documents/${fileId}.pdf`;
-      const objectPath = `/objects/${relativePath}`;
-
-      const document = await storage.createDocument({
-        orderId: order.id,
-        type: "delivery_note",
-        title: `Lieferschein (${formatOrderNumber(order)})`,
-        fileUrl: objectPath,
-        restaurantId: order.restaurantId,
-        supplierId: order.supplierId,
-      });
-
-      const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
-
-      await storage.sendMessage({
-        conversationId: conversation.id,
-        senderId: order.supplierId,
-        messageType: "document",
-        content: JSON.stringify({
-          documentId: document.id,
-          title: document.title,
-          type: "delivery_note",
-          orderId: order.id,
-          orderNumber: formatOrderNumber(order),
-          fileUrl: objectPath,
-          supplierName: order.supplier?.companyName || order.supplier?.name || "",
-          totalAmount: order.totalAmount,
-          itemCount: order.items?.length ?? 0,
-          deliveryDate: new Date().toISOString().slice(0, 10),
-        }),
-        orderId: order.id,
-        documentUrl: objectPath,
-      });
+      const { document, created } = await ensureDeliveryNoteForOrder(order);
+      if (created) {
+        await postDeliveryNoteChatMessage(order, document);
+      }
 
       res.json(document);
     } catch (error) {

@@ -271,6 +271,9 @@ export const documents = pgTable("documents", {
   index("idx_documents_order_id").on(table.orderId),
   index("idx_documents_restaurant_id").on(table.restaurantId),
   index("idx_documents_supplier_id").on(table.supplierId),
+  uniqueIndex("uq_documents_delivery_note_per_order")
+    .on(table.orderId)
+    .where(sql`${table.type} = 'delivery_note'`),
 ]);
 
 export const deliverySchedules = pgTable("delivery_schedules", {

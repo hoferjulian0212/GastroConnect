@@ -352,6 +352,17 @@ export default function OrderDetail() {
   const st = order.status;
   const isTerminal = st === "delivered" || st === "cancelled";
 
+  const existingDeliveryNote = orderDocuments?.find((d: any) => d.type === "delivery_note");
+  const downloadDeliveryNote = (doc: any) => {
+    const url = `/api/orders/${doc.orderId}/delivery-note/download`;
+    const a = window.document.createElement("a");
+    a.href = url;
+    a.setAttribute("download", "");
+    window.document.body.appendChild(a);
+    a.click();
+    window.document.body.removeChild(a);
+  };
+
   type ActionCategory = "primary" | "fulfillment" | "communication" | "destructive";
   type ActionButton = {
     label: string;
@@ -432,17 +443,29 @@ export default function OrderDetail() {
       disabled: isTerminal,
       disabledReason: lang === "de" ? "Bestellung abgeschlossen" : "Ordine completato",
     });
-    // Delivery note
-    actions.push({
-      label: lang === "de" ? "Lieferschein erstellen" : "Crea bolla di consegna",
-      icon: FileText,
-      style: "secondary",
-      category: "fulfillment",
-      action: () => deliveryNoteMutation.mutate(),
-      testId: "action-create-delivery-note",
-      disabled: !(st === "in_delivery" || st === "delivered") || deliveryNoteMutation.isPending,
-      disabledReason: lang === "de" ? "Erst nach Lieferstart" : "Solo dopo l'avvio",
-    });
+    // Delivery note — once a note exists (auto-generated when shipping starts),
+    // offer to view/download it; otherwise allow manual generation.
+    if (existingDeliveryNote) {
+      actions.push({
+        label: lang === "de" ? "Lieferschein herunterladen" : "Scarica bolla di consegna",
+        icon: Download,
+        style: "secondary",
+        category: "fulfillment",
+        action: () => downloadDeliveryNote(existingDeliveryNote),
+        testId: "action-download-delivery-note",
+      });
+    } else {
+      actions.push({
+        label: lang === "de" ? "Lieferschein erstellen" : "Crea bolla di consegna",
+        icon: FileText,
+        style: "secondary",
+        category: "fulfillment",
+        action: () => deliveryNoteMutation.mutate(),
+        testId: "action-create-delivery-note",
+        disabled: !(st === "in_delivery" || st === "delivered") || deliveryNoteMutation.isPending,
+        disabledReason: lang === "de" ? "Erst nach Lieferstart" : "Solo dopo l'avvio",
+      });
+    }
     // Cancel
     actions.push({
       label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",

@@ -1,6 +1,6 @@
 import { MobilePageHeader } from "@/components/mobile";
 import { navigate } from "wouter/use-browser-location";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { FileText, Download, Building2, Clock, Eye, Pencil, ChevronDown, ChevronRight, BarChart3, Receipt, TrendingUp, ShoppingCart, Trash2, Plus, Truck, CheckCircle, Loader2 } from "lucide-react";
+import { FileText, Download, Building2, Clock, Eye, Pencil, ChevronDown, ChevronRight, BarChart3, Receipt, TrendingUp, ShoppingCart, Trash2, Plus, Truck, CheckCircle, Loader2, Search, X, ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import { formatOrderNumber, type DocumentWithDetails, type OrderWithDetails, type Document } from "@shared/schema";
 import { format } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -91,6 +91,15 @@ export default function Documents() {
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [generatingOrderId, setGeneratingOrderId] = useState<string | null>(null);
 
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "partner_asc" | "partner_desc">("newest");
+  const [showFilters, setShowFilters] = useState(false);
+  const GROUP_PAGE_SIZE = 8;
+  const [visibleGroups, setVisibleGroups] = useState(GROUP_PAGE_SIZE);
+
   const { data: documents, isLoading } = useQuery<DocumentWithDetails[]>({
     queryKey: ["/api/documents", currentUser?.id, currentRole],
     queryFn: async () => {
@@ -137,23 +146,81 @@ export default function Documents() {
     },
   });
 
-  const supplierGroups = useMemo(() => {
+  const normalizeType = (type: string) =>
+    type === "delivery_note" || type === "invoice" ? type : "other";
+
+  const filteredDocuments = useMemo(() => {
     if (!documents) return [];
-    const groups: Record<string, { supplier: { id: string; name: string; companyName: string | null }; docs: Record<string, DocumentWithDetails[]> }> = {};
-    for (const doc of documents) {
+    const q = search.trim().toLowerCase();
+    const fromTs = dateFrom ? new Date(dateFrom).getTime() : null;
+    const toTs = dateTo ? new Date(dateTo).getTime() + 86_400_000 - 1 : null;
+    return documents.filter((doc) => {
+      if (typeFilter !== "all" && normalizeType(doc.type) !== typeFilter) return false;
+      const created = new Date(doc.createdAt).getTime();
+      if (fromTs !== null && created < fromTs) return false;
+      if (toTs !== null && created > toTs) return false;
+      if (q) {
+        const other = currentRole === "restaurant" ? doc.supplier : doc.restaurant;
+        const partnerName = (other.companyName || other.name || "").toLowerCase();
+        const orderNum = formatOrderNumber(doc.order ?? { id: doc.orderId }).toLowerCase();
+        const title = (doc.title || "").toLowerCase();
+        if (!partnerName.includes(q) && !orderNum.includes(q) && !title.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [documents, search, typeFilter, dateFrom, dateTo, currentRole]);
+
+  const supplierGroups = useMemo(() => {
+    const groups: Record<string, { supplier: { id: string; name: string; companyName: string | null }; docs: Record<string, DocumentWithDetails[]>; latest: number }> = {};
+    for (const doc of filteredDocuments) {
       const other = currentRole === "restaurant" ? doc.supplier : doc.restaurant;
       const key = other.id;
       if (!groups[key]) {
-        groups[key] = { supplier: { id: other.id, name: other.name, companyName: other.companyName }, docs: {} };
+        groups[key] = { supplier: { id: other.id, name: other.name, companyName: other.companyName }, docs: {}, latest: 0 };
       }
-      const docType = doc.type;
+      const docType = normalizeType(doc.type);
       if (!groups[key].docs[docType]) groups[key].docs[docType] = [];
       groups[key].docs[docType].push(doc);
+      const ts = new Date(doc.createdAt).getTime();
+      if (ts > groups[key].latest) groups[key].latest = ts;
     }
-    return Object.values(groups).sort((a, b) =>
-      (a.supplier.companyName || a.supplier.name).localeCompare(b.supplier.companyName || b.supplier.name)
-    );
-  }, [documents, currentRole]);
+    const arr = Object.values(groups);
+    for (const g of arr) {
+      for (const k of Object.keys(g.docs)) {
+        g.docs[k].sort((a, b) =>
+          sortBy === "oldest"
+            ? new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      }
+    }
+    const nameOf = (g: typeof arr[number]) => g.supplier.companyName || g.supplier.name;
+    arr.sort((a, b) => {
+      switch (sortBy) {
+        case "partner_asc": return nameOf(a).localeCompare(nameOf(b));
+        case "partner_desc": return nameOf(b).localeCompare(nameOf(a));
+        case "oldest": return a.latest - b.latest;
+        default: return b.latest - a.latest;
+      }
+    });
+    return arr;
+  }, [filteredDocuments, currentRole, sortBy]);
+
+  const totalDocs = documents?.length ?? 0;
+  const filteredCount = filteredDocuments.length;
+  const hasActiveFilters = !!search.trim() || typeFilter !== "all" || !!dateFrom || !!dateTo;
+  const visibleSupplierGroups = supplierGroups.slice(0, visibleGroups);
+
+  useEffect(() => {
+    setVisibleGroups(GROUP_PAGE_SIZE);
+  }, [search, typeFilter, dateFrom, dateTo, sortBy]);
+
+  const clearFilters = () => {
+    setSearch("");
+    setTypeFilter("all");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   const toggleSupplier = (id: string) => {
     setExpandedSuppliers(prev => {
@@ -350,15 +417,140 @@ export default function Documents() {
         </Button>
       </div>
 
+      {!isLoading && totalDocs > 0 && (
+        <div className="space-y-2 px-1" data-testid="documents-controls">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={lang === "de" ? "Bestell-Nr. oder Partner suchen…" : "Cerca n. ordine o partner…"}
+                className="pl-9 pr-9 rounded-lg"
+                data-testid="input-search-documents"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  data-testid="button-clear-search"
+                  aria-label={lang === "de" ? "Suche löschen" : "Cancella ricerca"}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-[150px] shrink-0 rounded-lg" data-testid="select-sort-documents">
+                <ArrowUpDown className="h-3.5 w-3.5 mr-1 shrink-0" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">{lang === "de" ? "Neueste zuerst" : "Più recenti"}</SelectItem>
+                <SelectItem value="oldest">{lang === "de" ? "Älteste zuerst" : "Meno recenti"}</SelectItem>
+                <SelectItem value="partner_asc">{lang === "de" ? "Partner A–Z" : "Partner A–Z"}</SelectItem>
+                <SelectItem value="partner_desc">{lang === "de" ? "Partner Z–A" : "Partner Z–A"}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant={showFilters || hasActiveFilters ? "default" : "outline"}
+              size="icon"
+              onClick={() => setShowFilters((s) => !s)}
+              className="shrink-0 rounded-lg relative"
+              data-testid="button-toggle-filters"
+              aria-label={lang === "de" ? "Filter" : "Filtri"}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {hasActiveFilters && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary border border-background" />}
+            </Button>
+          </div>
+
+          {showFilters && (
+            <div className="flex flex-wrap items-end gap-3 p-3 rounded-lg border border-border bg-muted/20" data-testid="documents-filter-panel">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{lang === "de" ? "Dokumenttyp" : "Tipo documento"}</Label>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-[170px] h-9 rounded-lg" data-testid="select-type-filter">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{lang === "de" ? "Alle Typen" : "Tutti i tipi"}</SelectItem>
+                    <SelectItem value="delivery_note">{lang === "de" ? "Lieferscheine" : "Bolle di consegna"}</SelectItem>
+                    <SelectItem value="invoice">{lang === "de" ? "Rechnungen" : "Fatture"}</SelectItem>
+                    <SelectItem value="other">{lang === "de" ? "Sonstige" : "Altri"}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{lang === "de" ? "Von" : "Da"}</Label>
+                <Input type="date" value={dateFrom} max={dateTo || undefined} onChange={(e) => setDateFrom(e.target.value)} className="w-[150px] h-9 rounded-lg" data-testid="input-date-from" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{lang === "de" ? "Bis" : "A"}</Label>
+                <Input type="date" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)} className="w-[150px] h-9 rounded-lg" data-testid="input-date-to" />
+              </div>
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 rounded-lg" data-testid="button-clear-filters">
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  {lang === "de" ? "Filter zurücksetzen" : "Reimposta filtri"}
+                </Button>
+              )}
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground" data-testid="text-document-count">
+            {hasActiveFilters
+              ? (lang === "de"
+                  ? `${filteredCount} von ${totalDocs} ${totalDocs === 1 ? "Dokument" : "Dokumenten"}`
+                  : `${filteredCount} di ${totalDocs} ${totalDocs === 1 ? "documento" : "documenti"}`)
+              : (lang === "de"
+                  ? `${totalDocs} ${totalDocs === 1 ? "Dokument" : "Dokumente"} · ${supplierGroups.length} ${supplierGroups.length === 1 ? "Partner" : "Partner"}`
+                  : `${totalDocs} ${totalDocs === 1 ? "documento" : "documenti"} · ${supplierGroups.length} partner`)}
+          </p>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
-      ) : supplierGroups.length > 0 ? (
+      ) : totalDocs === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FileText className="h-12 w-12 text-muted-foreground/50 mb-3" />
+            <p className="text-muted-foreground">{lang === "de" ? "Keine Dokumente vorhanden" : "Nessun documento disponibile"}</p>
+            <p className="text-xs text-muted-foreground mt-1 mb-5 max-w-xs text-center">
+              {lang === "de"
+                ? "Lieferscheine werden automatisch erstellt, sobald eine Bestellung in Lieferung geht."
+                : "Le bolle di consegna vengono create automaticamente quando un ordine va in consegna."}
+            </p>
+            <Button onClick={() => setShowGenerateDialog(true)} data-testid="button-empty-generate-delivery-note" className="rounded-lg">
+              <Plus className="h-4 w-4 mr-1.5" />
+              {lang === "de" ? "Lieferschein generieren" : "Genera bolla di consegna"}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : filteredCount === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Search className="h-12 w-12 text-muted-foreground/50 mb-3" />
+            <p className="text-muted-foreground">{lang === "de" ? "Keine Treffer" : "Nessun risultato"}</p>
+            <p className="text-xs text-muted-foreground mt-1 mb-5 max-w-xs text-center">
+              {lang === "de"
+                ? "Keine Dokumente entsprechen deinen Filtern."
+                : "Nessun documento corrisponde ai filtri."}
+            </p>
+            <Button variant="outline" onClick={clearFilters} data-testid="button-noresults-clear-filters" className="rounded-lg">
+              <X className="h-4 w-4 mr-1.5" />
+              {lang === "de" ? "Filter zurücksetzen" : "Reimposta filtri"}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
         <div className="space-y-4">
-          {supplierGroups.map((group) => {
+          {visibleSupplierGroups.map((group) => {
             const supplierId = group.supplier.id;
             const supplierName = group.supplier.companyName || group.supplier.name;
             const isExpanded = expandedSuppliers.has(supplierId);
@@ -486,23 +678,23 @@ export default function Documents() {
               </Card>
             );
           })}
+
+          {visibleGroups < supplierGroups.length && (
+            <div className="flex justify-center pt-1">
+              <Button
+                variant="outline"
+                onClick={() => setVisibleGroups((v) => v + GROUP_PAGE_SIZE)}
+                data-testid="button-load-more-suppliers"
+                className="rounded-lg"
+              >
+                <ChevronDown className="h-4 w-4 mr-1.5" />
+                {lang === "de"
+                  ? `Mehr anzeigen (${supplierGroups.length - visibleGroups})`
+                  : `Mostra altri (${supplierGroups.length - visibleGroups})`}
+              </Button>
+            </div>
+          )}
         </div>
-      ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FileText className="h-12 w-12 text-muted-foreground/50 mb-3" />
-            <p className="text-muted-foreground">{lang === "de" ? "Keine Dokumente vorhanden" : "Nessun documento disponibile"}</p>
-            <p className="text-xs text-muted-foreground mt-1 mb-5 max-w-xs text-center">
-              {lang === "de"
-                ? "Erstelle deinen ersten Lieferschein für eine bereits gelieferte oder in Lieferung befindliche Bestellung"
-                : "Crea la tua prima bolla di consegna per un ordine consegnato o in consegna"}
-            </p>
-            <Button onClick={() => setShowGenerateDialog(true)} data-testid="button-empty-generate-delivery-note" className="rounded-lg">
-              <Plus className="h-4 w-4 mr-1.5" />
-              {lang === "de" ? "Lieferschein generieren" : "Genera bolla di consegna"}
-            </Button>
-          </CardContent>
-        </Card>
       )}
 
       <Dialog open={showGenerateDialog} onOpenChange={(open) => { if (!open) { setShowGenerateDialog(false); setGeneratingOrderId(null); } }}>
