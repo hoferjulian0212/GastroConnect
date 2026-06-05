@@ -73,6 +73,9 @@ async function createNotificationWithPush(notification: InsertNotification, role
     case "erp_request":
       url = `/${urlRole}/inventory`;
       break;
+    case "whatsapp_request":
+      url = `/${urlRole}/inbox`;
+      break;
   }
   sendPushNotification(notification.userId, {
     title: notification.title,
@@ -6010,6 +6013,176 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Update ERP request error:", error);
       res.status(500).json({ error: "Failed to update ERP request" });
+    }
+  });
+
+  // ===== WhatsApp Inbox connection (connect + request flow) =====
+  // Mirrors the ERP request flow: a supplier OR restaurant requests to connect
+  // their WhatsApp Business number to the Inbox; an admin reviews and approves.
+  // Single provider, so no providers catalog and no encrypted credentials.
+  app.get("/api/whatsapp/connection", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) return res.status(400).json({ error: "userId required" });
+      const connection = await storage.getWhatsappConnection(userId);
+      const user = await storage.getUser(userId);
+      res.json({ connection: connection ?? null, whatsappNumber: user?.whatsappNumber ?? null });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch WhatsApp connection" });
+    }
+  });
+
+  const whatsappRequestBodySchema = z.object({
+    userId: z.string().min(1),
+    whatsappNumber: z.string().trim().min(5).regex(/^\+?[0-9\s().-]{5,}$/, "Invalid phone number"),
+    companyName: z.string().min(1),
+    contactName: z.string().min(1),
+    contactEmail: z.string().email(),
+    contactPhone: z.string().optional(),
+    usagePreference: z.enum(["alongside", "whatsapp_only"]).optional(),
+    message: z.string().optional(),
+  });
+
+  app.post("/api/whatsapp/connection-requests", async (req, res) => {
+    try {
+      const parsed = whatsappRequestBodySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+      const data = parsed.data;
+
+      const user = await storage.getUser(data.userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const role = user.role === "restaurant" ? "restaurant" : "supplier";
+
+      // Block duplicate open requests. Check BOTH the connection placeholder
+      // (pending/active) AND any unresolved request row (pending/in_progress).
+      const existingConn = await storage.getWhatsappConnection(data.userId);
+      if (existingConn && (existingConn.status === "pending" || existingConn.status === "active")) {
+        return res.status(409).json({ error: "A WhatsApp connection request is already open or active." });
+      }
+      const openRequest = await storage.getOpenWhatsappConnectionRequest(data.userId);
+      if (openRequest) {
+        return res.status(409).json({ error: "A WhatsApp connection request is already open or active." });
+      }
+
+      const usagePreference = data.usagePreference ?? "alongside";
+
+      // Persist the WhatsApp number on the user account server-side. It is not
+      // client-writable via the generic user-update route.
+      await storage.setUserWhatsappNumber(data.userId, data.whatsappNumber);
+
+      const request = await storage.createWhatsappConnectionRequest({
+        userId: data.userId,
+        whatsappNumber: data.whatsappNumber,
+        companyName: data.companyName,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone ?? null,
+        usagePreference,
+        message: data.message ?? null,
+      });
+
+      // Always create a pending connection placeholder so the UI reflects "pending".
+      await storage.createWhatsappConnection({
+        userId: data.userId,
+        status: "pending",
+        usagePreference,
+      });
+
+      // Confirm to the requesting user that their request was received.
+      await createNotificationWithPush({
+        userId: data.userId,
+        type: "whatsapp_request",
+        title: "WhatsApp-Anfrage gesendet",
+        message: `Ihre Anfrage zur Verbindung von WhatsApp wurde übermittelt. Unser Team meldet sich in Kürze.`,
+        referenceId: request.id,
+      }, role);
+
+      // Notify the admin/operator: email if configured, otherwise in-app.
+      let emailSent = false;
+      if (isAdminEmailConfigured()) {
+        emailSent = await sendAdminEmail({
+          subject: `New WhatsApp connection request: ${data.companyName}`,
+          text: [
+            `Company: ${data.companyName}`,
+            `WhatsApp: ${data.whatsappNumber}`,
+            `Contact: ${data.contactName} <${data.contactEmail}>`,
+            data.contactPhone ? `Phone: ${data.contactPhone}` : null,
+            `Usage preference: ${usagePreference}`,
+            data.message ? `Message: ${data.message}` : null,
+            `Request ID: ${request.id}`,
+          ].filter(Boolean).join("\n"),
+        });
+      }
+
+      let adminInApp = false;
+      if (!emailSent) {
+        const adminUserId = process.env.ADMIN_USER_ID;
+        if (adminUserId) {
+          await createNotificationWithPush({
+            userId: adminUserId,
+            type: "whatsapp_request",
+            title: "Neue WhatsApp-Anfrage",
+            message: `${data.companyName} (${data.contactName})`,
+            referenceId: request.id,
+          }, role);
+          adminInApp = true;
+        } else {
+          console.warn(
+            "[whatsapp] No admin notification channel configured (set SENDGRID_API_KEY+ADMIN_EMAIL or ADMIN_USER_ID). Request visible at /admin:",
+            request.id,
+          );
+        }
+      }
+
+      res.status(201).json({ request, emailSent, adminNotified: emailSent || adminInApp });
+    } catch (error) {
+      console.error("WhatsApp connection request error:", error);
+      res.status(500).json({ error: "Failed to submit WhatsApp connection request" });
+    }
+  });
+
+  // ===== ADMIN: WhatsApp connection requests =====
+  app.get("/api/admin/whatsapp/requests", async (_req, res) => {
+    try {
+      const requests = await storage.getWhatsappConnectionRequests();
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch WhatsApp requests" });
+    }
+  });
+
+  const updateWhatsappRequestSchema = z.object({
+    status: z.enum(["pending", "in_progress", "approved", "rejected", "completed"]).optional(),
+    adminNotes: z.string().optional(),
+  });
+
+  app.patch("/api/admin/whatsapp/requests/:id", async (req, res) => {
+    try {
+      const parsed = updateWhatsappRequestSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request" });
+      const existing = await storage.getWhatsappConnectionRequest(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Request not found" });
+      const updated = await storage.updateWhatsappConnectionRequest(req.params.id, parsed.data);
+
+      // Reflect approved/completed/rejected status onto the user's connection.
+      if (parsed.data.status) {
+        const conn = await storage.getWhatsappConnection(existing.userId);
+        if (conn) {
+          let connStatus: "active" | "disconnected" | undefined;
+          if (parsed.data.status === "approved" || parsed.data.status === "completed") connStatus = "active";
+          else if (parsed.data.status === "rejected") connStatus = "disconnected";
+          if (connStatus) {
+            await storage.updateWhatsappConnection(conn.id, {
+              status: connStatus,
+              ...(connStatus === "active" ? { lastSyncAt: new Date() } : {}),
+            });
+          }
+        }
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update WhatsApp request error:", error);
+      res.status(500).json({ error: "Failed to update WhatsApp request" });
     }
   });
 

@@ -6,7 +6,7 @@ import { z } from "zod";
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]);
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion", "voice"]);
-export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request", "erp_request"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request", "erp_request", "whatsapp_request"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);
 export const complaintStatusEnum = pgEnum("complaint_status", ["open", "in_progress", "resolved", "closed", "rejected", "partially_resolved"]);
 export const complaintReasonEnum = pgEnum("complaint_reason", ["damaged", "short", "wrong", "quality", "late", "other"]);
@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   phone: text("phone"),
+  whatsappNumber: text("whatsapp_number"),
   address: text("address"),
   city: text("city"),
   postalCode: text("postal_code"),
@@ -645,6 +646,53 @@ export type ErpCredentialPublicMeta = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+// ===== WhatsApp Inbox connection (connect + request flow) =====
+// Single provider (WhatsApp), so no providers catalog. Reuses the ERP
+// connection/request status enums and mirrors the ERP table structure.
+export const whatsappUsagePreferenceEnum = pgEnum("whatsapp_usage_preference", ["alongside", "whatsapp_only"]);
+export const WHATSAPP_USAGE_PREFERENCES = ["alongside", "whatsapp_only"] as const;
+
+export const whatsappConnections = pgTable("whatsapp_connections", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
+  status: erpConnectionStatusEnum("status").default("pending").notNull(),
+  usagePreference: whatsappUsagePreferenceEnum("usage_preference").default("alongside").notNull(),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_whatsapp_connections_user_id").on(table.userId),
+  index("idx_whatsapp_connections_status").on(table.status),
+]);
+
+export const whatsappConnectionRequests = pgTable("whatsapp_connection_requests", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
+  whatsappNumber: text("whatsapp_number").notNull(),
+  companyName: text("company_name").notNull(),
+  contactName: text("contact_name").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  contactPhone: text("contact_phone"),
+  usagePreference: whatsappUsagePreferenceEnum("usage_preference").default("alongside").notNull(),
+  message: text("message"),
+  adminNotes: text("admin_notes"),
+  status: erpRequestStatusEnum("status").default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_whatsapp_connection_requests_user_id").on(table.userId),
+  index("idx_whatsapp_connection_requests_status").on(table.status),
+]);
+
+export const insertWhatsappConnectionSchema = createInsertSchema(whatsappConnections).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWhatsappConnectionRequestSchema = createInsertSchema(whatsappConnectionRequests).omit({ id: true, createdAt: true, updatedAt: true, status: true, adminNotes: true });
+
+export type WhatsappConnection = typeof whatsappConnections.$inferSelect;
+export type InsertWhatsappConnection = z.infer<typeof insertWhatsappConnectionSchema>;
+export type WhatsappConnectionRequest = typeof whatsappConnectionRequests.$inferSelect;
+export type InsertWhatsappConnectionRequest = z.infer<typeof insertWhatsappConnectionRequestSchema>;
+export type WhatsappUsagePreference = typeof WHATSAPP_USAGE_PREFERENCES[number];
 
 export const confirmOrderItemSchema = z.object({
   orderItemId: z.string(),

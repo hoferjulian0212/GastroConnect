@@ -14,8 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Building2, Mail, Phone, Hotel, RefreshCw, Database, Clock, ShieldCheck, ShieldAlert } from "lucide-react";
-import type { PmsConnectionRequest, PmsProvider, ErpConnectionRequest, ErpProvider, ErpCredentialPublicMeta, User } from "@shared/schema";
+import { Building2, Mail, Phone, Hotel, RefreshCw, Database, Clock, ShieldCheck, ShieldAlert, MessageCircle } from "lucide-react";
+import type { PmsConnectionRequest, PmsProvider, ErpConnectionRequest, ErpProvider, ErpCredentialPublicMeta, WhatsappConnectionRequest, User } from "@shared/schema";
 
 type AdminRequest = PmsConnectionRequest & {
   restaurant: User | null;
@@ -27,6 +27,15 @@ type AdminErpRequest = ErpConnectionRequest & {
   provider: ErpProvider | null;
   hasCredentials?: boolean;
   credentialMeta?: ErpCredentialPublicMeta | null;
+};
+
+type AdminWhatsappRequest = WhatsappConnectionRequest & {
+  user: User | null;
+};
+
+const WHATSAPP_USAGE_LABELS: Record<string, string> = {
+  alongside: "Alongside inbox",
+  whatsapp_only: "WhatsApp only",
 };
 
 const ERP_METHOD_LABELS: Record<string, string> = {
@@ -269,6 +278,103 @@ function ErpRequestRow({ request }: { request: AdminErpRequest }) {
   );
 }
 
+function WhatsappRequestRow({ request }: { request: AdminWhatsappRequest }) {
+  const { toast } = useToast();
+  const [notes, setNotes] = useState(request.adminNotes ?? "");
+
+  const updateMutation = useMutation({
+    mutationFn: (data: { status?: string; adminNotes?: string }) =>
+      apiRequest("PATCH", `/api/admin/whatsapp/requests/${request.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/whatsapp/requests"] });
+      toast({ title: "Saved" });
+    },
+    onError: () => toast({ title: "Failed to update", variant: "destructive" }),
+  });
+
+  return (
+    <Card data-testid={`whatsapp-request-${request.id}`}>
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageCircle className="w-4 h-4" />
+            {request.companyName}
+          </CardTitle>
+          <Badge className={STATUS_STYLES[request.status] ?? ""} data-testid={`whatsapp-status-${request.id}`}>
+            {request.status}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Phone className="w-3.5 h-3.5" />
+            {request.whatsappNumber}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Mail className="w-3.5 h-3.5" />
+            {request.contactName} &lt;{request.contactEmail}&gt;
+          </span>
+          {request.contactPhone && (
+            <span className="flex items-center gap-1.5">
+              <Phone className="w-3.5 h-3.5" />
+              {request.contactPhone}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
+          {request.user && <span>{request.user.role === "restaurant" ? "Restaurant" : "Supplier"}: {request.user.name}</span>}
+          <span>Usage: {WHATSAPP_USAGE_LABELS[request.usagePreference] ?? request.usagePreference}</span>
+          <span>Created: {new Date(request.createdAt).toLocaleDateString()}</span>
+        </div>
+
+        {request.message && (
+          <p className="rounded-lg bg-muted/40 p-2 text-foreground">{request.message}</p>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+          <div className="sm:w-48">
+            <Label className="text-xs">Status</Label>
+            <Select
+              value={request.status}
+              onValueChange={(v) => updateMutation.mutate({ status: v })}
+            >
+              <SelectTrigger className="mt-1" data-testid={`whatsapp-select-status-${request.id}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s} data-testid={`whatsapp-option-${s}-${request.id}`}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1">
+            <Label className="text-xs">Admin notes</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className="mt-1"
+              data-testid={`whatsapp-notes-${request.id}`}
+            />
+          </div>
+          <Button
+            onClick={() => updateMutation.mutate({ adminNotes: notes })}
+            disabled={updateMutation.isPending}
+            data-testid={`whatsapp-button-save-notes-${request.id}`}
+          >
+            Save notes
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AdminPmsRequests() {
   const { data: requests, isLoading, refetch, isFetching } = useQuery<AdminRequest[]>({
     queryKey: ["/api/admin/pms/requests"],
@@ -281,6 +387,15 @@ export default function AdminPmsRequests() {
     isFetching: erpFetching,
   } = useQuery<AdminErpRequest[]>({
     queryKey: ["/api/admin/erp/requests"],
+  });
+
+  const {
+    data: whatsappRequests,
+    isLoading: whatsappLoading,
+    refetch: whatsappRefetch,
+    isFetching: whatsappFetching,
+  } = useQuery<AdminWhatsappRequest[]>({
+    queryKey: ["/api/admin/whatsapp/requests"],
   });
 
   return (
@@ -344,6 +459,37 @@ export default function AdminPmsRequests() {
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground" data-testid="empty-erp-requests">
               No ERP connection requests yet.
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex items-center justify-between gap-2 pt-6">
+          <div>
+            <h1 className="text-2xl font-bold" data-testid="admin-whatsapp-title">WhatsApp Connection Requests</h1>
+            <p className="text-sm text-muted-foreground">Manage WhatsApp inbox integration requests.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => whatsappRefetch()} disabled={whatsappFetching} data-testid="button-whatsapp-refresh">
+            <RefreshCw className={`w-4 h-4 mr-1.5 ${whatsappFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
+
+        {whatsappLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 animate-pulse rounded-xl bg-muted" />
+            ))}
+          </div>
+        ) : whatsappRequests && whatsappRequests.length > 0 ? (
+          <div className="space-y-3">
+            {whatsappRequests.map((r) => (
+              <WhatsappRequestRow key={r.id} request={r} />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground" data-testid="empty-whatsapp-requests">
+              No WhatsApp connection requests yet.
             </CardContent>
           </Card>
         )}

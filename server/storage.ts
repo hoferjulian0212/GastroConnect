@@ -34,6 +34,9 @@ import {
   type SupplierErpConnection, type InsertSupplierErpConnection,
   type ErpConnectionRequest, type InsertErpConnectionRequest,
   type ErpCredentialType, type ErpCredentialPublicMeta,
+  whatsappConnections, whatsappConnectionRequests,
+  type WhatsappConnection, type InsertWhatsappConnection,
+  type WhatsappConnectionRequest, type InsertWhatsappConnectionRequest,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { encryptJson, decryptJson } from "./erpCrypto";
@@ -298,6 +301,17 @@ export interface IStorage {
   getErpCredentialMetaForSuppliers(supplierIds: string[]): Promise<Map<string, ErpCredentialPublicMeta>>;
   getErpCredentialSecrets(connectionId: string): Promise<Record<string, string> | undefined>;
   deleteErpCredentials(connectionId: string): Promise<void>;
+
+  // WhatsApp Inbox connection
+  getWhatsappConnection(userId: string): Promise<WhatsappConnection | undefined>;
+  createWhatsappConnection(data: InsertWhatsappConnection): Promise<WhatsappConnection>;
+  updateWhatsappConnection(id: string, data: Partial<InsertWhatsappConnection>): Promise<WhatsappConnection | undefined>;
+  createWhatsappConnectionRequest(data: InsertWhatsappConnectionRequest): Promise<WhatsappConnectionRequest>;
+  getOpenWhatsappConnectionRequest(userId: string): Promise<WhatsappConnectionRequest | undefined>;
+  getWhatsappConnectionRequests(): Promise<(WhatsappConnectionRequest & { user: User | null })[]>;
+  getWhatsappConnectionRequest(id: string): Promise<WhatsappConnectionRequest | undefined>;
+  updateWhatsappConnectionRequest(id: string, data: { status?: string; adminNotes?: string }): Promise<WhatsappConnectionRequest | undefined>;
+  setUserWhatsappNumber(userId: string, whatsappNumber: string): Promise<void>;
 
   // Seed
   seedData(): Promise<void>;
@@ -3590,6 +3604,73 @@ export class DatabaseStorage implements IStorage {
       .where(eq(erpConnectionRequests.id, id))
       .returning();
     return updated;
+  }
+
+  // ----- WhatsApp Inbox connection -----
+  async getWhatsappConnection(userId: string): Promise<WhatsappConnection | undefined> {
+    const [conn] = await db.select().from(whatsappConnections)
+      .where(eq(whatsappConnections.userId, userId))
+      .orderBy(desc(whatsappConnections.createdAt))
+      .limit(1);
+    return conn;
+  }
+
+  async createWhatsappConnection(data: InsertWhatsappConnection): Promise<WhatsappConnection> {
+    const [created] = await db.insert(whatsappConnections).values(data).returning();
+    return created;
+  }
+
+  async updateWhatsappConnection(id: string, data: Partial<InsertWhatsappConnection>): Promise<WhatsappConnection | undefined> {
+    const [updated] = await db.update(whatsappConnections)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(whatsappConnections.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createWhatsappConnectionRequest(data: InsertWhatsappConnectionRequest): Promise<WhatsappConnectionRequest> {
+    const [created] = await db.insert(whatsappConnectionRequests).values(data).returning();
+    return created;
+  }
+
+  async getOpenWhatsappConnectionRequest(userId: string): Promise<WhatsappConnectionRequest | undefined> {
+    const [req] = await db.select().from(whatsappConnectionRequests)
+      .where(and(
+        eq(whatsappConnectionRequests.userId, userId),
+        inArray(whatsappConnectionRequests.status, ["pending", "in_progress"]),
+      ))
+      .orderBy(desc(whatsappConnectionRequests.createdAt))
+      .limit(1);
+    return req;
+  }
+
+  async getWhatsappConnectionRequests(): Promise<(WhatsappConnectionRequest & { user: User | null })[]> {
+    const reqs = await db.select().from(whatsappConnectionRequests).orderBy(desc(whatsappConnectionRequests.createdAt));
+    if (reqs.length === 0) return [];
+    const userIds = [...new Set(reqs.map(r => r.userId))];
+    const usersList = userIds.length ? await db.select().from(users).where(inArray(users.id, userIds)) : [];
+    const uMap = new Map(usersList.map(u => [u.id, u]));
+    return reqs.map(r => ({ ...r, user: uMap.get(r.userId) ?? null }));
+  }
+
+  async getWhatsappConnectionRequest(id: string): Promise<WhatsappConnectionRequest | undefined> {
+    const [req] = await db.select().from(whatsappConnectionRequests).where(eq(whatsappConnectionRequests.id, id));
+    return req;
+  }
+
+  async updateWhatsappConnectionRequest(id: string, data: { status?: string; adminNotes?: string }): Promise<WhatsappConnectionRequest | undefined> {
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.status !== undefined) patch.status = data.status;
+    if (data.adminNotes !== undefined) patch.adminNotes = data.adminNotes;
+    const [updated] = await db.update(whatsappConnectionRequests)
+      .set(patch)
+      .where(eq(whatsappConnectionRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async setUserWhatsappNumber(userId: string, whatsappNumber: string): Promise<void> {
+    await db.update(users).set({ whatsappNumber }).where(eq(users.id, userId));
   }
 
   // ----- ERP credentials (encrypted at rest) -----

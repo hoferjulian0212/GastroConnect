@@ -39,6 +39,7 @@ import SwipeableRow from "@/components/SwipeableRow";
 import StaggeredList from "@/components/StaggeredList";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { ProductImage } from "@/components/ProductImage";
+import { WhatsappInboxCard } from "@/components/WhatsappInboxCard";
 import { HeroPortal } from "@/context/HeroContext";
 
 type ActionMode = "none" | "order" | "complaint";
@@ -1186,6 +1187,7 @@ export default function RestaurantInbox() {
                 </div>
               )}
               <div className="px-2 pb-2">
+                {currentUser?.id && <WhatsappInboxCard userId={currentUser.id} />}
                 {conversationsLoading ? (
                   <div className="space-y-2">
                     {[1, 2, 3].map((i) => (
