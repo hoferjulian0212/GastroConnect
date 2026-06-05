@@ -23,6 +23,7 @@ import SwipeableRow from "@/components/SwipeableRow";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { ProductImage } from "@/components/ProductImage";
+import { cn } from "@/lib/utils";
 
 type ProductWithSupplier = Product & { supplier: User };
 
@@ -59,6 +60,7 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
   const [editNameValue, setEditNameValue] = useState("");
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
   const [addingSuggestionId, setAddingSuggestionId] = useState<string | null>(null);
+  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
 
   const { data: reorderSuggestions } = useQuery<ReorderSuggestion[]>({
     queryKey: ['/api/restaurant/reorder-suggestions', currentUser?.id],
@@ -97,6 +99,13 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
     () => (reorderSuggestions || []).filter((s) => !dismissedSuggestions.includes(s.productId)),
     [reorderSuggestions, dismissedSuggestions],
   );
+
+  const SUGGESTION_LIMIT = 5;
+  const DUE_SOON_DAYS = 2;
+  const displayedSuggestions = showAllSuggestions
+    ? visibleSuggestions
+    : visibleSuggestions.slice(0, SUGGESTION_LIMIT);
+  const hiddenSuggestionCount = visibleSuggestions.length - SUGGESTION_LIMIT;
 
   const { data: templates, isLoading } = useQuery<OrderTemplateWithItems[]>({
     queryKey: ['/api/order-templates', currentUser?.id],
@@ -301,8 +310,9 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
               </div>
             </div>
             <div className="space-y-2">
-              {visibleSuggestions.map((s) => {
+              {displayedSuggestions.map((s) => {
                 const overdue = s.dueInDays < 0;
+                const dueSoon = !overdue && s.dueInDays <= DUE_SOON_DAYS;
                 return (
                   <div
                     key={s.productId}
@@ -319,13 +329,18 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
                           {s.suggestedQuantity}× · {s.supplierName}
                         </span>
                         <Badge
-                          variant={overdue ? "destructive" : "secondary"}
-                          className="text-[10px] px-1.5 py-0"
+                          variant={overdue ? "destructive" : dueSoon ? "outline" : "secondary"}
+                          className={cn(
+                            "text-[10px] px-1.5 py-0",
+                            dueSoon && "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300",
+                          )}
                           data-testid={`badge-suggestion-due-${s.productId}`}
                         >
                           {overdue
                             ? (lang === "de" ? "überfällig" : "in ritardo")
-                            : (lang === "de" ? `in ${s.dueInDays} Tg.` : `tra ${s.dueInDays} g`)}
+                            : dueSoon
+                              ? (lang === "de" ? "fällig" : "in scadenza")
+                              : (lang === "de" ? "bald" : "a breve")}
                         </Badge>
                       </div>
                     </div>
@@ -352,6 +367,21 @@ export default function RestaurantTemplates({ embedded = false }: { embedded?: b
                 );
               })}
             </div>
+            {visibleSuggestions.length > SUGGESTION_LIMIT && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-full text-xs text-muted-foreground"
+                onClick={() => setShowAllSuggestions((prev) => !prev)}
+                data-testid="button-suggestions-toggle"
+              >
+                {showAllSuggestions
+                  ? (lang === "de" ? "Weniger anzeigen" : "Mostra meno")
+                  : (lang === "de"
+                      ? `+ ${hiddenSuggestionCount} weitere anzeigen`
+                      : `+ Mostra altri ${hiddenSuggestionCount}`)}
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
