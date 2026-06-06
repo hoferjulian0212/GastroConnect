@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock, StickyNote, AlertCircle, Check, ChevronLeft } from "lucide-react";
+import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock, StickyNote, AlertCircle, Check, ChevronLeft, MapPin, Receipt } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import QuantityInput from "@/components/QuantityInput";
 import { Calendar } from "@/components/ui/calendar";
@@ -567,67 +567,87 @@ export default function RestaurantCart() {
               <Card key={supplierId} data-testid={`cart-supplier-${supplierId}`}>
                 <CardHeader className="pb-2 md:pb-3 p-3 md:p-6">
                   <div className="flex items-center gap-2 md:gap-3">
-                    <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-md bg-secondary/20">
+                    <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-md bg-secondary/20 shrink-0">
                       <Package className="h-4 w-4 md:h-5 md:w-5 text-secondary" />
                     </div>
-                    <div>
-                      <CardTitle className="text-base md:text-lg">{supplier.companyName || supplier.name}</CardTitle>
+                    <div className="min-w-0">
+                      <CardTitle className="text-base md:text-lg truncate">{supplier.companyName || supplier.name}</CardTitle>
                       <CardDescription className="text-xs md:text-sm">{items.length} {t("common", "items")}</CardDescription>
+                    </div>
+                    <div className="ml-auto text-right shrink-0">
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{t("common", "subtotal")}</div>
+                      <div className="text-base md:text-lg font-bold tabular-nums" data-testid={`supplier-subtotal-${supplierId}`}>{calculateTotal(items)}€</div>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-                  <div className="space-y-2 md:space-y-4">
-                    {items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-md bg-muted/50"
-                        data-testid={`cart-item-${item.id}`}
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <ProductImage src={item.product.imageUrl} alt={item.product.name} className="h-10 w-10 md:h-12 md:w-12 rounded-md" iconClassName="h-4 w-4 md:h-5 md:w-5" />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-sm md:text-base truncate">{item.product.name}</p>
-                            {item.activePromotion ? (
+                  <div className="hidden md:flex items-center gap-3 pb-2 mb-1 border-b border-border text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <span className="flex-1">{t("common", "item")}</span>
+                    <span className="w-28 text-right">{t("cart", "unitPriceLabel")}</span>
+                    <span className="w-[104px] text-center">{t("cart", "quantityLabel")}</span>
+                    <span className="w-24 text-right">{t("cart", "lineTotalLabel")}</span>
+                    <span className="w-9" />
+                  </div>
+                  <div>
+                    {items.map((item) => {
+                      const effPrice = getEffectivePrice(item);
+                      const hasPromo = !!item.activePromotion;
+                      const unitPriceNode = hasPromo ? (
+                        <span className="inline-flex items-center gap-1.5 flex-wrap">
+                          <span className="line-through text-muted-foreground">{item.product.price}€</span>
+                          <span className="font-medium text-green-600 dark:text-green-400">{effPrice.toFixed(2)}€</span>
+                          <span className="text-muted-foreground">/ {item.product.unit}</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">{item.product.price}€ / {item.product.unit}</span>
+                      );
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center gap-3 py-3 border-b border-border/60 last:border-0"
+                          data-testid={`cart-item-${item.id}`}
+                        >
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <ProductImage src={item.product.imageUrl} alt={item.product.name} className="h-10 w-10 md:h-12 md:w-12 rounded-md shrink-0" iconClassName="h-4 w-4 md:h-5 md:w-5" />
+                            <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs md:text-sm text-muted-foreground line-through">
-                                  {item.product.price}€
-                                </span>
-                                <span className="text-xs md:text-sm font-medium text-green-600 dark:text-green-400">
-                                  {getEffectivePrice(item).toFixed(2)}€/{item.product.unit}
-                                </span>
-                                <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 px-1 rounded">
-                                  <Tag className="h-2.5 w-2.5" />
-                                  -{item.activePromotion.discountPercent}%
-                                </span>
+                                <p className="font-medium text-sm md:text-base truncate">{item.product.name}</p>
+                                {hasPromo && (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 px-1 rounded shrink-0">
+                                    <Tag className="h-2.5 w-2.5" />
+                                    -{item.activePromotion!.discountPercent}%
+                                  </span>
+                                )}
                               </div>
-                            ) : (
-                              <p className="text-xs md:text-sm text-muted-foreground">
-                                {item.product.price}€/{item.product.unit}
-                              </p>
-                            )}
-                            {item.product?.minOrderQuantity && item.product.minOrderQuantity > 1 && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5">
-                                {t("supplierProducts", "minOrderQuantityShort")} {item.product.minOrderQuantity} {item.product.unit}
-                              </p>
-                            )}
+                              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] md:text-xs text-muted-foreground">
+                                {item.product.articleNumber && (
+                                  <span className="font-mono" data-testid={`text-article-${item.id}`}>{t("cart", "articleNo")} {item.product.articleNumber}</span>
+                                )}
+                                <span className="md:hidden">{unitPriceNode}</span>
+                                {item.product?.minOrderQuantity && item.product.minOrderQuantity > 1 && (
+                                  <span>{t("supplierProducts", "minOrderQuantityShort")} {item.product.minOrderQuantity} {item.product.unit}</span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center justify-between sm:justify-end gap-2 md:gap-3">
-                          <QuantityInput
-                            value={item.quantity}
-                            onChange={(val) => updateQuantityMutation.mutate({ cartItemId: item.id, quantity: val })}
-                            min={item.product?.minOrderQuantity || 1}
-                            disabled={updateQuantityMutation.isPending}
-                            size="md"
-                            testIdPrefix={`qty-${item.id}`}
-                          />
-                          <span className="font-medium text-sm md:text-base w-16 md:w-20 text-right">
-                            {(getEffectivePrice(item) * item.quantity).toFixed(2)}€
+                          <div className="hidden md:block w-28 text-right text-sm tabular-nums">{unitPriceNode}</div>
+                          <div className="w-[104px] flex justify-center shrink-0">
+                            <QuantityInput
+                              value={item.quantity}
+                              onChange={(val) => updateQuantityMutation.mutate({ cartItemId: item.id, quantity: val })}
+                              min={item.product?.minOrderQuantity || 1}
+                              disabled={updateQuantityMutation.isPending}
+                              size="md"
+                              testIdPrefix={`qty-${item.id}`}
+                            />
+                          </div>
+                          <span className="w-20 md:w-24 text-right font-semibold text-sm md:text-base tabular-nums" data-testid={`line-total-${item.id}`}>
+                            {(effPrice * item.quantity).toFixed(2)}€
                           </span>
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="h-9 w-9 shrink-0"
                             onClick={() => removeItemMutation.mutate(item.id)}
                             disabled={removeItemMutation.isPending}
                             data-testid={`button-remove-${item.id}`}
@@ -635,8 +655,8 @@ export default function RestaurantCart() {
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </CardContent>
                 <div className="hidden md:block border-t border-border px-3 md:px-6 py-3 md:py-4 space-y-3">
@@ -768,83 +788,115 @@ export default function RestaurantCart() {
                     />
                   </div>
                 </div>
-                {isBelowMov(supplierId, items) && (
-                  <div className="border-t border-red-200 bg-red-50 dark:bg-red-900/10 px-3 md:px-6 py-2">
-                    <p className="text-xs text-red-600 dark:text-red-400 font-medium" data-testid={`mov-warning-${supplierId}`}>
-                      {t("cart", "belowMinOrderValue").replace("{min}", getSupplierMov(supplierId).toFixed(2))}
-                    </p>
-                  </div>
-                )}
-                {getSupplierMov(supplierId) > 0 && !isBelowMov(supplierId, items) && (
-                  <div className="border-t border-border px-3 md:px-6 py-1.5">
-                    <p className="text-[10px] text-muted-foreground">
-                      {t("cart", "minimumOrderValue")}: {getSupplierMov(supplierId).toFixed(2)} EUR
-                    </p>
-                  </div>
-                )}
-                <CardFooter className="hidden md:flex border-t border-border pt-3 md:pt-4 p-3 md:p-6">
-                  <div className="flex items-center justify-between w-full gap-3">
-                    <div className="flex items-center gap-2 text-sm md:text-base">
-                      <span className="text-muted-foreground">{t("common", "subtotal")}</span>
-                      <span className="font-medium">{calculateTotal(items)}€</span>
+                {getSupplierMov(supplierId) > 0 && (() => {
+                  const mov = getSupplierMov(supplierId);
+                  const supTotal = items.reduce((s, i) => s + getEffectivePrice(i) * i.quantity, 0);
+                  const below = supTotal < mov;
+                  const pct = Math.min(100, Math.round((supTotal / mov) * 100));
+                  return (
+                    <div className="border-t border-border px-3 md:px-6 py-3 space-y-1.5">
+                      {below ? (
+                        <>
+                          <div className="flex items-center justify-between gap-2 text-xs">
+                            <span className="font-medium text-red-600 dark:text-red-400" data-testid={`mov-warning-${supplierId}`}>
+                              {t("cart", "minOrderRemaining").replace("{amount}", (mov - supTotal).toFixed(2))}
+                            </span>
+                            <span className="text-muted-foreground tabular-nums shrink-0">{supTotal.toFixed(2)} / {mov.toFixed(2)}€</span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full bg-red-500/70 transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 font-medium" data-testid={`mov-ok-${supplierId}`}>
+                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                          {t("cart", "minOrderReached")} · {mov.toFixed(2)}€
+                        </div>
+                      )}
                     </div>
-                    {Object.keys(groupedBySupplier || {}).length > 1 && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5 text-xs md:text-sm shrink-0"
-                        onClick={() => {
-                          const deliveryDate = deliveryOptions[supplierId] === "date" && selectedDeliveryDates[supplierId]
-                            ? format(parse(selectedDeliveryDates[supplierId], "yyyy-MM-dd", new Date()), "EEEE, dd. MMMM yyyy", { locale: dateLocale })
-                            : null;
-                          setPreConfirmDialog({
-                            mode: "single",
-                            supplierId,
-                            supplierName: supplier.companyName || supplier.name,
-                            items: items.map(item => ({ name: item.product.name, quantity: item.quantity, price: (getEffectivePrice(item) * item.quantity).toFixed(2), unit: item.product.unit })),
-                            total: calculateTotal(items),
-                            deliveryDate,
-                            notes: orderNotes[supplierId] || "",
-                          });
-                        }}
-                        disabled={createSupplierOrderMutation.isPending || createOrderMutation.isPending || isBelowMov(supplierId, items) || (deliveryOptions[supplierId] === "date" && !selectedDeliveryDates[supplierId] && (perSupplierDeliveryDates[supplierId] || []).length > 0)}
-                        data-testid={`button-send-supplier-${supplierId}`}
-                      >
-                        {sendingSupplier === supplierId ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Send className="h-3.5 w-3.5" />
-                        )}
-                        <span className="hidden sm:inline">{t("cart", "sendToSupplier")}</span>
-                      </Button>
-                    )}
-                  </div>
-                </CardFooter>
+                  );
+                })()}
+                {Object.keys(groupedBySupplier || {}).length > 1 && (
+                  <CardFooter className="hidden md:flex border-t border-border pt-3 md:pt-4 p-3 md:p-6 justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 text-xs md:text-sm shrink-0"
+                      onClick={() => {
+                        const deliveryDate = deliveryOptions[supplierId] === "date" && selectedDeliveryDates[supplierId]
+                          ? format(parse(selectedDeliveryDates[supplierId], "yyyy-MM-dd", new Date()), "EEEE, dd. MMMM yyyy", { locale: dateLocale })
+                          : null;
+                        setPreConfirmDialog({
+                          mode: "single",
+                          supplierId,
+                          supplierName: supplier.companyName || supplier.name,
+                          items: items.map(item => ({ name: item.product.name, quantity: item.quantity, price: (getEffectivePrice(item) * item.quantity).toFixed(2), unit: item.product.unit })),
+                          total: calculateTotal(items),
+                          deliveryDate,
+                          notes: orderNotes[supplierId] || "",
+                        });
+                      }}
+                      disabled={createSupplierOrderMutation.isPending || createOrderMutation.isPending || isBelowMov(supplierId, items) || (deliveryOptions[supplierId] === "date" && !selectedDeliveryDates[supplierId] && (perSupplierDeliveryDates[supplierId] || []).length > 0)}
+                      data-testid={`button-send-supplier-${supplierId}`}
+                    >
+                      {sendingSupplier === supplierId ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Send className="h-3.5 w-3.5" />
+                      )}
+                      <span className="hidden sm:inline">{t("cart", "sendToSupplier")}</span>
+                    </Button>
+                  </CardFooter>
+                )}
               </Card>
             ))}
           </div>
 
           <div className="hidden lg:block lg:col-span-1">
             <Card className="sticky top-4">
-              <CardHeader className="p-3 md:p-6">
+              <CardHeader className="p-3 md:p-6 pb-0 md:pb-0">
                 <CardTitle className="text-base md:text-lg">{t("cart", "orderSummary")}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 md:space-y-4 p-3 pt-0 md:p-6 md:pt-0">
+              <CardContent className="space-y-4 p-3 md:p-6">
+                {(currentUser?.address || currentUser?.city || currentUser?.companyName) && (
+                  <div className="rounded-lg bg-muted/40 p-3 space-y-0.5" data-testid="summary-delivery-address">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {t("cart", "deliveryAddress")}
+                    </div>
+                    {(currentUser?.companyName || currentUser?.name) && (
+                      <p className="text-sm font-medium">{currentUser?.companyName || currentUser?.name}</p>
+                    )}
+                    {currentUser?.address && <p className="text-sm text-muted-foreground">{currentUser.address}</p>}
+                    {(currentUser?.postalCode || currentUser?.city) && (
+                      <p className="text-sm text-muted-foreground">{[currentUser?.postalCode, currentUser?.city].filter(Boolean).join(" ")}</p>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-2">
                   {Object.entries(groupedBySupplier || {}).map(([supplierId, { supplier, items }]) => (
                     <div key={supplierId} className="flex justify-between gap-3 text-sm">
                       <span className="text-muted-foreground truncate min-w-0">{supplier.companyName || supplier.name}</span>
-                      <span className="shrink-0">{calculateTotal(items)}€</span>
+                      <span className="shrink-0 tabular-nums">{calculateTotal(items)}€</span>
                     </div>
                   ))}
                 </div>
                 <Separator />
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">{t("common", "items")}</span>
+                  <span className="tabular-nums">{cartItems?.length ?? 0}</span>
+                </div>
+                <Separator />
                 <div className="flex justify-between gap-3 font-bold text-base md:text-lg">
                   <span className="shrink-0">{t("common", "total")}</span>
-                  <span className="shrink-0" data-testid="text-total-amount">{grandTotal}€</span>
+                  <span className="shrink-0 tabular-nums" data-testid="text-total-amount">{grandTotal}€</span>
                 </div>
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <Receipt className="h-3 w-3 shrink-0" />
+                  {t("cart", "vatNote")}
+                </p>
               </CardContent>
-              <CardFooter className="p-3 md:p-6">
+              <CardFooter className="p-3 md:p-6 pt-0 md:pt-0">
                 <Button
                   className="w-full gap-2 text-sm md:text-base"
                   size="default"
