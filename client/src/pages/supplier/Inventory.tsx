@@ -222,6 +222,7 @@ export default function SupplierInventory() {
           supplierId={currentUser.id}
           defaultType={credentialDefaultType}
           existingMeta={erpCredentials}
+          providerSlug={erpConn?.provider?.slug ?? null}
         />
       )}
     </PullToRefreshWrapper>

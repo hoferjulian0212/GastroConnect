@@ -43,6 +43,13 @@ export interface NormalizedCatalogRow {
 
 export type SyncTrigger = "manual" | "scheduled";
 
+// Minimal shape fetchErpCatalog needs to resolve credentials + the vendor
+// adapter. The full connection row satisfies it.
+export interface ErpConnectionRef {
+  id: string;
+  providerId: string;
+}
+
 export interface SyncPreviewItem {
   action: "create" | "update" | "deactivate";
   name: string;
@@ -112,17 +119,21 @@ function canonKey(k: string): string {
   return (k || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 }
 
-// Aliases (already canonicalized) → normalized field. First match wins.
+// Aliases (already canonicalized) → normalized field. First match wins. Besides
+// German/Italian column names this also covers named-vendor field quirks (e.g.
+// Dynamics 365 `displayName`/`number`/`inventory`, SAP B1 `ItemCode`/`ItemName`/
+// `QuantityOnStock`) so the generic normalizer stays robust even if an adapter
+// passes through vendor-native keys.
 const FIELD_ALIASES: Record<string, string[]> = {
   externalId: ["externalid", "erpid", "productid", "itemid", "id", "artikelid"],
-  name: ["name", "productname", "product", "bezeichnung", "artikelbezeichnung", "artikel", "descrizione", "nome", "titel", "title"],
+  name: ["name", "productname", "product", "bezeichnung", "artikelbezeichnung", "artikel", "descrizione", "nome", "titel", "title", "displayname", "itemname", "artikelname"],
   description: ["description", "beschreibung", "langtext", "notes", "note", "hinweis", "descrizioneestesa"],
-  unit: ["unit", "einheit", "uom", "mengeneinheit", "me", "unita", "verkaufseinheit"],
-  category: ["category", "kategorie", "warengruppe", "categoria", "gruppe", "productgroup"],
-  articleNumber: ["articlenumber", "artikelnummer", "artikelnr", "artnr", "sku", "itemno", "itemnumber", "codice", "codicearticolo", "articleno", "nummer"],
-  gtin: ["gtin", "ean", "ean13", "barcode", "code", "eancode"],
-  price: ["price", "preis", "unitprice", "vk", "vkpreis", "listenpreis", "verkaufspreis", "prezzo", "netprice", "nettopreis", "baseprice"],
-  stockQuantity: ["stock", "stockquantity", "bestand", "lagerbestand", "menge", "qty", "quantity", "available", "verfuegbar", "giacenza", "onhand"],
+  unit: ["unit", "einheit", "uom", "mengeneinheit", "me", "unita", "verkaufseinheit", "unitname", "baseunitofmeasure", "baseunitofmeasurecode", "salesunit"],
+  category: ["category", "kategorie", "warengruppe", "categoria", "gruppe", "productgroup", "itemcategorycode", "itemgroup"],
+  articleNumber: ["articlenumber", "artikelnummer", "artikelnr", "artnr", "sku", "itemno", "itemnumber", "codice", "codicearticolo", "articleno", "nummer", "number", "itemcode"],
+  gtin: ["gtin", "ean", "ean13", "barcode", "code", "eancode", "eannummer"],
+  price: ["price", "preis", "unitprice", "vk", "vkpreis", "listenpreis", "verkaufspreis", "prezzo", "netprice", "nettopreis", "baseprice", "salesprice", "listprice", "netunitprice"],
+  stockQuantity: ["stock", "stockquantity", "bestand", "lagerbestand", "menge", "qty", "quantity", "available", "verfuegbar", "giacenza", "onhand", "inventory", "quantityonstock", "onhandquantity"],
   minOrderQuantity: ["moq", "minorderquantity", "mindestmenge", "minbestellmenge", "mindestbestellmenge", "minquantity", "minimo", "minimoordine", "minorder"],
 };
 
@@ -332,15 +343,32 @@ async function fetchCatalogViaEmail(secrets: Record<string, string>): Promise<No
   }
 }
 
-// Dispatch to the right ingestion path based on the stored credential type.
-export async function fetchErpCatalog(connectionId: string): Promise<NormalizedCatalogRow[]> {
-  const secrets = await storage.getErpCredentialSecrets(connectionId);
+// Dispatch to the right ingestion path. Order of resolution:
+//   1. Excel-via-email (mailbox credentials present) — vendor-independent.
+//   2. A named-vendor adapter (DATEV, Lexware, Dynamics, SAP, ...) when the
+//      connection's provider implements a real fetchCatalog.
+//   3. The generic REST/JSON fetch using a stored apiKey + apiBaseUrl.
+export async function fetchErpCatalog(connection: ErpConnectionRef): Promise<NormalizedCatalogRow[]> {
+  const secrets = await storage.getErpCredentialSecrets(connection.id);
   if (!secrets) {
     throw new ErpSyncConfigError("No ERP credentials stored. Add API or mailbox credentials first.");
   }
-  // Decide method from the secret shape (apiKey ⇒ API, mailbox* ⇒ email).
-  if (secrets.apiKey) return fetchCatalogViaApi(secrets);
+
+  // (1) Excel-via-email is chosen explicitly regardless of provider.
   if (secrets.mailboxHost) return fetchCatalogViaEmail(secrets);
+
+  // (2) Vendor-specific adapter (lazy import to keep the module graph acyclic).
+  const provider = await storage.getErpProvider(connection.providerId);
+  if (provider) {
+    const { getErpProviderAdapter } = await import("./erpProviders");
+    const adapter = getErpProviderAdapter(provider.slug);
+    if (typeof adapter.fetchCatalog === "function") {
+      return adapter.fetchCatalog(secrets);
+    }
+  }
+
+  // (3) Generic REST/JSON fetch.
+  if (secrets.apiKey) return fetchCatalogViaApi(secrets);
   throw new ErpSyncConfigError("Stored credentials do not match a supported ingestion method.");
 }
 
@@ -591,7 +619,7 @@ export async function runSyncForConnection(
   }
 
   if (opts.dryRun) {
-    const rows = await fetchErpCatalog(connection.id);
+    const rows = await fetchErpCatalog(connection);
     return reconcileCatalog(connection.supplierId, rows, { dryRun: true, userId: opts.userId, userName: opts.userName });
   }
 
@@ -599,7 +627,7 @@ export async function runSyncForConnection(
   if (!acquired) throw new ErpSyncRunningError();
 
   try {
-    const rows = await fetchErpCatalog(connection.id);
+    const rows = await fetchErpCatalog(connection);
     const result = await reconcileCatalog(connection.supplierId, rows, { dryRun: false, userId: opts.userId, userName: opts.userName });
     await db.update(supplierErpConnections)
       .set({

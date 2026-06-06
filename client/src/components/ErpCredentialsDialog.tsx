@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/context/LanguageContext";
@@ -23,7 +23,64 @@ interface ErpCredentialsDialogProps {
   supplierId: string;
   defaultType?: ErpCredentialType;
   existingMeta?: ErpCredentialPublicMeta | null;
+  providerSlug?: string | null;
 }
+
+// Field definition for an API-method credential input.
+interface FieldDef {
+  key: string;
+  labelKey: string;
+  type?: "text" | "password";
+  required?: boolean;
+}
+
+// Vendor-specific API credential fields. Each named provider exposes only the
+// inputs its adapter actually needs (matching server/erpProviders.ts).
+const VENDOR_FIELDS: Record<string, FieldDef[]> = {
+  dynamics365: [
+    { key: "tenantId", labelKey: "erpCredTenantId", required: true },
+    { key: "clientId", labelKey: "erpCredClientId", required: true },
+    { key: "clientSecret", labelKey: "erpCredClientSecret", type: "password", required: true },
+    { key: "environment", labelKey: "erpCredEnvironment" },
+    { key: "companyId", labelKey: "erpCredCompanyId", required: true },
+  ],
+  "sap-b1": [
+    { key: "serviceLayerUrl", labelKey: "erpCredServiceLayerUrl", required: true },
+    { key: "companyDb", labelKey: "erpCredCompanyDb", required: true },
+    { key: "username", labelKey: "erpCredUsername", required: true },
+    { key: "password", labelKey: "erpCredPassword", type: "password", required: true },
+  ],
+  weclapp: [
+    { key: "apiBaseUrl", labelKey: "erpCredBaseUrl", required: true },
+    { key: "apiKey", labelKey: "erpCredApiToken", type: "password", required: true },
+  ],
+  datev: [
+    { key: "apiBaseUrl", labelKey: "erpCredCatalogUrl", required: true },
+    { key: "apiKey", labelKey: "erpCredApiKeyOptional", type: "password" },
+    { key: "clientId", labelKey: "erpCredClientId" },
+    { key: "clientSecret", labelKey: "erpCredClientSecret", type: "password" },
+    { key: "tokenUrl", labelKey: "erpCredTokenUrl" },
+    { key: "scope", labelKey: "erpCredScope" },
+  ],
+  xentral: [
+    { key: "apiBaseUrl", labelKey: "erpCredCatalogUrl", required: true },
+    { key: "apiKey", labelKey: "erpCredApiKey", type: "password", required: true },
+  ],
+  sage: [
+    { key: "apiBaseUrl", labelKey: "erpCredCatalogUrl", required: true },
+    { key: "apiKey", labelKey: "erpCredApiKey", type: "password", required: true },
+  ],
+  lexware: [
+    { key: "apiKey", labelKey: "erpCredApiKey", type: "password", required: true },
+    { key: "apiBaseUrl", labelKey: "erpCredApiBaseUrl" },
+  ],
+};
+
+const DEFAULT_FIELDS: FieldDef[] = [
+  { key: "apiKey", labelKey: "erpCredApiKey", type: "password", required: true },
+  { key: "apiBaseUrl", labelKey: "erpCredApiBaseUrl" },
+  { key: "externalSupplierId", labelKey: "erpCredExternalId" },
+];
 
 export function ErpCredentialsDialog({
   open,
@@ -31,26 +88,29 @@ export function ErpCredentialsDialog({
   supplierId,
   defaultType = "api",
   existingMeta = null,
+  providerSlug = null,
 }: ErpCredentialsDialogProps) {
   const { lang } = useLanguage();
   const t = useT(lang);
   const { toast } = useToast();
 
   const [credentialType, setCredentialType] = useState<ErpCredentialType>(defaultType);
-  const [apiKey, setApiKey] = useState("");
-  const [apiBaseUrl, setApiBaseUrl] = useState("");
-  const [externalSupplierId, setExternalSupplierId] = useState("");
+  const [apiValues, setApiValues] = useState<Record<string, string>>({});
   const [mailboxHost, setMailboxHost] = useState("");
   const [mailboxPort, setMailboxPort] = useState("");
   const [mailboxUser, setMailboxUser] = useState("");
   const [mailboxPassword, setMailboxPassword] = useState("");
 
+  const apiFields = useMemo<FieldDef[]>(
+    () => (providerSlug && VENDOR_FIELDS[providerSlug]) || DEFAULT_FIELDS,
+    [providerSlug],
+  );
+  const isVendorSpecific = !!(providerSlug && VENDOR_FIELDS[providerSlug]);
+
   useEffect(() => {
     if (open) {
       setCredentialType(existingMeta?.credentialType ?? defaultType);
-      setApiKey("");
-      setApiBaseUrl("");
-      setExternalSupplierId("");
+      setApiValues({});
       setMailboxHost("");
       setMailboxPort("");
       setMailboxUser("");
@@ -58,13 +118,17 @@ export function ErpCredentialsDialog({
     }
   }, [open, defaultType, existingMeta]);
 
+  const setApiValue = (key: string, value: string) =>
+    setApiValues((prev) => ({ ...prev, [key]: value }));
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const body: Record<string, string> = { supplierId, credentialType };
       if (credentialType === "api") {
-        body.apiKey = apiKey.trim();
-        if (apiBaseUrl.trim()) body.apiBaseUrl = apiBaseUrl.trim();
-        if (externalSupplierId.trim()) body.externalSupplierId = externalSupplierId.trim();
+        for (const field of apiFields) {
+          const value = (apiValues[field.key] ?? "").trim();
+          if (value) body[field.key] = value;
+        }
       } else {
         body.mailboxHost = mailboxHost.trim();
         if (mailboxPort.trim()) body.mailboxPort = mailboxPort.trim();
@@ -100,7 +164,9 @@ export function ErpCredentialsDialog({
     },
   });
 
-  const apiValid = apiKey.trim().length > 0;
+  const apiValid = apiFields
+    .filter((f) => f.required)
+    .every((f) => (apiValues[f.key] ?? "").trim().length > 0);
   const emailValid =
     mailboxHost.trim().length > 0 && mailboxUser.trim().length > 0 && mailboxPassword.trim().length > 0;
   const canSave = credentialType === "api" ? apiValid : emailValid;
@@ -141,35 +207,22 @@ export function ErpCredentialsDialog({
 
           {credentialType === "api" ? (
             <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="cred-api-key">{t("supplierErp", "erpCredApiKey")}</Label>
-                <Input
-                  id="cred-api-key"
-                  type="password"
-                  autoComplete="off"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  data-testid="input-cred-api-key"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cred-api-base">{t("supplierErp", "erpCredApiBaseUrl")}</Label>
-                <Input
-                  id="cred-api-base"
-                  value={apiBaseUrl}
-                  onChange={(e) => setApiBaseUrl(e.target.value)}
-                  data-testid="input-cred-api-base"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cred-external-id">{t("supplierErp", "erpCredExternalId")}</Label>
-                <Input
-                  id="cred-external-id"
-                  value={externalSupplierId}
-                  onChange={(e) => setExternalSupplierId(e.target.value)}
-                  data-testid="input-cred-external-id"
-                />
-              </div>
+              {isVendorSpecific && (
+                <p className="text-xs text-muted-foreground">{t("supplierErp", "erpCredVendorHint")}</p>
+              )}
+              {apiFields.map((field) => (
+                <div key={field.key} className="space-y-1.5">
+                  <Label htmlFor={`cred-${field.key}`}>{t("supplierErp", field.labelKey as any)}</Label>
+                  <Input
+                    id={`cred-${field.key}`}
+                    type={field.type === "password" ? "password" : "text"}
+                    autoComplete="off"
+                    value={apiValues[field.key] ?? ""}
+                    onChange={(e) => setApiValue(field.key, e.target.value)}
+                    data-testid={`input-cred-${field.key}`}
+                  />
+                </div>
+              ))}
             </div>
           ) : (
             <div className="space-y-3">

@@ -5750,14 +5750,36 @@ export async function registerRoutes(
   const erpCredentialsBodySchema = z.object({
     supplierId: z.string().min(1),
     credentialType: z.enum(["api", "excel_email"]),
+    // Generic REST/JSON.
     apiKey: z.string().trim().min(1).optional(),
     apiBaseUrl: z.string().trim().min(1).optional(),
     externalSupplierId: z.string().trim().min(1).optional(),
+    // Vendor-specific (Dynamics 365 / DATEV OAuth2, SAP B1 Service Layer, ...).
+    tenantId: z.string().trim().min(1).optional(),
+    clientId: z.string().trim().min(1).optional(),
+    clientSecret: z.string().trim().min(1).optional(),
+    environment: z.string().trim().min(1).optional(),
+    companyId: z.string().trim().min(1).optional(),
+    tokenUrl: z.string().trim().min(1).optional(),
+    scope: z.string().trim().min(1).optional(),
+    serviceLayerUrl: z.string().trim().min(1).optional(),
+    companyDb: z.string().trim().min(1).optional(),
+    username: z.string().trim().min(1).optional(),
+    password: z.string().trim().min(1).optional(),
+    // Excel-via-email (IMAP).
     mailboxHost: z.string().trim().min(1).optional(),
     mailboxPort: z.string().trim().min(1).optional(),
     mailboxUser: z.string().trim().min(1).optional(),
     mailboxPassword: z.string().trim().min(1).optional(),
   });
+
+  // Secret keys accepted for the "api" method. Any provided ones are stored;
+  // the named-vendor adapter validates the specific subset it needs at sync time.
+  const ERP_API_SECRET_KEYS = [
+    "apiKey", "apiBaseUrl", "externalSupplierId",
+    "tenantId", "clientId", "clientSecret", "environment", "companyId",
+    "tokenUrl", "scope", "serviceLayerUrl", "companyDb", "username", "password",
+  ] as const;
 
   app.put("/api/supplier/erp/credentials", async (req, res) => {
     try {
@@ -5779,11 +5801,16 @@ export async function registerRoutes(
       const secrets: Record<string, string> = {};
       let primary: string | undefined;
       if (data.credentialType === "api") {
-        if (!data.apiKey) return res.status(400).json({ error: "apiKey is required for the API method" });
-        secrets.apiKey = data.apiKey;
-        if (data.apiBaseUrl) secrets.apiBaseUrl = data.apiBaseUrl;
-        if (data.externalSupplierId) secrets.externalSupplierId = data.externalSupplierId;
-        primary = data.apiKey;
+        // Collect every provided API/vendor secret field. The named-vendor
+        // adapter validates the specific subset it needs at sync time.
+        for (const key of ERP_API_SECRET_KEYS) {
+          const value = (data as Record<string, unknown>)[key];
+          if (typeof value === "string" && value.trim()) secrets[key] = value.trim();
+        }
+        if (Object.keys(secrets).length === 0) {
+          return res.status(400).json({ error: "Provide at least one credential field for the API method" });
+        }
+        primary = data.apiKey ?? data.clientSecret ?? data.password ?? Object.values(secrets)[0];
       } else {
         if (!data.mailboxHost || !data.mailboxUser || !data.mailboxPassword) {
           return res.status(400).json({ error: "mailboxHost, mailboxUser and mailboxPassword are required for the email method" });
