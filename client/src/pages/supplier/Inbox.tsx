@@ -148,7 +148,7 @@ const formatDateDivider = (date: Date) => {
 };
 
 export default function SupplierInbox() {
-  const { currentUser } = useUser();
+  const { currentUser, currentMember } = useUser();
   const { setIsInChat } = useChat();
   const { toast } = useToast();
   const { lang } = useLanguage();
@@ -347,7 +347,7 @@ export default function SupplierInbox() {
 
   const updateOrderStatusMutation = useMutation({
     mutationFn: async ({ orderId, status, requestedDeliveryDate, deliveryNotes }: { orderId: string; status: string; requestedDeliveryDate?: string; deliveryNotes?: string }) => {
-      return await apiRequest("PATCH", `/api/orders/${orderId}/status`, { status, changedBy: currentUser?.id, requestedDeliveryDate: requestedDeliveryDate || undefined, deliveryNotes: deliveryNotes || undefined });
+      return await apiRequest("PATCH", `/api/orders/${orderId}/status`, { status, changedBy: currentUser?.id, actingMemberId: currentMember?.id, requestedDeliveryDate: requestedDeliveryDate || undefined, deliveryNotes: deliveryNotes || undefined });
     },
     onSuccess: (_, variables) => {
       toast({ title: "Status aktualisiert", description: "Der Bestellstatus wurde erfolgreich geändert." });
@@ -718,6 +718,7 @@ export default function SupplierInbox() {
         content,
         messageType,
         senderId: currentUser?.id,
+        senderMemberId: currentMember?.id,
         priority,
         ...(audioUrl ? { audioUrl } : {}),
         ...(audioDurationMs !== undefined ? { audioDurationMs } : {}),
@@ -1232,7 +1233,7 @@ export default function SupplierInbox() {
                                               setOpenActionsPopover(false);
                                               return;
                                             }
-                                            apiRequest("PATCH", `/api/orders/${order.id}/status`, { status: nextStatus, changedBy: currentUser?.id })
+                                            apiRequest("PATCH", `/api/orders/${order.id}/status`, { status: nextStatus, changedBy: currentUser?.id, actingMemberId: currentMember?.id })
                                               .then(() => {
                                                 queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
                                                 queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
@@ -2108,7 +2109,7 @@ export default function SupplierInbox() {
                                   } catch {}
                                   const showSenderName = !prevMessage || prevMessage.senderId !== message.senderId || showDateDivider;
                                   const messagePreviewText = refData ? refData.text! : message.content;
-                                  const senderName = isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || "");
+                                  const senderName = (message as any).senderMember?.name || (isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || ""));
                                   const isImportant = message.priority === "important";
                                   return (
                                     <div className={`max-w-[85%] md:max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>

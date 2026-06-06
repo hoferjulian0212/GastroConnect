@@ -4,6 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
+export const memberRoleEnum = pgEnum("member_role", ["admin", "manager", "staff", "vertreter"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]);
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion", "voice"]);
 export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request", "erp_request", "erp_sync_failed", "whatsapp_request"]);
@@ -44,6 +45,9 @@ export const users = pgTable("users", {
   // Preferred UI language ("de" | "it"), kept in sync from the client so
   // server-generated messages (e.g. ERP sync failure alerts) can be localized.
   language: varchar("language", { length: 2 }).default("de").notNull(),
+  // Max number of team members (people) allowed in this organization. Admin-set,
+  // no billing. Defaults to 5; backfilled for legacy orgs.
+  seatLimit: integer("seat_limit").default(5).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -152,6 +156,9 @@ export const orders = pgTable("orders", {
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   createdByUserId: varchar("created_by_user_id", { length: 36 }).references(() => users.id),
+  // Person (member) who placed the order. Falls back to the org (restaurantId)
+  // for legacy rows where this is null.
+  createdByMemberId: varchar("created_by_member_id", { length: 36 }).references(() => members.id),
   status: orderStatusEnum("status").default("pending").notNull(),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   notes: text("notes"),
@@ -213,6 +220,8 @@ export const messages = pgTable("messages", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id", { length: 36 }).notNull().references(() => conversations.id),
   senderId: varchar("sender_id", { length: 36 }).notNull().references(() => users.id),
+  // Person (member) who sent the message. Falls back to the org (senderId) for legacy rows.
+  senderMemberId: varchar("sender_member_id", { length: 36 }).references(() => members.id),
   messageType: messageTypeEnum("message_type").default("text").notNull(),
   content: text("content").notNull(),
   orderId: varchar("order_id", { length: 36 }).references(() => orders.id),
@@ -236,6 +245,7 @@ export const orderStatusHistory = pgTable("order_status_history", {
   fromStatus: text("from_status"),
   toStatus: text("to_status").notNull(),
   changedBy: varchar("changed_by", { length: 36 }).references(() => users.id),
+  changedByMemberId: varchar("changed_by_member_id", { length: 36 }).references(() => members.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_order_status_history_order_id").on(table.orderId),
@@ -281,6 +291,7 @@ export const complaintStatusHistory = pgTable("complaint_status_history", {
   fromStatus: text("from_status"),
   toStatus: text("to_status").notNull(),
   changedBy: varchar("changed_by", { length: 36 }).references(() => users.id),
+  changedByMemberId: varchar("changed_by_member_id", { length: 36 }).references(() => members.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_complaint_status_history_complaint_id").on(table.complaintId),
@@ -814,8 +825,9 @@ export type OrderWithDetails = Order & {
   restaurant: User;
   supplier: User;
   createdByUser?: User | null;
+  createdByMember?: Member | null;
 };
-export type MessageWithOrderNumber = Message & { orderNumber?: string | null };
+export type MessageWithOrderNumber = Message & { orderNumber?: string | null; senderMember?: Member | null };
 export type ConversationWithUser = Conversation & {
   otherUser: User;
   lastMessage?: MessageWithOrderNumber;
@@ -825,8 +837,8 @@ export type CartItemWithProduct = CartItem & { product: Product; supplier: User 
 export type ComplaintWithDetails = Complaint & { order: Order; restaurant: User; supplier: User; comments?: ComplaintCommentWithUser[] };
 export type ComplaintCommentWithUser = ComplaintComment & { user: User };
 export type DocumentWithDetails = Document & { order: Order; restaurant: User; supplier: User };
-export type OrderStatusHistoryWithUser = OrderStatusHistory & { changedByUser?: User };
-export type ComplaintStatusHistoryWithUser = ComplaintStatusHistory & { changedByUser?: User };
+export type OrderStatusHistoryWithUser = OrderStatusHistory & { changedByUser?: User; changedByMember?: Member | null };
+export type ComplaintStatusHistoryWithUser = ComplaintStatusHistory & { changedByUser?: User; changedByMember?: Member | null };
 export type PromotionWithProduct = Promotion & { product: Product };
 export type ProductWithSupplierAndPromotion = ProductWithSupplier & { activePromotion?: Promotion | null };
 export type StockMovementWithProduct = StockMovement & { product: Product };
@@ -983,6 +995,47 @@ export type AiChat = typeof aiChats.$inferSelect;
 export type InsertAiChat = z.infer<typeof insertAiChatSchema>;
 export type AiChatMessage = typeof aiChatMessages.$inferSelect;
 export type InsertAiChatMessage = z.infer<typeof insertAiChatMessageSchema>;
+
+// ─── Organizations, teams & seats ─────────────────────────────────────────
+// A `users` row IS the organization (Betrieb / supplier company). `members`
+// are the people who work there. Attribution fields point at members with a
+// graceful fallback to the org.
+export const members = pgTable("members", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => users.id),
+  name: text("name").notNull(),
+  email: text("email"),
+  profileImageUrl: text("profile_image_url"),
+  role: memberRoleEnum("role").notNull().default("staff"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_members_organization_id").on(table.organizationId),
+]);
+
+// A Vertreter (sales rep) is a member of a supplier org. This assignment maps
+// that rep to the restaurant orgs (Betriebe) they are responsible for.
+export const vertreterAssignments = pgTable("vertreter_assignments", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  memberId: varchar("member_id", { length: 36 }).notNull().references(() => members.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_vertreter_assignments_member_id").on(table.memberId),
+  index("idx_vertreter_assignments_supplier_id").on(table.supplierId),
+  index("idx_vertreter_assignments_restaurant_id").on(table.restaurantId),
+  uniqueIndex("uniq_vertreter_assignment").on(table.supplierId, table.restaurantId),
+]);
+
+export const MEMBER_ROLES = ["admin", "manager", "staff", "vertreter"] as const;
+export type MemberRole = typeof MEMBER_ROLES[number];
+
+export const insertMemberSchema = createInsertSchema(members).omit({ id: true, createdAt: true });
+export const insertVertreterAssignmentSchema = createInsertSchema(vertreterAssignments).omit({ id: true, createdAt: true });
+export type Member = typeof members.$inferSelect;
+export type InsertMember = z.infer<typeof insertMemberSchema>;
+export type VertreterAssignment = typeof vertreterAssignments.$inferSelect;
+export type InsertVertreterAssignment = z.infer<typeof insertVertreterAssignmentSchema>;
 
 // ─── Display helpers for business numbers ────────────────────────────────
 // Each order/complaint has ONE unique business-facing number that appears

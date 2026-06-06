@@ -8,6 +8,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, AlertCircle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown, Download, MoreHorizontal, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProductImage } from "@/components/ProductImage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
@@ -30,7 +31,7 @@ export default function OrderDetail() {
   const [matchSupplier, paramsS] = useRoute("/supplier/orders/:id");
   const params = matchRestaurant ? paramsR : paramsS;
   const orderId = params?.id;
-  const { currentUser, currentRole } = useUser();
+  const { currentUser, currentRole, currentMember } = useUser();
   const { lang } = useLanguage();
   const { toast } = useToast();
   const dateLocale = lang === "de" ? de : it;
@@ -121,6 +122,7 @@ export default function OrderDetail() {
       await apiRequest("PATCH", `/api/orders/${orderId}/status`, {
         status,
         changedBy: currentUser?.id,
+        actingMemberId: currentMember?.id,
         ...(requestedDeliveryDate ? { requestedDeliveryDate } : {}),
         ...(deliveryNotes !== undefined ? { deliveryNotes } : {}),
       });
@@ -1154,10 +1156,22 @@ export default function OrderDetail() {
                     </p>
                   </div>
                 )}
-                {order.createdByUser && (
+                {(order.createdByMember || order.createdByUser) && (
                   <div className="flex justify-between items-center gap-2 px-4 py-3">
                     <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Erstellt von" : "Creato da"}</p>
-                    <p className="text-sm font-medium truncate text-right">{order.createdByUser.name}</p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {order.createdByMember && (
+                        <Avatar className="h-6 w-6 shrink-0">
+                          <AvatarImage src={order.createdByMember.profileImageUrl || undefined} alt={order.createdByMember.name} />
+                          <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
+                            {order.createdByMember.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                      <p className="text-sm font-medium truncate text-right" data-testid="text-order-created-by">
+                        {order.createdByMember?.name || order.createdByUser?.name}
+                      </p>
+                    </div>
                   </div>
                 )}
                 {order.notes && (
@@ -1250,7 +1264,7 @@ export default function OrderDetail() {
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {format(new Date(entry.createdAt), "EEE, dd.MM.yyyy · HH:mm", { locale: dateLocale })}
-                        {entry.changedByUser && <span> · {lang === "de" ? "von" : "da"} {entry.changedByUser.name}</span>}
+                        {(entry.changedByMember || entry.changedByUser) && <span> · {lang === "de" ? "von" : "da"} {entry.changedByMember?.name || entry.changedByUser?.name}</span>}
                       </p>
                     </div>
                     <p className="text-[11px] text-muted-foreground/70 shrink-0 whitespace-nowrap mt-0.5">

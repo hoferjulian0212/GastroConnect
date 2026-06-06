@@ -7,7 +7,7 @@ import { db } from "./db";
 import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
-import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from "@shared/schema";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
 import { getPmsProviderAdapter } from "./pmsProviders";
@@ -268,6 +268,7 @@ interface TransitionOpts {
   newStatus: string;
   previousStatus: string;
   changedBy?: string | null;
+  changedByMemberId?: string | null;
   actorName?: string | null;
   /** When set, write stock movements + adjust product stock atomically with the status change. */
   movementType?: StockMovementType | null;
@@ -328,6 +329,7 @@ async function transitionOrderWithStock(opts: TransitionOpts) {
       fromStatus: opts.previousStatus,
       toStatus: opts.newStatus,
       changedBy: opts.changedBy ?? null,
+      changedByMemberId: opts.changedByMemberId ?? null,
     });
 
     if (opts.confirmedQuantitiesByItemId) {
@@ -449,6 +451,7 @@ const createOrderSchema = z.object({
   deliveryDates: z.record(z.string(), z.string().nullable()).optional().nullable(),
   perSupplierNotes: z.record(z.string(), safeString).optional().nullable(),
   createdByUserId: uuidField.optional().nullable(),
+  actingMemberId: uuidField.optional().nullable(),
 }).strict();
 
 const directOrderItemSchema = z.object({
@@ -462,6 +465,7 @@ const directOrderSchema = z.object({
   items: z.array(directOrderItemSchema).min(1).max(200),
   notes: safeString.optional().nullable(),
   createdByUserId: uuidField.optional().nullable(),
+  actingMemberId: uuidField.optional().nullable(),
 }).strict();
 
 const reorderSchema = z.object({
@@ -471,6 +475,7 @@ const reorderSchema = z.object({
 const updateOrderStatusSchema = z.object({
   status: z.enum(["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]),
   changedBy: uuidField.optional(),
+  actingMemberId: uuidField.optional().nullable(),
   requestedDeliveryDate: safeShortString.optional().nullable(),
   deliveryNotes: safeString.optional().nullable(),
 }).strict();
@@ -504,6 +509,7 @@ const changeRequestRespondSchema = z.object({
 
 const sendMessageSchema = z.object({
   senderId: uuidField,
+  senderMemberId: uuidField.optional().nullable(),
   content: z.string().min(0).max(50000),
   messageType: z.enum(["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "voice"]).optional(),
   priority: z.enum(["standard", "important"]).optional(),
@@ -558,6 +564,8 @@ export async function registerRoutes(
 
   // Seed data on startup
   await storage.seedData();
+  // Ensure every organization has at least an Admin member (idempotent)
+  await storage.backfillMembers();
   // Ensure the standard PMS providers exist (idempotent)
   await storage.ensurePmsProviders();
   // Ensure the standard ERP providers exist (idempotent)
@@ -748,6 +756,159 @@ export async function registerRoutes(
       res.json({ ok: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to update heartbeat" });
+    }
+  });
+
+  // ---- Organizations / Teams / Members / Vertreter ----
+  const memberRoleSchema = z.enum(MEMBER_ROLES);
+
+  app.patch("/api/orgs/:id", async (req, res) => {
+    try {
+      const schema = z.object({
+        companyName: z.string().min(1).optional(),
+        seatLimit: z.coerce.number().int().min(1).max(500).optional(),
+      }).strict();
+      const data = schema.parse(req.body);
+      const updated = await storage.updateUser(req.params.id, data);
+      if (!updated) return res.status(404).json({ error: "Organization not found" });
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.issues });
+      }
+      res.status(500).json({ error: "Failed to update organization" });
+    }
+  });
+
+  app.get("/api/orgs/:id/members", async (req, res) => {
+    try {
+      const org = await storage.getUser(req.params.id);
+      if (!org) return res.status(404).json({ error: "Organization not found" });
+      const list = await storage.getMembers(req.params.id);
+      res.json({ members: list, seatLimit: org.seatLimit ?? 5, seatsUsed: list.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch members" });
+    }
+  });
+
+  app.post("/api/orgs/:id/members", async (req, res) => {
+    try {
+      const org = await storage.getUser(req.params.id);
+      if (!org) return res.status(404).json({ error: "Organization not found" });
+      const data = insertMemberSchema.parse({ ...req.body, organizationId: req.params.id });
+      const existing = await storage.getMembers(req.params.id);
+      const limit = org.seatLimit ?? 5;
+      if (existing.length >= limit) {
+        return res.status(409).json({ error: "seat_limit_reached", message: "Alle Sitzplätze sind belegt. Erhöhen Sie das Limit oder entfernen Sie ein Mitglied." });
+      }
+      const created = await storage.createMember(data);
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.issues });
+      }
+      res.status(500).json({ error: "Failed to create member" });
+    }
+  });
+
+  app.patch("/api/members/:id", async (req, res) => {
+    try {
+      const schema = z.object({
+        name: z.string().min(1).optional(),
+        email: z.string().email().optional().nullable(),
+        role: memberRoleSchema.optional(),
+        profileImageUrl: z.string().optional().nullable(),
+      }).strict();
+      const data = schema.parse(req.body);
+      const updated = await storage.updateMember(req.params.id, data);
+      if (!updated) return res.status(404).json({ error: "Member not found" });
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.issues });
+      }
+      res.status(500).json({ error: "Failed to update member" });
+    }
+  });
+
+  app.delete("/api/members/:id", async (req, res) => {
+    try {
+      const member = await storage.getMember(req.params.id);
+      if (!member) return res.status(404).json({ error: "Member not found" });
+      const siblings = await storage.getMembers(member.organizationId);
+      const admins = siblings.filter(m => m.role === "admin");
+      if (member.role === "admin" && admins.length <= 1) {
+        return res.status(409).json({ error: "last_admin", message: "Der letzte Administrator kann nicht entfernt werden." });
+      }
+      await storage.deleteMember(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete member" });
+    }
+  });
+
+  app.get("/api/vertreter-assignments", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string | undefined;
+      const memberId = req.query.memberId as string | undefined;
+      if (memberId) {
+        return res.json(await storage.getVertreterAssignmentsForMember(memberId));
+      }
+      if (supplierId) {
+        return res.json(await storage.getVertreterAssignments(supplierId));
+      }
+      return res.status(400).json({ error: "supplierId or memberId required" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch assignments" });
+    }
+  });
+
+  app.get("/api/vertreter-assignments/responsible", async (req, res) => {
+    try {
+      const supplierId = req.query.supplierId as string | undefined;
+      const restaurantId = req.query.restaurantId as string | undefined;
+      if (!supplierId || !restaurantId) {
+        return res.status(400).json({ error: "supplierId and restaurantId required" });
+      }
+      const member = await storage.getResponsibleVertreter(supplierId, restaurantId);
+      res.json({ member: member ?? null });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch responsible vertreter" });
+    }
+  });
+
+  app.post("/api/vertreter-assignments", async (req, res) => {
+    try {
+      const data = insertVertreterAssignmentSchema.parse(req.body);
+      const member = await storage.getMember(data.memberId);
+      if (!member) return res.status(404).json({ error: "Member not found" });
+      if (member.role !== "vertreter") {
+        return res.status(400).json({ error: "not_vertreter", message: "Nur Mitglieder mit der Rolle Vertreter können zugewiesen werden." });
+      }
+      if (member.organizationId !== data.supplierId) {
+        return res.status(400).json({ error: "member_org_mismatch", message: "Der Vertreter gehört nicht zu diesem Lieferanten." });
+      }
+      const created = await storage.createVertreterAssignment(data);
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.issues });
+      }
+      res.status(500).json({ error: "Failed to create assignment" });
+    }
+  });
+
+  app.delete("/api/vertreter-assignments", async (req, res) => {
+    try {
+      const schema = z.object({ supplierId: uuidField, restaurantId: uuidField }).strict();
+      const { supplierId, restaurantId } = schema.parse(req.body);
+      await storage.deleteVertreterAssignment(supplierId, restaurantId);
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.issues });
+      }
+      res.status(500).json({ error: "Failed to delete assignment" });
     }
   });
 
@@ -2218,7 +2379,7 @@ export async function registerRoutes(
   app.post("/api/orders", async (req, res) => {
     try {
       const validated = createOrderSchema.parse(req.body);
-      const { restaurantId, supplierId: targetSupplierId, notes, requestedDeliveryDate, deliveryDates, perSupplierNotes, createdByUserId } = validated;
+      const { restaurantId, supplierId: targetSupplierId, notes, requestedDeliveryDate, deliveryDates, perSupplierNotes, createdByUserId, actingMemberId } = validated;
 
       // Get cart items
       const allCartItems = await storage.getCartItems(restaurantId);
@@ -2336,7 +2497,7 @@ export async function registerRoutes(
         const supplierDeliveryDate = deliveryDates?.[supplierId] || requestedDeliveryDate || null;
         const supplierNotes = perSupplierNotes?.[supplierId] || notes || null;
         const order = await storage.createOrder(
-          { restaurantId, supplierId, totalAmount, status: "pending", notes: supplierNotes, requestedDeliveryDate: supplierDeliveryDate, createdByUserId: createdByUserId || restaurantId },
+          { restaurantId, supplierId, totalAmount, status: "pending", notes: supplierNotes, requestedDeliveryDate: supplierDeliveryDate, createdByUserId: createdByUserId || restaurantId, createdByMemberId: actingMemberId || null },
           orderItems as any,
           { reserveStock: true, strictReserve: true }
         );
@@ -2346,7 +2507,7 @@ export async function registerRoutes(
           await checkAndNotifyLowStock(item.productId, supplierId);
         }
         
-        await storage.addOrderStatusHistory(order.id, null, "pending", createdByUserId || restaurantId);
+        await storage.addOrderStatusHistory(order.id, null, "pending", createdByUserId || restaurantId, actingMemberId || null);
 
         // Create order message in chat
         const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
@@ -2364,6 +2525,7 @@ export async function registerRoutes(
         await storage.sendMessage({
           conversationId: conversation.id,
           senderId: restaurantId,
+          senderMemberId: actingMemberId || null,
           messageType: "order",
           content: orderContent,
           orderId: order.id,
@@ -2402,7 +2564,7 @@ export async function registerRoutes(
   app.post("/api/orders/direct", async (req, res) => {
     try {
       const validated = directOrderSchema.parse(req.body);
-      const { restaurantId, supplierId, items, notes, createdByUserId } = validated;
+      const { restaurantId, supplierId, items, notes, createdByUserId, actingMemberId } = validated;
 
       const products = await storage.getProductsBySupplier(supplierId);
       const productMap = new Map(products.map(p => [p.id, p]));
@@ -2460,7 +2622,7 @@ export async function registerRoutes(
         .toFixed(2);
 
       const order = await storage.createOrder(
-        { restaurantId, supplierId, totalAmount, status: "pending", notes: notes || "", createdByUserId: createdByUserId || restaurantId },
+        { restaurantId, supplierId, totalAmount, status: "pending", notes: notes || "", createdByUserId: createdByUserId || restaurantId, createdByMemberId: actingMemberId || null },
         orderItems as any,
         { reserveStock: true, strictReserve: true }
       );
@@ -2469,7 +2631,7 @@ export async function registerRoutes(
         await checkAndNotifyLowStock(item.productId, supplierId);
       }
       
-      await storage.addOrderStatusHistory(order.id, null, "pending", createdByUserId || restaurantId);
+      await storage.addOrderStatusHistory(order.id, null, "pending", createdByUserId || restaurantId, actingMemberId || null);
 
       // Create order message in chat
       const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
@@ -2492,6 +2654,7 @@ export async function registerRoutes(
       await storage.sendMessage({
         conversationId: conversation.id,
         senderId: restaurantId,
+        senderMemberId: actingMemberId || null,
         messageType: "order",
         content: orderContent,
         orderId: order.id,
@@ -2625,7 +2788,7 @@ export async function registerRoutes(
 
   app.patch("/api/orders/:id/status", async (req, res) => {
     try {
-      const { status, changedBy, requestedDeliveryDate, deliveryNotes } = updateOrderStatusSchema.parse(req.body);
+      const { status, changedBy, actingMemberId, requestedDeliveryDate, deliveryNotes } = updateOrderStatusSchema.parse(req.body);
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
@@ -2670,6 +2833,7 @@ export async function registerRoutes(
         newStatus: status,
         previousStatus,
         changedBy: changedBy ?? null,
+        changedByMemberId: actingMemberId ?? null,
         actorName,
         movementType,
         noteFn,
@@ -3540,6 +3704,7 @@ export async function registerRoutes(
       const message = await storage.sendMessage({
         conversationId: req.params.id,
         senderId: validated.senderId,
+        senderMemberId: validated.senderMemberId || null,
         messageType: validated.messageType || "text",
         content: validated.content,
         priority: validated.priority || "standard",

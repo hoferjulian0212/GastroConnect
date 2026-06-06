@@ -4,7 +4,7 @@ import { eq, and, desc, or, sql, ne, inArray, gte, isNull } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
-  orderTemplates, orderTemplateItems, costSettings, overnightStays, minimumOrderValues, supplierRatings, monthlyReports,
+  orderTemplates, orderTemplateItems, costSettings, overnightStays, minimumOrderValues, supplierRatings, monthlyReports, priceChangeLog,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -39,6 +39,8 @@ import {
   type WhatsappConnectionRequest, type InsertWhatsappConnectionRequest,
   aiChats, aiChatMessages,
   type AiChat, type InsertAiChat, type AiChatMessage, type InsertAiChatMessage,
+  members, vertreterAssignments,
+  type Member, type InsertMember, type VertreterAssignment, type InsertVertreterAssignment,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { encryptJson, decryptJson } from "./erpCrypto";
@@ -199,9 +201,22 @@ export interface IStorage {
 
   // Status History
   getOrderStatusHistory(orderId: string): Promise<OrderStatusHistoryWithUser[]>;
-  addOrderStatusHistory(orderId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<OrderStatusHistory>;
+  addOrderStatusHistory(orderId: string, fromStatus: string | null, toStatus: string, changedBy?: string, changedByMemberId?: string | null): Promise<OrderStatusHistory>;
   getComplaintStatusHistory(complaintId: string): Promise<ComplaintStatusHistoryWithUser[]>;
-  addComplaintStatusHistory(complaintId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<ComplaintStatusHistory>;
+  addComplaintStatusHistory(complaintId: string, fromStatus: string | null, toStatus: string, changedBy?: string, changedByMemberId?: string | null): Promise<ComplaintStatusHistory>;
+
+  // Organizations / Team members & Vertreter assignments
+  getMembers(organizationId: string): Promise<Member[]>;
+  getMember(id: string): Promise<Member | undefined>;
+  createMember(data: InsertMember): Promise<Member>;
+  updateMember(id: string, data: Partial<InsertMember>): Promise<Member | undefined>;
+  deleteMember(id: string): Promise<void>;
+  getVertreterAssignments(supplierId: string): Promise<VertreterAssignment[]>;
+  getVertreterAssignmentsForMember(memberId: string): Promise<VertreterAssignment[]>;
+  createVertreterAssignment(data: InsertVertreterAssignment): Promise<VertreterAssignment>;
+  deleteVertreterAssignment(supplierId: string, restaurantId: string): Promise<void>;
+  getResponsibleVertreter(supplierId: string, restaurantId: string): Promise<Member | undefined>;
+  backfillMembers(): Promise<number>;
 
   // Delivery Schedules
   getDeliverySchedules(supplierId: string): Promise<(DeliverySchedule & { restaurant: User })[]>;
@@ -530,7 +545,12 @@ export class DatabaseStorage implements IStorage {
       const [creator] = await db.select().from(users).where(eq(users.id, order.createdByUserId));
       createdByUser = creator || null;
     }
-    return { ...order, items, restaurant, supplier, createdByUser };
+    let createdByMember: Member | null = null;
+    if (order.createdByMemberId) {
+      const [m] = await db.select().from(members).where(eq(members.id, order.createdByMemberId));
+      createdByMember = m || null;
+    }
+    return { ...order, items, restaurant, supplier, createdByUser, createdByMember };
   }
 
   async getOrdersByRestaurant(restaurantId: string, opts?: { status?: string | string[]; limit?: number }): Promise<OrderWithDetails[]> {
@@ -1041,7 +1061,17 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(orders, eq(messages.orderId, orders.id))
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt);
-    return rows.map(r => ({ ...r.message, orderNumber: r.orderNumber }));
+    const memberIds = [...new Set(rows.map(r => r.message.senderMemberId).filter((x): x is string => !!x))];
+    const memberMap = new Map<string, Member>();
+    if (memberIds.length > 0) {
+      const memberRows = await db.select().from(members).where(inArray(members.id, memberIds));
+      for (const m of memberRows) memberMap.set(m.id, m);
+    }
+    return rows.map(r => ({
+      ...r.message,
+      orderNumber: r.orderNumber,
+      senderMember: r.message.senderMemberId ? memberMap.get(r.message.senderMemberId) || null : null,
+    }));
   }
 
   async getConversationStatuses(conversationId: string): Promise<{ orderStatuses: Record<string, string>; complaintStatuses: Record<string, { status: string; complaintId: string }> }> {
@@ -1720,16 +1750,18 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(orderStatusHistory.changedBy, users.id))
       .where(eq(orderStatusHistory.orderId, orderId))
       .orderBy(orderStatusHistory.createdAt);
+    const memberMap = await this.resolveMembersFor(result.map(r => r.order_status_history.changedByMemberId));
     return result.map(r => ({
       ...r.order_status_history,
       changedByUser: r.users || undefined,
+      changedByMember: r.order_status_history.changedByMemberId ? memberMap.get(r.order_status_history.changedByMemberId) || null : null,
     }));
   }
 
-  async addOrderStatusHistory(orderId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<OrderStatusHistory> {
+  async addOrderStatusHistory(orderId: string, fromStatus: string | null, toStatus: string, changedBy?: string, changedByMemberId?: string | null): Promise<OrderStatusHistory> {
     const [entry] = await db
       .insert(orderStatusHistory)
-      .values({ orderId, fromStatus, toStatus, changedBy: changedBy || null })
+      .values({ orderId, fromStatus, toStatus, changedBy: changedBy || null, changedByMemberId: changedByMemberId || null })
       .returning();
     return entry;
   }
@@ -1741,18 +1773,111 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(complaintStatusHistory.changedBy, users.id))
       .where(eq(complaintStatusHistory.complaintId, complaintId))
       .orderBy(complaintStatusHistory.createdAt);
+    const memberMap = await this.resolveMembersFor(result.map(r => r.complaint_status_history.changedByMemberId));
     return result.map(r => ({
       ...r.complaint_status_history,
       changedByUser: r.users || undefined,
+      changedByMember: r.complaint_status_history.changedByMemberId ? memberMap.get(r.complaint_status_history.changedByMemberId) || null : null,
     }));
   }
 
-  async addComplaintStatusHistory(complaintId: string, fromStatus: string | null, toStatus: string, changedBy?: string): Promise<ComplaintStatusHistory> {
+  async addComplaintStatusHistory(complaintId: string, fromStatus: string | null, toStatus: string, changedBy?: string, changedByMemberId?: string | null): Promise<ComplaintStatusHistory> {
     const [entry] = await db
       .insert(complaintStatusHistory)
-      .values({ complaintId, fromStatus, toStatus, changedBy: changedBy || null })
+      .values({ complaintId, fromStatus, toStatus, changedBy: changedBy || null, changedByMemberId: changedByMemberId || null })
       .returning();
     return entry;
+  }
+
+  // ─── Organizations / Team members ────────────────────────────────────────
+  private async resolveMembersFor(ids: (string | null | undefined)[]): Promise<Map<string, Member>> {
+    const memberIds = [...new Set(ids.filter((x): x is string => !!x))];
+    const map = new Map<string, Member>();
+    if (memberIds.length === 0) return map;
+    const rows = await db.select().from(members).where(inArray(members.id, memberIds));
+    for (const m of rows) map.set(m.id, m);
+    return map;
+  }
+
+  async getMembers(organizationId: string): Promise<Member[]> {
+    return db.select().from(members).where(eq(members.organizationId, organizationId)).orderBy(members.createdAt);
+  }
+
+  async getMember(id: string): Promise<Member | undefined> {
+    const [m] = await db.select().from(members).where(eq(members.id, id));
+    return m;
+  }
+
+  async createMember(data: InsertMember): Promise<Member> {
+    const [created] = await db.insert(members).values(data).returning();
+    return created;
+  }
+
+  async updateMember(id: string, data: Partial<InsertMember>): Promise<Member | undefined> {
+    const [updated] = await db.update(members).set(data).where(eq(members.id, id)).returning();
+    return updated;
+  }
+
+  async deleteMember(id: string): Promise<void> {
+    await db.delete(vertreterAssignments).where(eq(vertreterAssignments.memberId, id));
+    await db.delete(members).where(eq(members.id, id));
+  }
+
+  async getVertreterAssignments(supplierId: string): Promise<VertreterAssignment[]> {
+    return db.select().from(vertreterAssignments).where(eq(vertreterAssignments.supplierId, supplierId));
+  }
+
+  async getVertreterAssignmentsForMember(memberId: string): Promise<VertreterAssignment[]> {
+    return db.select().from(vertreterAssignments).where(eq(vertreterAssignments.memberId, memberId));
+  }
+
+  async createVertreterAssignment(data: InsertVertreterAssignment): Promise<VertreterAssignment> {
+    // One Vertreter responsible per (supplier, restaurant): replace any existing.
+    await db.delete(vertreterAssignments).where(and(
+      eq(vertreterAssignments.supplierId, data.supplierId),
+      eq(vertreterAssignments.restaurantId, data.restaurantId),
+    ));
+    const [created] = await db.insert(vertreterAssignments).values(data).returning();
+    return created;
+  }
+
+  async deleteVertreterAssignment(supplierId: string, restaurantId: string): Promise<void> {
+    await db.delete(vertreterAssignments).where(and(
+      eq(vertreterAssignments.supplierId, supplierId),
+      eq(vertreterAssignments.restaurantId, restaurantId),
+    ));
+  }
+
+  async getResponsibleVertreter(supplierId: string, restaurantId: string): Promise<Member | undefined> {
+    const [row] = await db
+      .select({ member: members })
+      .from(vertreterAssignments)
+      .innerJoin(members, eq(vertreterAssignments.memberId, members.id))
+      .where(and(
+        eq(vertreterAssignments.supplierId, supplierId),
+        eq(vertreterAssignments.restaurantId, restaurantId),
+      ))
+      .limit(1);
+    return row?.member;
+  }
+
+  async backfillMembers(): Promise<number> {
+    const allUsers = await db.select().from(users);
+    const existing = await db.select({ organizationId: members.organizationId }).from(members);
+    const orgsWithMembers = new Set(existing.map(e => e.organizationId));
+    let created = 0;
+    for (const u of allUsers) {
+      if (orgsWithMembers.has(u.id)) continue;
+      await db.insert(members).values({
+        organizationId: u.id,
+        name: u.name,
+        email: u.email,
+        profileImageUrl: u.profileImageUrl,
+        role: "admin",
+      });
+      created++;
+    }
+    return created;
   }
 
   async getOrderTemplates(restaurantId: string): Promise<OrderTemplateWithItems[]> {
@@ -1922,7 +2047,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedData(): Promise<void> {
-    const DEMO_VERSION = "demo-v8";
+    const DEMO_VERSION = "demo-v9";
     const sentinelEmail = `${DEMO_VERSION}@gastroconnect.dev`;
     const existing = await db.select().from(users).where(eq(users.email, sentinelEmail));
     if (existing.length > 0) {
@@ -1932,6 +2057,21 @@ export class DatabaseStorage implements IStorage {
 
     console.log(`Wiping existing data and seeding ${DEMO_VERSION}...`);
     // Wipe in FK-safe reverse order
+    await db.delete(vertreterAssignments);
+    await db.delete(members);
+    await db.delete(supplierRatings);
+    await db.delete(priceChangeLog);
+    await db.delete(monthlyReports);
+    await db.delete(aiChatMessages);
+    await db.delete(aiChats);
+    await db.delete(whatsappConnectionRequests);
+    await db.delete(whatsappConnections);
+    await db.delete(supplierErpCredentials);
+    await db.delete(erpConnectionRequests);
+    await db.delete(supplierErpConnections);
+    await db.delete(guestCountImports);
+    await db.delete(pmsConnectionRequests);
+    await db.delete(hotelPmsConnections);
     await db.delete(stockMovements);
     await db.delete(complaintComments);
     await db.delete(complaintStatusHistory);
@@ -2038,6 +2178,42 @@ export class DatabaseStorage implements IStorage {
       role: "supplier", name: "Demo Marker", email: sentinelEmail,
       companyName: "Demo Marker (intern)",
     });
+
+    // ===== TEAM MEMBERS (people inside each organization) =====
+    // Each org gets an Admin member representing the owner, plus extra teammates.
+    const mkMember = (organizationId: string, name: string, email: string, role: "admin" | "manager" | "staff" | "vertreter", img: number) =>
+      this.createMember({ organizationId, name, email, role, profileImageUrl: avatar(img) });
+
+    // Restaurant 1 (Biergarten München) — owner + manager + staff
+    await mkMember(restaurant1.id, "Thomas Weber", "thomas@biergarten-muenchen.de", "admin", 12);
+    await mkMember(restaurant1.id, "Lena Hofer", "lena@biergarten-muenchen.de", "manager", 32);
+    await mkMember(restaurant1.id, "Jonas Berger", "jonas@biergarten-muenchen.de", "staff", 15);
+
+    // Restaurant 2 (Pizzeria Bella) — owner + staff
+    await mkMember(restaurant2.id, "Maria Schmidt", "maria@pizzeria-bella.de", "admin", 45);
+    await mkMember(restaurant2.id, "Paolo Conti", "paolo@pizzeria-bella.de", "staff", 51);
+
+    // Supplier 1 (Frische Produkte) — owner + manager + two Vertreter (field reps)
+    await mkMember(supplier1.id, "Hans Müller", "hans@frische-produkte.de", "admin", 13);
+    await mkMember(supplier1.id, "Sabine Vogel", "sabine@frische-produkte.de", "manager", 24);
+    const s1_vertreter1 = await mkMember(supplier1.id, "Markus Wolf", "markus@frische-produkte.de", "vertreter", 56);
+    const s1_vertreter2 = await mkMember(supplier1.id, "Nadia Köhler", "nadia@frische-produkte.de", "vertreter", 26);
+
+    // Supplier 2 (Metzgerei Bauer) — owner + one Vertreter
+    await mkMember(supplier2.id, "Anna Bauer", "anna@metzgerei-bauer.de", "admin", 20);
+    const s2_vertreter1 = await mkMember(supplier2.id, "Tobias Frank", "tobias@metzgerei-bauer.de", "vertreter", 59);
+
+    // Supplier 3 (Getränke Klein) — owner only
+    await mkMember(supplier3.id, "Peter Klein", "peter@getraenke-klein.de", "admin", 60);
+    // Supplier 4 / 5 owners
+    await mkMember(supplier4.id, "Julia Romano", "julia@italia-import.de", "admin", 44);
+    await mkMember(supplier5.id, "Erik Andersen", "erik@nordsee-fisch.de", "admin", 11);
+
+    // ===== VERTRETER ASSIGNMENTS (which field rep handles which restaurant) =====
+    await this.createVertreterAssignment({ memberId: s1_vertreter1.id, supplierId: supplier1.id, restaurantId: restaurant1.id });
+    await this.createVertreterAssignment({ memberId: s1_vertreter1.id, supplierId: supplier1.id, restaurantId: restaurant3.id });
+    await this.createVertreterAssignment({ memberId: s1_vertreter2.id, supplierId: supplier1.id, restaurantId: restaurant2.id });
+    await this.createVertreterAssignment({ memberId: s2_vertreter1.id, supplierId: supplier2.id, restaurantId: restaurant1.id });
 
     // ===== PRODUCTS =====
     // Supplier 1 (Frische Produkte) — local images for the originals

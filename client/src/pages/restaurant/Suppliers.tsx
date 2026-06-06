@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Search, Package, MessageSquare, Phone, Euro } from "lucide-react";
+import { Search, Package, MessageSquare, Phone, Euro, UserCog } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import type { User } from "@shared/schema";
+import type { User, Member } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { StarRating } from "@/components/StarRating";
@@ -134,6 +134,9 @@ export default function RestaurantSuppliers() {
                         </span>
                       )}
                     </p>
+                    {currentUser?.id && (
+                      <ResponsibleVertreterBadge supplierId={supplier.id} restaurantId={currentUser.id} lang={lang} />
+                    )}
                     {ratingSummaries?.[supplier.id] && ratingSummaries[supplier.id].count > 0 && (
                       <StarRating
                         value={ratingSummaries[supplier.id].avg}
@@ -195,5 +198,27 @@ export default function RestaurantSuppliers() {
         </div>
       )}
     </div>
+  );
+}
+
+function ResponsibleVertreterBadge({
+  supplierId,
+  restaurantId,
+  lang,
+}: {
+  supplierId: string;
+  restaurantId: string;
+  lang: "de" | "it";
+}) {
+  const { data } = useQuery<{ member: Member | null }>({
+    queryKey: [`/api/vertreter-assignments/responsible?supplierId=${supplierId}&restaurantId=${restaurantId}`],
+    enabled: !!supplierId && !!restaurantId,
+  });
+  if (!data?.member) return null;
+  return (
+    <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5" data-testid={`text-responsible-vertreter-${supplierId}`}>
+      <UserCog className="h-3 w-3 shrink-0" />
+      {lang === "it" ? "Referente" : "Ansprechpartner"}: {data.member.name}
+    </p>
   );
 }

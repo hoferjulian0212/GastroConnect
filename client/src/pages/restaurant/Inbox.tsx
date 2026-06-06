@@ -165,7 +165,7 @@ interface EditableItem {
 }
 
 export default function RestaurantInbox() {
-  const { currentUser } = useUser();
+  const { currentUser, currentMember } = useUser();
   const { setIsInChat } = useChat();
   const { toast } = useToast();
   const { lang } = useLanguage();
@@ -757,6 +757,7 @@ export default function RestaurantInbox() {
         content,
         messageType,
         senderId: currentUser?.id,
+        senderMemberId: currentMember?.id,
         priority,
         ...(audioUrl ? { audioUrl } : {}),
         ...(audioDurationMs !== undefined ? { audioDurationMs } : {}),
@@ -790,6 +791,7 @@ export default function RestaurantInbox() {
         supplierId,
         items,
         createdByUserId: currentUser.id,
+        actingMemberId: currentMember?.id,
       });
     },
     onSuccess: () => {
@@ -894,7 +896,7 @@ export default function RestaurantInbox() {
 
   const cancelOrderMutation = useMutation({
     mutationFn: async (orderId: string) => {
-      return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status: "cancelled", changedBy: currentUser?.id });
+      return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status: "cancelled", changedBy: currentUser?.id, actingMemberId: currentMember?.id });
     },
     onSuccess: () => {
       toast({ title: t("orders", "orderCancelled"), description: t("orders", "orderCancelledDesc") });
@@ -2217,7 +2219,7 @@ export default function RestaurantInbox() {
                                     } catch {}
                                     const showSenderName = !prevMessage || prevMessage.senderId !== message.senderId || showDateDivider;
                                     const messagePreviewText = refData ? refData.text! : message.content;
-                                    const senderName = isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || "");
+                                    const senderName = (message as any).senderMember?.name || (isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || ""));
                                     const isImportant = message.priority === "important";
                                     return (
                                       <div className={`max-w-[85%] md:max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>

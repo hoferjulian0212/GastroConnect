@@ -151,7 +151,7 @@ function extractErrorMessage(err: unknown): string | null {
 }
 
 export default function RestaurantCart() {
-  const { currentUser } = useUser();
+  const { currentUser, currentMember } = useUser();
   const { toast } = useToast();
   useMobileKeyboardInset();
   const [orderNotes, setOrderNotes] = useState<Record<string, string>>({});
@@ -231,6 +231,7 @@ export default function RestaurantCart() {
         perSupplierNotes: orderNotes,
         deliveryDates: perSupplierDates,
         createdByUserId: currentUser?.id,
+        actingMemberId: currentMember?.id,
       });
       return res.json();
     },
@@ -283,6 +284,7 @@ export default function RestaurantCart() {
         notes: orderNotes[supplierId] || "",
         requestedDeliveryDate: deliveryDate,
         createdByUserId: currentUser?.id,
+        actingMemberId: currentMember?.id,
       });
       return res.json();
     },

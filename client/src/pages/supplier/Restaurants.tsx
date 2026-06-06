@@ -17,7 +17,9 @@ import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { PartnerMap } from "@/components/PartnerMap";
 import { useToast } from "@/hooks/use-toast";
-import type { User, Product, CustomMinOrderQuantity, DeliverySchedule, CustomPrice, MinimumOrderValue } from "@shared/schema";
+import type { User, Product, CustomMinOrderQuantity, DeliverySchedule, CustomPrice, MinimumOrderValue, Member } from "@shared/schema";
+import { can, roleLabel } from "@shared/permissions";
+import { UserCog } from "lucide-react";
 
 type CustomPriceWithJoins = CustomPrice & { product: Product; restaurant: User };
 
@@ -427,6 +429,8 @@ function RestaurantDetail({
         </CardContent>
       </Card>
 
+      <VertreterCard supplierId={supplierId} restaurantId={restaurant.id} lang={lang} toast={toast} />
+
       <Card>
         <CardHeader className="p-3 md:p-6">
           <CardTitle className="flex items-center gap-2 text-base md:text-lg">
@@ -744,5 +748,101 @@ function RestaurantDetail({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+type MembersResponse = { members: Member[]; seatLimit: number; seatsUsed: number };
+
+function VertreterCard({
+  supplierId,
+  restaurantId,
+  lang,
+  toast,
+}: {
+  supplierId: string;
+  restaurantId: string;
+  lang: "de" | "it";
+  toast: (opts: any) => void;
+}) {
+  const { currentMember } = useUser();
+  const tt = (de: string, it: string) => (lang === "it" ? it : de);
+  const canAssign = can(currentMember?.role, "vertreter.assign");
+
+  const { data: membersData } = useQuery<MembersResponse>({
+    queryKey: ["/api/orgs", supplierId, "members"],
+    enabled: !!supplierId,
+  });
+  const vertreter = (membersData?.members ?? []).filter((m) => m.role === "vertreter");
+
+  const responsibleKey = `/api/vertreter-assignments/responsible?supplierId=${supplierId}&restaurantId=${restaurantId}`;
+  const { data: responsible } = useQuery<{ member: Member | null }>({
+    queryKey: [responsibleKey],
+    enabled: !!supplierId && !!restaurantId,
+  });
+  const currentId = responsible?.member?.id ?? "";
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: [responsibleKey] });
+    queryClient.invalidateQueries({ queryKey: [`/api/vertreter-assignments?supplierId=${supplierId}`] });
+  };
+
+  const assignMutation = useMutation({
+    mutationFn: async (memberId: string) =>
+      apiRequest("POST", "/api/vertreter-assignments", { memberId, supplierId, restaurantId }),
+    onSuccess: () => { invalidate(); toast({ title: tt("Vertreter zugewiesen", "Rappresentante assegnato") }); },
+    onError: () => toast({ title: tt("Fehler", "Errore"), variant: "destructive" }),
+  });
+
+  const unassignMutation = useMutation({
+    mutationFn: async () =>
+      apiRequest("DELETE", "/api/vertreter-assignments", { supplierId, restaurantId }),
+    onSuccess: () => { invalidate(); toast({ title: tt("Zuweisung entfernt", "Assegnazione rimossa") }); },
+    onError: () => toast({ title: tt("Fehler", "Errore"), variant: "destructive" }),
+  });
+
+  const handleChange = (value: string) => {
+    if (value === "__none__") unassignMutation.mutate();
+    else assignMutation.mutate(value);
+  };
+
+  return (
+    <Card data-testid="card-vertreter">
+      <CardHeader className="p-3 md:p-6">
+        <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+          <UserCog className="h-4 w-4 md:h-5 md:w-5" />
+          {tt("Zuständiger Vertreter", "Rappresentante responsabile")}
+        </CardTitle>
+        <CardDescription className="text-xs md:text-sm">
+          {tt("Weisen Sie diesem Betrieb einen Vertreter zu.", "Assegna un rappresentante a questo cliente.")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-3 md:p-6 pt-0 md:pt-0 space-y-3">
+        {vertreter.length === 0 ? (
+          <p className="text-sm text-muted-foreground" data-testid="text-no-vertreter">
+            {tt("Keine Vertreter im Team. Fügen Sie unter „Organisation & Team“ einen Vertreter hinzu.", "Nessun rappresentante nel team. Aggiungine uno in „Organizzazione e team“.")}
+          </p>
+        ) : canAssign ? (
+          <Select value={currentId || "__none__"} onValueChange={handleChange}>
+            <SelectTrigger data-testid="select-vertreter">
+              <SelectValue placeholder={tt("Vertreter wählen", "Scegli rappresentante")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__" data-testid="vertreter-option-none">
+                {tt("Kein Vertreter", "Nessun rappresentante")}
+              </SelectItem>
+              {vertreter.map((m) => (
+                <SelectItem key={m.id} value={m.id} data-testid={`vertreter-option-${m.id}`}>
+                  {m.name} ({roleLabel(m.role, lang)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <p className="text-sm font-medium" data-testid="text-responsible-vertreter">
+            {responsible?.member ? responsible.member.name : tt("Kein Vertreter zugewiesen", "Nessun rappresentante assegnato")}
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

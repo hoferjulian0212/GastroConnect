@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/hooks/use-theme";
 import { useT } from "@/lib/translations";
-import { ShoppingCart, ChevronDown, Moon, Sun, LogOut } from "lucide-react";
+import { ShoppingCart, ChevronDown, Moon, Sun, LogOut, Users } from "lucide-react";
 import logoImg from "@assets/logo_no_bg.png";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +74,7 @@ import OrderDetail from "@/pages/OrderDetail";
 import ComplaintDetail from "@/pages/ComplaintDetail";
 import CalendarPage from "@/pages/Calendar";
 import Help from "@/pages/Help";
+import Team from "@/pages/Team";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { HelpButton } from "@/components/HelpButton";
 
@@ -100,6 +101,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/cost-analysis" component={RestaurantCostAnalysis} />
       <Route path="/restaurant/price-comparison" component={RestaurantPriceComparison} />
       <Route path="/restaurant/calendar">{() => <CalendarPage role="restaurant" />}</Route>
+      <Route path="/restaurant/team" component={Team} />
       <Route path="/restaurant/help" component={Help} />
       <Route component={NotFound} />
     </Switch>
@@ -123,6 +125,7 @@ function SupplierRouter() {
       <Route path="/supplier/profile" component={SupplierProfile} />
       <Route path="/supplier/documents" component={Documents} />
       <Route path="/supplier/calendar">{() => <CalendarPage role="supplier" />}</Route>
+      <Route path="/supplier/team" component={Team} />
       <Route path="/supplier/help" component={Help} />
       <Route component={NotFound} />
     </Switch>
@@ -472,7 +475,7 @@ function PageHero() {
 }
 
 function useProfileMenu() {
-  const { currentUser, setCurrentUser } = useUser();
+  const { currentUser, currentRole, setCurrentUser } = useUser();
   const { isDark, toggleTheme } = useTheme();
   const { lang } = useLanguage();
   const t = useT(lang);
@@ -486,11 +489,11 @@ function useProfileMenu() {
     setLocation("/");
   };
 
-  return { currentUser, isDark, toggleTheme, t, handleLogout };
+  return { currentUser, currentRole, isDark, toggleTheme, t, lang, handleLogout, setLocation };
 }
 
 function ProfileMenuContent() {
-  const { isDark, toggleTheme, t, handleLogout } = useProfileMenu();
+  const { isDark, toggleTheme, t, lang, currentRole, handleLogout, setLocation } = useProfileMenu();
   const itemClass =
     "block w-full px-4 py-2 text-sm transition-colors cursor-pointer rounded-none text-gray-400 focus:text-white focus:bg-white/5 hover:text-white hover:bg-white/5";
   return (
@@ -500,6 +503,14 @@ function ProfileMenuContent() {
       className="dark min-w-[180px] p-1 bg-[#1e2130] border border-white/10 rounded-xl shadow-xl"
       data-testid="menu-profile"
     >
+      <DropdownMenuItem
+        onSelect={(e) => { e.preventDefault(); setLocation(`/${currentRole}/team`); }}
+        className={itemClass}
+        data-testid="menu-item-team"
+      >
+        <Users className="mr-2 h-4 w-4" />
+        {lang === "it" ? "Organizzazione e team" : "Organisation & Team"}
+      </DropdownMenuItem>
       <DropdownMenuItem
         onSelect={(e) => { e.preventDefault(); toggleTheme(); }}
         className={itemClass}
