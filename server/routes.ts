@@ -7,7 +7,7 @@ import { db } from "./db";
 import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
-import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, insertSupplierRatingSchema, updateSupplierRatingSchema } from "@shared/schema";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from "@shared/schema";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
 import { getPmsProviderAdapter } from "./pmsProviders";
@@ -157,7 +157,8 @@ async function createNotificationWithPush(notification: InsertNotification, role
       url = `/${urlRole}/inbox`;
       break;
   }
-  sendPushNotification(notification.userId, {
+  if (await shouldSendNotification(notification.userId, notification.type, "push")) {
+    sendPushNotification(notification.userId, {
     title: notification.title,
     message: notification.message,
     url,
@@ -170,7 +171,45 @@ async function createNotificationWithPush(notification: InsertNotification, role
       error: err?.message ?? String(err),
     });
   });
+  }
   return created;
+}
+
+// Maps a notification type to the per-channel preference key it is gated by.
+// Types not listed here are operational/important and are always delivered.
+function notificationPrefKey(type: string): keyof NotificationPrefs["push"] | null {
+  switch (type) {
+    case "new_order":
+      return "newOrder";
+    case "order_status":
+      return "orderStatus";
+    case "new_message":
+      return "newMessage";
+    case "new_complaint":
+    case "complaint_comment":
+      return "complaint";
+    default:
+      return null;
+  }
+}
+
+// Returns true if the user wants this notification type on the given channel.
+// Defaults to sending when no preference is stored or the type is not gated.
+async function shouldSendNotification(
+  userId: string,
+  type: string,
+  channel: "push" | "email",
+): Promise<boolean> {
+  const key = notificationPrefKey(type);
+  if (!key) return true;
+  try {
+    const user = await storage.getUser(userId);
+    const prefs = (user?.notificationPrefs as NotificationPrefs | null | undefined) ?? DEFAULT_NOTIFICATION_PREFS;
+    return prefs[channel]?.[key] ?? DEFAULT_NOTIFICATION_PREFS[channel][key];
+  } catch (err: any) {
+    console.error("[notify] failed to load prefs, defaulting to send", { userId, type, channel, error: err?.message });
+    return true;
+  }
 }
 
 // ===== ORDER WORKFLOW HELPERS (Task #9) =====
@@ -6491,6 +6530,22 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Failed to update opt-out:", error);
       res.status(500).json({ error: "Failed to update opt-out" });
+    }
+  });
+
+  app.patch("/api/users/:id/notification-prefs", async (req, res) => {
+    try {
+      const parsed = notificationPrefsSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid notification preferences" });
+      // Only allow self-update when x-user-id header is present.
+      const actorId = String(req.header("x-user-id") || "");
+      if (actorId && actorId !== req.params.id) return res.status(403).json({ error: "Forbidden" });
+      const updated = await storage.updateUser(req.params.id, { notificationPrefs: parsed.data } as any);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      res.json({ notificationPrefs: updated.notificationPrefs ?? DEFAULT_NOTIFICATION_PREFS });
+    } catch (error) {
+      console.error("Failed to update notification prefs:", error);
+      res.status(500).json({ error: "Failed to update notification prefs" });
     }
   });
 

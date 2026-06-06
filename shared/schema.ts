@@ -40,7 +40,33 @@ export const users = pgTable("users", {
   seenPageIntros: jsonb("seen_page_intros").$type<string[]>(),
   skipAllPageIntros: boolean("skip_all_page_intros").default(false).notNull(),
   monthlyReportOptOut: boolean("monthly_report_opt_out").default(false).notNull(),
+  notificationPrefs: jsonb("notification_prefs").$type<NotificationPrefs>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export interface NotificationChannelPrefs {
+  newOrder: boolean;
+  orderStatus: boolean;
+  newMessage: boolean;
+  complaint: boolean;
+}
+export interface NotificationPrefs {
+  push: NotificationChannelPrefs;
+  email: NotificationChannelPrefs;
+}
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  push: { newOrder: true, orderStatus: true, newMessage: true, complaint: true },
+  email: { newOrder: true, orderStatus: true, newMessage: false, complaint: true },
+};
+const notificationChannelPrefsSchema = z.object({
+  newOrder: z.boolean(),
+  orderStatus: z.boolean(),
+  newMessage: z.boolean(),
+  complaint: z.boolean(),
+});
+export const notificationPrefsSchema = z.object({
+  push: notificationChannelPrefsSchema,
+  email: notificationChannelPrefsSchema,
 });
 
 export type DashboardCardSize = "full" | "half";

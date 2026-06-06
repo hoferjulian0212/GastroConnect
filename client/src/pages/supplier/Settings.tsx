@@ -7,7 +7,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Bell, Mail, ShoppingBag, MessageSquare, AlertCircle, Monitor, Moon, LogOut, Smartphone, ChevronRight } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
+import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/context/LanguageContext";
@@ -33,15 +35,40 @@ export default function SupplierSettings() {
   const t = useT(lang);
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, permission: pushPermission, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications(currentUser?.id);
 
-  const [emailNewOrder, setEmailNewOrder] = useState(true);
-  const [emailOrderStatus, setEmailOrderStatus] = useState(true);
-  const [emailNewMessage, setEmailNewMessage] = useState(false);
-  const [emailComplaint, setEmailComplaint] = useState(true);
+  const [prefs, setPrefs] = useState<NotificationPrefs>(
+    () => currentUser?.notificationPrefs ?? DEFAULT_NOTIFICATION_PREFS
+  );
 
-  const [notifNewOrder, setNotifNewOrder] = useState(true);
-  const [notifOrderStatus, setNotifOrderStatus] = useState(true);
-  const [notifNewMessage, setNotifNewMessage] = useState(true);
-  const [notifComplaint, setNotifComplaint] = useState(true);
+  const prefsMutation = useMutation({
+    mutationFn: async (next: NotificationPrefs) =>
+      apiRequest("PATCH", `/api/users/${currentUser?.id}/notification-prefs`, next),
+    onSuccess: (_d, next) => {
+      if (currentUser) setCurrentUser({ ...currentUser, notificationPrefs: next });
+    },
+    onError: () => {
+      setPrefs(currentUser?.notificationPrefs ?? DEFAULT_NOTIFICATION_PREFS);
+      toast({
+        title: lang === "de" ? "Fehler" : "Errore",
+        description: lang === "de" ? "Einstellung konnte nicht gespeichert werden." : "Impossibile salvare l'impostazione.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePref = (
+    channel: "push" | "email",
+    key: keyof NotificationPrefs["push"],
+    value: boolean,
+    label: string,
+  ) => {
+    const next: NotificationPrefs = { ...prefs, [channel]: { ...prefs[channel], [key]: value } };
+    setPrefs(next);
+    prefsMutation.mutate(next);
+    toast({
+      title: t("common", "settingSaved"),
+      description: `${label} ${t("common", "was")} ${value ? t("common", "activated") : t("common", "deactivated")}.`,
+    });
+  };
 
   const handleToggle = (setter: (v: boolean) => void, value: boolean, label: string) => {
     setter(value);
@@ -103,8 +130,8 @@ export default function SupplierSettings() {
                 <Label className="text-sm font-medium">{t("settings", "newOrders")}</Label>
               </div>
               <Switch
-                checked={notifNewOrder}
-                onCheckedChange={(v) => handleToggle(setNotifNewOrder, v, t("settings", "newOrders"))}
+                checked={prefs.push.newOrder}
+                onCheckedChange={(v) => handlePref("push", "newOrder", v, t("settings", "newOrders"))}
                 data-testid="switch-notif-new-order"
               />
             </div>
@@ -115,8 +142,8 @@ export default function SupplierSettings() {
                 <Label className="text-sm font-medium">{t("settings", "orderStatus")}</Label>
               </div>
               <Switch
-                checked={notifOrderStatus}
-                onCheckedChange={(v) => handleToggle(setNotifOrderStatus, v, t("settings", "orderStatus"))}
+                checked={prefs.push.orderStatus}
+                onCheckedChange={(v) => handlePref("push", "orderStatus", v, t("settings", "orderStatus"))}
                 data-testid="switch-notif-order-status"
               />
             </div>
@@ -127,8 +154,8 @@ export default function SupplierSettings() {
                 <Label className="text-sm font-medium">{t("settings", "newMessages")}</Label>
               </div>
               <Switch
-                checked={notifNewMessage}
-                onCheckedChange={(v) => handleToggle(setNotifNewMessage, v, t("settings", "newMessages"))}
+                checked={prefs.push.newMessage}
+                onCheckedChange={(v) => handlePref("push", "newMessage", v, t("settings", "newMessages"))}
                 data-testid="switch-notif-new-message"
               />
             </div>
@@ -139,8 +166,8 @@ export default function SupplierSettings() {
                 <Label className="text-sm font-medium">{t("settings", "complaintsNotif")}</Label>
               </div>
               <Switch
-                checked={notifComplaint}
-                onCheckedChange={(v) => handleToggle(setNotifComplaint, v, t("settings", "complaintsNotif"))}
+                checked={prefs.push.complaint}
+                onCheckedChange={(v) => handlePref("push", "complaint", v, t("settings", "complaintsNotif"))}
                 data-testid="switch-notif-complaint"
               />
             </div>
@@ -161,8 +188,8 @@ export default function SupplierSettings() {
                 <Label className="text-sm font-medium">{t("settings", "newOrders")}</Label>
               </div>
               <Switch
-                checked={emailNewOrder}
-                onCheckedChange={(v) => handleToggle(setEmailNewOrder, v, lang === "de" ? "E-Mail Neue Bestellungen" : "E-mail nuovi ordini")}
+                checked={prefs.email.newOrder}
+                onCheckedChange={(v) => handlePref("email", "newOrder", v, lang === "de" ? "E-Mail Neue Bestellungen" : "E-mail nuovi ordini")}
                 data-testid="switch-email-new-order"
               />
             </div>
@@ -173,8 +200,8 @@ export default function SupplierSettings() {
                 <Label className="text-sm font-medium">{t("settings", "orderStatus")}</Label>
               </div>
               <Switch
-                checked={emailOrderStatus}
-                onCheckedChange={(v) => handleToggle(setEmailOrderStatus, v, lang === "de" ? "E-Mail Bestellstatus" : "E-mail stato ordini")}
+                checked={prefs.email.orderStatus}
+                onCheckedChange={(v) => handlePref("email", "orderStatus", v, lang === "de" ? "E-Mail Bestellstatus" : "E-mail stato ordini")}
                 data-testid="switch-email-order-status"
               />
             </div>
@@ -185,8 +212,8 @@ export default function SupplierSettings() {
                 <Label className="text-sm font-medium">{t("settings", "newMessages")}</Label>
               </div>
               <Switch
-                checked={emailNewMessage}
-                onCheckedChange={(v) => handleToggle(setEmailNewMessage, v, lang === "de" ? "E-Mail Neue Nachrichten" : "E-mail nuovi messaggi")}
+                checked={prefs.email.newMessage}
+                onCheckedChange={(v) => handlePref("email", "newMessage", v, lang === "de" ? "E-Mail Neue Nachrichten" : "E-mail nuovi messaggi")}
                 data-testid="switch-email-new-message"
               />
             </div>
@@ -197,8 +224,8 @@ export default function SupplierSettings() {
                 <Label className="text-sm font-medium">{t("settings", "complaintsNotif")}</Label>
               </div>
               <Switch
-                checked={emailComplaint}
-                onCheckedChange={(v) => handleToggle(setEmailComplaint, v, lang === "de" ? "E-Mail Reklamationen" : "E-mail reclami")}
+                checked={prefs.email.complaint}
+                onCheckedChange={(v) => handlePref("email", "complaint", v, lang === "de" ? "E-Mail Reklamationen" : "E-mail reclami")}
                 data-testid="switch-email-complaint"
               />
             </div>
