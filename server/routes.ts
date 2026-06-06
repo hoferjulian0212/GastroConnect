@@ -15,6 +15,7 @@ import { getErpProviderAdapter } from "./erpProviders";
 import { isErpCredentialsKeyConfigured, maskHint } from "./erpCrypto";
 import { runSyncForConnection, startErpSyncScheduler, testErpConnection, ErpSyncRunningError, ErpSyncConfigError } from "./erpSync";
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
+import { sendEmail, renderNotificationEmail } from "./emailService";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
@@ -157,20 +158,51 @@ async function createNotificationWithPush(notification: InsertNotification, role
       url = `/${urlRole}/inbox`;
       break;
   }
-  if (await shouldSendNotification(notification.userId, notification.type, "push")) {
+  // Load the recipient once and reuse for both channel gating + email address.
+  let recipient: Awaited<ReturnType<typeof storage.getUser>> | undefined;
+  try {
+    recipient = await storage.getUser(notification.userId);
+  } catch (err: any) {
+    console.error("[notify] failed to load recipient", { userId: notification.userId, error: err?.message });
+  }
+  const prefs = (recipient?.notificationPrefs as NotificationPrefs | null | undefined) ?? DEFAULT_NOTIFICATION_PREFS;
+  const prefKey = notificationPrefKey(notification.type);
+
+  const pushAllowed = prefKey ? (prefs.push?.[prefKey] ?? DEFAULT_NOTIFICATION_PREFS.push[prefKey]) : true;
+  if (pushAllowed) {
     sendPushNotification(notification.userId, {
-    title: notification.title,
-    message: notification.message,
-    url,
-    type: notification.type,
-  }).catch((err) => {
-    console.error("[push] createNotificationWithPush dispatch failed", {
-      userId: notification.userId,
+      title: notification.title,
+      message: notification.message,
+      url,
       type: notification.type,
-      referenceId: notification.referenceId,
-      error: err?.message ?? String(err),
+    }).catch((err) => {
+      console.error("[push] createNotificationWithPush dispatch failed", {
+        userId: notification.userId,
+        type: notification.type,
+        referenceId: notification.referenceId,
+        error: err?.message ?? String(err),
+      });
     });
-  });
+  }
+
+  const emailAllowed = prefKey ? (prefs.email?.[prefKey] ?? DEFAULT_NOTIFICATION_PREFS.email[prefKey]) : true;
+  if (emailAllowed && recipient?.email) {
+    sendEmail({
+      to: recipient.email,
+      subject: notification.title,
+      html: renderNotificationEmail({
+        title: notification.title,
+        message: notification.message,
+        linkPath: url,
+      }),
+    }).catch((err) => {
+      console.error("[email] createNotificationWithPush dispatch failed", {
+        userId: notification.userId,
+        type: notification.type,
+        referenceId: notification.referenceId,
+        error: err?.message ?? String(err),
+      });
+    });
   }
   return created;
 }
@@ -190,25 +222,6 @@ function notificationPrefKey(type: string): keyof NotificationPrefs["push"] | nu
       return "complaint";
     default:
       return null;
-  }
-}
-
-// Returns true if the user wants this notification type on the given channel.
-// Defaults to sending when no preference is stored or the type is not gated.
-async function shouldSendNotification(
-  userId: string,
-  type: string,
-  channel: "push" | "email",
-): Promise<boolean> {
-  const key = notificationPrefKey(type);
-  if (!key) return true;
-  try {
-    const user = await storage.getUser(userId);
-    const prefs = (user?.notificationPrefs as NotificationPrefs | null | undefined) ?? DEFAULT_NOTIFICATION_PREFS;
-    return prefs[channel]?.[key] ?? DEFAULT_NOTIFICATION_PREFS[channel][key];
-  } catch (err: any) {
-    console.error("[notify] failed to load prefs, defaulting to send", { userId, type, channel, error: err?.message });
-    return true;
   }
 }
 
