@@ -937,6 +937,53 @@ export const insertMonthlyReportSchema = createInsertSchema(monthlyReports).omit
 export type MonthlyReport = typeof monthlyReports.$inferSelect;
 export type InsertMonthlyReport = z.infer<typeof insertMonthlyReportSchema>;
 
+// ===== AI Assistant chat history =====
+// Each user (scoped by role) has a list of conversations with the in-app AI
+// assistant. Conversations and their messages persist across sessions so the
+// floating chat can show history and continue multi-turn context.
+export interface AiChatAction {
+  kind: "open_inbox" | "open_order";
+  label: string;
+  href: string;
+  orderId?: string;
+  orderNumber?: string;
+  partnerId?: string;
+  suggestedMessage?: string;
+}
+
+export const aiChats = pgTable("ai_chats", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
+  role: userRoleEnum("role").notNull(),
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_chats_user").on(table.userId),
+  index("idx_ai_chats_user_role_updated").on(table.userId, table.role, table.updatedAt),
+]);
+
+export const aiChatMessages = pgTable("ai_chat_messages", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  chatId: varchar("chat_id", { length: 36 }).notNull().references(() => aiChats.id, { onDelete: "cascade" }),
+  // "user" | "assistant"
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  // Resolved deep-link actions attached to an assistant message (server-verified).
+  actions: jsonb("actions").$type<AiChatAction[]>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_chat_messages_chat").on(table.chatId),
+  index("idx_ai_chat_messages_chat_created").on(table.chatId, table.createdAt),
+]);
+
+export const insertAiChatSchema = createInsertSchema(aiChats).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAiChatMessageSchema = createInsertSchema(aiChatMessages).omit({ id: true, createdAt: true });
+export type AiChat = typeof aiChats.$inferSelect;
+export type InsertAiChat = z.infer<typeof insertAiChatSchema>;
+export type AiChatMessage = typeof aiChatMessages.$inferSelect;
+export type InsertAiChatMessage = z.infer<typeof insertAiChatMessageSchema>;
+
 // ─── Display helpers for business numbers ────────────────────────────────
 // Each order/complaint has ONE unique business-facing number that appears
 // everywhere in the UI so both parties (restaurant + supplier) reference the

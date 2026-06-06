@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { openAiAssistant } from "@/components/AiAssistant";
 
 const OPEN_EVENT = "gc:open-search";
 
@@ -341,7 +342,11 @@ export function GlobalSearch() {
               <CommandGroup heading={t("KI-Assistent", "Assistente AI")}>
                 <CommandItem
                   value="ask-ai"
-                  onSelect={() => runAi(debounced)}
+                  onSelect={() => {
+                    const q = debounced;
+                    setOpen(false);
+                    openAiAssistant(q);
+                  }}
                   data-testid="search-ask-ai"
                 >
                   <Sparkles className="text-primary" />

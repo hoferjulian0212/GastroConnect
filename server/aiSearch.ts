@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import { db } from "./db";
 import { orders, orderItems, users, formatOrderNumber } from "@shared/schema";
 import { and, eq, desc, ilike, or } from "drizzle-orm";
+import { storage } from "./storage";
 
 type Role = "restaurant" | "supplier";
 
@@ -326,6 +327,112 @@ async function resolveAction(raw: AiActionRaw, userId: string, role: Role): Prom
   };
 }
 
+function aiConfigured(): boolean {
+  return !!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+}
+
+function makeTitle(question: string): string {
+  const clean = String(question || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "Chat";
+  return clean.length > 60 ? clean.slice(0, 57) + "…" : clean;
+}
+
+// Runs the tool-calling assistant loop for a single new user question, given the
+// prior conversation turns as context. Assumes the AI integration is configured.
+async function runAssistant(opts: {
+  userId: string;
+  role: Role;
+  lang: string;
+  priorTurns: { role: "user" | "assistant"; content: string }[];
+  question: string;
+}): Promise<{ answer: string; actions: AiAction[] }> {
+  const { userId, role, lang, priorTurns, question } = opts;
+  const { handlers, definitions } = buildTools(userId, role);
+  const tools = [...definitions, RESPOND_TOOL];
+
+  const { default: OpenAI } = await import("openai");
+  const openai = new OpenAI({
+    apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+    baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  });
+
+  const messages: any[] = [{ role: "system", content: systemPrompt(role, lang) }];
+  for (const turn of priorTurns) {
+    if (turn.content) messages.push({ role: turn.role, content: turn.content });
+  }
+  messages.push({ role: "user", content: question });
+
+  let answer = "";
+  let rawActions: AiActionRaw[] = [];
+  const MAX_TURNS = 6;
+
+  for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      messages,
+      tools,
+      tool_choice: turn === MAX_TURNS - 1 ? { type: "function", function: { name: "respond" } } : "auto",
+    });
+
+    const msg = completion.choices[0]?.message;
+    if (!msg) break;
+
+    const toolCalls = msg.tool_calls || [];
+    if (toolCalls.length === 0) {
+      answer = (msg.content || "").trim();
+      break;
+    }
+
+    messages.push(msg);
+
+    let responded = false;
+    for (const call of toolCalls) {
+      const fn = (call as any).function;
+      const fnName: string = fn?.name || "";
+      let parsedArgs: any = {};
+      try {
+        parsedArgs = JSON.parse(fn?.arguments || "{}");
+      } catch {
+        parsedArgs = {};
+      }
+
+      if (fnName === "respond") {
+        answer = String(parsedArgs?.answer || "").trim();
+        rawActions = Array.isArray(parsedArgs?.actions) ? parsedArgs.actions : [];
+        responded = true;
+        messages.push({ role: "tool", tool_call_id: call.id, content: "ok" });
+        continue;
+      }
+
+      const handler = handlers[fnName];
+      let result: any;
+      try {
+        result = handler ? await handler(parsedArgs) : { error: `unknown tool ${fnName}` };
+      } catch (e: any) {
+        result = { error: "tool_failed", message: e?.message || String(e) };
+      }
+      messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
+    }
+
+    if (responded) break;
+  }
+
+  if (!answer) {
+    answer =
+      lang === "it"
+        ? "Non sono riuscito a trovare una risposta a questa domanda."
+        : "Ich konnte dazu leider keine Antwort finden.";
+  }
+
+  const actions: AiAction[] = [];
+  for (const raw of rawActions.slice(0, 4)) {
+    const resolved = await resolveAction(raw, userId, role);
+    if (resolved) actions.push(resolved);
+  }
+
+  return { answer, actions };
+}
+
 export function registerAiSearchRoutes(app: Express) {
   const jsonBody = express.json({ limit: "32kb" });
 
@@ -340,6 +447,8 @@ export function registerAiSearchRoutes(app: Express) {
     validate: { trustProxy: false, xForwardedForHeader: false, ip: false },
   });
 
+  // Legacy one-shot endpoint (kept for backward-compat). The in-app UI now uses
+  // the conversational /api/ai/chat endpoints below.
   app.post("/api/search/ai", aiLimiter, jsonBody, async (req: Request, res: Response) => {
     try {
       const question = String(req.body?.question || "").trim();
@@ -352,95 +461,147 @@ export function registerAiSearchRoutes(app: Express) {
       if (!userId || (role !== "restaurant" && role !== "supplier")) {
         return res.status(400).json({ error: "invalid_user" });
       }
-      if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || !process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+      if (!aiConfigured()) {
         return res.status(503).json({ error: "ai_not_configured", message: "KI-Integration ist noch nicht eingerichtet." });
       }
 
-      const { handlers, definitions } = buildTools(userId, role);
-      const tools = [...definitions, RESPOND_TOOL];
-
-      const { default: OpenAI } = await import("openai");
-      const openai = new OpenAI({
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-      });
-
-      const messages: any[] = [
-        { role: "system", content: systemPrompt(role, lang) },
-        { role: "user", content: question },
-      ];
-
-      let answer = "";
-      let rawActions: AiActionRaw[] = [];
-      const MAX_TURNS = 6;
-
-      for (let turn = 0; turn < MAX_TURNS; turn++) {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-5.4",
-          messages,
-          tools,
-          tool_choice: turn === MAX_TURNS - 1 ? { type: "function", function: { name: "respond" } } : "auto",
-        });
-
-        const msg = completion.choices[0]?.message;
-        if (!msg) break;
-
-        const toolCalls = msg.tool_calls || [];
-        if (toolCalls.length === 0) {
-          answer = (msg.content || "").trim();
-          break;
-        }
-
-        messages.push(msg);
-
-        let responded = false;
-        for (const call of toolCalls) {
-          const fn = (call as any).function;
-          const fnName: string = fn?.name || "";
-          let parsedArgs: any = {};
-          try {
-            parsedArgs = JSON.parse(fn?.arguments || "{}");
-          } catch {
-            parsedArgs = {};
-          }
-
-          if (fnName === "respond") {
-            answer = String(parsedArgs?.answer || "").trim();
-            rawActions = Array.isArray(parsedArgs?.actions) ? parsedArgs.actions : [];
-            responded = true;
-            messages.push({ role: "tool", tool_call_id: call.id, content: "ok" });
-            continue;
-          }
-
-          const handler = handlers[fnName];
-          let result: any;
-          try {
-            result = handler ? await handler(parsedArgs) : { error: `unknown tool ${fnName}` };
-          } catch (e: any) {
-            result = { error: "tool_failed", message: e?.message || String(e) };
-          }
-          messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
-        }
-
-        if (responded) break;
-      }
-
-      if (!answer) {
-        answer =
-          lang === "it"
-            ? "Non sono riuscito a trovare una risposta a questa domanda."
-            : "Ich konnte dazu leider keine Antwort finden.";
-      }
-
-      const actions: AiAction[] = [];
-      for (const raw of rawActions.slice(0, 4)) {
-        const resolved = await resolveAction(raw, userId, role);
-        if (resolved) actions.push(resolved);
-      }
-
+      const { answer, actions } = await runAssistant({ userId, role, lang, priorTurns: [], question });
       return res.json({ answer, actions });
     } catch (error: any) {
       console.error("[search/ai] failed:", error?.message || error);
+      return res.status(500).json({ error: "ai_failed", message: "Die Anfrage konnte nicht verarbeitet werden." });
+    }
+  });
+
+  // List the current user's AI conversations (newest first).
+  app.get("/api/ai/chats", async (req: Request, res: Response) => {
+    try {
+      const userId = String(req.query.userId || "").trim();
+      const role = String(req.query.role || "").trim() as Role;
+      if (!userId || (role !== "restaurant" && role !== "supplier")) {
+        return res.status(400).json({ error: "invalid_user" });
+      }
+      const chats = await storage.getAiChats(userId, role);
+      return res.json(
+        chats.map((c) => ({ id: c.id, title: c.title, createdAt: c.createdAt, updatedAt: c.updatedAt })),
+      );
+    } catch (error: any) {
+      console.error("[ai/chats] failed:", error?.message || error);
+      return res.status(500).json({ error: "ai_failed" });
+    }
+  });
+
+  // Fetch a single conversation with all of its messages.
+  app.get("/api/ai/chats/:id", async (req: Request, res: Response) => {
+    try {
+      const userId = String(req.query.userId || "").trim();
+      const role = String(req.query.role || "").trim();
+      const id = String(req.params.id || "").trim();
+      if (!userId) return res.status(400).json({ error: "invalid_user" });
+      const chat = await storage.getAiChat(id);
+      if (!chat || chat.userId !== userId || (role && chat.role !== role)) {
+        return res.status(404).json({ error: "chat_not_found" });
+      }
+      const messages = await storage.getAiChatMessages(id);
+      return res.json({
+        id: chat.id,
+        title: chat.title,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt,
+        messages: messages.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          actions: m.actions || [],
+          createdAt: m.createdAt,
+        })),
+      });
+    } catch (error: any) {
+      console.error("[ai/chats/:id] failed:", error?.message || error);
+      return res.status(500).json({ error: "ai_failed" });
+    }
+  });
+
+  // Delete a conversation (and its messages via cascade).
+  app.delete("/api/ai/chats/:id", async (req: Request, res: Response) => {
+    try {
+      const userId = String(req.query.userId || "").trim();
+      const role = String(req.query.role || "").trim();
+      const id = String(req.params.id || "").trim();
+      if (!userId) return res.status(400).json({ error: "invalid_user" });
+      // When a role is supplied, only delete if it matches (prevents cross-role
+      // deletion for a shared userId); falls back to owner-only scoping otherwise.
+      if (role) {
+        const chat = await storage.getAiChat(id);
+        if (chat && (chat.userId !== userId || chat.role !== role)) {
+          return res.status(404).json({ error: "chat_not_found" });
+        }
+      }
+      await storage.deleteAiChat(id, userId);
+      return res.json({ ok: true });
+    } catch (error: any) {
+      console.error("[ai/chats delete] failed:", error?.message || error);
+      return res.status(500).json({ error: "ai_failed" });
+    }
+  });
+
+  // Send a message in a conversation (create a new one when no chatId is given).
+  // Persists the user turn + assistant reply and feeds prior turns back as context.
+  app.post("/api/ai/chat", aiLimiter, jsonBody, async (req: Request, res: Response) => {
+    try {
+      const question = String(req.body?.question || "").trim();
+      const userId = String(req.body?.userId || "").trim();
+      const role = String(req.body?.role || "").trim() as Role;
+      const lang = String(req.body?.lang || "de").trim();
+      const chatIdRaw = req.body?.chatId ? String(req.body.chatId).trim() : "";
+
+      if (!question) return res.status(400).json({ error: "question_required" });
+      if (question.length > 500) return res.status(400).json({ error: "question_too_long" });
+      if (!userId || (role !== "restaurant" && role !== "supplier")) {
+        return res.status(400).json({ error: "invalid_user" });
+      }
+      if (!aiConfigured()) {
+        return res.status(503).json({ error: "ai_not_configured", message: "KI-Integration ist noch nicht eingerichtet." });
+      }
+
+      // Resolve or create the conversation, scoped to this user + role.
+      let chat = chatIdRaw ? await storage.getAiChat(chatIdRaw) : undefined;
+      if (chatIdRaw) {
+        if (!chat || chat.userId !== userId || chat.role !== role) {
+          return res.status(404).json({ error: "chat_not_found" });
+        }
+      }
+      if (!chat) {
+        chat = await storage.createAiChat({ userId, role, title: makeTitle(question) });
+      }
+
+      // Use recent stored turns as context (cap to keep token cost bounded).
+      const stored = await storage.getAiChatMessages(chat.id);
+      const priorTurns = stored.slice(-10).map((m) => ({
+        role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+        content: m.content,
+      }));
+
+      await storage.appendAiChatMessage({ chatId: chat.id, role: "user", content: question });
+
+      const { answer, actions } = await runAssistant({ userId, role, lang, priorTurns, question });
+
+      const assistantMsg = await storage.appendAiChatMessage({
+        chatId: chat.id,
+        role: "assistant",
+        content: answer,
+        actions: actions.length ? actions : null,
+      });
+
+      return res.json({
+        chatId: chat.id,
+        title: chat.title,
+        messageId: assistantMsg.id,
+        answer,
+        actions,
+      });
+    } catch (error: any) {
+      console.error("[ai/chat] failed:", error?.message || error);
       return res.status(500).json({ error: "ai_failed", message: "Die Anfrage konnte nicht verarbeitet werden." });
     }
   });

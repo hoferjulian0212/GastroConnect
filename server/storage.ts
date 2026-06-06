@@ -37,6 +37,8 @@ import {
   whatsappConnections, whatsappConnectionRequests,
   type WhatsappConnection, type InsertWhatsappConnection,
   type WhatsappConnectionRequest, type InsertWhatsappConnectionRequest,
+  aiChats, aiChatMessages,
+  type AiChat, type InsertAiChat, type AiChatMessage, type InsertAiChatMessage,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { encryptJson, decryptJson } from "./erpCrypto";
@@ -312,6 +314,14 @@ export interface IStorage {
   getWhatsappConnectionRequest(id: string): Promise<WhatsappConnectionRequest | undefined>;
   updateWhatsappConnectionRequest(id: string, data: { status?: string; adminNotes?: string }): Promise<WhatsappConnectionRequest | undefined>;
   setUserWhatsappNumber(userId: string, whatsappNumber: string): Promise<void>;
+
+  // AI Assistant chat history
+  createAiChat(data: InsertAiChat): Promise<AiChat>;
+  getAiChats(userId: string, role: string): Promise<AiChat[]>;
+  getAiChat(id: string): Promise<AiChat | undefined>;
+  getAiChatMessages(chatId: string): Promise<AiChatMessage[]>;
+  appendAiChatMessage(data: InsertAiChatMessage): Promise<AiChatMessage>;
+  deleteAiChat(id: string, userId: string): Promise<void>;
 
   // Seed
   seedData(): Promise<void>;
@@ -3770,6 +3780,47 @@ export class DatabaseStorage implements IStorage {
   async deleteErpCredentials(connectionId: string): Promise<void> {
     await db.delete(supplierErpCredentials)
       .where(eq(supplierErpCredentials.connectionId, connectionId));
+  }
+
+  // ===== AI Assistant chat history =====
+  async createAiChat(data: InsertAiChat): Promise<AiChat> {
+    const [chat] = await db.insert(aiChats).values(data).returning();
+    return chat;
+  }
+
+  async getAiChats(userId: string, role: string): Promise<AiChat[]> {
+    return db
+      .select()
+      .from(aiChats)
+      .where(and(eq(aiChats.userId, userId), eq(aiChats.role, role as any)))
+      .orderBy(desc(aiChats.updatedAt));
+  }
+
+  async getAiChat(id: string): Promise<AiChat | undefined> {
+    const [chat] = await db.select().from(aiChats).where(eq(aiChats.id, id)).limit(1);
+    return chat;
+  }
+
+  async getAiChatMessages(chatId: string): Promise<AiChatMessage[]> {
+    return db
+      .select()
+      .from(aiChatMessages)
+      .where(eq(aiChatMessages.chatId, chatId))
+      .orderBy(aiChatMessages.createdAt);
+  }
+
+  async appendAiChatMessage(data: InsertAiChatMessage): Promise<AiChatMessage> {
+    const [msg] = await db.insert(aiChatMessages).values(data).returning();
+    await db
+      .update(aiChats)
+      .set({ updatedAt: new Date() })
+      .where(eq(aiChats.id, data.chatId));
+    return msg;
+  }
+
+  async deleteAiChat(id: string, userId: string): Promise<void> {
+    // Owner-scoped delete; messages cascade via FK onDelete.
+    await db.delete(aiChats).where(and(eq(aiChats.id, id), eq(aiChats.userId, userId)));
   }
 }
 

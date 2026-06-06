@@ -15,8 +15,10 @@ import {
   MoreHorizontal,
   User as UserIcon,
   HelpCircle,
+  Sparkles,
 } from "lucide-react";
 import { openGlobalSearch } from "@/components/GlobalSearch";
+import { openAiAssistant } from "@/components/AiAssistant";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -84,6 +86,12 @@ export function MobileTopActions({
     label: lang === "it" ? "Cerca" : "Suchen",
     onClick: () => { setMoreOpen(false); openGlobalSearch(); },
     testId: "button-mobile-more-search",
+  });
+  overflowActions.push({
+    icon: <Sparkles className="h-5 w-5" />,
+    label: lang === "it" ? "Assistente AI" : "KI-Assistent",
+    onClick: () => { setMoreOpen(false); openAiAssistant(); },
+    testId: "button-mobile-more-ai",
   });
   if (showCart) {
     overflowActions.push({

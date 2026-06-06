@@ -2,3 +2,4 @@
 - [Notification preferences](notification-prefs.md) — per-type toggles gate push/email delivery (not in-app records); operational types always send.
 - [Email sending (Resend)](email-resend.md) — uses Resend HTTP API + RESEND_API_KEY (connector proxy was invisible to runtime); degrades gracefully when unset.
 - [Stock editing](stock-editing.md) — stockQuantity edits only via audited Inventory stock-movements; product editor sets initial stock only.
+- [Schema migration convention](schema-migration-convention.md) — schema changes apply via `npm run db:push --force`; no migration files. "Missing migration" reviews are false positives.
