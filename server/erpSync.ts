@@ -25,6 +25,7 @@ import { products, priceChangeLog, stockMovements, supplierErpConnections } from
 import { and, eq, ne } from "drizzle-orm";
 import { normalizeGtin, productMatchKey } from "@shared/productMatch";
 import { storage } from "./storage";
+import { sendPushNotification } from "./pushService";
 
 // ===================== Normalized catalog contract =====================
 
@@ -647,8 +648,41 @@ export async function runSyncForConnection(
     await db.update(supplierErpConnections)
       .set({ syncStatus: "error", lastSyncError: message, updatedAt: new Date() })
       .where(eq(supplierErpConnections.id, connection.id));
+
+    // Notify the supplier when an automatic (scheduled) sync fails so a silent
+    // nightly failure doesn't leave the catalog stale for days. Only fire on a
+    // transition INTO the error state — if the previous run already failed
+    // (syncStatus was "error") we stay quiet to avoid notification spam on
+    // repeated consecutive failures. Manual "Sync now" runs surface the error
+    // in the UI directly, so they never notify here.
+    if (opts.trigger === "scheduled" && connection.syncStatus !== "error") {
+      await notifySupplierSyncFailed(connection, message).catch((err) => {
+        console.error(`[erp-sync] failed to notify supplier ${connection.supplierId} of sync failure:`, err?.message || err);
+      });
+    }
+
     throw e;
   }
+}
+
+// Create an in-app notification (plus push, if subscribed) telling the supplier
+// their automatic catalog sync failed. Deep-links to the Inventory ERP card.
+async function notifySupplierSyncFailed(connection: ConnectionRow, errorMessage: string): Promise<void> {
+  await storage.createNotification({
+    userId: connection.supplierId,
+    type: "erp_sync_failed",
+    title: "ERP-Sync fehlgeschlagen",
+    message: `Die automatische Synchronisierung Ihres Katalogs ist fehlgeschlagen: ${errorMessage} Bitte überprüfen Sie Ihre ERP-Verbindung.`,
+    referenceId: connection.id,
+  });
+  sendPushNotification(connection.supplierId, {
+    title: "ERP-Sync fehlgeschlagen",
+    message: "Die automatische Synchronisierung Ihres Katalogs ist fehlgeschlagen. Bitte überprüfen Sie Ihre ERP-Verbindung.",
+    url: "/supplier/inventory",
+    type: "erp_sync_failed",
+  }).catch((err) => {
+    console.error(`[erp-sync] push dispatch failed for supplier ${connection.supplierId}:`, err?.message || err);
+  });
 }
 
 // ===================== Scheduler =====================

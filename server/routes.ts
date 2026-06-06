@@ -150,6 +150,7 @@ async function createNotificationWithPush(notification: InsertNotification, role
       url = `/${urlRole}/cost-analysis`;
       break;
     case "erp_request":
+    case "erp_sync_failed":
       url = `/${urlRole}/inventory`;
       break;
     case "whatsapp_request":

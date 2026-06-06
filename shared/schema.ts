@@ -6,7 +6,7 @@ import { z } from "zod";
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]);
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion", "voice"]);
-export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request", "erp_request", "whatsapp_request"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request", "erp_request", "erp_sync_failed", "whatsapp_request"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);
 export const complaintStatusEnum = pgEnum("complaint_status", ["open", "in_progress", "resolved", "closed", "rejected", "partially_resolved"]);
 export const complaintReasonEnum = pgEnum("complaint_reason", ["damaged", "short", "wrong", "quality", "late", "other"]);

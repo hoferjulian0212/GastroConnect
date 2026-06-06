@@ -77,6 +77,8 @@ export function NotificationBell() {
         return ref ? `/${role}/complaints?complaintId=${ref}` : `/${role}/complaints`;
       case "low_stock":
         return role === "supplier" ? "/supplier/inventory" : null;
+      case "erp_sync_failed":
+        return role === "supplier" ? "/supplier/inventory" : null;
       default:
         return null;
     }
@@ -130,6 +132,11 @@ export function NotificationBell() {
         return { 
           icon: <AlertCircle className="h-3.5 w-3.5" />,
           bg: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+        };
+      case "erp_sync_failed":
+        return { 
+          icon: <AlertCircle className="h-3.5 w-3.5" />,
+          bg: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
         };
       default:
         return { 
