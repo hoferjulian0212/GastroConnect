@@ -385,6 +385,7 @@ const updateUserSchema = z.object({
   companyName: safeShortString.optional().nullable(),
   description: safeString.optional().nullable(),
   profileImageUrl: safeString.optional().nullable(),
+  language: z.enum(["de", "it"]).optional(),
 }).strict();
 
 const updateProductSchema = z.object({

@@ -7,6 +7,7 @@ import { UserProvider, useUser } from "@/context/UserContext";
 import { ChatProvider, useChat } from "@/context/ChatContext";
 import { HeroProvider, HeroOutlet, HeroPortal } from "@/context/HeroContext";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
+import { apiRequest } from "@/lib/queryClient";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -155,6 +156,27 @@ function UserLoader() {
       setLocation(`/${currentRole}`);
     }
   }, [currentRole, location, setLocation]);
+
+  return null;
+}
+
+// Persists the device's chosen language onto the active user's record so that
+// server-generated messages (e.g. ERP sync failure alerts) can be localized.
+function LanguageSync() {
+  const { currentUser } = useUser();
+  const { lang } = useLanguage();
+  const lastSyncedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    if (currentUser.language === lang) return;
+    const syncKey = `${currentUser.id}:${lang}`;
+    if (lastSyncedRef.current === syncKey) return;
+    lastSyncedRef.current = syncKey;
+    apiRequest("PATCH", `/api/users/${currentUser.id}`, { language: lang }).catch(() => {
+      lastSyncedRef.current = null;
+    });
+  }, [currentUser?.id, currentUser?.language, lang]);
 
   return null;
 }
@@ -588,6 +610,7 @@ function AppLayout() {
   return (
     <>
       <UserLoader />
+      <LanguageSync />
       {isLoading ? (
         <div className="flex h-dvh items-center justify-center">
           <div className="flex flex-col items-center gap-4 text-center">

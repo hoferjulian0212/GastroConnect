@@ -700,16 +700,27 @@ export async function runSyncForConnection(
 // Create an in-app notification (plus push, if subscribed) telling the supplier
 // their automatic catalog sync failed. Deep-links to the Inventory ERP card.
 async function notifySupplierSyncFailed(connection: ConnectionRow, errorMessage: string): Promise<void> {
+  const supplier = await storage.getUser(connection.supplierId).catch(() => undefined);
+  const lang: "de" | "it" = supplier?.language === "it" ? "it" : "de";
+
+  const title = lang === "it" ? "Sincronizzazione ERP non riuscita" : "ERP-Sync fehlgeschlagen";
+  const message = lang === "it"
+    ? `La sincronizzazione automatica del tuo catalogo non è riuscita: ${errorMessage} Controlla la tua connessione ERP.`
+    : `Die automatische Synchronisierung Ihres Katalogs ist fehlgeschlagen: ${errorMessage} Bitte überprüfen Sie Ihre ERP-Verbindung.`;
+  const pushMessage = lang === "it"
+    ? "La sincronizzazione automatica del tuo catalogo non è riuscita. Controlla la tua connessione ERP."
+    : "Die automatische Synchronisierung Ihres Katalogs ist fehlgeschlagen. Bitte überprüfen Sie Ihre ERP-Verbindung.";
+
   await storage.createNotification({
     userId: connection.supplierId,
     type: "erp_sync_failed",
-    title: "ERP-Sync fehlgeschlagen",
-    message: `Die automatische Synchronisierung Ihres Katalogs ist fehlgeschlagen: ${errorMessage} Bitte überprüfen Sie Ihre ERP-Verbindung.`,
+    title,
+    message,
     referenceId: connection.id,
   });
   sendPushNotification(connection.supplierId, {
-    title: "ERP-Sync fehlgeschlagen",
-    message: "Die automatische Synchronisierung Ihres Katalogs ist fehlgeschlagen. Bitte überprüfen Sie Ihre ERP-Verbindung.",
+    title,
+    message: pushMessage,
     url: "/supplier/inventory",
     type: "erp_sync_failed",
   }).catch((err) => {

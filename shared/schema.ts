@@ -41,6 +41,9 @@ export const users = pgTable("users", {
   skipAllPageIntros: boolean("skip_all_page_intros").default(false).notNull(),
   monthlyReportOptOut: boolean("monthly_report_opt_out").default(false).notNull(),
   notificationPrefs: jsonb("notification_prefs").$type<NotificationPrefs>(),
+  // Preferred UI language ("de" | "it"), kept in sync from the client so
+  // server-generated messages (e.g. ERP sync failure alerts) can be localized.
+  language: varchar("language", { length: 2 }).default("de").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
