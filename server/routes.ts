@@ -13,7 +13,7 @@ import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyRe
 import { getPmsProviderAdapter } from "./pmsProviders";
 import { getErpProviderAdapter } from "./erpProviders";
 import { isErpCredentialsKeyConfigured, maskHint } from "./erpCrypto";
-import { runSyncForConnection, startErpSyncScheduler, ErpSyncRunningError, ErpSyncConfigError } from "./erpSync";
+import { runSyncForConnection, startErpSyncScheduler, testErpConnection, ErpSyncRunningError, ErpSyncConfigError } from "./erpSync";
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 
@@ -5930,6 +5930,41 @@ export async function registerRoutes(
       }
       console.error("ERP sync error:", error);
       res.status(500).json({ error: "ERP sync failed" });
+    }
+  });
+
+  // Test the stored ERP credentials before the first sync. Authenticates with
+  // the vendor adapter and pulls a small sample (first page) so wrong tenant
+  // IDs, expired secrets or bad URLs surface immediately. Never writes anything.
+  const erpTestBodySchema = z.object({
+    supplierId: z.string().min(1),
+  });
+
+  app.post("/api/supplier/erp/test", async (req, res) => {
+    try {
+      const parsed = erpTestBodySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+      const { supplierId } = parsed.data;
+
+      if (!isErpCredentialsKeyConfigured()) {
+        return res.status(503).json({
+          ok: false,
+          error: "Credential storage is not configured. Set the ERP_CREDENTIALS_KEY secret first.",
+          code: "ERP_CREDENTIALS_KEY_MISSING",
+        });
+      }
+
+      const connection = await storage.getSupplierErpConnection(supplierId);
+      if (!connection) return res.status(404).json({ ok: false, error: "No ERP connection found." });
+
+      const result = await testErpConnection(connection);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof ErpSyncConfigError) {
+        return res.status(400).json({ ok: false, error: error.message, code: "ERP_SYNC_CONFIG" });
+      }
+      console.error("ERP test error:", error);
+      res.status(500).json({ ok: false, error: "ERP connection test failed" });
     }
   });
 

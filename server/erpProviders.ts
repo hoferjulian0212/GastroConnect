@@ -11,7 +11,7 @@
 // `fetchCatalog` undefined; the sync dispatcher then falls back to the generic
 // REST/JSON or Excel-via-email ingestion paths based on the stored credentials.
 
-import { ErpSyncConfigError, normalizeRecords, type NormalizedCatalogRow } from "./erpSync";
+import { ErpSyncConfigError, normalizeRecords, type ErpFetchOptions, type NormalizedCatalogRow } from "./erpSync";
 
 export interface ErpConnectionContext {
   externalSupplierId?: string | null;
@@ -25,7 +25,8 @@ export interface ErpProviderInterface {
   // Vendor-specific catalog fetch. When implemented, the sync engine uses this
   // instead of the generic ingestion paths. Returns normalized rows ready for
   // reconciliation. Throws ErpSyncConfigError on missing/invalid credentials.
-  fetchCatalog?(secrets: Record<string, string>): Promise<NormalizedCatalogRow[]>;
+  // With opts.sample, fetch only the first page (used by "Test connection").
+  fetchCatalog?(secrets: Record<string, string>, opts?: ErpFetchOptions): Promise<NormalizedCatalogRow[]>;
 }
 
 // ===================== Shared HTTP / auth helpers =====================
@@ -138,7 +139,7 @@ class DynamicsErpProvider extends BaseErpProvider {
     );
   }
 
-  async fetchCatalog(secrets: Record<string, string>): Promise<NormalizedCatalogRow[]> {
+  async fetchCatalog(secrets: Record<string, string>, opts: ErpFetchOptions = {}): Promise<NormalizedCatalogRow[]> {
     const label = "Microsoft Dynamics 365";
     const tenantId = reqSecret(secrets, "tenantId", label, "Tenant ID");
     const clientId = reqSecret(secrets, "clientId", label, "Client ID");
@@ -176,7 +177,7 @@ class DynamicsErpProvider extends BaseErpProvider {
           stockQuantity: it.inventory,
         });
       }
-      url = data["@odata.nextLink"] ?? null;
+      url = opts.sample ? null : (data["@odata.nextLink"] ?? null);
     }
     return normalizeRecords(records);
   }
@@ -193,7 +194,7 @@ class LexwareErpProvider extends BaseErpProvider {
     );
   }
 
-  async fetchCatalog(secrets: Record<string, string>): Promise<NormalizedCatalogRow[]> {
+  async fetchCatalog(secrets: Record<string, string>, opts: ErpFetchOptions = {}): Promise<NormalizedCatalogRow[]> {
     const label = "Lexware Office";
     const apiKey = reqSecret(secrets, "apiKey", label, "API key");
     const base = (secrets.apiBaseUrl?.trim() || "https://api.lexoffice.io").replace(/\/$/, "");
@@ -223,7 +224,7 @@ class LexwareErpProvider extends BaseErpProvider {
           price,
         });
       }
-      if (data.last === true || content.length === 0 || page >= (data.totalPages ?? 1) - 1) break;
+      if (opts.sample || data.last === true || content.length === 0 || page >= (data.totalPages ?? 1) - 1) break;
       page++;
     }
     return normalizeRecords(records);
@@ -281,7 +282,7 @@ class SapErpProvider extends BaseErpProvider {
     );
   }
 
-  async fetchCatalog(secrets: Record<string, string>): Promise<NormalizedCatalogRow[]> {
+  async fetchCatalog(secrets: Record<string, string>, opts: ErpFetchOptions = {}): Promise<NormalizedCatalogRow[]> {
     const label = "SAP Business One";
     const slUrl = reqSecret(secrets, "serviceLayerUrl", label, "Service Layer URL").replace(/\/$/, "");
     const companyDb = reqSecret(secrets, "companyDb", label, "Company DB");
@@ -330,7 +331,7 @@ class SapErpProvider extends BaseErpProvider {
             stockQuantity: it.QuantityOnStock,
           });
         }
-        next = data["@odata.nextLink"] ?? null;
+        next = opts.sample ? null : (data["@odata.nextLink"] ?? null);
       }
     } finally {
       // 3) Best-effort logout to free the session.
@@ -351,7 +352,7 @@ class WeclappErpProvider extends BaseErpProvider {
     );
   }
 
-  async fetchCatalog(secrets: Record<string, string>): Promise<NormalizedCatalogRow[]> {
+  async fetchCatalog(secrets: Record<string, string>, opts: ErpFetchOptions = {}): Promise<NormalizedCatalogRow[]> {
     const label = "weclapp";
     const token = reqSecret(secrets, "apiKey", label, "API token");
     const base = reqSecret(secrets, "apiBaseUrl", label, "base URL (https://TENANT.weclapp.com)").replace(/\/$/, "");
@@ -377,7 +378,7 @@ class WeclappErpProvider extends BaseErpProvider {
           price: a.salesPrice ?? a.listPrice ?? null,
         });
       }
-      if (result.length < pageSize) break;
+      if (opts.sample || result.length < pageSize) break;
       page++;
     }
     return normalizeRecords(records);

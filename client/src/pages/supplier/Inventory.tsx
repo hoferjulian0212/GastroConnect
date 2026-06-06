@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Warehouse, Database, Clock, AlertCircle, Link2, RefreshCw, ShieldCheck, KeyRound } from "lucide-react";
+import { Warehouse, Database, Clock, AlertCircle, Link2, RefreshCw, ShieldCheck, KeyRound, PlugZap, CheckCircle2, XCircle } from "lucide-react";
 import type { Product, SupplierErpConnection, ErpProvider, ErpCredentialPublicMeta, ErpCredentialType } from "@shared/schema";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { InventoryView } from "./Products";
 import { ConnectErpDialog } from "@/components/ConnectErpDialog";
@@ -21,9 +22,11 @@ export default function SupplierInventory() {
   const { currentUser } = useUser();
   const { lang } = useLanguage();
   const t = useT(lang);
+  const { toast } = useToast();
 
   const [showErpDialog, setShowErpDialog] = useState(false);
   const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: [`/api/supplier/products?supplierId=${currentUser?.id}`],
@@ -47,6 +50,33 @@ export default function SupplierInventory() {
   const erpPending = erpStatus === "pending";
   const erpError = erpStatus === "error";
   const erpProviderName = erpConn?.provider?.name;
+
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/supplier/erp/test", { supplierId: currentUser!.id });
+      return (await res.json()) as { ok: boolean; sampleCount: number; sample: string[] };
+    },
+    onSuccess: (data) => {
+      const message =
+        data.sampleCount > 0
+          ? `${data.sampleCount} ${t("supplierErp", "erpTestProductsFound")}`
+          : t("supplierErp", "erpTestNoProducts");
+      setTestResult({ ok: true, message });
+      toast({ title: t("supplierErp", "erpTestSuccess"), description: message });
+    },
+    onError: (error: Error) => {
+      const message = error.message.replace(/^\d+:\s*/, "");
+      let parsedMessage = message;
+      try {
+        const parsed = JSON.parse(message);
+        if (parsed?.error) parsedMessage = parsed.error;
+      } catch {
+        // keep raw message
+      }
+      setTestResult({ ok: false, message: parsedMessage });
+      toast({ title: t("supplierErp", "erpTestError"), description: parsedMessage, variant: "destructive" });
+    },
+  });
 
   const lowStockCount = (products ?? []).filter(p => p.lowStockThreshold && p.lowStockThreshold > 0 && (p.stockQuantity ?? 0) <= p.lowStockThreshold && (p.stockQuantity ?? 0) > 0).length;
   const outOfStockCount = (products ?? []).filter(p => (p.stockQuantity ?? 0) === 0).length;
@@ -144,6 +174,24 @@ export default function SupplierInventory() {
                   )}
                 </div>
               )}
+
+              {testResult && (
+                <div
+                  className={`flex items-start gap-2 rounded-lg p-2.5 text-sm mt-3 ${
+                    testResult.ok
+                      ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+                      : "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                  }`}
+                  data-testid="text-erp-test-result"
+                >
+                  {testResult.ok ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  )}
+                  <span className="break-words">{testResult.message}</span>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-2 shrink-0">
@@ -173,6 +221,19 @@ export default function SupplierInventory() {
                   {erpCredentials
                     ? t("supplierErp", "erpCredentialsUpdate")
                     : t("supplierErp", "erpCredentialsButton")}
+                </Button>
+              )}
+              {erpConn && (erpPending || erpActive) && erpCredentials && (
+                <Button
+                  variant="outline"
+                  onClick={() => testMutation.mutate()}
+                  disabled={testMutation.isPending}
+                  data-testid="button-erp-test"
+                >
+                  <PlugZap className={`w-4 h-4 mr-2 ${testMutation.isPending ? "animate-pulse" : ""}`} />
+                  {testMutation.isPending
+                    ? t("supplierErp", "erpTestRunning")
+                    : t("supplierErp", "erpTestBtn")}
                 </Button>
               )}
             </div>

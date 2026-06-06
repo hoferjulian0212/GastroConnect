@@ -51,6 +51,19 @@ export interface ErpConnectionRef {
   providerId: string;
 }
 
+// Options passed through the ingestion paths. `sample` asks adapters to fetch
+// only a lightweight slice (first page) — used by the "Test connection" flow so
+// suppliers can verify credentials without pulling the entire catalog.
+export interface ErpFetchOptions {
+  sample?: boolean;
+}
+
+export interface ErpTestResult {
+  ok: boolean;
+  sampleCount: number;
+  sample: string[];
+}
+
 export interface SyncPreviewItem {
   action: "create" | "update" | "deactivate";
   name: string;
@@ -349,13 +362,17 @@ async function fetchCatalogViaEmail(secrets: Record<string, string>): Promise<No
 //   2. A named-vendor adapter (DATEV, Lexware, Dynamics, SAP, ...) when the
 //      connection's provider implements a real fetchCatalog.
 //   3. The generic REST/JSON fetch using a stored apiKey + apiBaseUrl.
-export async function fetchErpCatalog(connection: ErpConnectionRef): Promise<NormalizedCatalogRow[]> {
+export async function fetchErpCatalog(
+  connection: ErpConnectionRef,
+  opts: ErpFetchOptions = {},
+): Promise<NormalizedCatalogRow[]> {
   const secrets = await storage.getErpCredentialSecrets(connection.id);
   if (!secrets) {
     throw new ErpSyncConfigError("No ERP credentials stored. Add API or mailbox credentials first.");
   }
 
-  // (1) Excel-via-email is chosen explicitly regardless of provider.
+  // (1) Excel-via-email is chosen explicitly regardless of provider. (The email
+  // path fetches a single spreadsheet, so it is already lightweight.)
   if (secrets.mailboxHost) return fetchCatalogViaEmail(secrets);
 
   // (2) Vendor-specific adapter (lazy import to keep the module graph acyclic).
@@ -364,13 +381,28 @@ export async function fetchErpCatalog(connection: ErpConnectionRef): Promise<Nor
     const { getErpProviderAdapter } = await import("./erpProviders");
     const adapter = getErpProviderAdapter(provider.slug);
     if (typeof adapter.fetchCatalog === "function") {
-      return adapter.fetchCatalog(secrets);
+      return adapter.fetchCatalog(secrets, opts);
     }
   }
 
-  // (3) Generic REST/JSON fetch.
+  // (3) Generic REST/JSON fetch (a single GET, already lightweight).
   if (secrets.apiKey) return fetchCatalogViaApi(secrets);
   throw new ErpSyncConfigError("Stored credentials do not match a supported ingestion method.");
+}
+
+/**
+ * Authenticate against the vendor and pull a small sample (first page only) so a
+ * supplier can verify their stored credentials before the first full sync. Never
+ * writes anything. Throws ErpSyncConfigError with a supplier-facing message on
+ * bad credentials, wrong URLs, expired secrets, etc.
+ */
+export async function testErpConnection(connection: ErpConnectionRef): Promise<ErpTestResult> {
+  const rows = await fetchErpCatalog(connection, { sample: true });
+  return {
+    ok: true,
+    sampleCount: rows.length,
+    sample: rows.slice(0, 5).map((r) => r.name),
+  };
 }
 
 // ===================== Reconciliation + overwrite engine =====================
