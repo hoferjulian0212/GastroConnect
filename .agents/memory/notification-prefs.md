@@ -15,10 +15,10 @@ Null is treated as "all defaults". Persisted via `PATCH /api/users/:id/notificat
   gate *delivery* of that channel for that event type. They do NOT stop the in-app
   notification record from being created — the bell stays an activity feed.
 - The "Push" card is the master device subscribe/unsubscribe (separate).
-- `shouldSendNotification(userId, type, channel)` in `server/routes.ts` maps a
-  notification `type` → pref key. Types NOT mapped (low_stock, monthly_report,
-  pms_request, erp_request, erp_sync_failed, whatsapp_request) are operational and
-  are ALWAYS delivered, regardless of toggles.
+- `createNotificationWithPush` (server/routes.ts) loads the recipient once and gates
+  BOTH push and email inline using `notificationPrefKey(type)` → pref key. Types NOT
+  mapped (low_stock, monthly_report, pms_request, erp_request, erp_sync_failed,
+  whatsapp_request) are operational and ALWAYS delivered, regardless of toggles.
 
 **Why:** the email toggles + granular push toggles used to be local `useState` only —
 dead UI that lied to the user (a false promise). Toggling did nothing; no customer

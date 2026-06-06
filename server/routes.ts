@@ -396,7 +396,9 @@ const updateProductSchema = z.object({
   unit: safeShortString.optional(),
   category: safeShortString.optional().nullable(),
   inStock: z.boolean().optional(),
-  stockQuantity: z.number().int().min(0).max(999999).optional(),
+  // stockQuantity is intentionally NOT updatable here: stock changes must go
+  // through the audited stock-movement path (POST /api/stock-movements) so the
+  // history stays accurate. Initial stock is set at product creation only.
   lowStockThreshold: z.number().int().min(0).max(999999).optional(),
   minOrderQuantity: z.number().int().min(1).max(999999).optional(),
   imageUrl: safeString.optional().nullable(),

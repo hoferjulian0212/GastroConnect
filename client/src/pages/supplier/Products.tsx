@@ -1324,7 +1324,10 @@ export default function SupplierProducts() {
  const onSubmit = (data: ProductFormData) => {
  const cleaned = { ...data, gtin: data.gtin?.trim() ? data.gtin.trim() : null };
  if (editingProduct) {
- updateProductMutation.mutate({ ...cleaned, id: editingProduct.id });
+ // Stock quantity is managed on the Inventory page via audited stock
+ // movements, so never overwrite it directly from the product editor.
+ const { stockQuantity: _omitStock, ...editPayload } = cleaned;
+ updateProductMutation.mutate({ ...editPayload, id: editingProduct.id });
  } else {
  createProductMutation.mutate(cleaned);
  }
@@ -1716,6 +1719,22 @@ export default function SupplierProducts() {
  />
 
  <div className="grid grid-cols-2 gap-4">
+ {editingProduct ? (
+ <FormItem>
+ <FormLabel>{t("supplierProducts", "stockQuantity")}</FormLabel>
+ <div
+ className="flex h-10 items-center rounded-md border border-input bg-muted/40 px-3 text-sm tabular-nums"
+ data-testid="text-product-stock-readonly"
+ >
+ {(editingProduct.stockQuantity ?? 0)} {editingProduct.unit}
+ </div>
+ <p className="text-xs text-muted-foreground">
+ {lang === "de"
+ ? "Bestand wird auf der Bestandsseite mit Verlauf angepasst."
+ : "La giacenza si modifica nella pagina Inventario con cronologia."}
+ </p>
+ </FormItem>
+ ) : (
  <FormField
  control={form.control}
  name="stockQuantity"
@@ -1748,6 +1767,7 @@ export default function SupplierProducts() {
  </FormItem>
  )}
  />
+ )}
  <FormField
  control={form.control}
  name="lowStockThreshold"

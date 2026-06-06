@@ -1,2 +1,4 @@
 - [No-auth by design](no-auth-by-design.md) — endpoints trust caller-provided IDs on purpose; don't add route authz in unrelated tasks.
 - [Notification preferences](notification-prefs.md) — per-type toggles gate push/email delivery (not in-app records); operational types always send.
+- [Email sending (Resend)](email-resend.md) — uses Resend HTTP API + RESEND_API_KEY (connector proxy was invisible to runtime); degrades gracefully when unset.
+- [Stock editing](stock-editing.md) — stockQuantity edits only via audited Inventory stock-movements; product editor sets initial stock only.
