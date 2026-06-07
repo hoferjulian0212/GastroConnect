@@ -13,7 +13,6 @@ import {
   Home,
   ShoppingCart,
   BarChart3,
-  Sparkles,
   Loader2,
   ArrowLeft,
 } from "lucide-react";
@@ -29,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { openAiAssistant } from "@/components/AiAssistant";
+import { openAiAssistant, SupportChatIcon } from "@/components/AiAssistant";
 
 const OPEN_EVENT = "gc:open-search";
 
@@ -289,7 +288,7 @@ export function GlobalSearch() {
                 </button>
                 <div className="flex items-start gap-2.5">
                   <div className="mt-0.5 shrink-0 rounded-full bg-primary/10 p-1.5 text-primary">
-                    <Sparkles className="h-4 w-4" />
+                    <SupportChatIcon className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-muted-foreground mb-1 truncate" data-testid="text-ai-question">
@@ -349,7 +348,7 @@ export function GlobalSearch() {
                   }}
                   data-testid="search-ask-ai"
                 >
-                  <Sparkles className="text-primary" />
+                  <SupportChatIcon className="text-primary h-4 w-4" />
                   <span className="flex-1 min-w-0 truncate">
                     {t(`KI fragen: „${debounced}"`, `Chiedi all'AI: "${debounced}"`)}
                   </span>

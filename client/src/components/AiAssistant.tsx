@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
-  Sparkles,
   X,
   Plus,
   History as HistoryIcon,
@@ -21,6 +20,28 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { AiChatAction } from "@shared/schema";
 
 const OPEN_EVENT = "gc:open-ai";
+
+// Support-chat style icon: a message bubble with a person inside, so the
+// assistant reads as a friendly support chat rather than an "AI" feature.
+export function SupportChatIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="8.5" r="1.8" />
+      <path d="M8.4 14.6v-.3a3.6 3.6 0 0 1 7.2 0v.3" />
+    </svg>
+  );
+}
 
 export function openAiAssistant(seed?: string) {
   if (typeof window !== "undefined") {
@@ -267,7 +288,7 @@ export function AiAssistant() {
           aria-label={t("KI-Assistent öffnen", "Apri assistente AI")}
           data-testid="button-ai-fab"
         >
-          <Sparkles className="h-6 w-6" />
+          <SupportChatIcon className="h-6 w-6" />
         </button>
       )}
 
@@ -293,7 +314,7 @@ export function AiAssistant() {
               </button>
             ) : (
               <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary shrink-0">
-                <Sparkles className="h-4 w-4" />
+                <SupportChatIcon className="h-4 w-4" />
               </div>
             )}
             <div className="flex-1 min-w-0">
@@ -403,7 +424,7 @@ export function AiAssistant() {
                 {messages.length === 0 && !sending ? (
                   <div className="flex flex-col items-center justify-center h-full text-center px-4" data-testid="ai-empty-state">
                     <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-primary/10 text-primary mb-3">
-                      <Sparkles className="h-6 w-6" />
+                      <SupportChatIcon className="h-6 w-6" />
                     </div>
                     <p className="text-sm font-semibold mb-1">
                       {t("Wie kann ich helfen?", "Come posso aiutarti?")}
@@ -440,7 +461,7 @@ export function AiAssistant() {
                       ) : (
                         <div key={m.id} className="flex items-start gap-2.5" data-testid={`ai-msg-assistant-${m.id}`}>
                           <div className="mt-0.5 shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-primary">
-                            <Sparkles className="h-3.5 w-3.5" />
+                            <SupportChatIcon className="h-3.5 w-3.5" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div
@@ -475,7 +496,7 @@ export function AiAssistant() {
                     {sending && (
                       <div className="flex items-start gap-2.5" data-testid="ai-typing">
                         <div className="mt-0.5 shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-primary">
-                          <Sparkles className="h-3.5 w-3.5" />
+                          <SupportChatIcon className="h-3.5 w-3.5" />
                         </div>
                         <div className="rounded-2xl rounded-tl-md bg-muted px-3.5 py-2.5">
                           <div className="flex items-center gap-1">
