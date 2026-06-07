@@ -47,7 +47,7 @@ export function HeroPortal({ children, desktopOnly = false, mobileWrapperClassNa
 
   return (
     <div
-      className={`dark bg-[#161921] rounded-3xl overflow-hidden mx-2 mb-3 relative ${mobileWrapperClassName ?? ""}`}
+      className={`dark bg-[#161921] rounded-3xl overflow-hidden shrink-0 mx-2 mb-3 relative ${mobileWrapperClassName ?? ""}`}
       style={{ marginTop: "0.25rem" }}
       data-hero-mobile
     >

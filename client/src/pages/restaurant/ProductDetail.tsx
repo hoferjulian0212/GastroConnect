@@ -279,7 +279,7 @@ export default function ProductDetail() {
   })();
 
   return (
-    <>
+    <div>
       <HeroPortal mobileWrapperClassName="!mx-2">
         <div className="px-3 md:px-6 pt-2 md:pt-1 pb-5 md:pb-6" data-testid="product-detail-hero">
           <button
@@ -493,6 +493,6 @@ export default function ProductDetail() {
         )}
       </div>
       </div>
-    </>
+    </div>
   );
 }
