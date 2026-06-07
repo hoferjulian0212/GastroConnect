@@ -7,7 +7,7 @@ import { db } from "./db";
 import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
-import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES } from "@shared/schema";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES } from "@shared/schema";
 import { can, type Capability } from "@shared/permissions";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
@@ -1032,6 +1032,36 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid widgets", details: error.issues });
       }
       res.status(500).json({ error: "Failed to save dashboard widgets" });
+    }
+  });
+
+  app.get("/api/users/:id/dashboard-templates/:role", async (req, res) => {
+    try {
+      const role = req.params.role;
+      if (role !== "restaurant" && role !== "supplier") {
+        return res.status(400).json({ error: "Invalid role" });
+      }
+      const value = await storage.getDashboardTemplates(req.params.id, role);
+      res.json(value ?? { templates: [], activeId: null });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch dashboard templates" });
+    }
+  });
+
+  app.put("/api/users/:id/dashboard-templates/:role", async (req, res) => {
+    try {
+      const role = req.params.role;
+      if (role !== "restaurant" && role !== "supplier") {
+        return res.status(400).json({ error: "Invalid role" });
+      }
+      const parsed = dashboardTemplatesPayloadSchema.parse(req.body);
+      await storage.setDashboardTemplates(req.params.id, role, parsed);
+      res.json({ ok: true, ...parsed });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid templates", details: error.issues });
+      }
+      res.status(500).json({ error: "Failed to save dashboard templates" });
     }
   });
 

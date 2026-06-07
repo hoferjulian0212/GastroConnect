@@ -556,6 +556,24 @@ export default function SupplierHome() {
         managerTitle={t("supplierHome", "manageWidgets")}
         managerDescription={t("supplierHome", "manageWidgetsDesc")}
         managerButtonLabel={t("supplierHome", "manageWidgets")}
+        viewLabels={{
+          views: t("dashboardViews", "views"),
+          noViews: t("dashboardViews", "noViews"),
+          defaultView: t("dashboardViews", "defaultView"),
+          saveAsNew: t("dashboardViews", "saveAsNew"),
+          updateActive: t("dashboardViews", "updateActive"),
+          rename: t("dashboardViews", "rename"),
+          delete: t("dashboardViews", "delete"),
+          createTitle: t("dashboardViews", "createTitle"),
+          createDesc: t("dashboardViews", "createDesc"),
+          renameTitle: t("dashboardViews", "renameTitle"),
+          nameLabel: t("dashboardViews", "nameLabel"),
+          namePlaceholder: t("dashboardViews", "namePlaceholder"),
+          deleteTitle: t("dashboardViews", "deleteTitle"),
+          deleteDesc: t("dashboardViews", "deleteDesc"),
+          save: t("common", "save"),
+          cancel: t("common", "cancel"),
+        }}
         sections={[
           { id: "w-offene-reklamationen", optional: true, defaultEnabled: true, defaultSize: "half" as const,
             title: t("supplierHome", "widgetOpenComplaints"), description: t("supplierHome", "widgetOpenComplaintsDesc"),

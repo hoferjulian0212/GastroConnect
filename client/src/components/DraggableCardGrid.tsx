@@ -1,7 +1,27 @@
 import { useState, useCallback, useEffect, useMemo, useRef, memo } from "react";
-import { GripVertical, Maximize2, Columns2, Settings2, Check, LayoutGrid } from "lucide-react";
+import { GripVertical, Maximize2, Columns2, Settings2, Check, LayoutGrid, Layers, ChevronDown, Plus, Save, Pencil, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   DndContext,
@@ -35,6 +55,44 @@ interface CardSection {
   defaultEnabled?: boolean;
 }
 
+interface ViewLabels {
+  views: string;
+  noViews: string;
+  defaultView: string;
+  saveAsNew: string;
+  updateActive: string;
+  rename: string;
+  delete: string;
+  createTitle: string;
+  createDesc: string;
+  renameTitle: string;
+  nameLabel: string;
+  namePlaceholder: string;
+  deleteTitle: string;
+  deleteDesc: string;
+  save: string;
+  cancel: string;
+}
+
+const DEFAULT_VIEW_LABELS: ViewLabels = {
+  views: "Ansichten",
+  noViews: "Keine gespeicherten Ansichten",
+  defaultView: "Standardansicht",
+  saveAsNew: "Aktuelle Ansicht speichern …",
+  updateActive: "Aktive Ansicht aktualisieren",
+  rename: "Umbenennen",
+  delete: "Löschen",
+  createTitle: "Neue Ansicht",
+  createDesc: "Speichern Sie die aktuelle Anordnung als benannte Ansicht.",
+  renameTitle: "Ansicht umbenennen",
+  nameLabel: "Name",
+  namePlaceholder: "z. B. Statistiken",
+  deleteTitle: "Ansicht löschen?",
+  deleteDesc: "Diese Ansicht wird dauerhaft entfernt.",
+  save: "Speichern",
+  cancel: "Abbrechen",
+};
+
 interface DraggableCardGridProps {
   userId: string;
   role: string;
@@ -42,11 +100,19 @@ interface DraggableCardGridProps {
   managerTitle?: string;
   managerDescription?: string;
   managerButtonLabel?: string;
+  viewLabels?: Partial<ViewLabels>;
 }
 
 interface LayoutItem {
   id: string;
   size: CardSize;
+}
+
+interface DashboardTemplate {
+  id: string;
+  name: string;
+  layout: LayoutItem[];
+  widgets: string[];
 }
 
 interface MasonryPosition {
@@ -63,6 +129,54 @@ function getStorageKey(userId: string, role: string) {
 
 function getWidgetsStorageKey(userId: string, role: string) {
   return `dashboard-widgets-${userId}-${role}`;
+}
+
+function getTemplatesStorageKey(userId: string, role: string) {
+  return `dashboard-templates-${userId}-${role}`;
+}
+
+function genTemplateId(): string {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return `tpl-${crypto.randomUUID()}`;
+    }
+  } catch {}
+  return `tpl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+interface TemplatesState {
+  templates: DashboardTemplate[];
+  activeId: string | null;
+}
+
+function sanitizeTemplates(value: unknown): TemplatesState {
+  const empty: TemplatesState = { templates: [], activeId: null };
+  if (!value || typeof value !== "object") return empty;
+  const raw = (value as any).templates;
+  if (!Array.isArray(raw)) return empty;
+  const templates: DashboardTemplate[] = [];
+  for (const t of raw) {
+    if (!t || typeof t !== "object") continue;
+    const id = (t as any).id;
+    const name = (t as any).name;
+    const layout = (t as any).layout;
+    const widgets = (t as any).widgets;
+    if (typeof id !== "string" || typeof name !== "string") continue;
+    if (!Array.isArray(layout) || !Array.isArray(widgets)) continue;
+    templates.push({ id, name, layout, widgets });
+  }
+  const validIds = new Set(templates.map(t => t.id));
+  const rawActive = (value as any).activeId;
+  const activeId = typeof rawActive === "string" && validIds.has(rawActive) ? rawActive : null;
+  return { templates, activeId };
+}
+
+function loadTemplatesState(userId: string, role: string): TemplatesState {
+  try {
+    const saved = localStorage.getItem(getTemplatesStorageKey(userId, role));
+    if (saved) return sanitizeTemplates(JSON.parse(saved));
+  } catch {}
+  return { templates: [], activeId: null };
 }
 
 function defaultEnabledIds(sections: CardSection[]): string[] {
@@ -297,7 +411,8 @@ const measuringConfig = {
   },
 };
 
-export default function DraggableCardGrid({ userId, role, sections, managerTitle, managerDescription, managerButtonLabel }: DraggableCardGridProps) {
+export default function DraggableCardGrid({ userId, role, sections, managerTitle, managerDescription, managerButtonLabel, viewLabels }: DraggableCardGridProps) {
+  const L = useMemo<ViewLabels>(() => ({ ...DEFAULT_VIEW_LABELS, ...(viewLabels || {}) }), [viewLabels]);
   const [enabledIds, setEnabledIds] = useState<string[]>(() => loadEnabledIds(userId, role, sections));
   const enabledSet = useMemo(() => new Set(enabledIds), [enabledIds]);
   const effectiveSections = useMemo(
@@ -316,6 +431,26 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
   const layoutRef = useRef<LayoutItem[]>(layout);
   const draggingRef = useRef(false);
   const [dragWidth, setDragWidth] = useState<number>(0);
+
+  const initialTemplates = useMemo(() => loadTemplatesState(userId, role), [userId, role]);
+  const [templates, setTemplates] = useState<DashboardTemplate[]>(initialTemplates.templates);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(initialTemplates.activeId);
+  const templatesRef = useRef<DashboardTemplate[]>(initialTemplates.templates);
+  const activeTemplateIdRef = useRef<string | null>(initialTemplates.activeId);
+  const enabledIdsRef = useRef<string[]>(enabledIds);
+  const [nameDialogOpen, setNameDialogOpen] = useState(false);
+  const [nameDialogMode, setNameDialogMode] = useState<"create" | "rename">("create");
+  const [nameInput, setNameInput] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  useEffect(() => { templatesRef.current = templates; }, [templates]);
+  useEffect(() => { activeTemplateIdRef.current = activeTemplateId; }, [activeTemplateId]);
+  useEffect(() => { enabledIdsRef.current = enabledIds; }, [enabledIds]);
+
+  const activeTemplate = useMemo(
+    () => templates.find(t => t.id === activeTemplateId) || null,
+    [templates, activeTemplateId]
+  );
 
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef(new Map<string, HTMLDivElement>());
@@ -559,6 +694,129 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
     persistRemote(newLayout);
   }, [userId, role, persistRemote]);
 
+  // ---- Named templates (saved dashboard "views") ----
+
+  // Fetch persisted templates from the server on mount (server wins on conflict).
+  useEffect(() => {
+    if (!userId || !role) return;
+    let cancelled = false;
+    // Reset to this user/role's locally cached state first so an in-place account
+    // switch never leaves the previous account's templates active.
+    const local = loadTemplatesState(userId, role);
+    setTemplates(local.templates);
+    setActiveTemplateId(local.activeId);
+    templatesRef.current = local.templates;
+    activeTemplateIdRef.current = local.activeId;
+    (async () => {
+      try {
+        const res = await fetch(`/api/users/${encodeURIComponent(userId)}/dashboard-templates/${encodeURIComponent(role)}`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        const sanitized = sanitizeTemplates(data);
+        setTemplates(sanitized.templates);
+        setActiveTemplateId(sanitized.activeId);
+        try { localStorage.setItem(getTemplatesStorageKey(userId, role), JSON.stringify(sanitized)); } catch {}
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [userId, role]);
+
+  const templatesSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTemplatesState = useCallback((nextTemplates: DashboardTemplate[], nextActiveId: string | null) => {
+    setTemplates(nextTemplates);
+    setActiveTemplateId(nextActiveId);
+    templatesRef.current = nextTemplates;
+    activeTemplateIdRef.current = nextActiveId;
+    const payload: TemplatesState = { templates: nextTemplates, activeId: nextActiveId };
+    try { localStorage.setItem(getTemplatesStorageKey(userId, role), JSON.stringify(payload)); } catch {}
+    if (!userId || !role) return;
+    if (templatesSaveTimer.current) clearTimeout(templatesSaveTimer.current);
+    templatesSaveTimer.current = setTimeout(() => {
+      apiRequest(
+        "PUT",
+        `/api/users/${encodeURIComponent(userId)}/dashboard-templates/${encodeURIComponent(role)}`,
+        payload,
+      ).catch(() => {});
+    }, 400);
+  }, [userId, role]);
+
+  useEffect(() => () => {
+    if (templatesSaveTimer.current) clearTimeout(templatesSaveTimer.current);
+  }, []);
+
+  // Apply a template: adopt its enabled widgets + card layout as the current state.
+  const applyTemplate = useCallback((tpl: DashboardTemplate) => {
+    const widgets = reconcileEnabledIds(tpl.widgets, sections) ?? defaultEnabledIds(sections);
+    setEnabledIds(widgets);
+    enabledIdsRef.current = widgets;
+    try { localStorage.setItem(getWidgetsStorageKey(userId, role), JSON.stringify(widgets)); } catch {}
+    persistWidgetsRemote(widgets);
+    const effective = sections.filter(s => !s.optional || widgets.includes(s.id));
+    const reconciledLayout = reconcileLayout(tpl.layout, effective) ?? defaultLayout(effective);
+    saveLayout(reconciledLayout);
+    saveTemplatesState(templatesRef.current, tpl.id);
+  }, [sections, userId, role, persistWidgetsRemote, saveLayout, saveTemplatesState]);
+
+  const handleSaveNewTemplate = useCallback((name: string) => {
+    const id = genTemplateId();
+    const tpl: DashboardTemplate = {
+      id,
+      name,
+      layout: layoutRef.current.map(l => ({ ...l })),
+      widgets: [...enabledIdsRef.current],
+    };
+    saveTemplatesState([...templatesRef.current, tpl], id);
+  }, [saveTemplatesState]);
+
+  const handleUpdateActiveTemplate = useCallback(() => {
+    const id = activeTemplateIdRef.current;
+    if (!id) return;
+    const next = templatesRef.current.map(t =>
+      t.id === id
+        ? { ...t, layout: layoutRef.current.map(l => ({ ...l })), widgets: [...enabledIdsRef.current] }
+        : t
+    );
+    saveTemplatesState(next, id);
+  }, [saveTemplatesState]);
+
+  const handleRenameActiveTemplate = useCallback((name: string) => {
+    const id = activeTemplateIdRef.current;
+    if (!id) return;
+    const next = templatesRef.current.map(t => (t.id === id ? { ...t, name } : t));
+    saveTemplatesState(next, id);
+  }, [saveTemplatesState]);
+
+  const handleDeleteActiveTemplate = useCallback(() => {
+    const id = activeTemplateIdRef.current;
+    if (!id) return;
+    const next = templatesRef.current.filter(t => t.id !== id);
+    saveTemplatesState(next, null);
+    setDeleteDialogOpen(false);
+  }, [saveTemplatesState]);
+
+  const openCreateDialog = useCallback(() => {
+    setNameDialogMode("create");
+    setNameInput("");
+    setNameDialogOpen(true);
+  }, []);
+
+  const openRenameDialog = useCallback(() => {
+    setNameDialogMode("rename");
+    setNameInput(activeTemplateIdRef.current ? (templatesRef.current.find(t => t.id === activeTemplateIdRef.current)?.name ?? "") : "");
+    setNameDialogOpen(true);
+  }, []);
+
+  const submitNameDialog = useCallback(() => {
+    const name = nameInput.trim();
+    if (!name) return;
+    if (nameDialogMode === "create") handleSaveNewTemplate(name);
+    else handleRenameActiveTemplate(name);
+    setNameDialogOpen(false);
+  }, [nameInput, nameDialogMode, handleSaveNewTemplate, handleRenameActiveTemplate]);
+
   const toggleSize = useCallback((id: string) => {
     const newLayout = layout.map(item =>
       item.id === id ? { ...item, size: (item.size === "full" ? "half" : "full") as CardSize } : item
@@ -629,7 +887,65 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
 
   return (
     <div className="relative">
-      <div className="flex justify-end gap-1 mb-3 md:mb-4">
+      <div className="flex items-center justify-end gap-1 mb-3 md:mb-4">
+        {!editMode && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="h-7 inline-flex items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground/70 hover:text-foreground hover:bg-muted/60 transition-colors max-w-[170px]"
+                data-testid="button-dashboard-views"
+                title={L.views}
+                aria-label={L.views}
+              >
+                <Layers className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{activeTemplate ? activeTemplate.name : L.defaultView}</span>
+                <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuLabel>{L.views}</DropdownMenuLabel>
+              {templates.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground" data-testid="text-no-views">{L.noViews}</div>
+              ) : (
+                templates.map(tpl => (
+                  <DropdownMenuItem
+                    key={tpl.id}
+                    onClick={() => applyTemplate(tpl)}
+                    data-testid={`view-item-${tpl.id}`}
+                  >
+                    <Check className={`mr-2 h-3.5 w-3.5 shrink-0 ${tpl.id === activeTemplateId ? "opacity-100" : "opacity-0"}`} />
+                    <span className="truncate">{tpl.name}</span>
+                  </DropdownMenuItem>
+                ))
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={openCreateDialog} data-testid="button-save-view">
+                <Plus className="mr-2 h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{L.saveAsNew}</span>
+              </DropdownMenuItem>
+              {activeTemplate && (
+                <>
+                  <DropdownMenuItem onClick={handleUpdateActiveTemplate} data-testid="button-update-view">
+                    <Save className="mr-2 h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{L.updateActive}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={openRenameDialog} data-testid="button-rename-view">
+                    <Pencil className="mr-2 h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{L.rename}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setDeleteDialogOpen(true)}
+                    className="text-destructive focus:text-destructive"
+                    data-testid="button-delete-view"
+                  >
+                    <Trash2 className="mr-2 h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{L.delete}</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {!editMode && optionalSections.length > 0 && (
           <button
             onClick={() => setPickerOpen(true)}
@@ -703,6 +1019,62 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={nameDialogOpen} onOpenChange={setNameDialogOpen}>
+        <DialogContent className="sm:max-w-sm" data-testid="dialog-view-name">
+          <DialogHeader>
+            <DialogTitle>{nameDialogMode === "create" ? L.createTitle : L.renameTitle}</DialogTitle>
+            {nameDialogMode === "create" && L.createDesc ? (
+              <DialogDescription>{L.createDesc}</DialogDescription>
+            ) : null}
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="view-name-input">{L.nameLabel}</Label>
+            <Input
+              id="view-name-input"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              placeholder={L.namePlaceholder}
+              maxLength={60}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submitNameDialog();
+                }
+              }}
+              data-testid="input-view-name"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNameDialogOpen(false)} data-testid="button-cancel-view-name">
+              {L.cancel}
+            </Button>
+            <Button onClick={submitNameDialog} disabled={!nameInput.trim()} data-testid="button-confirm-view-name">
+              {L.save}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent data-testid="dialog-delete-view">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{L.deleteTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{L.deleteDesc}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-view">{L.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteActiveTemplate}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-view"
+            >
+              {L.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <DndContext
         sensors={sensors}

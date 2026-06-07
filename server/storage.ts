@@ -75,6 +75,8 @@ export interface IStorage {
   setDashboardLayout(userId: string, role: string, layout: Array<{ id: string; size: "full" | "half" }>): Promise<void>;
   getDashboardWidgets(userId: string, role: string): Promise<string[] | null>;
   setDashboardWidgets(userId: string, role: string, widgets: string[]): Promise<void>;
+  getDashboardTemplates(userId: string, role: string): Promise<{ templates: Array<{ id: string; name: string; layout: Array<{ id: string; size: "full" | "half" }>; widgets: string[] }>; activeId: string | null } | null>;
+  setDashboardTemplates(userId: string, role: string, value: { templates: Array<{ id: string; name: string; layout: Array<{ id: string; size: "full" | "half" }>; widgets: string[] }>; activeId: string | null }): Promise<void>;
   completeOnboarding(userId: string): Promise<User | undefined>;
   resetOnboarding(userId: string): Promise<User | undefined>;
   dismissHelpTopic(userId: string, topicId: string): Promise<User | undefined>;
@@ -399,6 +401,21 @@ export class DatabaseStorage implements IStorage {
     const existing = u.dashboardWidgets || {};
     const next = { ...existing, [role]: widgets };
     await db.update(users).set({ dashboardWidgets: next }).where(eq(users.id, userId));
+  }
+
+  async getDashboardTemplates(userId: string, role: string): Promise<{ templates: Array<{ id: string; name: string; layout: Array<{ id: string; size: "full" | "half" }>; widgets: string[] }>; activeId: string | null } | null> {
+    const [u] = await db.select({ dashboardTemplates: users.dashboardTemplates }).from(users).where(eq(users.id, userId));
+    if (!u) return null;
+    const all = u.dashboardTemplates || {};
+    return all[role] ?? null;
+  }
+
+  async setDashboardTemplates(userId: string, role: string, value: { templates: Array<{ id: string; name: string; layout: Array<{ id: string; size: "full" | "half" }>; widgets: string[] }>; activeId: string | null }): Promise<void> {
+    const [u] = await db.select({ dashboardTemplates: users.dashboardTemplates }).from(users).where(eq(users.id, userId));
+    if (!u) return;
+    const existing = u.dashboardTemplates || {};
+    const next = { ...existing, [role]: value };
+    await db.update(users).set({ dashboardTemplates: next }).where(eq(users.id, userId));
   }
 
   async completeOnboarding(userId: string): Promise<User | undefined> {

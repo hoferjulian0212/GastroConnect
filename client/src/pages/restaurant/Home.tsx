@@ -950,6 +950,24 @@ export default function RestaurantHome() {
       <DraggableCardGrid
         userId={currentUser?.id || ""}
         role="restaurant"
+        viewLabels={{
+          views: t("dashboardViews", "views"),
+          noViews: t("dashboardViews", "noViews"),
+          defaultView: t("dashboardViews", "defaultView"),
+          saveAsNew: t("dashboardViews", "saveAsNew"),
+          updateActive: t("dashboardViews", "updateActive"),
+          rename: t("dashboardViews", "rename"),
+          delete: t("dashboardViews", "delete"),
+          createTitle: t("dashboardViews", "createTitle"),
+          createDesc: t("dashboardViews", "createDesc"),
+          renameTitle: t("dashboardViews", "renameTitle"),
+          nameLabel: t("dashboardViews", "nameLabel"),
+          namePlaceholder: t("dashboardViews", "namePlaceholder"),
+          deleteTitle: t("dashboardViews", "deleteTitle"),
+          deleteDesc: t("dashboardViews", "deleteDesc"),
+          save: t("common", "save"),
+          cancel: t("common", "cancel"),
+        }}
         sections={[
           { id: "upcoming-deliveries", defaultSize: "full" as const, content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">

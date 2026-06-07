@@ -36,6 +36,7 @@ export const users = pgTable("users", {
   monthlyRevenueTarget: decimal("monthly_revenue_target", { precision: 12, scale: 2 }),
   dashboardLayouts: jsonb("dashboard_layouts").$type<Record<string, Array<{ id: string; size: "full" | "half" }>>>(),
   dashboardWidgets: jsonb("dashboard_widgets").$type<Record<string, string[]>>(),
+  dashboardTemplates: jsonb("dashboard_templates").$type<Record<string, { templates: Array<{ id: string; name: string; layout: Array<{ id: string; size: "full" | "half" }>; widgets: string[] }>; activeId: string | null }>>(),
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
   dismissedHelpTopics: jsonb("dismissed_help_topics").$type<string[]>(),
   seenPageIntros: jsonb("seen_page_intros").$type<string[]>(),
@@ -88,6 +89,28 @@ export const dashboardLayoutItemSchema = z.object({
 export const dashboardLayoutSchema = z.array(dashboardLayoutItemSchema).max(50);
 
 export const dashboardWidgetsSchema = z.array(z.string().min(1).max(100)).max(50);
+
+export interface DashboardTemplate {
+  id: string;
+  name: string;
+  layout: DashboardLayoutItem[];
+  widgets: string[];
+}
+export const dashboardTemplateSchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().min(1).max(60),
+  layout: dashboardLayoutSchema,
+  widgets: dashboardWidgetsSchema,
+});
+export const dashboardTemplatesSchema = z.array(dashboardTemplateSchema).max(20);
+export const dashboardTemplatesPayloadSchema = z.object({
+  templates: dashboardTemplatesSchema,
+  activeId: z.string().min(1).max(100).nullable().default(null),
+}).refine(
+  (p) => p.activeId === null || p.templates.some((t) => t.id === p.activeId),
+  { message: "activeId must reference an existing template", path: ["activeId"] },
+);
+export type DashboardTemplatesPayload = z.infer<typeof dashboardTemplatesPayloadSchema>;
 
 export const products = pgTable("products", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
