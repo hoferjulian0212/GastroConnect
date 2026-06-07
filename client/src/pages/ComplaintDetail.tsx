@@ -367,9 +367,9 @@ export default function ComplaintDetail() {
     ? (complaint.restaurant?.companyName || complaint.restaurant?.name || "")
     : (complaint.supplier?.companyName || complaint.supplier?.name || "");
 
-  const timeline = statusHistory && statusHistory.length > 0
+  const timeline: ComplaintStatusHistoryWithUser[] = statusHistory && statusHistory.length > 0
     ? statusHistory
-    : [{ id: "created", complaintId: complaint.id, fromStatus: null, toStatus: "open", changedBy: null, createdAt: complaint.createdAt }];
+    : [{ id: "created", complaintId: complaint.id, fromStatus: null, toStatus: "open", changedBy: null, changedByMemberId: null, createdAt: complaint.createdAt }];
 
   let affectedItems: any[] = [];
   try {
@@ -1339,7 +1339,7 @@ export default function ComplaintDetail() {
                   <p className="text-[11px] text-muted-foreground">{timeline.length} {lang === "de" ? (timeline.length === 1 ? "Eintrag" : "Einträge") : (timeline.length === 1 ? "voce" : "voci")}</p>
                 </div>
                 <div className="divide-y divide-border/20">
-                  {timeline.map((entry: any, index: number) => (
+                  {timeline.map((entry: ComplaintStatusHistoryWithUser, index: number) => (
                     <div key={entry.id} className="flex items-start gap-3 px-4 py-3" data-testid={`timeline-entry-${index}`}>
                       <div className={`h-9 w-9 rounded-full ${getStatusBg(entry.toStatus)} flex items-center justify-center shrink-0`}>
                         <div className={getStatusTextColor(entry.toStatus)}>
@@ -1352,16 +1352,16 @@ export default function ComplaintDetail() {
                         </p>
                         <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
                           <span>{format(new Date(entry.createdAt), "EEE, dd.MM.yyyy · HH:mm", { locale: dateLocale })}</span>
-                          {((entry as any).changedByMember || entry.changedByUser) && (
+                          {(entry.changedByMember || entry.changedByUser) && (
                             <span className="inline-flex items-center gap-1">
                               · {lang === "de" ? "von" : "da"}
                               <Avatar className="h-4 w-4 shrink-0">
-                                <AvatarImage src={((entry as any).changedByMember?.profileImageUrl || entry.changedByUser?.profileImageUrl) || undefined} alt={(entry as any).changedByMember?.name || entry.changedByUser?.name} />
+                                <AvatarImage src={(entry.changedByMember?.profileImageUrl || entry.changedByUser?.profileImageUrl) || undefined} alt={entry.changedByMember?.name || entry.changedByUser?.name} />
                                 <AvatarFallback className="bg-primary/10 text-primary text-[7px] font-semibold">
-                                  {((entry as any).changedByMember?.name || entry.changedByUser?.name || "?").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                                  {(entry.changedByMember?.name || entry.changedByUser?.name || "?").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
                                 </AvatarFallback>
                               </Avatar>
-                              <span>{(entry as any).changedByMember?.name || entry.changedByUser?.name}</span>
+                              <span>{entry.changedByMember?.name || entry.changedByUser?.name}</span>
                             </span>
                           )}
                         </div>

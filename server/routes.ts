@@ -1265,7 +1265,18 @@ export async function registerRoutes(
 
   app.patch("/api/users/:id", async (req, res) => {
     try {
-      const validated = updateUserSchema.parse(req.body);
+      const { actingMemberId, ...rest } = (req.body ?? {}) as Record<string, unknown>;
+      const validated = updateUserSchema.parse(rest);
+
+      // Editing organization/business settings (name, company, address, profile
+      // image, etc.) requires the org.edit capability. Lenient enforcement: only
+      // applied when an acting member id is supplied, so language-only syncs and
+      // legacy callers are unaffected. Language-only updates never require org.edit.
+      const businessFields = Object.keys(validated).filter((k) => k !== "language");
+      if (businessFields.length > 0) {
+        const denied = await checkActingCapabilityIfProvided(req.params.id, actingMemberId, "org.edit");
+        if (denied) return res.status(denied.status).json(denied.body);
+      }
 
       // Re-geocode whenever any address component is part of this update, so the
       // map pin always reflects the latest stored address. Coordinates are

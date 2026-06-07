@@ -29,3 +29,12 @@ RESTAURANT member → validate against `restaurantId` with `orders.create` (NOT 
 supplier org). Status changes can come from either side → pass both org ids.
 Client gates (Cart place-order, supplier Products add/edit/delete) treat a null
 currentMember as full access to mirror the lenient server behavior.
+
+**Org/business settings gating gotcha:** business-profile edits flow through the
+legacy `PATCH /api/users/:id` route (a `users` row IS the org), NOT only through
+`/api/orgs/:id`. That route must also enforce `org.edit`, or staff/manager bypass
+the permission model via the Profile pages. It does so leniently: strip
+`actingMemberId` before the strict `updateUserSchema.parse` (schema is `.strict()`),
+then require `org.edit` only when the update touches a non-`language` field (so the
+LanguageSync `{language}` PATCH and legacy callers stay unaffected). Both Profile
+pages send `actingMemberId` and gate save/upload UI via `can(role, "org.edit")`.

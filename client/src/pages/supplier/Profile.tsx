@@ -16,6 +16,7 @@ import { z } from "zod";
 import { useRef, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import { can } from "@shared/permissions";
 import SupplierRatingsList from "@/components/SupplierRatingsList";
 
 const profileSchema = z.object({
@@ -32,12 +33,13 @@ const profileSchema = z.object({
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 export default function SupplierProfile() {
-  const { currentUser, setCurrentUser } = useUser();
+  const { currentUser, setCurrentUser, currentMember } = useUser();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const { lang } = useLanguage();
   const t = useT(lang);
+  const canEditOrg = !currentMember || can(currentMember.role, "org.edit");
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -77,7 +79,7 @@ export default function SupplierProfile() {
       });
 
       const profileImageUrl = objectPath;
-      await apiRequest("PATCH", `/api/users/${currentUser.id}`, { profileImageUrl });
+      await apiRequest("PATCH", `/api/users/${currentUser.id}`, { profileImageUrl, actingMemberId: currentMember?.id });
 
       setCurrentUser({ ...currentUser, profileImageUrl });
       toast({
@@ -115,7 +117,7 @@ export default function SupplierProfile() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
-      const res = await apiRequest("PATCH", `/api/users/${currentUser?.id}`, data);
+      const res = await apiRequest("PATCH", `/api/users/${currentUser?.id}`, { ...data, actingMemberId: currentMember?.id });
       return await res.json();
     },
     onSuccess: (updatedUser) => {
@@ -292,10 +294,17 @@ export default function SupplierProfile() {
                     />
                   </div>
 
+                  {!canEditOrg && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-org-edit-denied">
+                      {lang === "de"
+                        ? "Nur Administratoren können die Unternehmensdaten bearbeiten."
+                        : "Solo gli amministratori possono modificare i dati aziendali."}
+                    </p>
+                  )}
                   <Button
                     type="submit"
                     className="gap-2"
-                    disabled={updateProfileMutation.isPending}
+                    disabled={updateProfileMutation.isPending || !canEditOrg}
                     data-testid="button-save-profile"
                   >
                     <Save className="h-4 w-4" />
@@ -331,8 +340,8 @@ export default function SupplierProfile() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingImage}
-                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  disabled={isUploadingImage || !canEditOrg}
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
                   data-testid="button-upload-image"
                 >
                   {isUploadingImage ? (
