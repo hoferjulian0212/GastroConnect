@@ -19,8 +19,107 @@ import { ProductImage } from "@/components/ProductImage";
 import { ShoppingCart, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import QuantityInput from "@/components/QuantityInput";
+import { useToast } from "@/hooks/use-toast";
+import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 
 type CartItemWithPromo = CartItemWithProduct & { activePromotion?: Promotion | null };
+
+function QuickAddBar({
+  product,
+  lang,
+  t,
+}: {
+  product: ProductWithSupplierAndPromotion;
+  lang: string;
+  t: ReturnType<typeof useT>;
+}) {
+  const { currentUser } = useUser();
+  const { toast } = useToast();
+  const { triggerFly } = useFlyToCart();
+  const min = product.minOrderQuantity && product.minOrderQuantity > 1 ? product.minOrderQuantity : 1;
+  const [qty, setQty] = useState(min);
+  const [added, setAdded] = useState(false);
+  const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setQty(min);
+  }, [min]);
+
+  useEffect(() => {
+    return () => {
+      if (addedTimer.current) clearTimeout(addedTimer.current);
+    };
+  }, []);
+
+  const addMutation = useMutation({
+    mutationFn: async () =>
+      apiRequest("POST", "/api/cart", {
+        restaurantId: currentUser?.id,
+        productId: product.id,
+        supplierId: product.supplierId,
+        quantity: qty,
+        mode: "add",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+      setAdded(true);
+      if (addedTimer.current) clearTimeout(addedTimer.current);
+      addedTimer.current = setTimeout(() => setAdded(false), 1500);
+    },
+    onError: () => {
+      toast({ title: t("common", "error"), description: t("common", "productAddError"), variant: "destructive" });
+    },
+  });
+
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+  const stopKey = (e: React.KeyboardEvent) => e.stopPropagation();
+
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    triggerFly(e.currentTarget as HTMLElement, product.imageUrl);
+    addMutation.mutate();
+  };
+
+  return (
+    <div
+      className="mt-1.5 flex items-center gap-1"
+      onClick={stop}
+      onKeyDown={stopKey}
+      data-testid={`quick-add-${product.id}`}
+    >
+      <div onClick={stop} onKeyDown={stopKey} className="shrink-0">
+        <QuantityInput
+          value={qty}
+          onChange={setQty}
+          min={min}
+          size="sm"
+          testIdPrefix={`quick-qty-${product.id}`}
+        />
+      </div>
+      <Button
+        size="sm"
+        onClick={handleAdd}
+        onKeyDown={stopKey}
+        disabled={addMutation.isPending}
+        aria-label={t("templates", "addToCart")}
+        className={`h-6 flex-1 min-w-0 px-1.5 gap-1 text-[10px] font-medium transition-colors duration-300 ${
+          added ? "bg-green-600 hover:bg-green-600 text-white" : ""
+        }`}
+        data-testid={`button-quick-add-${product.id}`}
+      >
+        {added ? (
+          <Check className="h-3 w-3 shrink-0 animate-status-dot" />
+        ) : (
+          <ShoppingCart className="h-3 w-3 shrink-0" />
+        )}
+        <span className="truncate">
+          {added ? t("common", "added") : t("templates", "addToCart")}
+        </span>
+      </Button>
+    </div>
+  );
+}
 
 
 const categoryConfig: Record<string, { de: string; it: string; icon: typeof Package; color: string }> = {
@@ -430,10 +529,18 @@ export default function RestaurantCatalog() {
  const discountedPrice = hasPromo ? originalPrice * (1 - promo.discountPercent / 100) : originalPrice;
 
  return (
- <button
+ <div
  key={product.id}
- className={`flex flex-col text-left rounded-xl border border-border bg-background hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden ${!product.inStock ? "opacity-60" : ""}`}
+ role="button"
+ tabIndex={0}
+ className={`flex flex-col text-left rounded-xl border border-border bg-background hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${!product.inStock ? "opacity-60" : ""}`}
  onClick={() => setLocation(`/restaurant/product/${product.id}`)}
+ onKeyDown={(e) => {
+ if (e.key === "Enter" || e.key === " ") {
+ e.preventDefault();
+ setLocation(`/restaurant/product/${product.id}`);
+ }
+ }}
  data-testid={`product-card-${product.id}`}
  >
  <div className="relative w-full aspect-[4/3] overflow-hidden">
@@ -474,8 +581,11 @@ export default function RestaurantCatalog() {
  </div>
  )}
  </div>
+ {product.inStock && (
+ <QuickAddBar product={product} lang={lang} t={t} />
+ )}
  </div>
- </button>
+ </div>
  );
  };
 

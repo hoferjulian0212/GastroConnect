@@ -73,6 +73,7 @@ const t = {
     deactivated: { de: "deaktiviert", it: "disattivato" },
     was: { de: "wurde", it: "è stato" },
     addedToCart: { de: "Zum Warenkorb hinzugefügt", it: "Aggiunto al carrello" },
+    added: { de: "Hinzugefügt", it: "Aggiunto" },
     productAddedSuccess: { de: "Das Produkt wurde erfolgreich hinzugefügt.", it: "Il prodotto è stato aggiunto con successo." },
     productAddError: { de: "Das Produkt konnte nicht hinzugefügt werden.", it: "Impossibile aggiungere il prodotto." },
     action: { de: "Aktion", it: "Promozione" },
