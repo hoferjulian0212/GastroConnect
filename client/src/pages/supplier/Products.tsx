@@ -20,6 +20,7 @@ import { Search, Package, Plus, Pencil, Trash2, Upload, X, ImageIcon, ArrowUp, A
 import { ProductImage } from "@/components/ProductImage";
 
 import type { Product, StockMovement, PromotionWithProduct } from "@shared/schema";
+import { can } from "@shared/permissions";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
@@ -1099,7 +1100,8 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
 }
 
 export default function SupplierProducts() {
- const { currentUser } = useUser();
+ const { currentUser, currentMember } = useUser();
+ const canManageProducts = !currentMember || can(currentMember.role, "products.manage");
  const { toast } = useToast();
  const { lang } = useLanguage();
  const t = useT(lang);
@@ -1412,7 +1414,7 @@ export default function SupplierProducts() {
  <Upload className="h-4 w-4" />
  <span className="hidden sm:inline">{lang === "de" ? "Massen-Update" : "Aggiornamento in massa"}</span>
  </Button>
- <Button className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} data-testid="button-add-product">
+ <Button className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5 md:gap-2 text-sm" size="sm" onClick={openCreateDialog} disabled={!canManageProducts} data-testid="button-add-product">
  <Plus className="h-4 w-4" />
  <span className="hidden sm:inline">{lang === "de" ? "Produkt hinzufügen" : "Aggiungi prodotto"}</span>
  <span className="sm:hidden">{t("common", "add")}</span>
@@ -1430,7 +1432,7 @@ export default function SupplierProducts() {
  <Upload className="h-4 w-4" />
  {lang === "de" ? "Massen-Update" : "In massa"}
  </Button>
- <Button className="gap-2" size="sm" onClick={openCreateDialog} data-testid="button-add-product-mobile">
+ <Button className="gap-2" size="sm" onClick={openCreateDialog} disabled={!canManageProducts} data-testid="button-add-product-mobile">
  <Plus className="h-4 w-4" />
  {lang === "de" ? "Produkt" : "Prodotto"}
  </Button>
@@ -1932,10 +1934,10 @@ export default function SupplierProducts() {
  <div className="flex items-start justify-between gap-1 md:gap-2">
  <h3 className="font-medium text-sm md:text-base line-clamp-1">{product.name}</h3>
  <div className="flex shrink-0">
- <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEditDialog(product); }} data-testid={`button-edit-${product.id}`}>
+ <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEditDialog(product); }} disabled={!canManageProducts} data-testid={`button-edit-${product.id}`}>
  <Pencil className="h-3 w-3 md:h-3.5 md:w-3.5" />
  </Button>
- <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteProductMutation.mutate(product.id); }} disabled={deleteProductMutation.isPending} data-testid={`button-delete-${product.id}`}>
+ <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteProductMutation.mutate(product.id); }} disabled={!canManageProducts || deleteProductMutation.isPending} data-testid={`button-delete-${product.id}`}>
  <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5 text-destructive" />
  </Button>
  </div>

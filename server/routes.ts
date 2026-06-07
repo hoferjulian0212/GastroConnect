@@ -785,6 +785,29 @@ export async function registerRoutes(
     return null;
   }
 
+  // Lenient variant for high-traffic core flows (orders/chat): only enforces
+  // when the client supplies an acting member id. When provided, the member must
+  // belong to one of the given orgs and hold the capability. When omitted, the
+  // request is allowed (legacy/best-effort), so existing flows never break.
+  async function checkActingCapabilityIfProvided(
+    orgIds: string | string[],
+    actingMemberId: unknown,
+    capability: Capability,
+  ): Promise<{ status: number; body: any } | null> {
+    if (typeof actingMemberId !== "string" || !actingMemberId) {
+      return null;
+    }
+    const allowed = Array.isArray(orgIds) ? orgIds : [orgIds];
+    const acting = await storage.getMember(actingMemberId);
+    if (!acting || !allowed.includes(acting.organizationId)) {
+      return { status: 403, body: { error: "not_in_org", message: "Die handelnde Person gehört nicht zu dieser Organisation." } };
+    }
+    if (!can(acting.role, capability)) {
+      return { status: 403, body: { error: "forbidden", message: "Keine Berechtigung für diese Aktion." } };
+    }
+    return null;
+  }
+
   app.patch("/api/orgs/:id", async (req, res) => {
     try {
       const schema = z.object({
@@ -2421,6 +2444,11 @@ export async function registerRoutes(
       const validated = createOrderSchema.parse(req.body);
       const { restaurantId, supplierId: targetSupplierId, notes, requestedDeliveryDate, deliveryDates, perSupplierNotes, createdByUserId, actingMemberId } = validated;
 
+      const orderDenied = await checkActingCapabilityIfProvided(restaurantId, actingMemberId, "orders.create");
+      if (orderDenied) {
+        return res.status(orderDenied.status).json(orderDenied.body);
+      }
+
       // Get cart items
       const allCartItems = await storage.getCartItems(restaurantId);
       if (allCartItems.length === 0) {
@@ -2605,6 +2633,11 @@ export async function registerRoutes(
     try {
       const validated = directOrderSchema.parse(req.body);
       const { restaurantId, supplierId, items, notes, createdByUserId, actingMemberId } = validated;
+
+      const directDenied = await checkActingCapabilityIfProvided(supplierId, actingMemberId, "orders.manage");
+      if (directDenied) {
+        return res.status(directDenied.status).json(directDenied.body);
+      }
 
       const products = await storage.getProductsBySupplier(supplierId);
       const productMap = new Map(products.map(p => [p.id, p]));
@@ -2832,6 +2865,14 @@ export async function registerRoutes(
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
+      }
+      const statusDenied = await checkActingCapabilityIfProvided(
+        [order.restaurantId, order.supplierId],
+        actingMemberId,
+        "orders.manage",
+      );
+      if (statusDenied) {
+        return res.status(statusDenied.status).json(statusDenied.body);
       }
       const previousStatus = order.status;
 
@@ -3741,6 +3782,10 @@ export async function registerRoutes(
   app.post("/api/conversations/:id/messages", async (req, res) => {
     try {
       const validated = sendMessageSchema.parse(req.body);
+      const messageDenied = await checkActingCapabilityIfProvided(validated.senderId, validated.senderMemberId, "chat");
+      if (messageDenied) {
+        return res.status(messageDenied.status).json(messageDenied.body);
+      }
       const message = await storage.sendMessage({
         conversationId: req.params.id,
         senderId: validated.senderId,

@@ -13,6 +13,7 @@ import QuantityInput from "@/components/QuantityInput";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatOrderNumber, type CartItemWithProduct, type DeliverySchedule, type Promotion } from "@shared/schema";
+import { can } from "@shared/permissions";
 import { ProductImage } from "@/components/ProductImage";
 
 type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion | null };
@@ -152,6 +153,7 @@ function extractErrorMessage(err: unknown): string | null {
 
 export default function RestaurantCart() {
   const { currentUser, currentMember } = useUser();
+  const canPlaceOrder = !currentMember || can(currentMember.role, "orders.create");
   const { toast } = useToast();
   useMobileKeyboardInset();
   const [orderNotes, setOrderNotes] = useState<Record<string, string>>({});
@@ -838,7 +840,7 @@ export default function RestaurantCart() {
                           notes: orderNotes[supplierId] || "",
                         });
                       }}
-                      disabled={createSupplierOrderMutation.isPending || createOrderMutation.isPending || isBelowMov(supplierId, items) || (deliveryOptions[supplierId] === "date" && !selectedDeliveryDates[supplierId] && (perSupplierDeliveryDates[supplierId] || []).length > 0)}
+                      disabled={!canPlaceOrder || createSupplierOrderMutation.isPending || createOrderMutation.isPending || isBelowMov(supplierId, items) || (deliveryOptions[supplierId] === "date" && !selectedDeliveryDates[supplierId] && (perSupplierDeliveryDates[supplierId] || []).length > 0)}
                       data-testid={`button-send-supplier-${supplierId}`}
                     >
                       {sendingSupplier === supplierId ? (
@@ -917,7 +919,7 @@ export default function RestaurantCart() {
                       notes: Object.values(orderNotes).filter(n => n.trim()).join("; "),
                     });
                   }}
-                  disabled={createOrderMutation.isPending || createSupplierOrderMutation.isPending || supplierIds.some(sid => isBelowMov(sid, (groupedBySupplier || {})[sid]?.items || [])) || supplierIds.some(sid => deliveryOptions[sid] === "date" && !selectedDeliveryDates[sid] && (perSupplierDeliveryDates[sid] || []).length > 0)}
+                  disabled={!canPlaceOrder || createOrderMutation.isPending || createSupplierOrderMutation.isPending || supplierIds.some(sid => isBelowMov(sid, (groupedBySupplier || {})[sid]?.items || [])) || supplierIds.some(sid => deliveryOptions[sid] === "date" && !selectedDeliveryDates[sid] && (perSupplierDeliveryDates[sid] || []).length > 0)}
                   data-testid="button-checkout"
                 >
                   {Object.keys(groupedBySupplier || {}).length > 1 ? t("cart", "placeAllOrders") : t("cart", "placeOrder")}
@@ -1006,7 +1008,7 @@ export default function RestaurantCart() {
                 }
                 setPreConfirmDialog(null);
               }}
-              disabled={createOrderMutation.isPending || createSupplierOrderMutation.isPending}
+              disabled={!canPlaceOrder || createOrderMutation.isPending || createSupplierOrderMutation.isPending}
               className="gap-2"
               data-testid="button-confirm-send"
             >
@@ -1158,7 +1160,7 @@ export default function RestaurantCart() {
             <Button
               className="w-full h-12 rounded-full font-semibold gap-2"
               onClick={submit}
-              disabled={createOrderMutation.isPending || hasMovError}
+              disabled={!canPlaceOrder || createOrderMutation.isPending || hasMovError}
               data-testid="button-mobile-send-order"
             >
               {createOrderMutation.isPending ? (

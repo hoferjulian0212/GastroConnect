@@ -215,10 +215,19 @@ function ResponsibleVertreterBadge({
     enabled: !!supplierId && !!restaurantId,
   });
   if (!data?.member) return null;
+  const member = data.member;
+  const memberInitials = member.name
+    ? member.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "?";
   return (
     <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5" data-testid={`text-responsible-vertreter-${supplierId}`}>
-      <UserCog className="h-3 w-3 shrink-0" />
-      {lang === "it" ? "Referente" : "Ansprechpartner"}: {data.member.name}
+      <Avatar className="h-4 w-4 shrink-0">
+        <AvatarImage src={member.profileImageUrl || undefined} alt={member.name} />
+        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-[8px]">
+          {memberInitials}
+        </AvatarFallback>
+      </Avatar>
+      {lang === "it" ? "Referente" : "Ansprechpartner"}: {member.name}
     </p>
   );
 }

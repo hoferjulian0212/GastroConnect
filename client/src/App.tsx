@@ -213,10 +213,12 @@ function CartButton() {
 }
 
 function MobileProfileButton() {
-  const { currentUser } = useUser();
+  const { currentUser, currentMember } = useUser();
 
-  const initials = currentUser?.name
-    ? currentUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+  const displayName = currentMember?.name || currentUser?.name;
+  const displayImage = currentMember?.profileImageUrl || currentUser?.profileImageUrl;
+  const initials = displayName
+    ? displayName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
   return (
@@ -224,7 +226,7 @@ function MobileProfileButton() {
       <DropdownMenuTrigger asChild>
         <button className="md:hidden" data-testid="button-mobile-profile">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name || ""} />
+            <AvatarImage src={displayImage || undefined} alt={displayName || ""} />
             <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
               {initials}
             </AvatarFallback>
@@ -532,10 +534,12 @@ function ProfileMenuContent() {
 }
 
 function DesktopProfileButton() {
-  const { currentUser } = useUser();
+  const { currentUser, currentMember } = useUser();
 
-  const initials = currentUser?.name
-    ? currentUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+  const displayName = currentMember?.name || currentUser?.name;
+  const displayImage = currentMember?.profileImageUrl || currentUser?.profileImageUrl;
+  const initials = displayName
+    ? displayName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
   return (
@@ -546,7 +550,7 @@ function DesktopProfileButton() {
           data-testid="button-desktop-profile"
         >
           <Avatar className="h-7 w-7">
-            <AvatarImage src={currentUser?.profileImageUrl || undefined} alt={currentUser?.name || ""} />
+            <AvatarImage src={displayImage || undefined} alt={displayName || ""} />
             <AvatarFallback className="bg-transparent text-white font-semibold text-xs">
               {initials}
             </AvatarFallback>

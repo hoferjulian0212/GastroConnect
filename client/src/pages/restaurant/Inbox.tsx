@@ -2219,7 +2219,7 @@ export default function RestaurantInbox() {
                                     } catch {}
                                     const showSenderName = !prevMessage || prevMessage.senderId !== message.senderId || showDateDivider;
                                     const messagePreviewText = refData ? refData.text! : message.content;
-                                    const senderName = (message as any).senderMember?.name || (isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || ""));
+                                    const senderName = message.senderMember?.name || (isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || ""));
                                     const isImportant = message.priority === "important";
                                     return (
                                       <div className={`max-w-[85%] md:max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
