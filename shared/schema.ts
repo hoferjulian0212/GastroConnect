@@ -112,6 +112,17 @@ export const dashboardTemplatesPayloadSchema = z.object({
 );
 export type DashboardTemplatesPayload = z.infer<typeof dashboardTemplatesPayloadSchema>;
 
+// Nutritional values per 100 g / 100 ml ("Nährwerte").
+export type ProductNutrition = {
+  energyKcal?: number;
+  fat?: number;
+  saturatedFat?: number;
+  carbs?: number;
+  sugar?: number;
+  protein?: number;
+  salt?: number;
+};
+
 export const products = pgTable("products", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
@@ -119,6 +130,12 @@ export const products = pgTable("products", {
   gtin: text("gtin"),
   name: text("name").notNull(),
   description: text("description"),
+  // Zutaten / ingredients (free text).
+  ingredients: text("ingredients"),
+  // EU-deklarationspflichtige Allergene, e.g. ["Gluten", "Milch"].
+  allergens: text("allergens").array(),
+  // Nährwerte per 100 g / 100 ml.
+  nutrition: jsonb("nutrition").$type<ProductNutrition>(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   unit: text("unit").notNull().default("piece"),
   category: text("category"),

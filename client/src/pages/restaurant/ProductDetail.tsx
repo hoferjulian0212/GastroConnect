@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Package, ShoppingCart, Check, Clock, Tag, Euro, Layers, Info, Percent, Store, History, Repeat, TrendingUp, TrendingDown, CalendarDays } from "lucide-react";
+import { ArrowLeft, Package, ShoppingCart, Check, Clock, Tag, Euro, Layers, Info, Percent, Store, History, Repeat, TrendingUp, TrendingDown, CalendarDays, AlertTriangle, ShieldCheck, Leaf, Flame } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import QuantityInput from "@/components/QuantityInput";
 import { differenceInDays, differenceInHours, format } from "date-fns";
@@ -323,6 +323,22 @@ export default function ProductDetail() {
     return lang === "de" ? map[status]?.de ?? status : map[status]?.it ?? status;
   };
 
+  const effectiveUnitPrice = hasPromo ? discountedPrice : originalPrice;
+
+  const nutritionRows = (() => {
+    const n = product.nutrition;
+    if (!n) return [] as { key: string; label: string; value: string; indent?: boolean }[];
+    const rows: { key: string; label: string; value: string; indent?: boolean }[] = [];
+    if (n.energyKcal != null) rows.push({ key: "energy", label: lang === "de" ? "Energie" : "Energia", value: `${n.energyKcal} kcal` });
+    if (n.fat != null) rows.push({ key: "fat", label: lang === "de" ? "Fett" : "Grassi", value: `${n.fat} g` });
+    if (n.saturatedFat != null) rows.push({ key: "saturatedFat", label: lang === "de" ? "davon gesättigte Fettsäuren" : "di cui acidi grassi saturi", value: `${n.saturatedFat} g`, indent: true });
+    if (n.carbs != null) rows.push({ key: "carbs", label: lang === "de" ? "Kohlenhydrate" : "Carboidrati", value: `${n.carbs} g` });
+    if (n.sugar != null) rows.push({ key: "sugar", label: lang === "de" ? "davon Zucker" : "di cui zuccheri", value: `${n.sugar} g`, indent: true });
+    if (n.protein != null) rows.push({ key: "protein", label: lang === "de" ? "Eiweiß" : "Proteine", value: `${n.protein} g` });
+    if (n.salt != null) rows.push({ key: "salt", label: lang === "de" ? "Salz" : "Sale", value: `${n.salt} g` });
+    return rows;
+  })();
+
   return (
     <div>
       <HeroPortal mobileWrapperClassName="!mx-2">
@@ -410,47 +426,14 @@ export default function ProductDetail() {
                 </div>
               )}
 
-              <div className="flex items-center gap-3 md:justify-end">
-                <div className="rounded-md bg-white/[0.06]">
-                  <QuantityInput
-                    value={quantity}
-                    onChange={setQuantity}
-                    min={getMinOrderQty(product)}
-                    disabled={!product.inStock}
-                    size="md"
-                    testIdPrefix="detail-qty"
-                    onDark
-                  />
-                </div>
-                <Button
-                  className={`flex-1 md:flex-none gap-2 ${
-                    added
-                      ? "bg-green-500 border-green-500 text-white hover:bg-green-500 no-default-hover-elevate no-default-active-elevate"
-                      : ""
-                  }`}
-                  disabled={!product.inStock || addToCartMutation.isPending}
-                  onClick={(e) => handleAddToCart(product, undefined, e)}
-                  data-testid="button-add-to-cart"
-                >
-                  {added ? (
-                    <>
-                      <Check className="h-4 w-4" />
-                      {lang === "de" ? "Hinzugefuegt" : "Aggiunto"}
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="h-4 w-4" />
-                      {lang === "de" ? "In den Warenkorb" : "Aggiungi al carrello"}
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {product.minOrderQuantity && product.minOrderQuantity > 1 && (
-                <p className="text-xs text-white/50 md:text-right">
-                  {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
-                </p>
-              )}
+              <a
+                href="#order-card"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/[0.07] px-3.5 py-1.5 text-xs font-medium text-white/80 hover:bg-white/[0.12] transition-colors"
+                data-testid="link-jump-to-order"
+              >
+                <ShoppingCart className="h-3.5 w-3.5" />
+                {lang === "de" ? "Zur Bestellung" : "Vai all'ordine"}
+              </a>
             </div>
           </div>
 
@@ -474,55 +457,73 @@ export default function ProductDetail() {
 
       <div className="space-y-5 md:space-y-6 px-3 md:px-6 pt-4 md:pt-6 pb-[var(--mobile-bottom-pad)] md:pb-8">
 
-        {historyStats && (
-          <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" data-testid="section-purchase-stats">
-            <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-order-count">
-              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
-                <Repeat className="h-4 w-4 shrink-0" />
-                <span className="truncate">{lang === "de" ? "Bestellungen" : "Ordini"}</span>
-              </div>
-              <p className="font-bold text-2xl md:text-3xl">{historyStats.orderCount}<span className="text-base md:text-lg font-medium text-muted-foreground">×</span></p>
-            </div>
-            <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-total-quantity">
-              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
-                <Package className="h-4 w-4 shrink-0" />
-                <span className="truncate">{lang === "de" ? "Menge gesamt" : "Quantità tot."}</span>
-              </div>
-              <p className="font-bold text-2xl md:text-3xl truncate">{historyStats.totalQuantity}<span className="text-base md:text-lg font-medium text-muted-foreground"> {product.unit}</span></p>
-            </div>
-            <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-avg-price">
-              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
-                <Euro className="h-4 w-4 shrink-0" />
-                <span className="truncate">{lang === "de" ? "Ø Preis" : "Prezzo medio"}</span>
-              </div>
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <p className="font-bold text-2xl md:text-3xl">{historyStats.avgUnitPrice.toFixed(2)}€</p>
-                {Math.abs(historyStats.priceDeltaPct) >= 0.5 && (
-                  <span
-                    className={`flex items-center gap-0.5 text-xs md:text-sm font-medium ${
-                      historyStats.priceDeltaPct > 0 ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"
-                    }`}
-                    data-testid="text-price-trend"
-                  >
-                    {historyStats.priceDeltaPct > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                    {Math.abs(historyStats.priceDeltaPct).toFixed(0)}%
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-last-ordered">
-              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
-                <CalendarDays className="h-4 w-4 shrink-0" />
-                <span className="truncate">{lang === "de" ? "Zuletzt bestellt" : "Ultimo ordine"}</span>
-              </div>
-              <p className="font-bold text-2xl md:text-3xl">{format(new Date(historyStats.lastOrdered), "dd.MM.yy", { locale: dateLocale })}</p>
-            </div>
-          </section>
-        )}
-
         <div className="grid gap-5 md:gap-6 lg:grid-cols-12 lg:items-start">
 
-          <div className="lg:col-span-8 space-y-5 md:space-y-6 min-w-0">
+          <div className="order-2 lg:order-1 lg:col-span-8 space-y-5 md:space-y-6 min-w-0">
+            {product.allergens && (
+              <div className="rounded-2xl border bg-card p-5 md:p-6" data-testid="section-allergens">
+                <h2 className="text-base md:text-lg font-semibold mb-3 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  {lang === "de" ? "Allergene" : "Allergeni"}
+                </h2>
+                {product.allergens.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {product.allergens.map((a) => (
+                      <span
+                        key={a}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/25 text-sm font-medium"
+                        data-testid={`badge-allergen-${a}`}
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400" data-testid="text-no-allergens">
+                    <ShieldCheck className="h-4 w-4 shrink-0" />
+                    {lang === "de" ? "Keine deklarationspflichtigen Allergene" : "Nessun allergene da dichiarare"}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {product.ingredients && (
+              <div className="rounded-2xl border bg-card p-5 md:p-6" data-testid="section-ingredients">
+                <h2 className="text-base md:text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Leaf className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  {lang === "de" ? "Zutaten" : "Ingredienti"}
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-ingredients">
+                  {product.ingredients}
+                </p>
+              </div>
+            )}
+
+            {nutritionRows.length > 0 && (
+              <div className="rounded-2xl border bg-card p-5 md:p-6" data-testid="section-nutrition">
+                <h2 className="text-base md:text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Flame className="h-5 w-5 text-orange-500" />
+                  {lang === "de" ? "Nährwerte" : "Valori nutrizionali"}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {lang === "de" ? "pro 100 g" : "per 100 g"}
+                  </span>
+                </h2>
+                <div className="overflow-hidden rounded-xl border">
+                  {nutritionRows.map((row) => (
+                    <div
+                      key={row.key}
+                      className={`flex items-center justify-between gap-3 px-4 py-2.5 border-b last:border-b-0 ${row.indent ? "pl-8" : ""}`}
+                      data-testid={`row-nutrition-${row.key}`}
+                    >
+                      <span className={`text-sm ${row.indent ? "text-muted-foreground" : ""}`}>{row.label}</span>
+                      <span className="text-sm font-semibold tabular-nums">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {product.description && (
               <div className="rounded-2xl border bg-card p-5 md:p-6">
                 <h2 className="text-base md:text-lg font-semibold mb-3 flex items-center gap-2">
@@ -533,6 +534,52 @@ export default function ProductDetail() {
                   {product.description}
                 </p>
               </div>
+            )}
+
+            {historyStats && (
+              <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" data-testid="section-purchase-stats">
+                <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-order-count">
+                  <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
+                    <Repeat className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{lang === "de" ? "Bestellungen" : "Ordini"}</span>
+                  </div>
+                  <p className="font-bold text-2xl md:text-3xl">{historyStats.orderCount}<span className="text-base md:text-lg font-medium text-muted-foreground">×</span></p>
+                </div>
+                <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-total-quantity">
+                  <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
+                    <Package className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{lang === "de" ? "Menge gesamt" : "Quantità tot."}</span>
+                  </div>
+                  <p className="font-bold text-2xl md:text-3xl truncate">{historyStats.totalQuantity}<span className="text-base md:text-lg font-medium text-muted-foreground"> {product.unit}</span></p>
+                </div>
+                <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-avg-price">
+                  <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
+                    <Euro className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{lang === "de" ? "Ø Preis" : "Prezzo medio"}</span>
+                  </div>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <p className="font-bold text-2xl md:text-3xl">{historyStats.avgUnitPrice.toFixed(2)}€</p>
+                    {Math.abs(historyStats.priceDeltaPct) >= 0.5 && (
+                      <span
+                        className={`flex items-center gap-0.5 text-xs md:text-sm font-medium ${
+                          historyStats.priceDeltaPct > 0 ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"
+                        }`}
+                        data-testid="text-price-trend"
+                      >
+                        {historyStats.priceDeltaPct > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                        {Math.abs(historyStats.priceDeltaPct).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-last-ordered">
+                  <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
+                    <CalendarDays className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{lang === "de" ? "Zuletzt bestellt" : "Ultimo ordine"}</span>
+                  </div>
+                  <p className="font-bold text-2xl md:text-3xl">{format(new Date(historyStats.lastOrdered), "dd.MM.yy", { locale: dateLocale })}</p>
+                </div>
+              </section>
             )}
 
             {historyLoading && (
@@ -638,7 +685,105 @@ export default function ProductDetail() {
             )}
           </div>
 
-          <aside className="lg:col-span-4 space-y-5 md:space-y-6 lg:sticky lg:top-4">
+          <aside className="order-1 lg:order-2 lg:col-span-4 space-y-5 md:space-y-6 lg:sticky lg:top-4">
+            <div id="order-card" tabIndex={-1} className="rounded-2xl border-2 border-primary/40 bg-card p-5 md:p-6 shadow-lg shadow-primary/5 scroll-mt-20 focus:outline-none" data-testid="card-order">
+              <h2 className="text-lg md:text-xl font-bold mb-4 flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5 text-primary" />
+                {lang === "de" ? "Jetzt bestellen" : "Ordina ora"}
+              </h2>
+
+              {hasPromo ? (
+                <div className="mb-4">
+                  <div className="inline-flex items-center gap-1.5 mb-2 px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-xs font-semibold">
+                    <Percent className="h-3.5 w-3.5" />
+                    {lang === "de" ? `-${promo.discountPercent}% Aktion` : `-${promo.discountPercent}% promo`}
+                  </div>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-3xl md:text-4xl font-bold text-green-600 dark:text-green-400" data-testid="text-order-price">{discountedPrice.toFixed(2)}€</span>
+                    <span className="text-sm text-muted-foreground">/{product.unit}</span>
+                    <span className="text-base text-muted-foreground line-through">{originalPrice.toFixed(2)}€</span>
+                  </div>
+                  {remainingPromoText && (
+                    <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 mt-1.5">
+                      <Clock className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-medium">{remainingPromoText}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="text-3xl md:text-4xl font-bold" data-testid="text-order-price">{originalPrice.toFixed(2)}€</span>
+                  <span className="text-sm text-muted-foreground">/{product.unit}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 mb-4 text-sm" data-testid="text-order-stock">
+                {product.inStock ? (
+                  <>
+                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    <span className="text-green-600 dark:text-green-400 font-medium">{lang === "de" ? "Auf Lager" : "Disponibile"}</span>
+                    {typeof product.stockQuantity === "number" && product.stockQuantity > 0 && (
+                      <span className="text-muted-foreground">· {product.stockQuantity} {product.unit}</span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    <span className="text-red-600 dark:text-red-400 font-medium">{lang === "de" ? "Nicht verfügbar" : "Non disponibile"}</span>
+                  </>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-muted-foreground">{lang === "de" ? "Menge" : "Quantità"}</span>
+                  <QuantityInput
+                    value={quantity}
+                    onChange={setQuantity}
+                    min={getMinOrderQty(product)}
+                    disabled={!product.inStock}
+                    size="md"
+                    testIdPrefix="detail-qty"
+                  />
+                </div>
+                <Button
+                  size="lg"
+                  className={`w-full gap-2 text-base ${
+                    added
+                      ? "bg-green-500 border-green-500 text-white hover:bg-green-500 no-default-hover-elevate no-default-active-elevate"
+                      : ""
+                  }`}
+                  disabled={!product.inStock || addToCartMutation.isPending}
+                  onClick={(e) => handleAddToCart(product, undefined, e)}
+                  data-testid="button-add-to-cart"
+                >
+                  {added ? (
+                    <>
+                      <Check className="h-5 w-5" />
+                      {lang === "de" ? "Hinzugefuegt" : "Aggiunto"}
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="h-5 w-5" />
+                      {lang === "de" ? "In den Warenkorb" : "Aggiungi al carrello"}
+                    </>
+                  )}
+                </Button>
+                {product.inStock && (
+                  <p className="text-center text-sm text-muted-foreground" data-testid="text-order-subtotal">
+                    {lang === "de" ? "Zwischensumme" : "Subtotale"}:{" "}
+                    <span className="font-semibold text-foreground">{(effectiveUnitPrice * quantity).toFixed(2)}€</span>
+                  </p>
+                )}
+              </div>
+
+              {product.minOrderQuantity && product.minOrderQuantity > 1 && (
+                <p className="text-xs text-muted-foreground mt-3 text-center">
+                  {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
+                </p>
+              )}
+            </div>
+
             <div className="rounded-2xl border bg-card p-5 md:p-6">
               <h2 className="text-base md:text-lg font-semibold mb-4 flex items-center gap-2">
                 <Info className="h-5 w-5 text-muted-foreground" />
