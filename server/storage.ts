@@ -9,6 +9,7 @@ import {
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
   type Message, type InsertMessage, type MessageWithOrderNumber, type ProductWithSupplier, type OrderWithDetails,
+  type ProductPurchaseHistoryEntry,
   type ConversationWithUser, type CartItemWithProduct, type Complaint, type InsertComplaint,
   type ComplaintWithDetails, type Notification, type InsertNotification, type UpdateComplaint,
   type ComplaintComment, type InsertComplaintComment, type ComplaintCommentWithUser,
@@ -93,6 +94,7 @@ export interface IStorage {
   deleteProduct(id: string): Promise<void>;
 
   // Orders
+  getProductPurchaseHistory(restaurantId: string, productId: string): Promise<ProductPurchaseHistoryEntry[]>;
   getOrdersByRestaurant(restaurantId: string, opts?: { status?: string | string[]; limit?: number }): Promise<OrderWithDetails[]>;
   getOrdersBySupplier(supplierId: string, opts?: { status?: string | string[]; limit?: number }): Promise<OrderWithDetails[]>;
   getRecentOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]>;
@@ -592,6 +594,39 @@ export class DatabaseStorage implements IStorage {
     const ordersResult = opts?.limit ? await (query as any).limit(opts.limit) : await query;
 
     return Promise.all(ordersResult.map((order: Order) => this.enrichOrderWithDetails(order)));
+  }
+
+  async getProductPurchaseHistory(restaurantId: string, productId: string): Promise<ProductPurchaseHistoryEntry[]> {
+    const product = await db.select({ unit: products.unit }).from(products).where(eq(products.id, productId)).limit(1);
+    const unit = product[0]?.unit ?? "";
+    const rows = await db
+      .select({
+        orderId: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        createdAt: orders.createdAt,
+        quantity: sql<number>`COALESCE(${orderItems.confirmedQuantity}, ${orderItems.quantity})::int`,
+        unitPrice: orderItems.unitPrice,
+        totalPrice: orderItems.totalPrice,
+      })
+      .from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(and(
+        eq(orders.restaurantId, restaurantId),
+        eq(orderItems.productId, productId),
+        ne(orders.status, "cancelled"),
+      ))
+      .orderBy(orders.createdAt);
+    return rows.map(r => ({
+      orderId: r.orderId,
+      orderNumber: r.orderNumber,
+      status: r.status,
+      createdAt: (r.createdAt instanceof Date ? r.createdAt : new Date(r.createdAt)).toISOString(),
+      quantity: Number(r.quantity) || 0,
+      unit,
+      unitPrice: parseFloat(r.unitPrice) || 0,
+      totalPrice: parseFloat(r.totalPrice) || 0,
+    }));
   }
 
   async getProductVolumesForRestaurant(restaurantId: string, days: number): Promise<Array<{

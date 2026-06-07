@@ -6,12 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Package, ShoppingCart, Check, Clock, Tag, Euro, Layers, Info, Percent, Store } from "lucide-react";
+import { ArrowLeft, Package, ShoppingCart, Check, Clock, Tag, Euro, Layers, Info, Percent, Store, History, Repeat, TrendingUp, TrendingDown, CalendarDays } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import QuantityInput from "@/components/QuantityInput";
 import { differenceInDays, differenceInHours, format } from "date-fns";
 import { de, it } from "date-fns/locale";
-import type { ProductWithSupplierAndPromotion, CartItemWithProduct } from "@shared/schema";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import type { ProductWithSupplierAndPromotion, CartItemWithProduct, ProductPurchaseHistoryEntry } from "@shared/schema";
+import { formatOrderNumber } from "@shared/schema";
 import { productMatchKey, normalizeName } from "@shared/productMatch";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +44,11 @@ export default function ProductDetail() {
   const { data: cartItems } = useQuery<CartItemWithProduct[]>({
     queryKey: [`/api/cart?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
+  });
+
+  const { data: purchaseHistory = [], isLoading: historyLoading } = useQuery<ProductPurchaseHistoryEntry[]>({
+    queryKey: [`/api/products/${productId}/purchase-history?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id && !!productId,
   });
 
   const product = products?.find(p => p.id === productId);
@@ -278,6 +285,44 @@ export default function ProductDetail() {
     return `${remainingText} — ${format(end, "dd.MM.yyyy", { locale: dateLocale })}`;
   })();
 
+  const historyStats = (() => {
+    if (purchaseHistory.length === 0) return null;
+    const totalQuantity = purchaseHistory.reduce((sum, e) => sum + e.quantity, 0);
+    const totalSpent = purchaseHistory.reduce((sum, e) => sum + e.totalPrice, 0);
+    const avgUnitPrice = totalQuantity > 0
+      ? purchaseHistory.reduce((sum, e) => sum + e.unitPrice * e.quantity, 0) / totalQuantity
+      : 0;
+    const firstPrice = purchaseHistory[0].unitPrice;
+    const lastPrice = purchaseHistory[purchaseHistory.length - 1].unitPrice;
+    const priceDeltaPct = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0;
+    const lastOrdered = purchaseHistory[purchaseHistory.length - 1].createdAt;
+    const chartData = purchaseHistory.map((e) => ({
+      date: format(new Date(e.createdAt), "dd.MM.yy", { locale: dateLocale }),
+      price: Number(e.unitPrice.toFixed(2)),
+    }));
+    return {
+      orderCount: purchaseHistory.length,
+      totalQuantity,
+      totalSpent,
+      avgUnitPrice,
+      priceDeltaPct,
+      lastOrdered,
+      chartData,
+    };
+  })();
+
+  const statusLabel = (status: ProductPurchaseHistoryEntry["status"]) => {
+    const map: Record<string, { de: string; it: string }> = {
+      pending: { de: "Ausstehend", it: "In attesa" },
+      confirmed: { de: "Bestätigt", it: "Confermato" },
+      partially_confirmed: { de: "Teilbestätigt", it: "Parz. confermato" },
+      in_delivery: { de: "In Lieferung", it: "In consegna" },
+      delivered: { de: "Geliefert", it: "Consegnato" },
+      cancelled: { de: "Storniert", it: "Annullato" },
+    };
+    return lang === "de" ? map[status]?.de ?? status : map[status]?.it ?? status;
+  };
+
   return (
     <div>
       <HeroPortal mobileWrapperClassName="!mx-2">
@@ -466,6 +511,128 @@ export default function ProductDetail() {
             </div>
           )}
         </div>
+
+        {(historyLoading || historyStats) && (
+          <div data-testid="section-purchase-history">
+            <h3 className="text-sm md:text-base font-semibold mb-2.5 flex items-center gap-2">
+              <History className="h-4 w-4 text-muted-foreground" />
+              {lang === "de" ? "Ihr Bestellverlauf" : "Il tuo storico ordini"}
+            </h3>
+            {historyLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-20 w-full rounded-xl" />
+                <Skeleton className="h-40 w-full rounded-xl" />
+              </div>
+            ) : historyStats ? (
+              <div className="space-y-3 md:space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
+                  <div className="p-2.5 md:p-3 rounded-xl bg-muted/40" data-testid="stat-order-count">
+                    <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
+                      <Repeat className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
+                      <span className="truncate">{lang === "de" ? "Bestellungen" : "Ordini"}</span>
+                    </div>
+                    <p className="font-semibold text-sm md:text-lg">{historyStats.orderCount}×</p>
+                  </div>
+                  <div className="p-2.5 md:p-3 rounded-xl bg-muted/40" data-testid="stat-total-quantity">
+                    <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
+                      <Package className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
+                      <span className="truncate">{lang === "de" ? "Menge gesamt" : "Quantità tot."}</span>
+                    </div>
+                    <p className="font-semibold text-sm md:text-lg truncate">{historyStats.totalQuantity} {product.unit}</p>
+                  </div>
+                  <div className="p-2.5 md:p-3 rounded-xl bg-muted/40" data-testid="stat-avg-price">
+                    <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
+                      <Euro className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
+                      <span className="truncate">{lang === "de" ? "Ø Preis" : "Prezzo medio"}</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 flex-wrap">
+                      <p className="font-semibold text-sm md:text-lg">{historyStats.avgUnitPrice.toFixed(2)}€</p>
+                      {Math.abs(historyStats.priceDeltaPct) >= 0.5 && (
+                        <span
+                          className={`flex items-center gap-0.5 text-[10px] md:text-xs font-medium ${
+                            historyStats.priceDeltaPct > 0 ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"
+                          }`}
+                          data-testid="text-price-trend"
+                        >
+                          {historyStats.priceDeltaPct > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                          {Math.abs(historyStats.priceDeltaPct).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-2.5 md:p-3 rounded-xl bg-muted/40" data-testid="stat-last-ordered">
+                    <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
+                      <CalendarDays className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
+                      <span className="truncate">{lang === "de" ? "Zuletzt" : "Ultimo"}</span>
+                    </div>
+                    <p className="font-semibold text-sm md:text-lg">{format(new Date(historyStats.lastOrdered), "dd.MM.yy", { locale: dateLocale })}</p>
+                  </div>
+                </div>
+
+                {historyStats.chartData.length >= 2 && (
+                  <div className="p-3 md:p-4 rounded-xl bg-muted/40">
+                    <p className="text-xs md:text-sm font-medium mb-3 text-muted-foreground">
+                      {lang === "de" ? `Preisentwicklung (€/${product.unit})` : `Andamento prezzo (€/${product.unit})`}
+                    </p>
+                    <div className="h-44 md:h-52 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={historyStats.chartData} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                          <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={20} />
+                          <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} domain={["auto", "auto"]} tickFormatter={(v) => `${v}€`} />
+                          <Tooltip
+                            isAnimationActive={false}
+                            cursor={{ stroke: "hsl(var(--border))" }}
+                            content={({ active, payload, label }) => {
+                              if (!active || !payload?.length) return null;
+                              return (
+                                <div className="rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-sm">
+                                  <p className="text-[11px] text-muted-foreground">{label}</p>
+                                  <p className="text-xs font-semibold">{(payload[0].value as number).toFixed(2)}€/{product.unit}</p>
+                                </div>
+                              );
+                            }}
+                          />
+                          <Area type="monotone" dataKey="price" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#priceFill)" dot={{ r: 2.5 }} activeDot={{ r: 4 }} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-xl border overflow-hidden">
+                  {[...purchaseHistory].reverse().map((entry) => (
+                    <button
+                      key={entry.orderId}
+                      onClick={() => setLocation(`/restaurant/orders/${entry.orderId}`)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors"
+                      data-testid={`row-history-${entry.orderId}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {format(new Date(entry.createdAt), "dd. MMM yyyy", { locale: dateLocale })}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          #{formatOrderNumber({ orderNumber: entry.orderNumber, id: entry.orderId })} · {statusLabel(entry.status)}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold">{entry.quantity} {entry.unit}</p>
+                        <p className="text-xs text-muted-foreground">{entry.unitPrice.toFixed(2)}€/{entry.unit}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
 
         {!product.inStock && outOfStockAlternatives.length > 0 && (
           <div>

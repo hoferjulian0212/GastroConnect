@@ -850,6 +850,16 @@ export type OrderWithDetails = Order & {
   createdByUser?: User | null;
   createdByMember?: Member | null;
 };
+export type ProductPurchaseHistoryEntry = {
+  orderId: string;
+  orderNumber: string | null;
+  status: typeof orderStatusEnum.enumValues[number];
+  createdAt: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  totalPrice: number;
+};
 export type MessageWithOrderNumber = Message & { orderNumber?: string | null; senderMember?: Member | null };
 export type ConversationWithUser = Conversation & {
   otherUser: User;

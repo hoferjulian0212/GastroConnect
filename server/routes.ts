@@ -1557,6 +1557,20 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/products/:productId/purchase-history", async (req, res) => {
+    try {
+      const restaurantId = req.query.restaurantId as string;
+      const { productId } = req.params;
+      if (!restaurantId) {
+        return res.json([]);
+      }
+      const history = await storage.getProductPurchaseHistory(restaurantId, productId);
+      res.json(history);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch purchase history" });
+    }
+  });
+
   app.get("/api/supplier/products", async (req, res) => {
     try {
       const supplierId = req.query.supplierId as string;
