@@ -33,6 +33,57 @@ export function MobileNavBase({
   const { lang } = useLanguage();
   const t = useT(lang);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    // Mobile-only: don't run scroll tracking on desktop where the nav is hidden.
+    const mq = window.matchMedia("(max-width: 767px)");
+    let lastY = -1;
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    const onScroll = (e: Event) => {
+      // Only react to the main app content scroller, not modals/drawers/sheets.
+      const target = e.target as HTMLElement;
+      if (!(target instanceof HTMLElement) || !target.hasAttribute("data-app-scroll")) return;
+      const y = target.scrollTop;
+      if (lastY < 0) lastY = y;
+      const delta = y - lastY;
+      if (y < 24) {
+        setCompact(false);
+      } else if (delta > 4) {
+        setCompact(true);
+      } else if (delta < -4) {
+        setCompact(false);
+      }
+      lastY = y;
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => setCompact(false), 220);
+    };
+    const attach = () => {
+      // Capture phase so we catch scroll on the inner content container
+      // (scroll events don't bubble); the app scrolls inside an overflow-auto div.
+      window.addEventListener("scroll", onScroll, true);
+    };
+    const detach = () => {
+      window.removeEventListener("scroll", onScroll, true);
+      if (idleTimer) clearTimeout(idleTimer);
+      setCompact(false);
+    };
+    const sync = () => {
+      if (mq.matches) attach();
+      else detach();
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    return () => {
+      mq.removeEventListener("change", sync);
+      detach();
+    };
+  }, []);
+
+  const labelClass = `text-[10px] text-center w-full overflow-hidden transition-all duration-300 ease-out ${
+    compact ? "max-h-0 opacity-0" : "max-h-4 opacity-100"
+  }`;
+  const itemPadClass = `transition-all duration-300 ease-out ${compact ? "gap-0 py-1.5" : "gap-1 py-3"}`;
 
   const isItemActive = (url: string) => {
     if (url === rootPath) return location === rootPath;
@@ -138,7 +189,7 @@ export function MobileNavBase({
               <Link
                 key={item.url}
                 href={item.url}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 relative py-3 select-none ${
+                className={`flex-1 flex flex-col items-center justify-center relative select-none ${itemPadClass} ${
                   active ? "nav-item-active" : "nav-item-inactive"
                 }`}
                 data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
@@ -155,7 +206,7 @@ export function MobileNavBase({
                     </span>
                   )}
                 </motion.div>
-                <span className={`text-[10px] text-center w-full ${active ? "font-semibold" : "font-medium"}`}>
+                <span className={`${labelClass} ${active ? "font-semibold" : "font-medium"}`}>
                   {item.title}
                 </span>
               </Link>
@@ -165,7 +216,7 @@ export function MobileNavBase({
           <button
             type="button"
             onClick={() => setIsMoreOpen((v) => !v)}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 relative py-3 select-none ${
+            className={`flex-1 flex flex-col items-center justify-center relative select-none ${itemPadClass} ${
               isMoreActive || isMoreOpen ? "nav-item-active" : "nav-item-inactive"
             }`}
             data-testid={`${testIdPrefix}-mobile-nav-more`}
@@ -177,7 +228,7 @@ export function MobileNavBase({
             >
               <MoreHorizontal className={`h-5 w-5 ${(isMoreActive || isMoreOpen) ? "stroke-[2.5]" : ""}`} />
             </motion.div>
-            <span className={`text-[10px] text-center w-full ${(isMoreActive || isMoreOpen) ? "font-semibold" : "font-medium"}`}>
+            <span className={`${labelClass} ${(isMoreActive || isMoreOpen) ? "font-semibold" : "font-medium"}`}>
               {t("common", "more")}
             </span>
           </button>
