@@ -718,7 +718,7 @@ export default function SupplierHome() {
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</h3>
                       {group.isToday && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                       )}
                       <span className="text-[11px] text-muted-foreground/60">({group.orders.length})</span>
                     </div>

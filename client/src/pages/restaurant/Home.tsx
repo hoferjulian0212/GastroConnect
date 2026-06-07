@@ -1010,7 +1010,7 @@ export default function RestaurantHome() {
                       {group.label}
                     </span>
                     {group.isToday && group.type !== "overdue" && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-black animate-pulse" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                     )}
                   </div>
 
@@ -1109,7 +1109,7 @@ export default function RestaurantHome() {
                       )}
                       <h3 className={`text-xs font-semibold uppercase tracking-wide ${group.type === "overdue" ? "text-red-700 dark:text-red-400" : "text-muted-foreground"}`}>{group.label}</h3>
                       {group.isToday && group.type !== "overdue" && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                       )}
                       <span className="text-[11px] text-muted-foreground/60">({group.orders.length})</span>
                     </div>
