@@ -345,8 +345,8 @@ export default function ProductDetail() {
         <div className="px-3 md:px-6 pt-2 md:pt-1 pb-5 md:pb-6" data-testid="product-detail-hero">
           <button
             onClick={() => window.history.back()}
-            className="flex items-center gap-1.5 text-sm font-medium text-white/60 hover:text-white transition-colors mb-3 md:mb-4 -ml-1"
-            data-testid="button-back"
+            className="md:hidden flex items-center gap-1.5 text-sm font-medium text-white/60 hover:text-white transition-colors mb-3 -ml-1"
+            data-testid="button-back-mobile"
           >
             <ArrowLeft className="h-4 w-4" />
             {lang === "de" ? "Zurück" : "Indietro"}
@@ -454,6 +454,18 @@ export default function ProductDetail() {
           )}
         </div>
       </HeroPortal>
+
+      {/* Back button: shown below the dark hero on desktop only; mobile uses the in-hero back button */}
+      <div className="hidden md:block px-4 md:px-6 lg:px-8 pt-3">
+        <button
+          onClick={() => window.history.back()}
+          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1"
+          data-testid="button-back"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {lang === "de" ? "Zurück" : "Indietro"}
+        </button>
+      </div>
 
       <div className="space-y-5 md:space-y-6 px-3 md:px-6 pt-4 md:pt-6 pb-[var(--mobile-bottom-pad)] md:pb-8">
 
