@@ -2091,7 +2091,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedData(): Promise<void> {
-    const DEMO_VERSION = "demo-v10";
+    const DEMO_VERSION = "demo-v11";
     const sentinelEmail = `${DEMO_VERSION}@gastroconnect.dev`;
     const existing = await db.select().from(users).where(eq(users.email, sentinelEmail));
     if (existing.length > 0) {
@@ -2233,9 +2233,25 @@ export class DatabaseStorage implements IStorage {
     await mkMember(restaurant1.id, "Lena Hofer", "lena@biergarten-muenchen.de", "manager", 32);
     await mkMember(restaurant1.id, "Jonas Berger", "jonas@biergarten-muenchen.de", "staff", 15);
 
-    // Restaurant 2 (Pizzeria Bella) — owner + staff
+    // Restaurant 2 (Pizzeria Bella) — owner (admin) + chef who orders (manager) + staff
     await mkMember(restaurant2.id, "Maria Schmidt", "maria@pizzeria-bella.de", "admin", 45);
+    await mkMember(restaurant2.id, "Giulia Ricci", "giulia@pizzeria-bella.de", "manager", 38);
     await mkMember(restaurant2.id, "Paolo Conti", "paolo@pizzeria-bella.de", "staff", 51);
+
+    // Restaurant 3 (Gasthof Alpenblick) — owner (admin) + chef who orders (manager) + staff
+    await mkMember(restaurant3.id, "Klaus Fischer", "klaus@gasthof-alpenblick.de", "admin", 53);
+    await mkMember(restaurant3.id, "Sepp Huber", "sepp@gasthof-alpenblick.de", "manager", 27);
+    await mkMember(restaurant3.id, "Anita Gruber", "anita@gasthof-alpenblick.de", "staff", 19);
+
+    // Restaurant 4 (Trattoria Roma) — owner (admin) + chef who orders (manager) + staff
+    await mkMember(restaurant4.id, "Marco Bianchi", "marco@trattoria-roma.de", "admin", 33);
+    await mkMember(restaurant4.id, "Giovanni Russo", "giovanni@trattoria-roma.de", "manager", 41);
+    await mkMember(restaurant4.id, "Elena Costa", "elena@trattoria-roma.de", "staff", 9);
+
+    // Restaurant 5 (Bistro Paris) — owner (admin) + chef who orders (manager) + staff
+    await mkMember(restaurant5.id, "Sophie Laurent", "sophie@bistro-paris.de", "admin", 47);
+    await mkMember(restaurant5.id, "Pierre Dubois", "pierre@bistro-paris.de", "manager", 22);
+    await mkMember(restaurant5.id, "Camille Moreau", "camille@bistro-paris.de", "staff", 35);
 
     // Supplier 1 (Frische Produkte) — owner + manager + two Vertreter (field reps)
     await mkMember(supplier1.id, "Hans Müller", "hans@frische-produkte.de", "admin", 13);
@@ -3035,6 +3051,11 @@ export class DatabaseStorage implements IStorage {
       description: "Traditioneller Jagdhof mit Wildküche, Hotel mit 28 Zimmern und Restaurant für 90 Gäste",
       profileImageUrl: avatar(67),
     });
+
+    // Team for Piri's Jagdhof — owner (admin) + chef who orders (manager) + staff
+    await mkMember(piri.id, "Pirmin Hofer", "piri@jagdhof.de", "admin", 67);
+    await mkMember(piri.id, "Florian Wimmer", "florian@jagdhof.de", "manager", 30);
+    await mkMember(piri.id, "Theresa Brandl", "theresa@jagdhof.de", "staff", 8);
 
     const piriSuppliers = [supplier1, supplier2, supplier3, supplier4, supplier5];
 
