@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef, memo } from "react";
-import { GripVertical, Maximize2, Columns2, Settings2, Check, LayoutGrid, Layers, ChevronDown, Plus, Save, Pencil, Trash2 } from "lucide-react";
+import { GripVertical, Maximize2, Columns2, Settings2, Check, LayoutGrid, Layers, ChevronDown, Plus, Save, Pencil, Trash2, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -41,7 +41,7 @@ import {
   SortableContext,
   useSortable,
 } from "@dnd-kit/sortable";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type CardSize = "full" | "half";
 
@@ -53,6 +53,7 @@ interface CardSection {
   description?: string;
   optional?: boolean;
   defaultEnabled?: boolean;
+  queryKeys?: readonly unknown[][];
 }
 
 interface ViewLabels {
@@ -72,6 +73,8 @@ interface ViewLabels {
   deleteDesc: string;
   save: string;
   cancel: string;
+  refresh: string;
+  refreshAll: string;
 }
 
 const DEFAULT_VIEW_LABELS: ViewLabels = {
@@ -91,7 +94,17 @@ const DEFAULT_VIEW_LABELS: ViewLabels = {
   deleteDesc: "Diese Ansicht wird dauerhaft entfernt.",
   save: "Speichern",
   cancel: "Abbrechen",
+  refresh: "Daten aktualisieren",
+  refreshAll: "Alle aktualisieren",
 };
+
+async function invalidateKeys(keys: readonly unknown[][]): Promise<void> {
+  if (!keys || keys.length === 0) return;
+  await Promise.all([
+    ...keys.map((key) => queryClient.invalidateQueries({ queryKey: key as unknown[] })),
+    new Promise((resolve) => setTimeout(resolve, 500)),
+  ]);
+}
 
 interface DraggableCardGridProps {
   userId: string;
@@ -292,6 +305,7 @@ interface SortableCardProps {
   isSwapTarget: boolean;
   isAnyDragging: boolean;
   onRefChange: (id: string, el: HTMLDivElement | null) => void;
+  refreshLabel: string;
 }
 
 function SortableCard({
@@ -299,6 +313,7 @@ function SortableCard({
   section,
   editMode,
   onToggleSize,
+  refreshLabel,
   isMd,
   masonryPos,
   targetWidth,
@@ -325,6 +340,20 @@ function SortableCard({
   const isFull = item.size === "full";
   const width = masonryPos?.width ?? targetWidth ?? '100%';
 
+  const [refreshing, setRefreshing] = useState(false);
+  const hasRefresh = !!section.queryKeys && section.queryKeys.length > 0;
+  const handleRefresh = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!section.queryKeys || section.queryKeys.length === 0 || refreshing) return;
+    setRefreshing(true);
+    try {
+      await invalidateKeys(section.queryKeys);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [section.queryKeys, refreshing]);
+
   // While any card is being dragged we suspend transitions on the non-dragged cards
   // so their positions are visually nailed in place (no jitter from any layout work).
   // When the drag ends and positions actually change (the swapped pair), the transition
@@ -348,7 +377,7 @@ function SortableCard({
     <div
       ref={mergedRef}
       style={style}
-      className={`${editMode ? "ring-1 ring-border/40 rounded-xl" : ""}`}
+      className={`group/card ${editMode ? "ring-1 ring-border/40 rounded-xl" : ""}`}
       data-testid={`draggable-card-${item.id}`}
     >
       {/* Drop-target indicator: the card that will swap with the dragged one */}
@@ -396,6 +425,18 @@ function SortableCard({
             </div>
           </div>
         )}
+        {!editMode && !isDragging && hasRefresh && (
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="absolute bottom-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/90 backdrop-blur shadow-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all opacity-60 md:opacity-0 md:group-hover/card:opacity-100 md:focus-visible:opacity-100 disabled:opacity-100"
+            data-testid={`button-refresh-card-${item.id}`}
+            title={refreshLabel}
+            aria-label={refreshLabel}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          </button>
+        )}
         <CardContent content={section.content} editMode={editMode} />
       </div>
     </div>
@@ -424,6 +465,18 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
 
   const [layout, setLayout] = useState<LayoutItem[]>(() => loadLayout(userId, role, effectiveSections));
   const [editMode, setEditMode] = useState(false);
+  const [refreshingAll, setRefreshingAll] = useState(false);
+  const handleRefreshAll = useCallback(async () => {
+    if (refreshingAll) return;
+    const allKeys = effectiveSections.flatMap((s) => s.queryKeys ?? []);
+    if (allKeys.length === 0) return;
+    setRefreshingAll(true);
+    try {
+      await invalidateKeys(allKeys);
+    } finally {
+      setRefreshingAll(false);
+    }
+  }, [effectiveSections, refreshingAll]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [isLg, setIsLg] = useState(() => window.matchMedia("(min-width: 1024px)").matches);
@@ -889,6 +942,18 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
     <div className="relative">
       <div className="flex items-center justify-end gap-1 mb-3 md:mb-4">
         {!editMode && (
+          <button
+            onClick={handleRefreshAll}
+            disabled={refreshingAll}
+            className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-100"
+            data-testid="button-refresh-all"
+            title={L.refreshAll}
+            aria-label={L.refreshAll}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshingAll ? "animate-spin" : ""}`} />
+          </button>
+        )}
+        {!editMode && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -1108,6 +1173,7 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
                   isSwapTarget={overId === item.id && activeId !== null}
                   isAnyDragging={activeId !== null}
                   onRefChange={handleRefChange}
+                  refreshLabel={L.refresh}
                 />
               );
             })}

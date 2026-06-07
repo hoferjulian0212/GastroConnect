@@ -573,29 +573,31 @@ export default function SupplierHome() {
           deleteDesc: t("dashboardViews", "deleteDesc"),
           save: t("common", "save"),
           cancel: t("common", "cancel"),
+          refresh: t("dashboardViews", "refresh"),
+          refreshAll: t("dashboardViews", "refreshAll"),
         }}
         sections={[
-          { id: "w-offene-reklamationen", optional: true, defaultEnabled: true, defaultSize: "half" as const,
+          { id: "w-offene-reklamationen", optional: true, defaultEnabled: true, defaultSize: "half" as const, queryKeys: [['/api/supplier/action-required', currentUser?.id]],
             title: t("supplierHome", "widgetOpenComplaints"), description: t("supplierHome", "widgetOpenComplaintsDesc"),
             content: <OffeneReklamationenWidget supplierId={currentUser?.id || ""} lang={lang} />,
           },
-          { id: "w-heute-zu-liefern", optional: true, defaultEnabled: true, defaultSize: "half" as const,
+          { id: "w-heute-zu-liefern", optional: true, defaultEnabled: true, defaultSize: "half" as const, queryKeys: [['/api/supplier/upcoming-deliveries', currentUser?.id]],
             title: t("supplierHome", "widgetTodayDeliveries"), description: t("supplierHome", "widgetTodayDeliveriesDesc"),
             content: <HeuteZuLiefernWidget supplierId={currentUser?.id || ""} lang={lang} />,
           },
-          { id: "w-top-kunden-30d", optional: true, defaultEnabled: true, defaultSize: "half" as const,
+          { id: "w-top-kunden-30d", optional: true, defaultEnabled: true, defaultSize: "half" as const, queryKeys: [[`/api/supplier/detailed-stats?supplierId=${currentUser?.id}&period=30d`]],
             title: t("supplierHome", "widgetTopCustomers"), description: t("supplierHome", "widgetTopCustomersDesc"),
             content: <TopKunden30dWidget supplierId={currentUser?.id || ""} lang={lang} />,
           },
-          { id: "w-promo-performance", optional: true, defaultEnabled: true, defaultSize: "half" as const,
+          { id: "w-promo-performance", optional: true, defaultEnabled: true, defaultSize: "half" as const, queryKeys: [['/api/supplier/promo-performance', currentUser?.id]],
             title: t("supplierHome", "widgetPromoPerformance"), description: t("supplierHome", "widgetPromoPerformanceDesc"),
             content: <PromoPerformanceWidget supplierId={currentUser?.id || ""} lang={lang} />,
           },
-          { id: "w-antwortzeit", optional: true, defaultEnabled: true, defaultSize: "half" as const,
+          { id: "w-antwortzeit", optional: true, defaultEnabled: true, defaultSize: "half" as const, queryKeys: [['/api/supplier/response-time', currentUser?.id]],
             title: t("supplierHome", "widgetResponseTime"), description: t("supplierHome", "widgetResponseTimeDesc"),
             content: <AntwortzeitWidget supplierId={currentUser?.id || ""} lang={lang} />,
           },
-          { id: "upcoming-deliveries", defaultSize: "full" as const, content: (
+          { id: "upcoming-deliveries", defaultSize: "full" as const, queryKeys: [['/api/supplier/upcoming-deliveries', currentUser?.id]], content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
@@ -800,7 +802,7 @@ export default function SupplierHome() {
         </div>
       </div>
           )},
-          { id: "unread-messages", defaultSize: "half" as const, content: (
+          { id: "unread-messages", defaultSize: "half" as const, queryKeys: [[`/api/conversations?userId=${currentUser?.id}`]], content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -954,7 +956,7 @@ export default function SupplierHome() {
             </div>
           </div>
           )},
-          { id: "new-orders", defaultSize: "half" as const, content: (
+          { id: "new-orders", defaultSize: "half" as const, queryKeys: [['/api/supplier/orders/recent', currentUser?.id]], content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -1098,7 +1100,7 @@ export default function SupplierHome() {
             </div>
           </div>
           )},
-          { id: "action-required", defaultSize: "half" as const, content: (
+          { id: "action-required", defaultSize: "half" as const, queryKeys: [['/api/supplier/action-required', currentUser?.id]], content: (
           <>
           {((actionRequired?.staleOrders?.length || 0) > 0 || (actionRequired?.openComplaints?.length || 0) > 0) && (
             <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
@@ -1342,7 +1344,7 @@ export default function SupplierHome() {
           )}
           </>
           )},
-          { id: "low-stock", defaultSize: "half" as const, content: (
+          { id: "low-stock", defaultSize: "half" as const, queryKeys: [['/api/low-stock', currentUser?.id]], content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
             <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
@@ -1432,10 +1434,10 @@ export default function SupplierHome() {
             </div>
           </div>
           )},
-          { id: "ratings", defaultSize: "half" as const, content: (
+          { id: "ratings", defaultSize: "half" as const, queryKeys: [['/api/suppliers', currentUser?.id, 'ratings']], content: (
             <SupplierRatingsList supplierId={currentUser?.id || ""} limit={5} showFlag />
           )},
-          { id: "statistics", defaultSize: "full" as const, content: (
+          { id: "statistics", defaultSize: "full" as const, queryKeys: [[`/api/supplier/detailed-stats?supplierId=${currentUser?.id}&period=${statsPeriod}`], [`/api/supplier/settings/revenue-target?supplierId=${currentUser?.id}`], [`/api/supplier/insights?supplierId=${currentUser?.id}`]], content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
         <div className="flex items-start md:items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4 flex-wrap">
           <div className="flex items-center gap-2.5 min-w-0">

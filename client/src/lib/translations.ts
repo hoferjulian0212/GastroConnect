@@ -107,6 +107,8 @@ const t = {
     namePlaceholder: { de: "z. B. Statistiken", it: "es. Statistiche" },
     deleteTitle: { de: "Ansicht löschen?", it: "Eliminare la vista?" },
     deleteDesc: { de: "Diese Ansicht wird dauerhaft entfernt.", it: "Questa vista verrà rimossa definitivamente." },
+    refresh: { de: "Daten aktualisieren", it: "Aggiorna dati" },
+    refreshAll: { de: "Alle aktualisieren", it: "Aggiorna tutto" },
   },
   orderStatus: {
     pending: { de: "Ausstehend", it: "In attesa" },
