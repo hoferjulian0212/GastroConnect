@@ -9,6 +9,7 @@ interface QuantityInputProps {
   disabled?: boolean;
   size?: "sm" | "md";
   testIdPrefix?: string;
+  onDark?: boolean;
 }
 
 export default function QuantityInput({
@@ -18,6 +19,7 @@ export default function QuantityInput({
   disabled = false,
   size = "md",
   testIdPrefix = "qty",
+  onDark = false,
 }: QuantityInputProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
@@ -46,12 +48,20 @@ export default function QuantityInput({
   const inputWidth = size === "sm" ? "w-8" : "w-10";
   const displayWidth = size === "sm" ? "w-6" : "w-8";
 
+  const containerCls = onDark
+    ? "flex items-center border border-white/20 rounded-md"
+    : "flex items-center border border-border rounded-md";
+  const btnCls = onDark
+    ? `${btnSize} text-white hover:text-white disabled:text-white/30`
+    : btnSize;
+  const valueCls = onDark ? "text-white" : "";
+
   return (
-    <div className="flex items-center border border-border rounded-md">
+    <div className={containerCls}>
       <Button
         variant="ghost"
         size="icon"
-        className={btnSize}
+        className={btnCls}
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={disabled || value <= min}
         data-testid={`${testIdPrefix}-decrease`}
@@ -70,12 +80,12 @@ export default function QuantityInput({
             if (e.key === "Escape") setEditing(false);
           }}
           min={min}
-          className={`${inputWidth} ${textSize} text-center bg-transparent outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+          className={`${inputWidth} ${textSize} ${valueCls} text-center bg-transparent outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
           data-testid={`${testIdPrefix}-input`}
         />
       ) : (
         <span
-          className={`${displayWidth} text-center ${textSize} cursor-text tabular-nums select-none`}
+          className={`${displayWidth} text-center ${textSize} ${valueCls} cursor-text tabular-nums select-none`}
           onClick={() => {
             if (!disabled) {
               setEditValue(String(value));
@@ -90,7 +100,7 @@ export default function QuantityInput({
       <Button
         variant="ghost"
         size="icon"
-        className={btnSize}
+        className={btnCls}
         onClick={() => onChange(value + 1)}
         disabled={disabled}
         data-testid={`${testIdPrefix}-increase`}

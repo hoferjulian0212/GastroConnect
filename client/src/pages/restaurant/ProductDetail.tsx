@@ -366,7 +366,7 @@ export default function ProductDetail() {
               )}
 
               <div className="flex items-center gap-3 md:justify-end">
-                <div className="rounded-md bg-white/[0.06] ring-1 ring-white/15">
+                <div className="rounded-md bg-white/[0.06]">
                   <QuantityInput
                     value={quantity}
                     onChange={setQuantity}
@@ -374,6 +374,7 @@ export default function ProductDetail() {
                     disabled={!product.inStock}
                     size="md"
                     testIdPrefix="detail-qty"
+                    onDark
                   />
                 </div>
                 <Button
