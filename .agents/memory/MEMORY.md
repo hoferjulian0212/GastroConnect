@@ -1,1 +1,26 @@
-- [React Query key conventions](query-key-conventions.md) — default queryFn joins array keys with "/"; query-param endpoints need a single-string key, path-param endpoints can use arrays.
+- [No-auth architecture](no-auth-architecture.md) — no login/session; endpoints trust caller-provided IDs by design. Don't "fix" missing per-endpoint authz.
+- [No-auth by design](no-auth-by-design.md) — endpoints trust caller-supplied IDs; not a bug.
+- [No-auth trusted identity](no-auth-trusted-identity.md) — every API trusts client userId/role.
+- [No-login auth model](no-login-auth-model.md) — why there's no authentication and IDs are trusted.
+- [No server auth](no-server-auth.md) — no server-side authN/authZ layer.
+- [Org/member permissions](org-member-permissions.md) — preset roles gate workflows best-effort (spoofable); checkActingCapability strict for team/org/vertreter, lenient (when actor id provided) for orders/chat.
+- [Schema source of truth](schema-source-of-truth.md) — schema changes applied via push, not migration files.
+- [Schema migration convention](schema-migration-convention.md) — no migration files; db:push.
+- [DB schema push](db-schema-push.md) — how schema changes reach the database.
+- [Query-key conventions](query-key-conventions.md) — default queryFn joins array keys with "/"; query-param endpoints need a single-string key.
+- [Routing location query](routing-location-query.md) — strip query before page-detection matching.
+- [Backend hot reload](backend-hot-reload.md) — new/changed server modules need a workflow restart, not just Vite HMR.
+- [Three-bucket stock](three-bucket-stock.md) — MAIN/ITI/Outbounded split + invariants for order lifecycle changes.
+- [Stock editing](stock-editing.md) — where stockQuantity may change; product editor must not.
+- [Product matching](product-matching.md) — how "same product across suppliers" is matched (price comparison, substitution, OCR).
+- [ERP catalog sync](erp-catalog-sync.md) — how ERP→catalog sync reconciles products; off-limits fields.
+- [Integration request flows](integration-request-flows.md) — PMS/ERP/WhatsApp connect share one admin-approval pattern.
+- [Email (Resend)](email-resend.md) — how transactional emails are sent; connector path abandoned.
+- [Notification prefs](notification-prefs.md) — per-user toggles storage and channel gating.
+- [Partner map](partner-map.md) — South Tyrol partner map, free fallback, geocoding policy.
+- [Chat attachments](chat-attachments.md) — reuse shared chat upload helpers; pitfalls.
+- [Command bar](command-bar.md) — don't rebuild the global search/command palette.
+- [Print-only view](print-only-view.md) — printing one view bypassing SPA shell/Radix/toasts.
+- [Mobile bottom-bar clearance](mobile-bottom-bar-clearance.md) — padding reservation so bottom bars don't cover content.
+- [Mobile type ladder](mobile-type-ladder.md) — m-type-*/m-num/m-card behavior and where not to apply.
+- [Decorative color normalization](decorative-color-normalization.md) — decorative blues normalized vs meaningful status blues kept.

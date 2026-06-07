@@ -2634,7 +2634,7 @@ export async function registerRoutes(
       const validated = directOrderSchema.parse(req.body);
       const { restaurantId, supplierId, items, notes, createdByUserId, actingMemberId } = validated;
 
-      const directDenied = await checkActingCapabilityIfProvided(supplierId, actingMemberId, "orders.manage");
+      const directDenied = await checkActingCapabilityIfProvided(restaurantId, actingMemberId, "orders.create");
       if (directDenied) {
         return res.status(directDenied.status).json(directDenied.body);
       }
