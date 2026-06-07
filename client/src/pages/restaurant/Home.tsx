@@ -25,19 +25,7 @@ import CountUp from "@/components/CountUp";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import RestaurantHomeMobile from "./HomeMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useResizableColumns } from "@/hooks/use-resizable-columns";
-import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
 import { ProductImage } from "@/components/ProductImage";
-import {
-  RESTAURANT_ORDER_COL_DEFAULTS,
-  RESTAURANT_ORDER_COL_MIN_WIDTHS,
-  RESTAURANT_ORDER_COLS_STORAGE_KEY,
-  RESTAURANT_ORDER_DENSITY_STORAGE_KEY,
-  type RestaurantOrderColKey,
-  type RowDensity,
-  densityRowClass,
-  densityHeaderClass,
-} from "@/lib/orderTableConfig";
 
 export default function RestaurantHome() {
   const { currentUser } = useUser();
@@ -511,23 +499,7 @@ export default function RestaurantHome() {
     return format(date, "EEEE, dd.MM.", { locale: dateLocale });
   };
 
-  const deliveriesTableKeys = useMemo<RestaurantOrderColKey[]>(
-    () => ["orderNo", "status", "supplier", "items", "deliveryDate", "createdAt", "total"],
-    [],
-  );
-  const { gridTemplate: deliveriesGridTemplate, startResize: startDeliveriesColResize, containerRef: deliveriesContainerRef, tableMinWidth: deliveriesTableMinWidth } = useResizableColumns<RestaurantOrderColKey>(
-    RESTAURANT_ORDER_COLS_STORAGE_KEY,
-    RESTAURANT_ORDER_COL_DEFAULTS,
-    deliveriesTableKeys,
-    { flexKey: "deliveryDate", minWidths: RESTAURANT_ORDER_COL_MIN_WIDTHS },
-  );
-  const [deliveriesRowDensity] = useState<RowDensity>(() => {
-    try {
-      const saved = localStorage.getItem(RESTAURANT_ORDER_DENSITY_STORAGE_KEY) as RowDensity | null;
-      if (saved === "compact" || saved === "normal" || saved === "comfortable") return saved;
-    } catch {}
-    return "normal";
-  });
+  const deliveriesGridTemplate = "100px 130px minmax(0,1.6fr) 80px 150px 130px 110px";
 
   const getOrderDeliveryState = (order: OrderWithDetails): "delivered_today" | "overdue" | "delayed" | "upcoming" => {
     if (order.status === "delivered") {
@@ -1096,19 +1068,18 @@ export default function RestaurantHome() {
             <div className="hidden md:block">
               <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="deliveries-table">
               <div className="md:overflow-x-auto">
-              <div style={{ minWidth: deliveriesTableMinWidth }}>
+              <div>
                 <div
-                  ref={deliveriesContainerRef}
-                  className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border backdrop-blur-sm`}
+                  className="sticky top-0 z-10 grid items-center gap-3 px-3 py-2 bg-muted/40 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold backdrop-blur-sm"
                   style={{ gridTemplateColumns: deliveriesGridTemplate }}
                 >
-                  <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("orderNo")} testId="resize-deliv-orderNo" /></div>
-                  <div className="relative pr-2">Status<ColumnResizeHandle onPointerDown={startDeliveriesColResize("status")} testId="resize-deliv-status" /></div>
-                  <div className="relative pr-2 !justify-start !text-left">{lang === "de" ? "Lieferant" : "Fornitore"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("supplier")} testId="resize-deliv-supplier" /></div>
-                  <div className="relative pr-2 text-right">{lang === "de" ? "Artikel" : "Articoli"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("items")} testId="resize-deliv-items" /></div>
-                  <div className="relative pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("deliveryDate")} testId="resize-deliv-deliveryDate" /></div>
-                  <div className="relative pr-2">{lang === "de" ? "Erstellt" : "Creato"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("createdAt")} testId="resize-deliv-createdAt" /></div>
-                  <div className="text-right">{lang === "de" ? "Summe" : "Totale"}</div>
+                  <div className="truncate">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
+                  <div className="truncate">Status</div>
+                  <div className="truncate">{lang === "de" ? "Lieferant" : "Fornitore"}</div>
+                  <div className="truncate text-right">{lang === "de" ? "Artikel" : "Articoli"}</div>
+                  <div className="truncate">{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>
+                  <div className="truncate">{lang === "de" ? "Erstellt" : "Creato"}</div>
+                  <div className="truncate text-right">{lang === "de" ? "Summe" : "Totale"}</div>
                 </div>
                 {groupedDeliveries.map((group) => (
                   <div key={`d-${group.dateKey}`} data-testid={`deliveries-group-${group.dateKey}`}>
@@ -1151,7 +1122,7 @@ export default function RestaurantHome() {
                               data-testid={`delivery-row-${order.id}`}
                             >
                               <div
-                                className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
+                                className={"grid items-center gap-3 px-3 py-2.5 text-sm"}
                                 style={{ gridTemplateColumns: deliveriesGridTemplate }}
                               >
                                 <span className={`font-mono text-[13px] text-blue-600 dark:text-blue-400 underline underline-offset-2 truncate ${isChild ? "pl-4" : ""}`}>#{formatOrderNumber(order)}</span>
@@ -1227,7 +1198,7 @@ export default function RestaurantHome() {
                             data-testid={`button-bundle-toggle-${bundleKey}`}
                           >
                             <div
-                              className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
+                              className={"grid items-center gap-3 px-3 py-2.5 text-sm"}
                               style={{ gridTemplateColumns: deliveriesGridTemplate }}
                             >
                               <span className="font-mono text-[12px] text-muted-foreground inline-flex items-center gap-1">

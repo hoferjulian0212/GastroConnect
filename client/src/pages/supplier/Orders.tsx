@@ -34,12 +34,7 @@ import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialo
 import SwipeableRow from "@/components/SwipeableRow";
 import StaggeredList from "@/components/StaggeredList";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { useResizableColumns } from "@/hooks/use-resizable-columns";
-import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
 import {
- SUPPLIER_ORDER_COL_DEFAULTS,
- SUPPLIER_ORDER_COL_MIN_WIDTHS,
- SUPPLIER_ORDER_COLS_STORAGE_KEY,
  type SupplierOrderColKey,
 } from "@/lib/orderTableConfig";
 import { GroupHeader } from "@/components/orders/GroupHeader";
@@ -116,26 +111,23 @@ export default function SupplierOrders() {
  const base: SupplierOrderColKey[] = batchMode ? ["select"] : [];
  return [...base, "orderNo", ...SUP_COLUMNS.filter((c) => visibleColumns.has(c)), "actions"];
  }, [visibleColumns, batchMode]);
- const { gridTemplate, startResize: startColResize, resetWidths: resetColWidths, containerRef: tableContainerRef, tableMinWidth } = useResizableColumns<SupplierOrderColKey>(
- SUPPLIER_ORDER_COLS_STORAGE_KEY,
- SUPPLIER_ORDER_COL_DEFAULTS,
- visibleResizableKeys,
- { flexKey: "deliveryDate", minWidths: SUPPLIER_ORDER_COL_MIN_WIDTHS },
+ const COL_WIDTHS: Record<SupplierOrderColKey, string> = {
+ select: "40px",
+ orderNo: "100px",
+ status: "130px",
+ restaurant: "minmax(0,1.6fr)",
+ items: "80px",
+ deliveryDate: "150px",
+ createdAt: "130px",
+ total: "110px",
+ actions: "56px",
+ };
+ const gridTemplate = useMemo(
+ () => visibleResizableKeys.map((k) => COL_WIDTHS[k]).join(" "),
+ [visibleResizableKeys],
  );
- type RowDensity = "compact" | "normal" | "comfortable";
- const [rowDensity, setRowDensity] = useState<RowDensity>(() => {
- try {
- const saved = localStorage.getItem("supplierOrdersRowDensity") as RowDensity | null;
- if (saved === "compact" || saved === "normal" || saved === "comfortable") return saved;
- } catch {}
- return "normal";
- });
- useEffect(() => {
- try { localStorage.setItem("supplierOrdersRowDensity", rowDensity); } catch {}
- }, [rowDensity]);
- const densityRowClass = rowDensity === "compact" ? "py-1 text-[12px]" : rowDensity === "comfortable" ? "py-4 text-sm" : "py-2.5 text-sm";
- const densityHeaderClass = rowDensity === "compact" ? "py-1.5" : rowDensity === "comfortable" ? "py-4" : "py-3";
- const groupTopOffset = rowDensity === "compact" ? "30px" : rowDensity === "comfortable" ? "52px" : "40px";
+ // Sticky day-group labels stick BELOW the (fixed-height) column header
+ const groupTopOffset = "37px";
  const [showExportMenu, setShowExportMenu] = useState(false);
  const [showMessageInput, setShowMessageInput] = useState(false);
  const [orderMessage, setOrderMessage] = useState("");
@@ -757,9 +749,13 @@ export default function SupplierOrders() {
  data-testid={`order-row-${order.id}`}
  >
  {/* Desktop row */}
- <div className={`hidden md:grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass} [&>*+*]:border-l [&>*+*]:border-border`} style={{ gridTemplateColumns: gridTemplate }}>
+ <div
+ className="hidden md:grid items-center gap-3 px-3 py-2.5 text-sm cursor-pointer"
+ style={{ gridTemplateColumns: gridTemplate }}
+ onClick={() => navTo(`/supplier/orders/${order.id}`)}
+ >
  {batchMode && (
- <div onClick={(e) => { e.stopPropagation(); if (order.status === "pending") toggleOrderSelection(order.id); }}>
+ <div className="flex items-center" onClick={(e) => { e.stopPropagation(); if (order.status === "pending") toggleOrderSelection(order.id); }}>
  {order.status === "pending" ? (
  <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/40 bg-background"}`} data-testid={`row-checkbox-${order.id}`}>
  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
@@ -769,7 +765,7 @@ export default function SupplierOrders() {
  )}
  </div>
  )}
- <div>
+ <div className="min-w-0">
  <Link
  href={`/supplier/orders/${order.id}`}
  className="font-mono text-[12px] font-semibold text-blue-600 dark:text-blue-400 underline underline-offset-2 transition-colors hover:text-blue-700 dark:hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 rounded-sm"
@@ -1505,20 +1501,19 @@ export default function SupplierOrders() {
  return (
  <div className="rounded-md border border-border bg-card shadow-sm" data-testid="orders-table">
  <div className="md:overflow-x-auto" style={{ minWidth: 0 }}>
- <div className="hidden md:block" style={{ minWidth: tableMinWidth }}>
+ <div className="hidden md:block">
  <div
- ref={tableContainerRef}
- className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass} bg-muted border-b border-border text-[11px] text-foreground/80 font-medium [&>*+*]:border-l [&>*+*]:border-border`}
+ className="sticky top-0 z-10 grid items-center gap-3 px-3 py-2 bg-muted/40 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold"
  style={{ gridTemplateColumns: gridTemplate }}
  >
  {batchMode && <div></div>}
- <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</span><ColumnResizeHandle onPointerDown={startColResize("orderNo")} testId="resize-orderNo" /></div>
- {visibleColumns.has("status") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">Status</span><ColumnResizeHandle onPointerDown={startColResize("status")} testId="resize-status" /></div>}
- {visibleColumns.has("restaurant") && <div className="relative pr-2 overflow-hidden !justify-start !text-left"><span className="block truncate min-w-0">{lang === "de" ? "Kunde" : "Cliente"}</span><ColumnResizeHandle onPointerDown={startColResize("restaurant")} testId="resize-restaurant" /></div>}
- {visibleColumns.has("items") && <div className="relative pr-2 overflow-hidden !text-right !justify-end"><span className="block truncate min-w-0">{lang === "de" ? "Artikel" : "Articoli"}</span><ColumnResizeHandle onPointerDown={startColResize("items")} testId="resize-items" /></div>}
- {visibleColumns.has("deliveryDate") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Lieferdatum" : "Data consegna"}</span><ColumnResizeHandle onPointerDown={startColResize("deliveryDate")} testId="resize-deliveryDate" /></div>}
- {visibleColumns.has("createdAt") && <div className="relative pr-2 overflow-hidden"><span className="block truncate min-w-0">{lang === "de" ? "Erstellt" : "Creato"}</span><ColumnResizeHandle onPointerDown={startColResize("createdAt")} testId="resize-createdAt" /></div>}
- {visibleColumns.has("total") && <div className="relative pr-2 overflow-hidden !text-right !justify-end"><span className="block truncate min-w-0">{lang === "de" ? "Summe" : "Totale"}</span><ColumnResizeHandle onPointerDown={startColResize("total")} testId="resize-total" /></div>}
+ <div className="truncate">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
+ {visibleColumns.has("status") && <div className="truncate">Status</div>}
+ {visibleColumns.has("restaurant") && <div className="truncate">{lang === "de" ? "Kunde" : "Cliente"}</div>}
+ {visibleColumns.has("items") && <div className="truncate text-right">{lang === "de" ? "Artikel" : "Articoli"}</div>}
+ {visibleColumns.has("deliveryDate") && <div className="truncate">{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>}
+ {visibleColumns.has("createdAt") && <div className="truncate">{lang === "de" ? "Erstellt" : "Creato"}</div>}
+ {visibleColumns.has("total") && <div className="truncate text-right">{lang === "de" ? "Summe" : "Totale"}</div>}
  <div></div>
  </div>
  {/* Desktop body: group headers + rows live INSIDE the min-width wrapper so they scroll together */}

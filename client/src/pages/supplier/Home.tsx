@@ -9,18 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format, formatDistanceToNow, isToday, isTomorrow } from "date-fns";
-import { useResizableColumns } from "@/hooks/use-resizable-columns";
-import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
-import {
-  SUPPLIER_ORDER_COL_DEFAULTS,
-  SUPPLIER_ORDER_COL_MIN_WIDTHS,
-  SUPPLIER_ORDER_COLS_STORAGE_KEY,
-  SUPPLIER_ORDER_DENSITY_STORAGE_KEY,
-  type SupplierOrderColKey,
-  type RowDensity,
-  densityRowClass,
-  densityHeaderClass,
-} from "@/lib/orderTableConfig";
 import { de, it } from "date-fns/locale";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
@@ -373,23 +361,7 @@ export default function SupplierHome() {
     }
   };
 
-  const deliveriesTableKeys = useMemo<SupplierOrderColKey[]>(
-    () => ["orderNo", "status", "restaurant", "items", "deliveryDate", "createdAt", "total"],
-    [],
-  );
-  const { gridTemplate: deliveriesGridTemplate, startResize: startDeliveriesColResize, containerRef: deliveriesContainerRef, tableMinWidth: deliveriesTableMinWidth } = useResizableColumns<SupplierOrderColKey>(
-    SUPPLIER_ORDER_COLS_STORAGE_KEY,
-    SUPPLIER_ORDER_COL_DEFAULTS,
-    deliveriesTableKeys,
-    { flexKey: "deliveryDate", minWidths: SUPPLIER_ORDER_COL_MIN_WIDTHS },
-  );
-  const [deliveriesRowDensity] = useState<RowDensity>(() => {
-    try {
-      const saved = localStorage.getItem(SUPPLIER_ORDER_DENSITY_STORAGE_KEY) as RowDensity | null;
-      if (saved === "compact" || saved === "normal" || saved === "comfortable") return saved;
-    } catch {}
-    return "normal";
-  });
+  const deliveriesGridTemplate = "100px 130px minmax(0,1.6fr) 80px 150px 130px 110px";
 
   const groupedDeliveries = useMemo(() => {
     if (!upcomingDeliveries) return [];
@@ -709,19 +681,18 @@ export default function SupplierHome() {
             <div className="hidden md:block">
               <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="deliveries-table">
               <div className="md:overflow-x-auto">
-              <div style={{ minWidth: deliveriesTableMinWidth }}>
+              <div>
                 <div
-                  ref={deliveriesContainerRef}
-                  className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border backdrop-blur-sm`}
+                  className="sticky top-0 z-10 grid items-center gap-3 px-3 py-2 bg-muted/40 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold backdrop-blur-sm"
                   style={{ gridTemplateColumns: deliveriesGridTemplate }}
                 >
-                  <div className="relative pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("orderNo")} testId="resize-deliv-orderNo" /></div>
-                  <div className="relative pr-2">Status<ColumnResizeHandle onPointerDown={startDeliveriesColResize("status")} testId="resize-deliv-status" /></div>
-                  <div className="relative pr-2 !justify-start !text-left">{lang === "de" ? "Restaurant" : "Ristorante"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("restaurant")} testId="resize-deliv-restaurant" /></div>
-                  <div className="relative pr-2 !text-right !justify-end">{lang === "de" ? "Artikel" : "Articoli"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("items")} testId="resize-deliv-items" /></div>
-                  <div className="relative pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("deliveryDate")} testId="resize-deliv-deliveryDate" /></div>
-                  <div className="relative pr-2">{lang === "de" ? "Erstellt" : "Creato"}<ColumnResizeHandle onPointerDown={startDeliveriesColResize("createdAt")} testId="resize-deliv-createdAt" /></div>
-                  <div className="!text-right !justify-end">{lang === "de" ? "Summe" : "Totale"}</div>
+                  <div className="truncate">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
+                  <div className="truncate">Status</div>
+                  <div className="truncate">{lang === "de" ? "Restaurant" : "Ristorante"}</div>
+                  <div className="truncate text-right">{lang === "de" ? "Artikel" : "Articoli"}</div>
+                  <div className="truncate">{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>
+                  <div className="truncate">{lang === "de" ? "Erstellt" : "Creato"}</div>
+                  <div className="truncate text-right">{lang === "de" ? "Summe" : "Totale"}</div>
                 </div>
                 {groupedDeliveries.map((group) => (
                   <div key={`d-${group.dateKey}`} data-testid={`deliveries-group-${group.dateKey}`}>
@@ -756,7 +727,7 @@ export default function SupplierHome() {
                             data-testid={`delivery-row-${order.id}`}
                           >
                             <div
-                              className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
+                              className={"grid items-center gap-3 px-3 py-2.5 text-sm"}
                               style={{ gridTemplateColumns: deliveriesGridTemplate }}
                             >
                               <span className="font-mono text-[13px] text-blue-600 dark:text-blue-400 underline underline-offset-2 truncate">#{formatOrderNumber(order)}</span>
@@ -1028,18 +999,18 @@ export default function SupplierHome() {
                 <div className="hidden md:block">
                   <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="new-orders-table">
                     <div className="md:overflow-x-auto">
-                      <div style={{ minWidth: deliveriesTableMinWidth }}>
+                      <div>
                         <div
-                          className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border backdrop-blur-sm`}
+                          className="sticky top-0 z-10 grid items-center gap-3 px-3 py-2 bg-muted/40 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold backdrop-blur-sm"
                           style={{ gridTemplateColumns: deliveriesGridTemplate }}
                         >
-                          <div className="pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
-                          <div className="pr-2">Status</div>
-                          <div className="pr-2 !justify-start !text-left">{lang === "de" ? "Restaurant" : "Ristorante"}</div>
-                          <div className="pr-2 !text-right !justify-end">{lang === "de" ? "Artikel" : "Articoli"}</div>
-                          <div className="pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>
-                          <div className="pr-2">{lang === "de" ? "Erstellt" : "Creato"}</div>
-                          <div className="!text-right !justify-end">{lang === "de" ? "Summe" : "Totale"}</div>
+                          <div className="truncate">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
+                          <div className="truncate">Status</div>
+                          <div className="truncate">{lang === "de" ? "Restaurant" : "Ristorante"}</div>
+                          <div className="truncate text-right">{lang === "de" ? "Artikel" : "Articoli"}</div>
+                          <div className="truncate">{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>
+                          <div className="truncate">{lang === "de" ? "Erstellt" : "Creato"}</div>
+                          <div className="truncate text-right">{lang === "de" ? "Summe" : "Totale"}</div>
                         </div>
                         {recentOrders.map((order) => {
                           const restaurantName = order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown");
@@ -1059,7 +1030,7 @@ export default function SupplierHome() {
                               data-testid={`order-row-${order.id}`}
                             >
                               <div
-                                className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
+                                className={"grid items-center gap-3 px-3 py-2.5 text-sm"}
                                 style={{ gridTemplateColumns: deliveriesGridTemplate }}
                               >
                                 <span className="font-mono text-[13px] text-blue-600 dark:text-blue-400 underline underline-offset-2 truncate">#{formatOrderNumber(order)}</span>
@@ -1201,18 +1172,18 @@ export default function SupplierHome() {
                     </p>
                     <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="action-stale-orders-table">
                       <div className="md:overflow-x-auto">
-                        <div style={{ minWidth: deliveriesTableMinWidth }}>
+                        <div>
                           <div
-                            className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border backdrop-blur-sm`}
+                            className="sticky top-0 z-10 grid items-center gap-3 px-3 py-2 bg-muted/40 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold backdrop-blur-sm"
                             style={{ gridTemplateColumns: deliveriesGridTemplate }}
                           >
-                            <div className="pr-2">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
-                            <div className="pr-2">Status</div>
-                            <div className="pr-2 !justify-start !text-left">{lang === "de" ? "Restaurant" : "Ristorante"}</div>
-                            <div className="pr-2 !text-right !justify-end">{lang === "de" ? "Artikel" : "Articoli"}</div>
-                            <div className="pr-2">{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>
-                            <div className="pr-2">{lang === "de" ? "Erstellt" : "Creato"}</div>
-                            <div className="!text-right !justify-end">{lang === "de" ? "Summe" : "Totale"}</div>
+                            <div className="truncate">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
+                            <div className="truncate">Status</div>
+                            <div className="truncate">{lang === "de" ? "Restaurant" : "Ristorante"}</div>
+                            <div className="truncate text-right">{lang === "de" ? "Artikel" : "Articoli"}</div>
+                            <div className="truncate">{lang === "de" ? "Lieferdatum" : "Data consegna"}</div>
+                            <div className="truncate">{lang === "de" ? "Erstellt" : "Creato"}</div>
+                            <div className="truncate text-right">{lang === "de" ? "Summe" : "Totale"}</div>
                           </div>
                           {actionRequired!.staleOrders.map((order) => {
                             const restaurantName = order.restaurant?.companyName || order.restaurant?.name || t("common", "unknown");
@@ -1232,7 +1203,7 @@ export default function SupplierHome() {
                                 data-testid={`stale-order-row-${order.id}`}
                               >
                                 <div
-                                  className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
+                                  className={"grid items-center gap-3 px-3 py-2.5 text-sm"}
                                   style={{ gridTemplateColumns: deliveriesGridTemplate }}
                                 >
                                   <span className="font-mono text-[13px] text-blue-600 dark:text-blue-400 underline underline-offset-2 truncate">#{formatOrderNumber(order)}</span>
@@ -1273,7 +1244,6 @@ export default function SupplierHome() {
 
                 {(actionRequired?.openComplaints?.length || 0) > 0 && (() => {
                   const complaintsGridTemplate = "minmax(180px, 1fr) 140px minmax(160px, 1.2fr) 110px 130px";
-                  const complaintsTableMinWidth = 760;
                   const complaintStatusColors: Record<string, string> = {
                     open: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
                     in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
@@ -1291,16 +1261,16 @@ export default function SupplierHome() {
                       </p>
                       <div className="rounded-2xl border border-border bg-card overflow-hidden" data-testid="action-complaints-table">
                         <div className="md:overflow-x-auto">
-                          <div style={{ minWidth: complaintsTableMinWidth }}>
+                          <div>
                             <div
-                              className={`sticky top-0 z-10 grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityHeaderClass(deliveriesRowDensity)} bg-muted/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold [&>*+*]:border-l [&>*+*]:border-border backdrop-blur-sm`}
+                              className="sticky top-0 z-10 grid items-center gap-3 px-3 py-2 bg-muted/40 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold backdrop-blur-sm"
                               style={{ gridTemplateColumns: complaintsGridTemplate }}
                             >
-                              <div className="pr-2 !justify-start !text-left">{lang === "de" ? "Reklamation" : "Reclamo"}</div>
-                              <div className="pr-2">Status</div>
-                              <div className="pr-2 !justify-start !text-left">{lang === "de" ? "Restaurant" : "Ristorante"}</div>
-                              <div className="pr-2">{lang === "de" ? "Bestellung" : "Ordine"}</div>
-                              <div className="pr-2">{lang === "de" ? "Erstellt" : "Creato"}</div>
+                              <div className="truncate">{lang === "de" ? "Reklamation" : "Reclamo"}</div>
+                              <div className="truncate">Status</div>
+                              <div className="truncate">{lang === "de" ? "Restaurant" : "Ristorante"}</div>
+                              <div className="truncate">{lang === "de" ? "Bestellung" : "Ordine"}</div>
+                              <div className="truncate">{lang === "de" ? "Erstellt" : "Creato"}</div>
                             </div>
                             {actionRequired!.openComplaints.map((complaint) => {
                               const restaurantName = complaint.restaurant?.companyName || complaint.restaurant?.name || t("common", "unknown");
@@ -1313,7 +1283,7 @@ export default function SupplierHome() {
                                   data-testid={`action-complaint-row-${complaint.id}`}
                                 >
                                   <div
-                                    className={`grid items-stretch gap-0 [&>*]:px-3 [&>*]:flex [&>*]:items-center [&>*]:justify-center [&>*]:!text-center [&>*]:min-w-0 ${densityRowClass(deliveriesRowDensity)} [&>*+*]:border-l [&>*+*]:border-border`}
+                                    className={"grid items-center gap-3 px-3 py-2.5 text-sm"}
                                     style={{ gridTemplateColumns: complaintsGridTemplate }}
                                   >
                                     <div className="min-w-0 !justify-start !text-left flex items-center gap-1.5">
