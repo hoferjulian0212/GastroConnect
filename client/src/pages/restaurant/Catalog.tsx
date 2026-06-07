@@ -381,6 +381,21 @@ export default function RestaurantCatalog() {
  enabled: !!currentUser?.id,
  });
 
+ const { data: cartItems } = useQuery<CartItemWithPromo[]>({
+ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`],
+ enabled: !!currentUser?.id,
+ });
+
+ const cartQtyByProduct = useMemo(() => {
+ const m = new Map<string, number>();
+ if (cartItems) {
+ for (const it of cartItems) {
+ m.set(it.productId, (m.get(it.productId) || 0) + it.quantity);
+ }
+ }
+ return m;
+ }, [cartItems]);
+
  const knownCategories = allCategories.filter(c => c !== "Sonstiges");
  const productsByCategory = (cat: string) => {
  if (!products) return [];
@@ -556,6 +571,7 @@ export default function RestaurantCatalog() {
  const hasPromo = !!promo;
  const originalPrice = parseFloat(product.price);
  const discountedPrice = hasPromo ? originalPrice * (1 - promo.discountPercent / 100) : originalPrice;
+ const cartQty = cartQtyByProduct.get(product.id) || 0;
 
  return (
  <div
@@ -611,6 +627,15 @@ export default function RestaurantCatalog() {
  </div>
  )}
  </div>
+ {product.inStock && cartQty > 0 && (
+ <div
+ className="mt-1.5 inline-flex items-center gap-1 self-start rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary"
+ data-testid={`text-cart-qty-${product.id}`}
+ >
+ <ShoppingCart className="h-2.5 w-2.5 shrink-0" />
+ {cartQty} {lang === "de" ? "im Warenkorb" : "nel carrello"}
+ </div>
+ )}
  {product.inStock && (
  <QuickAddBar product={product} lang={lang} t={t} />
  )}
