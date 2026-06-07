@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ComposedChart, Line, Bar } from "recharts";
 import { queryClient } from "@/lib/queryClient";
 import { MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, statusToTone, AttentionDeck, type AttentionCard } from "@/components/mobile";
+import MobileDashboardViewSelector from "@/components/MobileDashboardViewSelector";
 import type { OrderWithDetails, Product, ConversationWithUser } from "@shared/schema";
 import { getOrderStatus } from "@/lib/translations";
 
@@ -230,6 +231,9 @@ export default function SupplierHomeMobile({
                 {currentUser?.companyName || currentUser?.name || ""}
               </h1>
             </div>
+            {currentUser?.id && (
+              <MobileDashboardViewSelector userId={currentUser.id} role="supplier" />
+            )}
           </div>
           <button
             onClick={() => navigate(leadHref)}

@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { queryClient } from "@/lib/queryClient";
 import { MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, MobileFab, MobileStatusPill, statusToTone, AttentionDeck, type AttentionCard } from "@/components/mobile";
+import MobileDashboardViewSelector from "@/components/MobileDashboardViewSelector";
 import type { OrderWithDetails, ConversationWithUser, OrderTemplateWithItems } from "@shared/schema";
 import { getOrderStatus } from "@/lib/translations";
 
@@ -203,6 +204,9 @@ export default function RestaurantHomeMobile({
                 {currentUser?.companyName || currentUser?.name || ""}
               </h1>
             </div>
+            {currentUser?.id && (
+              <MobileDashboardViewSelector userId={currentUser.id} role="restaurant" />
+            )}
           </div>
           <button
             onClick={() => navigate(leadHref)}
