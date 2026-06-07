@@ -55,6 +55,7 @@ export default function Team() {
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
   const [newRole, setNewRole] = useState<typeof MEMBER_ROLE_VALUES[number]>("staff");
 
   const addMutation = useMutation({
@@ -62,13 +63,14 @@ export default function Team() {
       apiRequest("POST", `/api/orgs/${orgId}/members`, {
         name: newName.trim(),
         email: newEmail.trim() || null,
+        phone: newPhone.trim() || null,
         role: newRole,
         actingMemberId: currentMember?.id,
       }),
     onSuccess: () => {
       invalidate();
       setAddOpen(false);
-      setNewName(""); setNewEmail(""); setNewRole("staff");
+      setNewName(""); setNewEmail(""); setNewPhone(""); setNewRole("staff");
       toast({ title: tt("Mitglied hinzugefügt", "Membro aggiunto") });
     },
     onError: async (err: any) => {
@@ -84,6 +86,35 @@ export default function Team() {
     mutationFn: async ({ id, role }: { id: string; role: string }) =>
       apiRequest("PATCH", `/api/members/${id}`, { role, actingMemberId: currentMember?.id }),
     onSuccess: () => { invalidate(); toast({ title: tt("Rolle aktualisiert", "Ruolo aggiornato") }); },
+    onError: () => toast({ title: tt("Fehler", "Errore"), variant: "destructive" }),
+  });
+
+  // ---- Edit member details ----
+  const [editMember, setEditMember] = useState<Member | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+
+  const openEditDialog = (m: Member) => {
+    setEditMember(m);
+    setEditName(m.name);
+    setEditEmail(m.email ?? "");
+    setEditPhone(m.phone ?? "");
+  };
+
+  const editMutation = useMutation({
+    mutationFn: async () =>
+      apiRequest("PATCH", `/api/members/${editMember?.id}`, {
+        name: editName.trim(),
+        email: editEmail.trim() || null,
+        phone: editPhone.trim() || null,
+        actingMemberId: currentMember?.id,
+      }),
+    onSuccess: () => {
+      invalidate();
+      setEditMember(null);
+      toast({ title: tt("Mitglied aktualisiert", "Membro aggiornato") });
+    },
     onError: () => toast({ title: tt("Fehler", "Errore"), variant: "destructive" }),
   });
 
@@ -211,6 +242,10 @@ export default function Team() {
                       <Input id="m-email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} data-testid="input-member-email" />
                     </div>
                     <div>
+                      <Label htmlFor="m-phone">{tt("Telefon", "Telefono")}</Label>
+                      <Input id="m-phone" type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} data-testid="input-member-phone" />
+                    </div>
+                    <div>
                       <Label>{tt("Rolle", "Ruolo")}</Label>
                       <Select value={newRole} onValueChange={(v) => setNewRole(v as any)}>
                         <SelectTrigger data-testid="select-member-role">
@@ -259,6 +294,7 @@ export default function Team() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate" data-testid={`text-member-name-${m.id}`}>{m.name}</p>
                       {m.email && <p className="text-xs text-muted-foreground truncate">{m.email}</p>}
+                      {m.phone && <p className="text-xs text-muted-foreground truncate" data-testid={`text-member-phone-${m.id}`}>{m.phone}</p>}
                     </div>
                     {canManage ? (
                       <Select
@@ -278,6 +314,17 @@ export default function Team() {
                       <span className="text-xs text-muted-foreground" data-testid={`text-member-role-${m.id}`}>
                         {roleLabel(m.role, lang)}
                       </span>
+                    )}
+                    {canManage && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => openEditDialog(m)}
+                        data-testid={`button-edit-member-${m.id}`}
+                      >
+                        <Pencil className="h-4 w-4 text-muted-foreground" />
+                      </Button>
                     )}
                     {canManage && (
                       <AlertDialog>
@@ -341,6 +388,38 @@ export default function Team() {
           </div>
           <DialogFooter>
             <Button onClick={() => orgMutation.mutate()} disabled={orgMutation.isPending} data-testid="button-save-org">
+              {tt("Speichern", "Salva")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit member dialog */}
+      <Dialog open={!!editMember} onOpenChange={(o) => { if (!o) setEditMember(null); }}>
+        <DialogContent data-testid="dialog-edit-member">
+          <DialogHeader>
+            <DialogTitle>{tt("Mitglied bearbeiten", "Modifica membro")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label htmlFor="edit-m-name">{tt("Name", "Nome")}</Label>
+              <Input id="edit-m-name" value={editName} onChange={(e) => setEditName(e.target.value)} data-testid="input-edit-member-name" />
+            </div>
+            <div>
+              <Label htmlFor="edit-m-email">{tt("E-Mail", "Email")}</Label>
+              <Input id="edit-m-email" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} data-testid="input-edit-member-email" />
+            </div>
+            <div>
+              <Label htmlFor="edit-m-phone">{tt("Telefon", "Telefono")}</Label>
+              <Input id="edit-m-phone" type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} data-testid="input-edit-member-phone" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => editMutation.mutate()}
+              disabled={!editName.trim() || editMutation.isPending}
+              data-testid="button-save-edit-member"
+            >
               {tt("Speichern", "Salva")}
             </Button>
           </DialogFooter>

@@ -16,6 +16,7 @@ import { Search, ArrowLeft, MessageSquare, Phone, ClipboardList, CalendarDays, T
 import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { PartnerMap } from "@/components/PartnerMap";
+import { PartnerContactsList } from "@/components/PartnerContactsList";
 import { useToast } from "@/hooks/use-toast";
 import type { User, Product, CustomMinOrderQuantity, DeliverySchedule, CustomPrice, MinimumOrderValue, Member, VertreterAssignment } from "@shared/schema";
 import { can, roleLabel } from "@shared/permissions";
@@ -173,6 +174,12 @@ export default function SupplierRestaurants() {
                     </Button>
                   </div>
                 </div>
+                <PartnerContactsList
+                  orgId={restaurant.id}
+                  orgPhone={restaurant.phone}
+                  onMessage={() => setLocation(`/supplier/inbox?to=${restaurant.id}`)}
+                  lang={lang}
+                />
               </CardContent>
             </Card>
           ))}

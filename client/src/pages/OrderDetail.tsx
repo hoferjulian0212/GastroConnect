@@ -9,6 +9,7 @@ import { de, it } from "date-fns/locale";
 import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, AlertCircle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown, Download, MoreHorizontal, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CounterpartyContactCard } from "@/components/CounterpartyContactCard";
 import { ProductImage } from "@/components/ProductImage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
@@ -1187,6 +1188,17 @@ export default function OrderDetail() {
                 )}
               </div>
             </div>
+
+            <CounterpartyContactCard
+              supplierId={order.supplierId}
+              restaurantId={order.restaurantId}
+              isSupplier={isSupplier}
+              supplier={order.supplier}
+              restaurant={order.restaurant}
+              onMessage={navigateToChat}
+              lang={lang}
+              className={tabClsDetails}
+            />
 
             {/* Documents section — clickable list of generated docs for this order */}
             {orderDocuments && orderDocuments.length > 0 && (

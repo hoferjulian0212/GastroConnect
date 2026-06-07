@@ -1028,6 +1028,7 @@ export const members = pgTable("members", {
   organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => users.id),
   name: text("name").notNull(),
   email: text("email"),
+  phone: text("phone"),
   profileImageUrl: text("profile_image_url"),
   role: memberRoleEnum("role").notNull().default("staff"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

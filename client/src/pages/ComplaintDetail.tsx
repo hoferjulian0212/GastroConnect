@@ -9,6 +9,7 @@ import { de, it } from "date-fns/locale";
 import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, Check, Image as ImageIcon, MessageSquare, Play, RotateCcw, Ban, Send, Truck, Plus, MoreHorizontal, ThumbsDown, CheckSquare, Percent } from "lucide-react";
 import { getComplaintReasonLabel } from "@/lib/complaintReasons";
 import { Badge } from "@/components/ui/badge";
+import { CounterpartyContactCard } from "@/components/CounterpartyContactCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -1343,6 +1344,17 @@ export default function ComplaintDetail() {
                   )}
                 </div>
               </div>
+
+              <CounterpartyContactCard
+                supplierId={complaint.supplierId}
+                restaurantId={complaint.restaurantId}
+                isSupplier={isSupplier}
+                supplier={complaint.supplier}
+                restaurant={complaint.restaurant}
+                onMessage={navigateToChat}
+                lang={lang}
+                className={tabClsDetails}
+              />
 
               {/* Right bottom: Verlauf (timeline + comments) */}
               <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0 ${tabClsUpdates}`} data-testid="section-history">

@@ -15,6 +15,7 @@ import type { User, Member } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { StarRating } from "@/components/StarRating";
+import { PartnerContactsList } from "@/components/PartnerContactsList";
 
 export default function RestaurantSuppliers() {
   const { currentUser } = useUser();
@@ -180,6 +181,12 @@ export default function RestaurantSuppliers() {
                     </Button>
                   </div>
                 </div>
+                <PartnerContactsList
+                  orgId={supplier.id}
+                  orgPhone={supplier.phone}
+                  onMessage={() => handleMessage(supplier.id)}
+                  lang={lang}
+                />
               </CardContent>
             </Card>
           ))}

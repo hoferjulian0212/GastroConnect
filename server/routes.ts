@@ -868,6 +868,7 @@ export async function registerRoutes(
       const schema = z.object({
         name: z.string().min(1).optional(),
         email: z.string().email().optional().nullable(),
+        phone: z.string().optional().nullable(),
         role: memberRoleSchema.optional(),
         profileImageUrl: z.string().optional().nullable(),
         actingMemberId: z.string().optional(),
