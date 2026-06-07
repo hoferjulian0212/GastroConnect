@@ -472,122 +472,151 @@ export default function ProductDetail() {
         </div>
       </HeroPortal>
 
-      <div className="space-y-6 md:space-y-8 px-3 md:px-6 pt-3 md:pt-4 pb-[var(--mobile-bottom-pad)] md:pb-6">
-        <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
-        <div className="grid gap-4 md:gap-6 lg:grid-cols-3 lg:items-start">
-        <div className="lg:col-span-2 space-y-4 md:space-y-6 min-w-0">
-        {product.description && (
-          <div>
-            <h3 className="text-sm md:text-base font-semibold mb-1.5 flex items-center gap-2">
-              <Info className="h-4 w-4 text-muted-foreground" />
-              {lang === "de" ? "Beschreibung" : "Descrizione"}
-            </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-product-description">
-              {product.description}
-            </p>
-          </div>
+      <div className="space-y-5 md:space-y-6 px-3 md:px-6 pt-4 md:pt-6 pb-[var(--mobile-bottom-pad)] md:pb-8">
+
+        {historyStats && (
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" data-testid="section-purchase-stats">
+            <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-order-count">
+              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
+                <Repeat className="h-4 w-4 shrink-0" />
+                <span className="truncate">{lang === "de" ? "Bestellungen" : "Ordini"}</span>
+              </div>
+              <p className="font-bold text-2xl md:text-3xl">{historyStats.orderCount}<span className="text-base md:text-lg font-medium text-muted-foreground">×</span></p>
+            </div>
+            <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-total-quantity">
+              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
+                <Package className="h-4 w-4 shrink-0" />
+                <span className="truncate">{lang === "de" ? "Menge gesamt" : "Quantità tot."}</span>
+              </div>
+              <p className="font-bold text-2xl md:text-3xl truncate">{historyStats.totalQuantity}<span className="text-base md:text-lg font-medium text-muted-foreground"> {product.unit}</span></p>
+            </div>
+            <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-avg-price">
+              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
+                <Euro className="h-4 w-4 shrink-0" />
+                <span className="truncate">{lang === "de" ? "Ø Preis" : "Prezzo medio"}</span>
+              </div>
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <p className="font-bold text-2xl md:text-3xl">{historyStats.avgUnitPrice.toFixed(2)}€</p>
+                {Math.abs(historyStats.priceDeltaPct) >= 0.5 && (
+                  <span
+                    className={`flex items-center gap-0.5 text-xs md:text-sm font-medium ${
+                      historyStats.priceDeltaPct > 0 ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"
+                    }`}
+                    data-testid="text-price-trend"
+                  >
+                    {historyStats.priceDeltaPct > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                    {Math.abs(historyStats.priceDeltaPct).toFixed(0)}%
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="rounded-2xl border bg-card p-4 md:p-5" data-testid="stat-last-ordered">
+              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-1.5">
+                <CalendarDays className="h-4 w-4 shrink-0" />
+                <span className="truncate">{lang === "de" ? "Zuletzt bestellt" : "Ultimo ordine"}</span>
+              </div>
+              <p className="font-bold text-2xl md:text-3xl">{format(new Date(historyStats.lastOrdered), "dd.MM.yy", { locale: dateLocale })}</p>
+            </div>
+          </section>
         )}
 
-        {(historyLoading || historyStats) && (
-          <div data-testid="section-purchase-history">
-            <h3 className="text-sm md:text-base font-semibold mb-2.5 flex items-center gap-2">
-              <History className="h-4 w-4 text-muted-foreground" />
-              {lang === "de" ? "Ihr Bestellverlauf" : "Il tuo storico ordini"}
-            </h3>
-            {historyLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-20 w-full rounded-xl" />
-                <Skeleton className="h-40 w-full rounded-xl" />
+        <div className="grid gap-5 md:gap-6 lg:grid-cols-12 lg:items-start">
+
+          <div className="lg:col-span-8 space-y-5 md:space-y-6 min-w-0">
+            {product.description && (
+              <div className="rounded-2xl border bg-card p-5 md:p-6">
+                <h2 className="text-base md:text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Info className="h-5 w-5 text-muted-foreground" />
+                  {lang === "de" ? "Beschreibung" : "Descrizione"}
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-product-description">
+                  {product.description}
+                </p>
               </div>
-            ) : historyStats ? (
-              <div className="space-y-3 md:space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
-                  <div className="p-2.5 md:p-3 rounded-xl bg-muted/40" data-testid="stat-order-count">
-                    <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
-                      <Repeat className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
-                      <span className="truncate">{lang === "de" ? "Bestellungen" : "Ordini"}</span>
-                    </div>
-                    <p className="font-semibold text-sm md:text-lg">{historyStats.orderCount}×</p>
-                  </div>
-                  <div className="p-2.5 md:p-3 rounded-xl bg-muted/40" data-testid="stat-total-quantity">
-                    <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
-                      <Package className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
-                      <span className="truncate">{lang === "de" ? "Menge gesamt" : "Quantità tot."}</span>
-                    </div>
-                    <p className="font-semibold text-sm md:text-lg truncate">{historyStats.totalQuantity} {product.unit}</p>
-                  </div>
-                  <div className="p-2.5 md:p-3 rounded-xl bg-muted/40" data-testid="stat-avg-price">
-                    <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
-                      <Euro className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
-                      <span className="truncate">{lang === "de" ? "Ø Preis" : "Prezzo medio"}</span>
-                    </div>
-                    <div className="flex items-baseline gap-1 flex-wrap">
-                      <p className="font-semibold text-sm md:text-lg">{historyStats.avgUnitPrice.toFixed(2)}€</p>
-                      {Math.abs(historyStats.priceDeltaPct) >= 0.5 && (
-                        <span
-                          className={`flex items-center gap-0.5 text-[10px] md:text-xs font-medium ${
-                            historyStats.priceDeltaPct > 0 ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"
-                          }`}
-                          data-testid="text-price-trend"
-                        >
-                          {historyStats.priceDeltaPct > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                          {Math.abs(historyStats.priceDeltaPct).toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="p-2.5 md:p-3 rounded-xl bg-muted/40" data-testid="stat-last-ordered">
-                    <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
-                      <CalendarDays className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
-                      <span className="truncate">{lang === "de" ? "Zuletzt" : "Ultimo"}</span>
-                    </div>
-                    <p className="font-semibold text-sm md:text-lg">{format(new Date(historyStats.lastOrdered), "dd.MM.yy", { locale: dateLocale })}</p>
-                  </div>
+            )}
+
+            {historyLoading && (
+              <div className="rounded-2xl border bg-card p-5 md:p-6 space-y-3" data-testid="section-purchase-history">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-56 w-full rounded-xl" />
+              </div>
+            )}
+
+            {!historyLoading && !historyStats && (
+              <div className="rounded-2xl border bg-card p-8 md:p-10 flex flex-col items-center justify-center text-center" data-testid="section-no-history">
+                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                  <History className="h-6 w-6 text-muted-foreground" />
                 </div>
+                <h2 className="text-base md:text-lg font-semibold mb-1">
+                  {lang === "de" ? "Noch kein Bestellverlauf" : "Nessuno storico ordini"}
+                </h2>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  {lang === "de"
+                    ? "Sobald Sie dieses Produkt bestellen, sehen Sie hier die Preisentwicklung und Ihren Bestellverlauf."
+                    : "Una volta ordinato questo prodotto, qui vedrai l'andamento dei prezzi e il tuo storico ordini."}
+                </p>
+              </div>
+            )}
 
-                {historyStats.chartData.length >= 2 && (
-                  <div className="p-3 md:p-4 rounded-xl bg-muted/40">
-                    <p className="text-xs md:text-sm font-medium mb-3 text-muted-foreground">
-                      {lang === "de" ? `Preisentwicklung (€/${product.unit})` : `Andamento prezzo (€/${product.unit})`}
-                    </p>
-                    <div className="h-44 md:h-52 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={historyStats.chartData} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                          <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={20} />
-                          <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} domain={["auto", "auto"]} tickFormatter={(v) => `${v}€`} />
-                          <Tooltip
-                            isAnimationActive={false}
-                            cursor={{ stroke: "hsl(var(--border))" }}
-                            content={({ active, payload, label }) => {
-                              if (!active || !payload?.length) return null;
-                              return (
-                                <div className="rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-sm">
-                                  <p className="text-[11px] text-muted-foreground">{label}</p>
-                                  <p className="text-xs font-semibold">{(payload[0].value as number).toFixed(2)}€/{product.unit}</p>
-                                </div>
-                              );
-                            }}
-                          />
-                          <Area type="monotone" dataKey="price" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#priceFill)" dot={{ r: 2.5 }} activeDot={{ r: 4 }} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
+            {historyStats && (
+              <div className="rounded-2xl border bg-card p-5 md:p-6" data-testid="section-purchase-history">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h2 className="text-base md:text-lg font-semibold flex items-center gap-2">
+                    <History className="h-5 w-5 text-muted-foreground" />
+                    {lang === "de" ? "Preisentwicklung" : "Andamento prezzo"}
+                  </h2>
+                  <span className="text-xs md:text-sm text-muted-foreground">€/{product.unit}</span>
+                </div>
+                {historyStats.chartData.length >= 2 ? (
+                  <div className="h-56 md:h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={historyStats.chartData} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={20} />
+                        <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} domain={["auto", "auto"]} tickFormatter={(v) => `${v}€`} />
+                        <Tooltip
+                          isAnimationActive={false}
+                          cursor={{ stroke: "hsl(var(--border))" }}
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null;
+                            return (
+                              <div className="rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-sm">
+                                <p className="text-[11px] text-muted-foreground">{label}</p>
+                                <p className="text-xs font-semibold">{(payload[0].value as number).toFixed(2)}€/{product.unit}</p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Area type="monotone" dataKey="price" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#priceFill)" dot={{ r: 2.5 }} activeDot={{ r: 4 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    {lang === "de" ? "Noch nicht genug Bestellungen für ein Diagramm." : "Non ci sono ancora abbastanza ordini per un grafico."}
+                  </p>
                 )}
+              </div>
+            )}
 
-                <div className="rounded-xl border overflow-hidden">
+            {historyStats && (
+              <div className="rounded-2xl border bg-card p-5 md:p-6" data-testid="section-order-list">
+                <h2 className="text-base md:text-lg font-semibold flex items-center gap-2 mb-4">
+                  <Repeat className="h-5 w-5 text-muted-foreground" />
+                  {lang === "de" ? "Ihr Bestellverlauf" : "Il tuo storico ordini"}
+                </h2>
+                <div className="overflow-hidden rounded-xl border">
                   {[...purchaseHistory].reverse().map((entry) => (
                     <button
                       key={entry.orderId}
                       onClick={() => setLocation(`/restaurant/orders/${entry.orderId}`)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors"
+                      className="w-full flex items-center gap-3 px-3.5 py-3 text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors"
                       data-testid={`row-history-${entry.orderId}`}
                     >
                       <div className="flex-1 min-w-0">
@@ -595,7 +624,7 @@ export default function ProductDetail() {
                           {format(new Date(entry.createdAt), "dd. MMM yyyy", { locale: dateLocale })}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
-                          #{formatOrderNumber({ orderNumber: entry.orderNumber, id: entry.orderId })} · {statusLabel(entry.status)}
+                          <span className="text-blue-600 dark:text-blue-400 font-mono">#{formatOrderNumber({ orderNumber: entry.orderNumber, id: entry.orderId })}</span> · {statusLabel(entry.status)}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
@@ -606,81 +635,77 @@ export default function ProductDetail() {
                   ))}
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
-        )}
-        </div>
 
-        <aside className="space-y-4 md:space-y-5 lg:sticky lg:top-4">
-          <div className="rounded-2xl border bg-card p-4 md:p-5">
-            <h3 className="text-sm md:text-base font-semibold mb-3 flex items-center gap-2">
-              <Info className="h-4 w-4 text-muted-foreground" />
-              {lang === "de" ? "Produktdetails" : "Dettagli prodotto"}
-            </h3>
-            <div className="divide-y">
-              <div className="flex items-center justify-between gap-3 py-2.5">
-                <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Euro className="h-4 w-4 shrink-0" />
-                  {hasPromo ? (lang === "de" ? "Originalpreis" : "Prezzo orig.") : (lang === "de" ? "Preis" : "Prezzo")}
-                </span>
-                <span className="font-semibold text-sm md:text-base text-right">{product.price}€/{product.unit}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3 py-2.5">
-                <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Layers className="h-4 w-4 shrink-0" />
-                  {lang === "de" ? "Einheit" : "Unità"}
-                </span>
-                <span className="font-semibold text-sm md:text-base text-right">{product.unit}</span>
-              </div>
-              {product.category && (
-                <div className="flex items-center justify-between gap-3 py-2.5">
+          <aside className="lg:col-span-4 space-y-5 md:space-y-6 lg:sticky lg:top-4">
+            <div className="rounded-2xl border bg-card p-5 md:p-6">
+              <h2 className="text-base md:text-lg font-semibold mb-4 flex items-center gap-2">
+                <Info className="h-5 w-5 text-muted-foreground" />
+                {lang === "de" ? "Produktdetails" : "Dettagli prodotto"}
+              </h2>
+              <div className="divide-y">
+                <div className="flex items-center justify-between gap-3 py-3">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Tag className="h-4 w-4 shrink-0" />
-                    {lang === "de" ? "Kategorie" : "Categoria"}
+                    <Euro className="h-4 w-4 shrink-0" />
+                    {hasPromo ? (lang === "de" ? "Originalpreis" : "Prezzo orig.") : (lang === "de" ? "Preis" : "Prezzo")}
                   </span>
-                  <span className="font-medium text-sm md:text-base text-right truncate">{product.category}</span>
+                  <span className="font-semibold text-sm md:text-base text-right">{product.price}€/{product.unit}</span>
                 </div>
-              )}
-              {product.articleNumber && (
-                <div className="flex items-center justify-between gap-3 py-2.5">
+                <div className="flex items-center justify-between gap-3 py-3">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Package className="h-4 w-4 shrink-0" />
-                    {lang === "de" ? "Artikelnr." : "Cod. articolo"}
+                    <Layers className="h-4 w-4 shrink-0" />
+                    {lang === "de" ? "Einheit" : "Unità"}
                   </span>
-                  <span className="font-mono tabular-nums text-sm text-right">{product.articleNumber}</span>
+                  <span className="font-semibold text-sm md:text-base text-right">{product.unit}</span>
                 </div>
-              )}
+                {product.category && (
+                  <div className="flex items-center justify-between gap-3 py-3">
+                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Tag className="h-4 w-4 shrink-0" />
+                      {lang === "de" ? "Kategorie" : "Categoria"}
+                    </span>
+                    <span className="font-medium text-sm md:text-base text-right truncate">{product.category}</span>
+                  </div>
+                )}
+                {product.articleNumber && (
+                  <div className="flex items-center justify-between gap-3 py-3">
+                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Package className="h-4 w-4 shrink-0" />
+                      {lang === "de" ? "Artikelnr." : "Cod. articolo"}
+                    </span>
+                    <span className="font-mono tabular-nums text-sm text-right">{product.articleNumber}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </aside>
+          </aside>
         </div>
 
         {!product.inStock && outOfStockAlternatives.length > 0 && (
-          <div>
-            <h3 className="text-base md:text-lg font-semibold mb-2.5 flex items-center gap-2">
+          <section>
+            <h2 className="text-base md:text-lg font-semibold mb-3 flex items-center gap-2">
               <Package className="h-5 w-5 text-amber-500" />
               {lang === "de" ? "Verfügbare Alternativen" : "Alternative disponibili"}
-            </h3>
-            <div className="grid gap-2.5 md:gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
+            </h2>
+            <div className="grid gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {outOfStockAlternatives.map(alt => renderRelatedCard(alt.product))}
             </div>
-          </div>
+          </section>
         )}
 
-
         {alsoFromSupplier.length > 0 && (
-          <div>
-            <h3 className="text-base md:text-lg font-semibold mb-2.5">
+          <section>
+            <h2 className="text-base md:text-lg font-semibold mb-3">
               {lang === "de"
                 ? `Mehr von ${product.supplier?.companyName || product.supplier?.name}`
                 : `Altro da ${product.supplier?.companyName || product.supplier?.name}`}
-            </h3>
-            <div className="grid gap-2.5 md:gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
+            </h2>
+            <div className="grid gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {alsoFromSupplier.map(renderRelatedCard)}
             </div>
-          </div>
+          </section>
         )}
-      </div>
       </div>
     </div>
   );
