@@ -53,6 +53,13 @@ app.use("/api", (req, _res, next) => {
   next();
 });
 
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
+
 app.use(
   express.json({
     limit: "1mb",
