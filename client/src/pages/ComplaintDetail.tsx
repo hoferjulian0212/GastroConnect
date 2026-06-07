@@ -11,6 +11,7 @@ import { getComplaintReasonLabel } from "@/lib/complaintReasons";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TONE, complaintStatusTone } from "@/lib/status-colors";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -51,6 +52,15 @@ export default function ComplaintDetail() {
   const followUpDateAutoApplied = useRef(false);
   const [mobileTab, setMobileTab] = useState<"updates" | "details">("updates");
   const isMobile = useIsMobile();
+  const resetConfirmState = () => {
+    setConfirmAction(null);
+    setCommentText("");
+    setCloseNoteText("");
+    setRejectionReasonText("");
+    setFollowUpCompensation(false);
+    setProposalKind("credit");
+    setFollowUpDateTouched(false);
+  };
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const actionApplied = useRef(false);
 
@@ -760,10 +770,13 @@ export default function ComplaintDetail() {
           </button>
         </div>
 
-        {/* Confirmation flows — desktop only; mobile uses bottom-sheet drawers */}
-        {confirmAction && (
-          <div className="hidden md:block px-4 md:px-6 lg:px-8 pt-3">
-            <div className="mx-auto max-w-md" data-testid="section-confirm">
+        {/* Confirmation flows — desktop modal popups; mobile uses bottom-sheet drawers */}
+        <Dialog
+          open={!isMobile && !!confirmAction}
+          onOpenChange={(open) => { if (!open) resetConfirmState(); }}
+        >
+          <DialogContent className="max-w-md w-[calc(100%-2rem)] border-0 bg-transparent p-0 shadow-none" data-testid="section-confirm">
+            <DialogTitle className="sr-only">{lang === "de" ? "Aktion bestätigen" : "Conferma azione"}</DialogTitle>
               {(confirmAction === "in_progress" || confirmAction === "resolved" || confirmAction === "closed" || confirmAction === "reopen") && (
                 <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
                   <p className="text-sm font-medium text-center text-foreground">
@@ -1065,9 +1078,8 @@ export default function ComplaintDetail() {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        )}
+          </DialogContent>
+        </Dialog>
 
         {/* Mobile summary card — replaces 4-tile KPI grid on small screens */}
         <div className="md:hidden px-4 pt-3">
@@ -1504,7 +1516,7 @@ export default function ComplaintDetail() {
       {/* Mobile confirmation drawer — mirrors desktop inline confirm flows. Mounted only on mobile. */}
       <Drawer
         open={isMobile && !!confirmAction}
-        onOpenChange={(open) => { if (!open) { setConfirmAction(null); setCommentText(""); } }}
+        onOpenChange={(open) => { if (!open) resetConfirmState(); }}
       >
         <DrawerContent className="md:hidden" data-testid="drawer-confirm-action">
           {(confirmAction === "in_progress" || confirmAction === "resolved" || confirmAction === "closed" || confirmAction === "reopen") && (

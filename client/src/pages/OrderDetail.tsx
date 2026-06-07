@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProductImage } from "@/components/ProductImage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TONE, orderStatusTone } from "@/lib/status-colors";
 import { motion } from "framer-motion";
@@ -804,9 +805,13 @@ export default function OrderDetail() {
 
         {/* Body: confirmation flows, KPIs, etc. */}
         <div className="px-4 md:px-6 lg:px-8 pt-3 pb-6">
-          {/* Confirmation flows — centered, compact (desktop only; mobile uses bottom sheets) */}
-          {confirmAction && (
-            <div className="hidden md:block mb-5 mx-auto max-w-md" data-testid="section-confirm">
+          {/* Confirmation flows — desktop modal popups (mobile uses bottom sheets) */}
+          <Dialog
+            open={!isMobile && !!confirmAction}
+            onOpenChange={(open) => { if (!open) { setConfirmAction(null); setChangeRequestText(""); } }}
+          >
+            <DialogContent className="max-w-md w-[calc(100%-2rem)] border-0 bg-transparent p-0 shadow-none" data-testid="section-confirm">
+              <DialogTitle className="sr-only">{lang === "de" ? "Aktion bestätigen" : "Conferma azione"}</DialogTitle>
               {confirmAction === "cancelled" && (
                 <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
                   <p className="text-sm font-medium text-center text-foreground">
@@ -899,8 +904,8 @@ export default function OrderDetail() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
+            </DialogContent>
+          </Dialog>
 
           {/* KPI tiles: desktop only — mobile uses summary card above */}
           <div className="hidden md:grid grid-cols-2 md:grid-cols-4 gap-3">
