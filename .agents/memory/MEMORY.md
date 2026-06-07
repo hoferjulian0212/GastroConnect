@@ -1,8 +1,4 @@
-- [No-auth architecture](no-auth-architecture.md) — no login/session; endpoints trust caller-provided IDs by design. Don't "fix" missing per-endpoint authz.
-- [No-auth by design](no-auth-by-design.md) — endpoints trust caller-supplied IDs; not a bug.
-- [No-auth trusted identity](no-auth-trusted-identity.md) — every API trusts client userId/role.
-- [No-login auth model](no-login-auth-model.md) — why there's no authentication and IDs are trusted.
-- [No server auth](no-server-auth.md) — no server-side authN/authZ layer.
+- [No-auth architecture](no-auth-architecture.md) — no login/session; every endpoint trusts client-supplied userId/role/IDs by design (aliases: trusted identity, no-login, IDOR). Don't "fix" per-endpoint authz.
 - [Org/member permissions](org-member-permissions.md) — preset roles gate workflows best-effort (spoofable); checkActingCapability strict for team/org/vertreter, lenient (when actor id provided) for orders/chat.
 - [Schema source of truth](schema-source-of-truth.md) — schema changes applied via push, not migration files.
 - [Schema migration convention](schema-migration-convention.md) — no migration files; db:push.

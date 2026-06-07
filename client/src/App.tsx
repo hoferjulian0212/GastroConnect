@@ -24,6 +24,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useT } from "@/lib/translations";
 import { ShoppingCart, ChevronDown, Moon, Sun, LogOut, Users } from "lucide-react";
 import logoImg from "@assets/logo_no_bg.png";
+import { roleLabel } from "@shared/permissions";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
@@ -33,7 +34,7 @@ import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
 import { MobileTopActions } from "@/components/mobile/MobileTopActions";
-import { useEffect, useCallback, useState, useRef, useLayoutEffect, lazy, Suspense } from "react";
+import { useEffect, useCallback, useState, useRef, useLayoutEffect, lazy, Suspense, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { navigate } from "wouter/use-browser-location";
 import type { User } from "@shared/schema";
@@ -562,6 +563,66 @@ function DesktopProfileButton() {
   );
 }
 
+// After an account (organization) is chosen, the user must explicitly pick which
+// person (member) they are acting as before entering the app. We do not silently
+// impersonate the first member — selection drives person attribution everywhere.
+function MemberSelectGate({ children }: { children: ReactNode }) {
+  const { currentUser, members, membersLoading, currentMember, selectMember } = useUser();
+  const { lang } = useLanguage();
+
+  if (!currentUser) return <>{children}</>;
+  if (!membersLoading && members.length === 0) return <>{children}</>;
+  if (currentMember) return <>{children}</>;
+
+  const getMemberInitials = (name: string) =>
+    (name || "?").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
+
+  return (
+    <div className="min-h-dvh bg-[#161921] text-white flex flex-col items-center justify-center px-4 py-12" data-testid="screen-member-select">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <img src={logoImg} alt="GastroConnect Logo" className="h-16 w-16 object-contain invert mx-auto mb-4" />
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight" data-testid="text-member-select-headline">
+            {lang === "it" ? "Chi sei?" : "Wer bist du?"}
+          </h1>
+          <p className="mt-2 text-white/70 text-sm" data-testid="text-member-select-org">
+            {currentUser.companyName || currentUser.name}
+          </p>
+        </div>
+        {membersLoading ? (
+          <div className="flex items-center justify-center gap-2 py-8">
+            <div className="h-1.5 w-1.5 rounded-full bg-white animate-bounce [animation-delay:0ms]" />
+            <div className="h-1.5 w-1.5 rounded-full bg-white animate-bounce [animation-delay:150ms]" />
+            <div className="h-1.5 w-1.5 rounded-full bg-white animate-bounce [animation-delay:300ms]" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {members.map(member => (
+              <button
+                key={member.id}
+                onClick={() => selectMember(member.id)}
+                className="w-full rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.10] p-4 flex items-center gap-3 text-left transition-colors"
+                data-testid={`button-select-member-${member.id}`}
+              >
+                <Avatar className="h-11 w-11 shrink-0">
+                  {member.profileImageUrl ? <AvatarImage src={member.profileImageUrl} alt={member.name} /> : null}
+                  <AvatarFallback className="bg-white/10 text-white text-sm font-semibold">
+                    {getMemberInitials(member.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-white truncate">{member.name}</div>
+                  <div className="text-xs text-white/60 mt-0.5">{roleLabel(member.role, lang)}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AppLayout() {
   const { currentRole, isLoading } = useUser();
   const { isInChat } = useChat();
@@ -640,6 +701,7 @@ function AppLayout() {
           </div>
         </div>
       ) : (
+        <MemberSelectGate>
         <div className="flex h-dvh w-full">
           <div ref={scrollContainerRef} className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} px-3 md:px-6 pt-3 md:pt-6`}>
             <div className={`dark hidden md:block bg-[#161921] shrink-0 rounded-3xl overflow-hidden mb-3 md:mb-4 ${isInChat || isDetailPage ? 'md:block' : ''}`} data-testid="app-header-shell">
@@ -694,6 +756,7 @@ function AppLayout() {
           <AiAssistant />
           <KeyboardShortcuts />
         </div>
+        </MemberSelectGate>
       )}
     </>
   );

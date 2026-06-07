@@ -94,16 +94,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedUserId]);
 
-  // If the persisted member no longer exists, default to the first admin/member.
+  // If the persisted member no longer exists, clear it so the user is asked to
+  // pick a person again (rather than silently impersonating the first member).
   useEffect(() => {
     if (!selectedUserId || members.length === 0) return;
-    const exists = selectedMemberId && members.some((m) => m.id === selectedMemberId);
-    if (!exists) {
-      const fallback = members.find((m) => m.role === "admin") ?? members[0];
-      if (fallback) {
-        setSelectedMemberId(fallback.id);
-        storeMemberId(selectedUserId, fallback.id);
-      }
+    if (selectedMemberId && !members.some((m) => m.id === selectedMemberId)) {
+      setSelectedMemberId(null);
+      storeMemberId(selectedUserId, null);
     }
   }, [members, selectedMemberId, selectedUserId]);
 

@@ -1819,6 +1819,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteMember(id: string): Promise<void> {
+    // members.id is an FK target for attribution columns. Null those references
+    // first so removing a member who has historical activity doesn't violate the
+    // foreign keys (attribution gracefully falls back to the org user).
+    await db.update(orders).set({ createdByMemberId: null }).where(eq(orders.createdByMemberId, id));
+    await db.update(messages).set({ senderMemberId: null }).where(eq(messages.senderMemberId, id));
+    await db.update(orderStatusHistory).set({ changedByMemberId: null }).where(eq(orderStatusHistory.changedByMemberId, id));
+    await db.update(complaintStatusHistory).set({ changedByMemberId: null }).where(eq(complaintStatusHistory.changedByMemberId, id));
     await db.delete(vertreterAssignments).where(eq(vertreterAssignments.memberId, id));
     await db.delete(members).where(eq(members.id, id));
   }

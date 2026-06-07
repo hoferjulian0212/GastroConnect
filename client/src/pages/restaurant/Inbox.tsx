@@ -2220,15 +2220,23 @@ export default function RestaurantInbox() {
                                     const showSenderName = !prevMessage || prevMessage.senderId !== message.senderId || showDateDivider;
                                     const messagePreviewText = refData ? refData.text! : message.content;
                                     const senderName = message.senderMember?.name || (isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || ""));
+                                    const senderAvatarUrl = message.senderMember?.profileImageUrl || (isOwn ? currentUser?.profileImageUrl : selectedConv.otherUser.profileImageUrl) || undefined;
+                                    const senderInitials = (senderName || "?").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
                                     const isImportant = message.priority === "important";
                                     return (
                                       <div className={`max-w-[85%] md:max-w-[70%] group/msg flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
                                         <div className="flex-1 min-w-0">
                                           {showSenderName && (
-                                            <p className={`text-[11px] font-semibold mb-0.5 px-1 flex items-center gap-1 ${isOwn ? "justify-end" : ""} ${isImportant ? (isOwn ? "text-red-400" : "text-red-500") : (isOwn ? "text-primary/70" : "text-primary")}`}>
+                                            <div className={`mb-0.5 px-1 flex items-center gap-1 ${isOwn ? "justify-end" : ""}`}>
                                               {isImportant && <Flame className="h-3 w-3 text-red-500" />}
-                                              {senderName}
-                                            </p>
+                                              <Avatar className="h-4 w-4 shrink-0">
+                                                {senderAvatarUrl ? <AvatarImage src={senderAvatarUrl} alt={senderName} /> : null}
+                                                <AvatarFallback className="bg-primary/10 text-primary text-[7px] font-semibold">{senderInitials}</AvatarFallback>
+                                              </Avatar>
+                                              <span className={`text-[11px] font-semibold ${isImportant ? (isOwn ? "text-red-400" : "text-red-500") : (isOwn ? "text-primary/70" : "text-primary")}`} data-testid={`text-sender-${message.id}`}>
+                                                {senderName}
+                                              </span>
+                                            </div>
                                           )}
                                           {!showSenderName && isImportant && (
                                             <div className={`flex items-center gap-1 mb-0.5 px-1 ${isOwn ? "justify-end" : ""}`}>

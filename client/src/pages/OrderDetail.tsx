@@ -1262,10 +1262,21 @@ export default function OrderDetail() {
                       <p className="text-sm font-medium text-foreground">
                         {getTimelineDescription(entry.toStatus)}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {format(new Date(entry.createdAt), "EEE, dd.MM.yyyy · HH:mm", { locale: dateLocale })}
-                        {(entry.changedByMember || entry.changedByUser) && <span> · {lang === "de" ? "von" : "da"} {entry.changedByMember?.name || entry.changedByUser?.name}</span>}
-                      </p>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
+                        <span>{format(new Date(entry.createdAt), "EEE, dd.MM.yyyy · HH:mm", { locale: dateLocale })}</span>
+                        {(entry.changedByMember || entry.changedByUser) && (
+                          <span className="inline-flex items-center gap-1">
+                            · {lang === "de" ? "von" : "da"}
+                            <Avatar className="h-4 w-4 shrink-0">
+                              <AvatarImage src={(entry.changedByMember?.profileImageUrl || entry.changedByUser?.profileImageUrl) || undefined} alt={entry.changedByMember?.name || entry.changedByUser?.name} />
+                              <AvatarFallback className="bg-primary/10 text-primary text-[7px] font-semibold">
+                                {(entry.changedByMember?.name || entry.changedByUser?.name || "?").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span data-testid={`text-changed-by-${index}`}>{entry.changedByMember?.name || entry.changedByUser?.name}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-[11px] text-muted-foreground/70 shrink-0 whitespace-nowrap mt-0.5">
                       {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true, locale: dateLocale })}
