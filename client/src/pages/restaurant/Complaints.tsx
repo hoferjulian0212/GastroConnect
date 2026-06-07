@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
-import { useSearch, useLocation } from "wouter";
+import { useSearch, useLocation, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,7 @@ import {
  DialogFooter,
  DialogDescription,
 } from "@/components/ui/dialog";
-import { formatOrderNumber, type User, type Order, type ComplaintWithDetails, type ComplaintCommentWithUser } from "@shared/schema";
+import { formatOrderNumber, formatComplaintNumber, type User, type Order, type ComplaintWithDetails, type ComplaintCommentWithUser } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import PhotoComplaintWizard from "@/components/PhotoComplaintWizard";
 import { Camera } from "lucide-react";
@@ -347,26 +347,6 @@ export default function Complaints() {
  const daysOpen = (createdAt: Date | string) => {
  const ms = Date.now() - new Date(createdAt).getTime();
  return Math.floor(ms / (1000 * 60 * 60 * 24));
- };
-
- const getComplaintAccent = (status: string) => {
- switch (status) {
- case "open": return "bg-yellow-400 dark:bg-yellow-500";
- case "in_progress": return "bg-blue-400 dark:bg-blue-500";
- case "resolved": return "bg-green-400 dark:bg-green-500";
- case "closed": return "bg-muted-foreground/50";
- default: return "bg-muted-foreground";
- }
- };
-
- const getComplaintCardBg = (status: string) => {
- switch (status) {
- case "open": return "bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40";
- case "in_progress": return "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40";
- case "resolved": return "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40";
- case "closed": return "bg-muted/30 border-border";
- default: return "";
- }
  };
 
  const openEditDialog = (complaint: ComplaintWithDetails) => {
@@ -832,7 +812,8 @@ export default function Complaints() {
  </div>
  ) : filteredComplaints.length > 0 ? (
  <div className="divide-y divide-border">
- <div className="hidden md:grid grid-cols-[minmax(0,2fr)_120px_minmax(0,1fr)_100px_120px_60px] items-center gap-3 px-3 py-2 bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+ <div className="hidden md:grid grid-cols-[100px_minmax(0,2fr)_120px_minmax(0,1fr)_100px_120px_60px] items-center gap-3 px-3 py-2 bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+ <div>{lang === "de" ? "Nr." : "Nr."}</div>
  <div>{lang === "de" ? "Reklamation" : "Reclamo"}</div>
  <div>Status</div>
  <div>{lang === "de" ? "Lieferant" : "Fornitore"}</div>
@@ -873,9 +854,19 @@ export default function Complaints() {
  data-testid={`complaint-${complaint.id}`}
  >
  {/* Desktop row — grid matching header */}
- <div className="hidden md:grid grid-cols-[minmax(0,2fr)_120px_minmax(0,1fr)_100px_120px_60px] items-center gap-3 px-3 py-2.5 relative">
- <div className={`absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />
- <div className="min-w-0 pl-1.5">
+ <div className="hidden md:grid grid-cols-[100px_minmax(0,2fr)_120px_minmax(0,1fr)_100px_120px_60px] items-center gap-3 px-3 py-2.5">
+ <div className="min-w-0">
+ <Link
+ href={`/restaurant/complaints/${complaint.id}`}
+ className="font-mono text-[12px] font-semibold text-blue-600 dark:text-blue-400 underline underline-offset-2 transition-colors hover:text-blue-700 dark:hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 rounded-sm"
+ data-testid={`link-complaint-${complaint.id}`}
+ onClick={(e) => e.stopPropagation()}
+ title={lang === "de" ? "Details öffnen" : "Apri dettagli"}
+ >
+ #{formatComplaintNumber(complaint)}
+ </Link>
+ </div>
+ <div className="min-w-0">
  <div className="flex items-center gap-1.5">
  {(complaint as any).priority === "urgent" && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
  <span className={`font-medium text-sm truncate ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</span>
@@ -925,20 +916,27 @@ export default function Complaints() {
  </div>
 
  {/* Mobile row — stacked card */}
- <div className="md:hidden flex items-stretch gap-3 p-3.5 min-h-[72px] relative">
- <div className={`w-1 self-stretch rounded-full shrink-0 ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />
+ <div className="md:hidden flex items-stretch gap-3 p-3.5 min-h-[72px]">
  <div className="min-w-0 flex-1 flex flex-col justify-center">
- <div className="flex items-center gap-1.5">
+ <div className="flex items-center gap-2">
  {(complaint as any).priority === "urgent" && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
- <span className={`font-semibold text-[15px] line-clamp-1 ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : "text-foreground"}`}>{complaint.title}</span>
+ <Link
+ href={`/restaurant/complaints/${complaint.id}`}
+ className="font-mono text-[12px] font-semibold text-blue-600 dark:text-blue-400 underline underline-offset-2 shrink-0"
+ data-testid={`link-complaint-mobile-${complaint.id}`}
+ onClick={(e) => e.stopPropagation()}
+ >
+ #{formatComplaintNumber(complaint)}
+ </Link>
  </div>
+ <span className={`font-semibold text-[15px] line-clamp-1 mt-1 ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : "text-foreground"}`}>{complaint.title}</span>
  <p className="text-[13px] text-muted-foreground line-clamp-1 mt-1">{complaint.description}</p>
  <div className="flex items-center gap-1.5 mt-2 flex-wrap text-[12px] text-muted-foreground">
  <Badge variant={statusInfo.variant} className="text-[11px] px-2 py-0 h-5 shrink-0">
  <StatusIcon className="h-3 w-3 mr-1" />
  {statusInfo.label}
  </Badge>
- <span className="font-mono font-semibold">#{complaint.order ? formatOrderNumber(complaint.order) : formatOrderNumber({orderNumber: null, id: complaint.orderId})}</span>
+ <span className="font-mono">#{complaint.order ? formatOrderNumber(complaint.order) : formatOrderNumber({orderNumber: null, id: complaint.orderId})}</span>
  <span>·</span>
  <span className="truncate max-w-[130px]">{complaint.supplier?.companyName || t("orders", "unknownSupplier")}</span>
  <span>·</span>
