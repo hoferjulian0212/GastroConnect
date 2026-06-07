@@ -472,8 +472,10 @@ export default function ProductDetail() {
         </div>
       </HeroPortal>
 
-      <div className="space-y-4 md:space-y-6 px-3 md:px-6 pt-3 md:pt-4 pb-[var(--mobile-bottom-pad)] md:pb-6">
-        <div className="max-w-3xl mx-auto space-y-4 md:space-y-6">
+      <div className="space-y-6 md:space-y-8 px-3 md:px-6 pt-3 md:pt-4 pb-[var(--mobile-bottom-pad)] md:pb-6">
+        <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-3 lg:items-start">
+        <div className="lg:col-span-2 space-y-4 md:space-y-6 min-w-0">
         {product.description && (
           <div>
             <h3 className="text-sm md:text-base font-semibold mb-1.5 flex items-center gap-2">
@@ -485,32 +487,6 @@ export default function ProductDetail() {
             </p>
           </div>
         )}
-
-        <div className="grid grid-cols-3 gap-2 md:gap-3">
-          <div className="p-2.5 md:p-3 rounded-xl bg-muted/40">
-            <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
-              <Euro className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
-              <span className="truncate">{hasPromo ? (lang === "de" ? "Original" : "Originale") : (lang === "de" ? "Preis" : "Prezzo")}</span>
-            </div>
-            <p className="font-semibold text-sm md:text-lg truncate">{product.price}€/{product.unit}</p>
-          </div>
-          <div className="p-2.5 md:p-3 rounded-xl bg-muted/40">
-            <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
-              <Layers className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
-              <span className="truncate">{lang === "de" ? "Einheit" : "Unita"}</span>
-            </div>
-            <p className="font-semibold text-sm md:text-lg">{product.unit}</p>
-          </div>
-          {product.category && (
-            <div className="p-2.5 md:p-3 rounded-xl bg-muted/40">
-              <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-0.5">
-                <Tag className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
-                <span className="truncate">{lang === "de" ? "Kategorie" : "Categoria"}</span>
-              </div>
-              <p className="font-medium text-sm md:text-base truncate">{product.category}</p>
-            </div>
-          )}
-        </div>
 
         {(historyLoading || historyStats) && (
           <div data-testid="section-purchase-history">
@@ -633,6 +609,51 @@ export default function ProductDetail() {
             ) : null}
           </div>
         )}
+        </div>
+
+        <aside className="space-y-4 md:space-y-5 lg:sticky lg:top-4">
+          <div className="rounded-2xl border bg-card p-4 md:p-5">
+            <h3 className="text-sm md:text-base font-semibold mb-3 flex items-center gap-2">
+              <Info className="h-4 w-4 text-muted-foreground" />
+              {lang === "de" ? "Produktdetails" : "Dettagli prodotto"}
+            </h3>
+            <div className="divide-y">
+              <div className="flex items-center justify-between gap-3 py-2.5">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Euro className="h-4 w-4 shrink-0" />
+                  {hasPromo ? (lang === "de" ? "Originalpreis" : "Prezzo orig.") : (lang === "de" ? "Preis" : "Prezzo")}
+                </span>
+                <span className="font-semibold text-sm md:text-base text-right">{product.price}€/{product.unit}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 py-2.5">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Layers className="h-4 w-4 shrink-0" />
+                  {lang === "de" ? "Einheit" : "Unità"}
+                </span>
+                <span className="font-semibold text-sm md:text-base text-right">{product.unit}</span>
+              </div>
+              {product.category && (
+                <div className="flex items-center justify-between gap-3 py-2.5">
+                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Tag className="h-4 w-4 shrink-0" />
+                    {lang === "de" ? "Kategorie" : "Categoria"}
+                  </span>
+                  <span className="font-medium text-sm md:text-base text-right truncate">{product.category}</span>
+                </div>
+              )}
+              {product.articleNumber && (
+                <div className="flex items-center justify-between gap-3 py-2.5">
+                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Package className="h-4 w-4 shrink-0" />
+                    {lang === "de" ? "Artikelnr." : "Cod. articolo"}
+                  </span>
+                  <span className="font-mono tabular-nums text-sm text-right">{product.articleNumber}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </aside>
+        </div>
 
         {!product.inStock && outOfStockAlternatives.length > 0 && (
           <div>
