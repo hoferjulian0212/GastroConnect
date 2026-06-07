@@ -22,3 +22,4 @@
 - [Decorative color normalization](decorative-color-normalization.md) — decorative blues normalized vs meaningful status blues kept.
 - [AI data assistant](ai-assistant.md) — tools live in server/aiSearch.ts (not routes); add to buildTools; tenant-scope by userId; overdue dates must use LOCAL date not UTC.
 - [seedData wipe FK ordering](seed-wipe-fk-ordering.md) — wipe child tables before parents (members referenced by messages/orders/status-history); wrong order = 23503 on boot.
+- [Tour intro dismissal](tour-intro-dismissal.md) — one-time popups: record dismissal in a synchronous session ref + setQueryData, never rely on invalidateQueries round-trip (stale poll re-fires it).

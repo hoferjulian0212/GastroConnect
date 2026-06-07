@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { X, ChevronRight, ChevronLeft } from "lucide-react";
+import type { User } from "@shared/schema";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -63,7 +64,23 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const markCompleteRef = useRef(false);
   const activePageIntroRef = useRef<string | null>(null);
   const autoTriggeredRef = useRef<Set<string>>(new Set());
+  // Intros the user actively finished/skipped THIS session. This is the
+  // authoritative "never show again now" guard: it survives any stale
+  // /api/users refetch that might momentarily revert currentUser.seenPageIntros.
+  const handledIntrosRef = useRef<Set<string>>(new Set());
   const lastUserIdRef = useRef<string | null>(null);
+
+  // Update the cached users list in place so a later in-flight refetch can't
+  // overwrite currentUser with a version missing the just-saved change.
+  const patchUserCache = useCallback(
+    (updated: User) => {
+      setCurrentUser(updated);
+      queryClient.setQueryData<User[]>([`/api/users?role=${currentRole}`], (old) =>
+        Array.isArray(old) ? old.map((u) => (u.id === updated.id ? updated : u)) : old,
+      );
+    },
+    [currentRole, setCurrentUser],
+  );
 
   const isActive = steps.length > 0;
   const step = isActive ? steps[index] : null;
@@ -79,51 +96,53 @@ export function TourProvider({ children }: { children: ReactNode }) {
     const shouldMark = markCompleteRef.current && currentUser?.id;
     const pageIntroId = activePageIntroRef.current;
     activePageIntroRef.current = null;
+    // Mark handled up front so this intro can never re-trigger this session,
+    // even if the save request is slow or a stale refetch is in flight.
+    if (pageIntroId) handledIntrosRef.current.add(pageIntroId);
     stop();
     if (!currentUser?.id) return;
     try {
       if (pageIntroId) {
         const res = await apiRequest("POST", `/api/users/${currentUser.id}/page-intros/seen`, { introId: pageIntroId });
         const updated = await res.json();
-        setCurrentUser(updated);
-        queryClient.invalidateQueries({ queryKey: [`/api/users?role=${currentRole}`] });
+        patchUserCache(updated);
       } else if (shouldMark) {
         const res = await apiRequest("POST", `/api/users/${currentUser.id}/onboarding/complete`);
         const updated = await res.json();
-        setCurrentUser(updated);
-        queryClient.invalidateQueries({ queryKey: [`/api/users?role=${currentRole}`] });
+        patchUserCache(updated);
       }
     } catch {
       // Ignore — non-blocking
     }
-  }, [currentUser, currentRole, setCurrentUser, stop]);
+  }, [currentUser, patchUserCache, stop]);
 
   const skipAll = useCallback(async () => {
+    const pageIntroId = activePageIntroRef.current;
     activePageIntroRef.current = null;
+    if (pageIntroId) handledIntrosRef.current.add(pageIntroId);
     stop();
     if (!currentUser?.id) return;
     try {
       const res = await apiRequest("POST", `/api/users/${currentUser.id}/page-intros/skip-all`, { value: true });
       const updated = await res.json();
-      setCurrentUser(updated);
-      queryClient.invalidateQueries({ queryKey: [`/api/users?role=${currentRole}`] });
+      patchUserCache(updated);
     } catch {
       // Ignore — non-blocking
     }
-  }, [currentUser, currentRole, setCurrentUser, stop]);
+  }, [currentUser, patchUserCache, stop]);
 
   const resetPageIntros = useCallback(async () => {
     if (!currentUser?.id) return;
     try {
       const res = await apiRequest("POST", `/api/users/${currentUser.id}/page-intros/reset`);
       const updated = await res.json();
-      setCurrentUser(updated);
       autoTriggeredRef.current = new Set();
-      queryClient.invalidateQueries({ queryKey: [`/api/users?role=${currentRole}`] });
+      handledIntrosRef.current = new Set();
+      patchUserCache(updated);
     } catch {
       // Ignore — non-blocking
     }
-  }, [currentUser, currentRole, setCurrentUser]);
+  }, [currentUser, patchUserCache]);
 
   const start = useCallback(
     (next: TourStep[], opts?: { markCompleteOnFinish?: boolean; pageIntroId?: string }) => {
@@ -201,6 +220,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     const intro = getPageIntroForPath(pathOnly, role, view, lang);
     if (!intro) return;
     if ((currentUser.seenPageIntros || []).includes(intro.id)) return;
+    if (handledIntrosRef.current.has(intro.id)) return;
     if (autoTriggeredRef.current.has(intro.id)) return;
     autoTriggeredRef.current.add(intro.id);
     // Small delay to let the page render first
@@ -223,6 +243,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     if (currentUser?.id && lastUserIdRef.current !== currentUser.id) {
       lastUserIdRef.current = currentUser.id;
       autoTriggeredRef.current = new Set();
+      handledIntrosRef.current = new Set();
     }
   }, [currentUser?.id]);
 
