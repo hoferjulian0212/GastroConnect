@@ -284,11 +284,11 @@ export function AiAssistant() {
             setOpen(true);
             setView("chat");
           }}
-          className="hidden md:inline-flex fixed bottom-6 right-6 z-[55] h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
+          className="hidden md:inline-flex fixed bottom-6 right-6 z-[55] h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
           aria-label={t("KI-Assistent öffnen", "Apri assistente AI")}
           data-testid="button-ai-fab"
         >
-          <SupportChatIcon className="h-6 w-6" />
+          <SupportChatIcon className="h-7 w-7" />
         </button>
       )}
 
