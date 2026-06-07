@@ -153,6 +153,7 @@ interface OrderWithDetails extends Order {
   items: { id: string; productName: string; quantity: number; unitPrice: string; totalPrice: string; productId?: string }[];
   restaurant?: { companyName: string; profileImageUrl?: string | null };
   supplier?: { companyName: string; profileImageUrl?: string | null };
+  createdByUser?: { name?: string | null } | null;
 }
 
 interface EditableItem {
@@ -548,10 +549,10 @@ export default function RestaurantInbox() {
       const hasExistingData = Object.keys(prevConvTimestamps.current).length > 0;
       conversations.forEach(conv => {
         const prevTs = prevConvTimestamps.current[conv.id];
-        if (hasExistingData && conv.lastMessageAt && prevTs && conv.lastMessageAt !== prevTs && conv.id !== selectedConversation) {
+        if (hasExistingData && conv.lastMessageAt && prevTs && String(conv.lastMessageAt) !== prevTs && conv.id !== selectedConversation) {
           newFlash.add(conv.id);
         }
-        prevConvTimestamps.current[conv.id] = conv.lastMessageAt || "";
+        prevConvTimestamps.current[conv.id] = conv.lastMessageAt ? String(conv.lastMessageAt) : "";
       });
       if (newFlash.size > 0) {
         setFlashingConvIds(newFlash);

@@ -2324,7 +2324,7 @@ export async function registerRoutes(
       if (customMoq) {
         minQty = customMoq.minOrderQuantity;
       }
-      if (validated.quantity < minQty) {
+      if ((validated.quantity ?? 1) < minQty) {
         return res.status(400).json({ error: `Minimum order quantity is ${minQty}` });
       }
       const mode = modeParam === "set" ? "set" as const : "add" as const;

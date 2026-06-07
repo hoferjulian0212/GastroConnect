@@ -2013,7 +2013,7 @@ export default function SupplierProducts() {
  )}
 
  <ProductDetailDialog
- product={detailProduct}
+ product={detailProduct as any}
  open={!!detailProduct}
  onOpenChange={(open) => !open && setDetailProduct(null)}
  />

@@ -267,6 +267,10 @@ const t = {
   },
   orders: {
     orderPlaceError: { de: "Bestellung konnte nicht aufgegeben werden.", it: "Impossibile effettuare l'ordine." },
+    orderPlaced: { de: "Bestellung aufgegeben", it: "Ordine effettuato" },
+    orderCancelled: { de: "Bestellung storniert", it: "Ordine annullato" },
+    orderCancelledDesc: { de: "Die Bestellung wurde erfolgreich storniert.", it: "L'ordine è stato annullato con successo." },
+    orderCancelError: { de: "Die Bestellung konnte nicht storniert werden.", it: "Impossibile annullare l'ordine." },
     allOrdersOverview: { de: "Alle Ihre Bestellungen im Überblick", it: "Panoramica di tutti i tuoi ordini" },
     order: { de: "Bestellung", it: "Ordine" },
     orderDetails: { de: "Bestelldetails und Artikelübersicht", it: "Dettagli ordine e panoramica articoli" },

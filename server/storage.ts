@@ -1195,13 +1195,16 @@ export class DatabaseStorage implements IStorage {
         or(eq(orders.status, "pending"), eq(orders.status, "confirmed"), eq(orders.status, "in_delivery"))
       ));
 
-    const suppliers = await db.select().from(users).where(eq(users.role, "supplier"));
+    const supplierResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(eq(users.role, "supplier"));
     const unreadMessages = await this.getUnreadCount(restaurantId);
 
     return {
       pendingOrders: Number(pendingResult[0]?.count) || 0,
       unreadMessages: Number(unreadMessages) || 0,
-      totalSuppliers: suppliers.length
+      totalSuppliers: Number(supplierResult[0]?.count) || 0
     };
   }
 

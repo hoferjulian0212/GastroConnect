@@ -47,14 +47,13 @@ export function useResizableColumns<K extends string>(
         const merged = { ...defaults, ...parsed };
         for (const key of Object.keys(merged) as K[]) {
           const m = Math.max(min, perColMin?.[key] ?? min);
-          if (typeof merged[key] !== "number" || merged[key] < m) merged[key] = Math.max(m, defaults[key] ?? m);
+          if (typeof merged[key] !== "number" || merged[key] < m) merged[key] = Math.max(m, defaults[key] ?? m) as any;
         }
         return merged;
       }
     } catch {}
     return defaults;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
   // Persist only currently-visible column widths so hidden columns don't drift the layout
   useEffect(() => {

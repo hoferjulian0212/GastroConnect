@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 
-type TFn = (section: string, key: string) => string;
+type TFn = (section: any, key: any) => string;
 
 function formatLastSeen(lastSeenAt: string | null, t: TFn): { text: string; isOnline: boolean } {
   if (!lastSeenAt) return { text: t("inbox", "offline"), isOnline: false };

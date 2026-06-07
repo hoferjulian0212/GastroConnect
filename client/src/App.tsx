@@ -90,7 +90,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/product/:id" component={RestaurantProductDetail} />
       <Route path="/restaurant/cart" component={RestaurantCart} />
 
-      <Route path="/restaurant/templates" component={RestaurantTemplates} />
+      <Route path="/restaurant/templates" component={RestaurantTemplates as any} />
       <Route path="/restaurant/complaints/:id" component={ComplaintDetail} />
       <Route path="/restaurant/complaints" component={RestaurantComplaints} />
       <Route path="/restaurant/suppliers" component={RestaurantSuppliers} />

@@ -1,6 +1,6 @@
-import { useState, useEffect, type LucideIcon } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { MoreHorizontal, X, ChevronRight } from "lucide-react";
+import { MoreHorizontal, X, ChevronRight, type LucideIcon } from "lucide-react";
 import { useChat } from "@/context/ChatContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
