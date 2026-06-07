@@ -8,6 +8,7 @@ import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockEr
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES } from "@shared/schema";
+import { can, type Capability } from "@shared/permissions";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
 import { getPmsProviderAdapter } from "./pmsProviders";
@@ -762,13 +763,38 @@ export async function registerRoutes(
   // ---- Organizations / Teams / Members / Vertreter ----
   const memberRoleSchema = z.enum(MEMBER_ROLES);
 
+  // Best-effort workflow control (NOT a security boundary — the no-auth demo
+  // model lets the client supply the acting member id, which is spoofable).
+  // Validates that the acting member belongs to the org and may perform the
+  // capability. Returns null when allowed, or an {status, body} error.
+  async function checkActingCapability(
+    orgId: string,
+    actingMemberId: unknown,
+    capability: Capability,
+  ): Promise<{ status: number; body: any } | null> {
+    if (typeof actingMemberId !== "string" || !actingMemberId) {
+      return { status: 403, body: { error: "acting_member_required", message: "Es ist keine handelnde Person angegeben." } };
+    }
+    const acting = await storage.getMember(actingMemberId);
+    if (!acting || acting.organizationId !== orgId) {
+      return { status: 403, body: { error: "not_in_org", message: "Die handelnde Person gehört nicht zu dieser Organisation." } };
+    }
+    if (!can(acting.role, capability)) {
+      return { status: 403, body: { error: "forbidden", message: "Keine Berechtigung für diese Aktion." } };
+    }
+    return null;
+  }
+
   app.patch("/api/orgs/:id", async (req, res) => {
     try {
       const schema = z.object({
         companyName: z.string().min(1).optional(),
         seatLimit: z.coerce.number().int().min(1).max(500).optional(),
+        actingMemberId: z.string().optional(),
       }).strict();
-      const data = schema.parse(req.body);
+      const { actingMemberId, ...data } = schema.parse(req.body);
+      const denied = await checkActingCapability(req.params.id, actingMemberId, "org.edit");
+      if (denied) return res.status(denied.status).json(denied.body);
       const updated = await storage.updateUser(req.params.id, data);
       if (!updated) return res.status(404).json({ error: "Organization not found" });
       res.json(updated);
@@ -795,7 +821,10 @@ export async function registerRoutes(
     try {
       const org = await storage.getUser(req.params.id);
       if (!org) return res.status(404).json({ error: "Organization not found" });
-      const data = insertMemberSchema.parse({ ...req.body, organizationId: req.params.id });
+      const denied = await checkActingCapability(req.params.id, req.body?.actingMemberId, "team.manage");
+      if (denied) return res.status(denied.status).json(denied.body);
+      const { actingMemberId: _amId, ...body } = req.body ?? {};
+      const data = insertMemberSchema.parse({ ...body, organizationId: req.params.id });
       const existing = await storage.getMembers(req.params.id);
       const limit = org.seatLimit ?? 5;
       if (existing.length >= limit) {
@@ -818,8 +847,13 @@ export async function registerRoutes(
         email: z.string().email().optional().nullable(),
         role: memberRoleSchema.optional(),
         profileImageUrl: z.string().optional().nullable(),
+        actingMemberId: z.string().optional(),
       }).strict();
-      const data = schema.parse(req.body);
+      const target = await storage.getMember(req.params.id);
+      if (!target) return res.status(404).json({ error: "Member not found" });
+      const { actingMemberId, ...data } = schema.parse(req.body);
+      const denied = await checkActingCapability(target.organizationId, actingMemberId, "team.manage");
+      if (denied) return res.status(denied.status).json(denied.body);
       const updated = await storage.updateMember(req.params.id, data);
       if (!updated) return res.status(404).json({ error: "Member not found" });
       res.json(updated);
@@ -835,6 +869,8 @@ export async function registerRoutes(
     try {
       const member = await storage.getMember(req.params.id);
       if (!member) return res.status(404).json({ error: "Member not found" });
+      const denied = await checkActingCapability(member.organizationId, req.body?.actingMemberId, "team.manage");
+      if (denied) return res.status(denied.status).json(denied.body);
       const siblings = await storage.getMembers(member.organizationId);
       const admins = siblings.filter(m => m.role === "admin");
       if (member.role === "admin" && admins.length <= 1) {
@@ -880,6 +916,8 @@ export async function registerRoutes(
   app.post("/api/vertreter-assignments", async (req, res) => {
     try {
       const data = insertVertreterAssignmentSchema.parse(req.body);
+      const denied = await checkActingCapability(data.supplierId, req.body?.actingMemberId, "vertreter.assign");
+      if (denied) return res.status(denied.status).json(denied.body);
       const member = await storage.getMember(data.memberId);
       if (!member) return res.status(404).json({ error: "Member not found" });
       if (member.role !== "vertreter") {
@@ -900,8 +938,10 @@ export async function registerRoutes(
 
   app.delete("/api/vertreter-assignments", async (req, res) => {
     try {
-      const schema = z.object({ supplierId: uuidField, restaurantId: uuidField }).strict();
-      const { supplierId, restaurantId } = schema.parse(req.body);
+      const schema = z.object({ supplierId: uuidField, restaurantId: uuidField, actingMemberId: z.string().optional() }).strict();
+      const { supplierId, restaurantId, actingMemberId } = schema.parse(req.body);
+      const denied = await checkActingCapability(supplierId, actingMemberId, "vertreter.assign");
+      if (denied) return res.status(denied.status).json(denied.body);
       await storage.deleteVertreterAssignment(supplierId, restaurantId);
       res.json({ success: true });
     } catch (error) {

@@ -1877,6 +1877,43 @@ export class DatabaseStorage implements IStorage {
       });
       created++;
     }
+
+    // Backfill historical attribution: legacy rows have a *MemberId of NULL.
+    // Map each row to the earliest admin member of the org identified by its
+    // legacy user-id column. Idempotent — only touches rows still NULL.
+    await db.execute(sql`
+      UPDATE ${orders} o SET created_by_member_id = (
+        SELECT m.id FROM ${members} m
+        WHERE m.organization_id = o.created_by_user_id AND m.role = 'admin'
+        ORDER BY m.created_at ASC, m.id ASC LIMIT 1
+      )
+      WHERE o.created_by_member_id IS NULL AND o.created_by_user_id IS NOT NULL
+    `);
+    await db.execute(sql`
+      UPDATE ${messages} ms SET sender_member_id = (
+        SELECT m.id FROM ${members} m
+        WHERE m.organization_id = ms.sender_id AND m.role = 'admin'
+        ORDER BY m.created_at ASC, m.id ASC LIMIT 1
+      )
+      WHERE ms.sender_member_id IS NULL AND ms.sender_id IS NOT NULL
+    `);
+    await db.execute(sql`
+      UPDATE ${orderStatusHistory} h SET changed_by_member_id = (
+        SELECT m.id FROM ${members} m
+        WHERE m.organization_id = h.changed_by AND m.role = 'admin'
+        ORDER BY m.created_at ASC, m.id ASC LIMIT 1
+      )
+      WHERE h.changed_by_member_id IS NULL AND h.changed_by IS NOT NULL
+    `);
+    await db.execute(sql`
+      UPDATE ${complaintStatusHistory} h SET changed_by_member_id = (
+        SELECT m.id FROM ${members} m
+        WHERE m.organization_id = h.changed_by AND m.role = 'admin'
+        ORDER BY m.created_at ASC, m.id ASC LIMIT 1
+      )
+      WHERE h.changed_by_member_id IS NULL AND h.changed_by IS NOT NULL
+    `);
+
     return created;
   }
 

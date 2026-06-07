@@ -63,6 +63,7 @@ export default function Team() {
         name: newName.trim(),
         email: newEmail.trim() || null,
         role: newRole,
+        actingMemberId: currentMember?.id,
       }),
     onSuccess: () => {
       invalidate();
@@ -81,13 +82,13 @@ export default function Team() {
   // ---- Edit member role ----
   const roleMutation = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: string }) =>
-      apiRequest("PATCH", `/api/members/${id}`, { role }),
+      apiRequest("PATCH", `/api/members/${id}`, { role, actingMemberId: currentMember?.id }),
     onSuccess: () => { invalidate(); toast({ title: tt("Rolle aktualisiert", "Ruolo aggiornato") }); },
     onError: () => toast({ title: tt("Fehler", "Errore"), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => apiRequest("DELETE", `/api/members/${id}`),
+    mutationFn: async (id: string) => apiRequest("DELETE", `/api/members/${id}`, { actingMemberId: currentMember?.id }),
     onSuccess: () => { invalidate(); toast({ title: tt("Mitglied entfernt", "Membro rimosso") }); },
     onError: async (err: any) => {
       const msg = err?.message?.includes("last_admin")
@@ -107,6 +108,7 @@ export default function Team() {
       apiRequest("PATCH", `/api/orgs/${orgId}`, {
         companyName: orgName.trim() || undefined,
         seatLimit: orgSeats ? Number(orgSeats) : undefined,
+        actingMemberId: currentMember?.id,
       }),
     onSuccess: () => {
       invalidate();

@@ -17,14 +17,14 @@ import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { PartnerMap } from "@/components/PartnerMap";
 import { useToast } from "@/hooks/use-toast";
-import type { User, Product, CustomMinOrderQuantity, DeliverySchedule, CustomPrice, MinimumOrderValue, Member } from "@shared/schema";
+import type { User, Product, CustomMinOrderQuantity, DeliverySchedule, CustomPrice, MinimumOrderValue, Member, VertreterAssignment } from "@shared/schema";
 import { can, roleLabel } from "@shared/permissions";
 import { UserCog } from "lucide-react";
 
 type CustomPriceWithJoins = CustomPrice & { product: Product; restaurant: User };
 
 export default function SupplierRestaurants() {
-  const { currentUser } = useUser();
+  const { currentUser, currentMember } = useUser();
   const [, setLocation] = useLocation();
   const { lang } = useLanguage();
   const t = useT(lang);
@@ -38,7 +38,19 @@ export default function SupplierRestaurants() {
     enabled: !!currentUser?.id,
   });
 
-  const filteredRestaurants = restaurants?.filter(r =>
+  // Vertreter only see the Betriebe (restaurants) assigned to them.
+  const isVertreter = currentMember?.role === "vertreter";
+  const { data: myAssignments } = useQuery<VertreterAssignment[]>({
+    queryKey: [`/api/vertreter-assignments?memberId=${currentMember?.id}`],
+    enabled: !!currentMember?.id && isVertreter,
+  });
+  const assignedIds = new Set((myAssignments ?? []).map(a => a.restaurantId));
+
+  const scopedRestaurants = isVertreter
+    ? restaurants?.filter(r => assignedIds.has(r.id))
+    : restaurants;
+
+  const filteredRestaurants = scopedRestaurants?.filter(r =>
     r.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -788,14 +800,14 @@ function VertreterCard({
 
   const assignMutation = useMutation({
     mutationFn: async (memberId: string) =>
-      apiRequest("POST", "/api/vertreter-assignments", { memberId, supplierId, restaurantId }),
+      apiRequest("POST", "/api/vertreter-assignments", { memberId, supplierId, restaurantId, actingMemberId: currentMember?.id }),
     onSuccess: () => { invalidate(); toast({ title: tt("Vertreter zugewiesen", "Rappresentante assegnato") }); },
     onError: () => toast({ title: tt("Fehler", "Errore"), variant: "destructive" }),
   });
 
   const unassignMutation = useMutation({
     mutationFn: async () =>
-      apiRequest("DELETE", "/api/vertreter-assignments", { supplierId, restaurantId }),
+      apiRequest("DELETE", "/api/vertreter-assignments", { supplierId, restaurantId, actingMemberId: currentMember?.id }),
     onSuccess: () => { invalidate(); toast({ title: tt("Zuweisung entfernt", "Assegnazione rimossa") }); },
     onError: () => toast({ title: tt("Fehler", "Errore"), variant: "destructive" }),
   });
