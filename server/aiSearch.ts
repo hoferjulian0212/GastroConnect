@@ -3,7 +3,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db";
 import { orders, orderItems, users, formatOrderNumber } from "@shared/schema";
-import { and, eq, desc, ilike, or } from "drizzle-orm";
+import { and, eq, desc, ilike, or, inArray } from "drizzle-orm";
 import { storage } from "./storage";
 
 type Role = "restaurant" | "supplier";
@@ -166,10 +166,74 @@ function buildTools(userId: string, role: Role) {
     };
   }
 
+  // List the user's active (committed) deliveries and flag which are overdue. This
+  // answers questions like "is there an overdue delivery?", "what is being delivered
+  // this week?" or "are any orders late?" WITHOUT needing a partner or order number.
+  async function list_deliveries(args: { onlyOverdue?: boolean }) {
+    const onlyOverdue = !!args?.onlyOverdue;
+    const rows = await db
+      .select({
+        orderId: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        createdAt: orders.createdAt,
+        requestedDeliveryDate: orders.requestedDeliveryDate,
+        originalDeliveryDate: orders.originalDeliveryDate,
+        totalAmount: orders.totalAmount,
+        partnerId: users.id,
+        partnerName: users.companyName,
+      })
+      .from(orders)
+      .innerJoin(users, eq(users.id, partnerCol))
+      .where(
+        and(
+          eq(ownOrderCol, userId),
+          inArray(orders.status, ["confirmed", "partially_confirmed", "in_delivery"] as any),
+        ),
+      )
+      .orderBy(orders.requestedDeliveryDate);
+
+    // Delivery dates are stored as "YYYY-MM-DD" strings, so lexical comparison
+    // against today is correct. A delivery is overdue when its date is in the past.
+    // Use the LOCAL date (not UTC) to match the home page's overdue logic, which
+    // compares against local midnight — otherwise deliveries can be mis-flagged by a
+    // day around midnight in non-UTC timezones (the app runs in CET/CEST).
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const overdue: any[] = [];
+    const upcoming: any[] = [];
+    for (const r of rows) {
+      const dd = r.requestedDeliveryDate || null;
+      if (!dd) continue;
+      const item = {
+        orderId: r.orderId,
+        orderNumber: formatOrderNumber({ orderNumber: r.orderNumber, id: r.orderId }),
+        status: r.status,
+        orderDate: fmtDate(r.createdAt),
+        deliveryDate: dd,
+        originalDeliveryDate: r.originalDeliveryDate || null,
+        wasRescheduled: !!r.originalDeliveryDate,
+        orderTotal: r.totalAmount,
+        [`${partnerRoleLabel}Id`]: r.partnerId,
+        [`${partnerRoleLabel}Name`]: r.partnerName,
+      };
+      if (dd < today) overdue.push({ ...item, daysOverdue: Math.round((Date.parse(today) - Date.parse(dd)) / 86400000) });
+      else upcoming.push(item);
+    }
+
+    return {
+      today,
+      overdueCount: overdue.length,
+      overdue,
+      ...(onlyOverdue ? {} : { upcomingCount: upcoming.length, upcoming: upcoming.slice(0, 10) }),
+    };
+  }
+
   const handlers: Record<string, (args: any) => Promise<any>> = {
     find_recent_order_with_product,
     find_orders_by_partner,
     get_order_status,
+    list_deliveries,
   };
 
   const definitions = [
@@ -225,6 +289,25 @@ function buildTools(userId: string, role: Role) {
         },
       },
     },
+    {
+      type: "function" as const,
+      function: {
+        name: "list_deliveries",
+        description:
+          role === "restaurant"
+            ? "List the user's active (confirmed / partially confirmed / in delivery) incoming deliveries and report which are OVERDUE (delivery date in the past). Use this for ANY question about overdue, late, delayed, pending, upcoming or scheduled deliveries when the user does NOT give a specific supplier or order number — e.g. 'is there an overdue delivery?', 'are any deliveries late?', 'what is arriving this week?'. Returns each order's delivery date, how many days overdue it is, status, supplier and total. No parameters are required."
+            : "List the user's active (confirmed / partially confirmed / in delivery) outgoing deliveries to customers and report which are OVERDUE (delivery date in the past). Use this for ANY question about overdue, late, delayed, upcoming or scheduled deliveries when the user does NOT give a specific customer or order number. Returns each order's delivery date, how many days overdue it is, status, customer and total. No parameters are required.",
+        parameters: {
+          type: "object",
+          properties: {
+            onlyOverdue: {
+              type: "boolean",
+              description: "Set true to return only overdue deliveries (omit upcoming ones). Default false.",
+            },
+          },
+        },
+      },
+    },
   ];
 
   return { handlers, definitions };
@@ -277,6 +360,8 @@ function systemPrompt(role: Role, lang: string): string {
     `Answer ONLY using the provided data tools — never invent orders, dates, quantities or prices.`,
     `All tools are already scoped to this user's own data and their ${partner}; you cannot access anyone else's data.`,
     `Reply in the same language as the user's question (German or Italian are most common; default to German if unclear).`,
+    `Be proactive: when a question can be answered by looking at the user's own data, call the relevant tool yourself instead of asking the user for an order number or partner name. For example, for any question about overdue, late, delayed or upcoming deliveries, call "list_deliveries" first — only ask the user for more details if the tools genuinely cannot answer.`,
+    `When reporting overdue deliveries, mention the order number, the partner and how many days overdue each one is, and offer an 'open_order' or 'open_inbox' action for the most relevant order.`,
     `Keep answers short and concrete. When an order has no delivery date and the user is waiting on it, offer an 'open_inbox' action with a polite suggestedMessage asking the partner for the delivery date.`,
     `Always finish by calling the "respond" tool with your final answer.`,
   ].join(" ");
