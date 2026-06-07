@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
-import { useSearch, useLocation } from "wouter";
+import { useSearch, useLocation, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -239,17 +239,6 @@ export default function SupplierComplaints() {
     return statusMap[status] || { label: status, icon: Clock, variant: "secondary" as const };
   };
 
-  const getComplaintAccent = (status: string) => {
-    switch (status) {
-      case "open": return "bg-yellow-400 dark:bg-yellow-500";
-      case "in_progress": return "bg-blue-400 dark:bg-blue-500";
-      case "resolved": return "bg-green-400 dark:bg-green-500";
-      case "partially_resolved": return "bg-amber-400 dark:bg-amber-500";
-      case "rejected": return "bg-red-400 dark:bg-red-500";
-      case "closed": return "bg-muted-foreground/50";
-      default: return "bg-muted-foreground";
-    }
-  };
 
   const getComplaintCardBg = (status: string) => {
     switch (status) {
@@ -688,7 +677,8 @@ export default function SupplierComplaints() {
             </div>
           ) : filteredComplaints.length > 0 ? (
             <div className="divide-y divide-border">
-              <div className="hidden md:grid grid-cols-[minmax(0,2fr)_120px_minmax(0,1fr)_100px_120px_72px] items-center gap-3 px-3 py-2 bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+              <div className="hidden md:grid grid-cols-[100px_minmax(0,2fr)_120px_minmax(0,1fr)_100px_120px_60px] items-center gap-3 px-3 py-2 bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                <div>{lang === "de" ? "Nr." : "Nr."}</div>
                 <div>{lang === "de" ? "Reklamation" : "Reclamo"}</div>
                 <div>Status</div>
                 <div>{lang === "de" ? "Händler" : "Commerciante"}</div>
@@ -721,10 +711,20 @@ export default function SupplierComplaints() {
                     onClick={() => navTo(`/supplier/complaints/${complaint.id}`)}
                     data-testid={`complaint-${complaint.id}`}
                   >
-                    {/* Desktop row */}
-                    <div className="hidden md:grid grid-cols-[minmax(0,2fr)_120px_minmax(0,1fr)_100px_120px_72px] items-center gap-3 px-3 py-2.5 relative">
-                      <div className={`absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />
-                      <div className="min-w-0 pl-1.5">
+                    {/* Desktop row — grid matching header */}
+                    <div className="hidden md:grid grid-cols-[100px_minmax(0,2fr)_120px_minmax(0,1fr)_100px_120px_60px] items-center gap-3 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <Link
+                          href={`/supplier/complaints/${complaint.id}`}
+                          className="font-mono text-[12px] font-semibold text-blue-600 dark:text-blue-400 underline underline-offset-2 transition-colors hover:text-blue-700 dark:hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 rounded-sm"
+                          data-testid={`link-complaint-${complaint.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          title={lang === "de" ? "Details öffnen" : "Apri dettagli"}
+                        >
+                          #{formatComplaintNumber(complaint)}
+                        </Link>
+                      </div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           {(complaint as any).priority === "urgent" && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
                           <span className={`font-medium text-sm truncate ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : ""}`}>{complaint.title}</span>
@@ -771,20 +771,21 @@ export default function SupplierComplaints() {
                       </div>
                     </div>
 
-                    {/* Mobile row */}
-                    <div className="md:hidden flex items-stretch gap-3 p-3.5 min-h-[72px] relative">
-                      <div className={`w-1 self-stretch rounded-full shrink-0 ${(complaint as any).priority === "urgent" ? "bg-red-500" : getComplaintAccent(complaint.status)}`} />
-                      <Avatar className="h-10 w-10 shrink-0 self-center">
-                        <AvatarImage src={complaint.restaurant?.profileImageUrl || undefined} alt={complaint.restaurant?.name} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-[11px]">
-                          {complaint.restaurant?.companyName?.substring(0, 2).toUpperCase() || "??"}
-                        </AvatarFallback>
-                      </Avatar>
+                    {/* Mobile row — stacked card */}
+                    <div className="md:hidden flex items-stretch gap-3 p-3.5 min-h-[72px]">
                       <div className="min-w-0 flex-1 flex flex-col justify-center">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                           {(complaint as any).priority === "urgent" && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
-                          <span className={`font-semibold text-[15px] line-clamp-1 ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : "text-foreground"}`}>{complaint.title}</span>
+                          <Link
+                            href={`/supplier/complaints/${complaint.id}`}
+                            className="font-mono text-[12px] font-semibold text-blue-600 dark:text-blue-400 underline underline-offset-2 shrink-0"
+                            data-testid={`link-complaint-mobile-${complaint.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            #{formatComplaintNumber(complaint)}
+                          </Link>
                         </div>
+                        <span className={`font-semibold text-[15px] line-clamp-1 mt-1 ${(complaint as any).priority === "urgent" ? "text-red-700 dark:text-red-400" : "text-foreground"}`}>{complaint.title}</span>
                         <p className="text-[13px] text-muted-foreground line-clamp-1 mt-1">{complaint.description}</p>
                         <div className="flex items-center gap-1.5 mt-2 flex-wrap text-[12px] text-muted-foreground">
                           <Badge variant={statusInfo.variant} className="text-[11px] px-2 py-0 h-5 shrink-0">

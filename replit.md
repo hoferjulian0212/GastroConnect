@@ -5,6 +5,7 @@ GastroConnect is a web application designed to streamline interactions between r
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+Mirrored role pages: The restaurant and supplier roles have parallel versions of the same pages (e.g. `client/src/pages/restaurant/*` and `client/src/pages/supplier/*` for Complaints, Orders, Home, Inbox, etc.). Whenever a change is made to one role's page, always apply the equivalent change to the other role's matching page so both stay in sync.
 
 ## System Architecture
 
