@@ -5175,19 +5175,26 @@ export async function registerRoutes(
       const docs = await storage.getDocumentsByOrder(order.id);
       const deliveryNote = docs.find(d => d.type === "delivery_note");
       if (deliveryNote) {
-        const objectService = new ObjectStorageService();
-        const objectFile = await objectService.getObjectEntityFile(deliveryNote.fileUrl);
-        res.setHeader("Content-Disposition", `${disposition}; filename="Lieferschein_${formatOrderNumber(order)}.pdf"`);
-        await objectService.downloadObject(objectFile, res);
-      } else {
-        const pdfBuffer = await generateDeliveryNotePDF(order);
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `${disposition}; filename="Lieferschein_${formatOrderNumber(order)}.pdf"`);
-        res.send(pdfBuffer);
+        try {
+          const objectService = new ObjectStorageService();
+          const objectFile = await objectService.getObjectEntityFile(deliveryNote.fileUrl);
+          res.setHeader("Content-Disposition", `${disposition}; filename="Lieferschein_${formatOrderNumber(order)}.pdf"`);
+          await objectService.downloadObject(objectFile, res);
+          return;
+        } catch (objErr) {
+          // Stored object missing (e.g. demo/seed data) — fall back to regeneration.
+          if (res.headersSent) throw objErr;
+        }
       }
+      const pdfBuffer = await generateDeliveryNotePDF(order);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `${disposition}; filename="Lieferschein_${formatOrderNumber(order)}.pdf"`);
+      res.send(pdfBuffer);
     } catch (error) {
       console.error("Failed to download delivery note:", error);
-      res.status(500).json({ error: "Failed to download delivery note" });
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to download delivery note" });
+      }
     }
   });
 

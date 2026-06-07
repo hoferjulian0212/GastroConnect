@@ -2091,7 +2091,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedData(): Promise<void> {
-    const DEMO_VERSION = "demo-v9";
+    const DEMO_VERSION = "demo-v10";
     const sentinelEmail = `${DEMO_VERSION}@gastroconnect.dev`;
     const existing = await db.select().from(users).where(eq(users.email, sentinelEmail));
     if (existing.length > 0) {
@@ -2102,7 +2102,6 @@ export class DatabaseStorage implements IStorage {
     console.log(`Wiping existing data and seeding ${DEMO_VERSION}...`);
     // Wipe in FK-safe reverse order
     await db.delete(vertreterAssignments);
-    await db.delete(members);
     await db.delete(supplierRatings);
     await db.delete(priceChangeLog);
     await db.delete(monthlyReports);
@@ -2129,6 +2128,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(messages);
     await db.delete(conversations);
     await db.delete(orders);
+    await db.delete(members);
     await db.delete(notifications);
     await db.delete(promotions);
     await db.delete(customPrices);
@@ -2247,17 +2247,44 @@ export class DatabaseStorage implements IStorage {
     await mkMember(supplier2.id, "Anna Bauer", "anna@metzgerei-bauer.de", "admin", 20);
     const s2_vertreter1 = await mkMember(supplier2.id, "Tobias Frank", "tobias@metzgerei-bauer.de", "vertreter", 59);
 
-    // Supplier 3 (Getränke Klein) — owner only
+    // Supplier 3 (Getränke Klein) — owner + manager + Vertreter
     await mkMember(supplier3.id, "Peter Klein", "peter@getraenke-klein.de", "admin", 60);
-    // Supplier 4 / 5 owners
+    await mkMember(supplier3.id, "Claudia Mayer", "claudia@getraenke-klein.de", "manager", 49);
+    const s3_vertreter1 = await mkMember(supplier3.id, "Stefan Huber", "stefan@getraenke-klein.de", "vertreter", 58);
+
+    // Supplier 4 (Italia Import) — owner + Vertreter
     await mkMember(supplier4.id, "Julia Romano", "julia@italia-import.de", "admin", 44);
+    const s4_vertreter1 = await mkMember(supplier4.id, "Luca Ferrari", "luca@italia-import.de", "vertreter", 68);
+
+    // Supplier 5 (Nordsee Fisch) — owner + Vertreter
     await mkMember(supplier5.id, "Erik Andersen", "erik@nordsee-fisch.de", "admin", 11);
+    const s5_vertreter1 = await mkMember(supplier5.id, "Lars Petersen", "lars@nordsee-fisch.de", "vertreter", 50);
 
     // ===== VERTRETER ASSIGNMENTS (which field rep handles which restaurant) =====
+    // Each supplier has at least one Vertreter; the unique (supplier, restaurant)
+    // constraint means exactly one rep per restaurant per supplier.
+    // Supplier 1 — two reps split the restaurants
     await this.createVertreterAssignment({ memberId: s1_vertreter1.id, supplierId: supplier1.id, restaurantId: restaurant1.id });
     await this.createVertreterAssignment({ memberId: s1_vertreter1.id, supplierId: supplier1.id, restaurantId: restaurant3.id });
+    await this.createVertreterAssignment({ memberId: s1_vertreter1.id, supplierId: supplier1.id, restaurantId: restaurant4.id });
     await this.createVertreterAssignment({ memberId: s1_vertreter2.id, supplierId: supplier1.id, restaurantId: restaurant2.id });
-    await this.createVertreterAssignment({ memberId: s2_vertreter1.id, supplierId: supplier2.id, restaurantId: restaurant1.id });
+    await this.createVertreterAssignment({ memberId: s1_vertreter2.id, supplierId: supplier1.id, restaurantId: restaurant5.id });
+    // Supplier 2 — one rep covers all restaurants
+    for (const r of [restaurant1, restaurant2, restaurant3, restaurant4, restaurant5]) {
+      await this.createVertreterAssignment({ memberId: s2_vertreter1.id, supplierId: supplier2.id, restaurantId: r.id });
+    }
+    // Supplier 3
+    for (const r of [restaurant1, restaurant2, restaurant3, restaurant4, restaurant5]) {
+      await this.createVertreterAssignment({ memberId: s3_vertreter1.id, supplierId: supplier3.id, restaurantId: r.id });
+    }
+    // Supplier 4
+    for (const r of [restaurant1, restaurant2, restaurant3, restaurant4, restaurant5]) {
+      await this.createVertreterAssignment({ memberId: s4_vertreter1.id, supplierId: supplier4.id, restaurantId: r.id });
+    }
+    // Supplier 5
+    for (const r of [restaurant1, restaurant2, restaurant3, restaurant4, restaurant5]) {
+      await this.createVertreterAssignment({ memberId: s5_vertreter1.id, supplierId: supplier5.id, restaurantId: r.id });
+    }
 
     // ===== PRODUCTS =====
     // Supplier 1 (Frische Produkte) — local images for the originals
@@ -3011,6 +3038,13 @@ export class DatabaseStorage implements IStorage {
 
     const piriSuppliers = [supplier1, supplier2, supplier3, supplier4, supplier5];
 
+    // ----- Vertreter-Zuordnungen für Piri's Jagdhof (ein Rep je Lieferant) -----
+    await this.createVertreterAssignment({ memberId: s1_vertreter1.id, supplierId: supplier1.id, restaurantId: piri.id });
+    await this.createVertreterAssignment({ memberId: s2_vertreter1.id, supplierId: supplier2.id, restaurantId: piri.id });
+    await this.createVertreterAssignment({ memberId: s3_vertreter1.id, supplierId: supplier3.id, restaurantId: piri.id });
+    await this.createVertreterAssignment({ memberId: s4_vertreter1.id, supplierId: supplier4.id, restaurantId: piri.id });
+    await this.createVertreterAssignment({ memberId: s5_vertreter1.id, supplierId: supplier5.id, restaurantId: piri.id });
+
     // ----- Konversationen mit allen Lieferanten -----
     const piriConvs: Record<string, string> = {};
     for (const s of piriSuppliers) {
@@ -3256,6 +3290,65 @@ export class DatabaseStorage implements IStorage {
     }
 
     console.log(`Piri's Jagdhof: ${piriOrderSpecs.length} Bestellungen, ${piriStays.length} Übernachtungstage seeded.`);
+
+    // ============================================================
+    // ===== RATINGS & DOCUMENTS (across all delivered orders) ====
+    // ============================================================
+    const orderNum = (o: any) => o.orderNumber && o.orderNumber.length > 0 ? o.orderNumber : "B-" + o.id.slice(0, 6).toUpperCase();
+    const ratingPool = [...generatedOrders.filter(o => o.status === "delivered"), ...piriDeliveredOrders];
+
+    // ----- Lieferantenbewertungen -----
+    const ratingComments: Array<string | null> = [
+      "Top Qualität, pünktliche Lieferung — sehr empfehlenswert!",
+      "Alles frisch und vollständig. Gerne wieder.",
+      "Gute Ware, freundlicher Fahrer.",
+      "Lieferung war etwas spät, Qualität aber einwandfrei.",
+      "Sehr zuverlässig und faire Preise.",
+      "Kleinere Abweichung bei der Menge, sonst alles bestens.",
+      "Hervorragende Frische, immer eine Freude.",
+      "Schnelle Abwicklung, kompetenter Vertreter.",
+      null, null,
+    ];
+    const ratingRows: any[] = [];
+    const ratedOrderIds = new Set<string>();
+    const sampledForRatings = [...ratingPool].sort(() => rand() - 0.5).slice(0, 60);
+    for (const o of sampledForRatings) {
+      if (ratedOrderIds.has(o.id)) continue;
+      ratedOrderIds.add(o.id);
+      const stars = rand() > 0.22 ? randInt(4, 5) : randInt(2, 3);
+      ratingRows.push({
+        orderId: o.id, restaurantId: o.restaurantId, supplierId: o.supplierId,
+        stars, comment: pick(ratingComments),
+      });
+    }
+    if (ratingRows.length) {
+      for (let i = 0; i < ratingRows.length; i += 200) {
+        await db.insert(supplierRatings).values(ratingRows.slice(i, i + 200));
+      }
+    }
+
+    // ----- Dokumente: Lieferscheine für gelieferte Bestellungen -----
+    // fileUrl zeigt auf einen virtuellen Objektpfad; der Download-Endpoint
+    // erzeugt das PDF bei fehlendem Objekt zur Laufzeit neu (siehe routes.ts).
+    const docRows: any[] = [];
+    const docOrderIds = new Set<string>();
+    const sampledForDocs = [...ratingPool].sort(() => rand() - 0.5).slice(0, 70);
+    for (const o of sampledForDocs) {
+      if (docOrderIds.has(o.id)) continue;
+      docOrderIds.add(o.id);
+      docRows.push({
+        orderId: o.id, restaurantId: o.restaurantId, supplierId: o.supplierId,
+        type: "delivery_note" as any,
+        title: `Lieferschein ${orderNum(o)}`,
+        fileUrl: `/objects/documents/seed-${o.id}.pdf`,
+      });
+    }
+    if (docRows.length) {
+      for (let i = 0; i < docRows.length; i += 200) {
+        await db.insert(documents).values(docRows.slice(i, i + 200));
+      }
+    }
+    console.log(`Ratings: ${ratingRows.length}, Documents: ${docRows.length} seeded.`);
 
     console.log(`Demo data ${DEMO_VERSION} seeded successfully!`);
   }
