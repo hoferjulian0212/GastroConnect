@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, Coffee, Droplets, Check, Trash2, ArrowRight } from "lucide-react";
+import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, Coffee, Droplets, Check, Trash2, ArrowRight, Plus, Minus } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { User, ProductWithSupplierAndPromotion, CartItemWithProduct, Promotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
@@ -38,6 +38,7 @@ function QuickAddBar({
   const { triggerFly } = useFlyToCart();
   const min = product.minOrderQuantity && product.minOrderQuantity > 1 ? product.minOrderQuantity : 1;
   const [qty, setQty] = useState(min);
+  const [expanded, setExpanded] = useState(false);
   const [added, setAdded] = useState(false);
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -64,6 +65,8 @@ function QuickAddBar({
       queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
       setAdded(true);
+      setExpanded(false);
+      setQty(min);
       if (addedTimer.current) clearTimeout(addedTimer.current);
       addedTimer.current = setTimeout(() => setAdded(false), 1500);
     },
@@ -83,40 +86,66 @@ function QuickAddBar({
 
   return (
     <div
-      className="mt-1.5 flex items-center gap-1"
+      className="shrink-0"
       onClick={stop}
       onKeyDown={stopKey}
       data-testid={`quick-add-${product.id}`}
     >
-      <div onClick={stop} onKeyDown={stopKey} className="shrink-0">
-        <QuantityInput
-          value={qty}
-          onChange={setQty}
-          min={min}
-          size="sm"
-          testIdPrefix={`quick-qty-${product.id}`}
-        />
-      </div>
-      <Button
-        size="sm"
-        onClick={handleAdd}
-        onKeyDown={stopKey}
-        disabled={addMutation.isPending}
-        aria-label={t("templates", "addToCart")}
-        className={`h-6 flex-1 min-w-0 px-1.5 gap-1 text-[10px] font-medium transition-colors duration-300 ${
-          added ? "bg-green-600 hover:bg-green-600 text-white" : ""
-        }`}
-        data-testid={`button-quick-add-${product.id}`}
-      >
-        {added ? (
-          <Check className="h-3 w-3 shrink-0 animate-status-dot" />
-        ) : (
-          <ShoppingCart className="h-3 w-3 shrink-0" />
-        )}
-        <span className="truncate">
-          {added ? t("common", "added") : t("templates", "addToCart")}
-        </span>
-      </Button>
+      {expanded ? (
+        <div className="flex items-center h-7 rounded-full border border-border bg-background shadow-sm pl-0.5 pr-0.5">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setQty((q) => Math.max(min, q - 1)); }}
+            onKeyDown={stopKey}
+            disabled={qty <= min}
+            aria-label={lang === "de" ? "Weniger" : "Meno"}
+            className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
+            data-testid={`quick-qty-${product.id}-decrement`}
+          >
+            <Minus className="h-3 w-3" />
+          </button>
+          <span className="w-5 text-center text-[11px] font-semibold tabular-nums" data-testid={`quick-qty-${product.id}-value`}>{qty}</span>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setQty((q) => q + 1); }}
+            onKeyDown={stopKey}
+            aria-label={lang === "de" ? "Mehr" : "Più"}
+            className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted"
+            data-testid={`quick-qty-${product.id}-increment`}
+          >
+            <Plus className="h-3 w-3" />
+          </button>
+          <Button
+            size="icon"
+            onClick={handleAdd}
+            onKeyDown={stopKey}
+            disabled={addMutation.isPending}
+            aria-label={t("templates", "addToCart")}
+            className="h-6 w-6 ml-0.5 rounded-full shrink-0"
+            data-testid={`button-quick-add-confirm-${product.id}`}
+          >
+            <Check className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ) : (
+        <Button
+          size="icon"
+          onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+          onKeyDown={stopKey}
+          aria-label={t("templates", "addToCart")}
+          title={t("templates", "addToCart")}
+          className={`h-7 w-7 rounded-full shrink-0 transition-colors duration-300 ${
+            added ? "bg-green-600 hover:bg-green-600 text-white" : ""
+          }`}
+          data-testid={`button-quick-add-${product.id}`}
+        >
+          {added ? (
+            <Check className="h-4 w-4 shrink-0 animate-status-dot" />
+          ) : (
+            <Plus className="h-4 w-4 shrink-0" />
+          )}
+        </Button>
+      )}
     </div>
   );
 }
@@ -567,7 +596,8 @@ export default function RestaurantCatalog() {
  <span className="text-[10px] text-muted-foreground truncate block">
  {product.supplier?.companyName || product.supplier?.name}
  </span>
- <div className="mt-auto pt-0.5 overflow-hidden">
+ <div className="mt-auto pt-1 flex items-end justify-between gap-1.5">
+ <div className="min-w-0 overflow-hidden">
  {hasPromo ? (
  <div className="flex items-baseline gap-0.5 overflow-hidden">
  <span className="text-[9px] text-muted-foreground line-through shrink-0">{originalPrice.toFixed(2)}</span>
@@ -584,6 +614,7 @@ export default function RestaurantCatalog() {
  {product.inStock && (
  <QuickAddBar product={product} lang={lang} t={t} />
  )}
+ </div>
  </div>
  </div>
  );
