@@ -19,6 +19,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 import { ProductImage } from "@/components/ProductImage";
+import { HeroPortal } from "@/context/HeroContext";
 
 export default function ProductDetail() {
   const [, params] = useRoute("/restaurant/product/:id");
@@ -263,151 +264,170 @@ export default function ProductDetail() {
   const originalPrice = parseFloat(product.price);
   const discountedPrice = hasPromo ? originalPrice * (1 - promo.discountPercent / 100) : originalPrice;
 
+  const remainingPromoText = (() => {
+    if (!hasPromo || !promo.endDate) return null;
+    const now = new Date();
+    const end = new Date(promo.endDate);
+    const daysLeft = differenceInDays(end, now);
+    const hoursLeft = differenceInHours(end, now);
+    let remainingText = "";
+    if (daysLeft <= 0 && hoursLeft > 0) remainingText = t("common", "endsToday");
+    else if (daysLeft === 1) remainingText = t("common", "oneDay");
+    else if (daysLeft > 1) remainingText = `${t("common", "still")} ${daysLeft} ${t("common", "daysLeft")}`;
+    else remainingText = t("common", "endsSoon");
+    return `${remainingText} — ${format(end, "dd.MM.yyyy", { locale: dateLocale })}`;
+  })();
+
   return (
-    <div className="space-y-4 md:space-y-6 px-3 md:px-6 pt-3 md:pt-4 pb-[var(--mobile-bottom-pad)] md:pb-6">
-      <button
-        onClick={() => window.history.back()}
-        className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors -ml-1"
-        data-testid="button-back"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        {lang === "de" ? "Zurück" : "Indietro"}
-      </button>
+    <>
+      <HeroPortal mobileWrapperClassName="!mx-2">
+        <div className="px-3 md:px-6 pt-2 md:pt-1 pb-5 md:pb-6" data-testid="product-detail-hero">
+          <button
+            onClick={() => window.history.back()}
+            className="flex items-center gap-1.5 text-sm font-medium text-white/60 hover:text-white transition-colors mb-3 md:mb-4 -ml-1"
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {lang === "de" ? "Zurück" : "Indietro"}
+          </button>
 
-      <div className="max-w-3xl mx-auto w-full">
-        <div className="flex flex-col md:grid md:grid-cols-[minmax(0,260px)_1fr] gap-4 md:gap-6 md:items-start">
-          <div className="mx-auto w-full max-w-[220px] md:max-w-none">
-            <ProductImage src={product.imageUrl} alt={product.name} className="w-full aspect-square rounded-xl" iconClassName="h-12 w-12 md:h-16 md:w-16" fallbackIconColor="text-muted-foreground/20" />
-          </div>
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-8">
+            <div className="flex items-start gap-3 md:gap-5 min-w-0">
+              <div className="shrink-0">
+                <ProductImage
+                  src={product.imageUrl}
+                  alt={product.name}
+                  className="w-20 h-20 md:w-28 md:h-28 rounded-2xl ring-1 ring-white/10"
+                  iconClassName="h-8 w-8 md:h-10 md:w-10"
+                  fallbackIconColor="text-white/20"
+                />
+              </div>
+              <div className="min-w-0 space-y-2.5 pt-0.5">
+                <div className="space-y-1">
+                  <h1 className="text-xl md:text-3xl font-bold text-white leading-tight" data-testid="text-product-name">{product.name}</h1>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar className="h-4 w-4 shrink-0">
+                      <AvatarImage src={product.supplier?.profileImageUrl || undefined} />
+                      <AvatarFallback className="text-[8px] bg-white/10 text-white/70 font-semibold">
+                        {(product.supplier?.companyName || product.supplier?.name || "").substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs md:text-sm text-white/60 truncate">{product.supplier?.companyName || product.supplier?.name}</span>
+                    {product.articleNumber && (
+                      <span className="text-[10px] font-mono tabular-nums text-white/40 shrink-0" data-testid="text-product-article-number">
+                        · {product.articleNumber}
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-          <div className="space-y-3 md:space-y-4 min-w-0">
-            <div className="space-y-1">
-              <h1 className="text-lg md:text-2xl font-bold leading-tight" data-testid="text-product-name">{product.name}</h1>
-              <div className="flex items-center gap-2 min-w-0">
-                <Avatar className="h-4 w-4 shrink-0">
-                  <AvatarImage src={product.supplier?.profileImageUrl || undefined} />
-                  <AvatarFallback className="text-[8px] bg-muted text-muted-foreground font-semibold">
-                    {(product.supplier?.companyName || product.supplier?.name || "").substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xs text-muted-foreground truncate">{product.supplier?.companyName || product.supplier?.name}</span>
-                {product.articleNumber && (
-                  <span className="text-[10px] font-mono tabular-nums text-muted-foreground/60 shrink-0" data-testid="text-product-article-number">
-                    · {product.articleNumber}
-                  </span>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {product.inStock ? (
+                    <Badge variant="outline" className="bg-green-500/15 text-green-300 border-green-500/30">
+                      {lang === "de" ? "Verfügbar" : "Disponibile"}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-red-500/15 text-red-300 border-red-500/30">
+                      {lang === "de" ? "Nicht verfügbar" : "Non disponibile"}
+                    </Badge>
+                  )}
+                  {product.category && (
+                    <Badge variant="outline" className="bg-white/10 text-white/80 border-white/15">{product.category}</Badge>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              {product.inStock ? (
-                <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                  {lang === "de" ? "Verfügbar" : "Disponibile"}
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                  {lang === "de" ? "Nicht verfügbar" : "Non disponibile"}
-                </Badge>
-              )}
-              {product.category && <Badge variant="secondary">{product.category}</Badge>}
-            </div>
-
-            {hasPromo && promo.endDate && (() => {
-              const now = new Date();
-              const end = new Date(promo.endDate);
-              const daysLeft = differenceInDays(end, now);
-              const hoursLeft = differenceInHours(end, now);
-              let remainingText = "";
-              if (daysLeft <= 0 && hoursLeft > 0) remainingText = t("common", "endsToday");
-              else if (daysLeft === 1) remainingText = t("common", "oneDay");
-              else if (daysLeft > 1) remainingText = `${t("common", "still")} ${daysLeft} ${t("common", "daysLeft")}`;
-              else remainingText = t("common", "endsSoon");
-              return (
-                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40">
+            <div className="md:shrink-0 md:min-w-[260px] md:max-w-[320px] space-y-3 md:text-right">
+              {hasPromo ? (
+                <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/25 md:text-left">
                   <div className="flex items-center gap-2 mb-1">
-                    <Percent className="h-4 w-4 text-green-600 dark:text-green-400" />
-                    <span className="text-sm font-semibold text-green-700 dark:text-green-400">
+                    <Percent className="h-4 w-4 text-green-400" />
+                    <span className="text-sm font-semibold text-green-300">
                       {lang === "de" ? `Aktion: -${promo.discountPercent}% Rabatt` : `Promozione: -${promo.discountPercent}% sconto`}
                     </span>
                   </div>
                   <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-muted-foreground line-through text-sm">{originalPrice.toFixed(2)}€</span>
-                    <span className="text-lg font-bold text-green-600 dark:text-green-400">{discountedPrice.toFixed(2)}€/{product.unit}</span>
+                    <span className="text-white/50 line-through text-sm">{originalPrice.toFixed(2)}€</span>
+                    <span className="text-xl font-bold text-green-300">{discountedPrice.toFixed(2)}€/{product.unit}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
-                    <Clock className="h-3 w-3 shrink-0" />
-                    <span className="font-medium">{remainingText} — {format(end, "dd.MM.yyyy", { locale: dateLocale })}</span>
-                  </div>
+                  {remainingPromoText && (
+                    <div className="flex items-center gap-1.5 text-xs text-green-400/90">
+                      <Clock className="h-3 w-3 shrink-0" />
+                      <span className="font-medium">{remainingPromoText}</span>
+                    </div>
+                  )}
                 </div>
-              );
-            })()}
+              ) : (
+                <div className="flex items-baseline gap-1.5 md:justify-end">
+                  <span className="text-2xl md:text-3xl font-bold text-white">{originalPrice.toFixed(2)}€</span>
+                  <span className="text-sm md:text-base text-white/50">/{product.unit}</span>
+                </div>
+              )}
 
-            {!hasPromo && (
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl md:text-2xl font-bold">{originalPrice.toFixed(2)}€</span>
-                <span className="text-sm md:text-base text-muted-foreground">/{product.unit}</span>
+              <div className="flex items-center gap-3 md:justify-end">
+                <div className="rounded-md bg-white/[0.06] ring-1 ring-white/15">
+                  <QuantityInput
+                    value={quantity}
+                    onChange={setQuantity}
+                    min={getMinOrderQty(product)}
+                    disabled={!product.inStock}
+                    size="md"
+                    testIdPrefix="detail-qty"
+                  />
+                </div>
+                <Button
+                  className={`flex-1 md:flex-none gap-2 ${
+                    added
+                      ? "bg-green-500 border-green-500 text-white hover:bg-green-500 no-default-hover-elevate no-default-active-elevate"
+                      : ""
+                  }`}
+                  disabled={!product.inStock || addToCartMutation.isPending}
+                  onClick={(e) => handleAddToCart(product, undefined, e)}
+                  data-testid="button-add-to-cart"
+                >
+                  {added ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      {lang === "de" ? "Hinzugefuegt" : "Aggiunto"}
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="h-4 w-4" />
+                      {lang === "de" ? "In den Warenkorb" : "Aggiungi al carrello"}
+                    </>
+                  )}
+                </Button>
               </div>
-            )}
 
-            <div className="flex items-center gap-3 pt-1">
-              <QuantityInput
-                value={quantity}
-                onChange={setQuantity}
-                min={getMinOrderQty(product)}
-                disabled={!product.inStock}
-                size="md"
-                testIdPrefix="detail-qty"
-              />
-              <Button
-                className={`flex-1 gap-2 ${
-                  added
-                    ? "bg-green-500 border-green-500 text-white hover:bg-green-500 no-default-hover-elevate no-default-active-elevate"
-                    : ""
-                }`}
-                disabled={!product.inStock || addToCartMutation.isPending}
-                onClick={(e) => handleAddToCart(product, undefined, e)}
-                data-testid="button-add-to-cart"
-              >
-                {added ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    {lang === "de" ? "Hinzugefuegt" : "Aggiunto"}
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="h-4 w-4" />
-                    {lang === "de" ? "In den Warenkorb" : "Aggiungi al carrello"}
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {product.minOrderQuantity && product.minOrderQuantity > 1 && (
-              <p className="text-xs text-muted-foreground">
-                {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
-              </p>
-            )}
-
-            {!product.inStock && outOfStockAlternatives.length > 0 && (
-              <div className="mt-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
-                <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-                    {lang === "de"
-                      ? `${outOfStockAlternatives.length} verfügbare Alternative${outOfStockAlternatives.length !== 1 ? "n" : ""} gefunden`
-                      : `${outOfStockAlternatives.length} alternativ${outOfStockAlternatives.length !== 1 ? "e" : "a"} disponibil${outOfStockAlternatives.length !== 1 ? "i" : "e"}`}
-                  </span>
-                </div>
-                <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-1">
-                  {lang === "de" ? "Siehe unten für Details" : "Vedi sotto per i dettagli"}
+              {product.minOrderQuantity && product.minOrderQuantity > 1 && (
+                <p className="text-xs text-white/50 md:text-right">
+                  {t("supplierProducts", "belowMinOrder").replace("{min}", String(product.minOrderQuantity)).replace("{unit}", product.unit)}
                 </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="max-w-3xl mx-auto space-y-4 md:space-y-6">
+          {!product.inStock && outOfStockAlternatives.length > 0 && (
+            <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-amber-400" />
+                <span className="text-sm font-semibold text-amber-300">
+                  {lang === "de"
+                    ? `${outOfStockAlternatives.length} verfügbare Alternative${outOfStockAlternatives.length !== 1 ? "n" : ""} gefunden`
+                    : `${outOfStockAlternatives.length} alternativ${outOfStockAlternatives.length !== 1 ? "e" : "a"} disponibil${outOfStockAlternatives.length !== 1 ? "i" : "e"}`}
+                </span>
+              </div>
+              <p className="text-xs text-amber-300/70 mt-1">
+                {lang === "de" ? "Siehe unten für Details" : "Vedi sotto per i dettagli"}
+              </p>
+            </div>
+          )}
+        </div>
+      </HeroPortal>
+
+      <div className="space-y-4 md:space-y-6 px-3 md:px-6 pt-3 md:pt-4 pb-[var(--mobile-bottom-pad)] md:pb-6">
+        <div className="max-w-3xl mx-auto space-y-4 md:space-y-6">
         {product.description && (
           <div>
             <h3 className="text-sm md:text-base font-semibold mb-1.5 flex items-center gap-2">
@@ -472,6 +492,7 @@ export default function ProductDetail() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
