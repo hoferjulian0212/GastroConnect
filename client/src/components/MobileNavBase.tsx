@@ -166,7 +166,7 @@ export function MobileNavBase({
                 {active && (
                   <motion.span
                     layoutId={`${testIdPrefix}-nav-pill`}
-                    className="absolute inset-x-2 inset-y-1 rounded-2xl bg-foreground/[0.08] dark:bg-white/[0.14]"
+                    className="absolute inset-x-2 inset-y-1 rounded-full bg-foreground/[0.08] dark:bg-white/[0.14]"
                     transition={{ type: "spring", stiffness: 480, damping: 38 }}
                   />
                 )}
@@ -200,7 +200,7 @@ export function MobileNavBase({
             {isMoreActive && (
               <motion.span
                 layoutId={`${testIdPrefix}-nav-pill`}
-                className="absolute inset-x-2 inset-y-1 rounded-2xl bg-foreground/[0.08] dark:bg-white/[0.14]"
+                className="absolute inset-x-2 inset-y-1 rounded-full bg-foreground/[0.08] dark:bg-white/[0.14]"
                 transition={{ type: "spring", stiffness: 480, damping: 38 }}
               />
             )}
