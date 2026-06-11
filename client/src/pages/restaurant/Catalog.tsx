@@ -21,6 +21,8 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "
 import QuantityInput from "@/components/QuantityInput";
 import { useToast } from "@/hooks/use-toast";
 import { useFlyToCart } from "@/hooks/use-fly-to-cart";
+import { useScrollCompact } from "@/hooks/use-scroll-compact";
+import { motion } from "framer-motion";
 
 type CartItemWithPromo = CartItemWithProduct & { activePromotion?: Promotion | null };
 
@@ -276,6 +278,7 @@ const allCategories = Object.keys(categoryConfig);
 function CartPillMobile({ lang, setLocation }: { lang: string; setLocation: (p: string) => void }) {
   const { currentUser } = useUser();
   const [open, setOpen] = useState(false);
+  const compact = useScrollCompact();
   const { data: countData } = useQuery<{ count: string | number }>({
     queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
@@ -325,20 +328,30 @@ function CartPillMobile({ lang, setLocation }: { lang: string; setLocation: (p: 
   if (!count) return null;
   return (
     <>
-      <button
+      <motion.button
         onClick={() => setOpen(true)}
         data-testid="button-mobile-cart-pill"
-        className="md:hidden fixed left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-2 h-12 pl-3 pr-4 rounded-full bg-foreground text-background shadow-[0_8px_24px_rgba(0,0,0,0.25)] active:scale-95 transition-transform"
-        style={{ bottom: "var(--mobile-cta-offset)" }}
+        className="md:hidden fixed left-1/2 z-30 inline-flex items-center gap-2 h-12 pl-3 pr-4 rounded-full bg-foreground text-background shadow-[0_8px_24px_rgba(0,0,0,0.25)] origin-bottom"
+        style={{ bottom: "var(--mobile-cta-offset)", pointerEvents: compact ? "none" : "auto" }}
+        initial={false}
+        animate={{
+          x: "-50%",
+          y: compact ? 28 : 0,
+          scale: compact ? 0.8 : 1,
+          opacity: compact ? 0 : 1,
+        }}
+        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+        whileTap={{ scale: 0.93 }}
+        aria-hidden={compact}
       >
         <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-background/15">
           <ShoppingCart className="h-4 w-4" />
         </span>
-        <span className="text-[13px] font-semibold m-num">
+        <span className="text-[13px] font-semibold m-num whitespace-nowrap">
           {count} {lang === "de" ? "im Warenkorb" : "nel carrello"}
         </span>
         <ChevronRightIcon className="h-4 w-4 opacity-70" />
-      </button>
+      </motion.button>
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerContent className="md:hidden max-h-[85vh]" data-testid="mobile-cart-sheet">
           <DrawerHeader className="px-4 pt-2 pb-2 text-left">

@@ -4,6 +4,7 @@ import { MoreHorizontal, X, ChevronRight, type LucideIcon } from "lucide-react";
 import { useChat } from "@/context/ChatContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
+import { useScrollCompact } from "@/hooks/use-scroll-compact";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface NavItem {
@@ -38,52 +39,7 @@ export function MobileNavBase({
   const { lang } = useLanguage();
   const t = useT(lang);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [compact, setCompact] = useState(false);
-
-  useEffect(() => {
-    // Mobile-only: don't run scroll tracking on desktop where the nav is hidden.
-    const mq = window.matchMedia("(max-width: 767px)");
-    let lastY = -1;
-    let idleTimer: ReturnType<typeof setTimeout> | undefined;
-    const onScroll = (e: Event) => {
-      // Only react to the main app content scroller, not modals/drawers/sheets.
-      const target = e.target as HTMLElement;
-      if (!(target instanceof HTMLElement) || !target.hasAttribute("data-app-scroll")) return;
-      const y = target.scrollTop;
-      if (lastY < 0) lastY = y;
-      const delta = y - lastY;
-      if (y < 24) {
-        setCompact(false);
-      } else if (delta > 4) {
-        setCompact(true);
-      } else if (delta < -4) {
-        setCompact(false);
-      }
-      lastY = y;
-      if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => setCompact(false), 220);
-    };
-    const attach = () => {
-      // Capture phase so we catch scroll on the inner content container
-      // (scroll events don't bubble); the app scrolls inside an overflow-auto div.
-      window.addEventListener("scroll", onScroll, true);
-    };
-    const detach = () => {
-      window.removeEventListener("scroll", onScroll, true);
-      if (idleTimer) clearTimeout(idleTimer);
-      setCompact(false);
-    };
-    const sync = () => {
-      if (mq.matches) attach();
-      else detach();
-    };
-    sync();
-    mq.addEventListener("change", sync);
-    return () => {
-      mq.removeEventListener("change", sync);
-      detach();
-    };
-  }, []);
+  const compact = useScrollCompact();
 
   const itemPadClass = `transition-all duration-300 ease-out ${compact ? "py-2.5" : "py-3.5"}`;
 
