@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format, isToday, isTomorrow, formatDistanceToNow } from "date-fns";
 import { MessageSquare, ClipboardList, BarChart3, AlertTriangle, ChevronRight, Plus, Package, Tag, Building2, Truck, Calendar, Target, Lightbulb, TrendingUp, TrendingDown, Download, Users, Euro, Hash } from "lucide-react";
 import CountUp from "@/components/CountUp";
+import KpiRefreshButton from "@/components/KpiRefreshButton";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -91,6 +92,7 @@ export default function SupplierHomeMobile({
       icon: <MessageSquare className="h-3.5 w-3.5" />,
       onClick: () => navigate("/supplier/inbox"),
       testId: "mobile-kpi-s-messages",
+      queryKeys: [[`/api/conversations?userId=${currentUser?.id}`]],
     },
     {
       label: lang === "de" ? "Neue Bestellungen" : "Nuovi ordini",
@@ -98,6 +100,7 @@ export default function SupplierHomeMobile({
       icon: <ClipboardList className="h-3.5 w-3.5" />,
       onClick: () => navigate("/supplier/orders?status=pending"),
       testId: "mobile-kpi-s-orders",
+      queryKeys: [['/api/supplier/orders/recent', currentUser?.id]],
     },
     {
       label: lang === "de" ? "Heute Umsatz" : "Oggi fatt.",
@@ -105,6 +108,7 @@ export default function SupplierHomeMobile({
       icon: <Euro className="h-3.5 w-3.5" />,
       onClick: () => navigate("/supplier/orders"),
       testId: "mobile-kpi-s-revenue",
+      queryKeys: [['/api/supplier/upcoming-deliveries', currentUser?.id]],
     },
     {
       label: lang === "de" ? "Niedriger Bestand" : "Scorte basse",
@@ -112,6 +116,7 @@ export default function SupplierHomeMobile({
       icon: <AlertTriangle className="h-3.5 w-3.5" />,
       onClick: () => navigate("/supplier/products"),
       testId: "mobile-kpi-s-lowstock",
+      queryKeys: [['/api/low-stock', currentUser?.id]],
     },
   ];
 
@@ -273,18 +278,25 @@ export default function SupplierHomeMobile({
         >
           <div className="grid grid-cols-2 gap-2">
             {kpis.map((k) => (
-              <button
-                key={k.testId}
-                onClick={k.onClick}
-                data-testid={k.testId}
-                className="text-left m-card p-3 active:scale-[0.98] transition-transform"
-              >
-                <div className="flex items-center gap-1.5 text-muted-foreground mb-1.5">
-                  {k.icon}
-                  <span className="m-type-micro truncate">{k.label}</span>
-                </div>
-                <div className="text-[20px] font-bold leading-none m-num text-foreground">{k.value}</div>
-              </button>
+              <div key={k.testId} className="relative">
+                <button
+                  onClick={k.onClick}
+                  data-testid={k.testId}
+                  className="w-full text-left m-card p-3 active:scale-[0.98] transition-transform"
+                >
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-1.5 pr-7">
+                    {k.icon}
+                    <span className="m-type-micro truncate">{k.label}</span>
+                  </div>
+                  <div className="text-[20px] font-bold leading-none m-num text-foreground">{k.value}</div>
+                </button>
+                <KpiRefreshButton
+                  variant="card"
+                  testId={`${k.testId}-refresh`}
+                  label={lang === "de" ? "Aktualisieren" : "Aggiorna"}
+                  queryKeys={k.queryKeys}
+                />
+              </div>
             ))}
           </div>
         </MobileSection>

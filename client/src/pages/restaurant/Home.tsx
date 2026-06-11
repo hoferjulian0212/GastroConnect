@@ -847,6 +847,7 @@ export default function RestaurantHome() {
         ordersLoading={ordersLoading}
         costAnalysis={costAnalysis}
         costLoading={costLoading || pmsLoading}
+        costCurrentMonth={costCurrentMonth}
         pmsIsActive={pmsIsActive}
         upcomingDeliveries={upcomingDeliveries}
         isLoading={isLoading}
@@ -868,6 +869,7 @@ export default function RestaurantHome() {
       ordersLoading={ordersLoading}
       costAnalysis={costAnalysis}
       costLoading={costLoading || pmsLoading}
+      costCurrentMonth={costCurrentMonth}
       pmsIsActive={pmsIsActive}
       upcomingDeliveries={upcomingDeliveries}
       isLoading={isLoading}

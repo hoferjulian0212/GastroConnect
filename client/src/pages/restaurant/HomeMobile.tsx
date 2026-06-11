@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format, isToday, isTomorrow, formatDistanceToNow } from "date-fns";
 import { MessageSquare, Calculator, ShoppingBag, Euro, Truck, AlertTriangle, Plus, FileText, Calendar, RotateCcw, Inbox } from "lucide-react";
 import CountUp from "@/components/CountUp";
+import KpiRefreshButton from "@/components/KpiRefreshButton";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,6 +24,7 @@ interface Props {
   ordersLoading: boolean;
   costAnalysis: any;
   costLoading: boolean;
+  costCurrentMonth: string;
   pmsIsActive?: boolean;
   upcomingDeliveries: OrderWithDetails[] | undefined;
   isLoading: boolean;
@@ -34,7 +36,7 @@ export default function RestaurantHomeMobile({
   currentUser, lang, t, navigate,
   totalUnread, convLoading,
   pendingOrdersCount, ordersLoading,
-  costAnalysis, costLoading, pmsIsActive,
+  costAnalysis, costLoading, costCurrentMonth, pmsIsActive,
   upcomingDeliveries, isLoading,
   allOrders,
   dateLocale,
@@ -147,6 +149,7 @@ export default function RestaurantHomeMobile({
       icon: <MessageSquare className="h-3.5 w-3.5" />,
       onClick: () => navigate("/restaurant/inbox"),
       testId: "mobile-kpi-messages",
+      queryKeys: [[`/api/conversations?userId=${currentUser?.id}`]],
     },
     {
       label: lang === "de" ? "Offene Bestellungen" : "Ordini aperti",
@@ -154,6 +157,7 @@ export default function RestaurantHomeMobile({
       icon: <ShoppingBag className="h-3.5 w-3.5" />,
       onClick: () => navigate("/restaurant/orders"),
       testId: "mobile-kpi-orders",
+      queryKeys: [[`/api/orders?restaurantId=${currentUser?.id}`]],
     },
     {
       label: lang === "de" ? "Kosten/Gast" : "Costo/ospite",
@@ -165,6 +169,11 @@ export default function RestaurantHomeMobile({
       icon: <Calculator className="h-3.5 w-3.5" />,
       onClick: () => navigate("/restaurant/cost-analysis"),
       testId: "mobile-kpi-cost-per-guest",
+      queryKeys: [
+        [`/api/restaurant/cost-analysis?restaurantId=${currentUser?.id}&month=${costCurrentMonth}`],
+        [`/api/restaurant/overnight-stays?restaurantId=${currentUser?.id}&month=${costCurrentMonth}`],
+        [`/api/restaurant/pms/connection?restaurantId=${currentUser?.id}`],
+      ],
     },
     {
       label: lang === "de" ? "Monatskosten" : "Costi mese",
@@ -176,6 +185,7 @@ export default function RestaurantHomeMobile({
       icon: <Euro className="h-3.5 w-3.5" />,
       onClick: () => navigate("/restaurant/cost-analysis"),
       testId: "mobile-kpi-spending",
+      queryKeys: [[`/api/restaurant/cost-analysis?restaurantId=${currentUser?.id}&month=${costCurrentMonth}`]],
     },
   ];
 
@@ -246,18 +256,25 @@ export default function RestaurantHomeMobile({
         >
           <div className="grid grid-cols-2 gap-2">
             {kpis.map((k) => (
-              <button
-                key={k.testId}
-                onClick={k.onClick}
-                data-testid={k.testId}
-                className="text-left m-card p-3 active:scale-[0.98] transition-transform"
-              >
-                <div className="flex items-center gap-1.5 text-muted-foreground mb-1.5">
-                  {k.icon}
-                  <span className="m-type-micro truncate">{k.label}</span>
-                </div>
-                <div className="text-[20px] font-bold leading-none m-num text-foreground">{k.value}</div>
-              </button>
+              <div key={k.testId} className="relative">
+                <button
+                  onClick={k.onClick}
+                  data-testid={k.testId}
+                  className="w-full text-left m-card p-3 active:scale-[0.98] transition-transform"
+                >
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-1.5 pr-7">
+                    {k.icon}
+                    <span className="m-type-micro truncate">{k.label}</span>
+                  </div>
+                  <div className="text-[20px] font-bold leading-none m-num text-foreground">{k.value}</div>
+                </button>
+                <KpiRefreshButton
+                  variant="card"
+                  testId={`${k.testId}-refresh`}
+                  label={lang === "de" ? "Aktualisieren" : "Aggiorna"}
+                  queryKeys={k.queryKeys}
+                />
+              </div>
             ))}
           </div>
         </MobileSection>
