@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ProductImage } from "@/components/ProductImage";
 
-import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, Plus, RefreshCw, Flame, Ban, Mic, Pin, PinOff } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileVideo, FileImage, Package, FileText, Download, Paperclip, Pencil, Truck, ShoppingBag, Tag, Calendar, CalendarDays, Phone, RotateCcw, X, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, Plus, RefreshCw, Ban, Mic, Pin, PinOff } from "lucide-react";
 import { QuickReplyChips } from "@/components/chat/QuickReplyChips";
 import { VoiceRecorder } from "@/components/chat/VoiceRecorder";
 import { VoiceMessage } from "@/components/chat/VoiceMessage";
@@ -1770,7 +1770,7 @@ export default function SupplierInbox() {
                                             <div className="flex items-center justify-between flex-wrap gap-1">
                                               <div className="flex items-center gap-1.5">
                                                 {message.priority === "important" && (
-                                                  <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                                                  <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />
                                                 )}
                                                 <span className={`font-medium ${message.priority === "important" ? "text-red-700 dark:text-red-400" : ""}`}>{complaintData.title}</span>
                                               </div>
@@ -2119,7 +2119,7 @@ export default function SupplierInbox() {
                                       <div className="flex-1 min-w-0">
                                         {showSenderName && (
                                           <div className={`mb-0.5 px-1 flex items-center gap-1 ${isOwn ? "justify-end" : ""}`}>
-                                            {isImportant && <Flame className="h-3 w-3 text-red-500" />}
+                                            {isImportant && <AlertTriangle className="h-3 w-3 text-red-500" />}
                                             <Avatar className="h-4 w-4 shrink-0">
                                               {senderAvatarUrl ? <AvatarImage src={senderAvatarUrl} alt={senderName} /> : null}
                                               <AvatarFallback className="bg-primary/10 text-primary text-[7px] font-semibold">{senderInitials}</AvatarFallback>
@@ -2131,7 +2131,7 @@ export default function SupplierInbox() {
                                         )}
                                         {!showSenderName && isImportant && (
                                           <div className={`flex items-center gap-1 mb-0.5 px-1 ${isOwn ? "justify-end" : ""}`}>
-                                            <Flame className="h-3 w-3 text-red-500" />
+                                            <AlertTriangle className="h-3 w-3 text-red-500" />
                                           </div>
                                         )}
                                         <div className={`flex items-start gap-1.5 ${isOwn ? "flex-row-reverse" : ""}`}>
@@ -2313,7 +2313,7 @@ export default function SupplierInbox() {
                   {messagePriority === "important" && (
                     <div className="flex items-center justify-between gap-2 mb-2 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800" data-testid="priority-important-banner">
                       <div className="flex items-center gap-1.5">
-                        <Flame className="h-3.5 w-3.5 text-red-500" />
+                        <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
                         <span className="text-xs font-semibold text-red-600 dark:text-red-400">{lang === "de" ? "Dringend" : "Urgente"}</span>
                       </div>
                       <button
@@ -2332,34 +2332,24 @@ export default function SupplierInbox() {
                           <Plus className="h-4 w-4" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-64 p-2" align="start">
-                        <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">{lang === "de" ? "Zustelloptionen" : "Opzioni di consegna"}</p>
+                      <PopoverContent className="w-56 p-2" align="start">
+                        <p className="px-2 pb-1 pt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{lang === "de" ? "Priorität" : "Priorità"}</p>
                         <button
-                          className={`w-full flex items-center gap-3 p-3 rounded-md text-left transition-colors ${messagePriority === "standard" ? "bg-muted" : "hover:bg-muted/50"}`}
+                          className={`w-full flex items-center gap-2.5 p-2 rounded-md text-sm text-left ${messagePriority === "standard" ? "bg-muted" : "hover-elevate"}`}
                           onClick={() => { setMessagePriority("standard"); setPriorityPopoverOpen(false); }}
                           data-testid="button-priority-standard"
                         >
-                          <div className="h-8 w-8 rounded-full bg-muted-foreground/10 flex items-center justify-center shrink-0">
-                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold">Standard</p>
-                            <p className="text-xs text-muted-foreground">{lang === "de" ? "Nachricht wird normal gesendet" : "Il messaggio verra inviato normalmente"}</p>
-                          </div>
+                          <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="flex-1 min-w-0">Standard</span>
                           {messagePriority === "standard" && <Check className="h-4 w-4 text-primary shrink-0" />}
                         </button>
                         <button
-                          className={`w-full flex items-center gap-3 p-3 rounded-md text-left transition-colors ${messagePriority === "important" ? "bg-muted" : "hover:bg-muted/50"}`}
+                          className={`w-full flex items-center gap-2.5 p-2 rounded-md text-sm text-left ${messagePriority === "important" ? "bg-muted" : "hover-elevate"}`}
                           onClick={() => { setMessagePriority("important"); setPriorityPopoverOpen(false); }}
                           data-testid="button-priority-important"
                         >
-                          <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                            <Flame className="h-4 w-4 text-red-500" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold">{lang === "de" ? "Dringend" : "Urgente"}</p>
-                            <p className="text-xs text-muted-foreground">{lang === "de" ? "Nachricht wird als wichtig markiert" : "Il messaggio sara contrassegnato come importante"}</p>
-                          </div>
+                          <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                          <span className="flex-1 min-w-0">{lang === "de" ? "Dringend" : "Urgente"}</span>
                           {messagePriority === "important" && <Check className="h-4 w-4 text-primary shrink-0" />}
                         </button>
                       </PopoverContent>
@@ -2702,7 +2692,7 @@ export default function SupplierInbox() {
                 <div>
                   {(complaintDetail as any).priority === "urgent" && (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 mb-2">
-                      <Flame className="h-4 w-4 text-red-500 shrink-0" />
+                      <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
                       <span className="text-xs font-semibold text-red-600 dark:text-red-400">
                         {lang === "de" ? "Dringende Reklamation" : "Reclamo urgente"}
                       </span>
