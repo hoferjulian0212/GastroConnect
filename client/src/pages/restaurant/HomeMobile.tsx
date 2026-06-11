@@ -214,9 +214,6 @@ export default function RestaurantHomeMobile({
                 {currentUser?.companyName || currentUser?.name || ""}
               </h1>
             </div>
-            {currentUser?.id && (
-              <MobileDashboardViewSelector userId={currentUser.id} role="restaurant" />
-            )}
           </div>
           <button
             onClick={() => navigate(leadHref)}
@@ -226,6 +223,12 @@ export default function RestaurantHomeMobile({
             {leadLine}
           </button>
         </div>
+
+        {currentUser?.id && (
+          <div className="flex justify-end px-2 mt-3" data-testid="mobile-dashboard-views-row">
+            <MobileDashboardViewSelector userId={currentUser.id} role="restaurant" />
+          </div>
+        )}
 
         {finalDeck.length > 0 && (
           <MobileSection className="mt-4" testId="mobile-section-briefing">

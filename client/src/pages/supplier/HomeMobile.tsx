@@ -236,9 +236,6 @@ export default function SupplierHomeMobile({
                 {currentUser?.companyName || currentUser?.name || ""}
               </h1>
             </div>
-            {currentUser?.id && (
-              <MobileDashboardViewSelector userId={currentUser.id} role="supplier" />
-            )}
           </div>
           <button
             onClick={() => navigate(leadHref)}
@@ -248,6 +245,12 @@ export default function SupplierHomeMobile({
             {leadLine}
           </button>
         </div>
+
+        {currentUser?.id && (
+          <div className="flex justify-end px-2 mt-3" data-testid="mobile-dashboard-views-row-supplier">
+            <MobileDashboardViewSelector userId={currentUser.id} role="supplier" />
+          </div>
+        )}
 
         {finalDeck.length > 0 && (
           <MobileSection className="mt-4" testId="mobile-s-section-briefing">

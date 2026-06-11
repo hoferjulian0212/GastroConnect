@@ -83,12 +83,12 @@ export default function MobileDashboardViewSelector({ userId, role }: Props) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/[0.07] px-3 h-9 text-[13px] font-medium text-white max-w-[150px] active:opacity-70 transition-opacity"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 h-8 text-[13px] font-medium text-foreground max-w-[160px] active:opacity-70 transition-opacity"
             data-testid="button-dashboard-views-mobile"
             title={t("dashboardViews", "views")}
             aria-label={t("dashboardViews", "views")}
           >
-            <Layers className="h-3.5 w-3.5 shrink-0 text-white/80" />
+            <Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
             <span className="truncate">{activeTemplate ? activeTemplate.name : t("dashboardViews", "defaultView")}</span>
             <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
           </button>

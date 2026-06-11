@@ -17,6 +17,22 @@ directly under the dark hero. It is a saved-layout artifact, not code — changi
 default section order in the array will NOT move it for users who already have a saved
 layout (reconcileLayout preserves their order and only appends new sections).
 
+# Mobile home is a SEPARATE page with its own hardcoded dark hero
+
+On mobile (`md:hidden`) the home is rendered by `pages/<role>/HomeMobile.tsx`, NOT
+the desktop `Home.tsx` hero. HomeMobile builds its own dark hero box
+(`bg-[#161921] ... rounded-3xl`) with greeting + lead line. Any control placed
+inside that JSX block literally sits "in the black header" on mobile — e.g. the
+dashboard view selector (`MobileDashboardViewSelector`, the "Standardansicht /
+Ansichten" dropdown) used to live inside it.
+
+**Why this matters:** unlike the DraggableCardGrid templates widget (a saved-layout
+artifact), a control in the HomeMobile hero is a real hardcoded placement — to get
+it out of the black header you move the JSX below the hero `</div>`. The selector is
+styled white-on-dark, so when moved onto the page background it must be restyled to
+theme tokens (`border-border bg-muted/60 text-foreground`). Mirror the move in BOTH
+`restaurant/HomeMobile.tsx` and `supplier/HomeMobile.tsx`.
+
 # Order templates ("Bestellvorlagen") is restaurant-only
 
 `order-templates` is a widget that exists ONLY in `restaurant/Home.tsx` (4th by
