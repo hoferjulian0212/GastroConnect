@@ -871,15 +871,6 @@ html, body, #root {
   transform-origin: left center;
 }
 
-@keyframes toast-progress-shrink {
-  0% { transform: scaleX(1); }
-  100% { transform: scaleX(0); }
-}
-.toast-progress-bar {
-  animation: toast-progress-shrink var(--toast-duration, 4s) linear forwards;
-  transform-origin: left center;
-}
-
 @keyframes pull-spinner {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
