@@ -14,12 +14,12 @@ export function RestaurantMobileNav() {
     { title: t("common", "home"), url: "/restaurant", icon: Home },
     { title: t("common", "products"), url: "/restaurant/catalog", icon: Package },
     { title: t("common", "messages"), url: "/restaurant/inbox", icon: MessageSquare, hasBadge: true },
-    { title: lang === "de" ? "Preisvergleich" : "Confronto prezzi", url: "/restaurant/price-comparison", icon: ArrowUpDown },
+    { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag },
   ];
 
   const moreMenuItems = [
     { title: t("common", "suppliers"), url: "/restaurant/suppliers", icon: Truck },
-    { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag },
+    { title: lang === "de" ? "Preisvergleich" : "Confronto prezzi", url: "/restaurant/price-comparison", icon: ArrowUpDown },
     { title: t("common", "cart"), url: "/restaurant/cart", icon: ShoppingCart, hasBadge: true },
     { title: t("common", "complaints"), url: "/restaurant/complaints", icon: AlertCircle },
     { title: t("common", "documents"), url: "/restaurant/documents", icon: FileText },
