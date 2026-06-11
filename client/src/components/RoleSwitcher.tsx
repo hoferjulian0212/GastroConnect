@@ -11,21 +11,21 @@ export function RoleSwitcher() {
         variant="ghost"
         size="sm"
         onClick={() => switchRole("restaurant")}
-        className={`gap-2 rounded-full h-7 px-3 ${currentRole === "restaurant" ? "bg-white/20 text-white" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+        className={`gap-2 rounded-full h-7 px-2.5 2xl:px-3 ${currentRole === "restaurant" ? "bg-white/20 text-white" : "text-white/60 hover:text-white hover:bg-white/10"}`}
         data-testid="button-switch-restaurant"
       >
-        <Store className="h-4 w-4" />
-        <span className="hidden sm:inline">Betrieb</span>
+        <Store className="h-4 w-4 shrink-0" />
+        <span className="hidden 2xl:inline">Betrieb</span>
       </Button>
       <Button
         variant="ghost"
         size="sm"
         onClick={() => switchRole("supplier")}
-        className={`gap-2 rounded-full h-7 px-3 ${currentRole === "supplier" ? "bg-white/20 text-white" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+        className={`gap-2 rounded-full h-7 px-2.5 2xl:px-3 ${currentRole === "supplier" ? "bg-white/20 text-white" : "text-white/60 hover:text-white hover:bg-white/10"}`}
         data-testid="button-switch-supplier"
       >
-        <Truck className="h-4 w-4" />
-        <span className="hidden sm:inline">Händler</span>
+        <Truck className="h-4 w-4 shrink-0" />
+        <span className="hidden 2xl:inline">Händler</span>
       </Button>
     </div>
   );

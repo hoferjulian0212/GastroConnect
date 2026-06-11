@@ -689,11 +689,11 @@ export function DesktopSearchButton({ className }: DesktopSearchButtonProps) {
       data-testid="button-open-search"
       aria-label={lang === "it" ? "Cerca" : "Suchen"}
     >
-      <SearchIcon className="h-3.5 w-3.5" />
-      <span className="hidden lg:inline">
+      <SearchIcon className="h-3.5 w-3.5 shrink-0" />
+      <span className="hidden 2xl:inline">
         {lang === "it" ? "Cerca…" : "Suchen…"}
       </span>
-      <kbd className="hidden lg:inline-flex items-center gap-0.5 ml-1 px-1.5 h-5 rounded border border-white/15 bg-white/[0.06] text-[10px] text-white/60 font-sans">
+      <kbd className="hidden 2xl:inline-flex items-center gap-0.5 ml-1 px-1.5 h-5 rounded border border-white/15 bg-white/[0.06] text-[10px] text-white/60 font-sans">
         ⌘K
       </kbd>
     </button>

@@ -286,7 +286,7 @@ function HeaderNavDropdown({ item, location }: { item: NavItem; location: string
     return (
       <Link href={item.href}>
         <span
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+          className={`px-2 lg:px-2.5 xl:px-3 py-1.5 rounded-lg text-[13px] lg:text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${
             isActive ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
           }`}
           data-testid={`nav-link-${item.href.split('/').pop()}`}
@@ -301,13 +301,13 @@ function HeaderNavDropdown({ item, location }: { item: NavItem; location: string
     <div ref={triggerRef} className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <Link href={item.href}>
         <span
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+          className={`px-2 lg:px-2.5 xl:px-3 py-1.5 rounded-lg text-[13px] lg:text-sm font-medium whitespace-nowrap transition-colors cursor-pointer flex items-center gap-0.5 lg:gap-1 ${
             isActive ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
           }`}
           data-testid={`nav-link-${item.href.split('/').pop()}`}
         >
           {item.label}
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`h-3 w-3 lg:h-3.5 lg:w-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </span>
       </Link>
       {open && coords && typeof document !== "undefined" && createPortal(
@@ -396,7 +396,7 @@ function HeaderNav() {
   const links = currentRole === 'restaurant' ? restaurantLinks : supplierLinks;
 
   return (
-    <nav className="hidden md:flex items-center gap-4 shrink-0" data-testid="header-nav">
+    <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 xl:gap-2 min-w-0 overflow-x-auto scrollbar-hide" data-testid="header-nav">
       {links.map(item => (
         <HeaderNavDropdown key={item.href} item={item} location={location} />
       ))}
@@ -705,21 +705,21 @@ function AppLayout() {
         <div className="flex h-dvh w-full">
           <div ref={scrollContainerRef} data-app-scroll className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} px-3 md:px-6 pt-3 md:pt-6`}>
             <div className={`dark hidden md:block bg-[#161921] shrink-0 rounded-3xl overflow-hidden mb-3 md:mb-4 ${isInChat || isDetailPage ? 'md:block' : ''}`} data-testid="app-header-shell">
-              <header className="flex items-center gap-3 md:gap-4 px-3 py-2.5 md:px-6 md:py-2.5">
-                <div className="flex items-center gap-3 shrink-0 md:flex-1 md:min-w-0">
+              <header className="flex items-center gap-1.5 md:gap-1.5 lg:gap-4 px-3 py-2.5 md:px-2.5 md:py-2.5 lg:px-6">
+                <div className="flex items-center gap-3 shrink-0 lg:flex-1 lg:min-w-0">
                   <MobileProfileButton />
-                  <div className="hidden md:flex items-center gap-0 shrink-0 md:-ml-3">
-                    <img src={logoImg} alt="GastroConnect Logo" className="h-[72px] w-[72px] object-contain brightness-0 invert" />
-                    <span className="font-bold text-white tracking-tight -ml-1 text-[18px]">GastroConnect</span>
+                  <div className="hidden md:flex items-center gap-0 shrink-0 md:-ml-1 lg:-ml-3">
+                    <img src={logoImg} alt="GastroConnect Logo" className="h-9 w-9 lg:h-12 lg:w-12 2xl:h-[64px] 2xl:w-[64px] object-contain brightness-0 invert" />
+                    <span className="hidden 2xl:inline font-bold text-white tracking-tight -ml-1 text-[18px]">GastroConnect</span>
                   </div>
                 </div>
                 <HeaderNav />
-                <div className="flex items-center gap-2 shrink-0 md:flex-1 md:min-w-0 md:justify-end">
+                <div className="flex items-center gap-1 lg:gap-2 shrink-0 lg:flex-1 lg:min-w-0 justify-end">
                   <DesktopSearchButton />
-                  <div className="hidden md:block">
+                  <div className="hidden lg:block">
                     <RoleSwitcher />
                   </div>
-                  <div className="hidden md:block">
+                  <div className="hidden lg:block">
                     <AccountSwitcher compact />
                   </div>
                   <LanguageToggle />

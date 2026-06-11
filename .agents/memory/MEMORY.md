@@ -24,3 +24,4 @@
 - [seedData wipe FK ordering](seed-wipe-fk-ordering.md) — wipe child tables before parents (members referenced by messages/orders/status-history); wrong order = 23503 on boot.
 - [Tour intro dismissal](tour-intro-dismissal.md) — one-time popups: record dismissal in a synchronous session ref + setQueryData, never rely on invalidateQueries round-trip (stale poll re-fires it).
 - [Shadowed local types](shadowed-local-types.md) — pages redeclaring `interface OrderWithDetails` hide backend fields (silent dead UI branches); tsconfig needs `target` to avoid spurious TS2802.
+- [Desktop header responsive](desktop-header-responsive.md) — header is one no-wrap row in an overflow-hidden shell; use progressive disclosure by breakpoint + nav as the overflow-x buffer so right cluster never clips.

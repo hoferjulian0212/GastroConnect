@@ -59,7 +59,7 @@ export function AccountSwitcher({ compact = false }: { compact?: boolean }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className={`flex items-center gap-2 w-full rounded-full border border-white/20 bg-white/[0.07] px-3 py-1.5 text-left transition-all hover:bg-white/15 cursor-pointer text-white ${compact ? "text-xs" : "text-sm"}`}
+          className={`flex items-center gap-2 w-full rounded-full border border-white/20 bg-white/[0.07] py-1.5 text-left transition-all hover:bg-white/15 cursor-pointer text-white ${compact ? "text-xs px-1.5 2xl:px-3" : "text-sm px-3"}`}
           data-testid="button-switch-account"
         >
           <Avatar className={compact ? "h-6 w-6" : "h-7 w-7"}>
@@ -70,10 +70,10 @@ export function AccountSwitcher({ compact = false }: { compact?: boolean }) {
               {getInitials(currentUser)}
             </AvatarFallback>
           </Avatar>
-          <span className="flex-1 truncate font-medium">
+          <span className={`flex-1 truncate font-medium ${compact ? "hidden 2xl:block" : ""}`}>
             {currentMember ? currentMember.name : (currentUser.companyName || currentUser.name)}
           </span>
-          <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <ChevronsUpDown className={`h-3.5 w-3.5 text-muted-foreground shrink-0 ${compact ? "hidden 2xl:block" : ""}`} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
