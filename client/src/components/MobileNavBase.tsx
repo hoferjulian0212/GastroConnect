@@ -44,7 +44,7 @@ export function MobileNavBase({
   const labelClass = `text-[10px] leading-tight text-center w-full overflow-hidden transition-all duration-300 ease-out ${
     compact ? "max-h-0 opacity-0" : "max-h-4 opacity-100"
   }`;
-  const itemPadClass = `transition-all duration-300 ease-out ${compact ? "gap-0 py-2" : "gap-1 py-2"}`;
+  const itemPadClass = `transition-all duration-300 ease-out ${compact ? "gap-0 py-2" : "gap-2 py-2"}`;
 
   const isItemActive = (url: string) => {
     if (url === rootPath) return location === rootPath;
@@ -163,25 +163,27 @@ export function MobileNavBase({
                 }`}
                 data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
               >
-                {active && (
-                  <motion.span
-                    layoutId={`${testIdPrefix}-nav-pill`}
-                    className="absolute inset-x-2 inset-y-1 rounded-full bg-foreground/[0.08] dark:bg-white/[0.14]"
-                    transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                  />
-                )}
-                <motion.div
-                  className="relative z-10 inline-flex items-center justify-center"
-                  whileTap={{ scale: 0.92 }}
-                  transition={{ duration: 0.1 }}
-                >
-                  <item.icon className={`h-6 w-6 ${active ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
-                  {badgeCount > 0 && (
-                    <span className="absolute -top-1 -right-2.5 z-10 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] text-primary-foreground font-semibold">
-                      {badgeCount > 9 ? "9+" : badgeCount}
-                    </span>
+                <span className="relative z-10 inline-flex items-center justify-center">
+                  {active && (
+                    <motion.span
+                      layoutId={`${testIdPrefix}-nav-pill`}
+                      className="absolute -inset-x-3.5 -inset-y-1.5 rounded-full bg-foreground/[0.08] dark:bg-white/[0.14]"
+                      transition={{ type: "spring", stiffness: 480, damping: 38 }}
+                    />
                   )}
-                </motion.div>
+                  <motion.div
+                    className="relative z-10 inline-flex items-center justify-center"
+                    whileTap={{ scale: 0.92 }}
+                    transition={{ duration: 0.1 }}
+                  >
+                    <item.icon className={`h-6 w-6 ${active ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
+                    {badgeCount > 0 && (
+                      <span className="absolute -top-1 -right-2.5 z-10 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] text-primary-foreground font-semibold">
+                        {badgeCount > 9 ? "9+" : badgeCount}
+                      </span>
+                    )}
+                  </motion.div>
+                </span>
                 <span className={`relative z-10 ${labelClass} ${active ? "font-semibold" : "font-medium"}`}>
                   {item.title}
                 </span>
@@ -197,20 +199,22 @@ export function MobileNavBase({
             }`}
             data-testid={`${testIdPrefix}-mobile-nav-more`}
           >
-            {isMoreActive && (
-              <motion.span
-                layoutId={`${testIdPrefix}-nav-pill`}
-                className="absolute inset-x-2 inset-y-1 rounded-full bg-foreground/[0.08] dark:bg-white/[0.14]"
-                transition={{ type: "spring", stiffness: 480, damping: 38 }}
-              />
-            )}
-            <motion.div
-              className="relative z-10 inline-flex items-center justify-center"
-              whileTap={{ scale: 0.92 }}
-              transition={{ duration: 0.1 }}
-            >
-              <MoreHorizontal className={`h-6 w-6 ${(isMoreActive || isMoreOpen) ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
-            </motion.div>
+            <span className="relative z-10 inline-flex items-center justify-center">
+              {isMoreActive && (
+                <motion.span
+                  layoutId={`${testIdPrefix}-nav-pill`}
+                  className="absolute -inset-x-3.5 -inset-y-1.5 rounded-full bg-foreground/[0.08] dark:bg-white/[0.14]"
+                  transition={{ type: "spring", stiffness: 480, damping: 38 }}
+                />
+              )}
+              <motion.div
+                className="relative z-10 inline-flex items-center justify-center"
+                whileTap={{ scale: 0.92 }}
+                transition={{ duration: 0.1 }}
+              >
+                <MoreHorizontal className={`h-6 w-6 ${(isMoreActive || isMoreOpen) ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
+              </motion.div>
+            </span>
             <span className={`relative z-10 ${labelClass} ${(isMoreActive || isMoreOpen) ? "font-semibold" : "font-medium"}`}>
               {t("common", "more")}
             </span>
