@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Package, ShoppingCart, ShoppingBag, AlertCircle, Settings, Truck, FileText, User, Calculator, ArrowUpDown, HelpCircle } from "lucide-react";
+import { Home, MessageSquare, Package, ShoppingCart, ShoppingBag, AlertCircle, Truck, FileText, Calculator, ArrowUpDown, HelpCircle } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -24,8 +24,6 @@ export function RestaurantMobileNav() {
     { title: t("common", "complaints"), url: "/restaurant/complaints", icon: AlertCircle },
     { title: t("common", "documents"), url: "/restaurant/documents", icon: FileText },
     { title: t("common", "costAnalysis"), url: "/restaurant/cost-analysis", icon: Calculator },
-    { title: t("common", "profile"), url: "/restaurant/profile", icon: User },
-    { title: t("common", "settings"), url: "/restaurant/settings", icon: Settings },
     { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/restaurant/help", icon: HelpCircle },
   ];
 

@@ -16,11 +16,16 @@ import {
   User as UserIcon,
   HelpCircle,
   Sparkles,
+  Moon,
+  Sun,
+  LogOut,
+  Users,
 } from "lucide-react";
 import { openGlobalSearch } from "@/components/GlobalSearch";
 import { openAiAssistant } from "@/components/AiAssistant";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/hooks/use-theme";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Sheet,
@@ -28,6 +33,19 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import type { Notification } from "@shared/schema";
 
@@ -56,13 +74,29 @@ export function MobileTopActions({
   hideCart = false,
   className,
 }: MobileTopActionsProps) {
-  const { currentUser, currentRole } = useUser();
+  const { currentUser, currentRole, currentMember, setCurrentUser } = useUser();
   const { lang } = useLanguage();
+  const { isDark, toggleTheme } = useTheme();
   const [location, setLocation] = useLocation();
   const [notifOpen, setNotifOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
   const btnCls = variant === "dark" ? ACTION_BTN_DARK : ACTION_BTN_LIGHT;
+
+  const isAdmin = currentMember?.role === "admin";
+  const displayName = currentMember?.name || currentUser?.name;
+  const displayImage = currentMember?.profileImageUrl || currentUser?.profileImageUrl;
+  const initials = displayName
+    ? displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "?";
+
+  const handleLogout = () => {
+    try { localStorage.removeItem("gastroconnect_selected_restaurant_id"); } catch {}
+    try { localStorage.removeItem("gastroconnect_selected_supplier_id"); } catch {}
+    setCurrentUser(null);
+    queryClient.clear();
+    setLocation("/");
+  };
 
   const { data: cartCount } = useQuery<{ count: number }>({
     queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`],
@@ -103,18 +137,6 @@ export function MobileTopActions({
     });
   }
   overflowActions.push({
-    icon: <UserIcon className="h-5 w-5" />,
-    label: lang === "it" ? "Profilo" : "Profil",
-    onClick: () => { setMoreOpen(false); setLocation(`/${currentRole}/profile`); },
-    testId: "button-mobile-more-profile",
-  });
-  overflowActions.push({
-    icon: <SettingsIcon className="h-5 w-5" />,
-    label: lang === "it" ? "Impostazioni" : "Einstellungen",
-    onClick: () => { setMoreOpen(false); setLocation(`/${currentRole}/settings`); },
-    testId: "button-mobile-more-settings",
-  });
-  overflowActions.push({
     icon: <HelpCircle className="h-5 w-5" />,
     label: lang === "it" ? "Aiuto" : "Hilfe",
     onClick: () => { setMoreOpen(false); setLocation(`/${currentRole}/help`); },
@@ -142,6 +164,75 @@ export function MobileTopActions({
             </span>
           )}
         </button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className={`${btnCls} overflow-hidden p-0`}
+              data-testid="button-mobile-profile-menu"
+              aria-label={lang === "it" ? "Profilo" : "Profil"}
+            >
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={displayImage || undefined} alt={displayName || ""} />
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            sideOffset={8}
+            className="min-w-[210px]"
+            data-testid="menu-mobile-profile"
+          >
+            {displayName && (
+              <>
+                <DropdownMenuLabel className="truncate">{displayName}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem
+              onSelect={() => setLocation(`/${currentRole}/profile`)}
+              data-testid="menu-item-mobile-profile"
+            >
+              <UserIcon className="mr-2 h-4 w-4" />
+              {lang === "it" ? "Profilo" : "Profil"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => setLocation(`/${currentRole}/settings`)}
+              data-testid="menu-item-mobile-settings"
+            >
+              <SettingsIcon className="mr-2 h-4 w-4" />
+              {lang === "it" ? "Impostazioni" : "Einstellungen"}
+            </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem
+                onSelect={() => setLocation(`/${currentRole}/team`)}
+                data-testid="menu-item-mobile-team"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                {lang === "it" ? "Organizzazione e team" : "Organisation & Team"}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={(e) => { e.preventDefault(); toggleTheme(); }}
+              data-testid="menu-item-mobile-dark-mode"
+            >
+              {isDark ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+              {lang === "it" ? "Modalità scura" : "Dunkelmodus"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={handleLogout}
+              data-testid="menu-item-mobile-logout"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              {lang === "it" ? "Esci" : "Abmelden"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <button
           onClick={() => setMoreOpen(true)}
           className={btnCls}
