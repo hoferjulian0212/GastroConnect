@@ -675,17 +675,6 @@ export default function ComplaintDetail() {
           style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
           data-testid="complaint-detail-hero"
         >
-          {/* Compact mobile top bar inside the hero */}
-          <div className="md:hidden flex items-center justify-between mb-2">
-            <button
-              onClick={goBack}
-              className="inline-flex items-center gap-1 -ml-1 px-2 py-1.5 rounded-full text-sm font-medium text-white/80 hover:text-white active:bg-white/10 transition-colors"
-              data-testid="button-back-mobile"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {lang === "de" ? "Zurück" : "Indietro"}
-            </button>
-          </div>
           <div className="relative flex items-start justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className={`hidden md:flex h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-500/15" : "bg-white/10"} items-center justify-center shrink-0`}>
@@ -763,8 +752,8 @@ export default function ComplaintDetail() {
 
         </div>
 
-        {/* Back button: shown below the dark hero on desktop only; mobile uses the in-hero back button */}
-        <div className="hidden md:block px-4 md:px-6 lg:px-8 pt-3">
+        {/* Back button: shown below the dark hero, outside it, in the same position on mobile and desktop */}
+        <div className="block px-4 md:px-6 lg:px-8 pt-3">
           <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1" data-testid="button-back">
             <ArrowLeft className="h-4 w-4" />
             {lang === "de" ? "Zurück" : "Indietro"}

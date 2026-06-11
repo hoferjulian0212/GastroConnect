@@ -343,15 +343,6 @@ export default function ProductDetail() {
     <div>
       <HeroPortal mobileWrapperClassName="!mx-2">
         <div className="px-3 md:px-6 pt-2 md:pt-1 pb-5 md:pb-6" data-testid="product-detail-hero">
-          <button
-            onClick={() => window.history.back()}
-            className="md:hidden flex items-center gap-1.5 text-sm font-medium text-white/60 hover:text-white transition-colors mb-3 -ml-1"
-            data-testid="button-back-mobile"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {lang === "de" ? "Zurück" : "Indietro"}
-          </button>
-
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-8">
             <div className="flex items-start gap-3 md:gap-5 min-w-0">
               <div className="shrink-0">
@@ -455,8 +446,8 @@ export default function ProductDetail() {
         </div>
       </HeroPortal>
 
-      {/* Back button: shown below the dark hero on desktop only; mobile uses the in-hero back button */}
-      <div className="hidden md:block px-4 md:px-6 lg:px-8 pt-3">
+      {/* Back button: shown below the dark hero, outside it, in the same position on mobile and desktop */}
+      <div className="block px-3 md:px-6 lg:px-8 pt-3">
         <button
           onClick={() => window.history.back()}
           className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1"
