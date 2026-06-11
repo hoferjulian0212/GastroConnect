@@ -3,7 +3,7 @@ import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { useQuery } from "@tanstack/react-query";
-import { MobileNavBase } from "./MobileNavBase";
+import { MobileNavBase, type NavGroup } from "./MobileNavBase";
 
 export function SupplierMobileNav() {
   const { currentUser } = useUser();
@@ -17,11 +17,26 @@ export function SupplierMobileNav() {
     { title: t("common", "orders"), url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
   ];
 
-  const moreMenuItems = [
-    { title: t("common", "restaurants"), url: "/supplier/restaurants", icon: Store },
-    { title: t("common", "complaints"), url: "/supplier/complaints", icon: AlertCircle },
-    { title: t("common", "documents"), url: "/supplier/documents", icon: FileText },
-    { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/supplier/help", icon: HelpCircle },
+  const moreMenuGroups: NavGroup[] = [
+    {
+      title: lang === "de" ? "Bestellungen" : "Ordini",
+      items: [
+        { title: t("common", "complaints"), url: "/supplier/complaints", icon: AlertCircle },
+        { title: t("common", "documents"), url: "/supplier/documents", icon: FileText },
+      ],
+    },
+    {
+      title: lang === "de" ? "Produkte" : "Prodotti",
+      items: [
+        { title: t("common", "restaurants"), url: "/supplier/restaurants", icon: Store },
+      ],
+    },
+    {
+      title: lang === "de" ? "Mehr" : "Altro",
+      items: [
+        { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/supplier/help", icon: HelpCircle },
+      ],
+    },
   ];
 
   const { data: unreadCount } = useQuery<{ count: number }>({
@@ -43,7 +58,7 @@ export function SupplierMobileNav() {
   return (
     <MobileNavBase
       mainNavItems={mainNavItems}
-      moreMenuItems={moreMenuItems}
+      moreMenuGroups={moreMenuGroups}
       getBadgeCount={getBadgeCount}
       rootPath="/supplier"
       testIdPrefix="supplier"

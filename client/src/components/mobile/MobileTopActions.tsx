@@ -47,6 +47,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { can } from "@shared/permissions";
 import type { Notification } from "@shared/schema";
 
 interface MobileTopActionsProps {
@@ -83,7 +84,7 @@ export function MobileTopActions({
 
   const btnCls = variant === "dark" ? ACTION_BTN_DARK : ACTION_BTN_LIGHT;
 
-  const isAdmin = currentMember?.role === "admin";
+  const canViewTeam = !currentMember || can(currentMember.role, "team.view");
   const displayName = currentMember?.name || currentUser?.name;
   const displayImage = currentMember?.profileImageUrl || currentUser?.profileImageUrl;
   const initials = displayName
@@ -206,7 +207,7 @@ export function MobileTopActions({
               <SettingsIcon className="mr-2 h-4 w-4" />
               {lang === "it" ? "Impostazioni" : "Einstellungen"}
             </DropdownMenuItem>
-            {isAdmin && (
+            {canViewTeam && (
               <DropdownMenuItem
                 onSelect={() => setLocation(`/${currentRole}/team`)}
                 data-testid="menu-item-mobile-team"

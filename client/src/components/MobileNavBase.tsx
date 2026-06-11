@@ -13,9 +13,14 @@ export interface NavItem {
   hasBadge?: boolean;
 }
 
+export interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
 interface MobileNavBaseProps {
   mainNavItems: NavItem[];
-  moreMenuItems: NavItem[];
+  moreMenuGroups: NavGroup[];
   getBadgeCount: (url: string) => number;
   rootPath: string;
   testIdPrefix: string;
@@ -23,7 +28,7 @@ interface MobileNavBaseProps {
 
 export function MobileNavBase({
   mainNavItems,
-  moreMenuItems,
+  moreMenuGroups,
   getBadgeCount,
   rootPath,
   testIdPrefix,
@@ -90,7 +95,8 @@ export function MobileNavBase({
     return location === url || location.startsWith(url + "/") || location.startsWith(url + "?");
   };
 
-  const isMoreActive = moreMenuItems.some((item) => isItemActive(item.url));
+  const allMoreItems = moreMenuGroups.flatMap((g) => g.items);
+  const isMoreActive = allMoreItems.some((item) => isItemActive(item.url));
 
   useEffect(() => {
     if (isMoreOpen) setIsMoreOpen(false);
@@ -139,32 +145,39 @@ export function MobileNavBase({
               </div>
 
               <div className="flex-1 overflow-y-auto px-4 pb-[calc(80px+env(safe-area-inset-bottom,16px))]">
-                <div className="space-y-1">
-                  {moreMenuItems.map((item) => {
-                    const isActive = isItemActive(item.url);
-                    return (
-                      <button
-                        key={item.url}
-                        onClick={() => handleMoreItemClick(item.url)}
-                        className={`flex items-center gap-4 w-full px-4 py-3.5 rounded-2xl text-left transition-colors ${
-                          isActive
-                            ? "bg-foreground/10 text-foreground"
-                            : "text-foreground hover:bg-muted/50 active:bg-muted/70"
-                        }`}
-                        data-testid={`${testIdPrefix}-mobile-nav-more-${item.url.split("/").pop()}`}
-                      >
-                        <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${
-                          isActive ? "bg-foreground/15" : "bg-muted/60"
-                        }`}>
-                          <item.icon className={`h-5 w-5 ${isActive ? "text-foreground" : "text-muted-foreground"}`} />
-                        </div>
-                        <span className={`flex-1 text-[15px] ${isActive ? "font-semibold" : "font-medium"}`}>
-                          {item.title}
-                        </span>
-                        <ChevronRight className={`h-4 w-4 ${isActive ? "text-foreground/50" : "text-muted-foreground/40"}`} />
-                      </button>
-                    );
-                  })}
+                <div className="space-y-6">
+                  {moreMenuGroups.map((group) => (
+                    <div key={group.title} className="space-y-1">
+                      <h3 className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {group.title}
+                      </h3>
+                      {group.items.map((item) => {
+                        const isActive = isItemActive(item.url);
+                        return (
+                          <button
+                            key={item.url}
+                            onClick={() => handleMoreItemClick(item.url)}
+                            className={`flex items-center gap-4 w-full px-4 py-3.5 rounded-2xl text-left transition-colors ${
+                              isActive
+                                ? "bg-foreground/10 text-foreground"
+                                : "text-foreground hover:bg-muted/50 active:bg-muted/70"
+                            }`}
+                            data-testid={`${testIdPrefix}-mobile-nav-more-${item.url.split("/").pop()}`}
+                          >
+                            <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${
+                              isActive ? "bg-foreground/15" : "bg-muted/60"
+                            }`}>
+                              <item.icon className={`h-5 w-5 ${isActive ? "text-foreground" : "text-muted-foreground"}`} />
+                            </div>
+                            <span className={`flex-1 text-[15px] ${isActive ? "font-semibold" : "font-medium"}`}>
+                              {item.title}
+                            </span>
+                            <ChevronRight className={`h-4 w-4 ${isActive ? "text-foreground/50" : "text-muted-foreground/40"}`} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

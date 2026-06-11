@@ -1,9 +1,9 @@
-import { Home, MessageSquare, Package, ShoppingCart, ShoppingBag, AlertCircle, Truck, FileText, Calculator, ArrowUpDown, HelpCircle } from "lucide-react";
+import { Home, MessageSquare, Package, ShoppingCart, ShoppingBag, AlertCircle, Truck, FileText, Calculator, HelpCircle, BarChart3 } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { useQuery } from "@tanstack/react-query";
-import { MobileNavBase } from "./MobileNavBase";
+import { MobileNavBase, type NavGroup } from "./MobileNavBase";
 
 export function RestaurantMobileNav() {
   const { currentUser } = useUser();
@@ -17,14 +17,29 @@ export function RestaurantMobileNav() {
     { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag },
   ];
 
-  const moreMenuItems = [
-    { title: t("common", "suppliers"), url: "/restaurant/suppliers", icon: Truck },
-    { title: lang === "de" ? "Preisvergleich" : "Confronto prezzi", url: "/restaurant/price-comparison", icon: ArrowUpDown },
-    { title: t("common", "cart"), url: "/restaurant/cart", icon: ShoppingCart, hasBadge: true },
-    { title: t("common", "complaints"), url: "/restaurant/complaints", icon: AlertCircle },
-    { title: t("common", "documents"), url: "/restaurant/documents", icon: FileText },
-    { title: t("common", "costAnalysis"), url: "/restaurant/cost-analysis", icon: Calculator },
-    { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/restaurant/help", icon: HelpCircle },
+  const moreMenuGroups: NavGroup[] = [
+    {
+      title: lang === "de" ? "Bestellungen" : "Ordini",
+      items: [
+        { title: t("common", "complaints"), url: "/restaurant/complaints", icon: AlertCircle },
+        { title: t("common", "documents"), url: "/restaurant/documents", icon: FileText },
+        { title: lang === "de" ? "Monatsberichte" : "Report mensili", url: "/restaurant/monthly-reports", icon: BarChart3 },
+      ],
+    },
+    {
+      title: lang === "de" ? "Katalog" : "Catalogo",
+      items: [
+        { title: t("common", "suppliers"), url: "/restaurant/suppliers", icon: Truck },
+        { title: t("common", "costAnalysis"), url: "/restaurant/cost-analysis", icon: Calculator },
+      ],
+    },
+    {
+      title: lang === "de" ? "Mehr" : "Altro",
+      items: [
+        { title: t("common", "cart"), url: "/restaurant/cart", icon: ShoppingCart, hasBadge: true },
+        { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/restaurant/help", icon: HelpCircle },
+      ],
+    },
   ];
 
   const { data: unreadCount } = useQuery<{ count: number }>({
@@ -46,7 +61,7 @@ export function RestaurantMobileNav() {
   return (
     <MobileNavBase
       mainNavItems={mainNavItems}
-      moreMenuItems={moreMenuItems}
+      moreMenuGroups={moreMenuGroups}
       getBadgeCount={getBadgeCount}
       rootPath="/restaurant"
       testIdPrefix="restaurant"
