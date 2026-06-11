@@ -39,6 +39,7 @@ function QuickAddBar({
   const min = product.minOrderQuantity && product.minOrderQuantity > 1 ? product.minOrderQuantity : 1;
   const [qty, setQty] = useState(min);
   const [expanded, setExpanded] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [added, setAdded] = useState(false);
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -66,6 +67,7 @@ function QuickAddBar({
       queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
       setAdded(true);
       setExpanded(false);
+      setSheetOpen(false);
       setQty(min);
       if (addedTimer.current) clearTimeout(addedTimer.current);
       addedTimer.current = setTimeout(() => setAdded(false), 1500);
@@ -84,6 +86,10 @@ function QuickAddBar({
     addMutation.mutate();
   };
 
+  const promo = product.activePromotion;
+  const unitPrice = promo ? parseFloat(product.price) * (1 - promo.discountPercent / 100) : parseFloat(product.price);
+  const lineTotal = unitPrice * qty;
+
   return (
     <div
       className="shrink-0"
@@ -91,61 +97,151 @@ function QuickAddBar({
       onKeyDown={stopKey}
       data-testid={`quick-add-${product.id}`}
     >
-      {expanded ? (
-        <div className="flex items-center h-7 rounded-full border border-border bg-background shadow-sm pl-0.5 pr-0.5">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setQty((q) => Math.max(min, q - 1)); }}
-            onKeyDown={stopKey}
-            disabled={qty <= min}
-            aria-label={lang === "de" ? "Weniger" : "Meno"}
-            className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
-            data-testid={`quick-qty-${product.id}-decrement`}
-          >
-            <Minus className="h-3 w-3" />
-          </button>
-          <span className="w-5 text-center text-[11px] font-semibold tabular-nums" data-testid={`quick-qty-${product.id}-value`}>{qty}</span>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setQty((q) => q + 1); }}
-            onKeyDown={stopKey}
-            aria-label={lang === "de" ? "Mehr" : "Più"}
-            className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted"
-            data-testid={`quick-qty-${product.id}-increment`}
-          >
-            <Plus className="h-3 w-3" />
-          </button>
+      {/* Desktop: inline expand-in-place quick add */}
+      <div className="hidden md:block">
+        {expanded ? (
+          <div className="flex items-center h-7 rounded-full border border-border bg-background shadow-sm pl-0.5 pr-0.5">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setQty((q) => Math.max(min, q - 1)); }}
+              onKeyDown={stopKey}
+              disabled={qty <= min}
+              aria-label={lang === "de" ? "Weniger" : "Meno"}
+              className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
+              data-testid={`quick-qty-${product.id}-decrement`}
+            >
+              <Minus className="h-3 w-3" />
+            </button>
+            <span className="w-5 text-center text-[11px] font-semibold tabular-nums" data-testid={`quick-qty-${product.id}-value`}>{qty}</span>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setQty((q) => q + 1); }}
+              onKeyDown={stopKey}
+              aria-label={lang === "de" ? "Mehr" : "Più"}
+              className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted"
+              data-testid={`quick-qty-${product.id}-increment`}
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+            <Button
+              size="icon"
+              onClick={handleAdd}
+              onKeyDown={stopKey}
+              disabled={addMutation.isPending}
+              aria-label={t("templates", "addToCart")}
+              className="h-6 w-6 ml-0.5 rounded-full shrink-0"
+              data-testid={`button-quick-add-confirm-${product.id}`}
+            >
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
           <Button
             size="icon"
-            onClick={handleAdd}
+            onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
             onKeyDown={stopKey}
-            disabled={addMutation.isPending}
             aria-label={t("templates", "addToCart")}
-            className="h-6 w-6 ml-0.5 rounded-full shrink-0"
-            data-testid={`button-quick-add-confirm-${product.id}`}
+            title={t("templates", "addToCart")}
+            className={`h-7 w-7 rounded-full shrink-0 transition-colors duration-300 ${
+              added ? "bg-green-600 hover:bg-green-600 text-white" : ""
+            }`}
+            data-testid={`button-quick-add-${product.id}`}
           >
-            <Check className="h-3.5 w-3.5" />
+            {added ? (
+              <Check className="h-4 w-4 shrink-0 animate-status-dot" />
+            ) : (
+              <Plus className="h-4 w-4 shrink-0" />
+            )}
           </Button>
-        </div>
-      ) : (
-        <Button
-          size="icon"
-          onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
-          onKeyDown={stopKey}
-          aria-label={t("templates", "addToCart")}
-          title={t("templates", "addToCart")}
-          className={`h-7 w-7 rounded-full shrink-0 transition-colors duration-300 ${
-            added ? "bg-green-600 hover:bg-green-600 text-white" : ""
-          }`}
-          data-testid={`button-quick-add-${product.id}`}
-        >
-          {added ? (
-            <Check className="h-4 w-4 shrink-0 animate-status-dot" />
-          ) : (
-            <Plus className="h-4 w-4 shrink-0" />
-          )}
-        </Button>
-      )}
+        )}
+      </div>
+
+      {/* Mobile: tap opens a friendly amount sheet */}
+      <Button
+        size="icon"
+        onClick={(e) => { e.stopPropagation(); setQty(min); setSheetOpen(true); }}
+        onKeyDown={stopKey}
+        aria-label={t("templates", "addToCart")}
+        title={t("templates", "addToCart")}
+        className={`md:hidden h-9 w-9 rounded-full shrink-0 transition-colors duration-300 ${
+          added ? "bg-green-600 hover:bg-green-600 text-white" : ""
+        }`}
+        data-testid={`button-quick-add-mobile-${product.id}`}
+      >
+        {added ? (
+          <Check className="h-4 w-4 shrink-0 animate-status-dot" />
+        ) : (
+          <Plus className="h-4 w-4 shrink-0" />
+        )}
+      </Button>
+
+      <Drawer open={sheetOpen} onOpenChange={setSheetOpen}>
+        <DrawerContent className="md:hidden" data-testid={`quick-add-sheet-${product.id}`}>
+          <DrawerHeader className="px-4 pt-2 pb-3 text-left">
+            <div className="flex items-center gap-3">
+              <ProductImage src={product.imageUrl} alt={product.name} className="h-14 w-14 rounded-xl shrink-0" iconClassName="h-5 w-5" />
+              <div className="min-w-0 flex-1">
+                <DrawerTitle className="text-base truncate">{product.name}</DrawerTitle>
+                <div className="text-xs text-muted-foreground truncate">{product.supplier?.companyName || product.supplier?.name}</div>
+                <div className="mt-0.5 flex items-baseline gap-1">
+                  {promo ? (
+                    <>
+                      <span className="text-xs text-muted-foreground line-through">{parseFloat(product.price).toFixed(2)}</span>
+                      <span className="text-sm font-bold text-green-600 dark:text-green-400">{unitPrice.toFixed(2)}€</span>
+                    </>
+                  ) : (
+                    <span className="text-sm font-bold">{unitPrice.toFixed(2)}€</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">/{product.unit}</span>
+                </div>
+              </div>
+            </div>
+          </DrawerHeader>
+
+          <div className="px-4 pb-1">
+            {min > 1 && (
+              <p className="text-[11px] text-muted-foreground mb-3 text-center" data-testid={`sheet-min-note-${product.id}`}>
+                {lang === "de" ? `Mindestbestellmenge: ${min} ${product.unit}` : `Quantità minima: ${min} ${product.unit}`}
+              </p>
+            )}
+            <div className="flex items-center justify-center gap-6 py-1">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setQty((q) => Math.max(min, q - 1)); }}
+                disabled={qty <= min}
+                aria-label={lang === "de" ? "Weniger" : "Meno"}
+                className="h-14 w-14 rounded-full border border-border flex items-center justify-center text-foreground active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-transform"
+                data-testid={`sheet-qty-${product.id}-decrement`}
+              >
+                <Minus className="h-6 w-6" />
+              </button>
+              <span className="w-16 text-center text-3xl font-bold tabular-nums" data-testid={`sheet-qty-${product.id}-value`}>{qty}</span>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setQty((q) => q + 1); }}
+                aria-label={lang === "de" ? "Mehr" : "Più"}
+                className="h-14 w-14 rounded-full border border-border flex items-center justify-center text-foreground active:scale-95 transition-transform"
+                data-testid={`sheet-qty-${product.id}-increment`}
+              >
+                <Plus className="h-6 w-6" />
+              </button>
+            </div>
+          </div>
+
+          <DrawerFooter className="px-4 pt-3 pb-4 border-t border-border" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
+            <Button
+              className="w-full h-12 rounded-full font-semibold gap-2"
+              onClick={handleAdd}
+              disabled={addMutation.isPending}
+              data-testid={`sheet-button-add-${product.id}`}
+            >
+              <ShoppingCart className="h-4 w-4" />
+              {lang === "de" ? "In den Warenkorb" : "Aggiungi al carrello"}
+              <span className="tabular-nums">· {lineTotal.toFixed(2)}€</span>
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

@@ -1,1 +1,2 @@
 - [Detail page back button placement](detail-page-back-button.md) — back button sits outside/below the dark hero on all viewports, never inside the black header.
+- [Mobile quick-add bottom-sheet](mobile-quick-add.md) — restaurant catalog "+" opens a vaul Drawer on mobile, keeps inline stepper on desktop.
