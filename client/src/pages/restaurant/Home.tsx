@@ -22,6 +22,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 import CountUp from "@/components/CountUp";
+import KpiRefreshButton from "@/components/KpiRefreshButton";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import RestaurantHomeMobile from "./HomeMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -891,7 +892,8 @@ export default function RestaurantHome() {
           </h1>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
             <Link href="/restaurant/inbox" data-testid="kpi-card-messages">
-              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+              <div className="group/kpi relative rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <KpiRefreshButton testId="button-refresh-kpi-messages" label={lang === "de" ? "Aktualisieren" : "Aggiorna"} queryKeys={[[`/api/conversations?userId=${currentUser?.id}`]]} />
                 <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Nachrichten" : "Messaggi"}</span><span className="hidden md:inline">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
                   <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : <CountUp end={totalUnread} duration={800} />}</p>
@@ -901,7 +903,8 @@ export default function RestaurantHome() {
                 </div>
               </div>
             </Link>
-            <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 flex flex-col justify-between min-h-[100px] md:min-h-[120px]" data-testid="kpi-card-cost-per-guest">
+            <div className="group/kpi relative rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 flex flex-col justify-between min-h-[100px] md:min-h-[120px]" data-testid="kpi-card-cost-per-guest">
+              <KpiRefreshButton testId="button-refresh-kpi-cost-per-guest" label={lang === "de" ? "Aktualisieren" : "Aggiorna"} queryKeys={[[`/api/restaurant/cost-analysis?restaurantId=${currentUser?.id}&month=${costCurrentMonth}`], [`/api/restaurant/overnight-stays?restaurantId=${currentUser?.id}&month=${costCurrentMonth}`], [`/api/restaurant/pms/connection?restaurantId=${currentUser?.id}`]]} />
               <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Kosten/Gast" : "Costo/ospite"}</span><span className="hidden md:inline">{lang === "de" ? "Wareneinsatz/Gast" : "Costo per ospite"}</span></span>
               <div className="flex items-end justify-between mt-auto">
                 {costLoading || pmsLoading ? (
@@ -917,7 +920,8 @@ export default function RestaurantHome() {
               </div>
             </div>
             <Link href="/restaurant/orders" data-testid="kpi-card-active-orders">
-              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+              <div className="group/kpi relative rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <KpiRefreshButton testId="button-refresh-kpi-active-orders" label={lang === "de" ? "Aktualisieren" : "Aggiorna"} queryKeys={[[`/api/orders?restaurantId=${currentUser?.id}`]]} />
                 <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Offen" : "Attivi"}</span><span className="hidden md:inline">{lang === "de" ? "Offene Bestellungen" : "Ordini attivi"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
                   <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-active-orders">{ordersLoading ? "..." : <CountUp end={pendingOrdersCount} duration={800} />}</p>
@@ -928,7 +932,8 @@ export default function RestaurantHome() {
               </div>
             </Link>
             <Link href="/restaurant/cost-analysis" data-testid="kpi-card-monthly-spending">
-              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+              <div className="group/kpi relative rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <KpiRefreshButton testId="button-refresh-kpi-monthly-spending" label={lang === "de" ? "Aktualisieren" : "Aggiorna"} queryKeys={[[`/api/restaurant/cost-analysis?restaurantId=${currentUser?.id}&month=${costCurrentMonth}`]]} />
                 <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Monat" : "Mese"}</span><span className="hidden md:inline">{lang === "de" ? "Monatsausgaben" : "Spese mensili"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
                   {costLoading ? (

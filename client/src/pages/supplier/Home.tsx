@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import DraggableCardGrid from "@/components/DraggableCardGrid";
 import CountUp from "@/components/CountUp";
+import KpiRefreshButton from "@/components/KpiRefreshButton";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import SupplierHomeMobile from "./HomeMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -497,7 +498,8 @@ export default function SupplierHome() {
           </h1>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
             <Link href="/supplier/inbox" data-testid="kpi-card-messages">
-              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+              <div className="group/kpi relative rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <KpiRefreshButton testId="button-refresh-kpi-messages" label={lang === "de" ? "Aktualisieren" : "Aggiorna"} queryKeys={[[`/api/conversations?userId=${currentUser?.id}`]]} />
                 <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Nachrichten" : "Messaggi"}</span><span className="hidden md:inline">{lang === "de" ? "Neue Nachrichten" : "Nuovi messaggi"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
                   <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-unread-messages">{convLoading ? "..." : <CountUp end={totalUnread} duration={800} />}</p>
@@ -508,7 +510,8 @@ export default function SupplierHome() {
               </div>
             </Link>
             <Link href="/supplier/orders" data-testid="kpi-card-orders">
-              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+              <div className="group/kpi relative rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <KpiRefreshButton testId="button-refresh-kpi-orders" label={lang === "de" ? "Aktualisieren" : "Aggiorna"} queryKeys={[['/api/supplier/orders/recent', currentUser?.id]]} />
                 <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Bestellungen" : "Ordini"}</span><span className="hidden md:inline">{lang === "de" ? "Neue Bestellungen" : "Nuovi ordini"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
                   <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-new-orders">{ordersLoading ? "..." : <CountUp end={recentOrders?.length || 0} duration={800} />}</p>
@@ -518,7 +521,8 @@ export default function SupplierHome() {
                 </div>
               </div>
             </Link>
-            <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 flex flex-col justify-between min-h-[100px] md:min-h-[120px]" data-testid="kpi-card-stats">
+            <div className="group/kpi relative rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 flex flex-col justify-between min-h-[100px] md:min-h-[120px]" data-testid="kpi-card-stats">
+              <KpiRefreshButton testId="button-refresh-kpi-stats" label={lang === "de" ? "Aktualisieren" : "Aggiorna"} queryKeys={[[`/api/supplier/detailed-stats?supplierId=${currentUser?.id}&period=${statsPeriod}`]]} />
               <span className="text-[11px] md:text-sm text-gray-400 font-medium">{t("supplierHome", "statistics")}</span>
               <div className="flex items-end justify-between mt-auto">
                 {statsLoading ? (
@@ -536,7 +540,8 @@ export default function SupplierHome() {
               </div>
             </div>
             <Link href="/supplier/products" data-testid="kpi-card-low-stock">
-              <div className="rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+              <div className="group/kpi relative rounded-xl md:rounded-2xl bg-white/[0.06] border border-white/[0.08] p-3 md:p-5 cursor-pointer hover:bg-white/[0.10] transition-colors h-full flex flex-col justify-between min-h-[100px] md:min-h-[120px]">
+                <KpiRefreshButton testId="button-refresh-kpi-low-stock" label={lang === "de" ? "Aktualisieren" : "Aggiorna"} queryKeys={[['/api/low-stock', currentUser?.id]]} />
                 <span className="text-[11px] md:text-sm text-gray-400 font-medium"><span className="md:hidden">{lang === "de" ? "Bestand" : "Scorte"}</span><span className="hidden md:inline">{lang === "de" ? "Niedriger Bestand" : "Scorte basse"}</span></span>
                 <div className="flex items-end justify-between mt-auto">
                   <p className="text-3xl md:text-5xl font-bold text-white leading-none" data-testid="kpi-low-stock">{lowStockLoading ? "..." : <CountUp end={lowStockProducts?.length || 0} duration={800} />}</p>
