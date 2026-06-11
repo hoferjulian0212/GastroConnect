@@ -306,6 +306,7 @@ interface SortableCardProps {
   isAnyDragging: boolean;
   onRefChange: (id: string, el: HTMLDivElement | null) => void;
   refreshLabel: string;
+  forceRefreshing?: boolean;
 }
 
 function SortableCard({
@@ -321,6 +322,7 @@ function SortableCard({
   isSwapTarget,
   isAnyDragging,
   onRefChange,
+  forceRefreshing,
 }: SortableCardProps) {
   const {
     attributes,
@@ -342,6 +344,7 @@ function SortableCard({
 
   const [refreshing, setRefreshing] = useState(false);
   const hasRefresh = !!section.queryKeys && section.queryKeys.length > 0;
+  const isRefreshing = hasRefresh && (refreshing || !!forceRefreshing);
   const handleRefresh = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -428,16 +431,32 @@ function SortableCard({
         {!editMode && !isDragging && hasRefresh && (
           <button
             onClick={handleRefresh}
-            disabled={refreshing}
-            className="absolute bottom-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/90 backdrop-blur shadow-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all opacity-60 md:opacity-0 md:group-hover/card:opacity-100 md:focus-visible:opacity-100 disabled:opacity-100"
+            disabled={isRefreshing}
+            className="absolute bottom-3 right-3 z-30 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/90 backdrop-blur shadow-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all opacity-60 md:opacity-0 md:group-hover/card:opacity-100 md:focus-visible:opacity-100 disabled:opacity-100"
             data-testid={`button-refresh-card-${item.id}`}
             title={refreshLabel}
             aria-label={refreshLabel}
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
           </button>
         )}
-        <CardContent content={section.content} editMode={editMode} />
+        <div className="relative">
+          <div
+            className={`transition-all duration-300 ${isRefreshing ? "opacity-40 blur-[1px] pointer-events-none select-none" : ""}`}
+          >
+            <CardContent content={section.content} editMode={editMode} />
+          </div>
+          {isRefreshing && (
+            <div
+              className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+              data-testid={`overlay-refreshing-${item.id}`}
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/95 backdrop-blur shadow-md">
+                <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -942,18 +961,6 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
     <div className="relative">
       <div className="flex items-center justify-end gap-1 mb-3 md:mb-4">
         {!editMode && (
-          <button
-            onClick={handleRefreshAll}
-            disabled={refreshingAll}
-            className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-100"
-            data-testid="button-refresh-all"
-            title={L.refreshAll}
-            aria-label={L.refreshAll}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshingAll ? "animate-spin" : ""}`} />
-          </button>
-        )}
-        {!editMode && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -1020,6 +1027,19 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
             aria-label={managerButtonLabel || "Widgets verwalten"}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {!editMode && (
+          <button
+            onClick={handleRefreshAll}
+            disabled={refreshingAll}
+            className="h-7 inline-flex items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground/70 hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-100"
+            data-testid="button-refresh-all"
+            title={L.refreshAll}
+            aria-label={L.refreshAll}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${refreshingAll ? "animate-spin" : ""}`} />
+            <span>{L.refreshAll}</span>
           </button>
         )}
         {editMode ? (
@@ -1174,6 +1194,7 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
                   isAnyDragging={activeId !== null}
                   onRefChange={handleRefChange}
                   refreshLabel={L.refresh}
+                  forceRefreshing={refreshingAll}
                 />
               );
             })}
