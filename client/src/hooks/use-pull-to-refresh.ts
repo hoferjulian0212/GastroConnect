@@ -12,28 +12,53 @@ export function usePullToRefresh({
   maxPull = 120,
 }: UsePullToRefreshOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollElRef = useRef<HTMLElement | null>(null);
   const startYRef = useRef(0);
   const pullingRef = useRef(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
 
+  // The element that actually scrolls is an ancestor of our wrapper (the
+  // app-level scroll container), not the wrapper itself. Resolve it so the
+  // "am I at the top?" check is accurate; otherwise we'd hijack every
+  // downward swipe and block native scrolling.
+  const getScrollEl = useCallback((): HTMLElement | null => {
+    if (scrollElRef.current && scrollElRef.current.isConnected) return scrollElRef.current;
+    let node: HTMLElement | null = containerRef.current;
+    while (node) {
+      const appScroll = node.closest<HTMLElement>("[data-app-scroll]");
+      if (appScroll) {
+        scrollElRef.current = appScroll;
+        return appScroll;
+      }
+      const style = window.getComputedStyle(node);
+      const overflowY = style.overflowY;
+      if ((overflowY === "auto" || overflowY === "scroll") && node.scrollHeight > node.clientHeight) {
+        scrollElRef.current = node;
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  }, []);
+
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
       if (isRefreshing) return;
-      const el = containerRef.current;
-      if (!el || el.scrollTop > 0) return;
+      const scrollEl = getScrollEl();
+      if (!scrollEl || scrollEl.scrollTop > 0) return;
       startYRef.current = e.touches[0].clientY;
       pullingRef.current = false;
     },
-    [isRefreshing]
+    [isRefreshing, getScrollEl]
   );
 
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
       if (isRefreshing) return;
-      const el = containerRef.current;
-      if (!el || el.scrollTop > 0) return;
+      const scrollEl = getScrollEl();
+      if (!scrollEl || scrollEl.scrollTop > 0) return;
 
       const deltaY = e.touches[0].clientY - startYRef.current;
       if (deltaY < 0) return;
@@ -50,7 +75,7 @@ export function usePullToRefresh({
         setPullDistance(dist);
       }
     },
-    [isRefreshing, maxPull]
+    [isRefreshing, maxPull, getScrollEl]
   );
 
   const handleTouchEnd = useCallback(async () => {
