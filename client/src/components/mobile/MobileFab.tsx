@@ -1,4 +1,6 @@
 import { ReactNode } from "react";
+import { motion } from "framer-motion";
+import { useScrollCompact } from "@/hooks/use-scroll-compact";
 
 interface MobileFabProps {
   onClick: () => void;
@@ -17,26 +19,37 @@ export function MobileFab({
   bottomOffset,
   variant = "primary",
 }: MobileFabProps) {
+  const compact = useScrollCompact();
   const colors =
     variant === "dark"
       ? "bg-[#161921] text-white hover:bg-[#1f2330] active:bg-[#262a39]"
       : "text-foreground dark:text-white";
 
   return (
-    <button
+    <motion.button
       onClick={onClick}
       data-testid={testId || "mobile-fab"}
       className={`md:hidden fixed right-4 z-30 inline-flex items-center justify-center gap-2 h-12 ${
         label ? "px-4 rounded-full" : "w-12 rounded-full"
-      } transition-all active:scale-95 ${colors} ${variant === "primary" ? "mobile-fab-glass" : "shadow-lg shadow-black/20"}`}
+      } ${colors} ${variant === "primary" ? "mobile-fab-glass" : "shadow-lg shadow-black/20"}`}
       style={{
         bottom: bottomOffset !== undefined
           ? `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px))`
           : "var(--mobile-cta-offset)",
+        pointerEvents: compact ? "none" : "auto",
       }}
+      initial={false}
+      animate={{
+        x: compact ? 96 : 0,
+        scale: compact ? 0.85 : 1,
+        opacity: compact ? 0 : 1,
+      }}
+      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+      whileTap={{ scale: 0.93 }}
+      aria-hidden={compact}
     >
       <span className="inline-flex items-center justify-center">{icon}</span>
       {label && <span className="text-[14px] font-semibold whitespace-nowrap">{label}</span>}
-    </button>
+    </motion.button>
   );
 }
