@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { Button } from "@/components/ui/button";
 import { Store, Utensils, ArrowLeft } from "lucide-react";
-import logoImg from "@assets/logo_no_bg.png";
+import Logo from "@/components/Logo";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -40,9 +40,8 @@ export default function Login() {
           <ArrowLeft className="h-4 w-4" />
           <span className="text-sm font-medium">Zurück</span>
         </button>
-        <div className="flex items-center gap-2">
-          <img src={logoImg} alt="GastroConnect Logo" className="h-10 w-10 object-contain invert" />
-          <span className="font-bold text-base tracking-tight">GastroConnect</span>
+        <div className="flex items-center">
+          <Logo size="nav" variant="light" data-testid="logo-login" />
         </div>
         <div className="w-16" />
       </header>

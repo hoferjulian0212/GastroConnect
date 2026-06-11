@@ -29,6 +29,7 @@ import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { GlobalSearch, DesktopSearchButton } from "@/components/GlobalSearch";
+import Logo from "@/components/Logo";
 import { AiAssistant } from "@/components/AiAssistant";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
@@ -708,9 +709,8 @@ function AppLayout() {
               <header className="flex items-center gap-1.5 md:gap-1.5 lg:gap-4 px-3 py-2.5 md:px-2.5 md:py-2.5 lg:px-6">
                 <div className="flex items-center gap-3 shrink-0 lg:flex-1 lg:min-w-0">
                   <MobileProfileButton />
-                  <div className="hidden md:flex items-center gap-0 shrink-0 md:-ml-1 lg:-ml-3">
-                    <img src={logoImg} alt="GastroConnect Logo" className="h-9 w-9 lg:h-12 lg:w-12 2xl:h-[64px] 2xl:w-[64px] object-contain brightness-0 invert" />
-                    <span className="hidden 2xl:inline font-bold text-white tracking-tight -ml-1 text-[18px]">GastroConnect</span>
+                  <div className="hidden md:flex items-center shrink-0 md:-ml-1 lg:-ml-3">
+                    <Logo size="header" variant="light" textClassName="hidden 2xl:inline" data-testid="logo-app-header" />
                   </div>
                 </div>
                 <HeaderNav />

@@ -25,3 +25,4 @@
 - [Tour intro dismissal](tour-intro-dismissal.md) — one-time popups: record dismissal in a synchronous session ref + setQueryData, never rely on invalidateQueries round-trip (stale poll re-fires it).
 - [Shadowed local types](shadowed-local-types.md) — pages redeclaring `interface OrderWithDetails` hide backend fields (silent dead UI branches); tsconfig needs `target` to avoid spurious TS2802.
 - [Desktop header responsive](desktop-header-responsive.md) — header is one no-wrap row in an overflow-hidden shell; use progressive disclosure by breakpoint + nav as the overflow-x buffer so right cluster never clips.
+- [Universal logo lockup](universal-logo.md) — one shared Logo component, fixed em ratio off a single fluid font-size; never reuse logo_fat.png; keep header icon ≤~48px until 2xl.

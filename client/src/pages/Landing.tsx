@@ -21,7 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import logoImg from "@assets/logo_fat.png";
+import Logo from "@/components/Logo";
 import shotHome from "@assets/landing-home.jpg";
 import shotMobile from "@assets/landing-mobile.png";
 import shotMobileSupplier from "@assets/landing-mobile-supplier.png";
@@ -666,20 +666,10 @@ export default function Landing() {
               e.preventDefault();
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
-            className="flex items-center gap-0 shrink-0"
+            className="flex items-center shrink-0"
             data-testid="link-brand"
           >
-            <img
-              src={logoImg}
-              alt="GastroConnect Logo"
-              className="h-14 w-14 md:h-16 md:w-16 object-contain dark:invert"
-            />
-            <span
-              className="font-bold text-base md:text-lg tracking-tight -ml-1"
-              data-testid="text-brand-name"
-            >
-              GastroConnect
-            </span>
+            <Logo size="nav" variant="dark" data-testid="logo-landing-nav" />
           </a>
 
           {/* Desktop anchor nav */}
@@ -747,15 +737,8 @@ export default function Landing() {
               </SheetTrigger>
               <SheetContent side="right" className="w-[280px] p-0">
                 <div className="flex flex-col h-full">
-                  <div className="px-5 py-4 border-b border-border flex items-center gap-0">
-                    <img
-                      src={logoImg}
-                      alt=""
-                      className="h-12 w-12 object-contain dark:invert"
-                    />
-                    <span className="font-bold tracking-tight -ml-1">
-                      GastroConnect
-                    </span>
+                  <div className="px-5 py-4 border-b border-border flex items-center">
+                    <Logo size="nav" variant="dark" data-testid="logo-landing-mobile" />
                   </div>
                   <div className="flex-1 px-3 py-4 flex flex-col">
                     {anchors.map((item) => (
@@ -1328,18 +1311,8 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-10 md:grid-cols-4">
             <div className="md:col-span-1">
-              <div className="flex items-center gap-2 mb-3">
-                <img
-                  src={logoImg}
-                  alt="GastroConnect Logo"
-                  className="h-10 w-10 object-contain dark:invert -mr-1"
-                />
-                <span
-                  className="font-semibold text-sm tracking-tight"
-                  data-testid="text-footer-brand"
-                >
-                  GastroConnect
-                </span>
+              <div className="flex items-center mb-3">
+                <Logo size="footer" variant="dark" data-testid="logo-landing-footer" />
               </div>
               <p
                 className="text-sm text-muted-foreground leading-relaxed max-w-xs"
