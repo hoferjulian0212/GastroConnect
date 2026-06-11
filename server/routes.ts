@@ -4966,6 +4966,30 @@ export async function registerRoutes(
     }
   });
 
+  const pushTestSchema = z.object({ userId: uuidField });
+
+  app.post("/api/push/test", async (req, res) => {
+    try {
+      const { userId } = pushTestSchema.parse(req.body);
+      const subscriptions = await storage.getPushSubscriptions(userId);
+      if (subscriptions.length === 0) {
+        return res.json({ sent: 0 });
+      }
+      const outcome = await sendPushNotification(userId, {
+        title: "GastroConnect",
+        message: "🔔 Test – Benachrichtigungen funktionieren!",
+        url: "/",
+        type: "general",
+      });
+      res.json({ sent: outcome.succeeded });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to send test notification" });
+    }
+  });
+
   app.get("/api/restaurant/supplier-order-stats/batch", async (req, res) => {
     try {
       const restaurantId = req.query.restaurantId as string;

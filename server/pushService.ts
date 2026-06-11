@@ -16,16 +16,17 @@ function maskEndpoint(endpoint: string): string {
 }
 
 export async function sendPushNotification(userId: string, payload: { title: string; message: string; url?: string; type?: string }) {
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return;
+  const result = { attempted: 0, succeeded: 0, failed: 0 };
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return result;
 
   let subscriptions;
   try {
     subscriptions = await storage.getPushSubscriptions(userId);
   } catch (err: any) {
     console.error("[push] failed to load subscriptions", { userId, type: payload.type, error: err?.message });
-    return;
+    return result;
   }
-  if (subscriptions.length === 0) return;
+  if (subscriptions.length === 0) return result;
 
   const pushPayload = JSON.stringify({
     title: payload.title,
@@ -35,6 +36,7 @@ export async function sendPushNotification(userId: string, payload: { title: str
   });
 
   for (const sub of subscriptions) {
+    result.attempted++;
     try {
       await webpush.sendNotification(
         {
@@ -43,7 +45,9 @@ export async function sendPushNotification(userId: string, payload: { title: str
         },
         pushPayload
       );
+      result.succeeded++;
     } catch (error: any) {
+      result.failed++;
       const statusCode = error?.statusCode;
       const ctx = {
         userId,
@@ -64,6 +68,8 @@ export async function sendPushNotification(userId: string, payload: { title: str
       }
     }
   }
+
+  return result;
 }
 
 export { VAPID_PUBLIC_KEY };

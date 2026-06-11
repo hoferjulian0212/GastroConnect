@@ -526,6 +526,13 @@ const t = {
     pushDenied: { de: "Benachrichtigungen blockiert", it: "Notifiche bloccate" },
     pushDeniedDesc: { de: "Bitte erlauben Sie Benachrichtigungen in den Browser-Einstellungen", it: "Autorizza le notifiche nelle impostazioni del browser" },
     pushNotSupported: { de: "Push-Benachrichtigungen werden von diesem Browser nicht unterstützt", it: "Le notifiche push non sono supportate da questo browser" },
+    pushTest: { de: "Test-Benachrichtigung senden", it: "Invia notifica di prova" },
+    pushTestSent: { de: "Test-Benachrichtigung gesendet", it: "Notifica di prova inviata" },
+    pushTestSentDesc: { de: "Sie sollten gleich eine Benachrichtigung erhalten", it: "Dovresti ricevere una notifica a breve" },
+    pushTestNoSubs: { de: "Kein aktives Gerät", it: "Nessun dispositivo attivo" },
+    pushTestNoSubsDesc: { de: "Bitte aktivieren Sie zuerst die Benachrichtigungen auf diesem Gerät", it: "Attiva prima le notifiche su questo dispositivo" },
+    pushIosInstallTitle: { de: "App zum Home-Bildschirm hinzufügen", it: "Aggiungi l'app alla schermata Home" },
+    pushIosInstallDesc: { de: "Um auf dem iPhone/iPad Benachrichtigungen zu erhalten: Teilen-Symbol antippen und „Zum Home-Bildschirm“ wählen. Öffnen Sie die App danach über das neue Symbol.", it: "Per ricevere notifiche su iPhone/iPad: tocca il pulsante Condividi e scegli „Aggiungi a Home“. Poi apri l'app dalla nuova icona." },
   },
   weekdays: {
     monday: { de: "Montag", it: "Lunedì" },

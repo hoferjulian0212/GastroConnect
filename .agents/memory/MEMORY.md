@@ -1,3 +1,4 @@
 - [Detail page back button placement](detail-page-back-button.md) — back button sits outside/below the dark hero on all viewports, never inside the black header.
 - [Mobile quick-add bottom-sheet](mobile-quick-add.md) — restaurant catalog "+" opens a vaul Drawer on mobile, keeps inline stepper on desktop.
 - [PWA home-screen icon](pwa-home-screen-icon.md) — app-icon.png (black thick logo on white); iOS turns icon transparency black, so white bg is required.
+- [Web Push delivery](web-push-delivery.md) — iOS push needs an installed PWA; test endpoint reports real delivery success, not subscription count; SW has no fetch handler.
