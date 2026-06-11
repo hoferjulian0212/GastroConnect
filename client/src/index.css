@@ -788,7 +788,7 @@ html, body, #root {
 }
 
 .nav-item-active {
-  color: hsl(var(--foreground));
+  color: rgba(10, 10, 12, 1);
   -webkit-font-smoothing: antialiased;
   transition: color 0.2s ease;
 }
@@ -796,12 +796,12 @@ html, body, #root {
   color: rgba(255, 255, 255, 0.98);
 }
 .nav-item-inactive {
-  color: rgba(60, 60, 80, 0.55);
+  color: rgba(17, 17, 22, 0.62);
   transition: color 0.2s ease;
   -webkit-font-smoothing: antialiased;
 }
 .dark .nav-item-inactive {
-  color: rgba(255, 255, 255, 0.40);
+  color: rgba(255, 255, 255, 0.48);
 }
 
 @media (max-width: 767px) {
