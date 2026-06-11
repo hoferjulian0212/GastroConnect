@@ -207,26 +207,26 @@ export function MobileNavBase({
                 }`}
                 data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
               >
+                {active && (
+                  <motion.span
+                    layoutId={`${testIdPrefix}-nav-pill`}
+                    className="absolute inset-x-1.5 inset-y-1 rounded-2xl bg-foreground/[0.09] dark:bg-white/[0.14]"
+                    transition={{ type: "spring", stiffness: 480, damping: 38 }}
+                  />
+                )}
                 <motion.div
-                  className="relative inline-flex items-center justify-center"
+                  className="relative z-10 inline-flex items-center justify-center"
                   whileTap={{ scale: 0.92 }}
                   transition={{ duration: 0.1 }}
                 >
-                  {active && (
-                    <motion.span
-                      layoutId={`${testIdPrefix}-nav-pill`}
-                      className="absolute -inset-x-3.5 -inset-y-1.5 rounded-full bg-foreground/[0.10] dark:bg-white/[0.16]"
-                      transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                    />
-                  )}
-                  <item.icon className={`relative h-5 w-5 ${active ? "stroke-[2.4]" : "stroke-[2]"}`} />
+                  <item.icon className={`h-5 w-5 ${active ? "stroke-[2.4]" : "stroke-[2]"}`} />
                   {badgeCount > 0 && (
                     <span className="absolute -top-1.5 -right-2 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-medium">
                       {badgeCount > 9 ? "9+" : badgeCount}
                     </span>
                   )}
                 </motion.div>
-                <span className={`${labelClass} ${active ? "font-semibold" : "font-medium"}`}>
+                <span className={`relative z-10 ${labelClass} ${active ? "font-semibold" : "font-medium"}`}>
                   {item.title}
                 </span>
               </Link>
@@ -241,21 +241,21 @@ export function MobileNavBase({
             }`}
             data-testid={`${testIdPrefix}-mobile-nav-more`}
           >
+            {isMoreActive && (
+              <motion.span
+                layoutId={`${testIdPrefix}-nav-pill`}
+                className="absolute inset-x-1.5 inset-y-1 rounded-2xl bg-foreground/[0.09] dark:bg-white/[0.14]"
+                transition={{ type: "spring", stiffness: 480, damping: 38 }}
+              />
+            )}
             <motion.div
-              className="relative inline-flex items-center justify-center"
+              className="relative z-10 inline-flex items-center justify-center"
               whileTap={{ scale: 0.92 }}
               transition={{ duration: 0.1 }}
             >
-              {isMoreActive && (
-                <motion.span
-                  layoutId={`${testIdPrefix}-nav-pill`}
-                  className="absolute -inset-x-3.5 -inset-y-1.5 rounded-full bg-foreground/[0.10] dark:bg-white/[0.16]"
-                  transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                />
-              )}
-              <MoreHorizontal className={`relative h-5 w-5 ${(isMoreActive || isMoreOpen) ? "stroke-[2.4]" : "stroke-[2]"}`} />
+              <MoreHorizontal className={`h-5 w-5 ${(isMoreActive || isMoreOpen) ? "stroke-[2.4]" : "stroke-[2]"}`} />
             </motion.div>
-            <span className={`${labelClass} ${(isMoreActive || isMoreOpen) ? "font-semibold" : "font-medium"}`}>
+            <span className={`relative z-10 ${labelClass} ${(isMoreActive || isMoreOpen) ? "font-semibold" : "font-medium"}`}>
               {t("common", "more")}
             </span>
           </button>
