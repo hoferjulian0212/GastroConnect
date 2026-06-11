@@ -1640,10 +1640,10 @@ export default function RestaurantHome() {
           )},
           { id: "order-templates", defaultSize: "half" as const, queryKeys: [[`/api/order-templates?restaurantId=${currentUser?.id}`]], content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
-            <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
+            <div className="flex items-center justify-between gap-2 mb-2 md:mb-0 md:p-5 md:pb-4">
               <div className="flex items-center gap-2.5">
                 <div>
-                  <h2 className="text-base md:text-xl font-bold" data-testid="text-templates-title">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:text-xl md:font-bold md:normal-case md:tracking-normal md:text-foreground" data-testid="text-templates-title">
                     {lang === "de" ? "Bestellvorlagen" : "Modelli d'ordine"}
                   </h2>
                   <p className="text-xs text-muted-foreground hidden md:block">
@@ -1651,7 +1651,7 @@ export default function RestaurantHome() {
                   </p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="text-xs md:text-sm shrink-0" asChild>
+              <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-muted-foreground hover:bg-transparent md:h-9 md:px-3 md:py-2 md:text-sm md:text-foreground md:border md:border-input md:bg-background shrink-0" asChild>
                 <Link href="/restaurant/templates" data-testid="link-view-all-templates">{t("common", "all")}</Link>
               </Button>
             </div>
