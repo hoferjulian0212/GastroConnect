@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Package, ShoppingCart, ShoppingBag, AlertCircle, Truck, FileText, Calculator, HelpCircle, BarChart3 } from "lucide-react";
+import { Home, Send, Package, ShoppingCart, ShoppingBag, AlertCircle, Truck, FileText, Calculator, HelpCircle, BarChart3 } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -13,7 +13,7 @@ export function RestaurantMobileNav() {
   const mainNavItems = [
     { title: t("common", "home"), url: "/restaurant", icon: Home },
     { title: t("common", "products"), url: "/restaurant/catalog", icon: Package },
-    { title: t("common", "messages"), url: "/restaurant/inbox", icon: MessageSquare, hasBadge: true },
+    { title: t("common", "messages"), url: "/restaurant/inbox", icon: Send, hasBadge: true },
     { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag },
   ];
 

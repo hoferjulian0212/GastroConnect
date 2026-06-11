@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Package, ClipboardList, AlertCircle, FileText, Store, HelpCircle } from "lucide-react";
+import { Home, Send, Package, ClipboardList, AlertCircle, FileText, Store, HelpCircle } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -13,7 +13,7 @@ export function SupplierMobileNav() {
   const mainNavItems = [
     { title: t("common", "home"), url: "/supplier", icon: Home },
     { title: t("common", "products"), url: "/supplier/products", icon: Package },
-    { title: t("common", "messages"), url: "/supplier/inbox", icon: MessageSquare, hasBadge: true },
+    { title: t("common", "messages"), url: "/supplier/inbox", icon: Send, hasBadge: true },
     { title: t("common", "orders"), url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
   ];
 
