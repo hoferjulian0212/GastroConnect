@@ -735,7 +735,7 @@ function AppLayout() {
               </header>
               <HeroOutlet />
             </div>
-            {!isDetailPage && (
+            {!isDetailPage && !isInChat && (
               <div
                 className="md:hidden flex items-center justify-end px-2 pb-2 shrink-0"
                 style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
