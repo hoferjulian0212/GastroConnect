@@ -3,3 +3,4 @@
 - [PWA home-screen icon](pwa-home-screen-icon.md) — app-icon.png (black thick logo on white); iOS turns icon transparency black, so white bg is required.
 - [Web Push delivery](web-push-delivery.md) — iOS push needs an installed PWA; test endpoint reports real delivery success, not subscription count; SW has no fetch handler.
 - [Home dashboard widgets](home-dashboard-widgets.md) — widget order is saved per-account in localStorage; a widget "in the black header" is a saved-layout artifact. order-templates is restaurant-only (no supplier mirror).
+- [Pull-to-refresh transform gotcha](pull-to-refresh.md) — translate whole page content on pull, but never keep a CSS transform when idle (breaks fixed/sticky descendants).

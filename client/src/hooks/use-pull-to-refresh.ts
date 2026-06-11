@@ -78,6 +78,13 @@ export function usePullToRefresh({
     [isRefreshing, maxPull, getScrollEl]
   );
 
+  const handleTouchCancel = useCallback(() => {
+    if (!pullingRef.current) return;
+    pullingRef.current = false;
+    setPullDistance(0);
+    setIsPulling(false);
+  }, []);
+
   const handleTouchEnd = useCallback(async () => {
     if (!pullingRef.current) return;
     pullingRef.current = false;
@@ -106,17 +113,14 @@ export function usePullToRefresh({
     el.addEventListener("touchstart", handleTouchStart, { passive: true });
     el.addEventListener("touchmove", handleTouchMove, { passive: false });
     el.addEventListener("touchend", handleTouchEnd);
+    el.addEventListener("touchcancel", handleTouchCancel);
     return () => {
       el.removeEventListener("touchstart", handleTouchStart);
       el.removeEventListener("touchmove", handleTouchMove);
       el.removeEventListener("touchend", handleTouchEnd);
+      el.removeEventListener("touchcancel", handleTouchCancel);
     };
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
-
-  const indicatorStyle = {
-    transform: `translateY(${pullDistance}px)`,
-    transition: isPulling && pullingRef.current ? "none" : "transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-  };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel]);
 
   const progress = Math.min(pullDistance / threshold, 1);
 
@@ -125,7 +129,6 @@ export function usePullToRefresh({
     pullDistance,
     isRefreshing,
     isPulling,
-    indicatorStyle,
     progress,
   };
 }
