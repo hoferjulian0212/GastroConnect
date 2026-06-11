@@ -13,8 +13,8 @@ link in `client/index.html`. The browser-tab favicon stays separate as
 `app-icon.png` is generated from the line-art `favicon.png` logo (chef hat + box)
 by recoloring strokes to pure black, thickening them, and flattening onto a white
 background:
-`magick favicon.png -channel RGB -evaluate set 0 +channel -channel A -morphology Dilate Disk:7 +channel -background white -flatten -resize 512x512 app-icon.png`
-(Disk:7 = good "fat" balance; Disk:10+ starts merging the box detail.)
+`magick favicon.png -channel RGB -evaluate set 0 +channel -channel A -morphology Dilate Disk:4 +channel -background white -flatten -resize 512x512 app-icon.png`
+(Disk:4 = bold but not fat/blobby; Disk:7 looked too thick, Disk:10+ merges box detail.)
 
 **Why white background:** iOS replaces transparency on home-screen icons with
 **black**, so a black logo on a transparent icon would be invisible on iOS. A
