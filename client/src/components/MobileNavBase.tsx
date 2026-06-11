@@ -41,7 +41,10 @@ export function MobileNavBase({
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const compact = useScrollCompact();
 
-  const itemPadClass = `transition-all duration-300 ease-out ${compact ? "py-2.5" : "py-3.5"}`;
+  const labelClass = `text-[10px] leading-tight text-center w-full overflow-hidden transition-all duration-300 ease-out ${
+    compact ? "max-h-0 opacity-0" : "max-h-4 opacity-100"
+  }`;
+  const itemPadClass = `transition-all duration-300 ease-out ${compact ? "gap-0 py-2" : "gap-1 py-2"}`;
 
   const isItemActive = (url: string) => {
     if (url === rootPath) return location === rootPath;
@@ -155,7 +158,7 @@ export function MobileNavBase({
               <Link
                 key={item.url}
                 href={item.url}
-                className={`flex-1 flex items-center justify-center relative select-none ${itemPadClass} ${
+                className={`flex-1 flex flex-col items-center justify-center relative select-none ${itemPadClass} ${
                   active ? "nav-item-active" : "nav-item-inactive"
                 }`}
                 data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
@@ -163,7 +166,7 @@ export function MobileNavBase({
                 {active && (
                   <motion.span
                     layoutId={`${testIdPrefix}-nav-pill`}
-                    className="absolute inset-x-3 inset-y-1 rounded-[20px] bg-foreground/[0.08] dark:bg-white/[0.14]"
+                    className="absolute inset-x-2 inset-y-1 rounded-2xl bg-foreground/[0.08] dark:bg-white/[0.14]"
                     transition={{ type: "spring", stiffness: 480, damping: 38 }}
                   />
                 )}
@@ -179,6 +182,9 @@ export function MobileNavBase({
                     </span>
                   )}
                 </motion.div>
+                <span className={`relative z-10 ${labelClass} ${active ? "font-semibold" : "font-medium"}`}>
+                  {item.title}
+                </span>
               </Link>
             );
           })}
@@ -186,7 +192,7 @@ export function MobileNavBase({
           <button
             type="button"
             onClick={() => setIsMoreOpen((v) => !v)}
-            className={`flex-1 flex items-center justify-center relative select-none ${itemPadClass} ${
+            className={`flex-1 flex flex-col items-center justify-center relative select-none ${itemPadClass} ${
               isMoreActive || isMoreOpen ? "nav-item-active" : "nav-item-inactive"
             }`}
             data-testid={`${testIdPrefix}-mobile-nav-more`}
@@ -194,7 +200,7 @@ export function MobileNavBase({
             {isMoreActive && (
               <motion.span
                 layoutId={`${testIdPrefix}-nav-pill`}
-                className="absolute inset-x-3 inset-y-1 rounded-[20px] bg-foreground/[0.08] dark:bg-white/[0.14]"
+                className="absolute inset-x-2 inset-y-1 rounded-2xl bg-foreground/[0.08] dark:bg-white/[0.14]"
                 transition={{ type: "spring", stiffness: 480, damping: 38 }}
               />
             )}
@@ -205,6 +211,9 @@ export function MobileNavBase({
             >
               <MoreHorizontal className={`h-6 w-6 ${(isMoreActive || isMoreOpen) ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
             </motion.div>
+            <span className={`relative z-10 ${labelClass} ${(isMoreActive || isMoreOpen) ? "font-semibold" : "font-medium"}`}>
+              {t("common", "more")}
+            </span>
           </button>
         </div>
       </nav>
