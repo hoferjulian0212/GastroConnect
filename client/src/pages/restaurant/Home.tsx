@@ -1664,47 +1664,33 @@ export default function RestaurantHome() {
                 </div>
               ) : templates && templates.length > 0 ? (
                 <>
-                  {/* Mobile: horizontal scroll template cards */}
+                  {/* Mobile: subtle compact template chips */}
                   <div
-                    className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:hidden"
+                    className="flex gap-2 overflow-x-auto pb-1 -mx-0.5 px-0.5 md:hidden"
                     style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
                   >
-                    {orderedTemplates.slice(0, 5).map((tmpl) => {
+                    {orderedTemplates.slice(0, 6).map((tmpl) => {
                       const inStockItems = tmpl.items.filter(i => i.product.inStock !== false);
                       const outOfStockCount = tmpl.items.length - inStockItems.length;
-                      const total = inStockItems.reduce((sum, i) => sum + parseFloat(i.product.price) * i.quantity, 0);
 
                       return (
-                        <div
+                        <button
                           key={tmpl.id}
-                          className="min-w-[200px] w-[200px] shrink-0 snap-start rounded-2xl border border-border bg-card p-4 cursor-pointer transition-all active:scale-[0.98]"
+                          type="button"
+                          className="shrink-0 flex items-center gap-2 rounded-full border border-border bg-muted/40 pl-2.5 pr-3 py-1.5 text-left transition-transform active:scale-[0.97]"
                           onClick={() => openTemplateWizard(tmpl)}
                           data-testid={`template-card-${tmpl.id}`}
                         >
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 shrink-0">
-                              <ClipboardList className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                            </div>
-                            {tmpl.isFavorite && (
-                              <Star className="h-4 w-4 text-amber-500 fill-current shrink-0" data-testid={`icon-favorite-${tmpl.id}`} />
-                            )}
-                            {outOfStockCount > 0 && (
-                              <Badge variant="outline" className="text-[10px] border-red-200 text-red-500 px-1 ml-auto">
-                                {outOfStockCount} {lang === "de" ? "n.v." : "n.d."}
-                              </Badge>
-                            )}
-                          </div>
-
-                          <p className="text-sm font-semibold truncate" data-testid={`text-template-name-${tmpl.id}`}>{tmpl.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {tmpl.items.length} {t("common", "items")}
-                          </p>
-
-                          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/50">
-                            <span className="text-base font-bold tabular-nums">{total.toFixed(2)}&euro;</span>
-                            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        </div>
+                          <ClipboardList className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                          {tmpl.isFavorite && (
+                            <Star className="h-3 w-3 text-amber-500 fill-current shrink-0" data-testid={`icon-favorite-${tmpl.id}`} />
+                          )}
+                          <span className="text-xs font-medium truncate max-w-[130px]" data-testid={`text-template-name-${tmpl.id}`}>{tmpl.name}</span>
+                          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{tmpl.items.length}</span>
+                          {outOfStockCount > 0 && (
+                            <span className="text-[10px] font-medium text-red-500 shrink-0">{outOfStockCount} {lang === "de" ? "n.v." : "n.d."}</span>
+                          )}
+                        </button>
                       );
                     })}
                   </div>
