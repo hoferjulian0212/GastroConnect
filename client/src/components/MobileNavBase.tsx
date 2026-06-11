@@ -88,7 +88,7 @@ export function MobileNavBase({
   const labelClass = `text-[10px] text-center w-full overflow-hidden transition-all duration-300 ease-out ${
     compact ? "max-h-0 opacity-0" : "max-h-4 opacity-100"
   }`;
-  const itemPadClass = `transition-all duration-300 ease-out ${compact ? "gap-0 py-1.5" : "gap-1 py-3"}`;
+  const itemPadClass = `transition-all duration-300 ease-out ${compact ? "gap-0 py-2.5" : "gap-1 py-3"}`;
 
   const isItemActive = (url: string) => {
     if (url === rootPath) return location === rootPath;
