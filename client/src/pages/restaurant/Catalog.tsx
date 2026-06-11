@@ -142,7 +142,7 @@ function QuickAddBar({
             onKeyDown={stopKey}
             aria-label={t("templates", "addToCart")}
             title={t("templates", "addToCart")}
-            className={`h-7 w-7 rounded-full shrink-0 transition-colors duration-300 ${
+            className={`h-7 w-7 rounded-full shrink-0 shadow-md ring-1 ring-black/5 transition-colors duration-300 ${
               added ? "bg-green-600 hover:bg-green-600 text-white" : ""
             }`}
             data-testid={`button-quick-add-${product.id}`}
@@ -163,7 +163,7 @@ function QuickAddBar({
         onKeyDown={stopKey}
         aria-label={t("templates", "addToCart")}
         title={t("templates", "addToCart")}
-        className={`md:hidden h-9 w-9 rounded-full shrink-0 transition-colors duration-300 ${
+        className={`md:hidden h-8 w-8 rounded-full shrink-0 shadow-md ring-1 ring-black/5 transition-colors duration-300 ${
           added ? "bg-green-600 hover:bg-green-600 text-white" : ""
         }`}
         data-testid={`button-quick-add-mobile-${product.id}`}
@@ -702,38 +702,40 @@ export default function RestaurantCatalog() {
  </span>
  </div>
  )}
+ {product.inStock && (
+ <div className="absolute top-1.5 right-1.5 z-10">
+ <QuickAddBar product={product} lang={lang} t={t} />
+ </div>
+ )}
  </div>
  <div className="p-2 flex flex-col gap-0.5 flex-1 overflow-hidden min-w-0">
  <span className="text-xs font-semibold truncate block">{product.name}</span>
  <span className="text-[10px] text-muted-foreground truncate block">
  {product.supplier?.companyName || product.supplier?.name}
  </span>
- <div className="mt-auto pt-1 flex items-end justify-between gap-1.5">
- <div className="min-w-0 overflow-hidden">
+ <div className="mt-auto pt-1 flex items-center justify-between gap-1.5">
+ <div className="min-w-0">
  {hasPromo ? (
- <div className="flex items-baseline gap-0.5 overflow-hidden">
- <span className="text-[9px] text-muted-foreground line-through shrink-0">{originalPrice.toFixed(2)}</span>
- <span className="text-[11px] font-bold text-green-600 dark:text-green-400 shrink-0">{discountedPrice.toFixed(2)}€</span>
- <span className="text-[9px] text-muted-foreground truncate">/{product.unit}</span>
+ <div className="flex items-baseline gap-0.5 flex-wrap">
+ <span className="text-[9px] text-muted-foreground line-through">{originalPrice.toFixed(2)}</span>
+ <span className="text-[11px] font-bold text-green-600 dark:text-green-400">{discountedPrice.toFixed(2)}€</span>
+ <span className="text-[9px] text-muted-foreground">/{product.unit}</span>
  </div>
  ) : (
- <div className="flex items-baseline gap-0.5">
- <span className="text-[11px] font-bold shrink-0">{originalPrice.toFixed(2)}€</span>
- <span className="text-[9px] text-muted-foreground truncate">/{product.unit}</span>
+ <div className="flex items-baseline gap-0.5 flex-wrap">
+ <span className="text-[11px] font-bold">{originalPrice.toFixed(2)}€</span>
+ <span className="text-[9px] text-muted-foreground">/{product.unit}</span>
  </div>
  )}
  </div>
  {product.inStock && cartQty > 0 && (
  <div
- className="mt-1.5 inline-flex items-center gap-1 self-start rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary"
+ className="inline-flex items-center gap-1 shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary"
  data-testid={`text-cart-qty-${product.id}`}
  >
  <ShoppingCart className="h-2.5 w-2.5 shrink-0" />
- {cartQty} {lang === "de" ? "im Warenkorb" : "nel carrello"}
+ {cartQty}
  </div>
- )}
- {product.inStock && (
- <QuickAddBar product={product} lang={lang} t={t} />
  )}
  </div>
  </div>
@@ -1006,7 +1008,7 @@ export default function RestaurantCatalog() {
  </div>
 
  {categoryFilteredProducts.length > 0 ? (
- <div className="grid gap-2 md:gap-3 grid-cols-3 sm:grid-cols-4 lg:grid-cols-6">
+ <div className="grid gap-2 md:gap-3 grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 pt-2 md:pt-0">
  {categoryFilteredProducts.map(renderProductCard)}
  </div>
  ) : (
