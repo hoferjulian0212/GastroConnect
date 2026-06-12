@@ -399,7 +399,7 @@ export default function Documents() {
         subtitle={lang === "de" ? "Lieferscheine und Rechnungen" : "Note di consegna e fatture"}
         testId="mobile-header-documents"
       />
-      <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
+      <div className="hidden md:flex items-center justify-between gap-2 px-1 flex-wrap">
         {currentRole === "restaurant" ? (
           <Button
             size="sm"
@@ -433,6 +433,38 @@ export default function Documents() {
             {lang === "de" ? "Lieferschein generieren" : "Genera bolla di consegna"}
           </Button>
         </div>
+      </div>
+
+      <div className={`md:hidden grid gap-2 ${currentRole === "restaurant" ? "grid-cols-3" : "grid-cols-2"}`}>
+        {currentRole === "restaurant" && (
+          <Button
+            variant="outline"
+            onClick={() => navigate("/restaurant/monthly-reports")}
+            data-testid="button-open-monthly-reports-mobile"
+            className="h-auto flex-col gap-1.5 py-2.5 text-xs font-medium bg-card hover:bg-muted"
+          >
+            <BarChart3 className="h-4 w-4" />
+            {lang === "de" ? "Berichte" : "Report"}
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          onClick={() => setShowUploadDialog(true)}
+          data-testid="button-open-upload-document-mobile"
+          className="h-auto flex-col gap-1.5 py-2.5 text-xs font-medium bg-card hover:bg-muted"
+        >
+          <Upload className="h-4 w-4" />
+          {lang === "de" ? "Hochladen" : "Carica"}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setShowGenerateDialog(true)}
+          data-testid="button-open-generate-delivery-note-mobile"
+          className="h-auto flex-col gap-1.5 py-2.5 text-xs font-medium bg-card hover:bg-muted"
+        >
+          <Plus className="h-4 w-4" />
+          {lang === "de" ? "Lieferschein" : "Bolla"}
+        </Button>
       </div>
 
       <DocumentUploadDialog
