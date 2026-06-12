@@ -807,19 +807,23 @@ export default function Landing() {
       <div id="top" />
 
       {/* HERO */}
-      <section className="px-4 md:px-8 pt-12 md:pt-20 pb-12 md:pb-16">
-        <div className="mx-auto max-w-5xl text-center">
-          <HeadlineReveal
-            key={`hero-${lang}`}
-            text={t.heroH1}
-            className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] max-w-4xl mx-auto"
-            testId="text-hero-headline"
-          />
+      <section className="px-4 md:px-8 pb-12 md:pb-16">
+        <div className="mx-auto max-w-5xl text-center flex flex-col min-h-[calc(100svh-4rem)]">
+          <div className="flex-1 flex flex-col justify-center pt-8">
+            <HeadlineReveal
+              key={`hero-${lang}`}
+              text={t.heroH1}
+              className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] max-w-4xl mx-auto"
+              testId="text-hero-headline"
+            />
+            <MotionReveal delay={400} y={16} blur={false}>
+              <p className="mt-8 md:mt-12 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+                {t.heroSub}
+              </p>
+            </MotionReveal>
+          </div>
           <MotionReveal delay={400} y={16} blur={false}>
-            <p className="mt-6 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-              {t.heroSub}
-            </p>
-            <div className="mt-8 md:mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center pb-8 md:pb-12">
               <Button
                 size="lg"
                 className="w-full sm:w-auto gap-2 text-base"
