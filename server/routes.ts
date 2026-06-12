@@ -55,7 +55,7 @@ async function ensureDeliveryNoteForOrder(
   order: OrderWithDetails,
 ): Promise<{ document: Document; created: boolean }> {
   const existingDocs = await storage.getDocumentsByOrder(order.id);
-  const existingNote = existingDocs.find((d) => d.type === "delivery_note");
+  const existingNote = existingDocs.find((d) => d.type === "delivery_note" && !d.isUpload);
   if (existingNote) {
     return { document: existingNote, created: false };
   }
@@ -92,7 +92,7 @@ async function ensureDeliveryNoteForOrder(
     // Re-fetch the existing note and report it as not newly created.
     if (err?.code === "23505") {
       const docs = await storage.getDocumentsByOrder(order.id);
-      const note = docs.find((d) => d.type === "delivery_note");
+      const note = docs.find((d) => d.type === "delivery_note" && !d.isUpload);
       if (note) return { document: note, created: false };
     }
     throw err;
@@ -5202,7 +5202,7 @@ export async function registerRoutes(
       const eligible = [];
       for (const order of orders) {
         const docs = await storage.getDocumentsByOrder(order.id);
-        if (!docs.some(d => d.type === "delivery_note")) {
+        if (!docs.some(d => d.type === "delivery_note" && !d.isUpload)) {
           eligible.push(order);
         }
       }
@@ -5210,6 +5210,135 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Failed to fetch eligible orders:", error);
       res.status(500).json({ error: "Failed to fetch eligible orders" });
+    }
+  });
+
+  // Orders + complaints a user can attach an uploaded document to.
+  app.get("/api/documents/assignable", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      const role = req.query.role as "restaurant" | "supplier";
+      if (!userId || !role) {
+        return res.status(400).json({ error: "userId and role required" });
+      }
+      const orders = role === "restaurant"
+        ? await storage.getOrdersByRestaurant(userId, { limit: 50 })
+        : await storage.getOrdersBySupplier(userId, { limit: 50 });
+      const complaints = role === "restaurant"
+        ? await storage.getComplaintsByRestaurant(userId)
+        : await storage.getComplaintsBySupplier(userId);
+      res.json({ orders, complaints });
+    } catch (error) {
+      console.error("Failed to fetch assignable targets:", error);
+      res.status(500).json({ error: "Failed to fetch assignable targets" });
+    }
+  });
+
+  // Upload a document (photo / PDF / image) and attach it to an order or complaint.
+  app.post("/api/documents/upload", express.json({ limit: "25mb" }), async (req, res) => {
+    try {
+      const { fileData, fileName, mimeType, type, title, orderId, complaintId } = req.body ?? {};
+      if (!fileData || !mimeType) {
+        return res.status(400).json({ error: "fileData and mimeType required" });
+      }
+      if (!orderId && !complaintId) {
+        return res.status(400).json({ error: "orderId or complaintId required" });
+      }
+      if (orderId && complaintId) {
+        return res.status(400).json({ error: "Provide either orderId or complaintId, not both" });
+      }
+
+      const ALLOWED: Record<string, string> = {
+        "image/jpeg": "jpg",
+        "image/jpg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+        "application/pdf": "pdf",
+      };
+      const ext = ALLOWED[mimeType];
+      if (!ext) {
+        return res.status(400).json({ error: "Unsupported file type" });
+      }
+
+      const docType = ["delivery_note", "invoice", "other"].includes(type) ? type : "other";
+
+      let resolvedOrderId = orderId as string | undefined;
+      const resolvedComplaintId = (complaintId as string | undefined) || null;
+      let restaurantId: string;
+      let supplierId: string;
+
+      if (resolvedComplaintId) {
+        const complaint = await storage.getComplaint(resolvedComplaintId);
+        if (!complaint) {
+          return res.status(404).json({ error: "Complaint not found" });
+        }
+        resolvedOrderId = complaint.orderId;
+        restaurantId = complaint.restaurantId;
+        supplierId = complaint.supplierId;
+      } else {
+        const order = await storage.getOrder(resolvedOrderId!);
+        if (!order) {
+          return res.status(404).json({ error: "Order not found" });
+        }
+        restaurantId = order.restaurantId;
+        supplierId = order.supplierId;
+      }
+
+      const raw = String(fileData);
+      const base64 = raw.includes(",") ? raw.slice(raw.indexOf(",") + 1) : raw;
+      const buffer = Buffer.from(base64, "base64");
+      if (buffer.length === 0) {
+        return res.status(400).json({ error: "Empty file" });
+      }
+      if (buffer.length > 15 * 1024 * 1024) {
+        return res.status(400).json({ error: "File too large (max 15MB)" });
+      }
+
+      const objectService = new ObjectStorageService();
+      const privateDir = objectService.getPrivateObjectDir();
+      const fileId = randomUUID();
+      const fullPath = `${privateDir}/documents/${fileId}.${ext}`;
+      const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+      const bucketName = pathParts[0];
+      const objectName = pathParts.slice(1).join("/");
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      await file.save(buffer, {
+        contentType: mimeType,
+        metadata: { contentType: mimeType },
+      });
+
+      const objectPath = `/objects/documents/${fileId}.${ext}`;
+      const cleanTitle =
+        typeof title === "string" && title.trim()
+          ? title.trim().slice(0, 200)
+          : fileName
+            ? String(fileName).slice(0, 200)
+            : "Dokument";
+
+      const document = await storage.createDocument({
+        orderId: resolvedOrderId!,
+        complaintId: resolvedComplaintId,
+        type: docType as "delivery_note" | "invoice" | "other",
+        title: cleanTitle,
+        fileUrl: objectPath,
+        isUpload: true,
+        restaurantId,
+        supplierId,
+      });
+      res.json(document);
+    } catch (error) {
+      console.error("Failed to upload document:", error);
+      res.status(500).json({ error: "Failed to upload document" });
+    }
+  });
+
+  app.get("/api/complaints/:id/documents", async (req, res) => {
+    try {
+      const docs = await storage.getDocumentsByComplaint(req.params.id);
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch complaint documents" });
     }
   });
 
@@ -5242,7 +5371,7 @@ export async function registerRoutes(
       const inline = req.query.inline === "1" || req.query.disposition === "inline";
       const disposition = inline ? "inline" : "attachment";
       const docs = await storage.getDocumentsByOrder(order.id);
-      const deliveryNote = docs.find(d => d.type === "delivery_note");
+      const deliveryNote = docs.find(d => d.type === "delivery_note" && !d.isUpload);
       if (deliveryNote) {
         try {
           const objectService = new ObjectStorageService();
@@ -5278,7 +5407,7 @@ export async function registerRoutes(
       }
 
       const existingDocs = await storage.getDocumentsByOrder(order.id);
-      const hasDeliveryNote = existingDocs.some(d => d.type === "delivery_note");
+      const hasDeliveryNote = existingDocs.some(d => d.type === "delivery_note" && !d.isUpload);
       if (hasDeliveryNote) {
         return res.status(400).json({ error: "Delivery note already exists", document: existingDocs.find(d => d.type === "delivery_note") });
       }

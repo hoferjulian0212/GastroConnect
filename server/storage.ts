@@ -193,6 +193,7 @@ export interface IStorage {
 
   // Documents
   getDocumentsByOrder(orderId: string): Promise<Document[]>;
+  getDocumentsByComplaint(complaintId: string): Promise<Document[]>;
   getDocumentsByUser(userId: string, role: "restaurant" | "supplier"): Promise<DocumentWithDetails[]>;
   createDocument(doc: InsertDocument): Promise<Document>;
 
@@ -3480,6 +3481,10 @@ export class DatabaseStorage implements IStorage {
   // Documents
   async getDocumentsByOrder(orderId: string): Promise<Document[]> {
     return db.select().from(documents).where(eq(documents.orderId, orderId)).orderBy(desc(documents.createdAt));
+  }
+
+  async getDocumentsByComplaint(complaintId: string): Promise<Document[]> {
+    return db.select().from(documents).where(eq(documents.complaintId, complaintId)).orderBy(desc(documents.createdAt));
   }
 
   async getDocumentsByUser(userId: string, role: "restaurant" | "supplier"): Promise<DocumentWithDetails[]> {

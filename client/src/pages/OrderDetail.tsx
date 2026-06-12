@@ -6,7 +6,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { getOrderStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, AlertCircle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown, Download, MoreHorizontal, X } from "lucide-react";
+import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, AlertCircle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown, Download, MoreHorizontal, X, Upload } from "lucide-react";
+import { DocumentUploadDialog } from "@/components/DocumentUploadDialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CounterpartyContactCard } from "@/components/CounterpartyContactCard";
@@ -47,6 +48,7 @@ export default function OrderDetail() {
   const [mobileTab, setMobileTab] = useState<"updates" | "details">("updates");
   const isMobile = useIsMobile();
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const [showUploadDoc, setShowUploadDoc] = useState(false);
 
   const { data: order, isLoading } = useQuery<OrderWithDetails>({
     queryKey: ["/api/orders", orderId],
@@ -535,6 +537,16 @@ export default function OrderDetail() {
       disabledReason: lang === "de" ? "Bestellung abgeschlossen" : "Ordine completato",
     });
   }
+
+  // Add document — always available
+  actions.push({
+    label: lang === "de" ? "Dokument hinzufügen" : "Aggiungi documento",
+    icon: Upload,
+    style: "secondary",
+    category: "fulfillment",
+    action: () => setShowUploadDoc(true),
+    testId: "action-add-document",
+  });
 
   // Communication action — always available
   actions.push({
@@ -1159,7 +1171,7 @@ export default function OrderDetail() {
                 <div className="divide-y divide-border/20">
                   {orderDocuments.map((doc: any) => {
                     const isDeliveryNote = doc.type === "delivery_note";
-                    const downloadUrl = isDeliveryNote
+                    const downloadUrl = isDeliveryNote && !doc.isUpload
                       ? `/api/orders/${doc.orderId}/delivery-note/download`
                       : doc.fileUrl;
                     const typeLabel = isDeliveryNote
@@ -1505,6 +1517,13 @@ export default function OrderDetail() {
           )}
         </DrawerContent>
       </Drawer>
+      <DocumentUploadDialog
+        open={showUploadDoc}
+        onOpenChange={setShowUploadDoc}
+        presetOrderId={orderId}
+        lockTarget
+        lockedLabel={order ? `#${formatOrderNumber(order)}` : undefined}
+      />
     </div>
   );
 }

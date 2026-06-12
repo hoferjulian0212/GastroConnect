@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { FileText, Download, Building2, Clock, Eye, Pencil, ChevronDown, ChevronRight, BarChart3, Receipt, TrendingUp, ShoppingCart, Trash2, Plus, Truck, CheckCircle, Loader2, Search, X, ArrowUpDown, SlidersHorizontal } from "lucide-react";
+import { FileText, Download, Building2, Clock, Eye, Pencil, ChevronDown, ChevronRight, BarChart3, Receipt, TrendingUp, ShoppingCart, Trash2, Plus, Truck, CheckCircle, Loader2, Search, X, ArrowUpDown, SlidersHorizontal, Upload } from "lucide-react";
+import { DocumentUploadDialog } from "@/components/DocumentUploadDialog";
 import { formatOrderNumber, type DocumentWithDetails, type OrderWithDetails, type Document } from "@shared/schema";
 import { format } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -90,6 +91,7 @@ export default function Documents() {
   const [invoiceSupplierId, setInvoiceSupplierId] = useState<string | null>(null);
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [generatingOrderId, setGeneratingOrderId] = useState<string | null>(null);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
 
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -239,6 +241,10 @@ export default function Documents() {
   };
 
   const handleOpenPreview = async (doc: DocumentWithDetails) => {
+    if (doc.isUpload) {
+      if (doc.fileUrl) window.open(doc.fileUrl, "_blank", "noopener");
+      return;
+    }
     setSelectedDoc(doc);
     setIsEditing(false);
     if (doc.type === "delivery_note") {
@@ -406,16 +412,33 @@ export default function Documents() {
             {lang === "de" ? "Monatsberichte ansehen" : "Vedi report mensili"}
           </Button>
         ) : <div />}
-        <Button
-          size="sm"
-          onClick={() => setShowGenerateDialog(true)}
-          data-testid="button-open-generate-delivery-note"
-          className="shrink-0 rounded-lg"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          {lang === "de" ? "Lieferschein generieren" : "Genera bolla di consegna"}
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowUploadDialog(true)}
+            data-testid="button-open-upload-document"
+            className="shrink-0 rounded-lg"
+          >
+            <Upload className="h-4 w-4 mr-1" />
+            {lang === "de" ? "Dokument hochladen" : "Carica documento"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setShowGenerateDialog(true)}
+            data-testid="button-open-generate-delivery-note"
+            className="shrink-0 rounded-lg"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            {lang === "de" ? "Lieferschein generieren" : "Genera bolla di consegna"}
+          </Button>
+        </div>
       </div>
+
+      <DocumentUploadDialog
+        open={showUploadDialog}
+        onOpenChange={setShowUploadDialog}
+      />
 
       {!isLoading && totalDocs > 0 && (
         <div className="space-y-2 px-1" data-testid="documents-controls">
@@ -660,7 +683,7 @@ export default function Documents() {
                                     </Button>
                                     <Button variant="outline" size="icon" className="h-8 w-8" onClick={(e) => {
                                       e.stopPropagation();
-                                      const url = doc.type === "delivery_note" ? `/api/orders/${doc.orderId}/delivery-note/download` : doc.fileUrl;
+                                      const url = doc.type === "delivery_note" && !doc.isUpload ? `/api/orders/${doc.orderId}/delivery-note/download` : doc.fileUrl;
                                       const a = document.createElement("a"); a.href = url; a.setAttribute("download", ""); document.body.appendChild(a); a.click(); document.body.removeChild(a);
                                     }} data-testid={`button-download-${doc.id}`}>
                                       <Download className="h-3.5 w-3.5" />

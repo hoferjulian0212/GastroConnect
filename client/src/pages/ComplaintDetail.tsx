@@ -10,6 +10,8 @@ import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, AlertCi
 import { getComplaintReasonLabel } from "@/lib/complaintReasons";
 import { Badge } from "@/components/ui/badge";
 import { CounterpartyContactCard } from "@/components/CounterpartyContactCard";
+import { DocumentUploadDialog } from "@/components/DocumentUploadDialog";
+import { Upload, FileText, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -63,6 +65,7 @@ export default function ComplaintDetail() {
     setFollowUpDateTouched(false);
   };
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const [showUploadDoc, setShowUploadDoc] = useState(false);
   const actionApplied = useRef(false);
 
   useEffect(() => {
@@ -81,6 +84,16 @@ export default function ComplaintDetail() {
     queryFn: async () => {
       const res = await fetch(`/api/complaints/${complaintId}`);
       if (!res.ok) throw new Error("Failed to fetch complaint");
+      return res.json();
+    },
+    enabled: !!complaintId,
+  });
+
+  const { data: complaintDocuments } = useQuery<any[]>({
+    queryKey: ["/api/complaints", complaintId, "documents"],
+    queryFn: async () => {
+      const res = await fetch(`/api/complaints/${complaintId}/documents`);
+      if (!res.ok) throw new Error("Failed to fetch complaint documents");
       return res.json();
     },
     enabled: !!complaintId,
@@ -1294,6 +1307,62 @@ export default function ComplaintDetail() {
                 </div>
               </div>
 
+              {/* Documents */}
+              <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0 ${tabClsDetails}`} data-testid="section-complaint-documents">
+                <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
+                  <p className="text-sm font-semibold">{lang === "de" ? "Dokumente" : "Documenti"}</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowUploadDoc(true)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    data-testid="button-add-complaint-document"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    {lang === "de" ? "Hinzufügen" : "Aggiungi"}
+                  </button>
+                </div>
+                {complaintDocuments && complaintDocuments.length > 0 ? (
+                  <div className="divide-y divide-border/20">
+                    {complaintDocuments.map((doc: any) => {
+                      const isDeliveryNote = doc.type === "delivery_note";
+                      const downloadUrl = isDeliveryNote && !doc.isUpload
+                        ? `/api/orders/${doc.orderId}/delivery-note/download`
+                        : doc.fileUrl;
+                      const typeLabel = isDeliveryNote
+                        ? (lang === "de" ? "Lieferschein" : "Bolla di consegna")
+                        : doc.type === "invoice"
+                          ? (lang === "de" ? "Rechnung" : "Fattura")
+                          : (lang === "de" ? "Dokument" : "Documento");
+                      return (
+                        <a
+                          key={doc.id}
+                          href={downloadUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
+                          data-testid={`complaint-document-${doc.id}`}
+                        >
+                          <div className="flex h-9 w-9 items-center justify-center rounded-md shrink-0 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400">
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{doc.title}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {typeLabel} · {format(new Date(doc.createdAt), "dd.MM.yyyy, HH:mm", { locale: dateLocale })}
+                            </p>
+                          </div>
+                          <Download className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="px-4 py-4 text-sm text-muted-foreground" data-testid="text-no-complaint-documents">
+                    {lang === "de" ? "Noch keine Dokumente." : "Nessun documento."}
+                  </div>
+                )}
+              </div>
+
               <CounterpartyContactCard
                 supplierId={complaint.supplierId}
                 restaurantId={complaint.restaurantId}
@@ -1790,6 +1859,13 @@ export default function ComplaintDetail() {
           )}
         </DrawerContent>
       </Drawer>
+      <DocumentUploadDialog
+        open={showUploadDoc}
+        onOpenChange={setShowUploadDoc}
+        presetComplaintId={complaintId}
+        lockTarget
+        lockedLabel={complaint ? `#${formatComplaintNumber(complaint)}` : undefined}
+      />
     </div>
   );
 }

@@ -354,19 +354,22 @@ export const notifications = pgTable("notifications", {
 export const documents = pgTable("documents", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id", { length: 36 }).notNull().references(() => orders.id),
+  complaintId: varchar("complaint_id", { length: 36 }).references(() => complaints.id),
   type: documentTypeEnum("type").notNull(),
   title: text("title").notNull(),
   fileUrl: text("file_url").notNull(),
+  isUpload: boolean("is_upload").default(false).notNull(),
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_documents_order_id").on(table.orderId),
+  index("idx_documents_complaint_id").on(table.complaintId),
   index("idx_documents_restaurant_id").on(table.restaurantId),
   index("idx_documents_supplier_id").on(table.supplierId),
   uniqueIndex("uq_documents_delivery_note_per_order")
     .on(table.orderId)
-    .where(sql`${table.type} = 'delivery_note'`),
+    .where(sql`${table.type} = 'delivery_note' AND ${table.isUpload} = false`),
 ]);
 
 export const deliverySchedules = pgTable("delivery_schedules", {
