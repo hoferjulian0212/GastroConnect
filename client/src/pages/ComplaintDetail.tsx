@@ -6,7 +6,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { getComplaintStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Flame, Check, Image as ImageIcon, MessageSquare, Play, RotateCcw, Ban, Send, Truck, Plus, MoreHorizontal, ThumbsDown, CheckSquare, Percent } from "lucide-react";
+import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, AlertCircle, Flame, Check, Image as ImageIcon, MessageSquare, Play, RotateCcw, Ban, Send, Truck, Plus, MoreHorizontal, ThumbsDown, CheckSquare, Percent, Package, CalendarDays } from "lucide-react";
 import { getComplaintReasonLabel } from "@/lib/complaintReasons";
 import { Badge } from "@/components/ui/badge";
 import { CounterpartyContactCard } from "@/components/CounterpartyContactCard";
@@ -671,85 +671,77 @@ export default function ComplaintDetail() {
 
         {/* Mobile-only dark hero (app header shell is hidden on mobile, so the page provides its own) */}
         <div
-          className="md:hidden dark bg-[#161921] px-3 pt-3 pb-4 rounded-3xl mx-2 overflow-hidden mb-3"
+          className="md:hidden dark bg-[#161921] px-4 pt-4 pb-5 rounded-3xl mx-2 overflow-hidden mb-3"
           style={{ marginTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
           data-testid="complaint-detail-hero"
         >
-          <div className="relative flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={`hidden md:flex h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-500/15" : "bg-white/10"} items-center justify-center shrink-0`}>
-                <div className={isUrgent ? "text-red-400" : "text-white"}>
-                  {isUrgent ? <Flame className="h-6 w-6" /> : getStatusIcon(complaint.status, "h-6 w-6")}
-                </div>
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider" data-testid="text-complaint-id">
-                  {lang === "de" ? "Reklamation" : "Reclamo"} · #{formatComplaintNumber(complaint)}
-                </p>
-                <p className="hidden md:block text-xl md:text-2xl font-semibold text-white truncate" data-testid="text-complaint-title">{complaint.title}</p>
-                <p className="md:hidden text-base font-semibold text-white truncate mt-0.5" data-testid="text-complaint-title-mobile">{complaint.title}</p>
-                <p className="hidden md:block text-xs text-white/60 truncate mt-0.5" data-testid="text-counterparty">{counterpartyName}</p>
-                {/* Status row: placed below the title block, kept clear of the action buttons on the right */}
-                <div className="flex items-center gap-2 flex-wrap mt-2.5">
-                  <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-3 py-1.5 text-xs font-medium border-0`} variant="outline">
-                    <span className="inline-flex items-center gap-1">
-                      {getStatusIcon(complaint.status, "h-3.5 w-3.5")}
-                      {getComplaintStatus(complaint.status, lang)}
-                    </span>
-                  </Badge>
-                  {isUrgent && (
-                    <Badge className="bg-red-500/15 text-red-400 rounded-full px-2.5 py-1 text-[11px] font-medium border-0" variant="outline">
-                      <Flame className="h-3 w-3 mr-1" />
-                      {lang === "de" ? "Dringend" : "Urgente"}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {groupedActions.length > 0 && !confirmAction && (
-                <div className="hidden md:flex items-stretch gap-3 flex-wrap justify-end max-w-[70vw] xl:max-w-[60vw]" data-testid="actions-row-inline">
-                  {groupedActions.map(({ cat, items }, gIdx) => (
-                    <div
-                      key={cat}
-                      className={`flex flex-col gap-1.5 ${gIdx > 0 ? "pl-3 border-l border-white/10" : ""}`}
-                      data-testid={`actions-group-${cat}`}
-                    >
-                      <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-white/40 px-0.5">
-                        {categoryLabels[cat][lang]}
-                      </span>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {items.map((action) => {
-                          const Icon = action.icon;
-                          const isDestructive = action.category === "destructive";
-                          const baseCls = isDestructive
-                            ? "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25"
-                            : getButtonClasses(action.style);
-                          const disabledCls = action.disabled
-                            ? "bg-white/5 text-white/40 border border-white/10 cursor-not-allowed hover:bg-white/5"
-                            : baseCls;
-                          return (
-                            <button
-                              key={action.testId}
-                              className={`h-9 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${action.disabled ? "" : "active:scale-[0.97]"} ${disabledCls}`}
-                              onClick={action.disabled ? undefined : action.action}
-                              disabled={action.disabled}
-                              title={action.disabled ? action.disabledReason : undefined}
-                              data-testid={action.testId}
-                            >
-                              <Icon className="h-3.5 w-3.5 shrink-0" />
-                              <span>{action.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {/* Eyebrow + status */}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider truncate" data-testid="text-complaint-id">
+              {lang === "de" ? "Reklamation" : "Reclamo"} · #{formatComplaintNumber(complaint)}
+            </p>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {isUrgent && (
+                <Badge className="bg-red-500/15 text-red-400 rounded-full px-2 py-1 text-[11px] font-medium border-0" variant="outline">
+                  <Flame className="h-3 w-3 mr-0.5" />
+                  {lang === "de" ? "Dringend" : "Urgente"}
+                </Badge>
               )}
+              <Badge className={`${getStatusBadgeColor(complaint.status)} rounded-full px-2.5 py-1 text-[11px] font-medium border-0`} variant="outline">
+                <span className="inline-flex items-center gap-1">
+                  {getStatusIcon(complaint.status, "h-3.5 w-3.5")}
+                  {getComplaintStatus(complaint.status, lang)}
+                </span>
+              </Badge>
             </div>
           </div>
 
+          {/* Identity */}
+          <div className="flex items-center gap-3 mt-3">
+            <div className={`h-11 w-11 rounded-2xl ${isUrgent ? "bg-red-500/15" : getStatusBg(complaint.status)} flex items-center justify-center shrink-0`}>
+              <div className={isUrgent ? "text-red-400" : getStatusTextColor(complaint.status)}>
+                {isUrgent ? <Flame className="h-5 w-5" /> : getStatusIcon(complaint.status, "h-5 w-5")}
+              </div>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-semibold text-white truncate leading-tight" data-testid="text-complaint-title-mobile">{complaint.title}</p>
+              <p className="text-[12px] text-white/50 truncate mt-0.5" data-testid="text-counterparty-mobile">{counterpartyName}</p>
+            </div>
+          </div>
+
+          {/* Key stat tiles */}
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            <button
+              type="button"
+              onClick={() => setLocation(`/${currentRole}/orders/${complaint.orderId}`)}
+              className="rounded-2xl bg-white/[0.06] px-3 py-2.5 min-w-0 text-left active:scale-[0.97] transition-transform"
+              data-testid="mobile-link-order"
+            >
+              <div className="flex items-center gap-1 text-white/45">
+                <Package className="h-3 w-3 shrink-0" />
+                <span className="text-[9px] uppercase tracking-wide font-medium truncate">{lang === "de" ? "Bestellung" : "Ordine"}</span>
+              </div>
+              <p className="text-sm font-semibold text-white mt-1 truncate tabular-nums underline underline-offset-2">#{formatOrderNumber(complaint.order)}</p>
+            </button>
+            <div className="rounded-2xl bg-white/[0.06] px-3 py-2.5 min-w-0">
+              <div className="flex items-center gap-1 text-white/45">
+                <AlertCircle className="h-3 w-3 shrink-0" />
+                <span className="text-[9px] uppercase tracking-wide font-medium truncate">{lang === "de" ? "Betroffen" : "Interessati"}</span>
+              </div>
+              <p className="text-sm font-semibold text-white mt-1 truncate">
+                {affectedItems.length} <span className="text-[11px] font-normal text-white/45">{affectedItems.length === 1 ? (lang === "de" ? "Prod." : "prod.") : (lang === "de" ? "Prod." : "prod.")}</span>
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white/[0.06] px-3 py-2.5 min-w-0">
+              <div className="flex items-center gap-1 text-white/45">
+                <CalendarDays className="h-3 w-3 shrink-0" />
+                <span className="text-[9px] uppercase tracking-wide font-medium truncate">{lang === "de" ? "Erstellt" : "Creato"}</span>
+              </div>
+              <p className="text-sm font-semibold text-white mt-1 truncate">
+                {format(new Date(complaint.createdAt), "dd.MM.", { locale: dateLocale })}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Back button: shown below the dark hero, outside it, in the same position on mobile and desktop */}
@@ -1071,40 +1063,8 @@ export default function ComplaintDetail() {
           </DialogContent>
         </Dialog>
 
-        {/* Mobile summary card — replaces 4-tile KPI grid on small screens */}
+        {/* Mobile tab switcher (summary data now lives in the dark hero above) */}
         <div className="md:hidden px-4 pt-3">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3" data-testid="mobile-summary-card">
-            <div className="flex items-center gap-3">
-              <div className={`h-12 w-12 rounded-2xl ${isUrgent ? "bg-red-500/15" : getStatusBg(complaint.status)} flex items-center justify-center shrink-0`}>
-                <div className={isUrgent ? "text-red-400" : getStatusTextColor(complaint.status)}>
-                  {isUrgent ? <Flame className="h-6 w-6" /> : getStatusIcon(complaint.status, "h-6 w-6")}
-                </div>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{isSupplier ? (lang === "de" ? "Betrieb" : "Azienda") : (lang === "de" ? "Händler" : "Commerciante")}</p>
-                <p className="text-base font-semibold leading-tight truncate" data-testid="mobile-text-counterparty">{counterpartyName}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/40">
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Bestellung" : "Ordine"}</p>
-                <button
-                  onClick={() => setLocation(`/${currentRole}/orders/${complaint.orderId}`)}
-                  className="text-sm font-semibold mt-0.5 truncate tabular-nums hover:underline text-left w-full"
-                  data-testid="mobile-link-order"
-                >
-                  #{formatOrderNumber(complaint.order)}
-                </button>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Betroffen" : "Interessati"}</p>
-                <p className="text-sm font-semibold mt-0.5">
-                  {affectedItems.length} <span className="text-xs font-normal text-muted-foreground">{affectedItems.length === 1 ? (lang === "de" ? "Produkt" : "prodotto") : (lang === "de" ? "Produkte" : "prodotti")}</span>
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Pill tabs */}
           <div className="mt-4 inline-flex w-full p-1 rounded-full bg-muted" role="tablist" data-testid="mobile-tabs">
             <button
@@ -1128,7 +1088,7 @@ export default function ComplaintDetail() {
 
         {/* KPI strip + body */}
         <div className="px-3 md:px-6 pb-6 pt-3">
-          {/* KPI tiles: desktop only — mobile uses summary card above */}
+          {/* KPI tiles: desktop only — mobile shows these stats in the dark hero above */}
           <div className="hidden md:grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="rounded-xl bg-card border border-border p-4 shadow-sm" data-testid="kpi-status">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{lang === "de" ? "Status" : "Stato"}</p>
