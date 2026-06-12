@@ -26,7 +26,7 @@ export function DarkHero({
       >
         {children}
       </div>
-      <HeroPortal>
+      <HeroPortal desktopOnly>
         <div
           className={`px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 ${className ?? ""} ${desktopClassName ?? ""}`}
           data-testid={testId}
