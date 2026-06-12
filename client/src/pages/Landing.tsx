@@ -669,7 +669,7 @@ export default function Landing() {
             className="flex items-center shrink-0"
             data-testid="link-brand"
           >
-            <Logo size="nav" variant="dark" data-testid="logo-landing-nav" />
+            <Logo size="nav" variant="dark" thick data-testid="logo-landing-nav" />
           </a>
 
           {/* Desktop anchor nav */}
@@ -738,7 +738,7 @@ export default function Landing() {
               <SheetContent side="right" className="w-[280px] p-0">
                 <div className="flex flex-col h-full">
                   <div className="px-5 py-4 border-b border-border flex items-center">
-                    <Logo size="nav" variant="dark" data-testid="logo-landing-mobile" />
+                    <Logo size="nav" variant="dark" thick data-testid="logo-landing-mobile" />
                   </div>
                   <div className="flex-1 px-3 py-4 flex flex-col">
                     {anchors.map((item) => (
@@ -1312,7 +1312,7 @@ export default function Landing() {
           <div className="grid gap-10 md:grid-cols-4">
             <div className="md:col-span-1">
               <div className="flex items-center mb-3">
-                <Logo size="footer" variant="dark" data-testid="logo-landing-footer" />
+                <Logo size="footer" variant="dark" thick data-testid="logo-landing-footer" />
               </div>
               <p
                 className="text-sm text-muted-foreground leading-relaxed max-w-xs"

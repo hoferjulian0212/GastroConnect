@@ -24,6 +24,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useT } from "@/lib/translations";
 import { ShoppingCart, ChevronDown, Moon, Sun, LogOut, Users } from "lucide-react";
 import logoImg from "@assets/logo_no_bg.png";
+import logoImgThick from "@assets/logo_no_bg_thick.png";
 import { roleLabel } from "@shared/permissions";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -692,7 +693,7 @@ function AppLayout() {
       {isLoading ? (
         <div className="flex h-dvh items-center justify-center">
           <div className="flex flex-col items-center gap-4 text-center">
-            <img src={logoImg} alt="GastroConnect Logo" className="h-28 w-28 object-contain dark:invert" />
+            <img src={logoImgThick} alt="GastroConnect Logo" className="h-28 w-28 object-contain dark:invert" />
             <span className="text-2xl font-bold text-foreground tracking-tight">GastroConnect</span>
             <div className="flex items-center gap-2 mt-2">
               <div className="h-1.5 w-1.5 rounded-full bg-foreground animate-bounce [animation-delay:0ms]" />

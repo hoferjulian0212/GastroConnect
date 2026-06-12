@@ -1,4 +1,5 @@
 import logoImg from "@assets/logo_no_bg.png";
+import logoImgThick from "@assets/logo_no_bg_thick.png";
 import { cn } from "@/lib/utils";
 
 /**
@@ -37,6 +38,8 @@ interface LogoProps {
   variant?: "light" | "dark";
   /** Whether to render the "GastroConnect" wordmark next to the icon. */
   showText?: boolean;
+  /** Use the slightly thicker-stroked icon variant. */
+  thick?: boolean;
   /** Extra classes for the wordmark span (e.g. responsive show/hide). */
   textClassName?: string;
   className?: string;
@@ -47,6 +50,7 @@ export default function Logo({
   size = "nav",
   variant = "dark",
   showText = true,
+  thick = false,
   textClassName,
   className,
   "data-testid": testId,
@@ -58,7 +62,7 @@ export default function Logo({
       data-testid={testId}
     >
       <img
-        src={logoImg}
+        src={thick ? logoImgThick : logoImg}
         alt="GastroConnect Logo"
         className={cn(
           "object-contain shrink-0",
