@@ -411,9 +411,9 @@ export default function SupplierComplaints() {
           },
         });
       }}
-      className="space-y-3 md:space-y-4 pb-[var(--mobile-bottom-pad)] md:pb-0"
+      className="space-y-5 md:space-y-4 pb-[var(--mobile-bottom-pad)] md:pb-0"
     >
-      <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 md: space-y-3" data-testid="complaints-hero">
+      <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="complaints-hero">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "complaints")}</h1>
           <p className="text-sm text-white/50 mt-1">{lang === "de" ? "Verwalten Sie eingehende Reklamationen" : "Gestisci i reclami ricevuti"}</p>

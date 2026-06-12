@@ -527,7 +527,7 @@ export default function Complaints() {
  },
  });
  }}
- className="space-y-3 md:space-y-4 pb-[var(--mobile-bottom-pad)] md:pb-0"
+ className="space-y-5 md:space-y-4 pb-[var(--mobile-bottom-pad)] md:pb-0"
  >
  <HeroPortal><div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-3" data-testid="complaints-hero">
  <div className="flex items-start justify-between gap-3">
@@ -556,7 +556,7 @@ export default function Complaints() {
  </div>
  </div></HeroPortal>
 
- <div className="md:hidden flex flex-col gap-2">
+ <div className="md:hidden flex flex-col gap-2.5">
  <Button size="lg" onClick={() => setShowPhotoWizard(true)} className="w-full h-14 gap-2 rounded-2xl text-base" data-testid="button-photo-complaint-mobile">
  <Camera className="h-5 w-5" />
  {lang === "de" ? "Mit Foto melden" : "Segnala con foto"}
