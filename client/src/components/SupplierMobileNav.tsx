@@ -12,9 +12,9 @@ export function SupplierMobileNav() {
 
   const mainNavItems = [
     { title: t("common", "home"), url: "/supplier", icon: Home },
-    { title: t("common", "products"), url: "/supplier/products", icon: Package },
+    { title: t("common", "products"), url: "/supplier/products", icon: Package, matchPaths: ["/supplier/inventory", "/supplier/promotions"] },
     { title: t("common", "messages"), url: "/supplier/inbox", icon: Send, hasBadge: true },
-    { title: t("common", "orders"), url: "/supplier/orders", icon: ClipboardList, hasBadge: true },
+    { title: t("common", "orders"), url: "/supplier/orders", icon: ClipboardList, hasBadge: true, matchPaths: ["/supplier/calendar"] },
   ];
 
   const moreMenuGroups: NavGroup[] = [

@@ -12,6 +12,7 @@ export interface NavItem {
   url: string;
   icon: LucideIcon;
   hasBadge?: boolean;
+  matchPaths?: string[];
 }
 
 export interface NavGroup {
@@ -58,13 +59,16 @@ export function MobileNavBase({
     </span>
   );
 
-  const isItemActive = (url: string) => {
+  const matchesPath = (url: string) => {
     if (url === rootPath) return location === rootPath;
     return location === url || location.startsWith(url + "/") || location.startsWith(url + "?");
   };
 
+  const isItemActive = (item: NavItem) =>
+    matchesPath(item.url) || (item.matchPaths ?? []).some(matchesPath);
+
   const allMoreItems = moreMenuGroups.flatMap((g) => g.items);
-  const isMoreActive = allMoreItems.some((item) => isItemActive(item.url));
+  const isMoreActive = allMoreItems.some((item) => isItemActive(item));
 
   useEffect(() => {
     if (isMoreOpen) setIsMoreOpen(false);
@@ -120,7 +124,7 @@ export function MobileNavBase({
                         {group.title}
                       </h3>
                       {group.items.map((item) => {
-                        const isActive = isItemActive(item.url);
+                        const isActive = isItemActive(item);
                         return (
                           <button
                             key={item.url}
@@ -164,7 +168,7 @@ export function MobileNavBase({
         >
           {mainNavItems.map((item) => {
             const badgeCount = item.hasBadge ? getBadgeCount(item.url) : 0;
-            const active = isItemActive(item.url);
+            const active = isItemActive(item);
             const showLabel = active && !compact;
 
             return (

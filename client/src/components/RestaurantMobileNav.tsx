@@ -12,9 +12,9 @@ export function RestaurantMobileNav() {
 
   const mainNavItems = [
     { title: t("common", "home"), url: "/restaurant", icon: Home },
-    { title: t("common", "products"), url: "/restaurant/catalog", icon: Package },
+    { title: t("common", "products"), url: "/restaurant/catalog", icon: Package, matchPaths: ["/restaurant/price-comparison"] },
     { title: t("common", "messages"), url: "/restaurant/inbox", icon: Send, hasBadge: true },
-    { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag },
+    { title: t("common", "orders"), url: "/restaurant/orders", icon: ShoppingBag, matchPaths: ["/restaurant/calendar", "/restaurant/templates"] },
   ];
 
   const moreMenuGroups: NavGroup[] = [
