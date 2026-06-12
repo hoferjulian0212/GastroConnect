@@ -332,25 +332,35 @@ function CartPillMobile({ lang, setLocation }: { lang: string; setLocation: (p: 
         onClick={() => setOpen(true)}
         data-testid="button-mobile-cart-pill"
         className="md:hidden fixed left-1/2 z-30 inline-flex items-center gap-2 h-12 pl-3 pr-4 rounded-full bg-foreground text-background shadow-[0_8px_24px_rgba(0,0,0,0.25)] origin-bottom"
-        style={{ bottom: "var(--mobile-cta-offset)", pointerEvents: compact ? "none" : "auto" }}
+        style={{ bottom: "var(--mobile-cta-offset)", pointerEvents: "auto" }}
         initial={false}
         animate={{
           x: "-50%",
-          y: compact ? 28 : 0,
-          scale: compact ? 0.8 : 1,
-          opacity: compact ? 0 : 1,
+          y: compact ? 5 : 0,
+          scale: compact ? 0.9 : 1,
         }}
         transition={{ type: "spring", stiffness: 380, damping: 30 }}
         whileTap={{ scale: 0.93 }}
-        aria-hidden={compact}
       >
-        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-background/15">
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-background/15 shrink-0">
           <ShoppingCart className="h-4 w-4" />
         </span>
-        <span className="text-[13px] font-semibold m-num whitespace-nowrap">
-          {count} {lang === "de" ? "im Warenkorb" : "nel carrello"}
+        <span className="text-[13px] font-semibold m-num whitespace-nowrap shrink-0">
+          {count}
         </span>
-        <ChevronRightIcon className="h-4 w-4 opacity-70" />
+        <span
+          className="grid transition-[grid-template-columns] duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] [will-change:grid-template-columns]"
+          style={{ gridTemplateColumns: compact ? "0fr" : "1fr" }}
+        >
+          <span
+            className={`flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-[13px] font-semibold transition-opacity duration-200 ease-out ${
+              compact ? "opacity-0" : "opacity-100 delay-[60ms]"
+            }`}
+          >
+            {lang === "de" ? "im Warenkorb" : "nel carrello"}
+            <ChevronRightIcon className="h-4 w-4 opacity-70" />
+          </span>
+        </span>
       </motion.button>
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerContent className="md:hidden max-h-[85vh]" data-testid="mobile-cart-sheet">
