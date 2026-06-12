@@ -704,7 +704,7 @@ function AppLayout() {
       ) : (
         <MemberSelectGate>
         <div className="flex h-dvh w-full">
-          <div ref={scrollContainerRef} data-app-scroll className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} px-3 md:px-6 pt-3 md:pt-6`}>
+          <div ref={scrollContainerRef} data-app-scroll className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} ${isInChat ? 'px-0 pt-0 md:px-6 md:pt-6' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
             <div className={`dark hidden md:block bg-[#161921] shrink-0 rounded-3xl overflow-hidden mb-3 md:mb-4 ${isInChat || isDetailPage ? 'md:block' : ''}`} data-testid="app-header-shell">
               <header className="flex items-center gap-1.5 md:gap-1.5 lg:gap-4 px-3 py-2.5 md:px-2.5 md:py-2.5 lg:px-6">
                 <div className="flex items-center gap-3 shrink-0 lg:flex-1 lg:min-w-0">
@@ -751,7 +751,7 @@ function AppLayout() {
               </div>
             </main>
           </div>
-          {!isDetailPage && (currentRole === "supplier" ? <SupplierMobileNav /> : <RestaurantMobileNav />)}
+          {!isDetailPage && !isInChat && (currentRole === "supplier" ? <SupplierMobileNav /> : <RestaurantMobileNav />)}
           <GlobalSearch />
           <AiAssistant />
           <KeyboardShortcuts />
