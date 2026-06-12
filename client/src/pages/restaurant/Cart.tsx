@@ -1,4 +1,5 @@
 import { MobilePageHeader } from "@/components/mobile";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1057,9 +1058,9 @@ export default function RestaurantCart() {
         setMobileValidationError(null);
         createOrderMutation.mutate();
       };
-      return (
+      return createPortal((
         <div
-          className="md:hidden fixed inset-0 z-[60] bg-background flex flex-col animate-in slide-in-from-bottom duration-300"
+          className="md:hidden fixed inset-0 z-[70] bg-background flex flex-col animate-in slide-in-from-bottom duration-300"
           data-testid="mobile-cart-summary"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
@@ -1172,7 +1173,7 @@ export default function RestaurantCart() {
             </Button>
           </div>
         </div>
-      );
+      ), document.body);
     })()}
     </div>
   );
