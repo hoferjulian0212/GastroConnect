@@ -41,10 +41,12 @@ export function MobileNavBase({
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const compact = useScrollCompact();
 
-  const labelClass = `text-[10px] leading-tight text-center w-full overflow-hidden transition-all duration-300 ease-out ${
-    compact ? "max-h-0 opacity-0" : "max-h-4 opacity-100"
-  }`;
-  const itemPadClass = `transition-all duration-300 ease-out ${compact ? "gap-0 py-2" : "gap-2 py-2"}`;
+  const itemBaseClass =
+    "relative flex items-center justify-center h-12 rounded-full select-none transition-all duration-300 ease-out";
+  const labelExpandClass = (show: boolean) =>
+    `overflow-hidden whitespace-nowrap text-[13px] font-semibold transition-all duration-300 ease-out ${
+      show ? "max-w-[140px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0"
+    }`;
 
   const isItemActive = (url: string) => {
     if (url === rootPath) return location === rootPath;
@@ -147,34 +149,32 @@ export function MobileNavBase({
         data-testid={`${testIdPrefix}-mobile-nav`}
       >
         <div
-          className="flex items-stretch relative"
+          className="flex items-center gap-1 p-1 relative"
           style={{ borderRadius: "inherit" }}
         >
           {mainNavItems.map((item) => {
             const badgeCount = item.hasBadge ? getBadgeCount(item.url) : 0;
             const active = isItemActive(item.url);
+            const showLabel = active && !compact;
 
             return (
               <Link
                 key={item.url}
                 href={item.url}
-                className={`flex-1 flex flex-col items-center justify-center relative select-none ${itemPadClass} ${
-                  active ? "nav-item-active" : "nav-item-inactive"
+                aria-label={item.title}
+                className={`${itemBaseClass} ${
+                  active
+                    ? "bg-foreground/[0.08] dark:bg-white/[0.14] nav-item-active"
+                    : "nav-item-inactive"
                 }`}
+                style={{ flexGrow: showLabel ? 2.6 : 1, flexBasis: 0, minWidth: 0 }}
                 data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
               >
-                <span className="relative z-10 inline-flex items-center justify-center">
-                  {active && (
-                    <motion.span
-                      layoutId={`${testIdPrefix}-nav-pill`}
-                      className="absolute -inset-x-3.5 -inset-y-1.5 rounded-full bg-foreground/[0.08] dark:bg-white/[0.14]"
-                      transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                    />
-                  )}
-                  <motion.div
-                    className="relative z-10 inline-flex items-center justify-center"
-                    whileTap={{ scale: 0.92 }}
-                    transition={{ duration: 0.1 }}
+                <span className="inline-flex items-center justify-center min-w-0 px-2">
+                  <motion.span
+                    className="relative inline-flex items-center justify-center shrink-0"
+                    whileTap={{ scale: 0.88 }}
+                    transition={{ duration: 0.12 }}
                   >
                     <item.icon className={`h-6 w-6 ${active ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
                     {badgeCount > 0 && (
@@ -182,43 +182,42 @@ export function MobileNavBase({
                         {badgeCount > 9 ? "9+" : badgeCount}
                       </span>
                     )}
-                  </motion.div>
-                </span>
-                <span className={`relative z-10 ${labelClass} ${active ? "font-semibold" : "font-medium"}`}>
-                  {item.title}
+                  </motion.span>
+                  <span className={labelExpandClass(showLabel)}>{item.title}</span>
                 </span>
               </Link>
             );
           })}
 
-          <button
-            type="button"
-            onClick={() => setIsMoreOpen((v) => !v)}
-            className={`flex-1 flex flex-col items-center justify-center relative select-none ${itemPadClass} ${
-              isMoreActive || isMoreOpen ? "nav-item-active" : "nav-item-inactive"
-            }`}
-            data-testid={`${testIdPrefix}-mobile-nav-more`}
-          >
-            <span className="relative z-10 inline-flex items-center justify-center">
-              {isMoreActive && (
-                <motion.span
-                  layoutId={`${testIdPrefix}-nav-pill`}
-                  className="absolute -inset-x-3.5 -inset-y-1.5 rounded-full bg-foreground/[0.08] dark:bg-white/[0.14]"
-                  transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                />
-              )}
-              <motion.div
-                className="relative z-10 inline-flex items-center justify-center"
-                whileTap={{ scale: 0.92 }}
-                transition={{ duration: 0.1 }}
+          {(() => {
+            const moreActive = isMoreActive || isMoreOpen;
+            const showLabel = moreActive && !compact;
+            return (
+              <button
+                type="button"
+                onClick={() => setIsMoreOpen((v) => !v)}
+                aria-label={t("common", "more")}
+                className={`${itemBaseClass} ${
+                  moreActive
+                    ? "bg-foreground/[0.08] dark:bg-white/[0.14] nav-item-active"
+                    : "nav-item-inactive"
+                }`}
+                style={{ flexGrow: showLabel ? 2.6 : 1, flexBasis: 0, minWidth: 0 }}
+                data-testid={`${testIdPrefix}-mobile-nav-more`}
               >
-                <MoreHorizontal className={`h-6 w-6 ${(isMoreActive || isMoreOpen) ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
-              </motion.div>
-            </span>
-            <span className={`relative z-10 ${labelClass} ${(isMoreActive || isMoreOpen) ? "font-semibold" : "font-medium"}`}>
-              {t("common", "more")}
-            </span>
-          </button>
+                <span className="inline-flex items-center justify-center min-w-0 px-2">
+                  <motion.span
+                    className="relative inline-flex items-center justify-center shrink-0"
+                    whileTap={{ scale: 0.88 }}
+                    transition={{ duration: 0.12 }}
+                  >
+                    <MoreHorizontal className={`h-6 w-6 ${moreActive ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
+                  </motion.span>
+                  <span className={labelExpandClass(showLabel)}>{t("common", "more")}</span>
+                </span>
+              </button>
+            );
+          })()}
         </div>
       </nav>
     </>

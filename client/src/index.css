@@ -39,7 +39,7 @@
    --mobile-cta-offset is the bottom inset for sticky/fixed CTA bars so they
    float just above the tab bar with a small gap. */
 :root {
-  --mobile-cta-offset: calc(env(safe-area-inset-bottom, 0px) + 88px);
+  --mobile-cta-offset: calc(env(safe-area-inset-bottom, 0px) + 72px);
   --mobile-bottom-pad: calc(var(--mobile-cta-offset) + 16px);
   /* Detail-page action bars (OrderDetail / ComplaintDetail) now use an in-flow
      `sticky bottom-0` element as the last child of the page scroll content, so no
