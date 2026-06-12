@@ -1424,15 +1424,15 @@ export default function SupplierProducts() {
  </div></HeroPortal>
 
  <div className="md:hidden grid grid-cols-3 gap-2">
- <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsImportOpen(true)} data-testid="button-import-price-list-mobile">
+ <Button variant="outline" className="h-auto flex-col gap-1.5 py-2.5 text-xs font-medium" onClick={() => setIsImportOpen(true)} data-testid="button-import-price-list-mobile">
  <Upload className="h-4 w-4" />
  {lang === "de" ? "Preisliste" : "Listino"}
  </Button>
- <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsBulkUpdateOpen(true)} data-testid="button-bulk-update-mobile">
+ <Button variant="outline" className="h-auto flex-col gap-1.5 py-2.5 text-xs font-medium" onClick={() => setIsBulkUpdateOpen(true)} data-testid="button-bulk-update-mobile">
  <Upload className="h-4 w-4" />
  {lang === "de" ? "Massen-Update" : "In massa"}
  </Button>
- <Button className="gap-2" size="sm" onClick={openCreateDialog} disabled={!canManageProducts} data-testid="button-add-product-mobile">
+ <Button variant="outline" className="h-auto flex-col gap-1.5 py-2.5 text-xs font-medium" onClick={openCreateDialog} disabled={!canManageProducts} data-testid="button-add-product-mobile">
  <Plus className="h-4 w-4" />
  {lang === "de" ? "Produkt" : "Prodotto"}
  </Button>
