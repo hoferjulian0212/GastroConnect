@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef, memo } from "react";
+import { isBuiltinViewId } from "@/lib/dashboard-builtin-views";
 import { GripVertical, Maximize2, Columns2, Settings2, Check, LayoutGrid, Layers, ChevronDown, Plus, Save, Pencil, Trash2, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -114,6 +115,7 @@ interface DraggableCardGridProps {
   managerDescription?: string;
   managerButtonLabel?: string;
   viewLabels?: Partial<ViewLabels>;
+  builtinViews?: DashboardTemplate[];
 }
 
 interface LayoutItem {
@@ -180,7 +182,10 @@ function sanitizeTemplates(value: unknown): TemplatesState {
   }
   const validIds = new Set(templates.map(t => t.id));
   const rawActive = (value as any).activeId;
-  const activeId = typeof rawActive === "string" && validIds.has(rawActive) ? rawActive : null;
+  const activeId =
+    typeof rawActive === "string" && (validIds.has(rawActive) || isBuiltinViewId(rawActive))
+      ? rawActive
+      : null;
   return { templates, activeId };
 }
 
@@ -471,7 +476,7 @@ const measuringConfig = {
   },
 };
 
-export default function DraggableCardGrid({ userId, role, sections, managerTitle, managerDescription, managerButtonLabel, viewLabels }: DraggableCardGridProps) {
+export default function DraggableCardGrid({ userId, role, sections, managerTitle, managerDescription, managerButtonLabel, viewLabels, builtinViews = [] }: DraggableCardGridProps) {
   const L = useMemo<ViewLabels>(() => ({ ...DEFAULT_VIEW_LABELS, ...(viewLabels || {}) }), [viewLabels]);
   const [enabledIds, setEnabledIds] = useState<string[]>(() => loadEnabledIds(userId, role, sections));
   const enabledSet = useMemo(() => new Set(enabledIds), [enabledIds]);
@@ -522,6 +527,13 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
   const activeTemplate = useMemo(
     () => templates.find(t => t.id === activeTemplateId) || null,
     [templates, activeTemplateId]
+  );
+
+  // Built-in views are code-defined, non-editable, non-deletable. Resolve the
+  // active view's display name from user templates OR built-in views.
+  const activeView = useMemo(
+    () => activeTemplate || builtinViews.find(v => v.id === activeTemplateId) || null,
+    [activeTemplate, builtinViews, activeTemplateId]
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -832,6 +844,18 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
     saveTemplatesState(templatesRef.current, tpl.id);
   }, [sections, userId, role, persistWidgetsRemote, saveLayout, saveTemplatesState]);
 
+  // Reset to the standard dashboard: default-enabled widgets + default layout, no active view.
+  const applyDefaultView = useCallback(() => {
+    const widgets = defaultEnabledIds(sections);
+    setEnabledIds(widgets);
+    enabledIdsRef.current = widgets;
+    try { localStorage.setItem(getWidgetsStorageKey(userId, role), JSON.stringify(widgets)); } catch {}
+    persistWidgetsRemote(widgets);
+    const effective = sections.filter(s => !s.optional || widgets.includes(s.id));
+    saveLayout(defaultLayout(effective));
+    saveTemplatesState(templatesRef.current, null);
+  }, [sections, userId, role, persistWidgetsRemote, saveLayout, saveTemplatesState]);
+
   const handleSaveNewTemplate = useCallback((name: string) => {
     const id = genTemplateId();
     const tpl: DashboardTemplate = {
@@ -970,25 +994,45 @@ export default function DraggableCardGrid({ userId, role, sections, managerTitle
                 aria-label={L.views}
               >
                 <Layers className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{activeTemplate ? activeTemplate.name : L.defaultView}</span>
+                <span className="truncate">{activeView ? activeView.name : L.defaultView}</span>
                 <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
               <DropdownMenuLabel>{L.views}</DropdownMenuLabel>
-              {templates.length === 0 ? (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground" data-testid="text-no-views">{L.noViews}</div>
-              ) : (
-                templates.map(tpl => (
-                  <DropdownMenuItem
-                    key={tpl.id}
-                    onClick={() => applyTemplate(tpl)}
-                    data-testid={`view-item-${tpl.id}`}
-                  >
-                    <Check className={`mr-2 h-3.5 w-3.5 shrink-0 ${tpl.id === activeTemplateId ? "opacity-100" : "opacity-0"}`} />
-                    <span className="truncate">{tpl.name}</span>
-                  </DropdownMenuItem>
-                ))
+              <DropdownMenuItem onClick={applyDefaultView} data-testid="view-item-default">
+                <Check className={`mr-2 h-3.5 w-3.5 shrink-0 ${activeTemplateId === null ? "opacity-100" : "opacity-0"}`} />
+                <span className="truncate">{L.defaultView}</span>
+              </DropdownMenuItem>
+              {builtinViews.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  {builtinViews.map(v => (
+                    <DropdownMenuItem
+                      key={v.id}
+                      onClick={() => applyTemplate(v)}
+                      data-testid={`view-item-${v.id}`}
+                    >
+                      <Check className={`mr-2 h-3.5 w-3.5 shrink-0 ${v.id === activeTemplateId ? "opacity-100" : "opacity-0"}`} />
+                      <span className="truncate">{v.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              {templates.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  {templates.map(tpl => (
+                    <DropdownMenuItem
+                      key={tpl.id}
+                      onClick={() => applyTemplate(tpl)}
+                      data-testid={`view-item-${tpl.id}`}
+                    >
+                      <Check className={`mr-2 h-3.5 w-3.5 shrink-0 ${tpl.id === activeTemplateId ? "opacity-100" : "opacity-0"}`} />
+                      <span className="truncate">{tpl.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </>
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={openCreateDialog} data-testid="button-save-view">

@@ -166,6 +166,20 @@ export interface IStorage {
     previous: { totalRevenue: number; totalOrders: number; avgOrderValue: number; activeCustomers: number };
   }>;
   getSupplierInsights(supplierId: string): Promise<Array<{ type: string; title: string; count: number; link: string }>>;
+  getRestaurantDetailedStats(restaurantId: string): Promise<{
+    monthlyRevenue: { month: string; revenue: number }[];
+    topProducts: { productId: string; name: string; quantity: number; revenue: number }[];
+    topSuppliers: { supplierId: string; name: string; orders: number; revenue: number }[];
+    promoSavings: number;
+    ordersByStatus: { status: string; count: number }[];
+  }>;
+  getInactiveRestaurants(supplierId: string): Promise<Array<{
+    restaurantId: string;
+    name: string;
+    profileImageUrl: string | null;
+    lastOrderAt: string | null;
+    daysSince: number;
+  }>>;
   getPendingOrderCount(supplierId: string): Promise<number>;
   getRestaurantsForSupplier(supplierId: string): Promise<User[]>;
 
@@ -1629,6 +1643,149 @@ export class DatabaseStorage implements IStorage {
     }
 
     return insights.slice(0, 3);
+  }
+
+  async getRestaurantDetailedStats(restaurantId: string): Promise<{
+    monthlyRevenue: { month: string; revenue: number }[];
+    topProducts: { productId: string; name: string; quantity: number; revenue: number }[];
+    topSuppliers: { supplierId: string; name: string; orders: number; revenue: number }[];
+    promoSavings: number;
+    ordersByStatus: { status: string; count: number }[];
+  }> {
+    const now = new Date();
+    const currentFrom = new Date(now.getFullYear(), now.getMonth() - 5, 1, 0, 0, 0, 0);
+    const VALID = sql`('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')`;
+
+    // Monthly spending (6 months, zero-filled)
+    const seriesResult = await db.execute(sql`
+      SELECT TO_CHAR(created_at, 'YYYY-MM') as month,
+        COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as revenue
+      FROM orders
+      WHERE restaurant_id = ${restaurantId}
+        AND status IN ${VALID}
+        AND created_at >= ${currentFrom}
+      GROUP BY 1 ORDER BY 1 ASC
+    `);
+    const seriesMap = new Map<string, number>();
+    for (const r of (seriesResult.rows || [])) {
+      seriesMap.set(String((r as any).month), Number((r as any).revenue) || 0);
+    }
+    const monthlyRevenue: { month: string; revenue: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthlyRevenue.push({ month: key, revenue: seriesMap.get(key) || 0 });
+    }
+
+    // Most-ordered products (6 months)
+    const topProductsResult = await db.execute(sql`
+      SELECT oi.product_id, MAX(oi.product_name) as name,
+        SUM(oi.quantity) as quantity,
+        COALESCE(SUM(CAST(oi.total_price AS DECIMAL)), 0) as revenue
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      WHERE o.restaurant_id = ${restaurantId}
+        AND o.status IN ${VALID}
+        AND o.created_at >= ${currentFrom}
+      GROUP BY oi.product_id
+      ORDER BY quantity DESC
+      LIMIT 5
+    `);
+
+    // Top suppliers by spending (6 months)
+    const topSuppliersResult = await db.execute(sql`
+      SELECT o.supplier_id,
+        MAX(COALESCE(u.company_name, u.name)) as name,
+        COUNT(*) as orders,
+        COALESCE(SUM(CAST(o.total_amount AS DECIMAL)), 0) as revenue
+      FROM orders o
+      LEFT JOIN users u ON u.id = o.supplier_id
+      WHERE o.restaurant_id = ${restaurantId}
+        AND o.status IN ${VALID}
+        AND o.created_at >= ${currentFrom}
+      GROUP BY o.supplier_id
+      ORDER BY revenue DESC
+      LIMIT 5
+    `);
+
+    // Promotion savings: paid unit_price below the product's base price (6 months)
+    const savingsResult = await db.execute(sql`
+      SELECT COALESCE(SUM((CAST(p.price AS DECIMAL) - CAST(oi.unit_price AS DECIMAL)) * oi.quantity), 0) as savings
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      JOIN products p ON p.id = oi.product_id
+      WHERE o.restaurant_id = ${restaurantId}
+        AND o.status IN ${VALID}
+        AND o.created_at >= ${currentFrom}
+        AND CAST(oi.unit_price AS DECIMAL) < CAST(p.price AS DECIMAL)
+    `);
+
+    // Orders by status (6 months)
+    const ordersByStatusResult = await db.execute(sql`
+      SELECT status, COUNT(*) as count
+      FROM orders
+      WHERE restaurant_id = ${restaurantId}
+        AND created_at >= ${currentFrom}
+      GROUP BY status
+    `);
+
+    return {
+      monthlyRevenue,
+      topProducts: (topProductsResult.rows || []).map((r: any) => ({
+        productId: r.product_id,
+        name: r.name || "—",
+        quantity: Number(r.quantity) || 0,
+        revenue: Number(r.revenue) || 0,
+      })),
+      topSuppliers: (topSuppliersResult.rows || []).map((r: any) => ({
+        supplierId: r.supplier_id,
+        name: r.name || "—",
+        orders: Number(r.orders) || 0,
+        revenue: Number(r.revenue) || 0,
+      })),
+      promoSavings: Math.round((Number(savingsResult.rows?.[0]?.savings) || 0) * 100) / 100,
+      ordersByStatus: (ordersByStatusResult.rows || []).map((r: any) => ({
+        status: r.status,
+        count: Number(r.count) || 0,
+      })),
+    };
+  }
+
+  async getInactiveRestaurants(supplierId: string): Promise<Array<{
+    restaurantId: string;
+    name: string;
+    profileImageUrl: string | null;
+    lastOrderAt: string | null;
+    daysSince: number;
+  }>> {
+    const result = await db.execute(sql`
+      SELECT sub.restaurant_id,
+        COALESCE(u.company_name, u.name) as name,
+        u.profile_image_url,
+        sub.last_order,
+        EXTRACT(DAY FROM (NOW() - sub.last_order))::int as days_since
+      FROM (
+        SELECT o.restaurant_id,
+          MAX(o.created_at) AS last_order,
+          COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) AS prior_count
+        FROM orders o
+        WHERE o.supplier_id = ${supplierId}
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        GROUP BY o.restaurant_id
+        HAVING MAX(o.created_at) < (NOW() - INTERVAL '30 days')
+          AND COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) >= 2
+      ) sub
+      LEFT JOIN users u ON u.id = sub.restaurant_id
+      ORDER BY sub.last_order ASC
+      LIMIT 10
+    `);
+    return (result.rows || []).map((r: any) => ({
+      restaurantId: r.restaurant_id,
+      name: r.name || "—",
+      profileImageUrl: r.profile_image_url ?? null,
+      lastOrderAt: r.last_order ? new Date(r.last_order).toISOString() : null,
+      daysSince: Number(r.days_since) || 0,
+    }));
   }
 
   async getPendingOrderCount(supplierId: string): Promise<number> {

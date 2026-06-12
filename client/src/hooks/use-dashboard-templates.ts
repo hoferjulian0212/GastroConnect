@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { isBuiltinViewId } from "@/lib/dashboard-builtin-views";
 
 export type CardSize = "full" | "half";
 
@@ -61,7 +62,10 @@ export function sanitizeTemplates(value: unknown): TemplatesState {
   }
   const validIds = new Set(templates.map(t => t.id));
   const rawActive = (value as any).activeId;
-  const activeId = typeof rawActive === "string" && validIds.has(rawActive) ? rawActive : null;
+  const activeId =
+    typeof rawActive === "string" && (validIds.has(rawActive) || isBuiltinViewId(rawActive))
+      ? rawActive
+      : null;
   return { templates, activeId };
 }
 
@@ -191,6 +195,17 @@ export function useDashboardTemplates(userId: string, role: string) {
     saveTemplatesState(templatesRef.current, tpl.id);
   }, [persistLayoutWidgets, saveTemplatesState]);
 
+  // Return to the standard dashboard (clear active view). When the default widget set is
+  // provided, persist it (with an empty layout, which the desktop grid reconciles back into
+  // the default order for the enabled sections) so a device that previously applied a view
+  // is reset to the true standard dashboard on its next load (server wins).
+  const applyDefaultView = useCallback((defaultWidgets?: string[]) => {
+    if (defaultWidgets) {
+      persistLayoutWidgets([], defaultWidgets);
+    }
+    saveTemplatesState(templatesRef.current, null);
+  }, [persistLayoutWidgets, saveTemplatesState]);
+
   const saveNewTemplate = useCallback((name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -237,6 +252,7 @@ export function useDashboardTemplates(userId: string, role: string) {
     activeTemplateId,
     activeTemplate,
     applyTemplate,
+    applyDefaultView,
     saveNewTemplate,
     updateActiveTemplate,
     renameActiveTemplate,

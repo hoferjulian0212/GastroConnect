@@ -4257,6 +4257,34 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/supplier/inactive-restaurants", async (req, res) => {
+    try {
+      const supplierId = (req.query.supplierId || req.query.userId) as string;
+      if (!supplierId) return res.json([]);
+      const result = await storage.getInactiveRestaurants(supplierId);
+      res.json(result);
+    } catch (error) {
+      console.error("inactive restaurants error", error);
+      res.status(500).json({ error: "Failed to fetch inactive restaurants" });
+    }
+  });
+
+  app.get("/api/restaurant/detailed-stats", async (req, res) => {
+    try {
+      const restaurantId = (req.query.restaurantId || req.query.userId) as string;
+      if (!restaurantId) {
+        return res.json({
+          monthlyRevenue: [], topProducts: [], topSuppliers: [], promoSavings: 0, ordersByStatus: [],
+        });
+      }
+      const stats = await storage.getRestaurantDetailedStats(restaurantId);
+      res.json(stats);
+    } catch (error) {
+      console.error("restaurant detailed-stats error", error);
+      res.status(500).json({ error: "Failed to fetch detailed stats" });
+    }
+  });
+
   app.get("/api/supplier/settings/revenue-target", async (req, res) => {
     try {
       const supplierId = (req.query.supplierId || req.query.userId) as string;

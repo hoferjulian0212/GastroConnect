@@ -5,6 +5,18 @@ import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Trash2, Search, Save, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame, Star, Building2, PencilLine, AlertCircle } from "lucide-react";
 import DraggableCardGrid from "@/components/DraggableCardGrid";
+import { getBuiltinViews } from "@/lib/dashboard-builtin-views";
+import {
+  AusgabenTrendWidget,
+  MeistBestelltWidget,
+  TopLieferantenWidget,
+  AktionsErsparnisWidget,
+  OffeneUnterhaltungenWidget,
+  ReklamationenStatusWidget,
+  LetzteReklamationenWidget,
+  BestellungenStatusWidget,
+  LetzteBestellungenWidget,
+} from "@/components/RestaurantDashboardWidgets";
 import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
 import { formatOrderNumber, type OrderWithDetails, type ConversationWithUser, type ProductWithSupplierAndPromotion, type OrderTemplateWithItems, type HotelPmsConnection, type PmsProvider } from "@shared/schema";
@@ -957,6 +969,7 @@ export default function RestaurantHome() {
       <DraggableCardGrid
         userId={currentUser?.id || ""}
         role="restaurant"
+        builtinViews={getBuiltinViews("restaurant", lang)}
         viewLabels={{
           views: t("dashboardViews", "views"),
           noViews: t("dashboardViews", "noViews"),
@@ -978,6 +991,42 @@ export default function RestaurantHome() {
           refreshAll: t("dashboardViews", "refreshAll"),
         }}
         sections={[
+          { id: "w-ausgaben-trend", optional: true, defaultEnabled: false, defaultSize: "full" as const, queryKeys: [[`/api/restaurant/detailed-stats?restaurantId=${currentUser?.id}`]],
+            title: t("restaurantHome", "widgetSpendingTrend"), description: t("restaurantHome", "widgetSpendingTrendDesc"),
+            content: <AusgabenTrendWidget restaurantId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-meist-bestellt", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [[`/api/restaurant/detailed-stats?restaurantId=${currentUser?.id}`]],
+            title: t("restaurantHome", "widgetMostOrdered"), description: t("restaurantHome", "widgetMostOrderedDesc"),
+            content: <MeistBestelltWidget restaurantId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-top-lieferanten", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [[`/api/restaurant/detailed-stats?restaurantId=${currentUser?.id}`]],
+            title: t("restaurantHome", "widgetTopSuppliers"), description: t("restaurantHome", "widgetTopSuppliersDesc"),
+            content: <TopLieferantenWidget restaurantId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-aktions-ersparnis", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [[`/api/restaurant/detailed-stats?restaurantId=${currentUser?.id}`]],
+            title: t("restaurantHome", "widgetPromoSavings"), description: t("restaurantHome", "widgetPromoSavingsDesc"),
+            content: <AktionsErsparnisWidget restaurantId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-offene-unterhaltungen", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [[`/api/conversations?userId=${currentUser?.id}`]],
+            title: t("restaurantHome", "widgetOpenConversations"), description: t("restaurantHome", "widgetOpenConversationsDesc"),
+            content: <OffeneUnterhaltungenWidget restaurantId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-reklamationen-status", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [[`/api/complaints?restaurantId=${currentUser?.id}`]],
+            title: t("restaurantHome", "widgetComplaintsStatus"), description: t("restaurantHome", "widgetComplaintsStatusDesc"),
+            content: <ReklamationenStatusWidget restaurantId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-letzte-reklamationen", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [[`/api/complaints?restaurantId=${currentUser?.id}`]],
+            title: t("restaurantHome", "widgetRecentComplaints"), description: t("restaurantHome", "widgetRecentComplaintsDesc"),
+            content: <LetzteReklamationenWidget restaurantId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-bestellungen-status", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [[`/api/restaurant/detailed-stats?restaurantId=${currentUser?.id}`]],
+            title: t("restaurantHome", "widgetOrdersStatus"), description: t("restaurantHome", "widgetOrdersStatusDesc"),
+            content: <BestellungenStatusWidget restaurantId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-letzte-bestellungen", optional: true, defaultEnabled: false, defaultSize: "full" as const, queryKeys: [[`/api/orders?restaurantId=${currentUser?.id}`]],
+            title: t("restaurantHome", "widgetRecentOrders"), description: t("restaurantHome", "widgetRecentOrdersDesc"),
+            content: <LetzteBestellungenWidget restaurantId={currentUser?.id || ""} lang={lang} />,
+          },
           { id: "upcoming-deliveries", defaultSize: "full" as const, queryKeys: [['/api/restaurant/upcoming-deliveries', currentUser?.id], [`/api/orders?restaurantId=${currentUser?.id}`]], content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">

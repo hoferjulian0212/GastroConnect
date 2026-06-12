@@ -29,7 +29,8 @@ import SupplierHomeMobile from "./HomeMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductImage } from "@/components/ProductImage";
 import SupplierRatingsList from "@/components/SupplierRatingsList";
-import { OffeneReklamationenWidget, HeuteZuLiefernWidget, TopKunden30dWidget, PromoPerformanceWidget, AntwortzeitWidget } from "@/components/SupplierDashboardWidgets";
+import { OffeneReklamationenWidget, HeuteZuLiefernWidget, TopKunden30dWidget, PromoPerformanceWidget, AntwortzeitWidget, SteigendeNachfrageWidget, InaktiveRestaurantsWidget, UmsatzTrendWidget, SBestellungenStatusWidget } from "@/components/SupplierDashboardWidgets";
+import { getBuiltinViews } from "@/lib/dashboard-builtin-views";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
@@ -558,6 +559,7 @@ export default function SupplierHome() {
       <DraggableCardGrid
         userId={currentUser?.id || ""}
         role="supplier"
+        builtinViews={getBuiltinViews("supplier", lang)}
         managerTitle={t("supplierHome", "manageWidgets")}
         managerDescription={t("supplierHome", "manageWidgetsDesc")}
         managerButtonLabel={t("supplierHome", "manageWidgets")}
@@ -601,6 +603,22 @@ export default function SupplierHome() {
           { id: "w-antwortzeit", optional: true, defaultEnabled: true, defaultSize: "half" as const, queryKeys: [['/api/supplier/response-time', currentUser?.id]],
             title: t("supplierHome", "widgetResponseTime"), description: t("supplierHome", "widgetResponseTimeDesc"),
             content: <AntwortzeitWidget supplierId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-steigende-nachfrage", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [[`/api/supplier/detailed-stats?supplierId=${currentUser?.id}&period=6m`]],
+            title: t("supplierHome", "widgetRisingDemand"), description: t("supplierHome", "widgetRisingDemandDesc"),
+            content: <SteigendeNachfrageWidget supplierId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-inaktive-restaurants", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [[`/api/supplier/inactive-restaurants?supplierId=${currentUser?.id}`]],
+            title: t("supplierHome", "widgetInactiveRestaurants"), description: t("supplierHome", "widgetInactiveRestaurantsDesc"),
+            content: <InaktiveRestaurantsWidget supplierId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-umsatz-trend", optional: true, defaultEnabled: false, defaultSize: "full" as const, queryKeys: [[`/api/supplier/detailed-stats?supplierId=${currentUser?.id}&period=6m`]],
+            title: t("supplierHome", "widgetRevenueTrend"), description: t("supplierHome", "widgetRevenueTrendDesc"),
+            content: <UmsatzTrendWidget supplierId={currentUser?.id || ""} lang={lang} />,
+          },
+          { id: "w-s-bestellungen-status", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [[`/api/supplier/detailed-stats?supplierId=${currentUser?.id}&period=6m`]],
+            title: t("supplierHome", "widgetOrdersStatus"), description: t("supplierHome", "widgetOrdersStatusDesc"),
+            content: <SBestellungenStatusWidget supplierId={currentUser?.id || ""} lang={lang} />,
           },
           { id: "upcoming-deliveries", defaultSize: "full" as const, queryKeys: [['/api/supplier/upcoming-deliveries', currentUser?.id]], content: (
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">

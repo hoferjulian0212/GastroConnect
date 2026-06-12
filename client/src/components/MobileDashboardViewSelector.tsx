@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useDashboardTemplates } from "@/hooks/use-dashboard-templates";
+import { getBuiltinViews, getDefaultViewWidgets } from "@/lib/dashboard-builtin-views";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 
@@ -46,11 +47,15 @@ export default function MobileDashboardViewSelector({ userId, role }: Props) {
     activeTemplateId,
     activeTemplate,
     applyTemplate,
+    applyDefaultView,
     saveNewTemplate,
     updateActiveTemplate,
     renameActiveTemplate,
     deleteActiveTemplate,
   } = useDashboardTemplates(userId, role);
+
+  const builtinViews = getBuiltinViews(role, lang);
+  const activeView = activeTemplate || builtinViews.find(v => v.id === activeTemplateId) || null;
 
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
   const [nameDialogMode, setNameDialogMode] = useState<"create" | "rename">("create");
@@ -89,27 +94,45 @@ export default function MobileDashboardViewSelector({ userId, role }: Props) {
             aria-label={t("dashboardViews", "views")}
           >
             <Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
-            <span className="truncate">{activeTemplate ? activeTemplate.name : t("dashboardViews", "defaultView")}</span>
+            <span className="truncate">{activeView ? activeView.name : t("dashboardViews", "defaultView")}</span>
             <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
           <DropdownMenuLabel>{t("dashboardViews", "views")}</DropdownMenuLabel>
-          {templates.length === 0 ? (
-            <div className="px-2 py-1.5 text-xs text-muted-foreground" data-testid="text-no-views-mobile">
-              {t("dashboardViews", "noViews")}
-            </div>
-          ) : (
-            templates.map(tpl => (
-              <DropdownMenuItem
-                key={tpl.id}
-                onClick={() => applyTemplate(tpl)}
-                data-testid={`view-item-mobile-${tpl.id}`}
-              >
-                <Check className={`mr-2 h-3.5 w-3.5 shrink-0 ${tpl.id === activeTemplateId ? "opacity-100" : "opacity-0"}`} />
-                <span className="truncate">{tpl.name}</span>
-              </DropdownMenuItem>
-            ))
+          <DropdownMenuItem onClick={() => applyDefaultView(getDefaultViewWidgets(role))} data-testid="view-item-mobile-default">
+            <Check className={`mr-2 h-3.5 w-3.5 shrink-0 ${activeTemplateId === null ? "opacity-100" : "opacity-0"}`} />
+            <span className="truncate">{t("dashboardViews", "defaultView")}</span>
+          </DropdownMenuItem>
+          {builtinViews.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              {builtinViews.map(v => (
+                <DropdownMenuItem
+                  key={v.id}
+                  onClick={() => applyTemplate(v)}
+                  data-testid={`view-item-mobile-${v.id}`}
+                >
+                  <Check className={`mr-2 h-3.5 w-3.5 shrink-0 ${v.id === activeTemplateId ? "opacity-100" : "opacity-0"}`} />
+                  <span className="truncate">{v.name}</span>
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
+          {templates.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              {templates.map(tpl => (
+                <DropdownMenuItem
+                  key={tpl.id}
+                  onClick={() => applyTemplate(tpl)}
+                  data-testid={`view-item-mobile-${tpl.id}`}
+                >
+                  <Check className={`mr-2 h-3.5 w-3.5 shrink-0 ${tpl.id === activeTemplateId ? "opacity-100" : "opacity-0"}`} />
+                  <span className="truncate">{tpl.name}</span>
+                </DropdownMenuItem>
+              ))}
+            </>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={openCreateDialog} data-testid="button-save-view-mobile">

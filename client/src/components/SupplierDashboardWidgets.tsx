@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { AlertCircle, Truck, Users, Tag, Clock, ArrowRight } from "lucide-react";
+import { AlertCircle, Truck, Users, Tag, Clock, ArrowRight, TrendingUp, ClipboardList, UserX } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { ProductImage } from "@/components/ProductImage";
 import { useT } from "@/lib/translations";
 import type { ComplaintWithDetails, OrderWithDetails } from "@shared/schema";
@@ -340,6 +341,246 @@ export function AntwortzeitWidget({ supplierId, lang }: { supplierId: string; la
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">{t("supplierHome", "avgResponse")}</p>
             <p className="text-3xl md:text-4xl font-bold tabular-nums mt-1" data-testid="text-avg-response-time">{formatDuration(avg, lang)}</p>
             <p className="text-[11px] text-muted-foreground mt-2">{t("supplierHome", "basedOnReplies").replace("{n}", String(sample))}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────── shared helpers (revenue trend / status rows) ─────────────────────────
+const MONTH_NAMES_S: Record<"de" | "it", string[]> = {
+  de: ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"],
+  it: ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"],
+};
+function formatMonthLabelS(month: string, lang: "de" | "it"): string {
+  const parts = month.split("-");
+  const idx = parseInt(parts[1] ?? "1", 10) - 1;
+  return MONTH_NAMES_S[lang][idx] ?? month;
+}
+function eurS(value: number, lang: "de" | "it"): string {
+  return `${Math.round(value).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}€`;
+}
+const SUPPLIER_ORDER_STATUSES = ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"] as const;
+const SUPPLIER_ORDER_STATUS_COLORS: Record<string, string> = {
+  pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  confirmed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  partially_confirmed: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+  in_delivery: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+  delivered: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  cancelled: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+};
+
+type SupplierDetailedStats = {
+  monthlyRevenue: { month: string; revenue: number }[];
+  topProducts: { productId: string; name: string; quantity: number; revenue: number; previousQuantity: number }[];
+  ordersByStatus: { status: string; count: number }[];
+};
+
+// ───────────────────────── Steigende Nachfrage ─────────────────────────
+export function SteigendeNachfrageWidget({ supplierId, lang }: { supplierId: string; lang: "de" | "it" }) {
+  const t = useT(lang);
+  const { data, isLoading } = useQuery<SupplierDetailedStats>({
+    queryKey: [`/api/supplier/detailed-stats?supplierId=${supplierId}&period=6m`],
+    enabled: !!supplierId,
+  });
+  const rising = (data?.topProducts || [])
+    .filter(p => p.quantity > (p.previousQuantity ?? 0))
+    .sort((a, b) => (b.quantity - (b.previousQuantity ?? 0)) - (a.quantity - (a.previousQuantity ?? 0)))
+    .slice(0, 5);
+  return (
+    <div className={CARD_BASE} data-testid="widget-steigende-nachfrage">
+      <div className={HEADER}>
+        <WidgetTitle
+          icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
+          title={t("supplierHome", "widgetRisingDemand")}
+          desc={t("supplierHome", "widgetRisingDemandDesc")}
+          testId="text-widget-steigende-nachfrage-title"
+        />
+        <Link href="/supplier/products" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 shrink-0" data-testid="link-widget-steigende-nachfrage-all">
+          {t("common", "all")}<ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      <div className={BODY}>
+        {isLoading ? (
+          <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-11 w-full rounded-xl" />)}</div>
+        ) : rising.length === 0 ? (
+          <EmptyState icon={<TrendingUp className="h-6 w-6 text-muted-foreground/40" />} label={t("supplierHome", "noStatsYet")} />
+        ) : (
+          <div className="space-y-1.5">
+            {rising.map(p => {
+              const prev = p.previousQuantity ?? 0;
+              const delta = p.quantity - prev;
+              const pct = prev > 0 ? Math.round((delta / prev) * 100) : null;
+              const deltaLabel = pct !== null ? `+${pct}%` : `+${delta}`;
+              return (
+                <div
+                  key={p.productId}
+                  className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-muted/40 transition-all"
+                  data-testid={`widget-rising-row-${p.productId}`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{p.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{p.quantity} {lang === "de" ? "Stk" : "pz"}</p>
+                  </div>
+                  <Badge variant="outline" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-[11px] tabular-nums shrink-0">{deltaLabel}</Badge>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────── Inaktive Restaurants ─────────────────────────
+type InactiveRestaurant = { restaurantId: string; name: string; profileImageUrl: string | null; lastOrderAt: string | null; daysSince: number };
+export function InaktiveRestaurantsWidget({ supplierId, lang }: { supplierId: string; lang: "de" | "it" }) {
+  const t = useT(lang);
+  const [, navigate] = useLocation();
+  const { data, isLoading } = useQuery<InactiveRestaurant[]>({
+    queryKey: [`/api/supplier/inactive-restaurants?supplierId=${supplierId}`],
+    enabled: !!supplierId,
+  });
+  const items = (data || []).slice(0, 5);
+  return (
+    <div className={CARD_BASE} data-testid="widget-inaktive-restaurants">
+      <div className={HEADER}>
+        <WidgetTitle
+          icon={<UserX className="h-4 w-4 text-amber-500" />}
+          title={t("supplierHome", "widgetInactiveRestaurants")}
+          desc={t("supplierHome", "widgetInactiveRestaurantsDesc")}
+          testId="text-widget-inaktive-restaurants-title"
+        />
+        <Link href="/supplier/restaurants" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 shrink-0" data-testid="link-widget-inaktive-restaurants-all">
+          {t("common", "all")}<ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      <div className={BODY}>
+        {isLoading ? (
+          <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}</div>
+        ) : items.length === 0 ? (
+          <EmptyState icon={<UserX className="h-6 w-6 text-muted-foreground/40" />} label={t("supplierHome", "widgetNoInactiveRestaurants")} />
+        ) : (
+          <div className="space-y-2">
+            {items.map(r => (
+              <div
+                key={r.restaurantId}
+                onClick={() => navigate("/supplier/restaurants")}
+                className="flex items-center gap-2.5 p-2.5 rounded-xl border border-border bg-card hover:bg-muted/40 cursor-pointer transition-all active:scale-[0.99]"
+                data-testid={`widget-inactive-row-${r.restaurantId}`}
+              >
+                <Avatar className="h-9 w-9 shrink-0">
+                  <AvatarImage src={r.profileImageUrl || undefined} />
+                  <AvatarFallback className="text-[10px] font-semibold">{(r.name || "—").substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{r.name}</p>
+                  <p className="text-[11px] text-muted-foreground">{lang === "de" ? `vor ${r.daysSince} Tagen` : `${r.daysSince} giorni fa`}</p>
+                </div>
+                <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────── Umsatz-Trend ─────────────────────────
+export function UmsatzTrendWidget({ supplierId, lang }: { supplierId: string; lang: "de" | "it" }) {
+  const t = useT(lang);
+  const { data, isLoading } = useQuery<SupplierDetailedStats>({
+    queryKey: [`/api/supplier/detailed-stats?supplierId=${supplierId}&period=6m`],
+    enabled: !!supplierId,
+  });
+  const monthly = data?.monthlyRevenue || [];
+  const chartData = monthly.map(m => ({ label: formatMonthLabelS(m.month, lang), revenue: m.revenue }));
+  const allZero = chartData.length === 0 || chartData.every(d => !d.revenue);
+  return (
+    <div className={CARD_BASE} data-testid="widget-umsatz-trend">
+      <div className={HEADER}>
+        <WidgetTitle
+          icon={<TrendingUp className="h-4 w-4 text-primary" />}
+          title={t("supplierHome", "widgetRevenueTrend")}
+          desc={t("supplierHome", "widgetRevenueTrendDesc")}
+          testId="text-widget-umsatz-trend-title"
+        />
+      </div>
+      <div className={BODY}>
+        {isLoading ? (
+          <Skeleton className="h-44 w-full rounded-xl" />
+        ) : allZero ? (
+          <EmptyState icon={<TrendingUp className="h-6 w-6 text-muted-foreground/40" />} label={t("supplierHome", "noStatsYet")} />
+        ) : (
+          <div className="h-44 md:h-52" data-testid="chart-umsatz-trend">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44}
+                  tickFormatter={(v) => v >= 1_000 ? `${(v / 1_000).toFixed(0)}k€` : `${v}€`} />
+                <Tooltip
+                  cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                  isAnimationActive={false}
+                  formatter={(v: any) => [eurS(Number(v), lang), t("supplierHome", "widgetRevenueTrend")]}
+                  contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))" }}
+                />
+                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────── Bestellungen-Status (Supplier) ─────────────────────────
+export function SBestellungenStatusWidget({ supplierId, lang }: { supplierId: string; lang: "de" | "it" }) {
+  const t = useT(lang);
+  const { data, isLoading } = useQuery<SupplierDetailedStats>({
+    queryKey: [`/api/supplier/detailed-stats?supplierId=${supplierId}&period=6m`],
+    enabled: !!supplierId,
+  });
+  const counts: Record<string, number> = {};
+  for (const o of data?.ordersByStatus || []) counts[o.status] = (counts[o.status] || 0) + o.count;
+  const rows = SUPPLIER_ORDER_STATUSES.filter(s => (counts[s] || 0) > 0);
+  return (
+    <div className={CARD_BASE} data-testid="widget-s-bestellungen-status">
+      <div className={HEADER}>
+        <WidgetTitle
+          icon={<ClipboardList className="h-4 w-4 text-primary" />}
+          title={t("supplierHome", "widgetOrdersStatus")}
+          desc={t("supplierHome", "widgetOrdersStatusDesc")}
+          testId="text-widget-s-bestellungen-status-title"
+        />
+        <Link href="/supplier/orders" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 shrink-0" data-testid="link-widget-s-bestellungen-status-all">
+          {t("common", "all")}<ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      <div className={BODY}>
+        {isLoading ? (
+          <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full rounded-xl" />)}</div>
+        ) : rows.length === 0 ? (
+          <EmptyState icon={<ClipboardList className="h-6 w-6 text-muted-foreground/40" />} label={t("supplierHome", "noStatsYet")} />
+        ) : (
+          <div className="space-y-1.5">
+            {rows.map(s => (
+              <div
+                key={s}
+                className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border bg-card"
+                data-testid={`widget-s-order-status-${s}`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`inline-flex items-center justify-center h-2.5 w-2.5 rounded-full ${SUPPLIER_ORDER_STATUS_COLORS[s]}`} />
+                  <span className="text-sm font-medium truncate">{t("supplierHome", `orderStatus_${s}`)}</span>
+                </div>
+                <Badge variant="outline" className={`${SUPPLIER_ORDER_STATUS_COLORS[s]} text-[11px] tabular-nums shrink-0`}>{counts[s]}</Badge>
+              </div>
+            ))}
           </div>
         )}
       </div>
