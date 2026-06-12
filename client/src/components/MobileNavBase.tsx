@@ -82,7 +82,7 @@ export function MobileNavBase({
     bottom: "max(8px, env(safe-area-inset-bottom, 8px))",
     left: 12,
     right: 12,
-    zIndex: 50,
+    zIndex: 40,
     borderRadius: "9999px",
   };
 
