@@ -43,19 +43,19 @@ export default function PullToRefreshWrapper({ onRefresh, children, className }:
         <div
           className="md:hidden pointer-events-none absolute left-0 right-0 top-0 z-20 flex justify-center"
           style={{
-            transform: `translateY(${Math.max(pullDistance - 44, 6)}px)`,
+            transform: `translateY(${Math.max(pullDistance - 60, 4)}px)`,
             transition: isPulling ? "none" : ease,
           }}
         >
           <div
-            className={`flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background shadow-sm ${isRefreshing ? "animate-pull-spin" : ""}`}
+            className={`flex items-center justify-center ${isRefreshing ? "animate-pull-spin" : ""}`}
             style={{
               opacity: isRefreshing ? 1 : Math.min(progress * 1.3, 1),
               transform: `scale(${isRefreshing ? 1 : 0.5 + progress * 0.5})`,
             }}
           >
             <RefreshCw
-              className="h-4 w-4 text-primary"
+              className="h-6 w-6 text-primary"
               style={{ transform: isRefreshing ? undefined : `rotate(${progress * 270}deg)` }}
             />
           </div>
