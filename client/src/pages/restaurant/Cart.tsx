@@ -126,6 +126,7 @@ function WheelDatePicker({
 }
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { format, addDays, startOfDay, parse } from "date-fns";
@@ -156,6 +157,7 @@ export default function RestaurantCart() {
   const { currentUser, currentMember } = useUser();
   const canPlaceOrder = !currentMember || can(currentMember.role, "orders.create");
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   useMobileKeyboardInset();
   const [orderNotes, setOrderNotes] = useState<Record<string, string>>({});
   const [deliveryOptions, setDeliveryOptions] = useState<Record<string, "asap" | "date">>({});
@@ -171,7 +173,6 @@ export default function RestaurantCart() {
     notes: string;
     createdAt: string;
   } | null>(null);
-  const [confirmationVisible, setConfirmationVisible] = useState(false);
   const [sendingSupplier, setSendingSupplier] = useState<string | null>(null);
   const [mobileStep, setMobileStep] = useState<"preview" | "summary">("summary");
   const [mobileValidationError, setMobileValidationError] = useState<string | null>(null);
@@ -256,7 +257,6 @@ export default function RestaurantCart() {
         notes: allNotes,
         createdAt: new Date().toISOString(),
       });
-      setTimeout(() => setConfirmationVisible(true), 50);
       queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
@@ -456,85 +456,129 @@ export default function RestaurantCart() {
   const dateLocaleObj = lang === "it" ? it : de;
 
   if (orderConfirmation) {
-    return (
-      <div className={`flex items-center justify-center min-h-[60vh] transition-all duration-500 ${confirmationVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-        <div className="w-full max-w-md mx-auto text-center space-y-6">
-          <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 mx-auto transition-all duration-700 ${confirmationVisible ? "scale-100" : "scale-0"}`}>
-            <CheckCircle2 className={`h-10 w-10 text-green-600 dark:text-green-400 transition-all duration-500 delay-300 ${confirmationVisible ? "scale-100 opacity-100" : "scale-0 opacity-0"}`} />
-          </div>
+    const trackHref = orderConfirmation.orderUuid
+      ? `/restaurant/orders/${orderConfirmation.orderUuid}`
+      : "/restaurant/orders";
 
-          <div className={`space-y-2 transition-all duration-500 delay-200 ${confirmationVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            <h1 className="m-type-display text-2xl font-bold" data-testid="text-order-sent-title">{t("cart", "orderSentTitle")}</h1>
-            <p className="text-muted-foreground text-sm">{t("cart", "orderSentDesc")}</p>
+    const successHeader = (
+      <>
+        <div className="relative mx-auto w-20 h-20">
+          <span className="absolute inset-0 rounded-full bg-green-400/40 dark:bg-green-500/30 animate-wizard-ring" />
+          <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 animate-wizard-circle">
+            <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400 animate-wizard-check" />
           </div>
+        </div>
 
-          <Card className={`text-left transition-all duration-500 delay-400 ${confirmationVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex justify-between items-center gap-3 py-1">
-                <span className="text-sm text-muted-foreground shrink-0">{t("cart", "orderNumber")}</span>
-                <span className="text-sm font-mono font-medium truncate" data-testid="text-order-id">#{orderConfirmation.orderId}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center gap-3 py-1">
-                <span className="text-sm text-muted-foreground shrink-0">{t("cart", "orderDate")}</span>
-                <span className="text-sm font-medium shrink-0">{format(new Date(orderConfirmation.createdAt), "dd. MMM yyyy, HH:mm", { locale: dateLocaleObj })}</span>
-              </div>
+        <div className="space-y-2 animate-wizard-fade-in">
+          <h1 className="m-type-display text-2xl font-bold" data-testid="text-order-sent-title">{t("cart", "orderSentTitle")}</h1>
+          <p className="text-muted-foreground text-sm">{t("cart", "orderSentDesc")}</p>
+        </div>
+      </>
+    );
+
+    const detailsCard = (
+      <Card className="text-left animate-wizard-fade-in-delay">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex justify-between items-center gap-3 py-1">
+            <span className="text-sm text-muted-foreground shrink-0">{t("cart", "orderNumber")}</span>
+            <span className="text-sm font-mono font-medium truncate" data-testid="text-order-id">#{orderConfirmation.orderId}</span>
+          </div>
+          <Separator />
+          <div className="flex justify-between items-center gap-3 py-1">
+            <span className="text-sm text-muted-foreground shrink-0">{t("cart", "orderDate")}</span>
+            <span className="text-sm font-medium shrink-0">{format(new Date(orderConfirmation.createdAt), "dd. MMM yyyy, HH:mm", { locale: dateLocaleObj })}</span>
+          </div>
+          <Separator />
+          <div className="flex justify-between items-start gap-4 py-1">
+            <span className="text-sm text-muted-foreground shrink-0">{t("common", "suppliers")}</span>
+            <div className="flex flex-col items-end gap-0.5">
+              {orderConfirmation.suppliers.map((name, i) => (
+                <span key={i} className="text-sm font-medium">{name}</span>
+              ))}
+            </div>
+          </div>
+          <Separator />
+          <div className="flex justify-between items-center gap-3 py-1">
+            <span className="text-sm text-muted-foreground shrink-0">{t("common", "items")}</span>
+            <span className="text-sm font-medium">{orderConfirmation.itemCount}</span>
+          </div>
+          <Separator />
+          <div className="flex justify-between items-center gap-3 py-1">
+            <span className="text-sm text-muted-foreground shrink-0">{t("cart", "deliveryDateLabel")}</span>
+            <span className="text-sm font-medium text-right truncate">
+              {orderConfirmation.deliveryDate
+                ? format(new Date(orderConfirmation.deliveryDate), "dd. MMM yyyy", { locale: dateLocaleObj })
+                : t("cart", "asapDelivery")}
+            </span>
+          </div>
+          {orderConfirmation.notes && (
+            <>
               <Separator />
               <div className="flex justify-between items-start gap-4 py-1">
-                <span className="text-sm text-muted-foreground shrink-0">{t("common", "suppliers")}</span>
-                <div className="flex flex-col items-end gap-0.5">
-                  {orderConfirmation.suppliers.map((name, i) => (
-                    <span key={i} className="text-sm font-medium">{name}</span>
-                  ))}
-                </div>
+                <span className="text-sm text-muted-foreground shrink-0">{t("cart", "notesLabel")}</span>
+                <span className="text-sm text-right">{orderConfirmation.notes}</span>
               </div>
-              <Separator />
-              <div className="flex justify-between items-center gap-3 py-1">
-                <span className="text-sm text-muted-foreground shrink-0">{t("common", "items")}</span>
-                <span className="text-sm font-medium">{orderConfirmation.itemCount}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center gap-3 py-1">
-                <span className="text-sm text-muted-foreground shrink-0">{t("cart", "deliveryDateLabel")}</span>
-                <span className="text-sm font-medium text-right truncate">
-                  {orderConfirmation.deliveryDate
-                    ? format(new Date(orderConfirmation.deliveryDate), "dd. MMM yyyy", { locale: dateLocaleObj })
-                    : t("cart", "asapDelivery")}
-                </span>
-              </div>
-              {orderConfirmation.notes && (
-                <>
-                  <Separator />
-                  <div className="flex justify-between items-start gap-4 py-1">
-                    <span className="text-sm text-muted-foreground shrink-0">{t("cart", "notesLabel")}</span>
-                    <span className="text-sm text-right">{orderConfirmation.notes}</span>
-                  </div>
-                </>
-              )}
-              <Separator />
-              <div className="flex justify-between items-center gap-3 py-1">
-                <span className="text-sm font-medium shrink-0">{t("common", "total")}</span>
-                <span className="text-lg font-bold shrink-0" data-testid="text-order-total">{orderConfirmation.total}€</span>
-              </div>
-            </CardContent>
-          </Card>
+            </>
+          )}
+          <Separator />
+          <div className="flex justify-between items-center gap-3 py-1">
+            <span className="text-sm font-medium shrink-0">{t("common", "total")}</span>
+            <span className="text-lg font-bold shrink-0" data-testid="text-order-total">{orderConfirmation.total}€</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
 
-          <div className={`flex flex-col sm:flex-row gap-3 transition-all duration-500 delay-500 ${confirmationVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            <Button className="flex-1 gap-2" asChild>
-              <Link
-                href={orderConfirmation.orderUuid ? `/restaurant/orders/${orderConfirmation.orderUuid}` : "/restaurant/orders"}
-                data-testid="link-track-order"
-              >
-                <ClipboardList className="h-4 w-4" />
-                {lang === "de" ? "Status verfolgen" : "Traccia stato"}
-              </Link>
-            </Button>
-            <Button variant="outline" className="flex-1 gap-2" asChild>
-              <Link href="/restaurant" data-testid="link-home">
-                <Check className="h-4 w-4" />
-                {lang === "de" ? "Zur Startseite" : "Vai alla home"}
-              </Link>
-            </Button>
+    const trackButton = (
+      <Button className="flex-1 gap-2" asChild>
+        <Link href={trackHref} data-testid="link-track-order">
+          <ClipboardList className="h-4 w-4" />
+          {lang === "de" ? "Status verfolgen" : "Traccia stato"}
+        </Link>
+      </Button>
+    );
+
+    const homeButton = (
+      <Button variant="outline" className="flex-1 gap-2" asChild>
+        <Link href="/restaurant" data-testid="link-home">
+          <Check className="h-4 w-4" />
+          {lang === "de" ? "Zur Startseite" : "Vai alla home"}
+        </Link>
+      </Button>
+    );
+
+    if (isMobile) {
+      return createPortal((
+        <div
+          className="fixed inset-0 z-[70] bg-background flex flex-col"
+          data-testid="mobile-order-confirmation"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+        >
+          <div className="flex-1 overflow-y-auto overscroll-contain flex flex-col items-center justify-center px-5 py-8 text-center">
+            <div className="w-full max-w-md mx-auto space-y-6">
+              {successHeader}
+              {detailsCard}
+            </div>
+          </div>
+          <div
+            className="shrink-0 border-t border-border bg-background px-5 pt-3 flex flex-col gap-2 animate-wizard-fade-in-delay"
+            style={{ paddingBottom: "max(env(safe-area-inset-bottom), 16px)" }}
+          >
+            {trackButton}
+            {homeButton}
+          </div>
+        </div>
+      ), document.body);
+    }
+
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-full max-w-md mx-auto text-center space-y-6">
+          {successHeader}
+          {detailsCard}
+          <div className="flex flex-col sm:flex-row gap-3 animate-wizard-fade-in-delay">
+            {trackButton}
+            {homeButton}
           </div>
         </div>
       </div>
