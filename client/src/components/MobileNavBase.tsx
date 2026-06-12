@@ -42,11 +42,21 @@ export function MobileNavBase({
   const compact = useScrollCompact();
 
   const itemBaseClass =
-    "relative flex items-center justify-center h-12 rounded-full select-none transition-all duration-300 ease-out";
-  const labelExpandClass = (show: boolean) =>
-    `overflow-hidden whitespace-nowrap text-[13px] font-semibold transition-all duration-300 ease-out ${
-      show ? "max-w-[140px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0"
-    }`;
+    "relative flex items-center justify-center h-12 min-w-[44px] flex-none rounded-full select-none transition-colors duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)]";
+  const renderLabel = (text: string, show: boolean) => (
+    <span
+      className="grid transition-[grid-template-columns] duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] [will-change:grid-template-columns]"
+      style={{ gridTemplateColumns: show ? "1fr" : "0fr" }}
+    >
+      <span
+        className={`overflow-hidden whitespace-nowrap pl-2 text-[13px] font-semibold transition-opacity duration-200 ease-out ${
+          show ? "opacity-100 delay-[60ms]" : "opacity-0"
+        }`}
+      >
+        {text}
+      </span>
+    </span>
+  );
 
   const isItemActive = (url: string) => {
     if (url === rootPath) return location === rootPath;
@@ -149,7 +159,7 @@ export function MobileNavBase({
         data-testid={`${testIdPrefix}-mobile-nav`}
       >
         <div
-          className="flex items-center gap-1 p-1 relative"
+          className="flex items-center justify-around p-1 relative"
           style={{ borderRadius: "inherit" }}
         >
           {mainNavItems.map((item) => {
@@ -167,14 +177,13 @@ export function MobileNavBase({
                     ? "bg-foreground/[0.08] dark:bg-white/[0.14] nav-item-active"
                     : "nav-item-inactive"
                 }`}
-                style={{ flexGrow: showLabel ? 2.6 : 1, flexBasis: 0, minWidth: 0 }}
                 data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
               >
                 <span className="inline-flex items-center justify-center min-w-0 px-2">
                   <motion.span
                     className="relative inline-flex items-center justify-center shrink-0"
                     whileTap={{ scale: 0.88 }}
-                    transition={{ duration: 0.12 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   >
                     <item.icon className={`h-6 w-6 ${active ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
                     {badgeCount > 0 && (
@@ -183,7 +192,7 @@ export function MobileNavBase({
                       </span>
                     )}
                   </motion.span>
-                  <span className={labelExpandClass(showLabel)}>{item.title}</span>
+                  {renderLabel(item.title, showLabel)}
                 </span>
               </Link>
             );
@@ -202,18 +211,17 @@ export function MobileNavBase({
                     ? "bg-foreground/[0.08] dark:bg-white/[0.14] nav-item-active"
                     : "nav-item-inactive"
                 }`}
-                style={{ flexGrow: showLabel ? 2.6 : 1, flexBasis: 0, minWidth: 0 }}
                 data-testid={`${testIdPrefix}-mobile-nav-more`}
               >
                 <span className="inline-flex items-center justify-center min-w-0 px-2">
                   <motion.span
                     className="relative inline-flex items-center justify-center shrink-0"
                     whileTap={{ scale: 0.88 }}
-                    transition={{ duration: 0.12 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   >
                     <MoreHorizontal className={`h-6 w-6 ${moreActive ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
                   </motion.span>
-                  <span className={labelExpandClass(showLabel)}>{t("common", "more")}</span>
+                  {renderLabel(t("common", "more"), showLabel)}
                 </span>
               </button>
             );

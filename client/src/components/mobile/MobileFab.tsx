@@ -40,11 +40,11 @@ export function MobileFab({
       }}
       initial={false}
       animate={{
-        x: compact ? 96 : 0,
-        scale: compact ? 0.85 : 1,
+        y: compact ? 12 : 0,
+        scale: compact ? 0.9 : 1,
         opacity: compact ? 0 : 1,
       }}
-      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+      transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
       whileTap={{ scale: 0.93 }}
       aria-hidden={compact}
     >
