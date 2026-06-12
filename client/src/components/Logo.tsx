@@ -25,7 +25,7 @@ const SIZE_FONT: Record<LogoSize, string> = {
   // Tuned so the icon stays ~36px below lg and ~48px through ~1280px, only
   // reaching the canonical 64px near the 2xl breakpoint (where the wordmark
   // appears). This preserves the header's tight layout / no-overlap envelope.
-  header: "clamp(9px, calc(-0.5rem + 1.54vw), 16px)",
+  header: "clamp(8px, calc(-0.45rem + 1.3vw), 14px)",
   nav: "clamp(14px, calc(0.6rem + 0.5vw), 18px)",
   footer: "clamp(12px, calc(0.65rem + 0.2vw), 15px)",
   hero: "clamp(20px, calc(0.9rem + 1.4vw), 34px)",
