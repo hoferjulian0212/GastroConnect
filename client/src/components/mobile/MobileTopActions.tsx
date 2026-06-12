@@ -128,23 +128,12 @@ export function MobileTopActions({
     onClick: () => { setMoreOpen(false); openAiAssistant(); },
     testId: "button-mobile-more-ai",
   });
-  if (showCart) {
-    overflowActions.push({
-      icon: <ShoppingCart className="h-5 w-5" />,
-      label: lang === "it" ? "Carrello" : "Warenkorb",
-      onClick: () => { setMoreOpen(false); setLocation("/restaurant/cart"); },
-      badge: cartTotal,
-      testId: "button-mobile-more-cart",
-    });
-  }
   overflowActions.push({
     icon: <HelpCircle className="h-5 w-5" />,
     label: lang === "it" ? "Aiuto" : "Hilfe",
     onClick: () => { setMoreOpen(false); setLocation(`/${currentRole}/help`); },
     testId: "button-mobile-more-help",
   });
-
-  const totalBadge = (showCart ? cartTotal : 0);
 
   return (
     <>
@@ -164,6 +153,31 @@ export function MobileTopActions({
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
+        </button>
+
+        {showCart && (
+          <button
+            onClick={() => setLocation("/restaurant/cart")}
+            className={btnCls}
+            data-testid="button-mobile-cart"
+            aria-label={lang === "it" ? "Carrello" : "Warenkorb"}
+          >
+            <ShoppingCart className="h-[18px] w-[18px]" />
+            {cartTotal > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-primary text-primary-foreground rounded-full">
+                {cartTotal > 99 ? "99+" : cartTotal}
+              </span>
+            )}
+          </button>
+        )}
+
+        <button
+          onClick={() => setMoreOpen(true)}
+          className={btnCls}
+          data-testid="button-mobile-more"
+          aria-label="More"
+        >
+          <MoreHorizontal className="h-[18px] w-[18px]" />
         </button>
 
         <DropdownMenu>
@@ -226,6 +240,7 @@ export function MobileTopActions({
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={handleLogout}
+              className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400 focus:bg-red-500/10"
               data-testid="menu-item-mobile-logout"
             >
               <LogOut className="mr-2 h-4 w-4" />
@@ -233,20 +248,6 @@ export function MobileTopActions({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <button
-          onClick={() => setMoreOpen(true)}
-          className={btnCls}
-          data-testid="button-mobile-more"
-          aria-label="More"
-        >
-          <MoreHorizontal className="h-[18px] w-[18px]" />
-          {totalBadge > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-primary text-primary-foreground rounded-full">
-              {totalBadge > 99 ? "99+" : totalBadge}
-            </span>
-          )}
-        </button>
       </div>
 
       <NotificationsSheet open={notifOpen} onOpenChange={setNotifOpen} />

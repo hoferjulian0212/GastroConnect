@@ -1,4 +1,4 @@
-import { Home, Send, Package, ShoppingCart, ShoppingBag, AlertCircle, Truck, FileText, Calculator, HelpCircle, BarChart3 } from "lucide-react";
+import { Home, Send, Package, ShoppingBag, AlertCircle, Truck, FileText, Calculator, HelpCircle, BarChart3 } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -36,7 +36,6 @@ export function RestaurantMobileNav() {
     {
       title: lang === "de" ? "Mehr" : "Altro",
       items: [
-        { title: t("common", "cart"), url: "/restaurant/cart", icon: ShoppingCart, hasBadge: true },
         { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/restaurant/help", icon: HelpCircle },
       ],
     },
@@ -47,14 +46,8 @@ export function RestaurantMobileNav() {
     enabled: !!currentUser?.id,
   });
 
-  const { data: cartCount } = useQuery<{ count: number }>({
-    queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`],
-    enabled: !!currentUser?.id,
-  });
-
   const getBadgeCount = (url: string) => {
     if (url === "/restaurant/inbox") return unreadCount?.count || 0;
-    if (url === "/restaurant/cart") return cartCount?.count || 0;
     return 0;
   };
 
