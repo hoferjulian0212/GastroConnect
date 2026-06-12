@@ -49,7 +49,7 @@ export function MobileNavBase({
       style={{ gridTemplateColumns: show ? "1fr" : "0fr" }}
     >
       <span
-        className={`overflow-hidden whitespace-nowrap pl-2 text-[13px] font-semibold transition-opacity duration-200 ease-out ${
+        className={`overflow-hidden whitespace-nowrap pl-2.5 pr-0.5 text-[13px] font-semibold transition-opacity duration-200 ease-out ${
           show ? "opacity-100 delay-[60ms]" : "opacity-0"
         }`}
       >
@@ -179,7 +179,7 @@ export function MobileNavBase({
                 }`}
                 data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
               >
-                <span className="inline-flex items-center justify-center min-w-0 px-2">
+                <span className={`inline-flex items-center justify-center min-w-0 transition-[padding] duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${showLabel ? "px-4" : "px-2.5"}`}>
                   <motion.span
                     className="relative inline-flex items-center justify-center shrink-0"
                     whileTap={{ scale: 0.88 }}
@@ -213,7 +213,7 @@ export function MobileNavBase({
                 }`}
                 data-testid={`${testIdPrefix}-mobile-nav-more`}
               >
-                <span className="inline-flex items-center justify-center min-w-0 px-2">
+                <span className={`inline-flex items-center justify-center min-w-0 transition-[padding] duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${showLabel ? "px-4" : "px-2.5"}`}>
                   <motion.span
                     className="relative inline-flex items-center justify-center shrink-0"
                     whileTap={{ scale: 0.88 }}
