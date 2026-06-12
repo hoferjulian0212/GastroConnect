@@ -488,6 +488,15 @@ html, body, #root {
   }
 }
 
+/* Dark mode: the near-black (#161921) hero/header panels blend into the dark
+   page background. Lift them to a distinct elevated surface so they read as a
+   separate panel. Buttons are excluded so the FAB keeps its own hover/active
+   states. Placed outside @layer so it reliably overrides the Tailwind
+   arbitrary `bg-[#161921]` utility. */
+html.dark [class*="bg-[#161921]"]:not(button) {
+  background-color: hsl(224 14% 17%);
+}
+
 /**
  * Using the elevate system.
  * Automatic contrast adjustment.

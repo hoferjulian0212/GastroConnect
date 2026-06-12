@@ -636,12 +636,12 @@ export default function SupplierHome() {
               {groupedDeliveries.map((group) => (
                 <div key={`m-${group.dateKey}`}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Calendar className={`h-3.5 w-3.5 text-black`} />
-                    <span className={`text-xs font-semibold uppercase tracking-wide text-black`}>
+                    <Calendar className={`h-3.5 w-3.5 text-foreground`} />
+                    <span className={`text-xs font-semibold uppercase tracking-wide text-foreground`}>
                       {group.label}
                     </span>
                     {group.isToday && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-black animate-pulse" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-foreground animate-pulse" />
                     )}
                   </div>
 
