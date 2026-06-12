@@ -38,6 +38,8 @@ import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import SwipeableRow from "@/components/SwipeableRow";
+import SwipeToReply from "@/components/SwipeToReply";
+import { getMessageReplyPreview } from "@/lib/messageReplyPreview";
 import StaggeredList from "@/components/StaggeredList";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { WhatsappInboxCard } from "@/components/WhatsappInboxCard";
@@ -884,6 +886,19 @@ export default function SupplierInbox() {
     }
   };
 
+  const onReplyToMessage = (message: any) => {
+    if (!selectedConv) return;
+    const isOwn = message.senderId === currentUser?.id;
+    const senderName = message.senderMember?.name || (isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || ""));
+    setReplyToMessage({
+      id: message.id,
+      senderName,
+      preview: getMessageReplyPreview(message, lang as "de" | "it"),
+    });
+    const input = document.querySelector('[data-testid="input-message"]') as HTMLInputElement | null;
+    input?.focus();
+  };
+
   const handleSendAttachment = (content: string) => {
     if (selectedConversation) {
       sendMessageMutation.mutate({ content, messageType: "attachment", priority: messagePriority });
@@ -1454,6 +1469,7 @@ export default function SupplierInbox() {
                                 </span>
                               </div>
                             )}
+                            <SwipeToReply onReply={() => onReplyToMessage(message)}>
                             <div
                               className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" || message.messageType === "order_change_request" || message.messageType === "promotion" || message.messageType === "delivery_status" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
                               data-testid={`message-${message.id}`}
@@ -2236,6 +2252,7 @@ export default function SupplierInbox() {
                                 })()
                               )}
                             </div>
+                            </SwipeToReply>
                           </div>
                         );
                       })}

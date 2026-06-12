@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, RefreshCw, Mic, Pin, PinOff } from "lucide-react";
 import { QuickReplyChips } from "@/components/chat/QuickReplyChips";
+import SwipeToReply from "@/components/SwipeToReply";
+import { getMessageReplyPreview } from "@/lib/messageReplyPreview";
 import { VoiceRecorder } from "@/components/chat/VoiceRecorder";
 import { VoiceMessage } from "@/components/chat/VoiceMessage";
 import { useUpload } from "@/hooks/use-upload";
@@ -1047,6 +1049,19 @@ export default function RestaurantInbox() {
     }
   };
 
+  const onReplyToMessage = (message: any) => {
+    if (!selectedConv) return;
+    const isOwn = message.senderId === currentUser?.id;
+    const senderName = message.senderMember?.name || (isOwn ? (currentUser?.name || "") : (selectedConv.otherUser.name || ""));
+    setReplyToMessage({
+      id: message.id,
+      senderName,
+      preview: getMessageReplyPreview(message, lang as "de" | "it"),
+    });
+    const input = document.querySelector('[data-testid="input-message"]') as HTMLInputElement | null;
+    input?.focus();
+  };
+
   const handleSendAttachment = (content: string) => {
     if (selectedConversation) {
       sendMessageMutation.mutate({ content, messageType: "attachment", priority: messagePriority });
@@ -1612,6 +1627,7 @@ export default function RestaurantInbox() {
                                   </span>
                                 </div>
                               )}
+                              <SwipeToReply onReply={() => onReplyToMessage(message)}>
                               <div
                                 className={`flex ${message.messageType === "order" || message.messageType === "complaint" || message.messageType === "document" || message.messageType === "order_change_request" || message.messageType === "promotion" || message.messageType === "delivery_status" ? "justify-center" : message.messageType === "attachment" ? (isOwn ? "justify-end" : "justify-start") : isOwn ? "justify-end" : "justify-start"}`}
                                 data-testid={`message-${message.id}`}
@@ -2345,6 +2361,7 @@ export default function RestaurantInbox() {
                                   })()
                                 )}
                               </div>
+                              </SwipeToReply>
                             </div>
                           );
                         })}
