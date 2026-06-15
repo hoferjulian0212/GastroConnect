@@ -30,7 +30,6 @@ import shotInbox from "@assets/landing-inbox.jpg";
 import shotPriceOverview from "@assets/landing-story/price-1-overview.jpg";
 import shotPriceCatalog from "@assets/landing-story/price-3-catalog.jpg";
 import shotComplaintDialog from "@assets/landing-story/complaint-1-dialog.jpg";
-import logoOrb from "@assets/logo_no_bg_thick.png";
 import shotComplaintInbox from "@assets/landing-story/complaint-2-inbox.jpg";
 import shotComplaintDetail from "@assets/landing-story/complaint-3-detail.jpg";
 import {
@@ -572,6 +571,38 @@ const featureIcons = [
 ];
 const mobileBulletIcons = [BellRing, WifiOff, Hand, Bookmark];
 
+/** Two rows of text that drift in opposite directions as the page is scrolled. */
+function ScrollMarquee({
+  items,
+  speed = 0.12,
+  initialOffset = 0,
+}: {
+  items: string[];
+  speed?: number;
+  initialOffset?: number;
+}) {
+  const { scrollY } = useScroll();
+  const x = useTransform(scrollY, (v) => -v * speed - initialOffset);
+  const all = [...items, ...items, ...items, ...items];
+  return (
+    <div className="overflow-hidden">
+      <motion.div
+        style={{ x }}
+        className="flex items-center whitespace-nowrap will-change-transform"
+      >
+        {all.map((item, i) => (
+          <span key={i} className="shrink-0 inline-flex items-center">
+            <span className="text-[clamp(1.4rem,2.8vw,2.4rem)] font-semibold tracking-tight text-foreground/[0.065]">
+              {item}
+            </span>
+            <span className="mx-8 md:mx-12 text-foreground/[0.025] text-xs">◆</span>
+          </span>
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
 export default function Landing() {
   const [, setLocation] = useLocation();
   const { currentUser, currentRole, switchRole } = useUser();
@@ -606,15 +637,6 @@ export default function Landing() {
   const phoneY = useTransform(phoneProgress, [0, 1], [24, -24]);
   const phoneParallaxActive = isDesktop && !reduceMotion;
 
-  // Hero logo orb — scroll-driven fade + scale
-  const heroSectionRef = useRef<HTMLElement | null>(null);
-  const { scrollYProgress: heroProgress } = useScroll({
-    target: heroSectionRef,
-    offset: ["start start", "end start"],
-    layoutEffect: false,
-  });
-  const heroBgOpacity = useTransform(heroProgress, [0, 0.55], [1, 0]);
-  const heroBgScale  = useTransform(heroProgress, [0, 0.55], [1, 1.22]);
 
   useEffect(() => {
     setLang(detectInitialLang());
@@ -818,32 +840,23 @@ export default function Landing() {
       <div id="top" />
 
       {/* HERO */}
-      <section ref={heroSectionRef} className="relative overflow-hidden px-4 md:px-8 pb-12 md:pb-16">
+      <section className="relative overflow-hidden px-4 md:px-8 pb-12 md:pb-16">
 
-        {/* 3-D logo orb — decorative background, scroll-driven */}
-        {!reduceMotion && (
-          <motion.div
-            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center"
-            style={{ opacity: heroBgOpacity }}
-            aria-hidden
-          >
-            <motion.div
-              style={{ scale: heroBgScale }}
-              animate={{ y: [0, -18, 0] }}
-              transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <div style={{ perspective: "900px" }}>
-                <motion.img
-                  src={logoOrb}
-                  alt=""
-                  className="w-[min(72vw,520px)] h-[min(72vw,520px)] object-contain opacity-[0.07] dark:opacity-[0.04] dark:invert"
-                  animate={{ rotateY: 360 }}
-                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                />
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
+        {/* Dot-grid ambient background */}
+        <div className="pointer-events-none select-none absolute inset-0" aria-hidden>
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, hsl(var(--foreground) / 0.1) 1px, transparent 1px)",
+              backgroundSize: "30px 30px",
+              maskImage:
+                "radial-gradient(ellipse 80% 70% at 50% 40%, black 0%, transparent 100%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse 80% 70% at 50% 40%, black 0%, transparent 100%)",
+            }}
+          />
+        </div>
 
         <div className="mx-auto max-w-5xl text-center flex flex-col min-h-[calc(100svh-4rem)]">
           <div className="flex-1 flex flex-col justify-center pt-8">
@@ -903,6 +916,32 @@ export default function Landing() {
           />
         </div>
       </section>
+
+      {/* Scroll-driven marquee separator */}
+      {!reduceMotion && (
+        <div
+          className="overflow-hidden border-y border-border/25 py-5 md:py-7 select-none pointer-events-none"
+          aria-hidden
+        >
+          <ScrollMarquee
+            items={[
+              "ORDERS", "SUPPLIERS", "CATALOG", "DELIVERY",
+              "GASTRO", "CONNECT", "INVOICES", "DIGITAL",
+            ]}
+            speed={0.13}
+          />
+          <div className="mt-3 md:mt-4">
+            <ScrollMarquee
+              items={[
+                "BESTELLUNGEN", "LIEFERANTEN", "PREISVERGLEICH",
+                "LAGERHALTUNG", "CHAT", "DOKUMENTE", "AKTIONEN",
+              ]}
+              speed={0.085}
+              initialOffset={560}
+            />
+          </div>
+        </div>
+      )}
 
       {/* PILLARS — Für wen */}
       <section
