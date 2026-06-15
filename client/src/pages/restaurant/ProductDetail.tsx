@@ -346,7 +346,7 @@ export default function ProductDetail() {
     <div>
       <HeroPortal mobileWrapperClassName="!mx-2">
         <div className="px-3 md:px-6 pt-2 md:pt-1 pb-5 md:pb-6" data-testid="product-detail-hero">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-8">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:gap-8">
             <div className="flex items-start gap-3 md:gap-5 min-w-0">
               <div className="shrink-0">
                 <button
