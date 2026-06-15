@@ -1031,7 +1031,7 @@ export default function RestaurantCatalog() {
  </div>
 
  {categoryFilteredProducts.length > 0 ? (
- <div className="grid gap-2 md:gap-3 grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 pt-2 md:pt-0">
+ <div className="grid gap-2 md:gap-3 grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 mt-4 md:mt-5">
  {categoryFilteredProducts.map(renderProductCard)}
  </div>
  ) : (
