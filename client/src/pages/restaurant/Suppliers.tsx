@@ -106,7 +106,7 @@ export default function RestaurantSuppliers() {
           ))}
         </div>
       ) : filteredSuppliers && filteredSuppliers.length > 0 ? (
-        <div className="grid gap-2.5 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-2.5 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 items-start">
           {filteredSuppliers.map((supplier) => (
             <Card
               key={supplier.id}
