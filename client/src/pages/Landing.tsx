@@ -840,7 +840,7 @@ export default function Landing() {
       <div id="top" />
 
       {/* HERO */}
-      <section className="relative overflow-hidden px-4 md:px-8 pb-12 md:pb-16">
+      <section className="relative px-4 md:px-8 pb-12 md:pb-16">
 
         {/* Dot-grid ambient background */}
         <div className="pointer-events-none select-none absolute inset-0" aria-hidden>
@@ -920,7 +920,7 @@ export default function Landing() {
       {/* Scroll-driven marquee separator */}
       {!reduceMotion && (
         <div
-          className="overflow-hidden border-y border-border/25 py-5 md:py-7 select-none pointer-events-none"
+          className="overflow-hidden py-5 md:py-7 mt-10 md:mt-16 select-none pointer-events-none"
           aria-hidden
         >
           <ScrollMarquee

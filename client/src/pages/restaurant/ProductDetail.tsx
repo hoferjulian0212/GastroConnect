@@ -390,7 +390,7 @@ export default function ProductDetail() {
                     )}
                   </div>
 
-                  {product.supplier && (product.supplier.companyName ? product.supplier.name : null || product.supplier.phone || product.supplier.email) && (
+                  {product.supplier && ((product.supplier.companyName && product.supplier.name) || product.supplier.phone || product.supplier.email) && (
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                       {product.supplier.companyName && product.supplier.name && (
                         <span className="flex items-center gap-1 text-[11px] text-white/45">
