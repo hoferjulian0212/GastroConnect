@@ -739,7 +739,7 @@ export default function ProductDetail() {
 
           <aside className="order-1 lg:order-2 lg:col-span-4 lg:self-start">
             <div className="space-y-5 md:space-y-6 lg:sticky lg:top-6">
-            <div id="order-card" tabIndex={-1} className={`rounded-2xl border bg-card p-5 md:p-6 scroll-mt-20 focus:outline-none ${product.inStock ? "border-green-500/60" : "border-red-500/60"}`} data-testid="card-order">
+            <div id="order-card" tabIndex={-1} className={`rounded-2xl border-[1.5px] bg-card p-5 md:p-6 scroll-mt-20 focus:outline-none ${product.inStock ? "border-green-500/60" : "border-red-500/60"}`} data-testid="card-order">
               <h2 className="text-lg md:text-xl font-bold mb-4 flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5 text-primary" />
                 {lang === "de" ? "Jetzt bestellen" : "Ordina ora"}
