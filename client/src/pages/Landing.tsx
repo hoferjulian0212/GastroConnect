@@ -30,6 +30,7 @@ import shotInbox from "@assets/landing-inbox.jpg";
 import shotPriceOverview from "@assets/landing-story/price-1-overview.jpg";
 import shotPriceCatalog from "@assets/landing-story/price-3-catalog.jpg";
 import shotComplaintDialog from "@assets/landing-story/complaint-1-dialog.jpg";
+import logoOrb from "@assets/logo_no_bg_thick.png";
 import shotComplaintInbox from "@assets/landing-story/complaint-2-inbox.jpg";
 import shotComplaintDetail from "@assets/landing-story/complaint-3-detail.jpg";
 import {
