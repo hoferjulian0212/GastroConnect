@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Package, ShoppingCart, Check, Clock, Tag, Euro, Layers, Info, Percent, Store, History, Repeat, TrendingUp, TrendingDown, CalendarDays, AlertTriangle, ShieldCheck, Leaf, Flame } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ArrowLeft, Package, ShoppingCart, Check, Clock, Tag, Euro, Layers, Info, Percent, Store, History, Repeat, TrendingUp, TrendingDown, CalendarDays, AlertTriangle, ShieldCheck, Leaf, Flame, ZoomIn } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import QuantityInput from "@/components/QuantityInput";
 import { differenceInDays, differenceInHours, format } from "date-fns";
@@ -34,6 +35,7 @@ export default function ProductDetail() {
   const dateLocale = lang === "it" ? it : de;
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const { triggerFly } = useFlyToCart();
 
   const { data: products, isLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
@@ -346,13 +348,28 @@ export default function ProductDetail() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-8">
             <div className="flex items-start gap-3 md:gap-5 min-w-0">
               <div className="shrink-0">
-                <ProductImage
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="w-20 h-20 md:w-28 md:h-28 rounded-2xl ring-1 ring-white/10"
-                  iconClassName="h-8 w-8 md:h-10 md:w-10"
-                  fallbackIconColor="text-white/20"
-                />
+                <button
+                  type="button"
+                  onClick={() => product.imageUrl && setLightboxOpen(true)}
+                  className={`relative group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${product.imageUrl ? "cursor-zoom-in" : "cursor-default"}`}
+                  data-testid="button-zoom-product-image"
+                  aria-label={lang === "de" ? "Bild vergrößern" : "Ingrandisci immagine"}
+                >
+                  <ProductImage
+                    src={product.imageUrl}
+                    alt={product.name}
+                    className="w-20 h-20 md:w-28 md:h-28 rounded-2xl ring-1 ring-white/10"
+                    iconClassName="h-8 w-8 md:h-10 md:w-10"
+                    fallbackIconColor="text-white/20"
+                  />
+                  {product.imageUrl && (
+                    <span className="absolute inset-0 flex items-end justify-end p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="flex items-center justify-center h-6 w-6 rounded-full bg-black/50 backdrop-blur-sm">
+                        <ZoomIn className="h-3.5 w-3.5 text-white" />
+                      </span>
+                    </span>
+                  )}
+                </button>
               </div>
               <div className="min-w-0 space-y-2.5 pt-0.5">
                 <div className="space-y-1">
@@ -857,6 +874,17 @@ export default function ProductDetail() {
           </section>
         )}
       </div>
+
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="max-w-[90vw] md:max-w-2xl p-2 bg-black/90 border-white/10" data-testid="dialog-image-lightbox">
+          <img
+            src={product?.imageUrl ?? ""}
+            alt={product?.name ?? ""}
+            className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+            data-testid="img-lightbox-product"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
