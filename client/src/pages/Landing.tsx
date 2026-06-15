@@ -136,7 +136,7 @@ const translations = {
     navLogin: "Anmelden",
     navStart: "Jetzt starten",
 
-    heroH1: "Händler und Betriebe. Endlich auf einer Plattform.",
+    heroH1: "Händler und Betriebe. Alles auf einer Plattform.",
     heroSub:
       "GastroConnect verbindet Lieferanten und Gastronomie direkt — mit Preisvergleichen, Ausgabenübersicht und allen Bestellungen an einem Ort.",
     heroCtaRestaurant: "Als Betrieb starten",
