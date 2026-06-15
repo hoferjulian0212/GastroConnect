@@ -707,7 +707,7 @@ function AppLayout() {
         <div className="flex h-dvh w-full">
           <div ref={scrollContainerRef} data-app-scroll className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} ${isInChat ? 'px-0 pt-0 md:px-6 md:pt-6' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
             <div className={`dark hidden md:block bg-[#161921] shrink-0 rounded-3xl overflow-hidden mb-3 md:mb-4 ${isInChat || isDetailPage ? 'md:block' : ''}`} data-testid="app-header-shell">
-              <header className="flex items-center gap-1.5 md:gap-1.5 lg:gap-4 px-3 py-2.5 md:px-2.5 md:py-2.5 lg:px-6">
+              <header className="flex items-center gap-1.5 lg:gap-2 px-3 py-2.5 md:px-2.5 md:py-2.5 lg:px-6">
                 <div className="flex items-center gap-3 shrink-0 lg:flex-1 lg:min-w-0">
                   <MobileProfileButton />
                   <div className="hidden md:flex items-center shrink-0 md:-ml-1 lg:-ml-3">
@@ -715,18 +715,18 @@ function AppLayout() {
                   </div>
                 </div>
                 <HeaderNav />
-                <div className="flex items-center gap-1 lg:gap-2 shrink-0 lg:flex-1 lg:min-w-0 justify-end">
+                <div className="flex items-center gap-1 xl:gap-2 shrink-0 lg:flex-1 lg:min-w-0 justify-end overflow-hidden">
                   <DesktopSearchButton />
-                  <div className="hidden lg:block">
+                  <div className="hidden xl:block shrink-0">
                     <RoleSwitcher />
                   </div>
-                  <div className="hidden lg:block">
+                  <div className="hidden xl:block shrink-0">
                     <AccountSwitcher compact />
                   </div>
                   <LanguageToggle />
                   <HelpButton />
                   {currentRole === "restaurant" && (
-                    <div className="hidden md:block">
+                    <div className="hidden md:block shrink-0">
                       <CartButton />
                     </div>
                   )}

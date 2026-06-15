@@ -10,7 +10,7 @@ export function HelpButton() {
   return (
     <button
       onClick={() => setLocation(`/${currentRole}/help`)}
-      className="hidden md:flex items-center justify-center h-9 w-9 rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 transition-colors"
+      className="hidden xl:flex items-center justify-center h-9 w-9 rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 transition-colors"
       title={lang === "it" ? "Centro assistenza" : "Hilfe-Center"}
       aria-label={lang === "it" ? "Centro assistenza" : "Hilfe-Center"}
       data-testid="button-help-center"
