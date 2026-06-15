@@ -1,4 +1,4 @@
-import { Home, Send, Package, ShoppingBag, AlertCircle, Truck, FileText, Calculator, HelpCircle, BarChart3 } from "lucide-react";
+import { Home, Send, Package, ShoppingBag, AlertCircle, Truck, FileText, Calculator, HelpCircle, BarChart3, Settings } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -36,6 +36,7 @@ export function RestaurantMobileNav() {
     {
       title: lang === "de" ? "Mehr" : "Altro",
       items: [
+        { title: t("common", "settings"), url: "/restaurant/settings", icon: Settings },
         { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/restaurant/help", icon: HelpCircle },
       ],
     },
