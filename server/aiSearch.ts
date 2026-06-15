@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db";
-import { orders, orderItems, users, formatOrderNumber } from "@shared/schema";
+import { orders, orderItems, users, formatOrderNumber, aiChats, aiChatMessages } from "@shared/schema";
 import { and, eq, desc, ilike, or, inArray } from "drizzle-orm";
 import { storage } from "./storage";
 
@@ -627,6 +627,82 @@ export function registerAiSearchRoutes(app: Express) {
     } catch (error: any) {
       console.error("[ai/chats delete] failed:", error?.message || error);
       return res.status(500).json({ error: "ai_failed" });
+    }
+  });
+
+  // Return up to 3 suggested questions for the empty-state chips.
+  // Draws from the user's own recent AI chat messages (deduplicated), then fills
+  // remaining slots with role/language-aware defaults.
+  app.get("/api/ai/suggestions", async (req: Request, res: Response) => {
+    try {
+      const userId = String(req.query.userId || "").trim();
+      const role = String(req.query.role || "").trim() as Role;
+      const lang = String(req.query.lang || "de").trim();
+      if (!userId || (role !== "restaurant" && role !== "supplier")) {
+        return res.status(400).json({ error: "invalid_user" });
+      }
+
+      const rows = await db
+        .select({ content: aiChatMessages.content })
+        .from(aiChatMessages)
+        .innerJoin(aiChats, eq(aiChatMessages.chatId, aiChats.id))
+        .where(
+          and(
+            eq(aiChats.userId, userId),
+            eq(aiChats.role, role as any),
+            eq(aiChatMessages.role, "user"),
+          ),
+        )
+        .orderBy(desc(aiChatMessages.createdAt))
+        .limit(30);
+
+      const seen = new Set<string>();
+      const unique: string[] = [];
+      for (const r of rows) {
+        const text = r.content.trim();
+        const key = text.toLowerCase();
+        if (text && !seen.has(key)) {
+          seen.add(key);
+          unique.push(text);
+          if (unique.length >= 3) break;
+        }
+      }
+
+      const isIt = lang === "it";
+      const defaults =
+        role === "restaurant"
+          ? isIt
+            ? [
+                "Quando ho ordinato i pomodori l'ultima volta?",
+                "Quali consegne sono in ritardo?",
+                "Qual è lo stato del mio ultimo ordine?",
+              ]
+            : [
+                "Wann habe ich zuletzt Tomaten bestellt?",
+                "Welche Lieferungen sind überfällig?",
+                "Was ist der Status meiner letzten Bestellung?",
+              ]
+          : isIt
+            ? [
+                "Quali ordini sono ancora aperti?",
+                "Ci sono consegne in ritardo?",
+                "Mostrami gli ultimi ordini dei miei clienti",
+              ]
+            : [
+                "Welche Bestellungen sind noch offen?",
+                "Gibt es überfällige Lieferungen?",
+                "Zeig mir die letzten Bestellungen meiner Kunden",
+              ];
+
+      for (const d of defaults) {
+        if (unique.length >= 3) break;
+        if (!seen.has(d.toLowerCase())) unique.push(d);
+      }
+
+      return res.json({ suggestions: unique.slice(0, 3) });
+    } catch (error: any) {
+      console.error("[ai/suggestions] failed:", error?.message || error);
+      return res.status(500).json({ suggestions: [] });
     }
   });
 

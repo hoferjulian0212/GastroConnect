@@ -258,16 +258,19 @@ export function AiAssistant() {
     }
   };
 
-  const suggestions =
-    currentRole === "restaurant"
-      ? [
-          t("Wann habe ich zuletzt Tomaten bestellt?", "Quando ho ordinato i pomodori l'ultima volta?"),
-          t("Wie ist der Status meiner letzten Bestellung?", "Qual è lo stato del mio ultimo ordine?"),
-        ]
-      : [
-          t("Welche Bestellungen sind noch offen?", "Quali ordini sono ancora aperti?"),
-          t("Zeig mir die letzten Bestellungen von …", "Mostrami gli ultimi ordini di …"),
-        ];
+  const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery<{ suggestions: string[] }>({
+    queryKey: ["/api/ai/suggestions", userId, currentRole, lang],
+    queryFn: async () => {
+      const sp = new URLSearchParams({ userId: userId || "", role: currentRole, lang });
+      const res = await fetch(`/api/ai/suggestions?${sp.toString()}`, { credentials: "include" });
+      if (!res.ok) throw new Error("failed");
+      return res.json();
+    },
+    enabled: open && !!userId,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const suggestions = suggestionsData?.suggestions ?? [];
 
   if (!userId) return null;
 
@@ -436,17 +439,25 @@ export function AiAssistant() {
                       )}
                     </p>
                     <div className="flex flex-col gap-2 w-full max-w-[300px]">
-                      {suggestions.map((s, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => send(s)}
-                          className="text-left text-xs px-3 py-2 rounded-xl border border-border hover:bg-muted/60 transition-colors"
-                          data-testid={`button-ai-suggestion-${i}`}
-                        >
-                          {s}
-                        </button>
-                      ))}
+                      {suggestionsLoading ? (
+                        <>
+                          <div className="h-8 rounded-xl bg-muted/60 animate-pulse" />
+                          <div className="h-8 rounded-xl bg-muted/60 animate-pulse" />
+                          <div className="h-8 rounded-xl bg-muted/60 animate-pulse" />
+                        </>
+                      ) : (
+                        suggestions.map((s, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => send(s)}
+                            className="text-left text-xs px-3 py-2 rounded-xl border border-border hover:bg-muted/60 transition-colors"
+                            data-testid={`button-ai-suggestion-${i}`}
+                          >
+                            {s}
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
                 ) : (
