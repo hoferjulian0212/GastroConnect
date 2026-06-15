@@ -728,7 +728,7 @@ export default function Landing() {
                 <button
                   key={code}
                   onClick={() => changeLang(code)}
-                  className={`px-2 py-1 rounded-full uppercase tracking-wide transition-colors ${
+                  className={`px-2.5 self-stretch flex items-center rounded-full uppercase tracking-wide transition-colors ${
                     lang === code
                       ? "bg-foreground text-background"
                       : "text-muted-foreground hover:text-foreground"
