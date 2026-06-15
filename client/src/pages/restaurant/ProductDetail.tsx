@@ -465,15 +465,6 @@ export default function ProductDetail() {
                   <span className="text-sm md:text-base text-white/50">/{product.unit}</span>
                 </div>
               )}
-
-              <a
-                href="#order-card"
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/[0.07] px-3.5 py-1.5 text-xs font-medium text-white/80 hover:bg-white/[0.12] transition-colors"
-                data-testid="link-jump-to-order"
-              >
-                <ShoppingCart className="h-3.5 w-3.5" />
-                {lang === "de" ? "Zur Bestellung" : "Vai all'ordine"}
-              </a>
             </div>
           </div>
 
