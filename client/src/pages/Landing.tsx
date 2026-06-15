@@ -870,32 +870,30 @@ export default function Landing() {
               <p className="mt-8 md:mt-12 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
                 {t.heroSub}
               </p>
+              <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto gap-2 text-base"
+                  onClick={() => handleStart("restaurant")}
+                  data-testid="button-hero-restaurant"
+                >
+                  <Utensils className="h-4 w-4" />
+                  {t.heroCtaRestaurant}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full sm:w-auto gap-2 text-base"
+                  onClick={() => handleStart("supplier")}
+                  data-testid="button-hero-supplier"
+                >
+                  <Store className="h-4 w-4" />
+                  {t.heroCtaSupplier}
+                </Button>
+              </div>
             </MotionReveal>
           </div>
-          <MotionReveal delay={400} y={16} blur={false}>
-            <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center pb-8 md:pb-12">
-              <Button
-                size="lg"
-                className="w-full sm:w-auto gap-2 text-base"
-                onClick={() => handleStart("restaurant")}
-                data-testid="button-hero-restaurant"
-              >
-                <Utensils className="h-4 w-4" />
-                {t.heroCtaRestaurant}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full sm:w-auto gap-2 text-base"
-                onClick={() => handleStart("supplier")}
-                data-testid="button-hero-supplier"
-              >
-                <Store className="h-4 w-4" />
-                {t.heroCtaSupplier}
-              </Button>
-            </div>
-          </MotionReveal>
         </div>
 
         {/* Hero screenshot — A2 grow + B2 callouts + B3 tilt */}
