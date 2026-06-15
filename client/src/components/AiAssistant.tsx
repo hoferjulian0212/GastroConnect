@@ -434,8 +434,8 @@ export function AiAssistant() {
                     </p>
                     <p className="text-xs text-muted-foreground mb-4 max-w-[260px]">
                       {t(
-                        "Frag mich zu deinen Bestellungen, Lieferungen und Partnern.",
-                        "Chiedimi dei tuoi ordini, consegne e partner.",
+                        "Bestellungen, Lieferungen, Reklamationen, Nachrichten, Ausgaben, Aktionen und mehr.",
+                        "Ordini, consegne, reclami, messaggi, spese, promozioni e altro.",
                       )}
                     </p>
                     <div className="flex flex-col gap-2 w-full max-w-[300px]">
