@@ -606,6 +606,16 @@ export default function Landing() {
   const phoneY = useTransform(phoneProgress, [0, 1], [24, -24]);
   const phoneParallaxActive = isDesktop && !reduceMotion;
 
+  // Hero logo orb — scroll-driven fade + scale
+  const heroSectionRef = useRef<HTMLElement | null>(null);
+  const { scrollYProgress: heroProgress } = useScroll({
+    target: heroSectionRef,
+    offset: ["start start", "end start"],
+    layoutEffect: false,
+  });
+  const heroBgOpacity = useTransform(heroProgress, [0, 0.55], [1, 0]);
+  const heroBgScale  = useTransform(heroProgress, [0, 0.55], [1, 1.22]);
+
   useEffect(() => {
     setLang(detectInitialLang());
   }, []);
@@ -808,7 +818,33 @@ export default function Landing() {
       <div id="top" />
 
       {/* HERO */}
-      <section className="px-4 md:px-8 pb-12 md:pb-16">
+      <section ref={heroSectionRef} className="relative overflow-hidden px-4 md:px-8 pb-12 md:pb-16">
+
+        {/* 3-D logo orb — decorative background, scroll-driven */}
+        {!reduceMotion && (
+          <motion.div
+            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center"
+            style={{ opacity: heroBgOpacity }}
+            aria-hidden
+          >
+            <motion.div
+              style={{ scale: heroBgScale }}
+              animate={{ y: [0, -18, 0] }}
+              transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <div style={{ perspective: "900px" }}>
+                <motion.img
+                  src={logoOrb}
+                  alt=""
+                  className="w-[min(72vw,520px)] h-[min(72vw,520px)] object-contain opacity-[0.07] dark:opacity-[0.04] dark:invert"
+                  animate={{ rotateY: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         <div className="mx-auto max-w-5xl text-center flex flex-col min-h-[calc(100svh-4rem)]">
           <div className="flex-1 flex flex-col justify-center pt-8">
             <HeadlineReveal
