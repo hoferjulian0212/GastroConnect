@@ -6,8 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ArrowLeft, Package, ShoppingCart, Check, Clock, Tag, Euro, Layers, Info, Percent, Store, History, Repeat, TrendingUp, TrendingDown, CalendarDays, AlertTriangle, ShieldCheck, Leaf, Flame, ZoomIn } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { ArrowLeft, Package, ShoppingCart, Check, Clock, Tag, Euro, Layers, Info, Percent, Store, History, Repeat, TrendingUp, TrendingDown, CalendarDays, AlertTriangle, ShieldCheck, Leaf, Flame, ZoomIn, User, Phone, Mail } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import QuantityInput from "@/components/QuantityInput";
 import { differenceInDays, differenceInHours, format } from "date-fns";
@@ -388,6 +389,37 @@ export default function ProductDetail() {
                       </span>
                     )}
                   </div>
+
+                  {product.supplier && (product.supplier.companyName ? product.supplier.name : null || product.supplier.phone || product.supplier.email) && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                      {product.supplier.companyName && product.supplier.name && (
+                        <span className="flex items-center gap-1 text-[11px] text-white/45">
+                          <User className="h-3 w-3 shrink-0" />
+                          <span>{product.supplier.name}</span>
+                        </span>
+                      )}
+                      {product.supplier.phone && (
+                        <a
+                          href={`tel:${product.supplier.phone}`}
+                          className="flex items-center gap-1 text-[11px] text-white/45 hover:text-white/70 transition-colors"
+                          data-testid="link-supplier-phone"
+                        >
+                          <Phone className="h-3 w-3 shrink-0" />
+                          <span>{product.supplier.phone}</span>
+                        </a>
+                      )}
+                      {product.supplier.email && (
+                        <a
+                          href={`mailto:${product.supplier.email}`}
+                          className="flex items-center gap-1 text-[11px] text-white/45 hover:text-white/70 transition-colors"
+                          data-testid="link-supplier-email"
+                        >
+                          <Mail className="h-3 w-3 shrink-0" />
+                          <span className="truncate max-w-[160px]">{product.supplier.email}</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
@@ -877,6 +909,7 @@ export default function ProductDetail() {
 
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
         <DialogContent className="max-w-[90vw] md:max-w-2xl p-2 bg-black/90 border-white/10" data-testid="dialog-image-lightbox">
+          <VisuallyHidden><DialogTitle>{product?.name}</DialogTitle></VisuallyHidden>
           <img
             src={product?.imageUrl ?? ""}
             alt={product?.name ?? ""}
