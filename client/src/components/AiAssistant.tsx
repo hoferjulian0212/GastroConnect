@@ -314,58 +314,41 @@ export function AiAssistant() {
     <>
       {!open && (
         <>
-          {/* FAB + nudge pill — single row anchored bottom-right so items-center aligns them perfectly */}
-          <div className="hidden md:flex fixed bottom-6 right-6 z-[56] items-center gap-3 flex-row-reverse">
-            {/* FAB */}
+          {/* FAB — nudge speech bubble floats above it, no extra button */}
+          <div className="hidden md:block fixed bottom-6 right-6 z-[56]">
+            {nudgeVisible && (
+              <div
+                className="absolute bottom-[calc(100%+10px)] right-0 flex items-center gap-2 bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-3 py-2 shadow-lg whitespace-nowrap text-sm font-medium animate-in fade-in slide-in-from-bottom-2 duration-300"
+                data-testid="ai-nudge-pill"
+              >
+                {t(
+                  `Kann ich Ihnen helfen${firstName ? `, ${firstName}` : ""}?`,
+                  `Posso aiutarla${firstName ? `, ${firstName}` : ""}?`,
+                )}
+                <button
+                  type="button"
+                  onClick={dismissNudge}
+                  className="flex-shrink-0 flex items-center justify-center h-5 w-5 rounded-full bg-white/20 hover:bg-white/35 transition-colors"
+                  aria-label={t("Schließen", "Chiudi")}
+                  data-testid="button-ai-nudge-dismiss"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => {
+                dismissNudge();
                 setOpen(true);
                 setView("chat");
               }}
-              className="flex-shrink-0 inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
+              className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
               aria-label={t("KI-Assistent öffnen", "Apri assistente AI")}
               data-testid="button-ai-fab"
             >
               <SupportChatIcon className="h-7 w-7" />
             </button>
-
-            {/* Nudge circle — once per session */}
-            {nudgeVisible && (
-              <div className="relative flex-shrink-0 animate-in fade-in slide-in-from-right-2 duration-300" data-testid="ai-nudge-pill">
-                {/* Speech bubble above the circle */}
-                <div className="absolute bottom-[calc(100%+10px)] right-0 flex items-center gap-2 bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-3 py-2 shadow-lg whitespace-nowrap text-sm font-medium">
-                  {t(
-                    `Kann ich Ihnen helfen${firstName ? `, ${firstName}` : ""}?`,
-                    `Posso aiutarla${firstName ? `, ${firstName}` : ""}?`,
-                  )}
-                  <button
-                    type="button"
-                    onClick={dismissNudge}
-                    className="flex-shrink-0 flex items-center justify-center h-5 w-5 rounded-full bg-white/20 hover:bg-white/35 transition-colors"
-                    aria-label={t("Schließen", "Chiudi")}
-                    data-testid="button-ai-nudge-dismiss"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-
-                {/* Circle button — same h-16 w-16 as FAB */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    dismissNudge();
-                    setOpen(true);
-                    setView("chat");
-                  }}
-                  className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
-                  aria-label={t("KI-Assistent — Hilfe?", "Assistente AI — Aiuto?")}
-                  data-testid="button-ai-nudge-open"
-                >
-                  <HelpCircle className="h-7 w-7" />
-                </button>
-              </div>
-            )}
           </div>
         </>
       )}
