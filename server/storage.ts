@@ -241,6 +241,7 @@ export interface IStorage {
   deleteVertreterAssignment(supplierId: string, restaurantId: string): Promise<void>;
   getResponsibleVertreter(supplierId: string, restaurantId: string): Promise<Member | undefined>;
   backfillMembers(): Promise<number>;
+  runEmailVerificationMigration(): Promise<void>;
 
   // Authentication: member credentials, invitations, resets & linked OAuth
   getMemberByEmail(email: string): Promise<Member | undefined>;
@@ -2283,6 +2284,59 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  // Schema + data migration for the email-verification / self-signup feature.
+  // DDL is idempotent and runs on every boot (guarantees the column/table exist
+  // in every environment). The data backfill runs exactly ONCE (rollout) and is
+  // tracked in app_migrations so restarts never re-verify pending accounts.
+  async runEmailVerificationMigration(): Promise<void> {
+    // --- Idempotent DDL — safe to run on every boot. ---
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_at timestamp`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS email_verifications (
+        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        member_id varchar(36) NOT NULL REFERENCES members(id),
+        token_hash text NOT NULL,
+        expires_at timestamp NOT NULL,
+        used_at timestamp,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_email_verifications_token_hash ON email_verifications (token_hash)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_email_verifications_member_id ON email_verifications (member_id)`);
+
+    // --- ONE-TIME data backfill of pre-feature (legacy) rows. ---
+    // This MUST run exactly once during rollout, never on subsequent boots:
+    // re-running it would auto-verify still-pending self-signups and silently
+    // bypass the login email-verification gate. A flag table records that the
+    // rollout backfill already happened. (drizzle push may create the column
+    // before the server boots, so column-existence is NOT a reliable signal —
+    // hence an explicit applied-migrations marker.)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS app_migrations (
+        name text PRIMARY KEY,
+        applied_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    const MIGRATION = "email_verification_backfill_v1";
+    const applied = await db.execute(sql`SELECT 1 FROM app_migrations WHERE name = ${MIGRATION}`);
+    if ((applied.rows || []).length > 0) return;
+
+    // Existing/legacy organizations are treated as already-activated so they
+    // stay visible in public directory listings (getUsersByRole filters on
+    // verifiedAt). Only self-signed-up businesses await email confirmation.
+    await db.update(users).set({ verifiedAt: new Date() }).where(isNull(users.verifiedAt));
+
+    // Existing password members are treated as already email-verified so the new
+    // login gate never locks them out. Only self-signup owners created after
+    // this point (password set, email not yet confirmed) stay gated.
+    await db
+      .update(members)
+      .set({ emailVerifiedAt: new Date() })
+      .where(and(isNotNull(members.passwordHash), isNull(members.emailVerifiedAt)));
+
+    await db.execute(sql`INSERT INTO app_migrations (name) VALUES (${MIGRATION}) ON CONFLICT DO NOTHING`);
+  }
+
   async getOrderTemplates(restaurantId: string): Promise<OrderTemplateWithItems[]> {
     const templates = await db.select().from(orderTemplates)
       .where(eq(orderTemplates.restaurantId, restaurantId))
@@ -2487,6 +2541,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(messages);
     await db.delete(conversations);
     await db.delete(orders);
+    await db.delete(emailVerifications);
     await db.delete(members);
     await db.delete(notifications);
     await db.delete(promotions);
@@ -3729,19 +3784,6 @@ export class DatabaseStorage implements IStorage {
       }
     }
     console.log(`Ratings: ${ratingRows.length}, Documents: ${docRows.length} seeded.`);
-
-    // Seeded/legacy organizations are considered already-activated so they show
-    // up in public directory listings. Only self-signed-up businesses await
-    // email confirmation (verifiedAt null).
-    await db.update(users).set({ verifiedAt: new Date() }).where(isNull(users.verifiedAt));
-
-    // Backfill any pre-existing password members so the new login email-gate
-    // never locks out legacy/test accounts. Only self-signup owners (created
-    // after this point with a password but no confirmed email) stay gated.
-    await db
-      .update(members)
-      .set({ emailVerifiedAt: new Date() })
-      .where(and(isNotNull(members.passwordHash), isNull(members.emailVerifiedAt)));
 
     console.log(`Demo data ${DEMO_VERSION} seeded successfully!`);
   }

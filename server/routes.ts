@@ -566,6 +566,10 @@ export async function registerRoutes(
   }));
   app.use("/favicon.png", express.static(path.join(clientPublicPath, "favicon.png")));
 
+  // Apply the email-verification schema + backfill (idempotent, always runs so
+  // existing environments get the new column/table and existing accounts are
+  // not locked out by the login email-gate).
+  await storage.runEmailVerificationMigration();
   // Seed data on startup
   await storage.seedData();
   // Ensure every organization has at least an Admin member (idempotent)
