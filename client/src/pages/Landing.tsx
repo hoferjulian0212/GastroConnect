@@ -829,9 +829,10 @@ export default function Landing() {
       >
         <div className="mx-auto max-w-6xl flex items-center justify-between gap-3 px-4 py-3 md:px-8">
           <a
-            href="#top"
+            href="/"
             onClick={(e) => {
               e.preventDefault();
+              setLocation("/");
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
             className="flex items-center shrink-0"
