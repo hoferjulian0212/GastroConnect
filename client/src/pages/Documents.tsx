@@ -399,8 +399,8 @@ export default function Documents() {
         subtitle={lang === "de" ? "Lieferscheine und Rechnungen" : "Note di consegna e fatture"}
         testId="mobile-header-documents"
       />
-      <div className="hidden md:flex items-center justify-between gap-2 px-1 flex-wrap">
-        {currentRole === "restaurant" ? (
+      {currentRole === "restaurant" && (
+        <div className="hidden md:flex px-1">
           <Button
             size="sm"
             variant="outline"
@@ -411,29 +411,8 @@ export default function Documents() {
             <BarChart3 className="h-4 w-4 mr-1" />
             {lang === "de" ? "Monatsberichte ansehen" : "Vedi report mensili"}
           </Button>
-        ) : <div />}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setShowUploadDialog(true)}
-            data-testid="button-open-upload-document"
-            className="shrink-0 rounded-lg"
-          >
-            <Upload className="h-4 w-4 mr-1" />
-            {lang === "de" ? "Dokument hochladen" : "Carica documento"}
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setShowGenerateDialog(true)}
-            data-testid="button-open-generate-delivery-note"
-            className="shrink-0 rounded-lg"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            {lang === "de" ? "Lieferschein generieren" : "Genera bolla di consegna"}
-          </Button>
         </div>
-      </div>
+      )}
 
       <div className={`md:hidden grid gap-2 ${currentRole === "restaurant" ? "grid-cols-3" : "grid-cols-2"}`}>
         {currentRole === "restaurant" && (
@@ -471,6 +450,30 @@ export default function Documents() {
         open={showUploadDialog}
         onOpenChange={setShowUploadDialog}
       />
+
+      {!isLoading && totalDocs === 0 && (
+        <div className="hidden md:flex items-center gap-2 px-1 justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowUploadDialog(true)}
+            data-testid="button-open-upload-document-empty"
+            className="rounded-lg"
+          >
+            <Upload className="h-4 w-4 mr-1" />
+            {lang === "de" ? "Dokument hochladen" : "Carica documento"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setShowGenerateDialog(true)}
+            data-testid="button-open-generate-delivery-note-empty"
+            className="rounded-lg"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            {lang === "de" ? "Lieferschein generieren" : "Genera bolla di consegna"}
+          </Button>
+        </div>
+      )}
 
       {!isLoading && totalDocs > 0 && (
         <div className="space-y-2 px-1 mb-4" data-testid="documents-controls">
@@ -518,6 +521,27 @@ export default function Documents() {
               <SlidersHorizontal className="h-4 w-4" />
               {hasActiveFilters && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary border border-background" />}
             </Button>
+            <div className="hidden md:flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowUploadDialog(true)}
+                data-testid="button-open-upload-document"
+                className="rounded-lg"
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                {lang === "de" ? "Dokument hochladen" : "Carica documento"}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setShowGenerateDialog(true)}
+                data-testid="button-open-generate-delivery-note"
+                className="rounded-lg"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                {lang === "de" ? "Lieferschein generieren" : "Genera bolla di consegna"}
+              </Button>
+            </div>
           </div>
 
           {showFilters && (
