@@ -400,7 +400,7 @@ export default function Documents() {
         testId="mobile-header-documents"
       />
       {currentRole === "restaurant" && (
-        <div className="hidden md:flex px-1">
+        <div className="hidden md:flex px-1 mb-4">
           <Button
             size="sm"
             variant="outline"
