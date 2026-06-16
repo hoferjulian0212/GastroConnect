@@ -207,7 +207,7 @@ function CartButton() {
     >
       <ShoppingCart className="h-4 w-4" />
       {count > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold leading-none">
+        <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[1rem] px-1 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold leading-none">
           {count > 9 ? "9+" : count}
         </span>
       )}
