@@ -170,34 +170,49 @@ export function MobileNavBase({
             const badgeCount = item.hasBadge ? getBadgeCount(item.url) : 0;
             const active = isItemActive(item);
             const showLabel = active && !compact;
+            const sharedClass = `${itemBaseClass} ${
+              active
+                ? "bg-foreground/[0.08] dark:bg-white/[0.14] nav-item-active"
+                : "nav-item-inactive"
+            }`;
+            const innerContent = (
+              <span className={`inline-flex items-center justify-center min-w-0 transition-[padding] duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${showLabel ? "px-4" : "px-2.5"}`}>
+                <motion.span
+                  className="relative inline-flex items-center justify-center shrink-0"
+                  whileTap={{ scale: 0.88 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                >
+                  <item.icon className={`h-6 w-6 ${active ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
+                  {badgeCount > 0 && (
+                    <span className="absolute -top-1 -right-2.5 z-10 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] text-primary-foreground font-semibold">
+                      {badgeCount > 9 ? "9+" : badgeCount}
+                    </span>
+                  )}
+                </motion.span>
+                {renderLabel(item.title, showLabel)}
+              </span>
+            );
 
-            return (
+            return active ? (
+              <button
+                key={item.url}
+                type="button"
+                aria-label={item.title}
+                className={sharedClass}
+                data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
+                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              >
+                {innerContent}
+              </button>
+            ) : (
               <Link
                 key={item.url}
                 href={item.url}
                 aria-label={item.title}
-                className={`${itemBaseClass} ${
-                  active
-                    ? "bg-foreground/[0.08] dark:bg-white/[0.14] nav-item-active"
-                    : "nav-item-inactive"
-                }`}
+                className={sharedClass}
                 data-testid={`${testIdPrefix}-mobile-nav-${item.url.split("/").pop()}`}
               >
-                <span className={`inline-flex items-center justify-center min-w-0 transition-[padding] duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${showLabel ? "px-4" : "px-2.5"}`}>
-                  <motion.span
-                    className="relative inline-flex items-center justify-center shrink-0"
-                    whileTap={{ scale: 0.88 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  >
-                    <item.icon className={`h-6 w-6 ${active ? "stroke-[2.2]" : "stroke-[1.8]"}`} />
-                    {badgeCount > 0 && (
-                      <span className="absolute -top-1 -right-2.5 z-10 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] text-primary-foreground font-semibold">
-                        {badgeCount > 9 ? "9+" : badgeCount}
-                      </span>
-                    )}
-                  </motion.span>
-                  {renderLabel(item.title, showLabel)}
-                </span>
+                {innerContent}
               </Link>
             );
           })}
