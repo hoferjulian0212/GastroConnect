@@ -841,23 +841,6 @@ export default function Landing() {
 
       {/* HERO */}
       <section className="relative px-4 md:px-8 pb-12 md:pb-16">
-
-        {/* Dot-grid ambient background */}
-        <div className="pointer-events-none select-none absolute inset-0" aria-hidden>
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle, hsl(var(--foreground) / 0.1) 1px, transparent 1px)",
-              backgroundSize: "30px 30px",
-              maskImage:
-                "radial-gradient(ellipse 80% 70% at 50% 40%, black 0%, transparent 100%)",
-              WebkitMaskImage:
-                "radial-gradient(ellipse 80% 70% at 50% 40%, black 0%, transparent 100%)",
-            }}
-          />
-        </div>
-
         <div className="mx-auto max-w-5xl text-center flex flex-col min-h-[calc(100svh-4rem)]">
           <div className="flex-1 flex flex-col justify-center pt-8">
             <HeadlineReveal
