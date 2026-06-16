@@ -526,7 +526,7 @@ function ProfileMenuContent() {
       </DropdownMenuItem>
       <DropdownMenuItem
         onSelect={handleLogout}
-        className="block w-full px-4 py-2 text-sm transition-colors cursor-pointer rounded-none text-red-400 focus:text-red-300 focus:bg-red-500/10 hover:text-red-300 hover:bg-red-500/10"
+        className="flex items-center w-full px-4 py-2 text-sm transition-colors cursor-pointer rounded-none text-red-400 focus:text-red-300 focus:bg-red-500/10 hover:text-red-300 hover:bg-red-500/10"
         data-testid="menu-item-logout"
       >
         <LogOut className="mr-2 h-4 w-4" />
