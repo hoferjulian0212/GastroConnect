@@ -165,11 +165,20 @@ export function registerAuthRoutes(app: Express) {
       if (!member) {
         return res.status(400).json({ error: "invalid_token", message: "Der Link ist ungültig oder abgelaufen." });
       }
+      const wasPending = !member.emailVerifiedAt;
       await storage.updateMemberAuth(member.id, {
         passwordHash: await hashPassword(password),
         emailVerifiedAt: member.emailVerifiedAt ?? new Date(),
       });
       await storage.markPasswordResetUsed(record.id);
+      // Completing a reset proves control of the account email — the same proof
+      // the verification link gives. Activate a still-pending self-signup org so
+      // the account never lands in a half-verified state (member usable but org
+      // hidden from listings) and email verification can't be side-stepped into
+      // an inconsistent state.
+      if (wasPending) {
+        await storage.markOrganizationVerified(member.organizationId);
+      }
       await establishSession(req, member.id);
       const org = await storage.getUser(member.organizationId);
       logAuthEvent("password_reset.confirmed", req, { memberId: member.id });

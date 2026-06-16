@@ -421,7 +421,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const [created] = await db.insert(users).values(user).returning();
+    // Orgs created through this path (demo seed, admin tooling) are active
+    // immediately. Self-signups deliberately bypass this method via
+    // createBusinessSignup so they stay pending (verifiedAt null) until the
+    // owner confirms their email.
+    const [created] = await db
+      .insert(users)
+      .values({ ...user, verifiedAt: user.verifiedAt ?? new Date() })
+      .returning();
     return created;
   }
 
