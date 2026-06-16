@@ -320,7 +320,7 @@ export function AiAssistant() {
           <div className="hidden md:flex fixed bottom-6 right-6 z-[56] items-center gap-3">
             {nudgeVisible && (
               <div
-                className="flex items-center gap-2 bg-primary text-primary-foreground rounded-full px-4 py-2.5 shadow-lg shadow-black/20 whitespace-nowrap text-sm font-medium animate-in fade-in slide-in-from-right-2 duration-300"
+                className="flex items-center gap-2 bg-[#161921] text-white rounded-full px-4 py-2.5 shadow-lg shadow-black/20 whitespace-nowrap text-sm font-medium animate-in fade-in slide-in-from-right-2 duration-300"
                 data-testid="ai-nudge-pill"
               >
                 <button
@@ -352,7 +352,7 @@ export function AiAssistant() {
                 setOpen(true);
                 setView("chat");
               }}
-              className="flex-shrink-0 inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
+              className="flex-shrink-0 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#161921] text-white shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
               aria-label={t("KI-Assistent öffnen", "Apri assistente AI")}
               data-testid="button-ai-fab"
             >
@@ -369,26 +369,26 @@ export function AiAssistant() {
         >
           {/* Header */}
           <div
-            className="flex items-center gap-2 px-3 py-2.5 border-b border-border shrink-0"
+            className="flex items-center gap-2 px-3 py-2.5 bg-[#161921] text-white shrink-0"
             style={{ paddingTop: "max(0.625rem, env(safe-area-inset-top, 0px))" }}
           >
             {view === "history" ? (
               <button
                 type="button"
                 onClick={() => setView("chat")}
-                className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-muted text-muted-foreground"
+                className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-white/10 text-white/80"
                 aria-label={t("Zurück", "Indietro")}
                 data-testid="button-ai-history-back"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
             ) : (
-              <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary shrink-0">
+              <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-white/10 text-white shrink-0">
                 <SupportChatIcon className="h-4 w-4" />
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate" data-testid="text-ai-panel-title">
+              <p className="text-sm font-semibold truncate text-white" data-testid="text-ai-panel-title">
                 {view === "history"
                   ? t("Verlauf", "Cronologia")
                   : t("KI-Assistent", "Assistente AI")}
@@ -399,7 +399,7 @@ export function AiAssistant() {
                 <button
                   type="button"
                   onClick={newChat}
-                  className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-muted text-muted-foreground"
+                  className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-white/10 text-white/80"
                   aria-label={t("Neuer Chat", "Nuova chat")}
                   data-testid="button-ai-new-chat"
                 >
@@ -408,7 +408,7 @@ export function AiAssistant() {
                 <button
                   type="button"
                   onClick={() => setView("history")}
-                  className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-muted text-muted-foreground"
+                  className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-white/10 text-white/80"
                   aria-label={t("Verlauf", "Cronologia")}
                   data-testid="button-ai-history"
                 >
@@ -417,7 +417,7 @@ export function AiAssistant() {
                 <button
                   type="button"
                   onClick={() => setExpanded((v) => !v)}
-                  className="hidden md:inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-muted text-muted-foreground"
+                  className="hidden md:inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-white/10 text-white/80"
                   aria-label={expanded ? t("Verkleinern", "Riduci") : t("Vergrößern", "Ingrandisci")}
                   data-testid="button-ai-expand"
                 >
@@ -428,7 +428,7 @@ export function AiAssistant() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-muted text-muted-foreground"
+              className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-white/10 text-white/80"
               aria-label={t("Schließen", "Chiudi")}
               data-testid="button-ai-close"
             >
