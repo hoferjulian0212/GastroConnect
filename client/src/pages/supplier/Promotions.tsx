@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Tag, Plus, Trash2, Package, Calendar, Percent, Loader2, Send, Check, ChevronRight, ChevronLeft, ChevronDown, Users, MessageSquare, Search, X, AlertTriangle, Clock, Hourglass, Archive, Flame, Sparkles } from "lucide-react";
+import { Tag, Plus, Trash2, Package, Calendar, Percent, Loader2, Send, Check, ChevronRight, ChevronLeft, ChevronDown, Users, MessageSquare, Search, X, AlertTriangle, Clock, Hourglass, Archive, Flame } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -302,14 +302,14 @@ export default function SupplierPromotions() {
             <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-page-title">{t("common", "promotions")}</h1>
             <p className="text-sm text-white/50 mt-1">{lang === "de" ? "Rabattaktionen für Ihre Produkte verwalten" : "Gestisci le promozioni per i tuoi prodotti"}</p>
           </div>
-          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="hidden md:inline-flex rounded-full bg-amber-400 hover:bg-amber-300 text-amber-950 font-semibold gap-2 shadow-lg shadow-amber-500/30 hover:shadow-amber-400/40 transition-all px-5" size="default" data-testid="button-create-promotion">
-            <Sparkles className="h-4 w-4" />
+          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="hidden md:inline-flex rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 gap-1.5" size="sm" data-testid="button-create-promotion">
+            <Plus className="h-4 w-4" />
             {t("promotionsPage", "createPromotion")}
           </Button>
         </div>
 
-        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="md:hidden w-full gap-2 rounded-full bg-amber-400 hover:bg-amber-300 text-amber-950 font-semibold shadow-lg shadow-amber-500/25" size="default" data-testid="button-create-promotion-mobile">
-          <Sparkles className="h-4 w-4" />
+        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="md:hidden w-full gap-2" size="sm" data-testid="button-create-promotion-mobile">
+          <Plus className="h-4 w-4" />
           {t("promotionsPage", "createPromotion")}
         </Button>
 
@@ -372,8 +372,8 @@ export default function SupplierPromotions() {
               </div>
               <p className="font-semibold">{t("promotionsPage", "noPromotions")}</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-xs">{t("promotionsPage", "noPromotionsDesc")}</p>
-              <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="mt-4 rounded-full gap-2 bg-amber-400 hover:bg-amber-300 text-amber-950 font-semibold shadow-lg shadow-amber-500/25" size="default" data-testid="button-create-promotion-empty">
-                <Sparkles className="h-4 w-4" />
+              <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="mt-4 rounded-full gap-1.5" size="sm" data-testid="button-create-promotion-empty">
+                <Plus className="h-4 w-4" />
                 {t("promotionsPage", "createPromotion")}
               </Button>
             </div>
