@@ -22,6 +22,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import Logo from "@/components/Logo";
+import logoIcon from "@assets/logo_no_bg.png";
 import shotHome from "@assets/landing-home.jpg";
 import shotMobile from "@assets/landing-mobile.png";
 import shotMobileSupplier from "@assets/landing-mobile-supplier.png";
@@ -843,6 +844,15 @@ export default function Landing() {
       <section className="relative px-4 md:px-8 pb-12 md:pb-16">
         <div className="mx-auto max-w-5xl text-center flex flex-col min-h-[calc(100svh-4rem)]">
           <div className="flex-1 flex flex-col justify-center pt-8">
+            <motion.img
+              src={logoIcon}
+              alt="GastroConnect"
+              className="mx-auto mb-6 md:mb-8 h-20 w-20 md:h-28 md:w-28 object-contain dark:invert"
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.4, rotate: -25, y: -20 }}
+              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, rotate: 0, y: 0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 14, delay: 0.1 }}
+              data-testid="img-hero-logo"
+            />
             <HeadlineReveal
               key={`hero-${lang}`}
               text={t.heroH1}
