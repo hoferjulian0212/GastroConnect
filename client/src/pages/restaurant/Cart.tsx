@@ -1,4 +1,5 @@
 import { MobilePageHeader } from "@/components/mobile";
+import { useConfetti } from "@/hooks/use-confetti";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
@@ -158,6 +159,7 @@ export default function RestaurantCart() {
   const canPlaceOrder = !currentMember || can(currentMember.role, "orders.create");
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const fireConfetti = useConfetti();
   useMobileKeyboardInset();
   const [orderNotes, setOrderNotes] = useState<Record<string, string>>({});
   const [deliveryOptions, setDeliveryOptions] = useState<Record<string, "asap" | "date">>({});
@@ -240,6 +242,7 @@ export default function RestaurantCart() {
       return res.json();
     },
     onSuccess: (data) => {
+      fireConfetti("center");
       const supplierNames = Object.values(groupedBySupplier || {}).map(g => g.supplier.companyName || g.supplier.name);
       const itemCount = cartItems?.length || 0;
       const orders = Array.isArray(data) ? data : [data];

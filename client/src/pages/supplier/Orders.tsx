@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useConfetti } from "@/hooks/use-confetti";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -46,6 +47,7 @@ export default function SupplierOrders() {
  const { currentUser } = useUser();
  const { toast } = useToast();
  const haptic = useHaptic();
+ const fireConfetti = useConfetti();
  const [, navTo] = useLocation();
  const { lang } = useLanguage();
  const t = useT(lang);
@@ -224,6 +226,9 @@ export default function SupplierOrders() {
  },
  onSuccess: (_, variables) => {
  haptic(variables.status === "cancelled" ? "medium" : "success");
+ if (variables.status === "confirmed" || variables.status === "delivered") {
+   fireConfetti("center");
+ }
  queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
  queryClient.invalidateQueries({ queryKey: ['/api/supplier/stats', currentUser?.id] });
  queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.includes?.("/api/supplier/detailed-stats") });

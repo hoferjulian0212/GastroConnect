@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useConfetti } from "@/hooks/use-confetti";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -57,6 +58,7 @@ export default function SupplierPromotions() {
   const { toast } = useToast();
   const { lang } = useLanguage();
   const t = useT(lang);
+  const fireConfetti = useConfetti();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
@@ -109,6 +111,7 @@ export default function SupplierPromotions() {
       return apiRequest("POST", "/api/promotions/bulk", data);
     },
     onSuccess: async (_data: any) => {
+      fireConfetti("center");
       queryClient.invalidateQueries({ queryKey: [`/api/promotions?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       toast({ title: t("promotionsPage", "promotionCreated") });
