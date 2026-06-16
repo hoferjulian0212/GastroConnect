@@ -1061,9 +1061,63 @@ export const members = pgTable("members", {
   phone: text("phone"),
   profileImageUrl: text("profile_image_url"),
   role: memberRoleEnum("role").notNull().default("staff"),
+  // ── Authentication (added by Member Authentication task) ──────────────────
+  // All nullable so existing seeded members keep working until they claim
+  // credentials. `passwordHash` is null for OAuth-only or not-yet-claimed
+  // accounts. Email (lower-cased) is the login key and is uniquely indexed
+  // below, but only enforced for non-null emails so legacy members without an
+  // email are unaffected.
+  passwordHash: text("password_hash"),
+  emailVerifiedAt: timestamp("email_verified_at"),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_members_organization_id").on(table.organizationId),
+  uniqueIndex("uniq_members_login_email")
+    .on(sql`lower(${table.email})`)
+    .where(sql`${table.email} is not null`),
+]);
+
+// ── Auth: invitations, password resets & linked OAuth accounts ──────────────
+// Invitations and resets store only a SHA-256 hash of the raw token; the raw
+// token lives solely in the emailed link. Both reference a member (invite-only
+// model: the member row is created first, then invited to claim credentials).
+export const invitations = pgTable("invitations", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  memberId: varchar("member_id", { length: 36 }).notNull().references(() => members.id),
+  tokenHash: text("token_hash").notNull(),
+  invitedByMemberId: varchar("invited_by_member_id", { length: 36 }).references(() => members.id),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_invitations_token_hash").on(table.tokenHash),
+  index("idx_invitations_member_id").on(table.memberId),
+]);
+
+export const passwordResets = pgTable("password_resets", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  memberId: varchar("member_id", { length: 36 }).notNull().references(() => members.id),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_password_resets_token_hash").on(table.tokenHash),
+  index("idx_password_resets_member_id").on(table.memberId),
+]);
+
+export const oauthProviderEnum = pgEnum("oauth_provider", ["google", "apple", "microsoft"]);
+
+export const oauthAccounts = pgTable("oauth_accounts", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  memberId: varchar("member_id", { length: 36 }).notNull().references(() => members.id),
+  provider: oauthProviderEnum("provider").notNull(),
+  providerUserId: text("provider_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_oauth_provider_user").on(table.provider, table.providerUserId),
+  index("idx_oauth_accounts_member_id").on(table.memberId),
 ]);
 
 // A Vertreter (sales rep) is a member of a supplier org. This assignment maps
@@ -1084,12 +1138,31 @@ export const vertreterAssignments = pgTable("vertreter_assignments", {
 export const MEMBER_ROLES = ["admin", "manager", "staff", "vertreter"] as const;
 export type MemberRole = typeof MEMBER_ROLES[number];
 
-export const insertMemberSchema = createInsertSchema(members).omit({ id: true, createdAt: true });
+export const insertMemberSchema = createInsertSchema(members).omit({
+  id: true,
+  createdAt: true,
+  passwordHash: true,
+  emailVerifiedAt: true,
+  lastLoginAt: true,
+});
 export const insertVertreterAssignmentSchema = createInsertSchema(vertreterAssignments).omit({ id: true, createdAt: true });
 export type Member = typeof members.$inferSelect;
 export type InsertMember = z.infer<typeof insertMemberSchema>;
 export type VertreterAssignment = typeof vertreterAssignments.$inferSelect;
 export type InsertVertreterAssignment = z.infer<typeof insertVertreterAssignmentSchema>;
+
+// ── Auth table insert schemas & types ───────────────────────────────────────
+export const insertInvitationSchema = createInsertSchema(invitations).omit({ id: true, createdAt: true, acceptedAt: true });
+export const insertPasswordResetSchema = createInsertSchema(passwordResets).omit({ id: true, createdAt: true, usedAt: true });
+export const insertOauthAccountSchema = createInsertSchema(oauthAccounts).omit({ id: true, createdAt: true });
+export type Invitation = typeof invitations.$inferSelect;
+export type InsertInvitation = z.infer<typeof insertInvitationSchema>;
+export type PasswordReset = typeof passwordResets.$inferSelect;
+export type InsertPasswordReset = z.infer<typeof insertPasswordResetSchema>;
+export type OauthAccount = typeof oauthAccounts.$inferSelect;
+export type InsertOauthAccount = z.infer<typeof insertOauthAccountSchema>;
+export const OAUTH_PROVIDERS = ["google", "apple", "microsoft"] as const;
+export type OauthProvider = typeof OAUTH_PROVIDERS[number];
 
 // ─── Display helpers for business numbers ────────────────────────────────
 // Each order/complaint has ONE unique business-facing number that appears

@@ -17,6 +17,7 @@ import { isErpCredentialsKeyConfigured, maskHint } from "./erpCrypto";
 import { runSyncForConnection, startErpSyncScheduler, testErpConnection, ErpSyncRunningError, ErpSyncConfigError } from "./erpSync";
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
 import { sendEmail, renderNotificationEmail } from "./emailService";
+import { registerAuthRoutes } from "./auth/routes";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
@@ -554,6 +555,8 @@ export async function registerRoutes(
   // AI-powered OCR price-list import (supplier)
   registerOcrImportRoutes(app);
   registerAiSearchRoutes(app);
+  // Authentication & onboarding endpoints (login/logout/me, password reset, invite/claim)
+  registerAuthRoutes(app);
 
   // Serve static images from client/public - ensures images work in both dev and production
   const clientPublicPath = path.resolve(process.cwd(), "client", "public");

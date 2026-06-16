@@ -42,6 +42,9 @@ import {
   type AiChat, type InsertAiChat, type AiChatMessage, type InsertAiChatMessage,
   members, vertreterAssignments,
   type Member, type InsertMember, type VertreterAssignment, type InsertVertreterAssignment,
+  invitations, passwordResets, oauthAccounts,
+  type Invitation, type InsertInvitation, type PasswordReset, type InsertPasswordReset,
+  type OauthAccount, type InsertOauthAccount, type OauthProvider,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { encryptJson, decryptJson } from "./erpCrypto";
@@ -236,6 +239,21 @@ export interface IStorage {
   deleteVertreterAssignment(supplierId: string, restaurantId: string): Promise<void>;
   getResponsibleVertreter(supplierId: string, restaurantId: string): Promise<Member | undefined>;
   backfillMembers(): Promise<number>;
+
+  // Authentication: member credentials, invitations, resets & linked OAuth
+  getMemberByEmail(email: string): Promise<Member | undefined>;
+  updateMemberAuth(id: string, data: { passwordHash?: string | null; emailVerifiedAt?: Date | null; lastLoginAt?: Date | null }): Promise<Member | undefined>;
+  createInvitation(data: InsertInvitation): Promise<Invitation>;
+  getInvitationByTokenHash(tokenHash: string): Promise<Invitation | undefined>;
+  markInvitationAccepted(id: string): Promise<void>;
+  deleteInvitationsForMember(memberId: string): Promise<void>;
+  createPasswordReset(data: InsertPasswordReset): Promise<PasswordReset>;
+  getPasswordResetByTokenHash(tokenHash: string): Promise<PasswordReset | undefined>;
+  markPasswordResetUsed(id: string): Promise<void>;
+  deletePasswordResetsForMember(memberId: string): Promise<void>;
+  getOauthAccount(provider: OauthProvider, providerUserId: string): Promise<OauthAccount | undefined>;
+  getOauthAccountsForMember(memberId: string): Promise<OauthAccount[]>;
+  createOauthAccount(data: InsertOauthAccount): Promise<OauthAccount>;
 
   // Delivery Schedules
   getDeliverySchedules(supplierId: string): Promise<(DeliverySchedule & { restaurant: User })[]>;
@@ -2041,6 +2059,74 @@ export class DatabaseStorage implements IStorage {
     await db.update(complaintStatusHistory).set({ changedByMemberId: null }).where(eq(complaintStatusHistory.changedByMemberId, id));
     await db.delete(vertreterAssignments).where(eq(vertreterAssignments.memberId, id));
     await db.delete(members).where(eq(members.id, id));
+  }
+
+  // ── Authentication storage ────────────────────────────────────────────────
+  async getMemberByEmail(email: string): Promise<Member | undefined> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return undefined;
+    const [m] = await db.select().from(members).where(sql`lower(${members.email}) = ${normalized}`).limit(1);
+    return m;
+  }
+
+  async updateMemberAuth(
+    id: string,
+    data: { passwordHash?: string | null; emailVerifiedAt?: Date | null; lastLoginAt?: Date | null },
+  ): Promise<Member | undefined> {
+    const [updated] = await db.update(members).set(data).where(eq(members.id, id)).returning();
+    return updated;
+  }
+
+  async createInvitation(data: InsertInvitation): Promise<Invitation> {
+    const [created] = await db.insert(invitations).values(data).returning();
+    return created;
+  }
+
+  async getInvitationByTokenHash(tokenHash: string): Promise<Invitation | undefined> {
+    const [row] = await db.select().from(invitations).where(eq(invitations.tokenHash, tokenHash)).limit(1);
+    return row;
+  }
+
+  async markInvitationAccepted(id: string): Promise<void> {
+    await db.update(invitations).set({ acceptedAt: new Date() }).where(eq(invitations.id, id));
+  }
+
+  async deleteInvitationsForMember(memberId: string): Promise<void> {
+    await db.delete(invitations).where(eq(invitations.memberId, memberId));
+  }
+
+  async createPasswordReset(data: InsertPasswordReset): Promise<PasswordReset> {
+    const [created] = await db.insert(passwordResets).values(data).returning();
+    return created;
+  }
+
+  async getPasswordResetByTokenHash(tokenHash: string): Promise<PasswordReset | undefined> {
+    const [row] = await db.select().from(passwordResets).where(eq(passwordResets.tokenHash, tokenHash)).limit(1);
+    return row;
+  }
+
+  async markPasswordResetUsed(id: string): Promise<void> {
+    await db.update(passwordResets).set({ usedAt: new Date() }).where(eq(passwordResets.id, id));
+  }
+
+  async deletePasswordResetsForMember(memberId: string): Promise<void> {
+    await db.delete(passwordResets).where(eq(passwordResets.memberId, memberId));
+  }
+
+  async getOauthAccount(provider: OauthProvider, providerUserId: string): Promise<OauthAccount | undefined> {
+    const [row] = await db.select().from(oauthAccounts)
+      .where(and(eq(oauthAccounts.provider, provider), eq(oauthAccounts.providerUserId, providerUserId)))
+      .limit(1);
+    return row;
+  }
+
+  async getOauthAccountsForMember(memberId: string): Promise<OauthAccount[]> {
+    return db.select().from(oauthAccounts).where(eq(oauthAccounts.memberId, memberId));
+  }
+
+  async createOauthAccount(data: InsertOauthAccount): Promise<OauthAccount> {
+    const [created] = await db.insert(oauthAccounts).values(data).returning();
+    return created;
   }
 
   async getVertreterAssignments(supplierId: string): Promise<VertreterAssignment[]> {

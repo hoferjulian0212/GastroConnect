@@ -5,6 +5,8 @@ import { runMonthlyReportsForAll } from "./monthlyReportService";
 import { createServer } from "http";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import { createSessionMiddleware } from "./auth/session";
+import { loadAuth } from "./auth/middleware";
 
 const app = express();
 const httpServer = createServer(app);
@@ -70,6 +72,11 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
+
+// Server-side sessions + per-request auth context (member + org + role). Mounted
+// on /api only since all authentication and protected routes live under /api.
+app.use("/api", createSessionMiddleware());
+app.use("/api", loadAuth);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
