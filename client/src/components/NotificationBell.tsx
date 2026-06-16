@@ -168,13 +168,13 @@ export function NotificationBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button 
-          className="relative flex items-center justify-center h-8 w-8 rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 transition-colors"
+          className="relative flex shrink-0 items-center justify-center h-9 w-9 rounded-full border border-white/20 bg-white/[0.07] text-white hover:bg-white/15 transition-colors"
           data-testid="button-notifications"
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-primary text-primary-foreground rounded-full">
-              {unreadCount > 99 ? "99+" : unreadCount}
+            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center text-[9px] font-bold bg-primary text-primary-foreground rounded-full leading-none">
+              {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </button>
