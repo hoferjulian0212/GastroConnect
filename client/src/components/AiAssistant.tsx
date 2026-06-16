@@ -74,6 +74,8 @@ export function AiAssistant() {
   const { lang } = useLanguage();
   const [location, setLocation] = useLocation();
 
+  const isInboxPage = location === "/restaurant/inbox" || location === "/supplier/inbox";
+
   const [open, setOpen] = useState(false);
   const [nudgeVisible, setNudgeVisible] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -312,7 +314,7 @@ export function AiAssistant() {
 
   return (
     <>
-      {!open && (
+      {!open && !isInboxPage && (
         <>
           {/* FAB row — pill sits to the left, FAB on the right, both centered */}
           <div className="hidden md:flex fixed bottom-6 right-6 z-[56] items-center gap-3">
