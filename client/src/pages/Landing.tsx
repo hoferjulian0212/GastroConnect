@@ -978,7 +978,6 @@ export default function Landing() {
       <section className="relative px-4 md:px-8 pb-12 md:pb-16">
         <div className="mx-auto max-w-5xl text-center flex flex-col min-h-[calc(100svh-4rem)]">
           <div className="flex-1 flex flex-col justify-center pt-8">
-            <RegistrationGuide t={t} reduceMotion={reduceMotion} onStart={handleStart} />
             <HeadlineReveal
               key={`hero-${lang}`}
               text={t.heroH1}
@@ -986,30 +985,13 @@ export default function Landing() {
               testId="text-hero-headline"
             />
             <MotionReveal delay={400} y={16} blur={false}>
-              <p className="mt-8 md:mt-12 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+              <p className="mt-6 md:mt-8 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
                 {t.heroSub}
               </p>
-              <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto gap-2 text-base"
-                  onClick={() => handleStart("restaurant")}
-                  data-testid="button-hero-restaurant"
-                >
-                  <Utensils className="h-4 w-4" />
-                  {t.heroCtaRestaurant}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-full sm:w-auto gap-2 text-base"
-                  onClick={() => handleStart("supplier")}
-                  data-testid="button-hero-supplier"
-                >
-                  <Store className="h-4 w-4" />
-                  {t.heroCtaSupplier}
-                </Button>
+            </MotionReveal>
+            <MotionReveal delay={600} y={16} blur={false}>
+              <div className="mt-10 md:mt-12">
+                <RegistrationGuide t={t} reduceMotion={reduceMotion} onStart={handleStart} />
               </div>
             </MotionReveal>
           </div>
