@@ -570,7 +570,7 @@ export default function Complaints() {
  <PhotoComplaintWizard open={showPhotoWizard} onClose={() => setShowPhotoWizard(false)} />
 
  {/* Toolbar (Suchen · Sortieren · Filter) — page-content area, right-aligned */}
- <div className="flex items-center gap-2 flex-wrap justify-start">
+ <div className="flex items-center gap-2 flex-wrap justify-start mb-4">
  {/* Active filter chips (right of toolbar) */}
  <div className="flex items-center gap-2 flex-wrap ml-auto order-last">
  {filterComplaintStatus !== "all" && (
