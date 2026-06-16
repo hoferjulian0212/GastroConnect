@@ -1884,13 +1884,13 @@ export default function SupplierProducts() {
  <>
  <button
  onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
- className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-1 px-1"
+ className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-3 px-1"
  data-testid="button-back-to-categories"
  >
  <ArrowLeft className="h-4 w-4" />
  {lang === "de" ? "Zurück" : "Indietro"}
  </button>
- <div className="flex items-center gap-3">
+ <div className="flex items-center gap-3 mb-4">
  <div className="flex items-center gap-2 flex-1 min-w-0">
  {(() => {
  const conf = categoryConfig[selectedCategory];
