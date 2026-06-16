@@ -314,11 +314,11 @@ export function AiAssistant() {
     <>
       {!open && (
         <>
-          {/* FAB — nudge speech bubble floats above it, no extra button */}
-          <div className="hidden md:block fixed bottom-6 right-6 z-[56]">
+          {/* FAB row — pill sits to the left, FAB on the right, both centered */}
+          <div className="hidden md:flex fixed bottom-6 right-6 z-[56] items-center gap-3">
             {nudgeVisible && (
               <div
-                className="absolute bottom-[calc(100%+10px)] right-0 flex items-center gap-2 bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-3 py-2 shadow-lg whitespace-nowrap text-sm font-medium animate-in fade-in slide-in-from-bottom-2 duration-300"
+                className="flex items-center gap-2 bg-primary text-primary-foreground rounded-full px-4 py-2.5 shadow-lg shadow-black/20 whitespace-nowrap text-sm font-medium animate-in fade-in slide-in-from-right-2 duration-300"
                 data-testid="ai-nudge-pill"
               >
                 {t(
@@ -343,7 +343,7 @@ export function AiAssistant() {
                 setOpen(true);
                 setView("chat");
               }}
-              className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
+              className="flex-shrink-0 inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
               aria-label={t("KI-Assistent öffnen", "Apri assistente AI")}
               data-testid="button-ai-fab"
             >
