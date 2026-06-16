@@ -313,55 +313,59 @@ export function AiAssistant() {
     <>
       {!open && (
         <>
-          {/* Nudge pill — desktop only, once per session */}
-          {nudgeVisible && (
-            <div
-              className="hidden md:flex fixed bottom-6 right-24 z-[56] items-center gap-2.5 pl-3 pr-2 py-2 rounded-full bg-black text-white shadow-xl shadow-black/30 border border-white/10 animate-in fade-in slide-in-from-right-2 duration-300"
-              data-testid="ai-nudge-pill"
-              style={{ maxWidth: 340 }}
+          {/* FAB + nudge pill — single row anchored bottom-right so items-center aligns them perfectly */}
+          <div className="hidden md:flex fixed bottom-6 right-6 z-[56] items-center gap-3 flex-row-reverse">
+            {/* FAB */}
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(true);
+                setView("chat");
+              }}
+              className="flex-shrink-0 inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
+              aria-label={t("KI-Assistent öffnen", "Apri assistente AI")}
+              data-testid="button-ai-fab"
             >
-              <span className="flex-shrink-0 flex items-center justify-center h-7 w-7 rounded-full bg-white/10">
-                <SupportChatIcon className="h-4 w-4 text-white" />
-              </span>
-              <button
-                type="button"
-                className="flex-1 text-sm font-medium text-left cursor-pointer leading-snug"
-                onClick={() => {
-                  dismissNudge();
-                  setOpen(true);
-                  setView("chat");
-                }}
-                data-testid="button-ai-nudge-open"
-              >
-                {t(
-                  `Kann ich Ihnen bei der Suche helfen${firstName ? `, ${firstName}` : ""}?`,
-                  `Posso aiutarla nella ricerca${firstName ? `, ${firstName}` : ""}?`,
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={dismissNudge}
-                className="flex-shrink-0 flex items-center justify-center h-6 w-6 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-colors"
-                aria-label={t("Schließen", "Chiudi")}
-                data-testid="button-ai-nudge-dismiss"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )}
+              <SupportChatIcon className="h-7 w-7" />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(true);
-              setView("chat");
-            }}
-            className="hidden md:inline-flex fixed bottom-6 right-6 z-[55] h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
-            aria-label={t("KI-Assistent öffnen", "Apri assistente AI")}
-            data-testid="button-ai-fab"
-          >
-            <SupportChatIcon className="h-7 w-7" />
-          </button>
+            {/* Nudge pill — once per session */}
+            {nudgeVisible && (
+              <div
+                className="flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 animate-in fade-in slide-in-from-right-2 duration-300"
+                data-testid="ai-nudge-pill"
+                style={{ maxWidth: 320 }}
+              >
+                <span className="flex-shrink-0 flex items-center justify-center h-7 w-7 rounded-full bg-white/15">
+                  <SupportChatIcon className="h-4 w-4" />
+                </span>
+                <button
+                  type="button"
+                  className="flex-1 text-sm font-medium text-left cursor-pointer leading-snug whitespace-nowrap"
+                  onClick={() => {
+                    dismissNudge();
+                    setOpen(true);
+                    setView("chat");
+                  }}
+                  data-testid="button-ai-nudge-open"
+                >
+                  {t(
+                    `Kann ich Ihnen bei der Suche helfen${firstName ? `, ${firstName}` : ""}?`,
+                    `Posso aiutarla nella ricerca${firstName ? `, ${firstName}` : ""}?`,
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={dismissNudge}
+                  className="flex-shrink-0 flex items-center justify-center h-6 w-6 rounded-full hover:bg-white/20 text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+                  aria-label={t("Schließen", "Chiudi")}
+                  data-testid="button-ai-nudge-dismiss"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
         </>
       )}
 
