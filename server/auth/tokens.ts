@@ -14,3 +14,4 @@ export function generateToken(): { raw: string; hash: string } {
 
 export const INVITE_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 export const RESET_TTL_MS = 1000 * 60 * 60; // 1 hour
+export const VERIFY_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours

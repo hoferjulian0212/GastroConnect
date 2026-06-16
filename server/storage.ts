@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { applyBucketMovement } from "./stockBuckets";
-import { eq, and, desc, or, sql, ne, inArray, gte, isNull } from "drizzle-orm";
+import { eq, and, desc, or, sql, ne, inArray, gte, isNull, isNotNull } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
@@ -42,8 +42,9 @@ import {
   type AiChat, type InsertAiChat, type AiChatMessage, type InsertAiChatMessage,
   members, vertreterAssignments,
   type Member, type InsertMember, type VertreterAssignment, type InsertVertreterAssignment,
-  invitations, passwordResets, oauthAccounts,
+  invitations, passwordResets, oauthAccounts, emailVerifications,
   type Invitation, type InsertInvitation, type PasswordReset, type InsertPasswordReset,
+  type EmailVerification, type InsertEmailVerification,
   type OauthAccount, type InsertOauthAccount, type OauthProvider,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -70,6 +71,7 @@ export interface ReorderSuggestion {
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   getUsersByRole(role: "restaurant" | "supplier"): Promise<User[]>;
   getUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
@@ -251,6 +253,15 @@ export interface IStorage {
   getPasswordResetByTokenHash(tokenHash: string): Promise<PasswordReset | undefined>;
   markPasswordResetUsed(id: string): Promise<void>;
   deletePasswordResetsForMember(memberId: string): Promise<void>;
+  createEmailVerification(data: InsertEmailVerification): Promise<EmailVerification>;
+  getEmailVerificationByTokenHash(tokenHash: string): Promise<EmailVerification | undefined>;
+  markEmailVerificationUsed(id: string): Promise<void>;
+  deleteEmailVerificationsForMember(memberId: string): Promise<void>;
+  markOrganizationVerified(id: string): Promise<void>;
+  // Self-signup: create a pending organization + its first admin member in one
+  // transaction. The org starts unverified (verifiedAt null) and the admin has
+  // a password but no emailVerifiedAt until the email link is confirmed.
+  createBusinessSignup(data: { org: InsertUser; admin: Omit<InsertMember, "organizationId"> & { passwordHash: string } }): Promise<{ org: User; member: Member }>;
   getOauthAccount(provider: OauthProvider, providerUserId: string): Promise<OauthAccount | undefined>;
   getOauthAccountsForMember(memberId: string): Promise<OauthAccount[]>;
   createOauthAccount(data: InsertOauthAccount): Promise<OauthAccount>;
@@ -390,8 +401,18 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return undefined;
+    const [user] = await db.select().from(users).where(sql`lower(${users.email}) = ${normalized}`).limit(1);
+    return user;
+  }
+
   async getUsersByRole(role: "restaurant" | "supplier"): Promise<User[]> {
-    return db.select().from(users).where(eq(users.role, role));
+    // Public directory listings only ever surface activated organizations.
+    // Self-signed-up businesses that have not yet confirmed their email
+    // (verifiedAt null) stay hidden until confirmation.
+    return db.select().from(users).where(and(eq(users.role, role), isNotNull(users.verifiedAt)));
   }
 
   async getUsers(): Promise<User[]> {
@@ -2117,6 +2138,41 @@ export class DatabaseStorage implements IStorage {
     await db.delete(passwordResets).where(eq(passwordResets.memberId, memberId));
   }
 
+  async createEmailVerification(data: InsertEmailVerification): Promise<EmailVerification> {
+    const [created] = await db.insert(emailVerifications).values(data).returning();
+    return created;
+  }
+
+  async getEmailVerificationByTokenHash(tokenHash: string): Promise<EmailVerification | undefined> {
+    const [row] = await db.select().from(emailVerifications).where(eq(emailVerifications.tokenHash, tokenHash)).limit(1);
+    return row;
+  }
+
+  async markEmailVerificationUsed(id: string): Promise<void> {
+    await db.update(emailVerifications).set({ usedAt: new Date() }).where(eq(emailVerifications.id, id));
+  }
+
+  async deleteEmailVerificationsForMember(memberId: string): Promise<void> {
+    await db.delete(emailVerifications).where(eq(emailVerifications.memberId, memberId));
+  }
+
+  async markOrganizationVerified(id: string): Promise<void> {
+    await db.update(users).set({ verifiedAt: new Date() }).where(eq(users.id, id));
+  }
+
+  async createBusinessSignup(data: { org: InsertUser; admin: Omit<InsertMember, "organizationId"> & { passwordHash: string } }): Promise<{ org: User; member: Member }> {
+    return await db.transaction(async (tx) => {
+      const [org] = await tx.insert(users).values(data.org).returning();
+      const { passwordHash, ...adminRest } = data.admin;
+      const [member] = await tx.insert(members).values({
+        ...adminRest,
+        organizationId: org.id,
+        passwordHash,
+      }).returning();
+      return { org, member };
+    });
+  }
+
   async getOauthAccount(provider: OauthProvider, providerUserId: string): Promise<OauthAccount | undefined> {
     const [row] = await db.select().from(oauthAccounts)
       .where(and(eq(oauthAccounts.provider, provider), eq(oauthAccounts.providerUserId, providerUserId)))
@@ -3673,6 +3729,19 @@ export class DatabaseStorage implements IStorage {
       }
     }
     console.log(`Ratings: ${ratingRows.length}, Documents: ${docRows.length} seeded.`);
+
+    // Seeded/legacy organizations are considered already-activated so they show
+    // up in public directory listings. Only self-signed-up businesses await
+    // email confirmation (verifiedAt null).
+    await db.update(users).set({ verifiedAt: new Date() }).where(isNull(users.verifiedAt));
+
+    // Backfill any pre-existing password members so the new login email-gate
+    // never locks out legacy/test accounts. Only self-signup owners (created
+    // after this point with a password but no confirmed email) stay gated.
+    await db
+      .update(members)
+      .set({ emailVerifiedAt: new Date() })
+      .where(and(isNotNull(members.passwordHash), isNull(members.emailVerifiedAt)));
 
     console.log(`Demo data ${DEMO_VERSION} seeded successfully!`);
   }

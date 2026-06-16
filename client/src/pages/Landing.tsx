@@ -22,7 +22,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import Logo from "@/components/Logo";
-import logoIcon from "@assets/logo_no_bg.png";
 import shotHome from "@assets/landing-home.jpg";
 import shotMobile from "@assets/landing-mobile.png";
 import shotMobileSupplier from "@assets/landing-mobile-supplier.png";
@@ -56,6 +55,8 @@ import {
   Store,
   Menu,
   CheckCircle2,
+  Mail,
+  UserPlus,
 } from "lucide-react";
 
 const animationStrings = {
@@ -143,6 +144,18 @@ const translations = {
     heroCtaRestaurant: "Als Betrieb starten",
     heroCtaSupplier: "Als Händler starten",
     heroImageAlt: "GastroConnect Restaurant-Dashboard",
+
+    guideEyebrow: "In 3 Schritten startklar",
+    guideRolePrompt: "Ich bin …",
+    guideRoleRestaurant: "Betrieb",
+    guideRoleSupplier: "Händler",
+    guideStep1Title: "Rolle wählen",
+    guideStep1Desc: "Betrieb oder Händler — Sie erhalten die passende Oberfläche.",
+    guideStep2Title: "Konto erstellen",
+    guideStep2Desc: "Firmenname, Name und Passwort — in unter einer Minute.",
+    guideStep3Title: "E-Mail bestätigen",
+    guideStep3Desc: "Link aus der E-Mail klicken und sofort loslegen.",
+    guideCta: "Geschäftskonto erstellen",
 
     pillarsHeadline: "Für wen GastroConnect gebaut ist",
     pillarsSub:
@@ -333,6 +346,18 @@ const translations = {
     heroCtaSupplier: "Inizia come commerciante",
     heroImageAlt: "Dashboard ristorante GastroConnect",
 
+    guideEyebrow: "Pronto in 3 passaggi",
+    guideRolePrompt: "Sono …",
+    guideRoleRestaurant: "Azienda",
+    guideRoleSupplier: "Commerciante",
+    guideStep1Title: "Scegli il ruolo",
+    guideStep1Desc: "Azienda o commerciante — ottieni l'interfaccia giusta.",
+    guideStep2Title: "Crea l'account",
+    guideStep2Desc: "Nome azienda, nome e password — in meno di un minuto.",
+    guideStep3Title: "Conferma l'email",
+    guideStep3Desc: "Clicca il link nell'email e inizia subito.",
+    guideCta: "Crea account aziendale",
+
     pillarsHeadline: "Per chi è pensato GastroConnect",
     pillarsSub:
       "Una piattaforma, due esperienze chiaramente separate — entrambe ottimizzate per il rispettivo ruolo.",
@@ -450,6 +475,18 @@ const translations = {
     heroCtaSupplier: "Start as a supplier",
     heroImageAlt: "GastroConnect restaurant dashboard",
 
+    guideEyebrow: "Ready in 3 steps",
+    guideRolePrompt: "I'm a …",
+    guideRoleRestaurant: "Restaurant",
+    guideRoleSupplier: "Supplier",
+    guideStep1Title: "Choose your role",
+    guideStep1Desc: "Restaurant or supplier — you get the right interface.",
+    guideStep2Title: "Create your account",
+    guideStep2Desc: "Company name, your name and a password — under a minute.",
+    guideStep3Title: "Confirm your email",
+    guideStep3Desc: "Click the link in the email and get started right away.",
+    guideCta: "Create business account",
+
     pillarsHeadline: "Who GastroConnect is built for",
     pillarsSub:
       "One platform, two clearly separated experiences — both tailored perfectly to their role.",
@@ -554,6 +591,104 @@ function detectInitialLang(): Lang {
   if (nav.startsWith("it")) return "it";
   if (nav.startsWith("en")) return "en";
   return "de";
+}
+
+function RegistrationGuide({
+  t,
+  reduceMotion,
+  onStart,
+}: {
+  t: (typeof translations)[Lang];
+  reduceMotion: boolean | null;
+  onStart: (role: "restaurant" | "supplier") => void;
+}) {
+  const [role, setRole] = useState<"restaurant" | "supplier">("restaurant");
+
+  const steps = [
+    { icon: UserPlus, title: t.guideStep1Title, desc: t.guideStep1Desc },
+    { icon: Store, title: t.guideStep2Title, desc: t.guideStep2Desc },
+    { icon: Mail, title: t.guideStep3Title, desc: t.guideStep3Desc },
+  ];
+
+  return (
+    <motion.div
+      className="mx-auto mb-8 md:mb-10 w-full max-w-3xl"
+      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.05 }}
+      data-testid="registration-guide"
+    >
+      <div className="rounded-3xl border border-border bg-card/60 backdrop-blur-sm shadow-sm px-5 py-6 md:px-8 md:py-8">
+        <p className="text-xs md:text-sm font-medium uppercase tracking-wider text-primary mb-5" data-testid="text-guide-eyebrow">
+          {t.guideEyebrow}
+        </p>
+
+        {/* Role choice */}
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <span className="text-sm text-muted-foreground">{t.guideRolePrompt}</span>
+          <div className="inline-flex rounded-full border border-border bg-muted/40 p-1" role="group">
+            <button
+              type="button"
+              onClick={() => setRole("restaurant")}
+              className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                role === "restaurant" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid="button-guide-role-restaurant"
+            >
+              <Utensils className="h-4 w-4" />
+              {t.guideRoleRestaurant}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole("supplier")}
+              className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                role === "supplier" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid="button-guide-role-supplier"
+            >
+              <Store className="h-4 w-4" />
+              {t.guideRoleSupplier}
+            </button>
+          </div>
+        </div>
+
+        {/* Animated steps */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          {steps.map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <motion.div
+                key={`${i}-${step.title}`}
+                className="relative flex flex-col items-center text-center rounded-2xl bg-muted/30 px-3 py-4"
+                initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: reduceMotion ? 0 : 0.15 + i * 0.12 }}
+                data-testid={`guide-step-${i + 1}`}
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mb-2">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span className="absolute top-2 right-3 text-xs font-semibold text-muted-foreground/60">{i + 1}</span>
+                <h3 className="text-sm font-semibold">{step.title}</h3>
+                <p className="mt-1 text-xs text-muted-foreground leading-snug">{step.desc}</p>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        <Button
+          size="lg"
+          className="mt-6 w-full sm:w-auto gap-2 text-base"
+          onClick={() => onStart(role)}
+          data-testid="button-guide-cta"
+        >
+          {t.guideCta}
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </motion.div>
+  );
 }
 
 const pillarRestaurantIcons = [Search, BarChart3, Wallet, Eye];
@@ -667,7 +802,7 @@ export default function Landing() {
   const a = animationStrings[lang];
 
   function handleStart(role: "restaurant" | "supplier") {
-    setLocation(`/login?role=${role}`);
+    setLocation(`/signup?role=${role}`);
   }
 
   function handleLogin() {
@@ -843,21 +978,7 @@ export default function Landing() {
       <section className="relative px-4 md:px-8 pb-12 md:pb-16">
         <div className="mx-auto max-w-5xl text-center flex flex-col min-h-[calc(100svh-4rem)]">
           <div className="flex-1 flex flex-col justify-center pt-8">
-            <motion.div
-              className="mx-auto mb-6 md:mb-8 w-44 sm:w-56 md:w-72 lg:w-80"
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.4, rotate: -25, y: -20 }}
-              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, rotate: 0, y: 0 }}
-              transition={{ type: "spring", stiffness: 200, damping: 14, delay: 0.1 }}
-            >
-              <motion.img
-                src={logoIcon}
-                alt="GastroConnect"
-                className="h-44 w-44 sm:h-56 sm:w-56 md:h-72 md:w-72 lg:h-80 lg:w-80 object-contain dark:invert"
-                animate={reduceMotion ? undefined : { y: [0, -14, 0], rotate: [0, 3, 0, -3, 0] }}
-                transition={reduceMotion ? undefined : { duration: 5, ease: "easeInOut", repeat: Infinity, delay: 0.9 }}
-                data-testid="img-hero-logo"
-              />
-            </motion.div>
+            <RegistrationGuide t={t} reduceMotion={reduceMotion} onStart={handleStart} />
             <HeadlineReveal
               key={`hero-${lang}`}
               text={t.heroH1}

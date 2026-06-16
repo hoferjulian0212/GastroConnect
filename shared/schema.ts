@@ -49,6 +49,11 @@ export const users = pgTable("users", {
   // Max number of team members (people) allowed in this organization. Admin-set,
   // no billing. Defaults to 5; backfilled for legacy orgs.
   seatLimit: integer("seat_limit").default(5).notNull(),
+  // When set, the organization has been activated (email-confirmed for
+  // self-signed-up businesses; backfilled to now for legacy/seeded orgs).
+  // Null means a self-registered owner has not yet confirmed their email, so
+  // the org is pending and excluded from public directory listings.
+  verifiedAt: timestamp("verified_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -1107,6 +1112,21 @@ export const passwordResets = pgTable("password_resets", {
   index("idx_password_resets_member_id").on(table.memberId),
 ]);
 
+// Email-verification tokens for self-signed-up business owners. Mirrors the
+// password-reset model: only the SHA-256 hash is stored, single-use,
+// time-limited; the raw token travels solely in the emailed link.
+export const emailVerifications = pgTable("email_verifications", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  memberId: varchar("member_id", { length: 36 }).notNull().references(() => members.id),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_email_verifications_token_hash").on(table.tokenHash),
+  index("idx_email_verifications_member_id").on(table.memberId),
+]);
+
 export const oauthProviderEnum = pgEnum("oauth_provider", ["google", "apple", "microsoft"]);
 
 export const oauthAccounts = pgTable("oauth_accounts", {
@@ -1154,11 +1174,14 @@ export type InsertVertreterAssignment = z.infer<typeof insertVertreterAssignment
 // ── Auth table insert schemas & types ───────────────────────────────────────
 export const insertInvitationSchema = createInsertSchema(invitations).omit({ id: true, createdAt: true, acceptedAt: true });
 export const insertPasswordResetSchema = createInsertSchema(passwordResets).omit({ id: true, createdAt: true, usedAt: true });
+export const insertEmailVerificationSchema = createInsertSchema(emailVerifications).omit({ id: true, createdAt: true, usedAt: true });
 export const insertOauthAccountSchema = createInsertSchema(oauthAccounts).omit({ id: true, createdAt: true });
 export type Invitation = typeof invitations.$inferSelect;
 export type InsertInvitation = z.infer<typeof insertInvitationSchema>;
 export type PasswordReset = typeof passwordResets.$inferSelect;
 export type InsertPasswordReset = z.infer<typeof insertPasswordResetSchema>;
+export type EmailVerification = typeof emailVerifications.$inferSelect;
+export type InsertEmailVerification = z.infer<typeof insertEmailVerificationSchema>;
 export type OauthAccount = typeof oauthAccounts.$inferSelect;
 export type InsertOauthAccount = z.infer<typeof insertOauthAccountSchema>;
 export const OAUTH_PROVIDERS = ["google", "apple", "microsoft"] as const;
