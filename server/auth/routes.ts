@@ -10,6 +10,7 @@ import { can } from "@shared/permissions";
 import { hashPassword, verifyPassword, validatePasswordPolicy } from "./passwords";
 import { generateToken, hashToken, INVITE_TTL_MS, RESET_TTL_MS } from "./tokens";
 import { requireAuth } from "./middleware";
+import { registerOauthRoutes, isGoogleOauthConfigured } from "./oauth";
 import { sendEmail, renderNotificationEmail, isEmailConfigured } from "../emailService";
 
 // Strict throttle for credential-guessing surfaces (login, reset request,
@@ -57,10 +58,13 @@ function destroySession(req: Request, res: Response): Promise<void> {
 }
 
 export function registerAuthRoutes(app: Express) {
+  registerOauthRoutes(app);
+
   // ── Current session ───────────────────────────────────────────────────────
   app.get("/api/auth/me", (req, res) => {
-    if (!req.auth) return res.json({ authenticated: false });
-    res.json({ authenticated: true, member: sanitizeMember(req.auth.member), org: req.auth.org });
+    const providers = { google: isGoogleOauthConfigured() };
+    if (!req.auth) return res.json({ authenticated: false, providers });
+    res.json({ authenticated: true, member: sanitizeMember(req.auth.member), org: req.auth.org, providers });
   });
 
   // ── Email/password login ──────────────────────────────────────────────────

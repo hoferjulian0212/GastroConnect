@@ -28,6 +28,41 @@ app.use(
 
 app.set("trust proxy", 1);
 
+// CORS lockdown. The frontend is served same-origin (Vite + Express on one
+// port), so by default NO cross-origin credentialed requests are allowed —
+// the browser's same-origin policy already blocks them and we add no
+// Access-Control-Allow-Origin header. To permit a specific external origin
+// (e.g. a separate prod frontend host), set ALLOWED_ORIGINS to a
+// comma-separated allowlist; only those origins get credentialed CORS.
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Vary", "Origin");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,HEAD,POST,PATCH,PUT,DELETE,OPTIONS",
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization",
+    );
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+  } else if (origin && req.method === "OPTIONS") {
+    // Disallowed cross-origin preflight: reject without CORS headers.
+    return res.sendStatus(403);
+  }
+  next();
+});
+
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 120,

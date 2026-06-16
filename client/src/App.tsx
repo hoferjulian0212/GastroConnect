@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -11,7 +11,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { NotificationBell } from "@/components/NotificationBell";
-import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -23,12 +22,9 @@ import {
 import { useTheme } from "@/hooks/use-theme";
 import { useT } from "@/lib/translations";
 import { ShoppingCart, ChevronDown, Moon, Sun, LogOut, Users } from "lucide-react";
-import logoImg from "@assets/logo_no_bg.png";
 import logoImgThick from "@assets/logo_no_bg_thick.png";
-import { roleLabel } from "@shared/permissions";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
-import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { GlobalSearch, DesktopSearchButton } from "@/components/GlobalSearch";
 import Logo from "@/components/Logo";
 import { AiAssistant } from "@/components/AiAssistant";
@@ -39,10 +35,11 @@ import { MobileTopActions } from "@/components/mobile/MobileTopActions";
 import { useEffect, useCallback, useState, useRef, useLayoutEffect, lazy, Suspense, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { navigate } from "wouter/use-browser-location";
-import type { User } from "@shared/schema";
 
 const Landing = lazy(() => import("@/pages/Landing"));
 import Login from "@/pages/Login";
+import AuthClaim from "@/pages/AuthClaim";
+import AuthReset from "@/pages/AuthReset";
 import NotFound from "@/pages/not-found";
 import RestaurantHome from "@/pages/restaurant/Home";
 import RestaurantInbox from "@/pages/restaurant/Inbox";
@@ -135,28 +132,11 @@ function SupplierRouter() {
   );
 }
 
+// Keeps the user within their organization's role area. Identity itself comes
+// from the session (/api/auth/me) via UserContext — there is no impersonation.
 function UserLoader() {
-  const { currentRole, setCurrentUser, setIsLoading, selectedUserId } = useUser();
+  const { currentRole } = useUser();
   const [location, setLocation] = useLocation();
-
-  const { data: users, isLoading } = useQuery<User[]>({
-    queryKey: [`/api/users?role=${currentRole}`],
-  });
-
-  useEffect(() => {
-    if (!isLoading && users && users.length > 0) {
-      const preferred = selectedUserId
-        ? users.find(u => u.id === selectedUserId && u.role === currentRole)
-        : null;
-      const userOfRole = preferred || users.find(u => u.role === currentRole);
-      if (userOfRole) {
-        setCurrentUser(userOfRole);
-      }
-      setIsLoading(false);
-    } else if (!isLoading) {
-      setIsLoading(false);
-    }
-  }, [users, isLoading, currentRole, setCurrentUser, setIsLoading, selectedUserId]);
 
   useEffect(() => {
     if (location !== "/" && location !== "/about" && !location.startsWith(`/${currentRole}`)) {
@@ -480,17 +460,14 @@ function PageHero() {
 }
 
 function useProfileMenu() {
-  const { currentUser, currentRole, setCurrentUser } = useUser();
+  const { currentUser, currentRole, logout } = useUser();
   const { isDark, toggleTheme } = useTheme();
   const { lang } = useLanguage();
   const t = useT(lang);
   const [, setLocation] = useLocation();
 
-  const handleLogout = () => {
-    try { localStorage.removeItem("gastroconnect_selected_restaurant_id"); } catch {}
-    try { localStorage.removeItem("gastroconnect_selected_supplier_id"); } catch {}
-    setCurrentUser(null);
-    queryClient.clear();
+  const handleLogout = async () => {
+    await logout();
     setLocation("/");
   };
 
@@ -565,68 +542,8 @@ function DesktopProfileButton() {
   );
 }
 
-// After an account (organization) is chosen, the user must explicitly pick which
-// person (member) they are acting as before entering the app. We do not silently
-// impersonate the first member — selection drives person attribution everywhere.
-function MemberSelectGate({ children }: { children: ReactNode }) {
-  const { currentUser, members, membersLoading, currentMember, selectMember } = useUser();
-  const { lang } = useLanguage();
-
-  if (!currentUser) return <>{children}</>;
-  if (!membersLoading && members.length === 0) return <>{children}</>;
-  if (currentMember) return <>{children}</>;
-
-  const getMemberInitials = (name: string) =>
-    (name || "?").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
-
-  return (
-    <div className="min-h-dvh bg-[#161921] text-white flex flex-col items-center justify-center px-4 py-12" data-testid="screen-member-select">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <img src={logoImg} alt="GastroConnect Logo" className="h-16 w-16 object-contain invert mx-auto mb-4" />
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight" data-testid="text-member-select-headline">
-            {lang === "it" ? "Chi sei?" : "Wer bist du?"}
-          </h1>
-          <p className="mt-2 text-white/70 text-sm" data-testid="text-member-select-org">
-            {currentUser.companyName || currentUser.name}
-          </p>
-        </div>
-        {membersLoading ? (
-          <div className="flex items-center justify-center gap-2 py-8">
-            <div className="h-1.5 w-1.5 rounded-full bg-white animate-bounce [animation-delay:0ms]" />
-            <div className="h-1.5 w-1.5 rounded-full bg-white animate-bounce [animation-delay:150ms]" />
-            <div className="h-1.5 w-1.5 rounded-full bg-white animate-bounce [animation-delay:300ms]" />
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {members.map(member => (
-              <button
-                key={member.id}
-                onClick={() => selectMember(member.id)}
-                className="w-full rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.10] p-4 flex items-center gap-3 text-left transition-colors"
-                data-testid={`button-select-member-${member.id}`}
-              >
-                <Avatar className="h-11 w-11 shrink-0">
-                  {member.profileImageUrl ? <AvatarImage src={member.profileImageUrl} alt={member.name} /> : null}
-                  <AvatarFallback className="bg-white/10 text-white text-sm font-semibold">
-                    {getMemberInitials(member.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-white truncate">{member.name}</div>
-                  <div className="text-xs text-white/60 mt-0.5">{roleLabel(member.role, lang)}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function AppLayout() {
-  const { currentRole, isLoading } = useUser();
+  const { currentRole, isLoading, isAuthenticated } = useUser();
   const { isInChat } = useChat();
   const [location] = useLocation();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -678,6 +595,14 @@ function AppLayout() {
     return <Login />;
   }
 
+  if (pathOnly === "/auth/claim") {
+    return <AuthClaim />;
+  }
+
+  if (pathOnly === "/auth/reset") {
+    return <AuthReset />;
+  }
+
   if (pathOnly === "/about") {
     return <About />;
   }
@@ -686,24 +611,32 @@ function AppLayout() {
     return <AdminPmsRequests />;
   }
 
+  // Protected area — gate on the session. While /api/auth/me is in flight show
+  // the splash; once resolved, send unauthenticated visitors to the login page.
+  if (isLoading) {
+    return (
+      <div className="flex h-dvh items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <img src={logoImgThick} alt="GastroConnect Logo" className="h-28 w-28 object-contain dark:invert" />
+          <span className="text-2xl font-bold text-foreground tracking-tight">GastroConnect</span>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-foreground animate-bounce [animation-delay:0ms]" />
+            <div className="h-1.5 w-1.5 rounded-full bg-foreground animate-bounce [animation-delay:150ms]" />
+            <div className="h-1.5 w-1.5 rounded-full bg-foreground animate-bounce [animation-delay:300ms]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect to="/login" />;
+  }
+
   return (
     <>
       <UserLoader />
       <LanguageSync />
-      {isLoading ? (
-        <div className="flex h-dvh items-center justify-center">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <img src={logoImgThick} alt="GastroConnect Logo" className="h-28 w-28 object-contain dark:invert" />
-            <span className="text-2xl font-bold text-foreground tracking-tight">GastroConnect</span>
-            <div className="flex items-center gap-2 mt-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-foreground animate-bounce [animation-delay:0ms]" />
-              <div className="h-1.5 w-1.5 rounded-full bg-foreground animate-bounce [animation-delay:150ms]" />
-              <div className="h-1.5 w-1.5 rounded-full bg-foreground animate-bounce [animation-delay:300ms]" />
-            </div>
-          </div>
-        </div>
-      ) : (
-        <MemberSelectGate>
         <div className="flex h-dvh w-full">
           <div ref={scrollContainerRef} data-app-scroll className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} ${isInChat ? 'px-0 pt-0 md:px-6 md:pt-6' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
             <div className={`dark hidden md:block bg-[#161921] shrink-0 rounded-3xl overflow-hidden mb-3 md:mb-4 ${isInChat || isDetailPage ? 'md:block' : ''}`} data-testid="app-header-shell">
@@ -717,12 +650,6 @@ function AppLayout() {
                 <HeaderNav />
                 <div className="flex items-center gap-1 xl:gap-2 shrink-0 lg:flex-1 lg:min-w-0 justify-end overflow-hidden">
                   <DesktopSearchButton />
-                  <div className="hidden xl:block shrink-0">
-                    <RoleSwitcher />
-                  </div>
-                  <div className="hidden xl:block shrink-0">
-                    <AccountSwitcher compact />
-                  </div>
                   <LanguageToggle />
                   <HelpButton />
                   {currentRole === "restaurant" && (
@@ -757,8 +684,6 @@ function AppLayout() {
           <AiAssistant />
           <KeyboardShortcuts />
         </div>
-        </MemberSelectGate>
-      )}
     </>
   );
 }

@@ -4,6 +4,7 @@
 - [Web Push delivery](web-push-delivery.md) — iOS push needs an installed PWA; test endpoint reports real delivery success, not subscription count; SW has no fetch handler.
 - [Home dashboard widgets](home-dashboard-widgets.md) — widget order is saved per-account in localStorage; a widget "in the black header" is a saved-layout artifact. order-templates is restaurant-only (no supplier mirror).
 - [Pull-to-refresh transform gotcha](pull-to-refresh.md) — translate whole page content on pull, but never keep a CSS transform when idle (breaks fixed/sticky descendants).
+- [Auth identity & authz boundary](auth-identity-boundary.md) — identity always from req.auth (never client ids); external webhooks gated by fail-closed PMS_WEBHOOK_SECRET shared secret.
 - [Dashboard views cross-device sync](dashboard-views-cross-device.md) — desktop+mobile dashboard share server state; mobile "Standardansicht" must persist default widgets + empty layout, not just clear activeId.
 - [Drizzle partial-index push](drizzle-partial-index-push.md) — drizzle-kit push ignores partial-index WHERE predicate changes; verify pg_indexes + drop/recreate manually.
 - [Inbox reply mechanism](inbox-reply-mechanism.md) — replies/quotes are JSON in message.content (refType/refId/refLabel/refPreview), NOT a replyToId column; don't "fix" by adding a column.

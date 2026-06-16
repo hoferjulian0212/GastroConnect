@@ -16,17 +16,12 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AccountSwitcher } from "@/components/AccountSwitcher";
-
 export default function SupplierSettings() {
-  const { currentUser, setCurrentUser } = useUser();
+  const { currentUser, setCurrentUser, logout } = useUser();
   const [, setLocation] = useLocation();
 
-  function handleLogout() {
-    try { localStorage.removeItem("gastroconnect_selected_restaurant_id"); } catch {}
-    try { localStorage.removeItem("gastroconnect_selected_supplier_id"); } catch {}
-    setCurrentUser(null);
-    queryClient.clear();
+  async function handleLogout() {
+    await logout();
     setLocation("/");
   }
   const { toast } = useToast();
@@ -112,8 +107,6 @@ export default function SupplierSettings() {
           </div>
         </Link>
       </div></HeroPortal>
-
-      <AccountSwitcher />
 
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <Card>

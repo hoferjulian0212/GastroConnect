@@ -3,10 +3,11 @@ import type { MemberRole } from "./schema";
 // ─────────────────────────────────────────────────────────────────────────────
 // Preset-role permission model (single source of truth).
 //
-// IMPORTANT: This is a workflow / UX control, NOT a security boundary. The app
-// keeps the no-real-auth demo model where the client supplies the acting member
-// id (which is spoofable). Role checks gate the UI and are validated server-side
-// as best-effort workflow rules only.
+// This is both a UX control AND part of the server-side security boundary. The
+// acting identity (member + organization + role) is resolved from the server
+// session, never from client-supplied ids, and protected routes enforce these
+// capabilities (see server/auth/middleware.ts and the route guards in
+// server/routes.ts). The same matrix gates the UI for consistency.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type Capability =

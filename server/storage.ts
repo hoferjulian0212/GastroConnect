@@ -261,6 +261,8 @@ export interface IStorage {
   setDeliverySchedules(supplierId: string, restaurantId: string, days: { day: number; timeFrom?: string | null; timeTo?: string | null }[]): Promise<void>;
 
   // Promotions
+  getPromotion(id: string): Promise<Promotion | undefined>;
+  getPromotionsByGroup(groupId: string): Promise<Promotion[]>;
   getPromotionsBySupplier(supplierId: string): Promise<PromotionWithProduct[]>;
   getActivePromotionForProduct(productId: string): Promise<Promotion | undefined>;
   getActivePromotions(): Promise<Promotion[]>;
@@ -273,6 +275,7 @@ export interface IStorage {
   getCustomMinOrderQuantities(supplierId: string): Promise<(CustomMinOrderQuantity & { product: Product; restaurant: User })[]>;
   getCustomMinOrderQuantitiesByRestaurant(restaurantId: string): Promise<CustomMinOrderQuantity[]>;
   getCustomMinOrderQuantity(productId: string, restaurantId: string): Promise<CustomMinOrderQuantity | undefined>;
+  getCustomMinOrderQuantityById(id: string): Promise<CustomMinOrderQuantity | undefined>;
   setCustomMinOrderQuantity(data: InsertCustomMinOrderQuantity): Promise<CustomMinOrderQuantity>;
   deleteCustomMinOrderQuantity(id: string): Promise<void>;
 
@@ -280,6 +283,7 @@ export interface IStorage {
   getCustomPrices(supplierId: string): Promise<(CustomPrice & { product: Product; restaurant: User })[]>;
   getCustomPricesByRestaurant(restaurantId: string): Promise<(CustomPrice & { product: Product; restaurant: User })[]>;
   getCustomPrice(productId: string, restaurantId: string): Promise<CustomPrice | undefined>;
+  getCustomPriceById(id: string): Promise<CustomPrice | undefined>;
   setCustomPrice(data: InsertCustomPrice): Promise<CustomPrice>;
   deleteCustomPrice(id: string): Promise<void>;
 
@@ -3674,6 +3678,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Notifications
+  async getNotification(id: string): Promise<Notification | undefined> {
+    const [notification] = await db.select().from(notifications).where(eq(notifications.id, id));
+    return notification;
+  }
+
   async getNotifications(userId: string): Promise<Notification[]> {
     return db.select().from(notifications)
       .where(eq(notifications.userId, userId))
@@ -3792,6 +3801,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Promotions
+  async getPromotion(id: string): Promise<Promotion | undefined> {
+    const [promo] = await db.select().from(promotions).where(eq(promotions.id, id));
+    return promo;
+  }
+
+  async getPromotionsByGroup(groupId: string): Promise<Promotion[]> {
+    return db.select().from(promotions).where(eq(promotions.groupId, groupId));
+  }
+
   async getPromotionsBySupplier(supplierId: string): Promise<PromotionWithProduct[]> {
     const promos = await db.select().from(promotions)
       .where(eq(promotions.supplierId, supplierId))
@@ -3909,6 +3927,11 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async getCustomMinOrderQuantityById(id: string): Promise<CustomMinOrderQuantity | undefined> {
+    const [row] = await db.select().from(customMinOrderQuantities).where(eq(customMinOrderQuantities.id, id));
+    return row;
+  }
+
   async deleteCustomMinOrderQuantity(id: string): Promise<void> {
     await db.delete(customMinOrderQuantities).where(eq(customMinOrderQuantities.id, id));
   }
@@ -3955,6 +3978,11 @@ export class DatabaseStorage implements IStorage {
     }
     const [created] = await db.insert(customPrices).values(data).returning();
     return created;
+  }
+
+  async getCustomPriceById(id: string): Promise<CustomPrice | undefined> {
+    const [row] = await db.select().from(customPrices).where(eq(customPrices.id, id));
+    return row;
   }
 
   async deleteCustomPrice(id: string): Promise<void> {

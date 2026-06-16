@@ -1,110 +1,85 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { User, Member } from "@shared/schema";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 
 type UserRole = "restaurant" | "supplier";
+
+interface AuthProviders {
+  google: boolean;
+}
+
+interface MeResponse {
+  authenticated: boolean;
+  member?: Member;
+  org?: User;
+  providers?: AuthProviders;
+}
 
 interface UserContextType {
   currentUser: User | null;
   currentRole: UserRole;
   setCurrentUser: (user: User | null) => void;
-  switchRole: (role: UserRole) => void;
-  selectUser: (userId: string) => void;
-  selectedUserId: string | null;
+  currentMember: Member | null;
+  setCurrentMember: (member: Member | null) => void;
   members: Member[];
   membersLoading: boolean;
-  currentMember: Member | null;
-  selectedMemberId: string | null;
-  selectMember: (memberId: string | null) => void;
+  isAuthenticated: boolean;
   isLoading: boolean;
-  setIsLoading: (loading: boolean) => void;
+  providers: AuthProviders;
+  refetchMe: () => void;
+  logout: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-function getStoredUserId(role: UserRole): string | null {
-  try {
-    return localStorage.getItem(`gastroconnect_selected_${role}_id`);
-  } catch {
-    return null;
-  }
-}
-
-function storeUserId(role: UserRole, userId: string) {
-  try {
-    localStorage.setItem(`gastroconnect_selected_${role}_id`, userId);
-  } catch {}
-}
-
-function getStoredMemberId(orgId: string): string | null {
-  try {
-    return localStorage.getItem(`gastroconnect_selected_member_${orgId}`);
-  } catch {
-    return null;
-  }
-}
-
-function storeMemberId(orgId: string, memberId: string | null) {
-  try {
-    const key = `gastroconnect_selected_member_${orgId}`;
-    if (memberId) localStorage.setItem(key, memberId);
-    else localStorage.removeItem(key);
-  } catch {}
-}
-
 export function UserProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentRole, setCurrentRole] = useState<UserRole>("restaurant");
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(
-    getStoredUserId("restaurant")
-  );
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [currentMember, setCurrentMember] = useState<Member | null>(null);
 
-  const switchRole = useCallback((role: UserRole) => {
-    setCurrentRole(role);
-    setCurrentUser(null);
-    setSelectedUserId(getStoredUserId(role));
-    setSelectedMemberId(null);
-    queryClient.clear();
-  }, []);
+  const { data: me, isLoading: meLoading, refetch } = useQuery<MeResponse>({
+    queryKey: ["/api/auth/me"],
+    retry: false,
+    staleTime: 30000,
+  });
 
-  const selectUser = useCallback((userId: string) => {
-    storeUserId(currentRole, userId);
-    setSelectedUserId(userId);
-    setSelectedMemberId(getStoredMemberId(userId));
-  }, [currentRole]);
+  // The session is the single source of truth for identity. Seed local state
+  // from /api/auth/me; local setters still allow optimistic profile updates.
+  useEffect(() => {
+    if (!me) return;
+    if (me.authenticated && me.org) {
+      setCurrentUser(me.org as User);
+      setCurrentMember((me.member as Member) ?? null);
+    } else {
+      setCurrentUser(null);
+      setCurrentMember(null);
+    }
+  }, [me]);
+
+  const currentRole = (currentUser?.role as UserRole) ?? "restaurant";
+  const isAuthenticated = !!me?.authenticated;
+  const providers: AuthProviders = me?.providers ?? { google: false };
 
   const { data: membersData, isLoading: membersLoading } = useQuery<{ members: Member[]; seatLimit: number; seatsUsed: number }>({
-    queryKey: ["/api/orgs", selectedUserId, "members"],
-    enabled: !!selectedUserId,
+    queryKey: ["/api/orgs", currentUser?.id, "members"],
+    enabled: !!currentUser?.id,
   });
   const members = membersData?.members ?? [];
 
-  const selectMember = useCallback((memberId: string | null) => {
-    if (selectedUserId) storeMemberId(selectedUserId, memberId);
-    setSelectedMemberId(memberId);
-  }, [selectedUserId]);
+  const refetchMe = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
-  // Restore persisted member selection once the org is known.
-  useEffect(() => {
-    if (selectedUserId) {
-      setSelectedMemberId(getStoredMemberId(selectedUserId));
+  const logout = useCallback(async () => {
+    try {
+      await apiRequest("POST", "/api/auth/logout");
+    } catch {
+      // Ignore — clearing local state below logs the user out regardless.
     }
-  }, [selectedUserId]);
-
-  // If the persisted member no longer exists, clear it so the user is asked to
-  // pick a person again (rather than silently impersonating the first member).
-  useEffect(() => {
-    if (!selectedUserId || members.length === 0) return;
-    if (selectedMemberId && !members.some((m) => m.id === selectedMemberId)) {
-      setSelectedMemberId(null);
-      storeMemberId(selectedUserId, null);
-    }
-  }, [members, selectedMemberId, selectedUserId]);
-
-  const currentMember = members.find((m) => m.id === selectedMemberId) ?? null;
+    setCurrentUser(null);
+    setCurrentMember(null);
+    queryClient.clear();
+  }, []);
 
   return (
     <UserContext.Provider
@@ -112,16 +87,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
         currentUser,
         currentRole,
         setCurrentUser,
-        switchRole,
-        selectUser,
-        selectedUserId,
+        currentMember,
+        setCurrentMember,
         members,
         membersLoading,
-        currentMember,
-        selectedMemberId,
-        selectMember,
-        isLoading,
-        setIsLoading,
+        isAuthenticated,
+        isLoading: meLoading,
+        providers,
+        refetchMe,
+        logout,
       }}
     >
       {children}

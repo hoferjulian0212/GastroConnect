@@ -22,7 +22,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Users, UserPlus, Trash2, Building2, Pencil } from "lucide-react";
+import { Users, UserPlus, Trash2, Building2, Pencil, Mail } from "lucide-react";
 
 type MembersResponse = { members: Member[]; seatLimit: number; seatsUsed: number };
 
@@ -87,6 +87,30 @@ export default function Team() {
       apiRequest("PATCH", `/api/members/${id}`, { role, actingMemberId: currentMember?.id }),
     onSuccess: () => { invalidate(); toast({ title: tt("Rolle aktualisiert", "Ruolo aggiornato") }); },
     onError: () => toast({ title: tt("Fehler", "Errore"), variant: "destructive" }),
+  });
+
+  // ---- Invite / re-invite member (activation link) ----
+  const inviteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/members/${id}/invite`);
+      return res.json() as Promise<{ ok: boolean; emailed: boolean }>;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: data.emailed
+          ? tt("Einladung gesendet", "Invito inviato")
+          : tt("Einladung erstellt", "Invito creato"),
+        description: data.emailed
+          ? tt("Die Person erhält eine E-Mail mit dem Aktivierungslink.", "La persona riceverà un'email con il link di attivazione.")
+          : tt("E-Mail-Versand ist nicht konfiguriert.", "L'invio di email non è configurato."),
+      });
+    },
+    onError: async (err: any) => {
+      const msg = err?.message?.includes("no_email")
+        ? tt("Für dieses Mitglied ist keine E-Mail hinterlegt.", "Nessuna email per questo membro.")
+        : tt("Einladung konnte nicht gesendet werden.", "Impossibile inviare l'invito.");
+      toast({ title: tt("Fehler", "Errore"), description: msg, variant: "destructive" });
+    },
   });
 
   // ---- Edit member details ----
@@ -314,6 +338,19 @@ export default function Team() {
                       <span className="text-xs text-muted-foreground" data-testid={`text-member-role-${m.id}`}>
                         {roleLabel(m.role, lang)}
                       </span>
+                    )}
+                    {canManage && m.email && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => inviteMutation.mutate(m.id)}
+                        disabled={inviteMutation.isPending}
+                        title={tt("Einladung senden", "Invia invito")}
+                        data-testid={`button-invite-member-${m.id}`}
+                      >
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                      </Button>
                     )}
                     {canManage && (
                       <Button

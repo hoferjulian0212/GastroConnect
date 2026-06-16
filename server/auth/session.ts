@@ -8,6 +8,8 @@ import { pool } from "../db";
 declare module "express-session" {
   interface SessionData {
     memberId?: string;
+    // Short-lived CSRF state for the OAuth authorization-code round trip.
+    oauthState?: string;
   }
 }
 

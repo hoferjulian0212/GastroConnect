@@ -606,7 +606,7 @@ function ScrollMarquee({
 
 export default function Landing() {
   const [, setLocation] = useLocation();
-  const { currentUser, currentRole, switchRole } = useUser();
+  const { currentUser, currentRole } = useUser();
   const [scrolled, setScrolled] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [lang, setLang] = useState<Lang>("de");
@@ -667,8 +667,7 @@ export default function Landing() {
   const a = animationStrings[lang];
 
   function handleStart(role: "restaurant" | "supplier") {
-    switchRole(role);
-    setLocation(`/${role}`);
+    setLocation(`/login?role=${role}`);
   }
 
   function handleLogin() {

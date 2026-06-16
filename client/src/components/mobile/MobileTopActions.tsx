@@ -75,7 +75,7 @@ export function MobileTopActions({
   hideCart = false,
   className,
 }: MobileTopActionsProps) {
-  const { currentUser, currentRole, currentMember, setCurrentUser } = useUser();
+  const { currentUser, currentRole, currentMember, logout } = useUser();
   const { lang } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
   const [location, setLocation] = useLocation();
@@ -91,11 +91,8 @@ export function MobileTopActions({
     ? displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
-  const handleLogout = () => {
-    try { localStorage.removeItem("gastroconnect_selected_restaurant_id"); } catch {}
-    try { localStorage.removeItem("gastroconnect_selected_supplier_id"); } catch {}
-    setCurrentUser(null);
-    queryClient.clear();
+  const handleLogout = async () => {
+    await logout();
     setLocation("/");
   };
 

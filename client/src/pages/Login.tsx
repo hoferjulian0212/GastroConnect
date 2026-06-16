@@ -1,32 +1,57 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { Button } from "@/components/ui/button";
-import { Store, Utensils, ArrowLeft } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { SiGoogle } from "react-icons/si";
 import Logo from "@/components/Logo";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const { currentUser, currentRole, switchRole } = useUser();
+  const { isAuthenticated, currentRole, providers, refetchMe } = useUser();
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Once authenticated (from /api/auth/me), leave the login screen.
   useEffect(() => {
-    if (currentUser && currentRole) {
+    if (isAuthenticated) {
       setLocation(`/${currentRole}`);
     }
-  }, [currentUser, currentRole]);
+  }, [isAuthenticated, currentRole, setLocation]);
 
+  // Surface OAuth callback errors passed back as ?error=...
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const role = params.get("role");
-    if (role === "supplier" || role === "restaurant") {
-      switchRole(role);
-      setLocation(`/${role}`);
+    const oauthError = params.get("error");
+    if (oauthError) {
+      setError("Anmeldung mit Google fehlgeschlagen. Bitte versuchen Sie es erneut.");
     }
   }, []);
 
-  function handleLogin(role: "supplier" | "restaurant") {
-    switchRole(role);
-    setLocation(`/${role}`);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (submitting) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await apiRequest("POST", "/api/auth/login", { email, password });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.message || "E-Mail oder Passwort ist falsch.");
+        return;
+      }
+      refetchMe();
+    } catch {
+      setError("Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -48,47 +73,95 @@ export default function Login() {
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
-          <div className="text-center mb-10">
+          <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight" data-testid="text-login-headline">
               Anmelden
             </h1>
             <p className="mt-3 text-white/70 text-base">
-              Wählen Sie Ihre Rolle, um fortzufahren.
+              Melden Sie sich mit Ihrem Konto an.
             </p>
           </div>
 
-          <div className="space-y-3">
-            <button
-              onClick={() => handleLogin("supplier")}
-              className="w-full rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.10] p-5 flex items-center gap-4 text-left transition-colors"
-              data-testid="button-login-supplier"
+          {error && (
+            <div
+              className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+              data-testid="text-login-error"
             >
-              <div className="h-12 w-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                <Store className="h-6 w-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-base text-white">Als Händler anmelden</div>
-                <div className="text-xs text-white/60 mt-0.5">Bestellungen verwalten, Kunden bedienen</div>
-              </div>
-            </button>
+              {error}
+            </div>
+          )}
 
-            <button
-              onClick={() => handleLogin("restaurant")}
-              className="w-full rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.10] p-5 flex items-center gap-4 text-left transition-colors"
-              data-testid="button-login-restaurant"
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="login-email" className="text-white/80">E-Mail</Label>
+              <Input
+                id="login-email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-white/[0.06] border-white/15 text-white placeholder:text-white/40 focus-visible:ring-white/30"
+                placeholder="name@betrieb.de"
+                data-testid="input-login-email"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="login-password" className="text-white/80">Passwort</Label>
+                <button
+                  type="button"
+                  onClick={() => setLocation("/auth/reset")}
+                  className="text-xs text-white/60 hover:text-white"
+                  data-testid="link-forgot-password"
+                >
+                  Passwort vergessen?
+                </button>
+              </div>
+              <Input
+                id="login-password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bg-white/[0.06] border-white/15 text-white placeholder:text-white/40 focus-visible:ring-white/30"
+                placeholder="••••••••••••"
+                data-testid="input-login-password"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full h-11 rounded-xl bg-white text-[#161921] hover:bg-white/90 font-semibold"
+              data-testid="button-login-submit"
             >
-              <div className="h-12 w-12 rounded-xl bg-white/10 text-white flex items-center justify-center shrink-0">
-                <Utensils className="h-6 w-6" />
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Anmelden"}
+            </Button>
+          </form>
+
+          {providers.google && (
+            <>
+              <div className="my-6 flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/10" />
+                <span className="text-xs text-white/40">oder</span>
+                <div className="h-px flex-1 bg-white/10" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-base text-white">Als Betrieb anmelden</div>
-                <div className="text-xs text-white/60 mt-0.5">Bestellen, Lieferanten vergleichen, Ausgaben verfolgen</div>
-              </div>
-            </button>
-          </div>
+              <a
+                href="/api/auth/oauth/google/start"
+                className="w-full h-11 rounded-xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.10] flex items-center justify-center gap-3 font-medium transition-colors"
+                data-testid="button-login-google"
+              >
+                <SiGoogle className="h-4 w-4" />
+                Mit Google anmelden
+              </a>
+            </>
+          )}
 
           <p className="text-xs text-white/50 text-center mt-8">
-            Noch kein Konto? Wählen Sie eine Rolle, um direkt loszulegen — keine Registrierung nötig.
+            Kein Konto? Der Zugang erfolgt nur auf Einladung. Bitten Sie Ihre
+            Organisation, Sie zum Team einzuladen.
           </p>
         </div>
       </main>
