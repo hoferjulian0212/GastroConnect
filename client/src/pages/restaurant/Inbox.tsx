@@ -2904,7 +2904,7 @@ export default function RestaurantInbox() {
                           handleSendMessage();
                         }
                       }}
-                      className="rounded-full min-h-12 md:min-h-10"
+                      className="rounded-full min-h-12 md:min-h-10 focus-visible:ring-0 focus-visible:ring-offset-0"
                       data-testid="input-message"
                     />
                     {!messageText.trim() ? (
