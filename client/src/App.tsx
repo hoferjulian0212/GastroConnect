@@ -500,7 +500,7 @@ function useProfileMenu() {
 function ProfileMenuContent() {
   const { isDark, toggleTheme, t, lang, currentRole, handleLogout, setLocation } = useProfileMenu();
   const itemClass =
-    "block w-full px-4 py-2 text-sm transition-colors cursor-pointer rounded-none text-gray-400 focus:text-white focus:bg-white/5 hover:text-white hover:bg-white/5";
+    "flex items-center w-full px-4 py-2 text-sm transition-colors cursor-pointer rounded-none text-gray-400 focus:text-white focus:bg-white/5 hover:text-white hover:bg-white/5";
   return (
     <DropdownMenuContent
       align="end"
