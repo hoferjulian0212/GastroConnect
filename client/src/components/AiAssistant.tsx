@@ -316,7 +316,7 @@ export function AiAssistant() {
           {/* Nudge pill — desktop only, once per session */}
           {nudgeVisible && (
             <div
-              className="hidden md:flex fixed bottom-[6.5rem] right-6 z-[56] items-center gap-2.5 pl-3 pr-2 py-2 rounded-full bg-[#1c1c2e] text-white shadow-xl shadow-black/30 border border-white/10 animate-in fade-in slide-in-from-bottom-2 duration-300"
+              className="hidden md:flex fixed bottom-6 right-24 z-[56] items-center gap-2.5 pl-3 pr-2 py-2 rounded-full bg-black text-white shadow-xl shadow-black/30 border border-white/10 animate-in fade-in slide-in-from-right-2 duration-300"
               data-testid="ai-nudge-pill"
               style={{ maxWidth: 340 }}
             >
