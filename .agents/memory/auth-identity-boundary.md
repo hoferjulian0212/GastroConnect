@@ -7,7 +7,7 @@ description: How acting identity is resolved and how non-session callers (webhoo
 
 **Rule:** Protected API routes must resolve the acting identity (member + organizationId + role) from the server session (`req.auth`), never from client-supplied ids (`req.body.userId`, `req.query.restaurantId/supplierId`, `actingMemberId`). Capability checks use `can(role, capability)` from `shared/permissions.ts`; route guards/helpers live in `server/routes.ts` and `server/auth/middleware.ts`.
 
-**Why:** Client-supplied identity is spoofable; the demo model used to trust it, which allowed cross-org access. T6 of the Member Authentication & Security work closed this across all mutating routes.
+**Why:** Client-supplied identity is spoofable; the demo model used to trust it, which allowed cross-org access. The member-authentication work closed this across all mutating routes and all org-scoped GET reads (orders, conversations/messages, complaints, documents, templates, delivery notes, user profiles).
 
 **How to apply:** When adding or editing a mutating route, derive org/role from `req.auth` and reject with 401 if absent. `shared/permissions.ts` is now a real security boundary, not just UX — keep the role→capability matrix authoritative on the server.
 

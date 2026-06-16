@@ -505,7 +505,7 @@ const changeRequestSchema = z.object({
 }).strict();
 
 const changeRequestRespondSchema = z.object({
-  supplierId: uuidField,
+  supplierId: uuidField.optional(),
   approved: z.boolean(),
 }).strict();
 
@@ -821,6 +821,53 @@ export async function registerRoutes(
     }
     return null;
   }
+
+  // Shapes a `users` (organization) row down to fields that are safe to expose
+  // to other organizations (business-card style public profile). Internal
+  // settings — dashboard layouts/widgets/templates, notification prefs,
+  // onboarding/help state, revenue targets, seat limits — are stripped so a
+  // cross-org read cannot leak another organization's private configuration.
+  const toPublicProfile = (user: any) => ({
+    id: user.id,
+    role: user.role,
+    name: user.name,
+    email: user.email,
+    phone: user.phone ?? null,
+    whatsappNumber: user.whatsappNumber ?? null,
+    address: user.address ?? null,
+    city: user.city ?? null,
+    postalCode: user.postalCode ?? null,
+    latitude: user.latitude ?? null,
+    longitude: user.longitude ?? null,
+    companyName: user.companyName ?? null,
+    description: user.description ?? null,
+    profileImageUrl: user.profileImageUrl ?? null,
+    lastSeenAt: user.lastSeenAt ?? null,
+    language: user.language ?? null,
+  });
+
+  // Platform-operator guard for the cross-org back-office endpoints under
+  // /api/admin/* (PMS/ERP/WhatsApp connection-request review). These are NOT
+  // org-scoped — they expose every organization's requests — so they are gated
+  // by an explicit platform-admin allowlist (PLATFORM_ADMIN_EMAILS, comma
+  // separated). Fail-closed: with no allowlist configured there is no platform
+  // admin, so every request is rejected.
+  const requirePlatformAdmin = (req: express.Request, res: express.Response): boolean => {
+    if (!req.auth) {
+      res.status(401).json({ error: "unauthenticated", message: "Bitte melden Sie sich an." });
+      return false;
+    }
+    const allowlist = (process.env.PLATFORM_ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const email = req.auth.member.email?.trim().toLowerCase();
+    if (allowlist.length === 0 || !email || !allowlist.includes(email)) {
+      res.status(403).json({ error: "forbidden", message: "Kein Plattform-Administrator." });
+      return false;
+    }
+    return true;
+  };
 
   app.patch("/api/orgs/:id", async (req, res) => {
     try {
@@ -1241,6 +1288,7 @@ export async function registerRoutes(
 
   app.get("/api/users/:id/status", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const user = await storage.getUser(req.params.id);
       if (!user) return res.status(404).json({ error: "User not found" });
       res.json({ lastSeenAt: user.lastSeenAt || null });
@@ -1251,11 +1299,17 @@ export async function registerRoutes(
 
   app.get("/api/users/:id", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const user = await storage.getUser(req.params.id);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      res.json(user);
+      // Self gets the full row (own settings); other orgs get a public profile
+      // only, so internal config (dashboards, prefs, targets) never leaks.
+      if (req.auth.organizationId === user.id) {
+        return res.json(user);
+      }
+      res.json(toPublicProfile(user));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
     }
@@ -1392,7 +1446,9 @@ export async function registerRoutes(
   app.get("/api/suppliers", async (req, res) => {
     try {
       const suppliers = await storage.getUsersByRole("supplier");
-      res.json(suppliers);
+      // Public catalog listing — expose business-card fields only, never each
+      // supplier's internal settings/targets.
+      res.json(suppliers.map(toPublicProfile));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch suppliers" });
     }
@@ -2601,10 +2657,13 @@ export async function registerRoutes(
 
   app.get("/api/orders/:id", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
+      const denied = checkActingCapabilityIfProvided(req, [order.restaurantId, order.supplierId], "chat");
+      if (denied) return res.status(denied.status).json(denied.body);
       res.json(order);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch order" });
@@ -3667,14 +3726,14 @@ export async function registerRoutes(
 
   app.post("/api/orders/:id/change-request/respond", async (req, res) => {
     try {
-      const { supplierId, approved } = changeRequestRespondSchema.parse(req.body);
+      const { approved } = changeRequestRespondSchema.parse(req.body);
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
-      if (order.supplierId !== supplierId) {
-        return res.status(403).json({ error: "Not authorized" });
-      }
+      const authErr = checkActingCapability(req, order.supplierId, "orders.manage");
+      if (authErr) return res.status(authErr.status).json(authErr.body);
+      const supplierId = order.supplierId;
       if (order.status === "delivered" || order.status === "cancelled" || order.status === "pending") {
         return res.status(400).json({ error: "Cannot respond to change request for this order status" });
       }
@@ -3934,6 +3993,11 @@ export async function registerRoutes(
 
   app.get("/api/conversations/:id/messages", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const conversation = await storage.getConversation(req.params.id);
+      if (!conversation) return res.status(404).json({ error: "Conversation not found" });
+      const denied = checkActingCapabilityIfProvided(req, [conversation.restaurantId, conversation.supplierId], "chat");
+      if (denied) return res.status(denied.status).json(denied.body);
       const messages = await storage.getMessages(req.params.id);
       res.json(messages);
     } catch (error) {
@@ -3943,6 +4007,11 @@ export async function registerRoutes(
 
   app.get("/api/conversations/:id/statuses", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const conversation = await storage.getConversation(req.params.id);
+      if (!conversation) return res.status(404).json({ error: "Conversation not found" });
+      const denied = checkActingCapabilityIfProvided(req, [conversation.restaurantId, conversation.supplierId], "chat");
+      if (denied) return res.status(denied.status).json(denied.body);
       const statuses = await storage.getConversationStatuses(req.params.id);
       res.json(statuses);
     } catch (error) {
@@ -4120,8 +4189,11 @@ export async function registerRoutes(
 
   app.get("/api/order-templates/:id", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const template = await storage.getOrderTemplate(req.params.id);
       if (!template) return res.status(404).json({ error: "Template not found" });
+      const denied = checkActingCapability(req, template.restaurantId, "orders.create");
+      if (denied) return res.status(denied.status).json(denied.body);
       res.json(template);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch template" });
@@ -4707,6 +4779,11 @@ export async function registerRoutes(
 
   app.get("/api/orders/:id/status-history", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const order = await storage.getOrder(req.params.id);
+      if (!order) return res.status(404).json({ error: "Order not found" });
+      const denied = checkActingCapabilityIfProvided(req, [order.restaurantId, order.supplierId], "chat");
+      if (denied) return res.status(denied.status).json(denied.body);
       const history = await storage.getOrderStatusHistory(req.params.id);
       res.json(history);
     } catch (error) {
@@ -4716,6 +4793,11 @@ export async function registerRoutes(
 
   app.get("/api/complaints/:id/status-history", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const complaint = await storage.getComplaint(req.params.id);
+      if (!complaint) return res.status(404).json({ error: "Complaint not found" });
+      const denied = checkActingCapabilityIfProvided(req, [complaint.restaurantId, complaint.supplierId], "chat");
+      if (denied) return res.status(denied.status).json(denied.body);
       const history = await storage.getComplaintStatusHistory(req.params.id);
       res.json(history);
     } catch (error) {
@@ -4725,10 +4807,13 @@ export async function registerRoutes(
 
   app.get("/api/complaints/by-order/:orderId", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const complaint = await storage.getComplaintByOrderId(req.params.orderId);
       if (!complaint) {
         return res.status(404).json({ error: "Complaint not found" });
       }
+      const denied = checkActingCapabilityIfProvided(req, [complaint.restaurantId, complaint.supplierId], "chat");
+      if (denied) return res.status(denied.status).json(denied.body);
       res.json(complaint);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch complaint" });
@@ -4737,10 +4822,13 @@ export async function registerRoutes(
 
   app.get("/api/complaints/:id", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const complaint = await storage.getComplaint(req.params.id);
       if (!complaint) {
         return res.status(404).json({ error: "Complaint not found" });
       }
+      const denied = checkActingCapabilityIfProvided(req, [complaint.restaurantId, complaint.supplierId], "chat");
+      if (denied) return res.status(denied.status).json(denied.body);
       res.json(complaint);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch complaint" });
@@ -4805,6 +4893,11 @@ export async function registerRoutes(
 
   app.get("/api/complaints/:id/comments", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const complaint = await storage.getComplaint(req.params.id);
+      if (!complaint) return res.status(404).json({ error: "Complaint not found" });
+      const denied = checkActingCapabilityIfProvided(req, [complaint.restaurantId, complaint.supplierId], "chat");
+      if (denied) return res.status(denied.status).json(denied.body);
       const comments = await storage.getComplaintComments(req.params.id);
       res.json(comments);
     } catch (error) {
@@ -5526,6 +5619,11 @@ export async function registerRoutes(
 
   app.get("/api/complaints/:id/documents", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const complaint = await storage.getComplaint(req.params.id);
+      if (!complaint) return res.status(404).json({ error: "Complaint not found" });
+      const denied = checkActingCapabilityIfProvided(req, [complaint.restaurantId, complaint.supplierId], "chat");
+      if (denied) return res.status(denied.status).json(denied.body);
       const docs = await storage.getDocumentsByComplaint(req.params.id);
       res.json(docs);
     } catch (error) {
@@ -5553,10 +5651,13 @@ export async function registerRoutes(
 
   app.get("/api/orders/:id/delivery-note/download", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
+      const denied = checkActingCapabilityIfProvided(req, [order.restaurantId, order.supplierId], "chat");
+      if (denied) return res.status(denied.status).json(denied.body);
       const inline = req.query.inline === "1" || req.query.disposition === "inline";
       const disposition = inline ? "inline" : "attachment";
       const docs = await storage.getDocumentsByOrder(order.id);
@@ -5617,10 +5718,13 @@ export async function registerRoutes(
 
   app.get("/api/orders/:id/delivery-note/preview", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
+      const denied = checkActingCapabilityIfProvided(req, [order.restaurantId, order.supplierId], "chat");
+      if (denied) return res.status(denied.status).json(denied.body);
       const deliveryDate = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
       const orderDate = new Date(order.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
       res.json({
@@ -5721,8 +5825,10 @@ export async function registerRoutes(
 
   app.post("/api/attachments/request-url", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const validated = attachmentRequestSchema.parse(req.body);
-      const { name, size, contentType, conversationId, senderId } = validated;
+      const { name, size, contentType, conversationId } = validated;
+      const senderId = req.auth.organizationId;
       if (!ALLOWED_ATTACHMENT_TYPES.includes(contentType)) {
         return res.status(400).json({ error: "Dateityp nicht erlaubt. Erlaubt: PDF, JPG, PNG, WEBP, DOCX" });
       }
@@ -6416,8 +6522,9 @@ export async function registerRoutes(
   });
 
   // ===== ADMIN: PMS connection requests =====
-  app.get("/api/admin/pms/requests", async (_req, res) => {
+  app.get("/api/admin/pms/requests", async (req, res) => {
     try {
+      if (!requirePlatformAdmin(req, res)) return;
       const requests = await storage.getPmsConnectionRequests();
       res.json(requests);
     } catch (error) {
@@ -6432,6 +6539,7 @@ export async function registerRoutes(
 
   app.patch("/api/admin/pms/requests/:id", async (req, res) => {
     try {
+      if (!requirePlatformAdmin(req, res)) return;
       const parsed = updatePmsRequestSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Invalid request" });
       const existing = await storage.getPmsConnectionRequest(req.params.id);
@@ -6857,8 +6965,9 @@ export async function registerRoutes(
   });
 
   // ===== ADMIN: ERP connection requests =====
-  app.get("/api/admin/erp/requests", async (_req, res) => {
+  app.get("/api/admin/erp/requests", async (req, res) => {
     try {
+      if (!requirePlatformAdmin(req, res)) return;
       const requests = await storage.getErpConnectionRequests();
       res.json(requests);
     } catch (error) {
@@ -6873,6 +6982,7 @@ export async function registerRoutes(
 
   app.patch("/api/admin/erp/requests/:id", async (req, res) => {
     try {
+      if (!requirePlatformAdmin(req, res)) return;
       const parsed = updateErpRequestSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Invalid request" });
       const existing = await storage.getErpConnectionRequest(req.params.id);
@@ -7022,8 +7132,9 @@ export async function registerRoutes(
   });
 
   // ===== ADMIN: WhatsApp connection requests =====
-  app.get("/api/admin/whatsapp/requests", async (_req, res) => {
+  app.get("/api/admin/whatsapp/requests", async (req, res) => {
     try {
+      if (!requirePlatformAdmin(req, res)) return;
       const requests = await storage.getWhatsappConnectionRequests();
       res.json(requests);
     } catch (error) {
@@ -7038,6 +7149,7 @@ export async function registerRoutes(
 
   app.patch("/api/admin/whatsapp/requests/:id", async (req, res) => {
     try {
+      if (!requirePlatformAdmin(req, res)) return;
       const parsed = updateWhatsappRequestSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Invalid request" });
       const existing = await storage.getWhatsappConnectionRequest(req.params.id);
@@ -7068,8 +7180,11 @@ export async function registerRoutes(
 
   app.get("/api/orders/export", async (req, res) => {
     try {
-      const { userId, role, format, dateFrom, dateTo, supplierId, restaurantId } = req.query as Record<string, string>;
-      if (!userId || !role || !format) {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const { format, dateFrom, dateTo, supplierId, restaurantId } = req.query as Record<string, string>;
+      const userId = req.auth.organizationId;
+      const role = req.auth.org.role;
+      if (!format) {
         return res.status(400).json({ error: "Missing required parameters" });
       }
 
