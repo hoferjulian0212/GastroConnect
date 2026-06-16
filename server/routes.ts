@@ -740,13 +740,16 @@ export async function registerRoutes(
   // ===== USERS =====
   app.get("/api/users", async (req, res) => {
     try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const role = req.query.role as "restaurant" | "supplier" | undefined;
+      // Cross-org directory listing — expose business-card fields only, never
+      // any organization's internal settings/targets.
       if (role) {
         const users = await storage.getUsersByRole(role);
-        res.json(users);
+        res.json(users.map(toPublicProfile));
       } else {
         const users = await storage.getUsers();
-        res.json(users);
+        res.json(users.map(toPublicProfile));
       }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch users" });
@@ -846,6 +849,21 @@ export async function registerRoutes(
     language: user.language ?? null,
   });
 
+  // Shapes a `members` row to the contact fields safe to return over the API.
+  // Strips credential/auth columns (passwordHash, emailVerifiedAt, lastLoginAt)
+  // so member listings (own-org Team and cross-org partner contact lists) never
+  // leak password hashes or authentication state.
+  const toSafeMember = (m: any) => ({
+    id: m.id,
+    organizationId: m.organizationId,
+    name: m.name,
+    email: m.email ?? null,
+    phone: m.phone ?? null,
+    profileImageUrl: m.profileImageUrl ?? null,
+    role: m.role,
+    createdAt: m.createdAt,
+  });
+
   // Platform-operator guard for the cross-org back-office endpoints under
   // /api/admin/* (PMS/ERP/WhatsApp connection-request review). These are NOT
   // org-scoped — they expose every organization's requests — so they are gated
@@ -892,10 +910,40 @@ export async function registerRoutes(
 
   app.get("/api/orgs/:id/members", async (req, res) => {
     try {
-      const org = await storage.getUser(req.params.id);
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const requesterId = req.auth.organizationId;
+      const targetId = req.params.id;
+      const org = await storage.getUser(targetId);
       if (!org) return res.status(404).json({ error: "Organization not found" });
-      const list = await storage.getMembers(req.params.id);
-      res.json({ members: list, seatLimit: org.seatLimit ?? 5, seatsUsed: list.length });
+      const list = await storage.getMembers(targetId);
+      // Strip credential/auth columns before returning.
+      const safeMembers = list.map(toSafeMember);
+
+      // The org may always see its own team (incl. seat usage). For another
+      // organization, only expose the team contact list when an actual business
+      // relationship exists (a shared conversation or order), and never the
+      // internal seat metadata — this blocks authenticated enumeration of
+      // arbitrary orgs' team directories.
+      if (requesterId === targetId) {
+        return res.json({ members: safeMembers, seatLimit: org.seatLimit ?? 5, seatsUsed: list.length });
+      }
+
+      const [conv] = await db.select({ id: conversations.id }).from(conversations).where(or(
+        and(eq(conversations.restaurantId, requesterId), eq(conversations.supplierId, targetId)),
+        and(eq(conversations.restaurantId, targetId), eq(conversations.supplierId, requesterId)),
+      )).limit(1);
+      let related = !!conv;
+      if (!related) {
+        const [ord] = await db.select({ id: orders.id }).from(orders).where(or(
+          and(eq(orders.restaurantId, requesterId), eq(orders.supplierId, targetId)),
+          and(eq(orders.restaurantId, targetId), eq(orders.supplierId, requesterId)),
+        )).limit(1);
+        related = !!ord;
+      }
+      if (!related) {
+        return res.status(403).json({ error: "forbidden", message: "Keine Berechtigung für diese Organisation." });
+      }
+      res.json({ members: safeMembers });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch members" });
     }
@@ -3107,7 +3155,7 @@ export async function registerRoutes(
 
   app.patch("/api/orders/:id/status", async (req, res) => {
     try {
-      const { status, changedBy, actingMemberId, requestedDeliveryDate, deliveryNotes } = updateOrderStatusSchema.parse(req.body);
+      const { status, requestedDeliveryDate, deliveryNotes } = updateOrderStatusSchema.parse(req.body);
       const order = await storage.getOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
@@ -3120,6 +3168,11 @@ export async function registerRoutes(
       if (statusDenied) {
         return res.status(statusDenied.status).json(statusDenied.body);
       }
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      // Actor attribution is derived from the session, never the request body,
+      // so audit/history fields cannot be spoofed by the client.
+      const changedBy = req.auth.organizationId;
+      const actingMemberId = req.auth.memberId;
       const previousStatus = order.status;
 
       // Block status transitions while a change request is open. The supplier
@@ -5247,11 +5300,11 @@ export async function registerRoutes(
     }
   });
 
-  const pushTestSchema = z.object({ userId: uuidField });
-
   app.post("/api/push/test", async (req, res) => {
     try {
-      const { userId } = pushTestSchema.parse(req.body);
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      // Target is always the caller's own org; client-supplied userId is ignored.
+      const userId = req.auth.organizationId;
       const subscriptions = await storage.getPushSubscriptions(userId);
       if (subscriptions.length === 0) {
         return res.json({ sent: 0 });
