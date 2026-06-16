@@ -1005,7 +1005,7 @@ export default function RestaurantCatalog() {
  className={`text-xs md:text-sm toggle-elevate transition-all ${
  onlyAvailable
  ? "bg-primary text-primary-foreground border-primary font-semibold shadow-md ring-2 ring-primary/30 hover:bg-primary/90"
- : ""
+ : "bg-white dark:bg-zinc-900 hover:bg-white dark:hover:bg-zinc-800"
  }`}
  data-testid="toggle-available-only"
  >
@@ -1019,7 +1019,7 @@ export default function RestaurantCatalog() {
  className={`text-xs md:text-sm toggle-elevate transition-all ${
  onlyPromotions
  ? "bg-primary text-primary-foreground border-primary font-semibold shadow-md ring-2 ring-primary/30 hover:bg-primary/90"
- : ""
+ : "bg-white dark:bg-zinc-900 hover:bg-white dark:hover:bg-zinc-800"
  }`}
  data-testid="toggle-promotions-only"
  >
