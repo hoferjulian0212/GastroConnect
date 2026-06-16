@@ -321,10 +321,17 @@ export function AiAssistant() {
                 className="flex items-center gap-2 bg-primary text-primary-foreground rounded-full px-4 py-2.5 shadow-lg shadow-black/20 whitespace-nowrap text-sm font-medium animate-in fade-in slide-in-from-right-2 duration-300"
                 data-testid="ai-nudge-pill"
               >
-                {t(
-                  `Kann ich Ihnen helfen${firstName ? `, ${firstName}` : ""}?`,
-                  `Posso aiutarla${firstName ? `, ${firstName}` : ""}?`,
-                )}
+                <button
+                  type="button"
+                  onClick={() => { dismissNudge(); setOpen(true); setView("chat"); }}
+                  className="flex-shrink-0 text-left hover:opacity-90 transition-opacity"
+                  data-testid="button-ai-nudge-open"
+                >
+                  {t(
+                    `Kann ich Ihnen helfen${firstName ? `, ${firstName}` : ""}?`,
+                    `Posso aiutarla${firstName ? `, ${firstName}` : ""}?`,
+                  )}
+                </button>
                 <button
                   type="button"
                   onClick={dismissNudge}
