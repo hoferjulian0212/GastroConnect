@@ -845,7 +845,7 @@ export default function Landing() {
         <div className="mx-auto max-w-5xl text-center flex flex-col min-h-[calc(100svh-4rem)]">
           <div className="flex-1 flex flex-col justify-center pt-8">
             <motion.div
-              className="mx-auto mb-6 md:mb-8 w-20 md:w-28"
+              className="mx-auto mb-6 md:mb-8 w-44 sm:w-56 md:w-72 lg:w-80"
               initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.4, rotate: -25, y: -20 }}
               animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, rotate: 0, y: 0 }}
               transition={{ type: "spring", stiffness: 200, damping: 14, delay: 0.1 }}
@@ -853,8 +853,8 @@ export default function Landing() {
               <motion.img
                 src={logoIcon}
                 alt="GastroConnect"
-                className="h-20 w-20 md:h-28 md:w-28 object-contain dark:invert"
-                animate={reduceMotion ? undefined : { y: [0, -10, 0], rotate: [0, 3, 0, -3, 0] }}
+                className="h-44 w-44 sm:h-56 sm:w-56 md:h-72 md:w-72 lg:h-80 lg:w-80 object-contain dark:invert"
+                animate={reduceMotion ? undefined : { y: [0, -14, 0], rotate: [0, 3, 0, -3, 0] }}
                 transition={reduceMotion ? undefined : { duration: 5, ease: "easeInOut", repeat: Infinity, delay: 0.9 }}
                 data-testid="img-hero-logo"
               />
