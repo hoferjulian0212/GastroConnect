@@ -32,11 +32,19 @@ interface KpiOverlay {
   testId?: string;
 }
 
+interface FloatingPanel {
+  src: string;
+  alt: string;
+  side: "left" | "right";
+  rotate: number;
+}
+
 interface HeroShotRevealProps {
   src: string;
   alt: string;
   callouts: Callout[];
   kpis?: KpiOverlay[];
+  floatingPanels?: FloatingPanel[];
 }
 
 export function HeroShotReveal({
@@ -44,6 +52,7 @@ export function HeroShotReveal({
   alt,
   callouts,
   kpis = [],
+  floatingPanels = [],
 }: HeroShotRevealProps) {
   const reduce = useReducedMotion();
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -67,8 +76,16 @@ export function HeroShotReveal({
     ["85%", "100%"],
   );
 
+  // Floating panels: slightly delayed and slide in from the sides
+  const rawFloatOpacity = useTransform(scrollYProgress, [0.05, 0.2, 0.42], [0, 0, 1]);
+  const rawFloatXLeft = useTransform(scrollYProgress, [0.1, 0.42], [-64, 0]);
+  const rawFloatXRight = useTransform(scrollYProgress, [0.1, 0.42], [64, 0]);
+
   const scale = useSpring(rawScale, { stiffness: 120, damping: 24, mass: 0.8 });
   const yMv = useSpring(rawY, { stiffness: 120, damping: 24, mass: 0.8 });
+  const floatOpacity = useSpring(rawFloatOpacity, { stiffness: 100, damping: 26, mass: 0.8 });
+  const floatXLeft = useSpring(rawFloatXLeft, { stiffness: 100, damping: 26, mass: 0.8 });
+  const floatXRight = useSpring(rawFloatXRight, { stiffness: 100, damping: 26, mass: 0.8 });
 
   useEffect(() => {
     const unsub = scrollYProgress.on("change", (v) => {
@@ -81,6 +98,29 @@ export function HeroShotReveal({
   if (reduce) {
     return (
       <div ref={wrapRef} className="relative">
+        {/* Floating panels — static in reduced motion */}
+        {floatingPanels.map((panel, i) => (
+          <div
+            key={`fp-rm-${i}`}
+            className="absolute hidden md:block z-10 w-[36%]"
+            style={{
+              top: panel.side === "left" ? "8%" : "42%",
+              [panel.side]: "-14%",
+              transform: `rotate(${panel.rotate}deg)`,
+            }}
+          >
+            <div className="rounded-xl border border-border overflow-hidden shadow-2xl shadow-black/10 bg-card">
+              <img
+                src={panel.src}
+                alt={panel.alt}
+                className="w-full h-auto block"
+                loading="lazy"
+                data-testid={`img-floating-panel-${panel.side}`}
+              />
+            </div>
+          </div>
+        ))}
+
         <div className="relative rounded-2xl border border-border overflow-hidden shadow-2xl shadow-black/5 bg-card">
           <img
             src={src}
@@ -129,6 +169,32 @@ export function HeroShotReveal({
         transformOrigin: "center top",
       }}
     >
+      {/* Floating panels — rendered outside TiltCard so they overflow the main frame */}
+      {floatingPanels.map((panel, i) => (
+        <motion.div
+          key={`fp-${i}`}
+          className="absolute hidden md:block z-10 w-[36%]"
+          style={{
+            top: panel.side === "left" ? "8%" : "42%",
+            [panel.side]: "-14%",
+            rotate: panel.rotate,
+            x: panel.side === "left" ? floatXLeft : floatXRight,
+            opacity: floatOpacity,
+            willChange: "transform, opacity",
+          }}
+        >
+          <div className="rounded-xl border border-border overflow-hidden shadow-2xl shadow-black/10 bg-card">
+            <img
+              src={panel.src}
+              alt={panel.alt}
+              className="w-full h-auto block"
+              loading="lazy"
+              data-testid={`img-floating-panel-${panel.side}`}
+            />
+          </div>
+        </motion.div>
+      ))}
+
       <TiltCard className="relative">
         <div className="relative rounded-2xl border border-border overflow-hidden shadow-2xl shadow-black/5 bg-card">
           <img
