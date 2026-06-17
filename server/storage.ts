@@ -4825,6 +4825,7 @@ export class DatabaseStorage implements IStorage {
     verifiedOrgs: number;
     pendingOrgs: number;
     totalMembers: number;
+    activeMembers: number;
     totalOrders: number;
     ordersThisMonth: number;
     ordersLastMonth: number;
@@ -4832,10 +4833,12 @@ export class DatabaseStorage implements IStorage {
     gmvThisMonth: number;
     gmvLastMonth: number;
     openComplaints: number;
+    pendingVerifications: number;
   }> {
     const now = new Date();
     const startThisMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
     const startLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+    const activeSince = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
 
     const [orgRes, memberRes, orderRes, complaintRes] = await Promise.all([
@@ -4845,7 +4848,11 @@ export class DatabaseStorage implements IStorage {
           COUNT(*) FILTER (WHERE verified_at IS NOT NULL) as verified
         FROM users GROUP BY role
       `),
-      db.execute(sql`SELECT COUNT(*) as cnt FROM members`),
+      db.execute(sql`
+        SELECT COUNT(*) as cnt,
+          COUNT(*) FILTER (WHERE last_login_at >= ${activeSince}) as active
+        FROM members
+      `),
       db.execute(sql`
         SELECT
           COUNT(*) as total_orders,
@@ -4876,7 +4883,9 @@ export class DatabaseStorage implements IStorage {
       suppliers,
       verifiedOrgs,
       pendingOrgs: totalOrgs - verifiedOrgs,
+      pendingVerifications: totalOrgs - verifiedOrgs,
       totalMembers: Number((memberRes.rows?.[0] as any)?.cnt) || 0,
+      activeMembers: Number((memberRes.rows?.[0] as any)?.active) || 0,
       totalOrders: Number(o.total_orders) || 0,
       ordersThisMonth: Number(o.orders_this_month) || 0,
       ordersLastMonth: Number(o.orders_last_month) || 0,
@@ -4935,8 +4944,9 @@ export class DatabaseStorage implements IStorage {
     openComplaints: number;
     pendingAdmins: number;
     lowStockProducts: number;
+    unreadMessages: number;
   }> {
-    const [pendingVerifications, complaintRes, adminRes, lowStockRes] = await Promise.all([
+    const [pendingVerifications, complaintRes, adminRes, lowStockRes, unreadRes] = await Promise.all([
       this.getPendingOrgCount(),
       db.execute(sql`SELECT COUNT(*) as cnt FROM complaints WHERE status IN ('open','in_progress','partially_resolved')`),
       db.execute(sql`SELECT COUNT(*) as cnt FROM platform_admins WHERE status = 'pending'`),
@@ -4944,12 +4954,17 @@ export class DatabaseStorage implements IStorage {
         SELECT COUNT(*) as cnt FROM products
         WHERE low_stock_threshold > 0 AND COALESCE(stock_quantity, 0) <= low_stock_threshold
       `),
+      db.execute(sql`
+        SELECT COUNT(*) as cnt FROM messages
+        WHERE is_read = false AND dismissed = false
+      `),
     ]);
     return {
       pendingVerifications,
       openComplaints: Number((complaintRes.rows?.[0] as any)?.cnt) || 0,
       pendingAdmins: Number((adminRes.rows?.[0] as any)?.cnt) || 0,
       lowStockProducts: Number((lowStockRes.rows?.[0] as any)?.cnt) || 0,
+      unreadMessages: Number((unreadRes.rows?.[0] as any)?.cnt) || 0,
     };
   }
 
@@ -5087,6 +5102,9 @@ export class DatabaseStorage implements IStorage {
     openComplaints: number;
     productCount: number;
     lowStockCount: number;
+    ratingAvg: number | null;
+    ratingCount: number;
+    lastOrderAt: string | null;
     monthly: { month: string; orders: number; gmv: number }[];
     ordersByStatus: { status: string; count: number }[];
     topPartners: { id: string; name: string; orders: number; amount: number }[];
@@ -5140,10 +5158,21 @@ export class DatabaseStorage implements IStorage {
         : Promise.resolve({ rows: [{ product_count: 0, low_stock_count: 0 }] } as any),
     ]);
 
-    const complaintRes = await db.execute(sql`
-      SELECT COUNT(*) as cnt FROM complaints
-      WHERE ${selfCol} = ${orgId} AND status IN ('open','in_progress','partially_resolved')
-    `);
+    const [complaintRes, ratingRes, lastOrderRes] = await Promise.all([
+      db.execute(sql`
+        SELECT COUNT(*) as cnt FROM complaints
+        WHERE ${selfCol} = ${orgId} AND status IN ('open','in_progress','partially_resolved')
+      `),
+      isSupplier
+        ? db.execute(sql`
+            SELECT AVG(stars) as avg_stars, COUNT(*) as cnt
+            FROM supplier_ratings WHERE supplier_id = ${orgId}
+          `)
+        : Promise.resolve({ rows: [{ avg_stars: null, cnt: 0 }] } as any),
+      db.execute(sql`
+        SELECT MAX(created_at) as last_order_at FROM orders WHERE ${selfCol} = ${orgId}
+      `),
+    ]);
 
     const agg = (aggRes.rows?.[0] || {}) as any;
     const totalOrders = Number(agg.total_orders) || 0;
@@ -5176,6 +5205,9 @@ export class DatabaseStorage implements IStorage {
       openComplaints: Number((complaintRes.rows?.[0] as any)?.cnt) || 0,
       productCount: Number(prod.product_count) || 0,
       lowStockCount: Number(prod.low_stock_count) || 0,
+      ratingAvg: (ratingRes.rows?.[0] as any)?.avg_stars != null ? Number((ratingRes.rows?.[0] as any).avg_stars) : null,
+      ratingCount: Number((ratingRes.rows?.[0] as any)?.cnt) || 0,
+      lastOrderAt: (lastOrderRes.rows?.[0] as any)?.last_order_at ? new Date((lastOrderRes.rows?.[0] as any).last_order_at).toISOString() : null,
       monthly,
       ordersByStatus: (statusRes.rows || []).map((r: any) => ({ status: String(r.status), count: Number(r.count) || 0 })),
       topPartners: (partnerRes.rows || []).map((r: any) => ({

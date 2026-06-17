@@ -14,6 +14,7 @@ import {
   Building2, Mail, Phone, MapPin, CheckCircle2, Clock,
   Users, UserCheck, ShieldCheck, Trash2, AlertTriangle,
   Euro, ShoppingCart, TrendingUp, FileWarning, Package, PackageX, Handshake,
+  Star, CalendarClock,
 } from "lucide-react";
 
 interface OrgMember {
@@ -52,6 +53,9 @@ interface OrgStats {
   openComplaints: number;
   productCount: number;
   lowStockCount: number;
+  ratingAvg: number | null;
+  ratingCount: number;
+  lastOrderAt: string | null;
   monthly: { month: string; orders: number; gmv: number }[];
   ordersByStatus: { status: string; count: number }[];
   topPartners: { id: string; name: string; orders: number; amount: number }[];
@@ -320,6 +324,31 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
               ) : (
                 <StatCard icon={Handshake} label="Aktive Lieferanten" value={fmtNum(stats.activePartners)} accent="text-amber-400" testId="stat-partners" />
               )}
+              {stats.role === "supplier" ? (
+                <StatCard
+                  icon={Star}
+                  label="Bewertung"
+                  value={stats.ratingAvg != null ? `${stats.ratingAvg.toFixed(1)} ★` : "—"}
+                  sub={stats.ratingCount > 0 ? `${fmtNum(stats.ratingCount)} Bewertungen` : "Keine Bewertungen"}
+                  accent="text-yellow-400"
+                  testId="stat-rating"
+                />
+              ) : (
+                <StatCard
+                  icon={FileWarning}
+                  label="Offene Reklamationen"
+                  value={fmtNum(stats.openComplaints)}
+                  accent="text-red-400"
+                  testId="stat-restaurant-complaints"
+                />
+              )}
+              <StatCard
+                icon={CalendarClock}
+                label="Letzte Bestellung"
+                value={stats.lastOrderAt ? new Date(stats.lastOrderAt).toLocaleDateString("de-DE") : "—"}
+                accent="text-sky-400"
+                testId="stat-last-order"
+              />
             </div>
 
             {(stats.openComplaints > 0 || (stats.role === "supplier" && stats.lowStockCount > 0)) && (
@@ -436,11 +465,22 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                   <p className="text-xs text-white/40 truncate">{member.email ?? "—"}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {member.lastLoginAt && (
-                    <span className="text-xs text-white/30 hidden sm:block">
-                      {new Date(member.lastLoginAt).toLocaleDateString("de-DE")}
-                    </span>
-                  )}
+                  {(() => {
+                    const active = member.lastLoginAt
+                      ? Date.now() - new Date(member.lastLoginAt).getTime() <= 30 * 24 * 60 * 60 * 1000
+                      : false;
+                    return (
+                      <span
+                        className="hidden sm:flex items-center gap-1.5 text-xs text-white/30"
+                        data-testid={`member-activity-${member.id}`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-400" : "bg-white/20"}`} />
+                        {member.lastLoginAt
+                          ? new Date(member.lastLoginAt).toLocaleDateString("de-DE")
+                          : "Nie angemeldet"}
+                      </span>
+                    );
+                  })()}
                   <Button
                     size="sm"
                     variant="outline"
@@ -464,13 +504,14 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
 }
 
 function StatCard({
-  icon: Icon, label, value, accent, testId,
+  icon: Icon, label, value, accent, testId, sub,
 }: {
   icon: typeof Euro;
   label: string;
   value: string;
   accent: string;
   testId: string;
+  sub?: string;
 }) {
   return (
     <div className="bg-[#161921] border border-white/10 rounded-2xl p-4" data-testid={testId}>
@@ -479,6 +520,7 @@ function StatCard({
       </div>
       <p className="text-2xl font-bold text-white mt-3">{value}</p>
       <p className="text-xs text-white/40 mt-0.5">{label}</p>
+      {sub && <p className="text-[11px] text-white/30 mt-0.5">{sub}</p>}
     </div>
   );
 }

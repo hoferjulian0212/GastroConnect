@@ -15,7 +15,7 @@ import {
 import {
   Euro, ShoppingCart, Building2, Users, TrendingUp, TrendingDown,
   AlertTriangle, Clock, ShieldAlert, PackageX, ArrowUpRight,
-  UtensilsCrossed, Truck, FileWarning, ChevronRight,
+  UtensilsCrossed, Truck, FileWarning, ChevronRight, MessageSquare,
 } from "lucide-react";
 
 interface Overview {
@@ -25,6 +25,7 @@ interface Overview {
   verifiedOrgs: number;
   pendingOrgs: number;
   totalMembers: number;
+  activeMembers: number;
   totalOrders: number;
   ordersThisMonth: number;
   ordersLastMonth: number;
@@ -32,6 +33,7 @@ interface Overview {
   gmvThisMonth: number;
   gmvLastMonth: number;
   openComplaints: number;
+  pendingVerifications: number;
 }
 
 interface SeriesPoint { month: string; orders: number; gmv: number; newOrgs: number; }
@@ -41,6 +43,7 @@ interface Health {
   openComplaints: number;
   pendingAdmins: number;
   lowStockProducts: number;
+  unreadMessages: number;
 }
 
 interface ActivityItem {
@@ -113,7 +116,7 @@ export default function AdminDashboard() {
         {/* KPI cards */}
         {ovLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {[1, 2, 3, 4].map(i => <div key={i} className="h-28 rounded-2xl bg-white/5 animate-pulse" />)}
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <div key={i} className="h-28 rounded-2xl bg-white/5 animate-pulse" />)}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -147,9 +150,34 @@ export default function AdminDashboard() {
               icon={Users}
               label="Mitglieder"
               value={fmtNum(overview?.totalMembers ?? 0)}
-              sub={`${fmtNum(overview?.verifiedOrgs ?? 0)} verifizierte Orgs`}
+              sub={`${fmtNum(overview?.activeMembers ?? 0)} aktiv (30 Tage)`}
               accent="text-amber-400"
               testId="kpi-members"
+            />
+            <KpiCard
+              icon={ShoppingCart}
+              label="Bestellungen diesen Monat"
+              value={fmtNum(overview?.ordersThisMonth ?? 0)}
+              sub={`${fmtNum(overview?.ordersLastMonth ?? 0)} im Vormonat`}
+              change={orderChange}
+              accent="text-cyan-400"
+              testId="kpi-orders-month"
+            />
+            <KpiCard
+              icon={FileWarning}
+              label="Offene Reklamationen"
+              value={fmtNum(overview?.openComplaints ?? 0)}
+              sub="Ungelöste Fälle"
+              accent="text-red-400"
+              testId="kpi-open-complaints"
+            />
+            <KpiCard
+              icon={Clock}
+              label="Freigaben ausstehend"
+              value={fmtNum(overview?.pendingVerifications ?? 0)}
+              sub="Neue Organisationen"
+              accent="text-orange-400"
+              testId="kpi-pending-verifications"
             />
           </div>
         )}
@@ -190,6 +218,13 @@ export default function AdminDashboard() {
               value={health?.lowStockProducts ?? 0}
               color="orange"
               testId="health-low-stock"
+            />
+            <HealthCard
+              icon={MessageSquare}
+              label="Ungelesene Nachrichten"
+              value={health?.unreadMessages ?? 0}
+              color="blue"
+              testId="health-unread-messages"
             />
           </div>
         </div>
