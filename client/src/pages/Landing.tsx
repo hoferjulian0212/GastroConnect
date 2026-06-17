@@ -801,8 +801,8 @@ export default function Landing() {
   const t = translations[lang];
   const a = animationStrings[lang];
 
-  function handleStart(role: "restaurant" | "supplier") {
-    setLocation(`/signup?role=${role}`);
+  function handleStart(_role: "restaurant" | "supplier") {
+    setLocation("/login");
   }
 
   function handleLogin() {

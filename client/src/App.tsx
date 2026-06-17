@@ -40,8 +40,6 @@ const Landing = lazy(() => import("@/pages/Landing"));
 import Login from "@/pages/Login";
 import AuthClaim from "@/pages/AuthClaim";
 import AuthReset from "@/pages/AuthReset";
-import Signup from "@/pages/Signup";
-import AuthVerify from "@/pages/AuthVerify";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminOrgs from "@/pages/admin/AdminOrgs";
 import AdminOrgDetail from "@/pages/admin/AdminOrgDetail";
@@ -653,20 +651,12 @@ function AppLayout() {
     return <Login />;
   }
 
-  if (pathOnly === "/signup") {
-    return <Signup />;
-  }
-
   if (pathOnly === "/auth/claim") {
     return <AuthClaim />;
   }
 
   if (pathOnly === "/auth/reset") {
     return <AuthReset />;
-  }
-
-  if (pathOnly === "/auth/verify") {
-    return <AuthVerify />;
   }
 
   if (pathOnly === "/about") {

@@ -18,7 +18,7 @@ import { runSyncForConnection, startErpSyncScheduler, testErpConnection, ErpSync
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
 import { sendEmail, renderNotificationEmail } from "./emailService";
 import { registerAuthRoutes } from "./auth/routes";
-import { registerAdminAuthRoutes } from "./auth/adminAuth";
+import { registerAdminAuthRoutes, bootstrapPlatformAdmin } from "./auth/adminAuth";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
@@ -558,7 +558,7 @@ export async function registerRoutes(
   registerAiSearchRoutes(app);
   // Authentication & onboarding endpoints (login/logout/me, password reset, invite/claim)
   registerAuthRoutes(app);
-  // Platform admin panel (Replit OIDC auth + admin CRUD)
+  // Platform admin panel (email + password auth + admin CRUD)
   registerAdminAuthRoutes(app);
 
   // Serve static images from client/public - ensures images work in both dev and production
@@ -574,6 +574,8 @@ export async function registerRoutes(
   // not locked out by the login email-gate).
   await storage.runEmailVerificationMigration();
   await storage.runAdminMigration();
+  // Provision the owner platform-admin from PLATFORM_ADMIN_EMAIL/PASSWORD (idempotent)
+  await bootstrapPlatformAdmin();
   // Seed data on startup
   await storage.seedData();
   // Ensure every organization has at least an Admin member (idempotent)

@@ -264,6 +264,7 @@ export interface IStorage {
   // transaction. The org starts unverified (verifiedAt null) and the admin has
   // a password but no emailVerifiedAt until the email link is confirmed.
   createBusinessSignup(data: { org: InsertUser; admin: Omit<InsertMember, "organizationId"> & { passwordHash: string } }): Promise<{ org: User; member: Member }>;
+  createBusinessWithAdmin(data: { org: InsertUser; admin: Omit<InsertMember, "organizationId"> }): Promise<{ org: User; member: Member }>;
   getOauthAccount(provider: OauthProvider, providerUserId: string): Promise<OauthAccount | undefined>;
   getOauthAccountsForMember(memberId: string): Promise<OauthAccount[]>;
   createOauthAccount(data: InsertOauthAccount): Promise<OauthAccount>;
@@ -272,6 +273,7 @@ export interface IStorage {
   runAdminMigration(): Promise<void>;
   getPlatformAdmin(id: string): Promise<PlatformAdmin | undefined>;
   getPlatformAdminByReplitUserId(replitUserId: string): Promise<PlatformAdmin | undefined>;
+  getPlatformAdminByEmail(email: string): Promise<PlatformAdmin | undefined>;
   getPlatformAdmins(): Promise<PlatformAdmin[]>;
   getApprovedPlatformAdmins(): Promise<PlatformAdmin[]>;
   getPendingOrgCount(): Promise<number>;
@@ -2199,6 +2201,20 @@ export class DatabaseStorage implements IStorage {
         ...adminRest,
         organizationId: org.id,
         passwordHash,
+      }).returning();
+      return { org, member };
+    });
+  }
+
+  // Invite-only onboarding: the platform admin creates a pending organization +
+  // its first admin member (no password yet). The admin claims the account via
+  // an emailed invite link, which sets the password and verifies the org.
+  async createBusinessWithAdmin(data: { org: InsertUser; admin: Omit<InsertMember, "organizationId"> }): Promise<{ org: User; member: Member }> {
+    return await db.transaction(async (tx) => {
+      const [org] = await tx.insert(users).values(data.org).returning();
+      const [member] = await tx.insert(members).values({
+        ...data.admin,
+        organizationId: org.id,
       }).returning();
       return { org, member };
     });
@@ -4646,7 +4662,13 @@ export class DatabaseStorage implements IStorage {
         created_at timestamp NOT NULL DEFAULT now()
       )
     `);
+    // Migrate to email + password auth: add the new credential columns and make
+    // the legacy Replit OIDC columns optional. All idempotent.
+    await db.execute(sql`ALTER TABLE platform_admins ADD COLUMN IF NOT EXISTS password_hash text`);
+    await db.execute(sql`ALTER TABLE platform_admins ALTER COLUMN replit_user_id DROP NOT NULL`);
+    await db.execute(sql`ALTER TABLE platform_admins ALTER COLUMN replit_username DROP NOT NULL`);
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_platform_admins_replit_user_id ON platform_admins (replit_user_id)`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_platform_admins_email ON platform_admins (lower(email))`);
     console.log("[admin] platform_admins table ready");
   }
 
@@ -4657,6 +4679,13 @@ export class DatabaseStorage implements IStorage {
 
   async getPlatformAdminByReplitUserId(replitUserId: string): Promise<PlatformAdmin | undefined> {
     const [row] = await db.select().from(platformAdmins).where(eq(platformAdmins.replitUserId, replitUserId)).limit(1);
+    return row;
+  }
+
+  async getPlatformAdminByEmail(email: string): Promise<PlatformAdmin | undefined> {
+    const [row] = await db.select().from(platformAdmins)
+      .where(sql`lower(${platformAdmins.email}) = ${email.toLowerCase()}`)
+      .limit(1);
     return row;
   }
 

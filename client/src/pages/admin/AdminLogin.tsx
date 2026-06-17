@@ -2,20 +2,24 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertCircle, Clock, XCircle, Shield } from "lucide-react";
+import { AlertCircle, Shield, Loader2 } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import logoImg from "@assets/logo_no_bg_thick.png";
 
 interface AdminMeResponse {
   authenticated: boolean;
-  configured: boolean;
-  admin?: { id: string; replitUsername: string; name: string; status: string };
+  admin?: { id: string; email: string | null; name: string; status: string };
 }
 
 export default function AdminLogin() {
   const [, setLocation] = useLocation();
-  const [status, setStatus] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const { data, isLoading } = useQuery<AdminMeResponse>({
     queryKey: ["/api/admin/auth/me"],
@@ -24,16 +28,32 @@ export default function AdminLogin() {
   });
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setStatus(params.get("status"));
-    setError(params.get("error"));
-  }, []);
-
-  useEffect(() => {
     if (data?.authenticated) {
       setLocation("/admin");
     }
   }, [data, setLocation]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await apiRequest("POST", "/api/admin/auth/login", { email, password });
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/auth/me"] });
+      setLocation("/admin");
+    } catch (err: any) {
+      const msg = err?.message ?? "";
+      if (msg.includes("403") || msg.includes("not_approved")) {
+        setError("Dieses Admin-Konto ist nicht freigegeben.");
+      } else if (msg.includes("429")) {
+        setError("Zu viele Versuche. Bitte später erneut versuchen.");
+      } else {
+        setError("E-Mail oder Passwort ist falsch.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -68,50 +88,51 @@ export default function AdminLogin() {
               Nur für GastroConnect-Systembetreiber
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {status === "pending" && (
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <Clock className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium text-amber-300">Antrag eingereicht</p>
-                  <p className="text-amber-400/80 mt-0.5">Ihr Zugriffsantrag wurde übermittelt und wird von einem bestehenden Admin geprüft.</p>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
+                  <p className="text-sm text-red-300" data-testid="text-admin-login-error">{error}</p>
                 </div>
+              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="admin-email" className="text-white/70 text-sm">E-Mail</Label>
+                <Input
+                  id="admin-email"
+                  type="email"
+                  autoComplete="username"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                  placeholder="admin@gastroconnect.app"
+                  data-testid="input-admin-email"
+                />
               </div>
-            )}
-            {status === "denied" && (
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                <XCircle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium text-red-300">Zugriff verweigert</p>
-                  <p className="text-red-400/80 mt-0.5">Ihr Zugriffsantrag wurde abgelehnt.</p>
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="admin-password" className="text-white/70 text-sm">Passwort</Label>
+                <Input
+                  id="admin-password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                  placeholder="••••••••"
+                  data-testid="input-admin-password"
+                />
               </div>
-            )}
-            {error && error !== "oauth_failed" && (
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
-                <p className="text-sm text-red-300">Anmeldung fehlgeschlagen ({error}). Bitte erneut versuchen.</p>
-              </div>
-            )}
-            {!data?.configured ? (
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-                <AlertCircle className="h-4 w-4 text-white/40 mt-0.5 shrink-0" />
-                <p className="text-sm text-white/50">
-                  Replit OAuth ist nicht konfiguriert.<br />
-                  Bitte <code className="bg-white/10 px-1 rounded text-xs">REPLIT_CLIENT_ID</code> und{" "}
-                  <code className="bg-white/10 px-1 rounded text-xs">REPLIT_CLIENT_SECRET</code> setzen.
-                </p>
-              </div>
-            ) : (
-              <a href="/api/admin/auth/start" className="block w-full">
-                <Button
-                  className="w-full bg-[#F26207] hover:bg-[#e05500] text-white font-semibold rounded-xl h-11"
-                  data-testid="button-admin-replit-login"
-                >
-                  Mit Replit anmelden
-                </Button>
-              </a>
-            )}
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="w-full bg-[#F26207] hover:bg-[#e05500] text-white font-semibold rounded-xl h-11"
+                data-testid="button-admin-login"
+              >
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Anmelden"}
+              </Button>
+            </form>
           </CardContent>
         </Card>
 

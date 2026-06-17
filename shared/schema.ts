@@ -1143,15 +1143,18 @@ export const oauthAccounts = pgTable("oauth_accounts", {
 // A Vertreter (sales rep) is a member of a supplier org. This assignment maps
 // that rep to the restaurant orgs (Betriebe) they are responsible for.
 // Platform-level admin accounts. These are the GastroConnect system owners
-// who authenticate via Replit OIDC. Stored separately from the org/member
+// who authenticate via email + password. Stored separately from the org/member
 // system. Status: 'pending' (awaiting approval) | 'approved' | 'denied'.
-// The table is created by runAdminMigration() (idempotent DDL), not db:push.
+// The table is created/migrated by runAdminMigration() (idempotent DDL), not db:push.
 export const platformAdmins = pgTable("platform_admins", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-  replitUserId: text("replit_user_id").notNull().unique(),
-  replitUsername: text("replit_username").notNull(),
-  name: text("name").notNull(),
+  // Email + password is the login identity. The legacy Replit OIDC fields are
+  // kept nullable for backwards compatibility with any pre-existing rows.
   email: text("email"),
+  passwordHash: text("password_hash"),
+  replitUserId: text("replit_user_id").unique(),
+  replitUsername: text("replit_username"),
+  name: text("name").notNull(),
   // 'pending' | 'approved' | 'denied'
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   approvedBy: text("approved_by"),

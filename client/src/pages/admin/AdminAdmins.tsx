@@ -8,8 +8,8 @@ import { CheckCircle2, XCircle, Clock, Shield, UserX } from "lucide-react";
 
 interface PlatformAdmin {
   id: string;
-  replitUserId: string;
-  replitUsername: string;
+  replitUserId: string | null;
+  replitUsername: string | null;
   name: string;
   email: string | null;
   status: "pending" | "approved" | "denied";
@@ -220,7 +220,7 @@ function AdminRow({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-white text-sm">@{admin.replitUsername}</span>
+          <span className="font-medium text-white text-sm">{admin.email ?? admin.name}</span>
           {isSelf && <span className="text-[10px] text-white/30 bg-white/5 px-1.5 py-0 rounded">(Sie)</span>}
           {statusBadge}
           {admin.approvedBy === "auto" && (

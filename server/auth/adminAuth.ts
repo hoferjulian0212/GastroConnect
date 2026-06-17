@@ -1,11 +1,13 @@
-// Platform-admin authentication via Replit OIDC and admin panel API routes.
-// These are strictly for the two GastroConnect system owners — completely
-// separate from the org-level member/role system.
+// Platform-admin authentication (email + password) and admin panel API routes.
+// These are strictly for the GastroConnect system owners — completely separate
+// from the org-level member/role system.
 import type { Express, Request, Response } from "express";
-import { randomBytes, createHash } from "crypto";
+import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { storage } from "../storage";
 import { requirePlatformAdmin, loadAdminAuth } from "./middleware";
+import { hashPassword, verifyPassword, validatePasswordPolicy } from "./passwords";
+import { generateToken, INVITE_TTL_MS } from "./tokens";
 import { sendEmail, renderNotificationEmail, isEmailConfigured } from "../emailService";
 import type { PlatformAdmin } from "@shared/schema";
 
@@ -17,74 +19,48 @@ const adminLimiter = rateLimit({
   validate: { trustProxy: false, xForwardedForHeader: false, ip: false },
 });
 
-// Usernames in this env var are auto-approved on first Replit login.
-function getAutoApprovedUsernames(): Set<string> {
-  const raw = process.env.PLATFORM_ADMIN_REPLIT_USERNAMES ?? "";
-  const names = raw.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-  return new Set(names);
-}
-
-// The client ID is the Replit App ID (REPL_ID), automatically available in
-// the Replit environment. A manually registered REPLIT_CLIENT_ID takes
-// precedence for self-hosted setups.
-function getReplitClientId(): string | undefined {
-  return process.env.REPLIT_CLIENT_ID || process.env.REPL_ID;
-}
-
-export function isReplitOauthConfigured(): boolean {
-  return Boolean(getReplitClientId());
-}
-
-// PKCE helpers — generate a verifier and its S256 challenge.
-function generatePkce(): { verifier: string; challenge: string } {
-  const verifier = randomBytes(32).toString("base64url");
-  const challenge = createHash("sha256").update(verifier).digest("base64url");
-  return { verifier, challenge };
-}
-
-// Cache the OIDC discovery document so we only fetch it once per process.
-let oidcDiscovery: { authorization_endpoint: string; token_endpoint: string } | null = null;
-async function getOidcDiscovery(): Promise<{ authorization_endpoint: string; token_endpoint: string } | null> {
-  if (oidcDiscovery) return oidcDiscovery;
+// Bootstrap the owner platform-admin from configuration. Idempotent — run on
+// every startup after the table migration. When PLATFORM_ADMIN_EMAIL and
+// PLATFORM_ADMIN_PASSWORD are set, the matching admin is created (or its
+// password reset) and marked approved. Changing the secret resets the password.
+export async function bootstrapPlatformAdmin(): Promise<void> {
+  const email = process.env.PLATFORM_ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.PLATFORM_ADMIN_PASSWORD;
+  if (!email || !password) {
+    console.log("[admin] bootstrap skipped — set PLATFORM_ADMIN_EMAIL and PLATFORM_ADMIN_PASSWORD to provision the owner admin.");
+    return;
+  }
+  const policyError = validatePasswordPolicy(password);
+  if (policyError) {
+    console.error(`[admin] bootstrap failed — PLATFORM_ADMIN_PASSWORD too weak: ${policyError}`);
+    return;
+  }
   try {
-    const resp = await fetch("https://replit.com/oidc/.well-known/openid-configuration", {
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!resp.ok) return null;
-    const doc = await resp.json() as { authorization_endpoint?: string; token_endpoint?: string };
-    if (!doc.authorization_endpoint || !doc.token_endpoint) return null;
-    oidcDiscovery = { authorization_endpoint: doc.authorization_endpoint, token_endpoint: doc.token_endpoint };
-    return oidcDiscovery;
+    const passwordHash = await hashPassword(password);
+    const name = process.env.PLATFORM_ADMIN_NAME?.trim() || "Owner";
+    const existing = await storage.getPlatformAdminByEmail(email);
+    if (existing) {
+      await storage.updatePlatformAdmin(existing.id, {
+        passwordHash,
+        status: "approved",
+        approvedBy: existing.approvedBy ?? "bootstrap",
+        approvedAt: existing.approvedAt ?? new Date(),
+      });
+      console.log(`[admin] bootstrap: owner admin updated (${email}).`);
+    } else {
+      await storage.createPlatformAdmin({
+        email,
+        name,
+        passwordHash,
+        status: "approved",
+        approvedBy: "bootstrap",
+        approvedAt: new Date(),
+      });
+      console.log(`[admin] bootstrap: owner admin created (${email}).`);
+    }
   } catch (err) {
-    console.error("[admin] OIDC discovery failed:", err);
-    return null;
+    console.error("[admin] bootstrap error:", err);
   }
-}
-
-function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
-  const parts = jwt.split(".");
-  if (parts.length < 2) return null;
-  try {
-    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
-  } catch {
-    return null;
-  }
-}
-
-function callbackUrl(req: Request): string {
-  // REPLIT_DEV_DOMAIN is always injected by the platform and is the canonical
-  // public hostname (e.g. "abc-00-xyz.riker.replit.dev"). Using it avoids the
-  // localhost:5000 callback URL that appears when x-forwarded-host is absent.
-  if (process.env.REPLIT_DEV_DOMAIN) {
-    return `https://${process.env.REPLIT_DEV_DOMAIN}/api/admin/auth/callback`;
-  }
-  const proto = (req.headers["x-forwarded-proto"]?.toString().split(",")[0]) || req.protocol || "https";
-  const host = req.headers["x-forwarded-host"]?.toString() || req.headers.host || "";
-  return `${proto}://${host}/api/admin/auth/callback`;
-}
-
-function fail(res: Response, code: string, to = "/admin/login") {
-  res.redirect(`${to}?error=${encodeURIComponent(code)}`);
 }
 
 // Rotate the session ID on privileged admin-login (prevents session fixation).
@@ -102,71 +78,6 @@ async function establishAdminSession(req: Request, adminId: string): Promise<voi
   });
 }
 
-function buildApprovalRequestHtml(newAdmin: PlatformAdmin, adminsUrl: string, adminId: string): string {
-  // Deep-link with the pending admin's id so the panel can highlight it.
-  const approveUrl = `${adminsUrl}?action=approve&id=${encodeURIComponent(adminId)}`;
-  const denyUrl   = `${adminsUrl}?action=deny&id=${encodeURIComponent(adminId)}`;
-  return `
-<!DOCTYPE html>
-<html lang="de">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:system-ui,-apple-system,sans-serif;">
-  <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
-    <div style="background:#161921;padding:24px 32px;">
-      <h1 style="margin:0;color:#fff;font-size:18px;font-weight:700;">GastroConnect</h1>
-      <p style="margin:4px 0 0;color:#ffffff80;font-size:13px;">Platform Admin Panel</p>
-    </div>
-    <div style="padding:28px 32px;">
-      <h2 style="margin:0 0 8px;font-size:16px;font-weight:600;color:#111;">Neuer Zugriffsantrag</h2>
-      <p style="margin:0 0 20px;color:#555;font-size:14px;line-height:1.6;">
-        <strong>${newAdmin.name}</strong> (<a href="https://replit.com/@${newAdmin.replitUsername}" style="color:#F26207;">@${newAdmin.replitUsername}</a>)
-        möchte als Platform-Admin auf GastroConnect zugreifen.
-      </p>
-      <table style="width:100%;border-collapse:collapse;font-size:13px;color:#555;margin-bottom:24px;">
-        <tr><td style="padding:6px 0;color:#888;width:120px;">Replit-Nutzer</td><td style="padding:6px 0;">@${newAdmin.replitUsername}</td></tr>
-        <tr><td style="padding:6px 0;color:#888;">Name</td><td style="padding:6px 0;">${newAdmin.name}</td></tr>
-        ${newAdmin.email ? `<tr><td style="padding:6px 0;color:#888;">E-Mail</td><td style="padding:6px 0;">${newAdmin.email}</td></tr>` : ""}
-      </table>
-      <p style="margin:0 0 16px;color:#555;font-size:14px;font-weight:600;">Bitte wählen Sie eine Aktion:</p>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
-        <tr>
-          <td style="padding:0 8px 0 0;width:50%;">
-            <a href="${approveUrl}" style="display:block;text-align:center;background:#16a34a;color:#fff;text-decoration:none;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:600;">
-              ✓ Genehmigen
-            </a>
-          </td>
-          <td style="padding:0 0 0 8px;width:50%;">
-            <a href="${denyUrl}" style="display:block;text-align:center;background:#dc2626;color:#fff;text-decoration:none;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:600;">
-              ✗ Ablehnen
-            </a>
-          </td>
-        </tr>
-      </table>
-      <p style="margin:0 0 8px;font-size:12px;color:#aaa;text-align:center;">
-        Diese Links öffnen das Admin-Panel — Sie müssen als Admin eingeloggt sein.
-      </p>
-      <p style="margin:0;font-size:12px;color:#aaa;text-align:center;">
-        Sie erhalten diese E-Mail, weil Sie als GastroConnect Platform-Admin genehmigt sind.
-      </p>
-    </div>
-  </div>
-</body>
-</html>`.trim();
-}
-
-async function sendApprovalRequestEmails(newAdmin: PlatformAdmin, baseUrl?: string): Promise<void> {
-  const approvedAdmins = await storage.getApprovedPlatformAdmins();
-  const adminsUrl = `${baseUrl ?? "https://gastroconnect.app"}/admin/admins`;
-  for (const admin of approvedAdmins) {
-    if (!admin.email) continue;
-    await sendEmail({
-      to: admin.email,
-      subject: `GastroConnect Admin: Zugriffsantrag von @${newAdmin.replitUsername}`,
-      html: buildApprovalRequestHtml(newAdmin, adminsUrl, newAdmin.id),
-    });
-  }
-}
-
 async function sendApprovalConfirmationEmail(admin: PlatformAdmin): Promise<void> {
   if (!admin.email) return;
   await sendEmail({
@@ -181,168 +92,104 @@ async function sendApprovalConfirmationEmail(admin: PlatformAdmin): Promise<void
 }
 
 export function registerAdminAuthRoutes(app: Express) {
-  // Log configured auto-approved username count at startup for audit visibility.
-  const autoApprovedNames = getAutoApprovedUsernames();
-  console.log(`[admin] auto-approved Replit usernames configured: ${autoApprovedNames.size}`);
-
   // Apply loadAdminAuth to all /api/admin/* routes so req.platformAdmin is set.
   app.use("/api/admin", loadAdminAuth);
 
-  // ── Replit OIDC: start ─────────────────────────────────────────────────────
-  app.get("/api/admin/auth/start", adminLimiter, async (req, res) => {
-    if (!isReplitOauthConfigured()) return fail(res, "oauth_unavailable");
-    const discovery = await getOidcDiscovery();
-    if (!discovery) return fail(res, "oauth_unavailable");
-
-    const state = randomBytes(24).toString("base64url");
-    const { verifier, challenge } = generatePkce();
-    req.session.adminOauthState = state;
-    req.session.adminOauthCodeVerifier = verifier;
-    req.session.save((err) => {
-      if (err) {
-        console.error("[admin] oauth state save failed", err);
-        return fail(res, "oauth_failed");
+  // ── Email + password login ─────────────────────────────────────────────────
+  app.post("/api/admin/auth/login", adminLimiter, async (req, res) => {
+    try {
+      const { email, password } = z
+        .object({ email: z.string().email(), password: z.string().min(1).max(256) })
+        .parse(req.body);
+      const normalizedEmail = email.toLowerCase();
+      const admin = await storage.getPlatformAdminByEmail(normalizedEmail);
+      if (!admin || !admin.passwordHash || !(await verifyPassword(password, admin.passwordHash))) {
+        console.log(`[admin] login.failed ${normalizedEmail} ip=${req.ip}`);
+        return res.status(401).json({ error: "invalid_credentials", message: "E-Mail oder Passwort ist falsch." });
       }
-      const params = new URLSearchParams({
-        client_id: getReplitClientId()!,
-        redirect_uri: callbackUrl(req),
-        response_type: "code",
-        scope: "openid profile email",
-        state,
-        // Replit OIDC rejects "select_account" (invalid_request: unsupported
-        // prompt value). "login" is accepted and forces a fresh sign-in.
-        prompt: "login",
-        code_challenge: challenge,
-        code_challenge_method: "S256",
-      });
-      res.redirect(`${discovery.authorization_endpoint}?${params.toString()}`);
-    });
+      if (admin.status !== "approved") {
+        console.log(`[admin] login.not_approved ${normalizedEmail} status=${admin.status}`);
+        return res.status(403).json({ error: "not_approved", message: "Dieses Admin-Konto ist nicht freigegeben." });
+      }
+      await establishAdminSession(req, admin.id);
+      await storage.updatePlatformAdmin(admin.id, { lastLoginAt: new Date() });
+      console.log(`[admin] login: ${normalizedEmail} ip=${req.ip}`);
+      res.json({ authenticated: true, admin });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ error: "invalid_input", message: "Ungültige Eingabe." });
+      }
+      console.error("[admin] login error:", err);
+      res.status(500).json({ error: "server_error", message: "Anmeldung fehlgeschlagen." });
+    }
   });
 
-  // ── Replit OIDC: callback ──────────────────────────────────────────────────
-  app.get("/api/admin/auth/callback", adminLimiter, async (req, res) => {
+  // ── Create a new business (invite-only onboarding) ─────────────────────────
+  // Creates a pending organization + its first admin member (no password yet)
+  // and emails that admin a claim link to set their password. Claiming the
+  // account also verifies (activates) the organization.
+  app.post("/api/admin/orgs", requirePlatformAdmin, async (req, res) => {
     try {
-      if (!isReplitOauthConfigured()) return fail(res, "oauth_unavailable");
-      if (req.query.error) return fail(res, "oauth_denied");
+      const { role, companyName, adminName, adminEmail, language } = z
+        .object({
+          role: z.enum(["restaurant", "supplier"]),
+          companyName: z.string().trim().min(2).max(160),
+          adminName: z.string().trim().min(2).max(160),
+          adminEmail: z.string().email().max(256),
+          language: z.enum(["de", "it", "en"]).optional(),
+        })
+        .parse(req.body);
 
-      const code = typeof req.query.code === "string" ? req.query.code : "";
-      const state = typeof req.query.state === "string" ? req.query.state : "";
-      const expectedState = req.session.adminOauthState;
-      const codeVerifier = req.session.adminOauthCodeVerifier;
-      req.session.adminOauthState = undefined;
-      req.session.adminOauthCodeVerifier = undefined;
-      if (!code || !state || !expectedState || state !== expectedState) {
-        return fail(res, "oauth_state");
-      }
-      if (!codeVerifier) {
-        return fail(res, "oauth_state");
-      }
-
-      const discovery = await getOidcDiscovery();
-      if (!discovery) return fail(res, "oauth_unavailable");
-
-      // Build token exchange body. Use PKCE code_verifier (public client flow).
-      // If a REPLIT_CLIENT_SECRET is explicitly set, include it too for
-      // confidential-client setups.
-      const tokenBody: Record<string, string> = {
-        code,
-        client_id: getReplitClientId()!,
-        redirect_uri: callbackUrl(req),
-        grant_type: "authorization_code",
-        code_verifier: codeVerifier,
-      };
-      if (process.env.REPLIT_CLIENT_SECRET) {
-        tokenBody.client_secret = process.env.REPLIT_CLIENT_SECRET;
+      const email = adminEmail.trim().toLowerCase();
+      const [existingMember, existingOrg] = await Promise.all([
+        storage.getMemberByEmail(email),
+        storage.getUserByEmail(email),
+      ]);
+      if (existingMember || existingOrg) {
+        return res.status(409).json({ error: "email_taken", message: "Für diese E-Mail-Adresse besteht bereits ein Konto." });
       }
 
-      const tokenResp = await fetch(discovery.token_endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(tokenBody),
+      const { org, member } = await storage.createBusinessWithAdmin({
+        org: { role, name: companyName, companyName, email, language: language ?? "de" },
+        admin: { name: adminName, email, role: "admin" },
       });
-      if (!tokenResp.ok) {
-        console.error("[admin] replit token exchange failed", tokenResp.status, await tokenResp.text());
-        return fail(res, "oauth_failed");
-      }
-      const tokens = (await tokenResp.json()) as { id_token?: string };
-      const claims = tokens.id_token ? decodeJwtPayload(tokens.id_token) : null;
-      const replitUserId = claims?.sub as string | undefined;
-      const replitUsername = (claims?.preferred_username ?? claims?.username ?? claims?.name ?? "") as string;
-      const name = (claims?.name ?? replitUsername) as string;
-      const email = (claims?.email as string | undefined)?.toLowerCase();
-      if (!replitUserId || !replitUsername) return fail(res, "oauth_failed");
 
-      const autoApproved = getAutoApprovedUsernames();
-      const isAutoApproved = autoApproved.has(replitUsername.toLowerCase());
+      const { raw, hash } = generateToken();
+      await storage.createInvitation({
+        memberId: member.id,
+        tokenHash: hash,
+        invitedByMemberId: null,
+        expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+      });
 
-      // Look up existing admin record.
-      let admin = await storage.getPlatformAdminByReplitUserId(replitUserId);
-
-      if (!admin) {
-        // First login — create record.
-        const status = isAutoApproved ? "approved" : "pending";
-        // approvedBy stores the approver's replitUserId for audit integrity.
-        // The sentinel "auto" marks username-allowlist auto-approval.
-        admin = await storage.createPlatformAdmin({
-          replitUserId,
-          replitUsername,
-          name: name || replitUsername,
-          email: email ?? null,
-          status,
-          approvedBy: isAutoApproved ? "auto" : null,
-          approvedAt: isAutoApproved ? new Date() : null,
-          lastLoginAt: new Date(),
+      let emailed = false;
+      if (isEmailConfigured()) {
+        emailed = await sendEmail({
+          to: email,
+          subject: "GastroConnect: Konto aktivieren",
+          html: renderNotificationEmail({
+            title: "Willkommen bei GastroConnect",
+            message: `Hallo ${adminName},\n\nfür ${companyName} wurde ein Konto bei GastroConnect erstellt. Aktivieren Sie es, indem Sie ein Passwort festlegen. Der Link ist 7 Tage gültig.`,
+            linkPath: `/auth/claim?token=${raw}`,
+          }),
         });
-        console.log(`[admin] new admin registered: @${replitUsername} status=${status}`);
-        if (isAutoApproved) {
-          await establishAdminSession(req, admin.id);
-          return res.redirect("/admin");
-        }
-        // Send approval request to existing approved admins (fire-and-forget).
-        const proto = (req.headers["x-forwarded-proto"]?.toString().split(",")[0]) || req.protocol || "https";
-        const host = req.headers["x-forwarded-host"]?.toString() || req.headers.host || "";
-        sendApprovalRequestEmails(admin, `${proto}://${host}`).catch(err =>
-          console.error("[admin] approval request email failed:", err)
-        );
-        return res.redirect("/admin/login?status=pending");
       }
-
-      // Existing record — update login time + sync username/email in case they changed.
-      await storage.updatePlatformAdmin(admin.id, {
-        replitUsername,
-        name: name || replitUsername,
-        email: email ?? admin.email,
-        lastLoginAt: new Date(),
-        // Auto-approve if username is now in the allow-list (e.g. added after first login).
-        ...(isAutoApproved && admin.status === "pending" ? {
-          status: "approved",
-          approvedBy: "auto",
-          approvedAt: new Date(),
-        } : {}),
-      });
-      admin = (await storage.getPlatformAdmin(admin.id))!;
-
-      if (admin.status === "denied") {
-        return res.redirect("/admin/login?status=denied");
-      }
-      if (admin.status === "pending") {
-        return res.redirect("/admin/login?status=pending");
-      }
-      // Approved — establish session.
-      await establishAdminSession(req, admin.id);
-      console.log(`[admin] login: @${replitUsername}`);
-      res.redirect("/admin");
+      const actor = req.platformAdmin!.admin.email ?? req.platformAdmin!.admin.name;
+      console.log(`[admin] org.created name=${companyName} role=${role} by=${actor} emailed=${emailed} ip=${req.ip}`);
+      res.json({ ok: true, orgId: org.id, emailed });
     } catch (err) {
-      console.error("[admin] callback error:", err);
-      fail(res, "oauth_failed");
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ error: "invalid_input", message: "Ungültige Eingabe." });
+      }
+      console.error("[admin] create org error:", err);
+      res.status(500).json({ error: "server_error", message: "Erstellung fehlgeschlagen." });
     }
   });
 
   // ── Current admin session ─────────────────────────────────────────────────
   app.get("/api/admin/auth/me", (req, res) => {
-    const configured = isReplitOauthConfigured();
-    if (!req.platformAdmin) return res.json({ authenticated: false, configured });
-    res.json({ authenticated: true, admin: req.platformAdmin.admin, configured });
+    if (!req.platformAdmin) return res.json({ authenticated: false });
+    res.json({ authenticated: true, admin: req.platformAdmin.admin });
   });
 
   // ── Admin logout ──────────────────────────────────────────────────────────

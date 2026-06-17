@@ -14,10 +14,6 @@ declare module "express-session" {
     adminId?: string;
     // When set, the admin is impersonating this member.
     impersonatedMemberId?: string;
-    // CSRF state for the admin Replit OAuth round trip.
-    adminOauthState?: string;
-    // PKCE code verifier for the admin Replit OAuth round trip.
-    adminOauthCodeVerifier?: string;
   }
 }
 

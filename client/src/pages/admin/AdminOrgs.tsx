@@ -1,10 +1,29 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { AdminLayout } from "./AdminLayout";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Search, Building2, Users, ChevronRight, CheckCircle2, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Search, Building2, Users, ChevronRight, CheckCircle2, Clock, Plus, Loader2 } from "lucide-react";
 
 interface Org {
   id: string;
@@ -22,9 +41,11 @@ export default function AdminOrgs() {
   const searchStr = useSearch();
   const params = new URLSearchParams(searchStr);
   const filterParam = params.get("filter");
+  const { toast } = useToast();
 
   const [search, setSearch] = useState("");
   const [pendingOnly, setPendingOnly] = useState(filterParam === "pending");
+  const [createOpen, setCreateOpen] = useState(false);
 
   // Sync the pending filter if the URL param changes (e.g. badge click).
   useEffect(() => {
@@ -60,23 +81,33 @@ export default function AdminOrgs() {
             <h1 className="text-2xl font-bold text-white">Organisationen</h1>
             <p className="text-white/40 text-sm mt-1">{orgs.length} Organisationen insgesamt</p>
           </div>
-          {pendingOrgs.length > 0 && (
-            <button
-              onClick={() => {
-                setPendingOnly(v => !v);
-                setSearch("");
-              }}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                pendingOnly
-                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
-                  : "bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20"
-              }`}
-              data-testid="button-filter-pending"
+          <div className="flex items-center gap-2">
+            {pendingOrgs.length > 0 && (
+              <button
+                onClick={() => {
+                  setPendingOnly(v => !v);
+                  setSearch("");
+                }}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  pendingOnly
+                    ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                    : "bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20"
+                }`}
+                data-testid="button-filter-pending"
+              >
+                <Clock className="h-3.5 w-3.5" />
+                {pendingOnly ? "Alle anzeigen" : `${pendingOrgs.length} ausstehend`}
+              </button>
+            )}
+            <Button
+              onClick={() => setCreateOpen(true)}
+              className="flex items-center gap-2 bg-[#F26207] hover:bg-[#e05500] text-white font-medium rounded-lg h-9 px-3 text-sm"
+              data-testid="button-create-org"
             >
-              <Clock className="h-3.5 w-3.5" />
-              {pendingOnly ? "Alle anzeigen" : `${pendingOrgs.length} ausstehend`}
-            </button>
-          )}
+              <Plus className="h-4 w-4" />
+              Neues Unternehmen
+            </Button>
+          </div>
         </div>
 
         <div className="relative">
@@ -111,7 +142,137 @@ export default function AdminOrgs() {
           </div>
         )}
       </div>
+      <CreateOrgDialog open={createOpen} onOpenChange={setCreateOpen} toast={toast} />
     </AdminLayout>
+  );
+}
+
+function CreateOrgDialog({
+  open,
+  onOpenChange,
+  toast,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  toast: ReturnType<typeof useToast>["toast"];
+}) {
+  const [role, setRole] = useState<"restaurant" | "supplier">("restaurant");
+  const [companyName, setCompanyName] = useState("");
+  const [adminName, setAdminName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/admin/orgs", { role, companyName, adminName, adminEmail }),
+    onSuccess: async (res: any) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/orgs"] });
+      toast({
+        title: "Unternehmen erstellt",
+        description: res?.emailed
+          ? "Eine Einladung zum Aktivieren wurde per E-Mail gesendet."
+          : "Konto erstellt. E-Mail-Versand ist nicht konfiguriert.",
+      });
+      setCompanyName("");
+      setAdminName("");
+      setAdminEmail("");
+      setRole("restaurant");
+      onOpenChange(false);
+    },
+    onError: (err: any) => {
+      const msg = err?.message ?? "";
+      toast({
+        variant: "destructive",
+        title: "Erstellung fehlgeschlagen",
+        description: msg.includes("409") || msg.includes("email_taken")
+          ? "Für diese E-Mail-Adresse besteht bereits ein Konto."
+          : "Bitte Eingaben prüfen und erneut versuchen.",
+      });
+    },
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    mutation.mutate();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-[#161921] border-white/10 text-white">
+        <DialogHeader>
+          <DialogTitle>Neues Unternehmen</DialogTitle>
+          <DialogDescription className="text-white/50">
+            Erstellt eine Organisation und ihren ersten Admin. Der Admin erhält eine
+            E-Mail, um ein Passwort festzulegen und das Konto zu aktivieren.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-white/70 text-sm">Typ</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as "restaurant" | "supplier")}>
+              <SelectTrigger
+                className="bg-white/5 border-white/10 text-white"
+                data-testid="select-org-role"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="restaurant">Restaurant</SelectItem>
+                <SelectItem value="supplier">Lieferant</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="org-company" className="text-white/70 text-sm">Firmenname</Label>
+            <Input
+              id="org-company"
+              required
+              minLength={2}
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              placeholder="z. B. Ristorante Bella"
+              data-testid="input-org-company"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="org-admin-name" className="text-white/70 text-sm">Name des Admins</Label>
+            <Input
+              id="org-admin-name"
+              required
+              minLength={2}
+              value={adminName}
+              onChange={(e) => setAdminName(e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              placeholder="z. B. Maria Rossi"
+              data-testid="input-org-admin-name"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="org-admin-email" className="text-white/70 text-sm">E-Mail des Admins</Label>
+            <Input
+              id="org-admin-email"
+              type="email"
+              required
+              value={adminEmail}
+              onChange={(e) => setAdminEmail(e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              placeholder="admin@firma.de"
+              data-testid="input-org-admin-email"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="submit"
+              disabled={mutation.isPending}
+              className="bg-[#F26207] hover:bg-[#e05500] text-white font-medium"
+              data-testid="button-submit-create-org"
+            >
+              {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Erstellen & einladen"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

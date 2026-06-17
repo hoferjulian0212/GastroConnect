@@ -11,7 +11,7 @@ interface PendingCountResponse { count: number }
 
 interface AdminMeResponse {
   authenticated: boolean;
-  admin?: { id: string; replitUsername: string; name: string; status: string };
+  admin?: { id: string; email: string | null; name: string; status: string };
 }
 
 export function AdminLayout({ children }: { children: ReactNode }) {
@@ -112,7 +112,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <span className="text-sm text-white/50">@{data.admin?.replitUsername}</span>
+          <span className="text-sm text-white/50">{data.admin?.email ?? data.admin?.name}</span>
           <Button
             variant="ghost"
             size="sm"
