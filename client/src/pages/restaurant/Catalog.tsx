@@ -22,7 +22,7 @@ import QuantityInput from "@/components/QuantityInput";
 import { useToast } from "@/hooks/use-toast";
 import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 import { useScrollCompact } from "@/hooks/use-scroll-compact";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 type CartItemWithPromo = CartItemWithProduct & { activePromotion?: Promotion | null };
 
@@ -274,6 +274,194 @@ const categoryConfig: Record<string, { de: string; it: string; icon: typeof Pack
 };
 
 const allCategories = Object.keys(categoryConfig);
+
+function CartPillDesktop({ lang, setLocation }: { lang: string; setLocation: (p: string) => void }) {
+  const { currentUser } = useUser();
+  const [open, setOpen] = useState(false);
+  const { data: countData } = useQuery<{ count: string | number }>({
+    queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id,
+    refetchInterval: 5000,
+  });
+  const count = Number(countData?.count || 0);
+  const { data: cartItems } = useQuery<CartItemWithPromo[]>({
+    queryKey: [`/api/cart?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id && open,
+  });
+  const updateQtyMut = useMutation({
+    mutationFn: async ({ id, quantity }: { id: string; quantity: number }) =>
+      apiRequest("PATCH", `/api/cart/${id}`, { quantity }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+    },
+  });
+  const removeMut = useMutation({
+    mutationFn: async (id: string) => apiRequest("DELETE", `/api/cart/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cart?restaurantId=${currentUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cart/count?restaurantId=${currentUser?.id}`] });
+    },
+  });
+
+  const effPrice = (item: CartItemWithPromo) => {
+    const base = parseFloat(item.product.price);
+    return item.activePromotion ? base * (1 - item.activePromotion.discountPercent / 100) : base;
+  };
+
+  const grouped = useMemo(() => {
+    if (!cartItems) return {} as Record<string, { supplier: CartItemWithPromo["supplier"]; items: CartItemWithPromo[] }>;
+    const g: Record<string, { supplier: CartItemWithPromo["supplier"]; items: CartItemWithPromo[] }> = {};
+    for (const it of cartItems) {
+      if (!g[it.supplierId]) g[it.supplierId] = { supplier: it.supplier, items: [] };
+      g[it.supplierId].items.push(it);
+    }
+    return g;
+  }, [cartItems]);
+
+  const total = useMemo(() => {
+    if (!cartItems) return "0.00";
+    return cartItems.reduce((s, it) => s + effPrice(it) * it.quantity, 0).toFixed(2);
+  }, [cartItems]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  if (!count) return null;
+  return (
+    <div className="hidden md:flex fixed bottom-6 right-6 z-30 flex-col items-end pointer-events-none">
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-0 pointer-events-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
+              data-testid="desktop-cart-overlay"
+            />
+            <motion.div
+              key="panel"
+              className="relative z-10 mb-3 w-[380px] max-h-[60vh] flex flex-col rounded-3xl border border-border bg-background shadow-[0_16px_48px_rgba(0,0,0,0.18)] overflow-hidden pointer-events-auto"
+              initial={{ opacity: 0, y: 16, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 420, damping: 32 }}
+              style={{ transformOrigin: "bottom right" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label={lang === "de" ? "Warenkorb" : "Carrello"}
+              data-testid="desktop-cart-panel"
+            >
+              <div className="px-5 pt-4 pb-3 border-b border-border flex items-center justify-between">
+                <div className="text-sm font-semibold">
+                  {lang === "de" ? "Warenkorb" : "Carrello"}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    {count} {lang === "de" ? "Artikel" : (count === 1 ? "Articolo" : "Articoli")}
+                  </span>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4" data-testid="desktop-cart-body">
+                {Object.entries(grouped).map(([sid, { supplier, items }]) => (
+                  <div key={sid} className="space-y-2">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {supplier.companyName || supplier.name}
+                    </div>
+                    {items.map((it) => (
+                      <div key={it.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0" data-testid={`desktop-cart-item-${it.id}`}>
+                        <ProductImage src={it.product.imageUrl} alt={it.product.name} className="h-11 w-11 rounded-lg shrink-0" iconClassName="h-4 w-4" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{it.product.name}</div>
+                          <div className="text-xs text-muted-foreground tabular-nums">
+                            {effPrice(it).toFixed(2)}€/{it.product.unit}
+                          </div>
+                        </div>
+                        <QuantityInput
+                          value={it.quantity}
+                          onChange={(v) => updateQtyMut.mutate({ id: it.id, quantity: v })}
+                          min={it.product?.minOrderQuantity || 1}
+                          disabled={updateQtyMut.isPending}
+                          size="sm"
+                          testIdPrefix={`desktop-qty-${it.id}`}
+                        />
+                        <button
+                          onClick={() => removeMut.mutate(it.id)}
+                          disabled={removeMut.isPending}
+                          aria-label={lang === "de" ? "Entfernen" : "Rimuovi"}
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-full text-destructive hover:bg-destructive/10 active:scale-95"
+                          data-testid={`desktop-remove-${it.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                {cartItems && cartItems.length === 0 && (
+                  <div className="py-10 text-center text-sm text-muted-foreground">
+                    {lang === "de" ? "Warenkorb ist leer" : "Carrello vuoto"}
+                  </div>
+                )}
+                {!cartItems && (
+                  <div className="space-y-3">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <Skeleton className="h-11 w-11 rounded-lg" />
+                        <div className="flex-1 space-y-1.5">
+                          <Skeleton className="h-3.5 w-2/3" />
+                          <Skeleton className="h-3 w-1/3" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="px-5 pt-3 pb-4 border-t border-border">
+                <div className="flex items-center justify-between text-sm mb-2.5">
+                  <span className="text-muted-foreground">{lang === "de" ? "Zwischensumme" : "Subtotale"}</span>
+                  <span className="font-bold tabular-nums text-base" data-testid="desktop-cart-total">{total} €</span>
+                </div>
+                <Button
+                  className="w-full h-11 rounded-full font-semibold gap-2"
+                  onClick={() => { setOpen(false); setLocation("/restaurant/cart?step=summary"); }}
+                  disabled={!cartItems || cartItems.length === 0}
+                  data-testid="desktop-button-continue"
+                >
+                  {lang === "de" ? "Weiter zur Übersicht" : "Vai al riepilogo"}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+      <motion.button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label={lang === "de" ? `Warenkorb, ${count} Artikel` : `Carrello, ${count} articoli`}
+        data-testid="button-desktop-cart-pill"
+        className="relative z-10 inline-flex items-center gap-2.5 h-12 pl-3 pr-5 rounded-full bg-foreground text-background shadow-[0_8px_24px_rgba(0,0,0,0.25)] pointer-events-auto"
+        whileTap={{ scale: 0.95 }}
+      >
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-background/15 shrink-0">
+          <ShoppingCart className="h-4 w-4" />
+        </span>
+        <span className="text-sm font-semibold tabular-nums">{count}</span>
+        <span className="text-sm font-semibold whitespace-nowrap">
+          {lang === "de" ? "im Warenkorb" : "nel carrello"}
+        </span>
+        <ChevronRightIcon
+          className={`h-4 w-4 opacity-70 transition-transform duration-200 ${open ? "-rotate-90" : "rotate-0"}`}
+        />
+      </motion.button>
+    </div>
+  );
+}
 
 function CartPillMobile({ lang, setLocation }: { lang: string; setLocation: (p: string) => void }) {
   const { currentUser } = useUser();
@@ -1047,6 +1235,7 @@ export default function RestaurantCatalog() {
  )}
 
  <CartPillMobile lang={lang} setLocation={setLocation} />
+ <CartPillDesktop lang={lang} setLocation={setLocation} />
  </PullToRefreshWrapper>
  );
 }
