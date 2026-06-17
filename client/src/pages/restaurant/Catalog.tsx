@@ -946,13 +946,13 @@ export default function RestaurantCatalog() {
  >
  <div className="relative w-full aspect-[4/3] overflow-hidden">
  <ProductImage src={product.imageUrl} alt={product.name} className="w-full h-full" iconClassName="h-8 w-8" fallbackIconColor="text-muted-foreground/20" />
+ {(hasPromo || previouslyOrdered || onTheWay) && (
+ <div className="absolute top-1.5 left-1.5 z-10 flex flex-col items-start gap-1">
  {hasPromo && (
- <Badge className="absolute top-1 left-1 bg-green-600 text-white border-0 text-[9px] leading-tight px-1 py-0.5 max-w-[calc(100%-8px)] truncate">
+ <Badge className="bg-green-600 text-white border-0 text-[9px] leading-tight px-1 py-0.5 max-w-[calc(100%-8px)] truncate">
  -{promo.discountPercent}%
  </Badge>
  )}
- {(previouslyOrdered || onTheWay) && (
- <div className={`absolute left-1 z-10 flex flex-col gap-1 ${hasPromo ? "top-7" : "top-1"}`}>
  {previouslyOrdered && (
  <CategoryIndicator
  icon={History}
