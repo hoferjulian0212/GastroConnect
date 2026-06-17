@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Shield, Building2, Users, LogOut, ChevronRight } from "lucide-react";
+import { Shield, Building2, Users, LogOut, ChevronRight, LayoutDashboard } from "lucide-react";
 import logoImg from "@assets/logo_no_bg_thick.png";
 import type { ReactNode } from "react";
 
@@ -61,7 +61,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   if (!data?.authenticated) return null;
 
   const navItems = [
-    { href: "/admin", label: "Organisationen", icon: Building2, exact: true },
+    { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+    { href: "/admin/orgs", label: "Organisationen", icon: Building2 },
     { href: "/admin/admins", label: "Admins", icon: Users },
   ];
 
@@ -83,7 +84,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         <nav className="flex items-center gap-1 ml-4">
           {navItems.map(item => {
             const active = item.exact ? location === item.href : location.startsWith(item.href + "/") || location === item.href;
-            const isOrgs = item.href === "/admin";
+            const isOrgs = item.href === "/admin/orgs";
             return (
               <Link key={item.href} href={item.href}>
                 <span
@@ -95,15 +96,19 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                   <item.icon className="h-3.5 w-3.5" />
                   {item.label}
                   {isOrgs && pendingCount > 0 && (
-                    <Link href="/admin?filter=pending">
-                      <span
-                        className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none cursor-pointer"
-                        data-testid="badge-pending-orgs"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        {pendingCount > 99 ? "99+" : pendingCount}
-                      </span>
-                    </Link>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none cursor-pointer"
+                      data-testid="badge-pending-orgs"
+                      onClick={e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setLocation("/admin/orgs?filter=pending");
+                      }}
+                    >
+                      {pendingCount > 99 ? "99+" : pendingCount}
+                    </span>
                   )}
                 </span>
               </Link>

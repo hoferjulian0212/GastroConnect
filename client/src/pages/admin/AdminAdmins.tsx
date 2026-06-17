@@ -66,7 +66,7 @@ export default function AdminAdmins() {
 
   return (
     <AdminLayout>
-      <AdminBreadcrumb items={[{ label: "Organisationen", href: "/admin" }, { label: "Admins" }]} />
+      <AdminBreadcrumb items={[{ label: "Dashboard", href: "/admin" }, { label: "Admins" }]} />
 
       <div className="space-y-8">
         <div>

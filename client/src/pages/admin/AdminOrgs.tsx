@@ -34,6 +34,25 @@ interface Org {
   verifiedAt: string | null;
   memberCount: number;
   createdAt: string;
+  orderCount: number;
+  gmv: number;
+  lastActivityAt: string | null;
+}
+
+type SortKey = "activity" | "gmv" | "orders" | "name" | "created";
+
+function fmtEur(n: number): string {
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n || 0);
+}
+
+function relTime(iso: string | null): string {
+  if (!iso) return "Keine Aktivität";
+  const diff = Date.now() - new Date(iso).getTime();
+  const day = 86400000;
+  if (diff < 3600000) return "vor wenigen Minuten";
+  if (diff < day) return `vor ${Math.floor(diff / 3600000)} Std.`;
+  if (diff < 7 * day) return `vor ${Math.floor(diff / day)} Tg.`;
+  return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function AdminOrgs() {
@@ -46,6 +65,7 @@ export default function AdminOrgs() {
   const [search, setSearch] = useState("");
   const [pendingOnly, setPendingOnly] = useState(filterParam === "pending");
   const [createOpen, setCreateOpen] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("activity");
 
   // Sync the pending filter if the URL param changes (e.g. badge click).
   useEffect(() => {
@@ -70,8 +90,23 @@ export default function AdminOrgs() {
     );
   });
 
-  const restaurants = filtered.filter(o => o.role === "restaurant");
-  const suppliers = filtered.filter(o => o.role === "supplier");
+  const sortFn = (a: Org, b: Org) => {
+    switch (sortKey) {
+      case "gmv": return (b.gmv ?? 0) - (a.gmv ?? 0);
+      case "orders": return (b.orderCount ?? 0) - (a.orderCount ?? 0);
+      case "name": return (a.companyName || a.name).localeCompare(b.companyName || b.name);
+      case "created": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      case "activity":
+      default: {
+        const at = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0;
+        const bt = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : 0;
+        return bt - at;
+      }
+    }
+  };
+
+  const restaurants = filtered.filter(o => o.role === "restaurant").sort(sortFn);
+  const suppliers = filtered.filter(o => o.role === "supplier").sort(sortFn);
 
   return (
     <AdminLayout>
@@ -110,15 +145,32 @@ export default function AdminOrgs() {
           </div>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
-          <Input
-            placeholder="Suche nach Name, Firma oder E-Mail..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 bg-[#161921] border-white/10 text-white placeholder:text-white/30 rounded-xl h-10"
-            data-testid="input-admin-org-search"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+            <Input
+              placeholder="Suche nach Name, Firma oder E-Mail..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9 bg-[#161921] border-white/10 text-white placeholder:text-white/30 rounded-xl h-10"
+              data-testid="input-admin-org-search"
+            />
+          </div>
+          <Select value={sortKey} onValueChange={v => setSortKey(v as SortKey)}>
+            <SelectTrigger
+              className="w-[170px] h-10 bg-[#161921] border-white/10 text-white rounded-xl shrink-0"
+              data-testid="select-org-sort"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="activity">Letzte Aktivität</SelectItem>
+              <SelectItem value="gmv">Umsatz</SelectItem>
+              <SelectItem value="orders">Bestellungen</SelectItem>
+              <SelectItem value="name">Name (A–Z)</SelectItem>
+              <SelectItem value="created">Neueste zuerst</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {isLoading ? (
@@ -304,7 +356,15 @@ function OrgSection({ title, orgs, onSelect }: { title: string; orgs: Org[]; onS
                   <Clock className="h-3.5 w-3.5 text-amber-400 shrink-0" />
                 )}
               </div>
-              <p className="text-xs text-white/40 truncate">{org.email}</p>
+              <p className="text-xs text-white/40 truncate">
+                {org.email} · {relTime(org.lastActivityAt)}
+              </p>
+            </div>
+            <div className="hidden sm:flex flex-col items-end shrink-0 mr-1">
+              <span className="text-sm font-semibold text-white" data-testid={`text-org-gmv-${org.id}`}>
+                {fmtEur(org.gmv ?? 0)}
+              </span>
+              <span className="text-[11px] text-white/40">{org.orderCount ?? 0} Bestellungen</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="flex items-center gap-1 text-xs text-white/30">

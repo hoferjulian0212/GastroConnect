@@ -281,6 +281,56 @@ export interface IStorage {
   updatePlatformAdmin(id: string, data: Partial<InsertPlatformAdmin>): Promise<PlatformAdmin | undefined>;
   deleteOrganizationAndMembers(orgId: string): Promise<void>;
   getAllOrgsWithMemberCount(): Promise<Array<User & { memberCount: number }>>;
+  getAllOrgsWithStats(): Promise<Array<User & { memberCount: number; orderCount: number; gmv: number; lastActivityAt: string | null }>>;
+  getPlatformOverview(): Promise<{
+    totalOrgs: number;
+    restaurants: number;
+    suppliers: number;
+    verifiedOrgs: number;
+    pendingOrgs: number;
+    totalMembers: number;
+    totalOrders: number;
+    ordersThisMonth: number;
+    ordersLastMonth: number;
+    gmvTotal: number;
+    gmvThisMonth: number;
+    gmvLastMonth: number;
+    openComplaints: number;
+  }>;
+  getPlatformTimeSeries(): Promise<{ month: string; orders: number; gmv: number; newOrgs: number }[]>;
+  getPlatformHealth(): Promise<{
+    pendingVerifications: number;
+    openComplaints: number;
+    pendingAdmins: number;
+    lowStockProducts: number;
+  }>;
+  getPlatformRecentActivity(limit?: number): Promise<Array<{
+    type: "org" | "order" | "complaint";
+    id: string;
+    title: string;
+    subtitle: string;
+    role?: string;
+    status?: string;
+    createdAt: string;
+    link: string;
+  }>>;
+  getTopOrganizations(): Promise<{
+    topSuppliers: { id: string; name: string; orders: number; revenue: number }[];
+    topRestaurants: { id: string; name: string; orders: number; spend: number }[];
+  }>;
+  getAdminOrgStats(orgId: string): Promise<{
+    role: "restaurant" | "supplier";
+    totalOrders: number;
+    gmv: number;
+    avgOrderValue: number;
+    activePartners: number;
+    openComplaints: number;
+    productCount: number;
+    lowStockCount: number;
+    monthly: { month: string; orders: number; gmv: number }[];
+    ordersByStatus: { status: string; count: number }[];
+    topPartners: { id: string; name: string; orders: number; amount: number }[];
+  } | null>;
 
   // Delivery Schedules
   getDeliverySchedules(supplierId: string): Promise<(DeliverySchedule & { restaurant: User })[]>;
@@ -4725,6 +4775,413 @@ export class DatabaseStorage implements IStorage {
       countMap.set(m.organizationId, (countMap.get(m.organizationId) ?? 0) + 1);
     }
     return allUsers.map(u => ({ ...u, memberCount: countMap.get(u.id) ?? 0 }));
+  }
+
+  async getAllOrgsWithStats(): Promise<Array<User & { memberCount: number; orderCount: number; gmv: number; lastActivityAt: string | null }>> {
+    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+    const [allUsers, allMembers, orderStats] = await Promise.all([
+      db.select().from(users).orderBy(users.name),
+      db.select({ organizationId: members.organizationId }).from(members),
+      db.execute(sql`
+        SELECT org_id,
+          COUNT(*) as order_count,
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID}), 0) as gmv,
+          MAX(created_at) as last_activity_at
+        FROM (
+          SELECT restaurant_id as org_id, status, total_amount, created_at FROM orders
+          UNION ALL
+          SELECT supplier_id as org_id, status, total_amount, created_at FROM orders
+        ) t
+        GROUP BY org_id
+      `),
+    ]);
+
+    const countMap = new Map<string, number>();
+    for (const m of allMembers) {
+      countMap.set(m.organizationId, (countMap.get(m.organizationId) ?? 0) + 1);
+    }
+    const statMap = new Map<string, { orderCount: number; gmv: number; lastActivityAt: string | null }>();
+    for (const r of (orderStats.rows || [])) {
+      const row = r as any;
+      statMap.set(String(row.org_id), {
+        orderCount: Number(row.order_count) || 0,
+        gmv: Number(row.gmv) || 0,
+        lastActivityAt: row.last_activity_at ? new Date(row.last_activity_at).toISOString() : null,
+      });
+    }
+    return allUsers.map(u => ({
+      ...u,
+      memberCount: countMap.get(u.id) ?? 0,
+      orderCount: statMap.get(u.id)?.orderCount ?? 0,
+      gmv: statMap.get(u.id)?.gmv ?? 0,
+      lastActivityAt: statMap.get(u.id)?.lastActivityAt ?? null,
+    }));
+  }
+
+  async getPlatformOverview(): Promise<{
+    totalOrgs: number;
+    restaurants: number;
+    suppliers: number;
+    verifiedOrgs: number;
+    pendingOrgs: number;
+    totalMembers: number;
+    totalOrders: number;
+    ordersThisMonth: number;
+    ordersLastMonth: number;
+    gmvTotal: number;
+    gmvThisMonth: number;
+    gmvLastMonth: number;
+    openComplaints: number;
+  }> {
+    const now = new Date();
+    const startThisMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const startLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+
+    const [orgRes, memberRes, orderRes, complaintRes] = await Promise.all([
+      db.execute(sql`
+        SELECT role,
+          COUNT(*) as cnt,
+          COUNT(*) FILTER (WHERE verified_at IS NOT NULL) as verified
+        FROM users GROUP BY role
+      `),
+      db.execute(sql`SELECT COUNT(*) as cnt FROM members`),
+      db.execute(sql`
+        SELECT
+          COUNT(*) as total_orders,
+          COUNT(*) FILTER (WHERE created_at >= ${startThisMonth}) as orders_this_month,
+          COUNT(*) FILTER (WHERE created_at >= ${startLastMonth} AND created_at < ${startThisMonth}) as orders_last_month,
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID}), 0) as gmv_total,
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID} AND created_at >= ${startThisMonth}), 0) as gmv_this_month,
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID} AND created_at >= ${startLastMonth} AND created_at < ${startThisMonth}), 0) as gmv_last_month
+        FROM orders
+      `),
+      db.execute(sql`SELECT COUNT(*) as cnt FROM complaints WHERE status IN ('open','in_progress','partially_resolved')`),
+    ]);
+
+    let restaurants = 0, suppliers = 0, verifiedOrgs = 0;
+    for (const r of (orgRes.rows || [])) {
+      const row = r as any;
+      const cnt = Number(row.cnt) || 0;
+      verifiedOrgs += Number(row.verified) || 0;
+      if (row.role === "restaurant") restaurants = cnt;
+      else if (row.role === "supplier") suppliers = cnt;
+    }
+    const totalOrgs = restaurants + suppliers;
+    const o = (orderRes.rows?.[0] || {}) as any;
+
+    return {
+      totalOrgs,
+      restaurants,
+      suppliers,
+      verifiedOrgs,
+      pendingOrgs: totalOrgs - verifiedOrgs,
+      totalMembers: Number((memberRes.rows?.[0] as any)?.cnt) || 0,
+      totalOrders: Number(o.total_orders) || 0,
+      ordersThisMonth: Number(o.orders_this_month) || 0,
+      ordersLastMonth: Number(o.orders_last_month) || 0,
+      gmvTotal: Number(o.gmv_total) || 0,
+      gmvThisMonth: Number(o.gmv_this_month) || 0,
+      gmvLastMonth: Number(o.gmv_last_month) || 0,
+      openComplaints: Number((complaintRes.rows?.[0] as any)?.cnt) || 0,
+    };
+  }
+
+  async getPlatformTimeSeries(): Promise<{ month: string; orders: number; gmv: number; newOrgs: number }[]> {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth() - 5, 1, 0, 0, 0, 0);
+    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+
+    const [orderRes, orgRes] = await Promise.all([
+      db.execute(sql`
+        SELECT TO_CHAR(created_at, 'YYYY-MM') as month,
+          COUNT(*) as orders,
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID}), 0) as gmv
+        FROM orders WHERE created_at >= ${from}
+        GROUP BY 1
+      `),
+      db.execute(sql`
+        SELECT TO_CHAR(created_at, 'YYYY-MM') as month, COUNT(*) as new_orgs
+        FROM users WHERE created_at >= ${from}
+        GROUP BY 1
+      `),
+    ]);
+    const orderMap = new Map<string, { orders: number; gmv: number }>();
+    for (const r of (orderRes.rows || [])) {
+      const row = r as any;
+      orderMap.set(String(row.month), { orders: Number(row.orders) || 0, gmv: Number(row.gmv) || 0 });
+    }
+    const orgMap = new Map<string, number>();
+    for (const r of (orgRes.rows || [])) {
+      const row = r as any;
+      orgMap.set(String(row.month), Number(row.new_orgs) || 0);
+    }
+    const out: { month: string; orders: number; gmv: number; newOrgs: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      out.push({
+        month: key,
+        orders: orderMap.get(key)?.orders ?? 0,
+        gmv: orderMap.get(key)?.gmv ?? 0,
+        newOrgs: orgMap.get(key) ?? 0,
+      });
+    }
+    return out;
+  }
+
+  async getPlatformHealth(): Promise<{
+    pendingVerifications: number;
+    openComplaints: number;
+    pendingAdmins: number;
+    lowStockProducts: number;
+  }> {
+    const [pendingVerifications, complaintRes, adminRes, lowStockRes] = await Promise.all([
+      this.getPendingOrgCount(),
+      db.execute(sql`SELECT COUNT(*) as cnt FROM complaints WHERE status IN ('open','in_progress','partially_resolved')`),
+      db.execute(sql`SELECT COUNT(*) as cnt FROM platform_admins WHERE status = 'pending'`),
+      db.execute(sql`
+        SELECT COUNT(*) as cnt FROM products
+        WHERE low_stock_threshold > 0 AND COALESCE(stock_quantity, 0) <= low_stock_threshold
+      `),
+    ]);
+    return {
+      pendingVerifications,
+      openComplaints: Number((complaintRes.rows?.[0] as any)?.cnt) || 0,
+      pendingAdmins: Number((adminRes.rows?.[0] as any)?.cnt) || 0,
+      lowStockProducts: Number((lowStockRes.rows?.[0] as any)?.cnt) || 0,
+    };
+  }
+
+  async getPlatformRecentActivity(limit = 12): Promise<Array<{
+    type: "org" | "order" | "complaint";
+    id: string;
+    title: string;
+    subtitle: string;
+    role?: string;
+    status?: string;
+    createdAt: string;
+    link: string;
+  }>> {
+    const [orgRes, orderRes, complaintRes] = await Promise.all([
+      db.execute(sql`
+        SELECT id, COALESCE(company_name, name) as name, role, created_at
+        FROM users ORDER BY created_at DESC LIMIT ${limit}
+      `),
+      db.execute(sql`
+        SELECT o.id, o.order_number, o.status, o.total_amount, o.created_at,
+          o.restaurant_id, o.supplier_id,
+          COALESCE(r.company_name, r.name) as restaurant_name,
+          COALESCE(s.company_name, s.name) as supplier_name
+        FROM orders o
+        LEFT JOIN users r ON r.id = o.restaurant_id
+        LEFT JOIN users s ON s.id = o.supplier_id
+        ORDER BY o.created_at DESC LIMIT ${limit}
+      `),
+      db.execute(sql`
+        SELECT c.id, c.complaint_number, c.title, c.status, c.created_at,
+          c.restaurant_id,
+          COALESCE(r.company_name, r.name) as restaurant_name
+        FROM complaints c
+        LEFT JOIN users r ON r.id = c.restaurant_id
+        ORDER BY c.created_at DESC LIMIT ${limit}
+      `),
+    ]);
+
+    const items: Array<{
+      type: "org" | "order" | "complaint";
+      id: string;
+      title: string;
+      subtitle: string;
+      role?: string;
+      status?: string;
+      createdAt: string;
+      link: string;
+    }> = [];
+
+    for (const r of (orgRes.rows || [])) {
+      const row = r as any;
+      items.push({
+        type: "org",
+        id: String(row.id),
+        title: String(row.name),
+        subtitle: row.role === "restaurant" ? "Neues Restaurant" : "Neuer Lieferant",
+        role: row.role,
+        createdAt: new Date(row.created_at).toISOString(),
+        link: `/admin/orgs/${row.id}`,
+      });
+    }
+    for (const r of (orderRes.rows || [])) {
+      const row = r as any;
+      items.push({
+        type: "order",
+        id: String(row.id),
+        title: `Bestellung ${row.order_number ? `#${row.order_number}` : ""}`.trim(),
+        subtitle: `${row.restaurant_name ?? "?"} → ${row.supplier_name ?? "?"} · ${Number(row.total_amount).toFixed(2)} €`,
+        status: row.status,
+        createdAt: new Date(row.created_at).toISOString(),
+        link: `/admin/orgs/${row.restaurant_id ?? row.supplier_id ?? row.id}`,
+      });
+    }
+    for (const r of (complaintRes.rows || [])) {
+      const row = r as any;
+      items.push({
+        type: "complaint",
+        id: String(row.id),
+        title: `Reklamation ${row.complaint_number ? `#${row.complaint_number}` : ""}`.trim(),
+        subtitle: `${row.restaurant_name ?? "?"} · ${row.title ?? ""}`,
+        status: row.status,
+        createdAt: new Date(row.created_at).toISOString(),
+        link: `/admin/orgs/${row.restaurant_id ?? row.id}`,
+      });
+    }
+    items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return items.slice(0, limit);
+  }
+
+  async getTopOrganizations(): Promise<{
+    topSuppliers: { id: string; name: string; orders: number; revenue: number }[];
+    topRestaurants: { id: string; name: string; orders: number; spend: number }[];
+  }> {
+    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+    const [supRes, restRes] = await Promise.all([
+      db.execute(sql`
+        SELECT o.supplier_id as id,
+          MAX(COALESCE(u.company_name, u.name)) as name,
+          COUNT(*) as orders,
+          COALESCE(SUM(CAST(o.total_amount AS DECIMAL)), 0) as revenue
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.supplier_id
+        WHERE o.status IN ${VALID}
+        GROUP BY o.supplier_id
+        ORDER BY revenue DESC LIMIT 5
+      `),
+      db.execute(sql`
+        SELECT o.restaurant_id as id,
+          MAX(COALESCE(u.company_name, u.name)) as name,
+          COUNT(*) as orders,
+          COALESCE(SUM(CAST(o.total_amount AS DECIMAL)), 0) as spend
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.restaurant_id
+        WHERE o.status IN ${VALID}
+        GROUP BY o.restaurant_id
+        ORDER BY spend DESC LIMIT 5
+      `),
+    ]);
+    return {
+      topSuppliers: (supRes.rows || []).map((r: any) => ({
+        id: String(r.id), name: String(r.name ?? "?"), orders: Number(r.orders) || 0, revenue: Number(r.revenue) || 0,
+      })),
+      topRestaurants: (restRes.rows || []).map((r: any) => ({
+        id: String(r.id), name: String(r.name ?? "?"), orders: Number(r.orders) || 0, spend: Number(r.spend) || 0,
+      })),
+    };
+  }
+
+  async getAdminOrgStats(orgId: string): Promise<{
+    role: "restaurant" | "supplier";
+    totalOrders: number;
+    gmv: number;
+    avgOrderValue: number;
+    activePartners: number;
+    openComplaints: number;
+    productCount: number;
+    lowStockCount: number;
+    monthly: { month: string; orders: number; gmv: number }[];
+    ordersByStatus: { status: string; count: number }[];
+    topPartners: { id: string; name: string; orders: number; amount: number }[];
+  } | null> {
+    const org = await this.getUser(orgId);
+    if (!org) return null;
+    const isSupplier = org.role === "supplier";
+    const selfCol = isSupplier ? sql`supplier_id` : sql`restaurant_id`;
+    const partnerCol = isSupplier ? sql`restaurant_id` : sql`supplier_id`;
+    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth() - 5, 1, 0, 0, 0, 0);
+
+    const [aggRes, monthlyRes, statusRes, partnerRes, productRes] = await Promise.all([
+      db.execute(sql`
+        SELECT
+          COUNT(*) as total_orders,
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID}), 0) as gmv,
+          COUNT(DISTINCT ${partnerCol}) FILTER (WHERE status IN ${VALID}) as active_partners
+        FROM orders WHERE ${selfCol} = ${orgId}
+      `),
+      db.execute(sql`
+        SELECT TO_CHAR(created_at, 'YYYY-MM') as month,
+          COUNT(*) as orders,
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID}), 0) as gmv
+        FROM orders WHERE ${selfCol} = ${orgId} AND created_at >= ${from}
+        GROUP BY 1
+      `),
+      db.execute(sql`
+        SELECT status, COUNT(*) as count
+        FROM orders WHERE ${selfCol} = ${orgId}
+        GROUP BY status
+      `),
+      db.execute(sql`
+        SELECT o.${partnerCol} as id,
+          MAX(COALESCE(u.company_name, u.name)) as name,
+          COUNT(*) as orders,
+          COALESCE(SUM(CAST(o.total_amount AS DECIMAL)), 0) as amount
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.${partnerCol}
+        WHERE o.${selfCol} = ${orgId} AND o.status IN ${VALID}
+        GROUP BY o.${partnerCol}
+        ORDER BY amount DESC LIMIT 5
+      `),
+      isSupplier
+        ? db.execute(sql`
+            SELECT COUNT(*) as product_count,
+              COUNT(*) FILTER (WHERE low_stock_threshold > 0 AND COALESCE(stock_quantity, 0) <= low_stock_threshold) as low_stock_count
+            FROM products WHERE supplier_id = ${orgId}
+          `)
+        : Promise.resolve({ rows: [{ product_count: 0, low_stock_count: 0 }] } as any),
+    ]);
+
+    const complaintRes = await db.execute(sql`
+      SELECT COUNT(*) as cnt FROM complaints
+      WHERE ${selfCol} = ${orgId} AND status IN ('open','in_progress','partially_resolved')
+    `);
+
+    const agg = (aggRes.rows?.[0] || {}) as any;
+    const totalOrders = Number(agg.total_orders) || 0;
+    const gmv = Number(agg.gmv) || 0;
+    const validOrderCount = (statusRes.rows || []).reduce((sum, r: any) => {
+      const valid = ["delivered", "confirmed", "in_delivery", "partially_confirmed"];
+      return valid.includes(String(r.status)) ? sum + (Number(r.count) || 0) : sum;
+    }, 0);
+
+    const monthlyMap = new Map<string, { orders: number; gmv: number }>();
+    for (const r of (monthlyRes.rows || [])) {
+      const row = r as any;
+      monthlyMap.set(String(row.month), { orders: Number(row.orders) || 0, gmv: Number(row.gmv) || 0 });
+    }
+    const monthly: { month: string; orders: number; gmv: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthly.push({ month: key, orders: monthlyMap.get(key)?.orders ?? 0, gmv: monthlyMap.get(key)?.gmv ?? 0 });
+    }
+
+    const prod = (productRes.rows?.[0] || {}) as any;
+
+    return {
+      role: org.role,
+      totalOrders,
+      gmv,
+      avgOrderValue: validOrderCount > 0 ? gmv / validOrderCount : 0,
+      activePartners: Number(agg.active_partners) || 0,
+      openComplaints: Number((complaintRes.rows?.[0] as any)?.cnt) || 0,
+      productCount: Number(prod.product_count) || 0,
+      lowStockCount: Number(prod.low_stock_count) || 0,
+      monthly,
+      ordersByStatus: (statusRes.rows || []).map((r: any) => ({ status: String(r.status), count: Number(r.count) || 0 })),
+      topPartners: (partnerRes.rows || []).map((r: any) => ({
+        id: String(r.id), name: String(r.name ?? "?"), orders: Number(r.orders) || 0, amount: Number(r.amount) || 0,
+      })),
+    };
   }
 }
 

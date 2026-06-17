@@ -41,6 +41,7 @@ import Login from "@/pages/Login";
 import AuthClaim from "@/pages/AuthClaim";
 import AuthReset from "@/pages/AuthReset";
 import AdminLogin from "@/pages/admin/AdminLogin";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminOrgs from "@/pages/admin/AdminOrgs";
 import AdminOrgDetail from "@/pages/admin/AdminOrgDetail";
 import AdminAdmins from "@/pages/admin/AdminAdmins";
@@ -673,6 +674,9 @@ function AppLayout() {
     return <AdminLogin />;
   }
   if (pathOnly === "/admin" || pathOnly === "/admin/") {
+    return <AdminDashboard />;
+  }
+  if (pathOnly === "/admin/orgs" || pathOnly === "/admin/orgs/") {
     return <AdminOrgs />;
   }
   if (pathOnly === "/admin/admins") {

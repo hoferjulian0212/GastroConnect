@@ -8,8 +8,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Building2, User, Mail, Phone, MapPin, CheckCircle2, Clock,
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
+} from "recharts";
+import {
+  Building2, Mail, Phone, MapPin, CheckCircle2, Clock,
   Users, UserCheck, ShieldCheck, Trash2, AlertTriangle,
+  Euro, ShoppingCart, TrendingUp, FileWarning, Package, PackageX, Handshake,
 } from "lucide-react";
 
 interface OrgMember {
@@ -39,6 +43,41 @@ interface OrgDetailResponse {
   members: OrgMember[];
 }
 
+interface OrgStats {
+  role: "restaurant" | "supplier";
+  totalOrders: number;
+  gmv: number;
+  avgOrderValue: number;
+  activePartners: number;
+  openComplaints: number;
+  productCount: number;
+  lowStockCount: number;
+  monthly: { month: string; orders: number; gmv: number }[];
+  ordersByStatus: { status: string; count: number }[];
+  topPartners: { id: string; name: string; orders: number; amount: number }[];
+}
+
+function fmtEur(n: number): string {
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n || 0);
+}
+function fmtNum(n: number): string {
+  return new Intl.NumberFormat("de-DE").format(n || 0);
+}
+function monthLabel(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, 1).toLocaleDateString("de-DE", { month: "short" });
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Ausstehend",
+  confirmed: "Bestätigt",
+  partially_confirmed: "Teilweise bestätigt",
+  in_delivery: "In Lieferung",
+  delivered: "Geliefert",
+  cancelled: "Storniert",
+  declined: "Abgelehnt",
+};
+
 export default function AdminOrgDetail({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -53,6 +92,17 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
       return r.json() as Promise<OrgDetailResponse>;
     },
     retry: false,
+  });
+
+  const { data: stats } = useQuery<OrgStats>({
+    queryKey: ["/api/admin/orgs", params.id, "stats"],
+    queryFn: async () => {
+      const r = await fetch(`/api/admin/orgs/${params.id}/stats`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json() as Promise<OrgStats>;
+    },
+    retry: false,
+    staleTime: 30000,
   });
 
   const impersonateMutation = useMutation({
@@ -92,7 +142,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/orgs/pending-count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/orgs"] });
       toast({ title: "Organisation gelöscht", description: "Die Organisation wurde entfernt." });
-      setLocation("/admin");
+      setLocation("/admin/orgs");
     },
     onError: () => {
       toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
@@ -115,7 +165,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
     return (
       <AdminLayout>
         <div className="space-y-4">
-          <AdminBreadcrumb items={[{ label: "Organisationen", href: "/admin" }, { label: "Nicht gefunden" }]} />
+          <AdminBreadcrumb items={[{ label: "Organisationen", href: "/admin/orgs" }, { label: "Nicht gefunden" }]} />
           <p className="text-white/50">Organisation nicht gefunden oder Sie haben keinen Zugriff.</p>
         </div>
       </AdminLayout>
@@ -129,7 +179,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
   return (
     <AdminLayout>
       <AdminBreadcrumb items={[
-        { label: "Organisationen", href: "/admin" },
+        { label: "Organisationen", href: "/admin/orgs" },
         { label: displayName },
       ]} />
 
@@ -253,6 +303,103 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
           </div>
         </div>
 
+        {/* Statistics */}
+        {stats && (
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-white/40 uppercase tracking-wider flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Statistik
+            </h2>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <StatCard icon={Euro} label="Umsatz gesamt" value={fmtEur(stats.gmv)} accent="text-emerald-400" testId="stat-gmv" />
+              <StatCard icon={ShoppingCart} label="Bestellungen" value={fmtNum(stats.totalOrders)} accent="text-blue-400" testId="stat-orders" />
+              <StatCard icon={TrendingUp} label="Ø Bestellwert" value={fmtEur(stats.avgOrderValue)} accent="text-purple-400" testId="stat-aov" />
+              {stats.role === "supplier" ? (
+                <StatCard icon={Package} label="Produkte" value={fmtNum(stats.productCount)} accent="text-amber-400" testId="stat-products" />
+              ) : (
+                <StatCard icon={Handshake} label="Aktive Lieferanten" value={fmtNum(stats.activePartners)} accent="text-amber-400" testId="stat-partners" />
+              )}
+            </div>
+
+            {(stats.openComplaints > 0 || (stats.role === "supplier" && stats.lowStockCount > 0)) && (
+              <div className="grid grid-cols-2 gap-3">
+                {stats.openComplaints > 0 && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4" data-testid="stat-complaints">
+                    <FileWarning className="h-4 w-4 text-red-400" />
+                    <p className="text-2xl font-bold text-white mt-2">{stats.openComplaints}</p>
+                    <p className="text-[11px] text-white/40 mt-0.5">Offene Reklamationen</p>
+                  </div>
+                )}
+                {stats.role === "supplier" && stats.lowStockCount > 0 && (
+                  <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4" data-testid="stat-low-stock">
+                    <PackageX className="h-4 w-4 text-orange-400" />
+                    <p className="text-2xl font-bold text-white mt-2">{stats.lowStockCount}</p>
+                    <p className="text-[11px] text-white/40 mt-0.5">Produkte mit niedrigem Bestand</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {stats.monthly.some(m => m.orders > 0 || m.gmv > 0) && (
+              <div className="bg-[#161921] border border-white/10 rounded-2xl p-4">
+                <h3 className="text-sm font-semibold text-white/70 mb-3">Umsatz (6 Monate)</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={stats.monthly.map(m => ({ ...m, label: monthLabel(m.month) }))} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="orgGmvGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#34d399" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                    <XAxis dataKey="label" stroke="rgba(255,255,255,0.3)" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke="rgba(255,255,255,0.3)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
+                    <Tooltip content={<OrgTooltip />} />
+                    <Area type="monotone" dataKey="gmv" name="Umsatz" stroke="#34d399" strokeWidth={2} fill="url(#orgGmvGrad)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {stats.ordersByStatus.length > 0 && (
+                <div className="bg-[#161921] border border-white/10 rounded-2xl p-4">
+                  <h3 className="text-sm font-semibold text-white/70 mb-3">Bestellungen nach Status</h3>
+                  <div className="space-y-2">
+                    {stats.ordersByStatus.map(s => (
+                      <div key={s.status} className="flex items-center justify-between text-sm" data-testid={`status-row-${s.status}`}>
+                        <span className="text-white/60">{STATUS_LABELS[s.status] ?? s.status}</span>
+                        <span className="font-semibold text-white">{fmtNum(s.count)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {stats.topPartners.length > 0 && (
+                <div className="bg-[#161921] border border-white/10 rounded-2xl p-4">
+                  <h3 className="text-sm font-semibold text-white/70 mb-3">
+                    {stats.role === "supplier" ? "Top Kunden" : "Top Lieferanten"}
+                  </h3>
+                  <div className="space-y-1">
+                    {stats.topPartners.map((p, i) => (
+                      <div key={p.id} className="flex items-center gap-3 px-2 py-1.5 rounded-lg" data-testid={`partner-${p.id}`}>
+                        <span className="h-6 w-6 rounded-md bg-white/5 flex items-center justify-center text-xs font-bold text-white/50 shrink-0">{i + 1}</span>
+                        <span className="flex-1 min-w-0 text-sm text-white truncate">{p.name}</span>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-semibold text-white">{fmtEur(p.amount)}</p>
+                          <p className="text-[11px] text-white/40">{fmtNum(p.orders)} Best.</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Members */}
         <div>
           <h2 className="text-sm font-semibold text-white/40 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -313,6 +460,40 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
         </div>
       </div>
     </AdminLayout>
+  );
+}
+
+function StatCard({
+  icon: Icon, label, value, accent, testId,
+}: {
+  icon: typeof Euro;
+  label: string;
+  value: string;
+  accent: string;
+  testId: string;
+}) {
+  return (
+    <div className="bg-[#161921] border border-white/10 rounded-2xl p-4" data-testid={testId}>
+      <div className={`h-9 w-9 rounded-xl bg-white/5 flex items-center justify-center ${accent}`}>
+        <Icon className="h-4.5 w-4.5" />
+      </div>
+      <p className="text-2xl font-bold text-white mt-3">{value}</p>
+      <p className="text-xs text-white/40 mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+function OrgTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-[#0e1117] border border-white/15 rounded-lg px-3 py-2 shadow-xl">
+      <p className="text-xs text-white/50 mb-1">{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.dataKey} className="text-xs text-white">
+          {p.name}: <span className="font-semibold">{fmtEur(p.value)}</span>
+        </p>
+      ))}
+    </div>
   );
 }
 

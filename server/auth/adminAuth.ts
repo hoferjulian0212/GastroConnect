@@ -341,12 +341,74 @@ export function registerAdminAuthRoutes(app: Express) {
     }
   });
 
-  // ── List all organizations ────────────────────────────────────────────────
+  // ── Platform analytics: overview KPIs ─────────────────────────────────────
+  app.get("/api/admin/stats/overview", requirePlatformAdmin, async (_req, res) => {
+    try {
+      res.json(await storage.getPlatformOverview());
+    } catch (err) {
+      console.error("[admin] stats overview error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // ── Platform analytics: 6-month time series ───────────────────────────────
+  app.get("/api/admin/stats/timeseries", requirePlatformAdmin, async (_req, res) => {
+    try {
+      res.json(await storage.getPlatformTimeSeries());
+    } catch (err) {
+      console.error("[admin] stats timeseries error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // ── Platform analytics: health summary (action items) ─────────────────────
+  app.get("/api/admin/stats/health", requirePlatformAdmin, async (_req, res) => {
+    try {
+      res.json(await storage.getPlatformHealth());
+    } catch (err) {
+      console.error("[admin] stats health error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // ── Platform analytics: recent activity feed ──────────────────────────────
+  app.get("/api/admin/stats/activity", requirePlatformAdmin, async (_req, res) => {
+    try {
+      res.json(await storage.getPlatformRecentActivity(12));
+    } catch (err) {
+      console.error("[admin] stats activity error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // ── Platform analytics: top organizations ─────────────────────────────────
+  app.get("/api/admin/stats/top-orgs", requirePlatformAdmin, async (_req, res) => {
+    try {
+      res.json(await storage.getTopOrganizations());
+    } catch (err) {
+      console.error("[admin] stats top-orgs error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // ── List all organizations (enriched with activity metrics) ───────────────
   app.get("/api/admin/orgs", requirePlatformAdmin, async (req, res) => {
     try {
-      const orgs = await storage.getAllOrgsWithMemberCount();
+      const orgs = await storage.getAllOrgsWithStats();
       res.json(orgs);
     } catch (err) {
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // ── Per-organization statistics ───────────────────────────────────────────
+  app.get("/api/admin/orgs/:id/stats", requirePlatformAdmin, async (req, res) => {
+    try {
+      const stats = await storage.getAdminOrgStats(String(req.params.id));
+      if (!stats) return res.status(404).json({ error: "not_found" });
+      res.json(stats);
+    } catch (err) {
+      console.error("[admin] org stats error", err);
       res.status(500).json({ error: "server_error" });
     }
   });
