@@ -107,6 +107,10 @@ async function sendApprovalConfirmationEmail(admin: PlatformAdmin): Promise<void
 }
 
 export function registerAdminAuthRoutes(app: Express) {
+  // Log configured auto-approved username count at startup for audit visibility.
+  const autoApprovedNames = getAutoApprovedUsernames();
+  console.log(`[admin] auto-approved Replit usernames configured: ${autoApprovedNames.size}`);
+
   // Apply loadAdminAuth to all /api/admin/* routes so req.platformAdmin is set.
   app.use("/api/admin", loadAdminAuth);
 
@@ -184,6 +188,8 @@ export function registerAdminAuthRoutes(app: Express) {
       if (!admin) {
         // First login — create record.
         const status = isAutoApproved ? "approved" : "pending";
+        // approvedBy stores the approver's replitUserId for audit integrity.
+        // The sentinel "auto" marks username-allowlist auto-approval.
         admin = await storage.createPlatformAdmin({
           replitUserId,
           replitUsername,
@@ -273,8 +279,16 @@ export function registerAdminAuthRoutes(app: Express) {
   });
 
   // ── Start impersonation ───────────────────────────────────────────────────
+  // Invariant: impersonated sessions cannot impersonate further. An admin
+  // must exit the current impersonation before starting a new one.
   app.post("/api/admin/impersonate/:memberId", requirePlatformAdmin, async (req, res) => {
     try {
+      if (req.session.impersonatedMemberId) {
+        return res.status(409).json({
+          error: "already_impersonating",
+          message: "Beenden Sie die aktuelle Impersonierung bevor Sie eine neue starten.",
+        });
+      }
       const member = await storage.getMember(String(req.params.memberId));
       if (!member) return res.status(404).json({ error: "not_found" });
       req.session.impersonatedMemberId = member.id;
@@ -318,7 +332,7 @@ export function registerAdminAuthRoutes(app: Express) {
       if (target.status === "approved") return res.json(target);
       const updated = await storage.updatePlatformAdmin(target.id, {
         status: "approved",
-        approvedBy: req.platformAdmin!.admin.replitUsername,
+        approvedBy: req.platformAdmin!.admin.replitUserId,
         approvedAt: new Date(),
       });
       sendApprovalConfirmationEmail(updated!).catch(err =>

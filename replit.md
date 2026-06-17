@@ -7,6 +7,18 @@ GastroConnect is a web application designed to streamline interactions between r
 Preferred communication style: Simple, everyday language.
 Mirrored role pages: The restaurant and supplier roles have parallel versions of the same pages (e.g. `client/src/pages/restaurant/*` and `client/src/pages/supplier/*` for Complaints, Orders, Home, Inbox, etc.). Whenever a change is made to one role's page, always apply the equivalent change to the other role's matching page so both stay in sync.
 
+## Platform Admin Panel — Required Secrets
+
+The admin panel at `/admin` uses Replit's OIDC system as its identity provider. The following secrets must be configured for admin login to work:
+
+| Secret | Description |
+|---|---|
+| `REPLIT_CLIENT_ID` | Client ID from a Replit OAuth App (register at replit.com → Account → OAuth Apps) |
+| `REPLIT_CLIENT_SECRET` | Matching secret for the OAuth App |
+| `PLATFORM_ADMIN_REPLIT_USERNAMES` | Comma-separated Replit usernames that are auto-approved on first login (e.g. `alice,bob`) |
+
+Without `REPLIT_CLIENT_ID` and `REPLIT_CLIENT_SECRET`, the login button on `/admin/login` remains disabled. The table is created idempotently at startup (`runAdminMigration`); no `drizzle push` needed.
+
 ## System Architecture
 
 ### UI/UX Decisions
