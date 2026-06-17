@@ -7,6 +7,7 @@ import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion
 import { useUser } from "@/context/UserContext";
 import { Button } from "@/components/ui/button";
 import { MotionReveal } from "@/components/landing/MotionReveal";
+import { CardOutlineReveal } from "@/components/landing/CardOutlineReveal";
 import CountUp from "@/components/CountUp";
 import { HeadlineReveal } from "@/components/landing/HeadlineReveal";
 import { TiltCard } from "@/components/landing/TiltCard";
@@ -1099,6 +1100,7 @@ export default function Landing() {
               },
             ].map((p, pIdx) => (
               <MotionReveal key={p.testid} delay={pIdx * 120}>
+              <CardOutlineReveal>
               <div
                 className={`h-full rounded-3xl p-8 md:p-10 flex flex-col border ${
                   p.accent === "emerald"
@@ -1143,6 +1145,7 @@ export default function Landing() {
                   </ul>
                 </div>
               </div>
+              </CardOutlineReveal>
               </MotionReveal>
             ))}
           </div>
