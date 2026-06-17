@@ -44,24 +44,37 @@ declare global {
 export async function loadAuth(req: Request, _res: Response, next: NextFunction) {
   try {
     // Impersonation: platform admin acting as a member.
+    // Both the admin record AND its status=approved are re-validated on every
+    // request so that revoking an admin immediately ends any active impersonation.
     const impersonatedId = req.session?.impersonatedMemberId;
     const adminId = req.session?.adminId;
     if (impersonatedId && adminId) {
-      const member = await storage.getMember(impersonatedId);
-      const org = member ? await storage.getUser(member.organizationId) : undefined;
-      if (member && org) {
-        req.auth = {
-          member,
-          org,
-          memberId: member.id,
-          organizationId: member.organizationId,
-          role: member.role,
-          isImpersonated: true,
-        };
-        return next();
+      const [adminRecord, member] = await Promise.all([
+        storage.getPlatformAdmin(adminId),
+        storage.getMember(impersonatedId),
+      ]);
+      const adminStillApproved = adminRecord?.status === "approved";
+      if (!adminStillApproved) {
+        // Admin was revoked/denied — tear down both admin + impersonation state.
+        req.session.adminId = undefined;
+        req.session.impersonatedMemberId = undefined;
+        // Fall through to normal member-session handling below.
+      } else {
+        const org = member ? await storage.getUser(member.organizationId) : undefined;
+        if (member && org) {
+          req.auth = {
+            member,
+            org,
+            memberId: member.id,
+            organizationId: member.organizationId,
+            role: member.role,
+            isImpersonated: true,
+          };
+          return next();
+        }
+        // Impersonated member no longer exists — clear impersonation only.
+        req.session.impersonatedMemberId = undefined;
       }
-      // Impersonated member no longer exists — clear impersonation.
-      req.session.impersonatedMemberId = undefined;
     }
 
     // Normal member session.
