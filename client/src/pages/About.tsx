@@ -64,12 +64,12 @@ export default function About() {
     <div className="min-h-screen bg-background">
 
       {/* ── HERO ─────────────────────────────────────────────── */}
-      <div className="bg-[#161921] rounded-b-3xl px-4 md:px-8 pb-16 pt-6">
+      <div className="px-4 md:px-8 pb-16 pt-6">
         <div className="max-w-5xl mx-auto">
           {/* Back link */}
           <Link href="/">
             <button
-              className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white/90 transition-colors mb-14"
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-14"
               data-testid="button-back-home"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -78,17 +78,17 @@ export default function About() {
           </Link>
 
           {/* Eyebrow */}
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/50 mb-4">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-4">
             Über uns
           </p>
 
           {/* Headline */}
-          <h1 className="text-4xl md:text-6xl font-semibold tracking-tight text-white leading-tight max-w-3xl">
+          <h1 className="text-4xl md:text-6xl font-semibold tracking-tight text-foreground leading-tight max-w-3xl">
             Die Plattform, die<br />
-            <span className="text-white/60">Gastronomie verbindet.</span>
+            <span className="text-muted-foreground">Gastronomie verbindet.</span>
           </h1>
 
-          <p className="mt-6 text-base md:text-lg text-white/60 max-w-2xl leading-relaxed">
+          <p className="mt-6 text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed">
             GastroConnect ist eine B2B-Software für die Gastronomiebranche — gebaut, um die tägliche Kommunikation zwischen Betrieben und ihren Lieferanten zu vereinfachen. Kein Papierchaos, keine WhatsApp-Gruppen, kein Nachfragen per Telefon.
           </p>
 
@@ -96,7 +96,7 @@ export default function About() {
           <div className="mt-10">
             <Link href="/login">
               <button
-                className="inline-flex items-center gap-2 bg-white hover:bg-white/90 text-black text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
+                className="inline-flex items-center gap-2 bg-foreground hover:bg-foreground/90 text-background text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
                 data-testid="button-request-access"
               >
                 Zugang anfragen
@@ -182,18 +182,18 @@ export default function About() {
       </div>
 
       {/* ── FOOTER CTA ───────────────────────────────────────── */}
-      <div className="bg-[#161921] rounded-t-3xl px-4 md:px-8 py-16">
-        <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-2xl md:text-4xl font-semibold tracking-tight text-white mb-4">
+      <div className="max-w-5xl mx-auto px-4 md:px-8 pb-20">
+        <div className="rounded-3xl border border-border bg-muted/30 px-6 md:px-8 py-16 text-center">
+          <h2 className="text-2xl md:text-4xl font-semibold tracking-tight text-foreground mb-4">
             Bereit loszulegen?
           </h2>
-          <p className="text-white/55 text-base mb-8 max-w-md mx-auto">
+          <p className="text-muted-foreground text-base mb-8 max-w-md mx-auto">
             GastroConnect ist invite-only. Kontaktieren Sie uns — wir richten Ihren Zugang ein.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/login">
               <button
-                className="inline-flex items-center justify-center gap-2 bg-white hover:bg-white/90 text-black text-sm font-medium px-6 py-3 rounded-full transition-colors w-full sm:w-auto"
+                className="inline-flex items-center justify-center gap-2 bg-foreground hover:bg-foreground/90 text-background text-sm font-medium px-6 py-3 rounded-full transition-colors w-full sm:w-auto"
                 data-testid="button-footer-login"
               >
                 Anmelden
@@ -202,7 +202,7 @@ export default function About() {
             </Link>
             <Link href="/">
               <button
-                className="inline-flex items-center justify-center gap-2 border border-white/20 text-white/70 hover:text-white hover:border-white/40 text-sm font-medium px-6 py-3 rounded-full transition-colors w-full sm:w-auto"
+                className="inline-flex items-center justify-center gap-2 border border-border text-foreground hover:bg-muted text-sm font-medium px-6 py-3 rounded-full transition-colors w-full sm:w-auto"
                 data-testid="button-footer-back"
               >
                 Zur Startseite
