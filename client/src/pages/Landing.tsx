@@ -1,3 +1,6 @@
+// PRE-UPGRADE REVERT ANCHOR: 4f40c9f4a0a4ae80a1229769db07b16ed4a41d9a
+// To roll back this file to the state before the landing-page polish:
+//   git checkout 4f40c9f4a0a4ae80a1229769db07b16ed4a41d9a -- client/src/pages/Landing.tsx
 import { useLocation } from "wouter";
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
@@ -6,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { MotionReveal } from "@/components/landing/MotionReveal";
 import CountUp from "@/components/CountUp";
 import { HeadlineReveal } from "@/components/landing/HeadlineReveal";
-import { HeroShotReveal } from "@/components/landing/HeroShotReveal";
 import { TiltCard } from "@/components/landing/TiltCard";
 import { PinnedFeatureStory } from "@/components/landing/PinnedFeatureStory";
 import { useLandingSmoothScroll } from "@/components/landing/useLandingSmoothScroll";
@@ -60,6 +62,8 @@ import {
   CheckCircle2,
   Mail,
   UserPlus,
+  ZoomIn,
+  X,
 } from "lucide-react";
 
 const animationStrings = {
@@ -148,17 +152,15 @@ const translations = {
     heroCtaSupplier: "Als Händler starten",
     heroImageAlt: "GastroConnect Restaurant-Dashboard",
 
-    guideEyebrow: "In 3 Schritten startklar",
-    guideRolePrompt: "Ich bin …",
-    guideRoleRestaurant: "Betrieb",
-    guideRoleSupplier: "Händler",
-    guideStep1Title: "Rolle wählen",
-    guideStep1Desc: "Betrieb oder Händler — Sie erhalten die passende Oberfläche.",
-    guideStep2Title: "Konto erstellen",
-    guideStep2Desc: "Firmenname, Name und Passwort — in unter einer Minute.",
-    guideStep3Title: "E-Mail bestätigen",
-    guideStep3Desc: "Link aus der E-Mail klicken und sofort loslegen.",
-    guideCta: "Geschäftskonto erstellen",
+    guideEyebrow: "So kommen Sie rein",
+    guideStep1Title: "Einladung erhalten",
+    guideStep1Desc: "Ihr Administrator richtet Ihren Zugang ein und sendet eine Einladungs-E-Mail.",
+    guideStep2Title: "Passwort festlegen",
+    guideStep2Desc: "Über den Link in der E-Mail setzen Sie Ihr persönliches Passwort.",
+    guideStep3Title: "Sofort loslegen",
+    guideStep3Desc: "Nach der Anmeldung stehen alle Funktionen sofort bereit.",
+    guideCta: "Anmelden",
+    guideNotice: "Der Zugang wird vom Administrator Ihres Unternehmens eingerichtet.",
 
     pillarsHeadline: "Für wen GastroConnect gebaut ist",
     pillarsSub:
@@ -332,6 +334,22 @@ const translations = {
     footerLinkPrivacy: "Datenschutz",
     footerLinkTerms: "AGB",
     footerCopyright: "Alle Rechte vorbehalten.",
+    eyebrowPillars: "Für Restaurants & Händler",
+    eyebrowSteps: "In 3 einfachen Schritten",
+    eyebrowStats: "Zahlen & Fakten",
+    eyebrowFeatures: "Alles dabei",
+    eyebrowMobile: "Mobile First",
+    eyebrowFaq: "Fragen & Antworten",
+    eyebrowCta: "Jetzt loslegen",
+    eyebrowWhatsNew: "Was gibt's Neues",
+    pillarPlatformTitle: "Verbunden auf einer Plattform",
+    pillarPlatformBullets: [
+      "Direkter Chat zu jeder Bestellung — kein Medienbruch, keine verlorenen Infos.",
+      "Lieferscheine als PDF automatisch erzeugt, geteilt und archiviert.",
+      "Echtzeit-Benachrichtigungen auf jedem Gerät, mit Deeplinks in die richtige Ansicht.",
+      "Alle Daten verschlüsselt und sicher in der EU gehostet.",
+    ],
+    pillarPlatformCta: "Mehr erfahren",
   },
   it: {
     navAnchorPillars: "Per chi",
@@ -349,17 +367,15 @@ const translations = {
     heroCtaSupplier: "Inizia come commerciante",
     heroImageAlt: "Dashboard ristorante GastroConnect",
 
-    guideEyebrow: "Pronto in 3 passaggi",
-    guideRolePrompt: "Sono …",
-    guideRoleRestaurant: "Azienda",
-    guideRoleSupplier: "Commerciante",
-    guideStep1Title: "Scegli il ruolo",
-    guideStep1Desc: "Azienda o commerciante — ottieni l'interfaccia giusta.",
-    guideStep2Title: "Crea l'account",
-    guideStep2Desc: "Nome azienda, nome e password — in meno di un minuto.",
-    guideStep3Title: "Conferma l'email",
-    guideStep3Desc: "Clicca il link nell'email e inizia subito.",
-    guideCta: "Crea account aziendale",
+    guideEyebrow: "Come accedere",
+    guideStep1Title: "Ricevi l'invito",
+    guideStep1Desc: "Il tuo amministratore crea il tuo accesso e invia un'email di invito.",
+    guideStep2Title: "Imposta la password",
+    guideStep2Desc: "Dal link nell'email imposti la tua password personale.",
+    guideStep3Title: "Sei subito operativo",
+    guideStep3Desc: "Dopo l'accesso tutte le funzioni sono disponibili immediatamente.",
+    guideCta: "Accedi",
+    guideNotice: "L'accesso viene creato dall'amministratore della tua azienda.",
 
     pillarsHeadline: "Per chi è pensato GastroConnect",
     pillarsSub:
@@ -461,6 +477,22 @@ const translations = {
     footerLinkPrivacy: "Privacy",
     footerLinkTerms: "Termini",
     footerCopyright: "Tutti i diritti riservati.",
+    eyebrowPillars: "Per ristoranti e commercianti",
+    eyebrowSteps: "In 3 semplici passi",
+    eyebrowStats: "Numeri e fatti",
+    eyebrowFeatures: "Tutto incluso",
+    eyebrowMobile: "Mobile First",
+    eyebrowFaq: "Domande e risposte",
+    eyebrowCta: "Inizia ora",
+    eyebrowWhatsNew: "Novità",
+    pillarPlatformTitle: "Connessi su un'unica piattaforma",
+    pillarPlatformBullets: [
+      "Chat diretta per ogni ordine — nessuna interruzione, nessuna informazione persa.",
+      "Bolle di consegna PDF generate automaticamente, condivise e archiviate.",
+      "Notifiche in tempo reale su ogni dispositivo, con deep link alla vista corretta.",
+      "Tutti i dati cifrati e ospitati in modo sicuro nell'UE.",
+    ],
+    pillarPlatformCta: "Scopri di più",
   },
   en: {
     navAnchorPillars: "Who it's for",
@@ -478,17 +510,15 @@ const translations = {
     heroCtaSupplier: "Start as a supplier",
     heroImageAlt: "GastroConnect restaurant dashboard",
 
-    guideEyebrow: "Ready in 3 steps",
-    guideRolePrompt: "I'm a …",
-    guideRoleRestaurant: "Restaurant",
-    guideRoleSupplier: "Supplier",
-    guideStep1Title: "Choose your role",
-    guideStep1Desc: "Restaurant or supplier — you get the right interface.",
-    guideStep2Title: "Create your account",
-    guideStep2Desc: "Company name, your name and a password — under a minute.",
-    guideStep3Title: "Confirm your email",
-    guideStep3Desc: "Click the link in the email and get started right away.",
-    guideCta: "Create business account",
+    guideEyebrow: "How to get access",
+    guideStep1Title: "Receive your invite",
+    guideStep1Desc: "Your administrator creates your account and sends an invitation email.",
+    guideStep2Title: "Set your password",
+    guideStep2Desc: "Open the link in the email to set your personal password.",
+    guideStep3Title: "Get started right away",
+    guideStep3Desc: "Once signed in, all features are available immediately.",
+    guideCta: "Sign in",
+    guideNotice: "Access is set up by your company's administrator.",
 
     pillarsHeadline: "Who GastroConnect is built for",
     pillarsSub:
@@ -578,6 +608,22 @@ const translations = {
     footerLinkPrivacy: "Privacy",
     footerLinkTerms: "Terms",
     footerCopyright: "All rights reserved.",
+    eyebrowPillars: "For restaurants & suppliers",
+    eyebrowSteps: "In 3 simple steps",
+    eyebrowStats: "Numbers & facts",
+    eyebrowFeatures: "Everything included",
+    eyebrowMobile: "Mobile first",
+    eyebrowFaq: "Questions & answers",
+    eyebrowCta: "Get started today",
+    eyebrowWhatsNew: "What's new",
+    pillarPlatformTitle: "Connected on one platform",
+    pillarPlatformBullets: [
+      "Direct chat on every order — no broken chains, no lost information.",
+      "Delivery notes as PDF generated automatically, shared and archived.",
+      "Real-time notifications on every device, with deep links to the right view.",
+      "All data encrypted and securely hosted in the EU.",
+    ],
+    pillarPlatformCta: "Learn more",
   },
 } as const;
 
@@ -605,58 +651,27 @@ function RegistrationGuide({
   reduceMotion: boolean | null;
   onStart: (role: "restaurant" | "supplier") => void;
 }) {
-  const [role, setRole] = useState<"restaurant" | "supplier">("restaurant");
-
   const steps = [
-    { icon: UserPlus, title: t.guideStep1Title, desc: t.guideStep1Desc },
-    { icon: Store, title: t.guideStep2Title, desc: t.guideStep2Desc },
-    { icon: Mail, title: t.guideStep3Title, desc: t.guideStep3Desc },
+    { icon: Mail,         title: t.guideStep1Title, desc: t.guideStep1Desc },
+    { icon: Shield,       title: t.guideStep2Title, desc: t.guideStep2Desc },
+    { icon: CheckCircle2, title: t.guideStep3Title, desc: t.guideStep3Desc },
   ];
 
   return (
     <motion.div
-      className="mx-auto mb-8 md:mb-10 w-full max-w-3xl"
+      className="mx-auto w-full max-w-3xl"
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.05 }}
       data-testid="registration-guide"
     >
-      <div className="rounded-3xl border border-border bg-card/60 backdrop-blur-sm shadow-sm px-5 py-6 md:px-8 md:py-8">
-        <p className="text-xs md:text-sm font-medium uppercase tracking-wider text-primary mb-5" data-testid="text-guide-eyebrow">
+      <div className="rounded-3xl border border-border bg-card/60 backdrop-blur-sm shadow-sm px-5 py-6 md:px-8 md:py-7">
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-5" data-testid="text-guide-eyebrow">
           {t.guideEyebrow}
         </p>
 
-        {/* Role choice */}
-        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <span className="text-sm text-muted-foreground">{t.guideRolePrompt}</span>
-          <div className="inline-flex rounded-full border border-border bg-muted/40 p-1" role="group">
-            <button
-              type="button"
-              onClick={() => setRole("restaurant")}
-              className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                role === "restaurant" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-              data-testid="button-guide-role-restaurant"
-            >
-              <Utensils className="h-4 w-4" />
-              {t.guideRoleRestaurant}
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("supplier")}
-              className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                role === "supplier" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-              data-testid="button-guide-role-supplier"
-            >
-              <Store className="h-4 w-4" />
-              {t.guideRoleSupplier}
-            </button>
-          </div>
-        </div>
-
-        {/* Animated steps */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        {/* Invite-flow steps */}
+        <div className="grid gap-3 sm:grid-cols-3">
           {steps.map((step, i) => {
             const Icon = step.icon;
             return (
@@ -666,13 +681,13 @@ function RegistrationGuide({
                 initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: reduceMotion ? 0 : 0.15 + i * 0.12 }}
+                transition={{ duration: 0.4, delay: reduceMotion ? 0 : 0.1 + i * 0.1 }}
                 data-testid={`guide-step-${i + 1}`}
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mb-2">
                   <Icon className="h-5 w-5" />
                 </div>
-                <span className="absolute top-2 right-3 text-xs font-semibold text-muted-foreground/60">{i + 1}</span>
+                <span className="absolute top-2 right-3 text-xs font-semibold text-muted-foreground/50">{i + 1}</span>
                 <h3 className="text-sm font-semibold">{step.title}</h3>
                 <p className="mt-1 text-xs text-muted-foreground leading-snug">{step.desc}</p>
               </motion.div>
@@ -680,15 +695,20 @@ function RegistrationGuide({
           })}
         </div>
 
-        <Button
-          size="lg"
-          className="mt-6 w-full sm:w-auto gap-2 text-base"
-          onClick={() => onStart(role)}
-          data-testid="button-guide-cta"
-        >
-          {t.guideCta}
-          <ArrowRight className="h-4 w-4" />
-        </Button>
+        <div className="mt-5 flex flex-col sm:flex-row items-center gap-3">
+          <Button
+            size="lg"
+            className="w-full sm:w-auto gap-2 text-base"
+            onClick={() => onStart("restaurant")}
+            data-testid="button-guide-cta"
+          >
+            {t.guideCta}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+          <p className="text-xs text-muted-foreground text-center sm:text-left" data-testid="text-guide-notice">
+            {t.guideNotice}
+          </p>
+        </div>
       </div>
     </motion.div>
   );
@@ -752,6 +772,7 @@ export default function Landing() {
   const [lang, setLang] = useState<Lang>("de");
   const [mobileShotRole, setMobileShotRole] = useState<"restaurant" | "supplier">("restaurant");
   const [mobileShotIndex, setMobileShotIndex] = useState(0);
+  const [showcaseLightbox, setShowcaseLightbox] = useState<{ img: string; alt: string; caption: string } | null>(null);
   const reduceMotion = useReducedMotion();
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined" &&
@@ -843,35 +864,36 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-background text-foreground">
-      {/* HEADER */}
-      <header
-        className={`sticky top-0 z-50 transition-all ${
+      {/* HEADER — floating pill */}
+      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-3 md:pt-4 px-4 pointer-events-none">
+        <div className={`pointer-events-auto w-full max-w-5xl flex items-center gap-2 px-4 py-2.5 md:px-5 rounded-full border transition-all duration-300 ${
           scrolled
-            ? "bg-white/85 dark:bg-background/85 backdrop-blur-md border-b border-border"
-            : "bg-transparent border-b border-transparent"
-        }`}
-      >
-        <div className="mx-auto max-w-6xl flex items-center justify-between gap-3 px-4 py-3 md:px-8">
-          <a
-            href="/"
-            onClick={(e) => {
-              e.preventDefault();
-              setLocation("/");
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            className="flex items-center shrink-0"
-            data-testid="link-brand"
-          >
-            <Logo size="nav" variant="dark" thick data-testid="logo-landing-nav" />
-          </a>
+            ? "bg-white/92 dark:bg-background/92 backdrop-blur-md border-border shadow-lg shadow-black/[0.07]"
+            : "bg-white/75 dark:bg-background/75 backdrop-blur-sm border-border/50 shadow-sm"
+        }`}>
+          {/* Left: logo */}
+          <div className="shrink-0">
+            <a
+              href="/"
+              onClick={(e) => {
+                e.preventDefault();
+                setLocation("/");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="flex items-center"
+              data-testid="link-brand"
+            >
+              <Logo size="nav" variant="dark" thick className="[&_img]:drop-shadow-[0_0_0.6px_rgba(0,0,0,0.55)] dark:[&_img]:drop-shadow-[0_0_0.6px_rgba(255,255,255,0.45)]" data-testid="logo-landing-nav" />
+            </a>
+          </div>
 
-          {/* Desktop anchor nav */}
-          <div className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+          {/* Center: anchor nav — flex-1 so it never encroaches on the right side */}
+          <div className="hidden lg:flex flex-1 items-center justify-center gap-0.5 min-w-0 overflow-hidden">
             {anchors.map((item) => (
               <button
                 key={item.id}
                 onClick={() => smoothScrollTo(item.id)}
-                className="px-3 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                className="px-2.5 xl:px-3 py-1.5 rounded-full text-xs xl:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors whitespace-nowrap"
                 data-testid={`nav-anchor-${item.id}`}
               >
                 {item.label}
@@ -879,7 +901,8 @@ export default function Landing() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Right: lang + auth buttons */}
+          <div className="flex items-center gap-2 shrink-0 ml-auto lg:ml-0">
             <div
               className="hidden md:flex items-center rounded-full border border-border bg-card p-0.5 text-xs font-medium"
               data-testid="lang-switcher"
@@ -907,14 +930,6 @@ export default function Landing() {
               data-testid="link-login"
             >
               {t.navLogin}
-            </Button>
-            <Button
-              size="sm"
-              className="hidden md:inline-flex"
-              onClick={() => handleStart("restaurant")}
-              data-testid="button-nav-start"
-            >
-              {t.navStart}
             </Button>
 
             {/* Mobile menu */}
@@ -979,16 +994,6 @@ export default function Landing() {
                     >
                       {t.navLogin}
                     </Button>
-                    <Button
-                      className="w-full"
-                      onClick={() => {
-                        setMobileNavOpen(false);
-                        handleStart("restaurant");
-                      }}
-                      data-testid="button-mobile-start"
-                    >
-                      {t.navStart}
-                    </Button>
                   </div>
                 </div>
               </SheetContent>
@@ -1000,9 +1005,10 @@ export default function Landing() {
       <div id="top" />
 
       {/* HERO */}
-      <section className="relative px-4 md:px-8 pb-12 md:pb-16">
-        <div className="mx-auto max-w-5xl text-center flex flex-col min-h-[calc(100svh-4rem)]">
-          <div className="flex-1 flex flex-col justify-center pt-8">
+      <section className="relative px-4 md:px-8 pt-24 md:pt-28 pb-6 md:pb-8">
+        <div className="mx-auto max-w-5xl text-center flex flex-col justify-center gap-10 md:gap-14 min-h-[calc(100svh-5rem)]">
+          {/* Headline + subtitle */}
+          <div>
             <HeadlineReveal
               key={`hero-${lang}`}
               text={t.heroH1}
@@ -1014,30 +1020,12 @@ export default function Landing() {
                 {t.heroSub}
               </p>
             </MotionReveal>
-            <MotionReveal delay={600} y={16} blur={false}>
-              <div className="mt-10 md:mt-12">
-                <RegistrationGuide t={t} reduceMotion={reduceMotion} onStart={handleStart} />
-              </div>
-            </MotionReveal>
           </div>
-        </div>
 
-        {/* Hero screenshot — A2 grow + B2 callouts + B3 tilt */}
-        <div className="mx-auto max-w-6xl mt-12 md:mt-16">
-          <HeroShotReveal
-            src={shotHome}
-            alt={t.heroImageAlt}
-            callouts={[
-              { label: a.callout2, ax: 24, ay: 42, lx: 14, ly: 52, testId: "callout-chat" },
-              { label: a.callout3, ax: 20, ay: 84, lx: 48, ly: 52, testId: "callout-pdf" },
-              { label: a.callout1, ax: 93, ay: 85, lx: 82, ly: 52, testId: "callout-price" },
-            ]}
-            kpis={[
-              { label: a.kpiSavings, value: 18, suffix: "%", x: 16, y: 104, testId: "kpi-savings" },
-              { label: a.kpiOrders, value: 1240, x: 50, y: 104, testId: "kpi-orders" },
-              { label: a.kpiSuppliers, value: 86, x: 84, y: 104, testId: "kpi-suppliers" },
-            ]}
-          />
+          {/* Invite-only guide — grouped directly below headline */}
+          <MotionReveal delay={600} y={16} blur={false}>
+            <RegistrationGuide t={t} reduceMotion={reduceMotion} onStart={handleStart} />
+          </MotionReveal>
         </div>
       </section>
 
@@ -1074,6 +1062,9 @@ export default function Landing() {
       >
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
+            <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
+              {t.eyebrowPillars}
+            </span>
             <h2
               className="text-3xl md:text-5xl font-semibold tracking-tight"
               data-testid="text-pillars-headline"
@@ -1084,7 +1075,7 @@ export default function Landing() {
               {t.pillarsSub}
             </p>
           </div>
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-2">
             {[
               {
                 title: t.pillarRestaurantTitle,
@@ -1094,6 +1085,7 @@ export default function Landing() {
                 cta: t.heroCtaRestaurant,
                 role: "restaurant" as const,
                 testid: "card-pillar-restaurant",
+                accent: "emerald",
               },
               {
                 title: t.pillarSupplierTitle,
@@ -1103,46 +1095,53 @@ export default function Landing() {
                 cta: t.heroCtaSupplier,
                 role: "supplier" as const,
                 testid: "card-pillar-supplier",
+                accent: "blue",
               },
             ].map((p, pIdx) => (
-              <MotionReveal key={p.role} delay={pIdx * 120}>
+              <MotionReveal key={p.testid} delay={pIdx * 120}>
               <div
-                className="h-full rounded-2xl border border-border bg-white dark:bg-card p-7 md:p-8 flex flex-col"
+                className={`h-full rounded-3xl p-8 md:p-10 flex flex-col border ${
+                  p.accent === "emerald"
+                    ? "bg-gradient-to-br from-emerald-50 to-teal-50/60 dark:from-emerald-950/30 dark:to-teal-950/20 border-emerald-100 dark:border-emerald-900/30"
+                    : "bg-gradient-to-br from-blue-50 to-indigo-50/60 dark:from-blue-950/30 dark:to-indigo-950/20 border-blue-100 dark:border-blue-900/30"
+                }`}
                 data-testid={p.testid}
               >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-10 w-10 rounded-xl border border-border bg-muted/30 flex items-center justify-center">
-                    <p.head className="h-5 w-5 text-foreground" />
-                  </div>
+                {/* Icon */}
+                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-7 ${
+                  p.accent === "emerald"
+                    ? "bg-emerald-600 dark:bg-emerald-500"
+                    : "bg-blue-600 dark:bg-blue-500"
+                }`}>
+                  <p.head className="h-7 w-7 text-white" />
+                </div>
+                <div className="flex flex-col flex-1">
                   <h3
-                    className="text-xl md:text-2xl font-semibold tracking-tight"
+                    className="text-2xl md:text-3xl font-semibold tracking-tight mb-2"
                     data-testid={`text-${p.testid}-title`}
                   >
                     {p.title}
                   </h3>
+                  <ul className="space-y-3.5 flex-1 mt-6">
+                    {p.bullets.map((b, i) => {
+                      const Icon = p.icons[i] ?? CheckCircle2;
+                      return (
+                        <li key={i} className="flex items-start gap-3">
+                          <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                            p.accent === "emerald"
+                              ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
+                              : "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400"
+                          }`}>
+                            <Icon className="h-3 w-3" />
+                          </div>
+                          <span className="text-sm md:text-base text-foreground/80 leading-relaxed">
+                            {b}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
-                <ul className="space-y-3 flex-1">
-                  {p.bullets.map((b, i) => {
-                    const Icon = p.icons[i] ?? CheckCircle2;
-                    return (
-                      <li key={i} className="flex items-start gap-3">
-                        <Icon className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
-                        <span className="text-sm md:text-base text-foreground/80 leading-relaxed">
-                          {b}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <Button
-                  variant="outline"
-                  className="mt-7 self-start gap-2"
-                  onClick={() => handleStart(p.role)}
-                  data-testid={`button-${p.testid}-cta`}
-                >
-                  {p.cta}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
               </div>
               </MotionReveal>
             ))}
@@ -1157,6 +1156,9 @@ export default function Landing() {
       >
         <div className="mx-auto max-w-5xl">
           <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
+            <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
+              {t.eyebrowSteps}
+            </span>
             <h2
               className="text-3xl md:text-5xl font-semibold tracking-tight"
               data-testid="text-steps-headline"
@@ -1191,6 +1193,7 @@ export default function Landing() {
         </div>
       </section>
 
+
       {/* FEATURES — Funktionen */}
       <section
         id="funktionen"
@@ -1198,6 +1201,9 @@ export default function Landing() {
       >
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
+            <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
+              {t.eyebrowFeatures}
+            </span>
             <h2
               className="text-3xl md:text-5xl font-semibold tracking-tight"
               data-testid="text-features-headline"
@@ -1299,18 +1305,30 @@ export default function Landing() {
           <div className="grid gap-6 md:grid-cols-3">
             {t.showcase.map((s, idx) => (
               <MotionReveal key={idx} delay={idx * 90}>
-                <figure
-                  className="flex flex-col"
-                  data-testid={`showcase-${idx}`}
-                >
-                  <TiltCard className="rounded-2xl border border-border overflow-hidden shadow-xl shadow-black/5 bg-card">
-                    <img
-                      src={s.img}
-                      alt={s.alt}
-                      className="w-full h-auto block"
-                      loading="lazy"
-                    />
-                  </TiltCard>
+                <figure className="flex flex-col" data-testid={`showcase-${idx}`}>
+                  {/* Wrapper owns the click — TiltCard doesn't forward onClick */}
+                  <div
+                    className="relative group cursor-zoom-in"
+                    onClick={() => setShowcaseLightbox({ img: s.img, alt: s.alt, caption: s.caption })}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === "Enter" && setShowcaseLightbox({ img: s.img, alt: s.alt, caption: s.caption })}
+                    aria-label={s.alt}
+                  >
+                    <TiltCard className="rounded-2xl border border-border overflow-hidden shadow-xl shadow-black/5 bg-card">
+                      <img
+                        src={s.img}
+                        alt={s.alt}
+                        className="w-full h-auto block"
+                        loading="lazy"
+                      />
+                    </TiltCard>
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      <div className="h-8 w-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                        <ZoomIn className="h-4 w-4 text-white" />
+                      </div>
+                    </div>
+                  </div>
                   <figcaption className="mt-4 text-sm text-muted-foreground leading-relaxed">
                     {s.caption}
                   </figcaption>
@@ -1321,6 +1339,43 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Showcase lightbox */}
+      {showcaseLightbox && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setShowcaseLightbox(null)}
+          data-testid="showcase-lightbox-overlay"
+        >
+          <div
+            className="relative max-w-4xl w-full bg-card rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowcaseLightbox(null)}
+              className="absolute top-3 right-3 z-10 h-9 w-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+              aria-label="Schließen"
+              data-testid="showcase-lightbox-close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <img
+              src={showcaseLightbox.img}
+              alt={showcaseLightbox.alt}
+              className="w-full h-auto block"
+              data-testid="showcase-lightbox-image"
+            />
+            <div className="px-6 py-5 border-t border-border">
+              <p className="font-semibold text-base text-foreground leading-snug" data-testid="showcase-lightbox-title">
+                {showcaseLightbox.alt}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground leading-relaxed" data-testid="showcase-lightbox-caption">
+                {showcaseLightbox.caption}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MOBILE */}
       <section
         id="mobile"
@@ -1330,6 +1385,9 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-12 lg:grid-cols-2 items-center">
             <MotionReveal>
+              <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
+                {t.eyebrowMobile}
+              </span>
               <h2
                 className="text-3xl md:text-5xl font-semibold tracking-tight"
                 data-testid="text-mobile-headline"
@@ -1445,6 +1503,9 @@ export default function Landing() {
       <section id="faq" className="scroll-mt-20 px-4 md:px-8 py-24 md:py-32">
         <div className="mx-auto max-w-3xl">
           <div className="text-center mb-12 md:mb-16">
+            <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
+              {t.eyebrowFaq}
+            </span>
             <h2
               className="text-3xl md:text-5xl font-semibold tracking-tight"
               data-testid="text-faq-headline"
@@ -1478,9 +1539,33 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* WHAT'S NEW STRIP */}
+      <section className="px-4 md:px-8 py-12 md:py-16 border-t border-border" data-testid="section-whats-new">
+        <div className="mx-auto max-w-3xl text-center">
+          <MotionReveal delay={0}>
+            <span className="inline-block mb-5 text-xs font-semibold uppercase tracking-widest text-primary">
+              {t.eyebrowWhatsNew}
+            </span>
+          </MotionReveal>
+          <div className="flex flex-wrap justify-center gap-2 md:gap-3">
+            {["Kostenkontrolle", "Push-Meldungen", "Bestellvorlagen", "Teilbestätigung", "Preisvergleich"].map((item, i) => (
+              <MotionReveal key={item} delay={i * 60}>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-4 py-1.5 text-sm font-medium text-foreground/80">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                  {item}
+                </span>
+              </MotionReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* FINAL CTA */}
       <section className="px-4 md:px-8 py-24 md:py-32">
         <div className="mx-auto max-w-3xl text-center">
+          <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
+            {t.eyebrowCta}
+          </span>
           <h2
             className="text-3xl md:text-5xl font-semibold tracking-tight"
             data-testid="text-cta-headline"
