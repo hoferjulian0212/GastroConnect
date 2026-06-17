@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/accordion";
 import Logo from "@/components/Logo";
 import shotHome from "@assets/landing-home.jpg";
+import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
 import shotMobileInbox from "@assets/landing-mobile-inbox.png";
@@ -267,6 +268,10 @@ const translations = {
     mobileHeadline: "Ihre Bestellungen — immer in der Tasche",
     mobileSub:
       "GastroConnect funktioniert auf jedem Gerät. Das mobile Erlebnis ist genauso vollständig wie am Desktop.",
+    lifestyleEyebrow: "Mitten im Service",
+    lifestyleHeadline: "Bestellen, wo gekocht wird",
+    lifestyleSub:
+      "Vom Posten in der Küche bis zum Lager — GastroConnect ist immer griffbereit. Bestellungen, Chat und Lieferscheine direkt auf dem Handy.",
     mobileRoleRestaurant: "Betrieb",
     mobileRoleSupplier: "Händler",
     mobileAltRestaurant: "GastroConnect mobil — Betrieb",
@@ -440,6 +445,10 @@ const translations = {
     mobileHeadline: "I tuoi ordini — sempre in tasca",
     mobileSub:
       "GastroConnect funziona su qualsiasi dispositivo. L'esperienza mobile è completa come quella desktop.",
+    lifestyleEyebrow: "Nel cuore del servizio",
+    lifestyleHeadline: "Ordina dove si cucina",
+    lifestyleSub:
+      "Dalla postazione in cucina al magazzino — GastroConnect è sempre a portata di mano. Ordini, chat e bolle di consegna direttamente sul telefono.",
     mobileRoleRestaurant: "Ristorante",
     mobileRoleSupplier: "Fornitore",
     mobileAltRestaurant: "GastroConnect mobile — Ristorante",
@@ -571,6 +580,10 @@ const translations = {
 
     mobileHeadline: "Your orders — always in your pocket",
     mobileSub: "GastroConnect runs on every device. The mobile experience is just as complete as the desktop one.",
+    lifestyleEyebrow: "Right in the service",
+    lifestyleHeadline: "Order where the cooking happens",
+    lifestyleSub:
+      "From the line in the kitchen to the storeroom — GastroConnect is always within reach. Orders, chat and delivery notes right on your phone.",
     mobileRoleRestaurant: "Restaurant",
     mobileRoleSupplier: "Supplier",
     mobileAltRestaurant: "GastroConnect mobile — Restaurant",
@@ -1137,6 +1150,75 @@ export default function Landing() {
               </MotionReveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* LIFESTYLE — chef using the app in the kitchen with floating phone mockup */}
+      <section className="px-4 md:px-8 py-12 md:py-20">
+        <div className="mx-auto max-w-6xl">
+          <MotionReveal>
+            <div
+              className="relative overflow-hidden rounded-3xl bg-neutral-900"
+              data-testid="section-lifestyle"
+            >
+              <img
+                src={shotChefPhone}
+                alt={t.lifestyleHeadline}
+                className="w-full h-[460px] md:h-[600px] object-cover object-center"
+                loading="lazy"
+                data-testid="img-lifestyle"
+              />
+              {/* legibility gradient — darker on the left under the phone, fading right */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-black/10 md:to-transparent" />
+
+              {/* Floating phone mockup on the left-middle — same frame as the mobile section */}
+              <div className="absolute left-5 sm:left-10 md:left-16 top-1/2 -translate-y-1/2">
+                <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
+                  <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
+                    <img
+                      src={shotMobileHome}
+                      alt={t.mobileAltRestaurant}
+                      className="absolute inset-0 w-full h-full object-cover object-top"
+                      loading="lazy"
+                      data-testid="img-lifestyle-phone"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Copy on the right — overlaid on desktop only (avoids mobile overlap) */}
+              <div className="hidden md:block absolute right-16 top-1/2 -translate-y-1/2 max-w-sm text-left">
+                <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-white/70">
+                  {t.lifestyleEyebrow}
+                </span>
+                <h2
+                  className="text-4xl font-semibold tracking-tight text-white leading-tight"
+                  data-testid="text-lifestyle-headline"
+                >
+                  {t.lifestyleHeadline}
+                </h2>
+                <p className="mt-4 text-base text-white/80 leading-relaxed">
+                  {t.lifestyleSub}
+                </p>
+              </div>
+            </div>
+
+            {/* Copy below image — mobile only (stacked, no overlap with phone) */}
+            <div className="md:hidden mt-6 px-1">
+              <span className="inline-block mb-2 text-[11px] font-semibold uppercase tracking-widest text-primary">
+                {t.lifestyleEyebrow}
+              </span>
+              <h2
+                className="text-2xl font-semibold tracking-tight leading-tight"
+                data-testid="text-lifestyle-headline-mobile"
+              >
+                {t.lifestyleHeadline}
+              </h2>
+              <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+                {t.lifestyleSub}
+              </p>
+            </div>
+          </MotionReveal>
         </div>
       </section>
 
