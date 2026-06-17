@@ -11,7 +11,6 @@ import { CardOutlineReveal } from "@/components/landing/CardOutlineReveal";
 import CountUp from "@/components/CountUp";
 import { HeadlineReveal } from "@/components/landing/HeadlineReveal";
 import { PinnedFeatureStory } from "@/components/landing/PinnedFeatureStory";
-import { useLandingSmoothScroll } from "@/components/landing/useLandingSmoothScroll";
 import {
   Sheet,
   SheetContent,
@@ -775,9 +774,6 @@ export default function Landing() {
   useEffect(() => {
     setMobileShotIndex(0);
   }, [mobileShotRole]);
-
-  // A1 — Lenis smooth scroll (landing only, desktop only, reduced-motion safe)
-  useLandingSmoothScroll();
 
   // B4 — Phone-frame parallax in mobile section (desktop-only motion)
   const phoneFrameRef = useRef<HTMLDivElement | null>(null);
