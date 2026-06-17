@@ -1109,7 +1109,7 @@ export default function Landing() {
               },
             ].map((p, pIdx) => (
               <MotionReveal key={p.testid} delay={pIdx * 120}>
-              <CardOutlineReveal>
+              <CardOutlineReveal strokeClassName="text-border">
               <div
                 className="h-full rounded-3xl p-8 md:p-10 flex flex-col border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800"
                 data-testid={p.testid}
