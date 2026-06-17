@@ -67,19 +67,25 @@ function fail(res: Response, code: string, to = "/admin/login") {
   res.redirect(`${to}?error=${encodeURIComponent(code)}`);
 }
 
-// Do NOT use req.session.regenerate() here: regeneration clears all existing
-// session fields including memberId, which must be preserved so an admin who
-// also has an active org-member session doesn't get logged out of the app.
-// Admin login is considered a trusted flow (Replit OIDC), so we accept the
-// minor session-fixation residual and simply add adminId to the live session.
+// Rotate the session ID on privileged admin-login (prevents session fixation).
+// Any existing member session (memberId) is captured before regeneration and
+// written back so an admin who is also a member stays logged into the app.
 async function establishAdminSession(req: Request, adminId: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    req.session.adminId = adminId;
-    req.session.save((err) => (err ? reject(err) : resolve()));
+    const existingMemberId = req.session.memberId;
+    req.session.regenerate((err) => {
+      if (err) return reject(err);
+      req.session.adminId = adminId;
+      if (existingMemberId) req.session.memberId = existingMemberId;
+      req.session.save((err2) => (err2 ? reject(err2) : resolve()));
+    });
   });
 }
 
-function buildApprovalRequestHtml(newAdmin: PlatformAdmin, adminsUrl: string): string {
+function buildApprovalRequestHtml(newAdmin: PlatformAdmin, adminsUrl: string, adminId: string): string {
+  // Deep-link with the pending admin's id so the panel can highlight it.
+  const approveUrl = `${adminsUrl}?action=approve&id=${encodeURIComponent(adminId)}`;
+  const denyUrl   = `${adminsUrl}?action=deny&id=${encodeURIComponent(adminId)}`;
   return `
 <!DOCTYPE html>
 <html lang="de">
@@ -101,12 +107,24 @@ function buildApprovalRequestHtml(newAdmin: PlatformAdmin, adminsUrl: string): s
         <tr><td style="padding:6px 0;color:#888;">Name</td><td style="padding:6px 0;">${newAdmin.name}</td></tr>
         ${newAdmin.email ? `<tr><td style="padding:6px 0;color:#888;">E-Mail</td><td style="padding:6px 0;">${newAdmin.email}</td></tr>` : ""}
       </table>
-      <p style="margin:0 0 16px;color:#555;font-size:14px;">Bitte melden Sie sich im Admin-Panel an, um den Antrag zu genehmigen oder abzulehnen:</p>
-      <div style="text-align:center;margin:0 0 24px;">
-        <a href="${adminsUrl}" style="display:inline-block;background:#161921;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;">
-          Admin-Panel öffnen →
-        </a>
-      </div>
+      <p style="margin:0 0 16px;color:#555;font-size:14px;font-weight:600;">Bitte wählen Sie eine Aktion:</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+        <tr>
+          <td style="padding:0 8px 0 0;width:50%;">
+            <a href="${approveUrl}" style="display:block;text-align:center;background:#16a34a;color:#fff;text-decoration:none;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:600;">
+              ✓ Genehmigen
+            </a>
+          </td>
+          <td style="padding:0 0 0 8px;width:50%;">
+            <a href="${denyUrl}" style="display:block;text-align:center;background:#dc2626;color:#fff;text-decoration:none;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:600;">
+              ✗ Ablehnen
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0 0 8px;font-size:12px;color:#aaa;text-align:center;">
+        Diese Links öffnen das Admin-Panel — Sie müssen als Admin eingeloggt sein.
+      </p>
       <p style="margin:0;font-size:12px;color:#aaa;text-align:center;">
         Sie erhalten diese E-Mail, weil Sie als GastroConnect Platform-Admin genehmigt sind.
       </p>
@@ -124,7 +142,7 @@ async function sendApprovalRequestEmails(newAdmin: PlatformAdmin, baseUrl?: stri
     await sendEmail({
       to: admin.email,
       subject: `GastroConnect Admin: Zugriffsantrag von @${newAdmin.replitUsername}`,
-      html: buildApprovalRequestHtml(newAdmin, adminsUrl),
+      html: buildApprovalRequestHtml(newAdmin, adminsUrl, newAdmin.id),
     });
   }
 }

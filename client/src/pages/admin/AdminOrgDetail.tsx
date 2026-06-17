@@ -43,9 +43,13 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data, isLoading } = useQuery<OrgDetailResponse>({
+  const { data, isLoading, isError } = useQuery<OrgDetailResponse>({
     queryKey: ["/api/admin/orgs", params.id, "members"],
-    queryFn: () => fetch(`/api/admin/orgs/${params.id}/members`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/admin/orgs/${params.id}/members`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json() as Promise<OrgDetailResponse>;
+    },
     retry: false,
   });
 
@@ -76,10 +80,13 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
     );
   }
 
-  if (!data) {
+  if (isError || !data?.org) {
     return (
       <AdminLayout>
-        <p className="text-white/50">Organisation nicht gefunden.</p>
+        <div className="space-y-4">
+          <AdminBreadcrumb items={[{ label: "Organisationen", href: "/admin" }, { label: "Nicht gefunden" }]} />
+          <p className="text-white/50">Organisation nicht gefunden oder Sie haben keinen Zugriff.</p>
+        </div>
       </AdminLayout>
     );
   }
