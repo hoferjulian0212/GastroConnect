@@ -5,6 +5,7 @@ import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
   orderTemplates, orderTemplateItems, costSettings, overnightStays, minimumOrderValues, supplierRatings, monthlyReports, priceChangeLog,
+  platformAdmins, type PlatformAdmin, type InsertPlatformAdmin,
   type User, type InsertUser, type Product, type InsertProduct,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type CartItem, type InsertCartItem, type Conversation, type InsertConversation,
@@ -266,6 +267,16 @@ export interface IStorage {
   getOauthAccount(provider: OauthProvider, providerUserId: string): Promise<OauthAccount | undefined>;
   getOauthAccountsForMember(memberId: string): Promise<OauthAccount[]>;
   createOauthAccount(data: InsertOauthAccount): Promise<OauthAccount>;
+
+  // Platform admins (GastroConnect system owners — separate from org-level roles)
+  runAdminMigration(): Promise<void>;
+  getPlatformAdmin(id: string): Promise<PlatformAdmin | undefined>;
+  getPlatformAdminByReplitUserId(replitUserId: string): Promise<PlatformAdmin | undefined>;
+  getPlatformAdmins(): Promise<PlatformAdmin[]>;
+  getApprovedPlatformAdmins(): Promise<PlatformAdmin[]>;
+  createPlatformAdmin(data: InsertPlatformAdmin): Promise<PlatformAdmin>;
+  updatePlatformAdmin(id: string, data: Partial<InsertPlatformAdmin>): Promise<PlatformAdmin | undefined>;
+  getAllOrgsWithMemberCount(): Promise<Array<User & { memberCount: number }>>;
 
   // Delivery Schedules
   getDeliverySchedules(supplierId: string): Promise<(DeliverySchedule & { restaurant: User })[]>;
@@ -4604,6 +4615,67 @@ export class DatabaseStorage implements IStorage {
   async deleteAiChat(id: string, userId: string): Promise<void> {
     // Owner-scoped delete; messages cascade via FK onDelete.
     await db.delete(aiChats).where(and(eq(aiChats.id, id), eq(aiChats.userId, userId)));
+  }
+
+  // ===== Platform Admins =====
+
+  async runAdminMigration(): Promise<void> {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS platform_admins (
+        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        replit_user_id text NOT NULL,
+        replit_username text NOT NULL,
+        name text NOT NULL,
+        email text,
+        status varchar(20) NOT NULL DEFAULT 'pending',
+        approved_by text,
+        approved_at timestamp,
+        last_login_at timestamp,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_platform_admins_replit_user_id ON platform_admins (replit_user_id)`);
+    console.log("[admin] platform_admins table ready");
+  }
+
+  async getPlatformAdmin(id: string): Promise<PlatformAdmin | undefined> {
+    const [row] = await db.select().from(platformAdmins).where(eq(platformAdmins.id, id)).limit(1);
+    return row;
+  }
+
+  async getPlatformAdminByReplitUserId(replitUserId: string): Promise<PlatformAdmin | undefined> {
+    const [row] = await db.select().from(platformAdmins).where(eq(platformAdmins.replitUserId, replitUserId)).limit(1);
+    return row;
+  }
+
+  async getPlatformAdmins(): Promise<PlatformAdmin[]> {
+    return db.select().from(platformAdmins).orderBy(desc(platformAdmins.createdAt));
+  }
+
+  async getApprovedPlatformAdmins(): Promise<PlatformAdmin[]> {
+    return db.select().from(platformAdmins)
+      .where(eq(platformAdmins.status, "approved"))
+      .orderBy(desc(platformAdmins.createdAt));
+  }
+
+  async createPlatformAdmin(data: InsertPlatformAdmin): Promise<PlatformAdmin> {
+    const [created] = await db.insert(platformAdmins).values(data).returning();
+    return created;
+  }
+
+  async updatePlatformAdmin(id: string, data: Partial<InsertPlatformAdmin>): Promise<PlatformAdmin | undefined> {
+    const [updated] = await db.update(platformAdmins).set(data).where(eq(platformAdmins.id, id)).returning();
+    return updated;
+  }
+
+  async getAllOrgsWithMemberCount(): Promise<Array<User & { memberCount: number }>> {
+    const allUsers = await db.select().from(users).orderBy(users.name);
+    const allMembers = await db.select({ organizationId: members.organizationId }).from(members);
+    const countMap = new Map<string, number>();
+    for (const m of allMembers) {
+      countMap.set(m.organizationId, (countMap.get(m.organizationId) ?? 0) + 1);
+    }
+    return allUsers.map(u => ({ ...u, memberCount: countMap.get(u.id) ?? 0 }));
   }
 }
 

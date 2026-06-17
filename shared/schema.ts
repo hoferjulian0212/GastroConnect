@@ -1142,6 +1142,28 @@ export const oauthAccounts = pgTable("oauth_accounts", {
 
 // A Vertreter (sales rep) is a member of a supplier org. This assignment maps
 // that rep to the restaurant orgs (Betriebe) they are responsible for.
+// Platform-level admin accounts. These are the GastroConnect system owners
+// who authenticate via Replit OIDC. Stored separately from the org/member
+// system. Status: 'pending' (awaiting approval) | 'approved' | 'denied'.
+// The table is created by runAdminMigration() (idempotent DDL), not db:push.
+export const platformAdmins = pgTable("platform_admins", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  replitUserId: text("replit_user_id").notNull().unique(),
+  replitUsername: text("replit_username").notNull(),
+  name: text("name").notNull(),
+  email: text("email"),
+  // 'pending' | 'approved' | 'denied'
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  lastLoginAt: timestamp("last_login_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPlatformAdminSchema = createInsertSchema(platformAdmins).omit({ id: true, createdAt: true });
+export type PlatformAdmin = typeof platformAdmins.$inferSelect;
+export type InsertPlatformAdmin = z.infer<typeof insertPlatformAdminSchema>;
+
 export const vertreterAssignments = pgTable("vertreter_assignments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   memberId: varchar("member_id", { length: 36 }).notNull().references(() => members.id),

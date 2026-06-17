@@ -1,6 +1,6 @@
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UserProvider, useUser } from "@/context/UserContext";
@@ -42,6 +42,10 @@ import AuthClaim from "@/pages/AuthClaim";
 import AuthReset from "@/pages/AuthReset";
 import Signup from "@/pages/Signup";
 import AuthVerify from "@/pages/AuthVerify";
+import AdminLogin from "@/pages/admin/AdminLogin";
+import AdminOrgs from "@/pages/admin/AdminOrgs";
+import AdminOrgDetail from "@/pages/admin/AdminOrgDetail";
+import AdminAdmins from "@/pages/admin/AdminAdmins";
 import NotFound from "@/pages/not-found";
 import RestaurantHome from "@/pages/restaurant/Home";
 import RestaurantInbox from "@/pages/restaurant/Inbox";
@@ -168,6 +172,58 @@ function LanguageSync() {
   }, [currentUser?.id, currentUser?.language, lang]);
 
   return null;
+}
+
+// Shown when a platform admin is impersonating a member. Polls lightly and
+// provides a one-click exit that returns the admin to /admin.
+function ImpersonationBanner() {
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+
+  const { data } = useQuery<{
+    impersonating: boolean;
+    memberName?: string;
+    orgName?: string;
+    orgRole?: string;
+  }>({
+    queryKey: ["/api/admin/impersonation-status"],
+    refetchInterval: 15000,
+    staleTime: 10000,
+    retry: false,
+  });
+
+  const exitMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/impersonate/exit"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/impersonation-status"] });
+      setLocation("/admin");
+    },
+  });
+
+  if (!data?.impersonating) return null;
+
+  return (
+    <div className="fixed top-0 inset-x-0 z-[999] flex items-center justify-between gap-3 px-4 py-2.5 bg-[#F26207] text-white text-sm font-medium shadow-lg">
+      <span className="flex items-center gap-2 truncate">
+        <span className="hidden sm:inline">🔍</span>
+        <span>
+          Sie imitieren <strong>{data.memberName}</strong>
+          {data.orgName ? ` · ${data.orgName}` : ""}
+          {data.orgRole ? ` (${data.orgRole})` : ""}
+        </span>
+      </span>
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={() => exitMutation.mutate()}
+        disabled={exitMutation.isPending}
+        className="shrink-0 h-7 px-3 text-xs bg-white/20 hover:bg-white/30 text-white border-0"
+        data-testid="button-exit-impersonation"
+      >
+        Impersonierung beenden
+      </Button>
+    </div>
+  );
 }
 
 function CartButton() {
@@ -617,7 +673,22 @@ function AppLayout() {
     return <About />;
   }
 
-  if (pathOnly === "/admin") {
+  // Platform admin panel — completely separate auth, no org session needed.
+  if (pathOnly === "/admin/login") {
+    return <AdminLogin />;
+  }
+  if (pathOnly === "/admin" || pathOnly === "/admin/") {
+    return <AdminOrgs />;
+  }
+  if (pathOnly === "/admin/admins") {
+    return <AdminAdmins />;
+  }
+  if (pathOnly.startsWith("/admin/orgs/")) {
+    const orgId = pathOnly.replace("/admin/orgs/", "").split("/")[0];
+    return <AdminOrgDetail params={{ id: orgId }} />;
+  }
+  // Legacy PMS admin page (simple route, requires normal session).
+  if (pathOnly === "/admin/pms") {
     return <AdminPmsRequests />;
   }
 
@@ -647,6 +718,7 @@ function AppLayout() {
     <>
       <UserLoader />
       <LanguageSync />
+      <ImpersonationBanner />
         <div className="flex h-dvh w-full">
           <div ref={scrollContainerRef} data-app-scroll className={`flex flex-col flex-1 min-w-0 ${isInboxPage ? 'overflow-hidden' : 'overflow-auto overscroll-contain'} ${isInChat ? 'px-0 pt-0 md:px-6 md:pt-6' : 'px-3 md:px-6 pt-3 md:pt-6'}`}>
             <div className={`dark hidden md:block bg-[#161921] shrink-0 rounded-3xl overflow-hidden mb-3 md:mb-4 ${isInChat || isDetailPage ? 'md:block' : ''}`} data-testid="app-header-shell">

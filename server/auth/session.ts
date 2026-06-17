@@ -8,8 +8,14 @@ import { pool } from "../db";
 declare module "express-session" {
   interface SessionData {
     memberId?: string;
-    // Short-lived CSRF state for the OAuth authorization-code round trip.
+    // Short-lived CSRF state for the member OAuth authorization-code round trip.
     oauthState?: string;
+    // Platform admin session (separate from member sessions).
+    adminId?: string;
+    // When set, the admin is impersonating this member.
+    impersonatedMemberId?: string;
+    // CSRF state for the admin Replit OAuth round trip.
+    adminOauthState?: string;
   }
 }
 
