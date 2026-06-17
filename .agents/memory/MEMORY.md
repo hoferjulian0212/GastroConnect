@@ -12,4 +12,4 @@
 - [Inbox reply mechanism](inbox-reply-mechanism.md) — replies/quotes are JSON in message.content (refType/refId/refLabel/refPreview), NOT a replyToId column; don't "fix" by adding a column.
 - [Mobile full-screen inbox chat](mobile-fullscreen-chat.md) — isInChat gates App.tsx padding/nav + full-bleed Card in both inboxes; hide bottom nav so it doesn't overlap the floating input pill.
 - [Admin panel Replit OIDC login](admin-replit-oidc.md) — /admin logs in via Replit OIDC as a public PKCE client keyed by REPL_ID (no registered OAuth App); blueprint scaffold is unused/uninstallable, delete it.
-- [Admin OAuth callback URL](admin-oauth-callback.md) — use REPLIT_DEV_DOMAIN env var, not x-forwarded-host, to build the callback URI.
+- [Admin OAuth (Replit OIDC) gotchas](admin-oauth-callback.md) — Replit OIDC rejects prompt=select_account (use prompt=login); redirect_uri must use REPLIT_DEV_DOMAIN.

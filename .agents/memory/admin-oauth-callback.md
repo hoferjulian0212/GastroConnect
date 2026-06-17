@@ -1,14 +1,26 @@
 ---
-name: Admin OAuth callback URL
-description: Why REPLIT_DEV_DOMAIN must be used for the Replit OIDC redirect_uri, not x-forwarded headers.
+name: Admin OAuth (Replit OIDC) gotchas
+description: Two distinct bugs that broke the admin "Log in with Replit" flow — prompt value + callback URL.
 ---
 
-# Admin OAuth callback URL
+# Admin OAuth (Replit OIDC) gotchas
 
-**Rule:** `callbackUrl()` in `server/auth/adminAuth.ts` must use `process.env.REPLIT_DEV_DOMAIN` as the primary source for the redirect URI base, falling back to `x-forwarded-host` only when the env var is absent.
+The admin panel uses a custom Replit OIDC PKCE flow in `server/auth/adminAuth.ts` (not the blueprint). Two separate things broke "Mit Replit anmelden":
 
-**Why:** When `curl` or the Replit-internal routing hits the Express server on `localhost:5000`, the `x-forwarded-host` header is absent or contains the internal host. The OIDC `redirect_uri` was built as `http://localhost:5000/api/admin/auth/callback` — a URL Replit's OAuth server redirected back to, but which is unreachable from any real browser. The OAuth callback never arrived, and the user was left on a broken page.
+## 1. `prompt=select_account` is rejected by Replit OIDC (the real culprit)
 
-`REPLIT_DEV_DOMAIN` is always injected by the Replit platform (e.g. `abc-00-xyz.riker.replit.dev`) and is the correct public hostname in both dev and preview environments.
+Replit's authorization endpoint (`https://replit.com/oidc/auth`) returns
+`error=invalid_request&error_description=unsupported prompt value requested`
+for `prompt=select_account`. It immediately 303s back to the redirect_uri with that error — the user never sees a Replit login screen.
 
-**How to apply:** Any server-side code that needs to construct an absolute self-referencing URL (OAuth callbacks, email links with full domain, webhook endpoints) should prefer `REPLIT_DEV_DOMAIN` over request headers.
+**Accepted prompt values:** `login`, `consent`, `login consent`, `none`. Use `prompt=login`.
+
+**Why:** `select_account` is a valid OIDC value in general but Replit's IdP does not implement it. The discovery doc does NOT advertise `prompt_values_supported`, so you must test empirically (curl the auth endpoint and inspect the `location` header for `error_description`).
+
+**How to apply:** When building any Replit OIDC authorize URL by hand, stick to `prompt=login`/`consent`/`none`. Never `select_account`.
+
+## 2. redirect_uri must use REPLIT_DEV_DOMAIN, not request headers
+
+`callbackUrl()` must prefer `process.env.REPLIT_DEV_DOMAIN` for the redirect_uri base. When the server is hit on `localhost:5000` (curl, internal routing) the `x-forwarded-host` header is absent, producing an unreachable `http://localhost:5000/...` callback. `REPLIT_DEV_DOMAIN` is the canonical public hostname in dev/preview.
+
+**Note:** `REPLIT_DEV_DOMAIN` is dev-only; a production deployment must fall back to the forwarded host (the fallback branch in `callbackUrl()` handles this).

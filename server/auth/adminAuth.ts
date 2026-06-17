@@ -209,7 +209,9 @@ export function registerAdminAuthRoutes(app: Express) {
         response_type: "code",
         scope: "openid profile email",
         state,
-        prompt: "select_account",
+        // Replit OIDC rejects "select_account" (invalid_request: unsupported
+        // prompt value). "login" is accepted and forces a fresh sign-in.
+        prompt: "login",
         code_challenge: challenge,
         code_challenge_method: "S256",
       });
