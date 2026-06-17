@@ -6,7 +6,7 @@ import { randomBytes, createHash } from "crypto";
 import rateLimit from "express-rate-limit";
 import { storage } from "../storage";
 import { requirePlatformAdmin, loadAdminAuth } from "./middleware";
-import { sendEmail, renderNotificationEmail } from "../emailService";
+import { sendEmail, renderNotificationEmail, isEmailConfigured } from "../emailService";
 import type { PlatformAdmin } from "@shared/schema";
 
 const adminLimiter = rateLimit({
@@ -518,6 +518,22 @@ export function registerAdminAuthRoutes(app: Express) {
 
       const adminName = req.platformAdmin?.admin.name ?? req.platformAdmin?.admin.replitUsername ?? "admin";
       console.log(`[admin] org.verified orgId=${orgId} by=${adminName} ip=${req.ip}`);
+
+      // Fire-and-forget welcome email — must not block the response or surface a 500.
+      if (isEmailConfigured() && org.email) {
+        const roleLabel = org.role === "restaurant" ? "Restaurant" : "Lieferant";
+        const companyName = org.companyName || org.name;
+        sendEmail({
+          to: org.email,
+          subject: "Ihr GastroConnect-Konto wurde freigeschaltet",
+          html: renderNotificationEmail({
+            title: "Willkommen bei GastroConnect!",
+            message: `Hallo,\n\nIhr ${roleLabel}-Konto für ${companyName} wurde von unserem Team überprüft und freigeschaltet. Sie können sich ab sofort anmelden und GastroConnect in vollem Umfang nutzen.`,
+            linkPath: "/auth/login",
+          }),
+        }).catch(err => console.error("[admin] welcome email failed", err));
+      }
+
       res.json({ ok: true });
     } catch (err) {
       console.error("[admin] org verify error", err);
