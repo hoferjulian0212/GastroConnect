@@ -193,8 +193,13 @@ function ImpersonationBanner() {
   const exitMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/admin/impersonate/exit"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/impersonation-status"] });
+      // Navigate to /admin FIRST so the admin early-return in App fires and
+      // UserLoader (which would redirect back to the member area) is unmounted
+      // before it can react to the location change.
       setLocation("/admin");
+      // Then clear stale member-session caches in the background.
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/impersonation-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
   });
 
