@@ -467,4 +467,48 @@ export function registerAdminAuthRoutes(app: Express) {
       res.status(500).json({ error: "server_error" });
     }
   });
+
+  // ── Manually approve (verify) a pending organisation ─────────────────────
+  app.patch("/api/admin/orgs/:id/verify", requirePlatformAdmin, async (req, res) => {
+    try {
+      const orgId = String(req.params.id);
+      const org = await storage.getUser(orgId);
+      if (!org) return res.status(404).json({ error: "not_found" });
+      if (org.verifiedAt) return res.status(409).json({ error: "already_verified" });
+
+      // Verify the org and all its members that have a password but are still unverified.
+      await storage.markOrganizationVerified(orgId);
+      const orgMembers = await storage.getMembers(orgId);
+      await Promise.all(
+        orgMembers
+          .filter(m => m.passwordHash && !m.emailVerifiedAt)
+          .map(m => storage.updateMemberAuth(m.id, { emailVerifiedAt: new Date() }))
+      );
+
+      const adminName = req.platformAdmin?.admin.name ?? req.platformAdmin?.admin.replitUsername ?? "admin";
+      console.log(`[admin] org.verified orgId=${orgId} by=${adminName} ip=${req.ip}`);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin] org verify error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // ── Delete (reject) a pending organisation ───────────────────────────────
+  app.delete("/api/admin/orgs/:id", requirePlatformAdmin, async (req, res) => {
+    try {
+      const orgId = String(req.params.id);
+      const org = await storage.getUser(orgId);
+      if (!org) return res.status(404).json({ error: "not_found" });
+      if (org.verifiedAt) return res.status(409).json({ error: "org_already_verified", message: "Verified organisations cannot be deleted via this endpoint." });
+
+      await storage.deleteOrganizationAndMembers(orgId);
+      const adminName = req.platformAdmin?.admin.name ?? req.platformAdmin?.admin.replitUsername ?? "admin";
+      console.log(`[admin] org.deleted orgId=${orgId} name=${org.name} by=${adminName} ip=${req.ip}`);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin] org delete error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
 }

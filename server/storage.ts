@@ -277,6 +277,7 @@ export interface IStorage {
   getPendingOrgCount(): Promise<number>;
   createPlatformAdmin(data: InsertPlatformAdmin): Promise<PlatformAdmin>;
   updatePlatformAdmin(id: string, data: Partial<InsertPlatformAdmin>): Promise<PlatformAdmin | undefined>;
+  deleteOrganizationAndMembers(orgId: string): Promise<void>;
   getAllOrgsWithMemberCount(): Promise<Array<User & { memberCount: number }>>;
 
   // Delivery Schedules
@@ -2178,6 +2179,16 @@ export class DatabaseStorage implements IStorage {
 
   async markOrganizationVerified(id: string): Promise<void> {
     await db.update(users).set({ verifiedAt: new Date() }).where(eq(users.id, id));
+  }
+
+  async deleteOrganizationAndMembers(orgId: string): Promise<void> {
+    // Clean up in dependency order: verifications → members → org.
+    const orgMembers = await db.select({ id: members.id }).from(members).where(eq(members.organizationId, orgId));
+    for (const m of orgMembers) {
+      await db.delete(emailVerifications).where(eq(emailVerifications.memberId, m.id));
+    }
+    await db.delete(members).where(eq(members.organizationId, orgId));
+    await db.delete(users).where(eq(users.id, orgId));
   }
 
   async createBusinessSignup(data: { org: InsertUser; admin: Omit<InsertMember, "organizationId"> & { passwordHash: string } }): Promise<{ org: User; member: Member }> {

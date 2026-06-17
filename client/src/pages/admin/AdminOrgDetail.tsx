@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout, AdminBreadcrumb } from "./AdminLayout";
@@ -8,7 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   Building2, User, Mail, Phone, MapPin, CheckCircle2, Clock,
-  Users, ArrowLeft, UserCheck,
+  Users, UserCheck, ShieldCheck, Trash2, AlertTriangle,
 } from "lucide-react";
 
 interface OrgMember {
@@ -42,6 +43,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const { data, isLoading, isError } = useQuery<OrgDetailResponse>({
     queryKey: ["/api/admin/orgs", params.id, "members"],
@@ -59,12 +61,37 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/impersonation-status"] });
       toast({ title: "Impersonierung gestartet", description: "Sie agieren jetzt als dieses Mitglied." });
-      // Navigate to the member's role home so the full app loads as that member.
       const orgRole = result?.orgRole as string | undefined;
       setLocation(orgRole === "supplier" ? "/supplier" : "/restaurant");
     },
     onError: () => {
       toast({ title: "Fehler", description: "Impersonierung fehlgeschlagen.", variant: "destructive" });
+    },
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", `/api/admin/orgs/${params.id}/verify`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orgs", params.id, "members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orgs/pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orgs"] });
+      toast({ title: "Organisation freigegeben", description: "Die Organisation und ihre Mitglieder wurden verifiziert." });
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Freigabe fehlgeschlagen.", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/admin/orgs/${params.id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orgs/pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orgs"] });
+      toast({ title: "Organisation gelöscht", description: "Die Organisation wurde entfernt." });
+      setLocation("/admin");
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
     },
   });
 
@@ -93,6 +120,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
 
   const { org, members } = data;
   const displayName = org.companyName || org.name;
+  const isPending = !org.verifiedAt;
 
   return (
     <AdminLayout>
@@ -102,6 +130,75 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
       ]} />
 
       <div className="space-y-6">
+        {/* Pending action banner */}
+        {isPending && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <Clock className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-300">Warten auf Freigabe</p>
+                <p className="text-xs text-amber-400/70 mt-0.5">
+                  Diese Organisation hat sich selbst registriert und wartet auf manuelle Überprüfung.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {confirmDelete ? (
+                <>
+                  <span className="text-xs text-red-400 flex items-center gap-1">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Wirklich löschen?
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => { deleteMutation.mutate(); setConfirmDelete(false); }}
+                    disabled={deleteMutation.isPending}
+                    className="h-8 px-3 text-xs"
+                    data-testid="button-confirm-delete-org"
+                  >
+                    Ja, löschen
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setConfirmDelete(false)}
+                    className="h-8 px-3 text-xs text-white/50 hover:text-white hover:bg-white/5"
+                    data-testid="button-cancel-delete-org"
+                  >
+                    Abbrechen
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setConfirmDelete(true)}
+                    disabled={verifyMutation.isPending}
+                    className="h-8 px-3 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20"
+                    data-testid="button-reject-org"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                    Ablehnen
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => verifyMutation.mutate()}
+                    disabled={verifyMutation.isPending}
+                    className="h-8 px-4 text-xs bg-emerald-600 hover:bg-emerald-500 text-white border-0"
+                    data-testid="button-approve-org"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
+                    {verifyMutation.isPending ? "Freigeben…" : "Freigeben"}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Org info card */}
         <div className="bg-[#161921] border border-white/10 rounded-2xl p-5">
           <div className="flex items-start gap-4">
             <div className="h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
@@ -152,6 +249,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
           </div>
         </div>
 
+        {/* Members */}
         <div>
           <h2 className="text-sm font-semibold text-white/40 uppercase tracking-wider mb-3 flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -177,6 +275,12 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-white text-sm">{member.name}</span>
                     <RoleBadge role={member.role} />
+                    {!member.emailVerifiedAt && (
+                      <span className="text-[10px] text-amber-400 flex items-center gap-0.5">
+                        <Clock className="h-3 w-3" />
+                        Unverifiziert
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-white/40 truncate">{member.email ?? "—"}</p>
                 </div>
@@ -190,8 +294,9 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                     size="sm"
                     variant="outline"
                     onClick={() => impersonateMutation.mutate(member.id)}
-                    disabled={impersonateMutation.isPending}
-                    className="h-7 px-3 text-xs border-white/20 bg-white/5 hover:bg-white/10 text-white"
+                    disabled={impersonateMutation.isPending || isPending}
+                    title={isPending ? "Organisation muss zuerst freigegeben werden" : undefined}
+                    className="h-7 px-3 text-xs border-white/20 bg-white/5 hover:bg-white/10 text-white disabled:opacity-30"
                     data-testid={`button-impersonate-${member.id}`}
                   >
                     <UserCheck className="h-3 w-3 mr-1" />
