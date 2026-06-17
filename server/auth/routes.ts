@@ -249,6 +249,7 @@ export function registerAuthRoutes(app: Express) {
 
       let emailed = false;
       if (isEmailConfigured()) {
+        // 1. Verification email to the new owner.
         emailed = await sendEmail({
           to: normalizedEmail,
           subject: "GastroConnect: E-Mail bestätigen",
@@ -258,6 +259,25 @@ export function registerAuthRoutes(app: Express) {
             linkPath: `/auth/verify?token=${raw}`,
           }),
         });
+
+        // 2. Notify all approved platform admins that a new org is awaiting review.
+        const approvedAdmins = await storage.getApprovedPlatformAdmins();
+        const roleLabel = role === "restaurant" ? "Restaurant" : "Lieferant";
+        await Promise.all(
+          approvedAdmins
+            .filter((a) => !!a.email)
+            .map((a) =>
+              sendEmail({
+                to: a.email!,
+                subject: `GastroConnect Admin: Neues Business wartet auf Freigabe – ${companyName}`,
+                html: renderNotificationEmail({
+                  title: "Neues Unternehmen wartet auf Freigabe",
+                  message: `Ein neues Unternehmen hat sich registriert und wartet auf Ihre Freigabe.\n\nName: ${companyName}\nRolle: ${roleLabel}\nKontakt: ${normalizedEmail}\n\nMelden Sie sich im Admin-Panel an, um den Account zu überprüfen.`,
+                  linkPath: `/admin/orgs/${org.id}`,
+                }),
+              })
+            )
+        );
       }
       logAuthEvent("register.requested", req, { memberId: member.id, orgId: org.id, role, emailed });
       res.json({ ok: true, emailed });
