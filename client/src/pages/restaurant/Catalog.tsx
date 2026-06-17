@@ -333,7 +333,7 @@ function CartPillDesktop({ lang, setLocation }: { lang: string; setLocation: (p:
 
   if (!count) return null;
   return (
-    <div className="hidden md:flex fixed bottom-6 right-6 z-30 flex-col items-end pointer-events-none">
+    <div className="hidden md:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex-col items-center pointer-events-none">
       <AnimatePresence>
         {open && (
           <>
@@ -352,7 +352,7 @@ function CartPillDesktop({ lang, setLocation }: { lang: string; setLocation: (p:
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.96 }}
               transition={{ type: "spring", stiffness: 420, damping: 32 }}
-              style={{ transformOrigin: "bottom right" }}
+              style={{ transformOrigin: "bottom center" }}
               role="dialog"
               aria-modal="true"
               aria-label={lang === "de" ? "Warenkorb" : "Carrello"}
