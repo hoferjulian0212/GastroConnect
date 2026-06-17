@@ -1102,20 +1102,12 @@ export default function Landing() {
               <MotionReveal key={p.testid} delay={pIdx * 120}>
               <CardOutlineReveal>
               <div
-                className={`h-full rounded-3xl p-8 md:p-10 flex flex-col border ${
-                  p.accent === "emerald"
-                    ? "bg-gradient-to-br from-emerald-50 to-teal-50/60 dark:from-emerald-950/30 dark:to-teal-950/20 border-emerald-100 dark:border-emerald-900/30"
-                    : "bg-gradient-to-br from-blue-50 to-indigo-50/60 dark:from-blue-950/30 dark:to-indigo-950/20 border-blue-100 dark:border-blue-900/30"
-                }`}
+                className="h-full rounded-3xl p-8 md:p-10 flex flex-col border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800"
                 data-testid={p.testid}
               >
                 {/* Icon */}
-                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-7 ${
-                  p.accent === "emerald"
-                    ? "bg-emerald-600 dark:bg-emerald-500"
-                    : "bg-blue-600 dark:bg-blue-500"
-                }`}>
-                  <p.head className="h-7 w-7 text-white" />
+                <div className="h-14 w-14 rounded-2xl flex items-center justify-center mb-7 bg-black dark:bg-white">
+                  <p.head className="h-7 w-7 text-white dark:text-black" />
                 </div>
                 <div className="flex flex-col flex-1">
                   <h3
@@ -1129,11 +1121,7 @@ export default function Landing() {
                       const Icon = p.icons[i] ?? CheckCircle2;
                       return (
                         <li key={i} className="flex items-start gap-3">
-                          <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                            p.accent === "emerald"
-                              ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
-                              : "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400"
-                          }`}>
+                          <div className="h-5 w-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300">
                             <Icon className="h-3 w-3" />
                           </div>
                           <span className="text-sm md:text-base text-foreground/80 leading-relaxed">
