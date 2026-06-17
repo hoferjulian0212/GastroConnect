@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { AdminLayout } from "./AdminLayout";
 import { Input } from "@/components/ui/input";
@@ -19,14 +19,27 @@ interface Org {
 
 export default function AdminOrgs() {
   const [, setLocation] = useLocation();
+  const searchStr = useSearch();
+  const params = new URLSearchParams(searchStr);
+  const filterParam = params.get("filter");
+
   const [search, setSearch] = useState("");
+  const [pendingOnly, setPendingOnly] = useState(filterParam === "pending");
+
+  // Sync the pending filter if the URL param changes (e.g. badge click).
+  useEffect(() => {
+    setPendingOnly(filterParam === "pending");
+  }, [filterParam]);
 
   const { data: orgs = [], isLoading } = useQuery<Org[]>({
     queryKey: ["/api/admin/orgs"],
     staleTime: 30000,
   });
 
+  const pendingOrgs = orgs.filter(o => !o.verifiedAt);
+
   const filtered = orgs.filter(o => {
+    if (pendingOnly && o.verifiedAt) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -42,9 +55,28 @@ export default function AdminOrgs() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Organisationen</h1>
-          <p className="text-white/40 text-sm mt-1">{orgs.length} Organisationen insgesamt</p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Organisationen</h1>
+            <p className="text-white/40 text-sm mt-1">{orgs.length} Organisationen insgesamt</p>
+          </div>
+          {pendingOrgs.length > 0 && (
+            <button
+              onClick={() => {
+                setPendingOnly(v => !v);
+                setSearch("");
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                pendingOnly
+                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                  : "bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20"
+              }`}
+              data-testid="button-filter-pending"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              {pendingOnly ? "Alle anzeigen" : `${pendingOrgs.length} ausstehend`}
+            </button>
+          )}
         </div>
 
         <div className="relative">

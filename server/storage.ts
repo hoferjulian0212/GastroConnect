@@ -274,6 +274,7 @@ export interface IStorage {
   getPlatformAdminByReplitUserId(replitUserId: string): Promise<PlatformAdmin | undefined>;
   getPlatformAdmins(): Promise<PlatformAdmin[]>;
   getApprovedPlatformAdmins(): Promise<PlatformAdmin[]>;
+  getPendingOrgCount(): Promise<number>;
   createPlatformAdmin(data: InsertPlatformAdmin): Promise<PlatformAdmin>;
   updatePlatformAdmin(id: string, data: Partial<InsertPlatformAdmin>): Promise<PlatformAdmin | undefined>;
   getAllOrgsWithMemberCount(): Promise<Array<User & { memberCount: number }>>;
@@ -4656,6 +4657,14 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(platformAdmins)
       .where(eq(platformAdmins.status, "approved"))
       .orderBy(desc(platformAdmins.createdAt));
+  }
+
+  async getPendingOrgCount(): Promise<number> {
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(users)
+      .where(isNull(users.verifiedAt));
+    return row?.count ?? 0;
   }
 
   async createPlatformAdmin(data: InsertPlatformAdmin): Promise<PlatformAdmin> {

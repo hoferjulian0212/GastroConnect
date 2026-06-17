@@ -7,6 +7,8 @@ import { Shield, Building2, Users, LogOut, ChevronRight } from "lucide-react";
 import logoImg from "@assets/logo_no_bg_thick.png";
 import type { ReactNode } from "react";
 
+interface PendingCountResponse { count: number }
+
 interface AdminMeResponse {
   authenticated: boolean;
   admin?: { id: string; replitUsername: string; name: string; status: string };
@@ -21,6 +23,14 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     retry: false,
     staleTime: 10000,
   });
+
+  const { data: pendingData } = useQuery<PendingCountResponse>({
+    queryKey: ["/api/admin/orgs/pending-count"],
+    enabled: !!data?.authenticated,
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+  const pendingCount = pendingData?.count ?? 0;
 
   useEffect(() => {
     if (!isLoading && !data?.authenticated) {
@@ -73,16 +83,28 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         <nav className="flex items-center gap-1 ml-4">
           {navItems.map(item => {
             const active = item.exact ? location === item.href : location.startsWith(item.href + "/") || location === item.href;
+            const isOrgs = item.href === "/admin";
             return (
               <Link key={item.href} href={item.href}>
                 <span
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                  className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                     active ? "bg-white/15 text-white" : "text-white/50 hover:text-white hover:bg-white/5"
                   }`}
                   data-testid={`admin-nav-${item.label.toLowerCase()}`}
                 >
                   <item.icon className="h-3.5 w-3.5" />
                   {item.label}
+                  {isOrgs && pendingCount > 0 && (
+                    <Link href="/admin?filter=pending">
+                      <span
+                        className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none cursor-pointer"
+                        data-testid="badge-pending-orgs"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {pendingCount > 99 ? "99+" : pendingCount}
+                      </span>
+                    </Link>
+                  )}
                 </span>
               </Link>
             );

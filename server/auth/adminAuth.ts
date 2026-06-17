@@ -436,6 +436,16 @@ export function registerAdminAuthRoutes(app: Express) {
     }
   });
 
+  // ── Pending-org count (badge) ─────────────────────────────────────────────
+  app.get("/api/admin/orgs/pending-count", requirePlatformAdmin, async (req, res) => {
+    try {
+      const count = await storage.getPendingOrgCount();
+      res.json({ count });
+    } catch (err) {
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
   // ── List all organizations ────────────────────────────────────────────────
   app.get("/api/admin/orgs", requirePlatformAdmin, async (req, res) => {
     try {
