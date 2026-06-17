@@ -1751,6 +1751,19 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/products/order-insights", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const restaurantId = req.auth.organizationId;
+      if (!restaurantId) return res.json({});
+      const WEEKS = 8;
+      const insights = await storage.getProductOrderInsightsForRestaurant(restaurantId, WEEKS * 7);
+      res.json(insights);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch order insights" });
+    }
+  });
+
   app.get("/api/products/:productId/purchase-history", async (req, res) => {
     try {
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });

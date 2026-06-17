@@ -16,7 +16,7 @@ import { useT } from "@/lib/translations";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { ProductImage } from "@/components/ProductImage";
-import { ShoppingCart, ChevronRight as ChevronRightIcon } from "lucide-react";
+import { ShoppingCart, ChevronRight as ChevronRightIcon, History, Truck } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import QuantityInput from "@/components/QuantityInput";
 import { useToast } from "@/hooks/use-toast";
@@ -693,6 +693,11 @@ export default function RestaurantCatalog() {
  enabled: !!currentUser?.id,
  });
 
+ const { data: orderInsights } = useQuery<Record<string, { timesOrdered: number; onTheWay: boolean }>>({
+ queryKey: ["/api/products/order-insights"],
+ enabled: !!currentUser?.id,
+ });
+
  const cartQtyByProduct = useMemo(() => {
  const m = new Map<string, number>();
  if (cartItems) {
@@ -879,6 +884,9 @@ export default function RestaurantCatalog() {
  const originalPrice = parseFloat(product.price);
  const discountedPrice = hasPromo ? originalPrice * (1 - promo.discountPercent / 100) : originalPrice;
  const cartQty = cartQtyByProduct.get(product.id) || 0;
+ const insight = orderInsights?.[product.id];
+ const previouslyOrdered = (insight?.timesOrdered || 0) > 0;
+ const onTheWay = !!insight?.onTheWay;
 
  return (
  <div
@@ -901,6 +909,30 @@ export default function RestaurantCatalog() {
  <Badge className="absolute top-1 left-1 bg-green-600 text-white border-0 text-[9px] leading-tight px-1 py-0.5 max-w-[calc(100%-8px)] truncate">
  -{promo.discountPercent}%
  </Badge>
+ )}
+ {(previouslyOrdered || onTheWay) && (
+ <div className={`absolute left-1 z-10 flex flex-col gap-1 ${hasPromo ? "top-7" : "top-1"}`}>
+ {previouslyOrdered && (
+ <span
+ className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-600 text-white shadow-sm"
+ title={lang === "de" ? "Schon mal bestellt" : "Già ordinato"}
+ aria-label={lang === "de" ? "Schon mal bestellt" : "Già ordinato"}
+ data-testid={`badge-previously-ordered-${product.id}`}
+ >
+ <History className="h-3 w-3" />
+ </span>
+ )}
+ {onTheWay && (
+ <span
+ className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-amber-500 text-white shadow-sm"
+ title={lang === "de" ? "Bestellung unterwegs" : "Ordine in arrivo"}
+ aria-label={lang === "de" ? "Bestellung unterwegs" : "Ordine in arrivo"}
+ data-testid={`badge-on-the-way-${product.id}`}
+ >
+ <Truck className="h-3 w-3" />
+ </span>
+ )}
+ </div>
  )}
  {!product.inStock && (
  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/40 to-black/20 flex flex-col items-center justify-center gap-1.5">

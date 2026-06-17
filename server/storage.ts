@@ -143,6 +143,10 @@ export interface IStorage {
     lastOrderedAt: Date | null;
   }>>;
 
+  // Catalog indicators: per-product "previously ordered" count (last N days) +
+  // which products currently have an open/on-the-way order for this restaurant.
+  getProductOrderInsightsForRestaurant(restaurantId: string, days: number): Promise<Record<string, { timesOrdered: number; onTheWay: boolean }>>;
+
   // Auto-reorder prediction (recurring products that are due to be reordered)
   getReorderSuggestions(restaurantId: string): Promise<ReorderSuggestion[]>;
 
@@ -830,6 +834,47 @@ export class DatabaseStorage implements IStorage {
       orderCount: Number(r.orderCount) || 0,
       lastOrderedAt: r.lastOrderedAt,
     }));
+  }
+
+  async getProductOrderInsightsForRestaurant(restaurantId: string, days: number): Promise<Record<string, { timesOrdered: number; onTheWay: boolean }>> {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    // (1) How many times each product was ordered in the window (excludes cancelled).
+    const countRows = await db
+      .select({
+        productId: orderItems.productId,
+        orderCount: sql<number>`COUNT(DISTINCT ${orders.id})::int`,
+      })
+      .from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(and(
+        eq(orders.restaurantId, restaurantId),
+        gte(orders.createdAt, since),
+        ne(orders.status, "cancelled"),
+      ))
+      .groupBy(orderItems.productId);
+
+    // (2) Which products are in a currently-open order (placed but not yet delivered/cancelled).
+    const openRows = await db
+      .select({ productId: orderItems.productId })
+      .from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(and(
+        eq(orders.restaurantId, restaurantId),
+        inArray(orders.status, ["pending", "confirmed", "partially_confirmed", "in_delivery"] as any),
+      ))
+      .groupBy(orderItems.productId);
+
+    const result: Record<string, { timesOrdered: number; onTheWay: boolean }> = {};
+    for (const r of countRows) {
+      if (!r.productId) continue;
+      result[r.productId] = { timesOrdered: Number(r.orderCount) || 0, onTheWay: false };
+    }
+    for (const r of openRows) {
+      if (!r.productId) continue;
+      if (result[r.productId]) result[r.productId].onTheWay = true;
+      else result[r.productId] = { timesOrdered: 0, onTheWay: true };
+    }
+    return result;
   }
 
   async getReorderSuggestions(restaurantId: string): Promise<ReorderSuggestion[]> {
