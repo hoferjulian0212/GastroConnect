@@ -58,7 +58,7 @@ args = "node --import tsx --test server/erpProviders.test.ts server/erpSync.test
 outputType = "console"
 
 [agent]
-integrations = ["javascript_object_storage:2.0.0", "javascript_openai_ai_integrations:2.0.0", "resend:1.0.0"]
+integrations = ["javascript_object_storage:2.0.0", "javascript_openai_ai_integrations:2.0.0", "resend:1.0.0", "javascript_log_in_with_replit:2.0.0"]
 
 [userenv]
 

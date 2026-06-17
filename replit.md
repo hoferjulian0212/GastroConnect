@@ -7,17 +7,17 @@ GastroConnect is a web application designed to streamline interactions between r
 Preferred communication style: Simple, everyday language.
 Mirrored role pages: The restaurant and supplier roles have parallel versions of the same pages (e.g. `client/src/pages/restaurant/*` and `client/src/pages/supplier/*` for Complaints, Orders, Home, Inbox, etc.). Whenever a change is made to one role's page, always apply the equivalent change to the other role's matching page so both stay in sync.
 
-## Platform Admin Panel — Required Secrets
+## Platform Admin Panel — Authentication
 
-The admin panel at `/admin` uses Replit's OIDC system as its identity provider. The following secrets must be configured for admin login to work:
+The admin panel at `/admin` uses Replit's OIDC system ("Log In with Replit") as its identity provider via a public-client PKCE flow. The Replit App ID (`REPL_ID`, automatically present in the Replit environment) is used as the OAuth client id — **no manually-registered OAuth App is required**.
 
-| Secret | Description |
-|---|---|
-| `REPLIT_CLIENT_ID` | Client ID from a Replit OAuth App (register at replit.com → Account → OAuth Apps) |
-| `REPLIT_CLIENT_SECRET` | Matching secret for the OAuth App |
-| `PLATFORM_ADMIN_REPLIT_USERNAMES` | Comma-separated Replit usernames that are auto-approved on first login (e.g. `alice,bob`) |
+| Secret | Required | Description |
+|---|---|---|
+| `REPL_ID` | auto | Replit App ID, injected automatically; used as the OIDC client id. |
+| `PLATFORM_ADMIN_REPLIT_USERNAMES` | yes | Comma-separated Replit usernames that are auto-approved on first login (e.g. `alice,bob`). Needed to bootstrap the first admin. |
+| `REPLIT_CLIENT_ID` / `REPLIT_CLIENT_SECRET` | optional | Only for self-hosted/confidential-client setups. If `REPLIT_CLIENT_ID` is set it overrides `REPL_ID`; if `REPLIT_CLIENT_SECRET` is set it is sent alongside the PKCE verifier. |
 
-Without `REPLIT_CLIENT_ID` and `REPLIT_CLIENT_SECRET`, the login button on `/admin/login` remains disabled. The table is created idempotently at startup (`runAdminMigration`); no `drizzle push` needed.
+The login button on `/admin/login` is enabled whenever a client id is available (always true on Replit, since `REPL_ID` is present). The `platform_admins` table is created idempotently at startup (`runAdminMigration`); no `drizzle push` needed.
 
 ## System Architecture
 

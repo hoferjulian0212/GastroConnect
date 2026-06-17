@@ -2,7 +2,7 @@
 // These are strictly for the two GastroConnect system owners — completely
 // separate from the org-level member/role system.
 import type { Express, Request, Response } from "express";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import rateLimit from "express-rate-limit";
 import { storage } from "../storage";
 import { requirePlatformAdmin, loadAdminAuth } from "./middleware";
@@ -24,8 +24,22 @@ function getAutoApprovedUsernames(): Set<string> {
   return new Set(names);
 }
 
+// The client ID is the Replit App ID (REPL_ID), automatically available in
+// the Replit environment. A manually registered REPLIT_CLIENT_ID takes
+// precedence for self-hosted setups.
+function getReplitClientId(): string | undefined {
+  return process.env.REPLIT_CLIENT_ID || process.env.REPL_ID;
+}
+
 export function isReplitOauthConfigured(): boolean {
-  return Boolean(process.env.REPLIT_CLIENT_ID && process.env.REPLIT_CLIENT_SECRET);
+  return Boolean(getReplitClientId());
+}
+
+// PKCE helpers — generate a verifier and its S256 challenge.
+function generatePkce(): { verifier: string; challenge: string } {
+  const verifier = randomBytes(32).toString("base64url");
+  const challenge = createHash("sha256").update(verifier).digest("base64url");
+  return { verifier, challenge };
 }
 
 // Cache the OIDC discovery document so we only fetch it once per process.
@@ -175,19 +189,23 @@ export function registerAdminAuthRoutes(app: Express) {
     if (!discovery) return fail(res, "oauth_unavailable");
 
     const state = randomBytes(24).toString("base64url");
+    const { verifier, challenge } = generatePkce();
     req.session.adminOauthState = state;
+    req.session.adminOauthCodeVerifier = verifier;
     req.session.save((err) => {
       if (err) {
         console.error("[admin] oauth state save failed", err);
         return fail(res, "oauth_failed");
       }
       const params = new URLSearchParams({
-        client_id: process.env.REPLIT_CLIENT_ID!,
+        client_id: getReplitClientId()!,
         redirect_uri: callbackUrl(req),
         response_type: "code",
         scope: "openid profile email",
         state,
         prompt: "select_account",
+        code_challenge: challenge,
+        code_challenge_method: "S256",
       });
       res.redirect(`${discovery.authorization_endpoint}?${params.toString()}`);
     });
@@ -202,24 +220,37 @@ export function registerAdminAuthRoutes(app: Express) {
       const code = typeof req.query.code === "string" ? req.query.code : "";
       const state = typeof req.query.state === "string" ? req.query.state : "";
       const expectedState = req.session.adminOauthState;
+      const codeVerifier = req.session.adminOauthCodeVerifier;
       req.session.adminOauthState = undefined;
+      req.session.adminOauthCodeVerifier = undefined;
       if (!code || !state || !expectedState || state !== expectedState) {
+        return fail(res, "oauth_state");
+      }
+      if (!codeVerifier) {
         return fail(res, "oauth_state");
       }
 
       const discovery = await getOidcDiscovery();
       if (!discovery) return fail(res, "oauth_unavailable");
 
+      // Build token exchange body. Use PKCE code_verifier (public client flow).
+      // If a REPLIT_CLIENT_SECRET is explicitly set, include it too for
+      // confidential-client setups.
+      const tokenBody: Record<string, string> = {
+        code,
+        client_id: getReplitClientId()!,
+        redirect_uri: callbackUrl(req),
+        grant_type: "authorization_code",
+        code_verifier: codeVerifier,
+      };
+      if (process.env.REPLIT_CLIENT_SECRET) {
+        tokenBody.client_secret = process.env.REPLIT_CLIENT_SECRET;
+      }
+
       const tokenResp = await fetch(discovery.token_endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          code,
-          client_id: process.env.REPLIT_CLIENT_ID!,
-          client_secret: process.env.REPLIT_CLIENT_SECRET!,
-          redirect_uri: callbackUrl(req),
-          grant_type: "authorization_code",
-        }),
+        body: new URLSearchParams(tokenBody),
       });
       if (!tokenResp.ok) {
         console.error("[admin] replit token exchange failed", tokenResp.status, await tokenResp.text());
