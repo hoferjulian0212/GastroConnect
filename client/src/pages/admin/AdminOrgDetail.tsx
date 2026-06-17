@@ -58,8 +58,12 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
   const impersonateMutation = useMutation({
     mutationFn: (memberId: string) =>
       apiRequest("POST", `/api/admin/impersonate/${memberId}`).then(r => r.json()),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/impersonation-status"] });
+      // Refetch /api/auth/me so UserContext sees the impersonated member as
+      // authenticated before we navigate — otherwise the route guard fires
+      // with stale unauthenticated state and redirects to /login.
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/me"] });
       toast({ title: "Impersonierung gestartet", description: "Sie agieren jetzt als dieses Mitglied." });
       const orgRole = result?.orgRole as string | undefined;
       setLocation(orgRole === "supplier" ? "/supplier" : "/restaurant");
