@@ -50,11 +50,14 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
   });
 
   const impersonateMutation = useMutation({
-    mutationFn: (memberId: string) => apiRequest("POST", `/api/admin/impersonate/${memberId}`),
-    onSuccess: (_data, memberId) => {
+    mutationFn: (memberId: string) =>
+      apiRequest("POST", `/api/admin/impersonate/${memberId}`).then(r => r.json()),
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/impersonation-status"] });
       toast({ title: "Impersonierung gestartet", description: "Sie agieren jetzt als dieses Mitglied." });
-      setLocation("/");
+      // Navigate to the member's role home so the full app loads as that member.
+      const orgRole = result?.orgRole as string | undefined;
+      setLocation(orgRole === "supplier" ? "/supplier" : "/restaurant");
     },
     onError: () => {
       toast({ title: "Fehler", description: "Impersonierung fehlgeschlagen.", variant: "destructive" });

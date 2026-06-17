@@ -67,28 +67,64 @@ function fail(res: Response, code: string, to = "/admin/login") {
   res.redirect(`${to}?error=${encodeURIComponent(code)}`);
 }
 
+// Do NOT use req.session.regenerate() here: regeneration clears all existing
+// session fields including memberId, which must be preserved so an admin who
+// also has an active org-member session doesn't get logged out of the app.
+// Admin login is considered a trusted flow (Replit OIDC), so we accept the
+// minor session-fixation residual and simply add adminId to the live session.
 async function establishAdminSession(req: Request, adminId: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    req.session.regenerate((err) => {
-      if (err) return reject(err);
-      req.session.adminId = adminId;
-      req.session.save((err2) => (err2 ? reject(err2) : resolve()));
-    });
+    req.session.adminId = adminId;
+    req.session.save((err) => (err ? reject(err) : resolve()));
   });
 }
 
-async function sendApprovalRequestEmails(newAdmin: PlatformAdmin): Promise<void> {
+function buildApprovalRequestHtml(newAdmin: PlatformAdmin, adminsUrl: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:system-ui,-apple-system,sans-serif;">
+  <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+    <div style="background:#161921;padding:24px 32px;">
+      <h1 style="margin:0;color:#fff;font-size:18px;font-weight:700;">GastroConnect</h1>
+      <p style="margin:4px 0 0;color:#ffffff80;font-size:13px;">Platform Admin Panel</p>
+    </div>
+    <div style="padding:28px 32px;">
+      <h2 style="margin:0 0 8px;font-size:16px;font-weight:600;color:#111;">Neuer Zugriffsantrag</h2>
+      <p style="margin:0 0 20px;color:#555;font-size:14px;line-height:1.6;">
+        <strong>${newAdmin.name}</strong> (<a href="https://replit.com/@${newAdmin.replitUsername}" style="color:#F26207;">@${newAdmin.replitUsername}</a>)
+        möchte als Platform-Admin auf GastroConnect zugreifen.
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;color:#555;margin-bottom:24px;">
+        <tr><td style="padding:6px 0;color:#888;width:120px;">Replit-Nutzer</td><td style="padding:6px 0;">@${newAdmin.replitUsername}</td></tr>
+        <tr><td style="padding:6px 0;color:#888;">Name</td><td style="padding:6px 0;">${newAdmin.name}</td></tr>
+        ${newAdmin.email ? `<tr><td style="padding:6px 0;color:#888;">E-Mail</td><td style="padding:6px 0;">${newAdmin.email}</td></tr>` : ""}
+      </table>
+      <p style="margin:0 0 16px;color:#555;font-size:14px;">Bitte melden Sie sich im Admin-Panel an, um den Antrag zu genehmigen oder abzulehnen:</p>
+      <div style="text-align:center;margin:0 0 24px;">
+        <a href="${adminsUrl}" style="display:inline-block;background:#161921;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;">
+          Admin-Panel öffnen →
+        </a>
+      </div>
+      <p style="margin:0;font-size:12px;color:#aaa;text-align:center;">
+        Sie erhalten diese E-Mail, weil Sie als GastroConnect Platform-Admin genehmigt sind.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`.trim();
+}
+
+async function sendApprovalRequestEmails(newAdmin: PlatformAdmin, baseUrl?: string): Promise<void> {
   const approvedAdmins = await storage.getApprovedPlatformAdmins();
+  const adminsUrl = `${baseUrl ?? "https://gastroconnect.app"}/admin/admins`;
   for (const admin of approvedAdmins) {
     if (!admin.email) continue;
     await sendEmail({
       to: admin.email,
-      subject: "GastroConnect Admin: Neuer Zugriffsantrag",
-      html: renderNotificationEmail({
-        title: "Neuer Platform-Admin-Antrag",
-        message: `${newAdmin.name} (@${newAdmin.replitUsername}) möchte als Platform-Admin zugelassen werden.\n\nBitte melden Sie sich im Admin-Panel an, um den Antrag zu genehmigen oder abzulehnen.`,
-        linkPath: "/admin/admins",
-      }),
+      subject: `GastroConnect Admin: Zugriffsantrag von @${newAdmin.replitUsername}`,
+      html: buildApprovalRequestHtml(newAdmin, adminsUrl),
     });
   }
 }
@@ -206,7 +242,9 @@ export function registerAdminAuthRoutes(app: Express) {
           return res.redirect("/admin");
         }
         // Send approval request to existing approved admins (fire-and-forget).
-        sendApprovalRequestEmails(admin).catch(err =>
+        const proto = (req.headers["x-forwarded-proto"]?.toString().split(",")[0]) || req.protocol || "https";
+        const host = req.headers["x-forwarded-host"]?.toString() || req.headers.host || "";
+        sendApprovalRequestEmails(admin, `${proto}://${host}`).catch(err =>
           console.error("[admin] approval request email failed:", err)
         );
         return res.redirect("/admin/login?status=pending");
@@ -291,11 +329,13 @@ export function registerAdminAuthRoutes(app: Express) {
       }
       const member = await storage.getMember(String(req.params.memberId));
       if (!member) return res.status(404).json({ error: "not_found" });
+      const org = await storage.getUser(member.organizationId);
+      if (!org) return res.status(404).json({ error: "org_not_found" });
       req.session.impersonatedMemberId = member.id;
       req.session.save((err) => {
         if (err) return res.status(500).json({ error: "session_error" });
-        console.log(`[admin] impersonate start: admin=${req.platformAdmin!.admin.replitUsername} member=${member.id}`);
-        res.json({ ok: true, memberId: member.id });
+        console.log(`[admin] impersonate start: admin=${req.platformAdmin!.admin.replitUsername} member=${member.id} orgRole=${org.role}`);
+        res.json({ ok: true, memberId: member.id, orgRole: org.role });
       });
     } catch (err) {
       console.error("[admin] impersonate error:", err);
