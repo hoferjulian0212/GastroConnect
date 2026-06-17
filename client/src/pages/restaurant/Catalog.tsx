@@ -17,6 +17,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { ProductImage } from "@/components/ProductImage";
 import { ShoppingCart, ChevronRight as ChevronRightIcon, History, Truck } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import QuantityInput from "@/components/QuantityInput";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +26,46 @@ import { useScrollCompact } from "@/hooks/use-scroll-compact";
 import { motion, AnimatePresence } from "framer-motion";
 
 type CartItemWithPromo = CartItemWithProduct & { activePromotion?: Promotion | null };
+
+function CategoryIndicator({
+  icon: Icon,
+  bg,
+  label,
+  testId,
+}: {
+  icon: typeof History;
+  bg: string;
+  label: string;
+  testId: string;
+}) {
+  return (
+    <>
+      {/* Desktop: hover shows a short label (web only) */}
+      <div className="hidden md:block">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className={`inline-flex items-center justify-center h-7 w-7 rounded-full ${bg} text-white shadow-md ring-1 ring-black/5`}
+              aria-label={label}
+              data-testid={testId}
+            >
+              <Icon className="h-4 w-4" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="right">{label}</TooltipContent>
+        </Tooltip>
+      </div>
+      {/* Mobile: icon only, no tooltip */}
+      <span
+        className={`md:hidden inline-flex items-center justify-center h-8 w-8 rounded-full ${bg} text-white shadow-md ring-1 ring-black/5`}
+        aria-label={label}
+        data-testid={`${testId}-mobile`}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+    </>
+  );
+}
 
 function QuickAddBar({
   product,
@@ -913,24 +954,20 @@ export default function RestaurantCatalog() {
  {(previouslyOrdered || onTheWay) && (
  <div className={`absolute left-1 z-10 flex flex-col gap-1 ${hasPromo ? "top-7" : "top-1"}`}>
  {previouslyOrdered && (
- <span
- className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-600 text-white shadow-sm"
- title={lang === "de" ? "Schon mal bestellt" : "Già ordinato"}
- aria-label={lang === "de" ? "Schon mal bestellt" : "Già ordinato"}
- data-testid={`badge-previously-ordered-${product.id}`}
- >
- <History className="h-3 w-3" />
- </span>
+ <CategoryIndicator
+ icon={History}
+ bg="bg-blue-600"
+ label={lang === "de" ? "Schon mal bestellt" : "Già ordinato"}
+ testId={`badge-previously-ordered-${product.id}`}
+ />
  )}
  {onTheWay && (
- <span
- className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-amber-500 text-white shadow-sm"
- title={lang === "de" ? "Bestellung unterwegs" : "Ordine in arrivo"}
- aria-label={lang === "de" ? "Bestellung unterwegs" : "Ordine in arrivo"}
- data-testid={`badge-on-the-way-${product.id}`}
- >
- <Truck className="h-3 w-3" />
- </span>
+ <CategoryIndicator
+ icon={Truck}
+ bg="bg-amber-500"
+ label={lang === "de" ? "Bestellung unterwegs" : "Ordine in arrivo"}
+ testId={`badge-on-the-way-${product.id}`}
+ />
  )}
  </div>
  )}
