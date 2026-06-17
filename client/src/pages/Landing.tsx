@@ -10,7 +10,6 @@ import { MotionReveal } from "@/components/landing/MotionReveal";
 import { CardOutlineReveal } from "@/components/landing/CardOutlineReveal";
 import CountUp from "@/components/CountUp";
 import { HeadlineReveal } from "@/components/landing/HeadlineReveal";
-import { TiltCard } from "@/components/landing/TiltCard";
 import { PinnedFeatureStory } from "@/components/landing/PinnedFeatureStory";
 import { useLandingSmoothScroll } from "@/components/landing/useLandingSmoothScroll";
 import {
@@ -25,7 +24,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import Logo from "@/components/Logo";
-import shotHome from "@assets/landing-home.jpg";
 import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
@@ -33,7 +31,6 @@ import shotMobileInbox from "@assets/landing-mobile-inbox.png";
 import shotMobileSupplierHome from "@assets/landing-mobile-supplier-home.png";
 import shotMobileSupplierProducts from "@assets/landing-mobile-supplier-products.png";
 import shotPrice from "@assets/landing-story/price-2-savings.jpg";
-import shotInbox from "@assets/landing-inbox.jpg";
 import shotPriceOverview from "@assets/landing-story/price-1-overview.jpg";
 import shotPriceCatalog from "@assets/landing-story/price-3-catalog.jpg";
 import shotComplaintDialog from "@assets/landing-story/complaint-1-dialog.jpg";
@@ -64,8 +61,6 @@ import {
   CheckCircle2,
   Mail,
   UserPlus,
-  ZoomIn,
-  X,
 } from "lucide-react";
 
 const animationStrings = {
@@ -244,27 +239,6 @@ const translations = {
       },
     ],
 
-    showcaseHeadline: "Sehen Sie es in Aktion",
-    showcaseSub:
-      "Die wichtigsten Ansichten aus der App — direkte Sicht auf das, womit Sie täglich arbeiten.",
-    showcase: [
-      {
-        img: shotHome,
-        caption: "Bestellungen, Nachrichten und Ausgaben auf einen Blick.",
-        alt: "Restaurant-Dashboard",
-      },
-      {
-        img: shotPrice,
-        caption: "Preisvergleich für identische Produkte über alle Händler.",
-        alt: "Preisvergleich",
-      },
-      {
-        img: shotInbox,
-        caption: "Chat zu jeder Bestellung — Nachrichten, Belege, Reklamationen.",
-        alt: "Chat & Inbox",
-      },
-    ],
-
     mobileHeadline: "Ihre Bestellungen — immer in der Tasche",
     mobileSub:
       "GastroConnect funktioniert auf jedem Gerät. Das mobile Erlebnis ist genauso vollständig wie am Desktop.",
@@ -433,15 +407,6 @@ const translations = {
       { title: "Notifiche push", desc: "Notifiche in tempo reale con deep link direttamente alla vista corretta." },
     ],
 
-    showcaseHeadline: "Guardalo in azione",
-    showcaseSub:
-      "Le viste più importanti dell'app — uno sguardo diretto a ciò con cui lavori ogni giorno.",
-    showcase: [
-      { img: shotHome, caption: "Ordini, messaggi e spese in un colpo d'occhio.", alt: "Dashboard ristorante" },
-      { img: shotPrice, caption: "Confronto prezzi per prodotti identici tra tutti i commercianti.", alt: "Confronto prezzi" },
-      { img: shotInbox, caption: "Chat per ogni ordine — messaggi, documenti, reclami.", alt: "Chat & inbox" },
-    ],
-
     mobileHeadline: "I tuoi ordini — sempre in tasca",
     mobileSub:
       "GastroConnect funziona su qualsiasi dispositivo. L'esperienza mobile è completa come quella desktop.",
@@ -568,14 +533,6 @@ const translations = {
       { title: "Price comparison", desc: "Compare identical products across suppliers directly." },
       { title: "Complaints with re-delivery", desc: "Pick affected items — supplier confirms the re-delivery." },
       { title: "Push notifications", desc: "Real-time notifications with deep links straight into the right view." },
-    ],
-
-    showcaseHeadline: "See it in action",
-    showcaseSub: "The most important views from the app — a direct look at what you'll work with every day.",
-    showcase: [
-      { img: shotHome, caption: "Orders, messages and spending at a glance.", alt: "Restaurant dashboard" },
-      { img: shotPrice, caption: "Price comparison for identical products across every supplier.", alt: "Price comparison" },
-      { img: shotInbox, caption: "Chat on every order — messages, documents, complaints.", alt: "Chat & inbox" },
     ],
 
     mobileHeadline: "Your orders — always in your pocket",
@@ -786,7 +743,6 @@ export default function Landing() {
   const [lang, setLang] = useState<Lang>("de");
   const [mobileShotRole, setMobileShotRole] = useState<"restaurant" | "supplier">("restaurant");
   const [mobileShotIndex, setMobileShotIndex] = useState(0);
-  const [showcaseLightbox, setShowcaseLightbox] = useState<{ img: string; alt: string; caption: string } | null>(null);
   const reduceMotion = useReducedMotion();
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined" &&
@@ -1360,94 +1316,6 @@ export default function Landing() {
         testId="pinned-story-complaint"
         reverse
       />
-
-      {/* SHOWCASE — Inline-Produktvorschau */}
-      <section className="px-4 md:px-8 py-24 md:py-32">
-        <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
-            <h2
-              className="text-3xl md:text-5xl font-semibold tracking-tight"
-              data-testid="text-showcase-headline"
-            >
-              {t.showcaseHeadline}
-            </h2>
-            <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
-              {t.showcaseSub}
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {t.showcase.map((s, idx) => (
-              <MotionReveal key={idx} delay={idx * 90}>
-                <figure className="flex flex-col" data-testid={`showcase-${idx}`}>
-                  {/* Wrapper owns the click — TiltCard doesn't forward onClick */}
-                  <div
-                    className="relative group cursor-zoom-in"
-                    onClick={() => setShowcaseLightbox({ img: s.img, alt: s.alt, caption: s.caption })}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && setShowcaseLightbox({ img: s.img, alt: s.alt, caption: s.caption })}
-                    aria-label={s.alt}
-                  >
-                    <TiltCard className="rounded-2xl border border-border overflow-hidden shadow-xl shadow-black/5 bg-card">
-                      <img
-                        src={s.img}
-                        alt={s.alt}
-                        className="w-full h-auto block"
-                        loading="lazy"
-                      />
-                    </TiltCard>
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                      <div className="h-8 w-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                        <ZoomIn className="h-4 w-4 text-white" />
-                      </div>
-                    </div>
-                  </div>
-                  <figcaption className="mt-4 text-sm text-muted-foreground leading-relaxed">
-                    {s.caption}
-                  </figcaption>
-                </figure>
-              </MotionReveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Showcase lightbox */}
-      {showcaseLightbox && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-          onClick={() => setShowcaseLightbox(null)}
-          data-testid="showcase-lightbox-overlay"
-        >
-          <div
-            className="relative max-w-4xl w-full bg-card rounded-2xl overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowcaseLightbox(null)}
-              className="absolute top-3 right-3 z-10 h-9 w-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors"
-              aria-label="Schließen"
-              data-testid="showcase-lightbox-close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <img
-              src={showcaseLightbox.img}
-              alt={showcaseLightbox.alt}
-              className="w-full h-auto block"
-              data-testid="showcase-lightbox-image"
-            />
-            <div className="px-6 py-5 border-t border-border">
-              <p className="font-semibold text-base text-foreground leading-snug" data-testid="showcase-lightbox-title">
-                {showcaseLightbox.alt}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground leading-relaxed" data-testid="showcase-lightbox-caption">
-                {showcaseLightbox.caption}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* MOBILE */}
       <section
