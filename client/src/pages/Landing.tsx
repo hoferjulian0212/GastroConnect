@@ -10,7 +10,6 @@ import { MotionReveal } from "@/components/landing/MotionReveal";
 import CountUp from "@/components/CountUp";
 import { HeadlineReveal } from "@/components/landing/HeadlineReveal";
 import { TiltCard } from "@/components/landing/TiltCard";
-import { HeroShotReveal } from "@/components/landing/HeroShotReveal";
 import { PinnedFeatureStory } from "@/components/landing/PinnedFeatureStory";
 import { useLandingSmoothScroll } from "@/components/landing/useLandingSmoothScroll";
 import {
@@ -1055,21 +1054,6 @@ export default function Landing() {
           </div>
         </div>
       )}
-
-      {/* HERO SHOT — main app screenshot with floating side panels */}
-      <section className="px-4 md:px-8 pb-16 md:pb-24 overflow-x-hidden">
-        <div className="mx-auto max-w-5xl">
-          <HeroShotReveal
-            src={shotHome}
-            alt="GastroConnect Dashboard"
-            callouts={[]}
-            floatingPanels={[
-              { src: shotInbox, alt: "Chat & Inbox", side: "left", rotate: -4 },
-              { src: shotPrice, alt: "Preisvergleich", side: "right", rotate: 4 },
-            ]}
-          />
-        </div>
-      </section>
 
       {/* PILLARS — Für wen */}
       <section
