@@ -23,10 +23,11 @@ import {
 } from "@/components/ui/accordion";
 import Logo from "@/components/Logo";
 import shotHome from "@assets/landing-home.jpg";
-import shotMobileSupplier from "@assets/landing-mobile-supplier.png";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
 import shotMobileInbox from "@assets/landing-mobile-inbox.png";
+import shotMobileSupplierHome from "@assets/landing-mobile-supplier-home.png";
+import shotMobileSupplierProducts from "@assets/landing-mobile-supplier-products.png";
 import shotPrice from "@assets/landing-story/price-2-savings.jpg";
 import shotInbox from "@assets/landing-inbox.jpg";
 import shotPriceOverview from "@assets/landing-story/price-1-overview.jpg";
@@ -709,6 +710,7 @@ const featureIcons = [
 ];
 const mobileBulletIcons = [BellRing, WifiOff, Hand, Bookmark];
 const restaurantMobileShots = [shotMobileHome, shotMobileProducts, shotMobileInbox];
+const supplierMobileShots = [shotMobileSupplierHome, shotMobileSupplierProducts];
 
 /** Two rows of text that drift in opposite directions as the page is scrolled. */
 function ScrollMarquee({
@@ -764,11 +766,16 @@ export default function Landing() {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  // Auto-rotate the restaurant phone preview through its screenshots.
+  // Auto-rotate the phone preview through the active role's screenshots.
   useEffect(() => {
-    if (mobileShotRole !== "restaurant" || reduceMotion) return;
+    if (reduceMotion) return;
+    const count =
+      mobileShotRole === "supplier"
+        ? supplierMobileShots.length
+        : restaurantMobileShots.length;
+    if (count < 2) return;
     const id = window.setInterval(() => {
-      setMobileShotIndex((i) => (i + 1) % restaurantMobileShots.length);
+      setMobileShotIndex((i) => (i + 1) % count);
     }, 2800);
     return () => window.clearInterval(id);
   }, [mobileShotRole, reduceMotion]);
@@ -1406,32 +1413,27 @@ export default function Landing() {
                 }
               >
                 <div className="relative rounded-[2.25rem] overflow-hidden border border-border w-[260px] md:w-[300px] aspect-[9/19] bg-card">
-                  {mobileShotRole === "supplier" ? (
+                  {(mobileShotRole === "supplier"
+                    ? supplierMobileShots
+                    : restaurantMobileShots
+                  ).map((shot, i) => (
                     <img
-                      src={shotMobileSupplier}
-                      alt={t.mobileAltSupplier}
+                      key={shot}
+                      src={shot}
+                      alt={
+                        mobileShotRole === "supplier"
+                          ? t.mobileAltSupplier
+                          : t.mobileAltRestaurant
+                      }
                       width={375}
                       height={812}
-                      className="w-full h-full object-cover object-top"
+                      className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-700 ${
+                        i === mobileShotIndex ? "opacity-100" : "opacity-0"
+                      }`}
                       loading="lazy"
-                      data-testid="img-mobile-screenshot"
+                      data-testid={i === 0 ? "img-mobile-screenshot" : `img-mobile-screenshot-${i}`}
                     />
-                  ) : (
-                    restaurantMobileShots.map((shot, i) => (
-                      <img
-                        key={shot}
-                        src={shot}
-                        alt={t.mobileAltRestaurant}
-                        width={375}
-                        height={812}
-                        className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-700 ${
-                          i === mobileShotIndex ? "opacity-100" : "opacity-0"
-                        }`}
-                        loading="lazy"
-                        data-testid={i === 0 ? "img-mobile-screenshot" : `img-mobile-screenshot-${i}`}
-                      />
-                    ))
-                  )}
+                  ))}
                 </div>
               </motion.div>
             </div>

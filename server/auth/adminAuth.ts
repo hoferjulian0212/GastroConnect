@@ -63,6 +63,15 @@ export async function bootstrapPlatformAdmin(): Promise<void> {
   }
 }
 
+// Strip sensitive fields (password hash) before returning a platform-admin row
+// to any client. Never send the bcrypt hash over the wire or into response logs.
+function sanitizePlatformAdmin<T extends { passwordHash?: string | null }>(
+  admin: T,
+): Omit<T, "passwordHash"> {
+  const { passwordHash: _omit, ...safe } = admin;
+  return safe;
+}
+
 // Rotate the session ID on privileged admin-login (prevents session fixation).
 // Any existing member session (memberId) is captured before regeneration and
 // written back so an admin who is also a member stays logged into the app.
@@ -114,7 +123,7 @@ export function registerAdminAuthRoutes(app: Express) {
       await establishAdminSession(req, admin.id);
       await storage.updatePlatformAdmin(admin.id, { lastLoginAt: new Date() });
       console.log(`[admin] login: ${normalizedEmail} ip=${req.ip}`);
-      res.json({ authenticated: true, admin });
+      res.json({ authenticated: true, admin: sanitizePlatformAdmin(admin) });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ error: "invalid_input", message: "Ungültige Eingabe." });
@@ -189,7 +198,7 @@ export function registerAdminAuthRoutes(app: Express) {
   // ── Current admin session ─────────────────────────────────────────────────
   app.get("/api/admin/auth/me", (req, res) => {
     if (!req.platformAdmin) return res.json({ authenticated: false });
-    res.json({ authenticated: true, admin: req.platformAdmin.admin });
+    res.json({ authenticated: true, admin: sanitizePlatformAdmin(req.platformAdmin.admin) });
   });
 
   // ── Admin logout ──────────────────────────────────────────────────────────
@@ -262,7 +271,7 @@ export function registerAdminAuthRoutes(app: Express) {
   app.get("/api/admin/admins", requirePlatformAdmin, async (req, res) => {
     try {
       const admins = await storage.getPlatformAdmins();
-      res.json(admins);
+      res.json(admins.map(sanitizePlatformAdmin));
     } catch (err) {
       res.status(500).json({ error: "server_error" });
     }
@@ -273,7 +282,7 @@ export function registerAdminAuthRoutes(app: Express) {
     try {
       const target = await storage.getPlatformAdmin(String(req.params.id));
       if (!target) return res.status(404).json({ error: "not_found" });
-      if (target.status === "approved") return res.json(target);
+      if (target.status === "approved") return res.json(sanitizePlatformAdmin(target));
       const updated = await storage.updatePlatformAdmin(target.id, {
         status: "approved",
         approvedBy: req.platformAdmin!.admin.replitUserId,
@@ -283,7 +292,7 @@ export function registerAdminAuthRoutes(app: Express) {
         console.error("[admin] approval confirmation email failed:", err)
       );
       console.log(`[admin] approve: admin=${req.platformAdmin!.admin.replitUsername} target=${target.replitUsername}`);
-      res.json(updated);
+      res.json(sanitizePlatformAdmin(updated!));
     } catch (err) {
       res.status(500).json({ error: "server_error" });
     }
@@ -300,7 +309,7 @@ export function registerAdminAuthRoutes(app: Express) {
       }
       const updated = await storage.updatePlatformAdmin(target.id, { status: "denied" });
       console.log(`[admin] deny: admin=${req.platformAdmin!.admin.replitUsername} target=${target.replitUsername}`);
-      res.json(updated);
+      res.json(sanitizePlatformAdmin(updated!));
     } catch (err) {
       res.status(500).json({ error: "server_error" });
     }
@@ -316,7 +325,7 @@ export function registerAdminAuthRoutes(app: Express) {
       }
       const updated = await storage.updatePlatformAdmin(target.id, { status: "denied" });
       console.log(`[admin] revoke: admin=${req.platformAdmin!.admin.replitUsername} target=${target.replitUsername}`);
-      res.json(updated);
+      res.json(sanitizePlatformAdmin(updated!));
     } catch (err) {
       res.status(500).json({ error: "server_error" });
     }

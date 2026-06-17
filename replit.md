@@ -7,17 +7,21 @@ GastroConnect is a web application designed to streamline interactions between r
 Preferred communication style: Simple, everyday language.
 Mirrored role pages: The restaurant and supplier roles have parallel versions of the same pages (e.g. `client/src/pages/restaurant/*` and `client/src/pages/supplier/*` for Complaints, Orders, Home, Inbox, etc.). Whenever a change is made to one role's page, always apply the equivalent change to the other role's matching page so both stay in sync.
 
-## Platform Admin Panel — Authentication
+## Authentication — One Scheme
 
-The admin panel at `/admin` uses Replit's OIDC system ("Log In with Replit") as its identity provider via a public-client PKCE flow. The Replit App ID (`REPL_ID`, automatically present in the Replit environment) is used as the OAuth client id — **no manually-registered OAuth App is required**.
+GastroConnect uses a single, consistent **email + password** login scheme. There is no public self-signup — onboarding is **invite-only**.
+
+### Platform admins (`/admin`)
+The admin panel at `/admin` authenticates platform owners with **email + password only** (the previous Replit OIDC / "Log In with Replit" flow was removed). The owner admin is provisioned at startup from configuration (`bootstrapPlatformAdmin`, idempotent on every boot). The `platform_admins` table is created idempotently at startup (`runAdminMigration`); no `drizzle push` needed.
 
 | Secret | Required | Description |
 |---|---|---|
-| `REPL_ID` | auto | Replit App ID, injected automatically; used as the OIDC client id. |
-| `PLATFORM_ADMIN_REPLIT_USERNAMES` | yes | Comma-separated Replit usernames that are auto-approved on first login (e.g. `alice,bob`). Needed to bootstrap the first admin. |
-| `REPLIT_CLIENT_ID` / `REPLIT_CLIENT_SECRET` | optional | Only for self-hosted/confidential-client setups. If `REPLIT_CLIENT_ID` is set it overrides `REPL_ID`; if `REPLIT_CLIENT_SECRET` is set it is sent alongside the PKCE verifier. |
+| `PLATFORM_ADMIN_EMAIL` | yes | Email of the owner platform admin, provisioned/approved at startup. |
+| `PLATFORM_ADMIN_PASSWORD` | yes | Password for the owner admin. **Must satisfy the password policy (min 12 characters).** Changing it resets the owner's password on next boot. A too-weak value is rejected and the admin is NOT created (`[admin] bootstrap failed ...`). |
+| `PLATFORM_ADMIN_NAME` | optional | Display name for the owner admin (defaults to "Owner"). |
 
-The login button on `/admin/login` is enabled whenever a client id is available (always true on Replit, since `REPL_ID` is present). The `platform_admins` table is created idempotently at startup (`runAdminMigration`); no `drizzle push` needed.
+### Business users (restaurants & suppliers)
+Business members log in with **email + password**, with **optional Google OAuth** as an alternate sign-in for already-invited members. New businesses are created **invite-only**: a platform admin creates the organization plus its first admin via `POST /api/admin/orgs` (UI: "Neues Unternehmen" dialog on the admin Organizations page). The new admin receives an email with a claim link to set their password. Public member self-signup (`Signup`/`AuthVerify` pages and the member register/verify routes) was removed.
 
 ## System Architecture
 
