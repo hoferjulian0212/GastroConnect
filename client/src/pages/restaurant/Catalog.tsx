@@ -185,7 +185,7 @@ function QuickAddBar({
             onKeyDown={stopKey}
             aria-label={t("templates", "addToCart")}
             title={t("templates", "addToCart")}
-            className={`h-7 w-7 rounded-full shrink-0 shadow-md ring-1 ring-black/5 transition-colors duration-300 ${
+            className={`h-8 w-8 rounded-full shrink-0 shadow-md ring-1 ring-black/5 transition-colors duration-300 ${
               added ? "bg-green-600 hover:bg-green-600 text-white" : ""
             }`}
             data-testid={`button-quick-add-${product.id}`}
@@ -206,7 +206,7 @@ function QuickAddBar({
         onKeyDown={stopKey}
         aria-label={t("templates", "addToCart")}
         title={t("templates", "addToCart")}
-        className={`md:hidden h-8 w-8 rounded-full shrink-0 shadow-md ring-1 ring-black/5 transition-colors duration-300 ${
+        className={`md:hidden h-9 w-9 rounded-full shrink-0 shadow-md ring-1 ring-black/5 transition-colors duration-300 ${
           added ? "bg-green-600 hover:bg-green-600 text-white" : ""
         }`}
         data-testid={`button-quick-add-mobile-${product.id}`}
@@ -949,7 +949,7 @@ export default function RestaurantCatalog() {
  {(hasPromo || previouslyOrdered || onTheWay) && (
  <div className="absolute top-1.5 left-1.5 z-10 flex flex-col items-start gap-1">
  {hasPromo && (
- <Badge className="bg-green-600 text-white border-0 text-[9px] leading-tight px-1 py-0.5 max-w-[calc(100%-8px)] truncate">
+ <Badge className="bg-green-600 text-white border-0 text-[9px] leading-tight px-1.5 py-0.5 whitespace-nowrap">
  -{promo.discountPercent}%
  </Badge>
  )}
