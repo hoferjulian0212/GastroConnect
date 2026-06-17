@@ -391,6 +391,26 @@ export function registerAdminAuthRoutes(app: Express) {
     }
   });
 
+  // ── Platform analytics: open complaints across all orgs ───────────────────
+  app.get("/api/admin/complaints", requirePlatformAdmin, async (_req, res) => {
+    try {
+      res.json(await storage.getAdminOpenComplaints());
+    } catch (err) {
+      console.error("[admin] complaints list error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // ── Platform analytics: low-stock products across all suppliers ───────────
+  app.get("/api/admin/low-stock", requirePlatformAdmin, async (_req, res) => {
+    try {
+      res.json(await storage.getAdminLowStockProducts());
+    } catch (err) {
+      console.error("[admin] low-stock list error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
   // ── List all organizations (enriched with activity metrics) ───────────────
   app.get("/api/admin/orgs", requirePlatformAdmin, async (req, res) => {
     try {

@@ -201,6 +201,7 @@ export default function AdminDashboard() {
               icon={FileWarning}
               label="Offene Reklamationen"
               value={health?.openComplaints ?? 0}
+              href="/admin/complaints"
               color="red"
               testId="health-open-complaints"
             />
@@ -216,6 +217,7 @@ export default function AdminDashboard() {
               icon={PackageX}
               label="Niedriger Bestand"
               value={health?.lowStockProducts ?? 0}
+              href="/admin/low-stock"
               color="orange"
               testId="health-low-stock"
             />

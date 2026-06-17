@@ -45,6 +45,8 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminOrgs from "@/pages/admin/AdminOrgs";
 import AdminOrgDetail from "@/pages/admin/AdminOrgDetail";
 import AdminAdmins from "@/pages/admin/AdminAdmins";
+import AdminComplaints from "@/pages/admin/AdminComplaints";
+import AdminLowStock from "@/pages/admin/AdminLowStock";
 import NotFound from "@/pages/not-found";
 import RestaurantHome from "@/pages/restaurant/Home";
 import RestaurantInbox from "@/pages/restaurant/Inbox";
@@ -681,6 +683,12 @@ function AppLayout() {
   }
   if (pathOnly === "/admin/admins") {
     return <AdminAdmins />;
+  }
+  if (pathOnly === "/admin/complaints" || pathOnly === "/admin/complaints/") {
+    return <AdminComplaints />;
+  }
+  if (pathOnly === "/admin/low-stock" || pathOnly === "/admin/low-stock/") {
+    return <AdminLowStock />;
   }
   if (pathOnly.startsWith("/admin/orgs/")) {
     const orgId = pathOnly.replace("/admin/orgs/", "").split("/")[0];

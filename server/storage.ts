@@ -318,6 +318,31 @@ export interface IStorage {
     topSuppliers: { id: string; name: string; orders: number; revenue: number }[];
     topRestaurants: { id: string; name: string; orders: number; spend: number }[];
   }>;
+  getAdminOpenComplaints(): Promise<Array<{
+    id: string;
+    complaintNumber: string | null;
+    title: string;
+    status: string;
+    priority: string;
+    reason: string | null;
+    createdAt: string;
+    restaurantId: string;
+    restaurantName: string;
+    supplierId: string;
+    supplierName: string;
+    orderId: string;
+    orderNumber: string | null;
+  }>>;
+  getAdminLowStockProducts(): Promise<Array<{
+    id: string;
+    name: string;
+    unit: string;
+    category: string | null;
+    stockQuantity: number;
+    lowStockThreshold: number;
+    supplierId: string;
+    supplierName: string;
+  }>>;
   getAdminOrgStats(orgId: string): Promise<{
     role: "restaurant" | "supplier";
     totalOrders: number;
@@ -4966,6 +4991,90 @@ export class DatabaseStorage implements IStorage {
       lowStockProducts: Number((lowStockRes.rows?.[0] as any)?.cnt) || 0,
       unreadMessages: Number((unreadRes.rows?.[0] as any)?.cnt) || 0,
     };
+  }
+
+  async getAdminOpenComplaints(): Promise<Array<{
+    id: string;
+    complaintNumber: string | null;
+    title: string;
+    status: string;
+    priority: string;
+    reason: string | null;
+    createdAt: string;
+    restaurantId: string;
+    restaurantName: string;
+    supplierId: string;
+    supplierName: string;
+    orderId: string;
+    orderNumber: string | null;
+  }>> {
+    const result = await db.execute(sql`
+      SELECT c.id, c.complaint_number, c.title, c.status, c.priority, c.reason,
+        c.created_at, c.order_id, o.order_number,
+        c.restaurant_id, COALESCE(r.company_name, r.name) as restaurant_name,
+        c.supplier_id, COALESCE(s.company_name, s.name) as supplier_name
+      FROM complaints c
+      LEFT JOIN users r ON r.id = c.restaurant_id
+      LEFT JOIN users s ON s.id = c.supplier_id
+      LEFT JOIN orders o ON o.id = c.order_id
+      WHERE c.status IN ('open','in_progress','partially_resolved')
+      ORDER BY
+        CASE WHEN c.priority = 'high' THEN 0 ELSE 1 END,
+        c.created_at DESC
+    `);
+    return (result.rows || []).map((r) => {
+      const row = r as any;
+      return {
+        id: String(row.id),
+        complaintNumber: row.complaint_number ?? null,
+        title: String(row.title),
+        status: String(row.status),
+        priority: String(row.priority),
+        reason: row.reason ?? null,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+        restaurantId: String(row.restaurant_id),
+        restaurantName: row.restaurant_name ?? "—",
+        supplierId: String(row.supplier_id),
+        supplierName: row.supplier_name ?? "—",
+        orderId: String(row.order_id),
+        orderNumber: row.order_number ?? null,
+      };
+    });
+  }
+
+  async getAdminLowStockProducts(): Promise<Array<{
+    id: string;
+    name: string;
+    unit: string;
+    category: string | null;
+    stockQuantity: number;
+    lowStockThreshold: number;
+    supplierId: string;
+    supplierName: string;
+  }>> {
+    const result = await db.execute(sql`
+      SELECT p.id, p.name, p.unit, p.category,
+        COALESCE(p.stock_quantity, 0) as stock_quantity, p.low_stock_threshold,
+        p.supplier_id, COALESCE(s.company_name, s.name) as supplier_name
+      FROM products p
+      LEFT JOIN users s ON s.id = p.supplier_id
+      WHERE p.low_stock_threshold > 0
+        AND COALESCE(p.stock_quantity, 0) <= p.low_stock_threshold
+      ORDER BY (COALESCE(p.stock_quantity, 0) - p.low_stock_threshold) ASC, p.name ASC
+    `);
+    return (result.rows || []).map((r) => {
+      const row = r as any;
+      return {
+        id: String(row.id),
+        name: String(row.name),
+        unit: String(row.unit),
+        category: row.category ?? null,
+        stockQuantity: Number(row.stock_quantity) || 0,
+        lowStockThreshold: Number(row.low_stock_threshold) || 0,
+        supplierId: String(row.supplier_id),
+        supplierName: row.supplier_name ?? "—",
+      };
+    });
   }
 
   async getPlatformRecentActivity(limit = 12): Promise<Array<{
