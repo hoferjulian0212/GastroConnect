@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Shield, Building2, Users, LogOut, ChevronRight, LayoutDashboard } from "lucide-react";
+import { Shield, Building2, Users, LogOut, ChevronRight, LayoutDashboard, FileWarning, PackageX, Bug } from "lucide-react";
 import logoImg from "@assets/logo_no_bg_thick.png";
 import type { ReactNode } from "react";
 
@@ -63,6 +63,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
     { href: "/admin/orgs", label: "Organisationen", icon: Building2 },
+    { href: "/admin/complaints", label: "Reklamationen", icon: FileWarning },
+    { href: "/admin/low-stock", label: "Bestand", icon: PackageX },
+    { href: "/admin/error-logs", label: "Fehler-Logs", icon: Bug },
     { href: "/admin/admins", label: "Admins", icon: Users },
   ];
 

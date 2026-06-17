@@ -41,8 +41,9 @@ import {
   type WhatsappConnectionRequest, type InsertWhatsappConnectionRequest,
   aiChats, aiChatMessages,
   type AiChat, type InsertAiChat, type AiChatMessage, type InsertAiChatMessage,
-  members, vertreterAssignments,
+  members, vertreterAssignments, errorLogs, orgNotes,
   type Member, type InsertMember, type VertreterAssignment, type InsertVertreterAssignment,
+  type ErrorLog, type InsertErrorLog, type OrgNote, type InsertOrgNote,
   invitations, passwordResets, oauthAccounts, emailVerifications,
   type Invitation, type InsertInvitation, type PasswordReset, type InsertPasswordReset,
   type EmailVerification, type InsertEmailVerification,
@@ -356,6 +357,19 @@ export interface IStorage {
     ordersByStatus: { status: string; count: number }[];
     topPartners: { id: string; name: string; orders: number; amount: number }[];
   } | null>;
+
+  // Error logs
+  createErrorLog(entry: InsertErrorLog): Promise<void>;
+  getErrorLogs(filter?: { level?: string; source?: string; limit?: number }): Promise<ErrorLog[]>;
+  clearErrorLogs(): Promise<void>;
+
+  // Org notes
+  getOrgNotes(organizationId: string): Promise<OrgNote[]>;
+  createOrgNote(note: InsertOrgNote): Promise<OrgNote>;
+  deleteOrgNote(id: string, organizationId: string): Promise<void>;
+
+  // Member verification (admin)
+  setMemberVerified(memberId: string, organizationId: string, verified: boolean): Promise<Member | null>;
 
   // Delivery Schedules
   getDeliverySchedules(supplierId: string): Promise<(DeliverySchedule & { restaurant: User })[]>;
@@ -5075,6 +5089,52 @@ export class DatabaseStorage implements IStorage {
         supplierName: row.supplier_name ?? "—",
       };
     });
+  }
+
+  async createErrorLog(entry: InsertErrorLog): Promise<void> {
+    await db.insert(errorLogs).values(entry);
+  }
+
+  async getErrorLogs(filter?: { level?: string; source?: string; limit?: number }): Promise<ErrorLog[]> {
+    const conditions = [];
+    if (filter?.level) conditions.push(eq(errorLogs.level, filter.level));
+    if (filter?.source) conditions.push(eq(errorLogs.source, filter.source));
+    const limit = Math.min(Math.max(filter?.limit ?? 200, 1), 500);
+    const query = db.select().from(errorLogs);
+    const rows = conditions.length
+      ? await query.where(and(...conditions)).orderBy(desc(errorLogs.createdAt)).limit(limit)
+      : await query.orderBy(desc(errorLogs.createdAt)).limit(limit);
+    return rows;
+  }
+
+  async clearErrorLogs(): Promise<void> {
+    await db.delete(errorLogs);
+  }
+
+  async getOrgNotes(organizationId: string): Promise<OrgNote[]> {
+    return await db
+      .select()
+      .from(orgNotes)
+      .where(eq(orgNotes.organizationId, organizationId))
+      .orderBy(desc(orgNotes.createdAt));
+  }
+
+  async createOrgNote(note: InsertOrgNote): Promise<OrgNote> {
+    const [created] = await db.insert(orgNotes).values(note).returning();
+    return created;
+  }
+
+  async deleteOrgNote(id: string, organizationId: string): Promise<void> {
+    await db.delete(orgNotes).where(and(eq(orgNotes.id, id), eq(orgNotes.organizationId, organizationId)));
+  }
+
+  async setMemberVerified(memberId: string, organizationId: string, verified: boolean): Promise<Member | null> {
+    const [updated] = await db
+      .update(members)
+      .set({ emailVerifiedAt: verified ? new Date() : null })
+      .where(and(eq(members.id, memberId), eq(members.organizationId, organizationId)))
+      .returning();
+    return updated ?? null;
   }
 
   async getPlatformRecentActivity(limit = 12): Promise<Array<{

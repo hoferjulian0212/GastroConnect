@@ -7,7 +7,7 @@ import { db } from "./db";
 import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
-import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES } from "@shared/schema";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema } from "@shared/schema";
 import { can, type Capability } from "@shared/permissions";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
@@ -560,6 +560,34 @@ export async function registerRoutes(
   registerAuthRoutes(app);
   // Platform admin panel (email + password auth + admin CRUD)
   registerAdminAuthRoutes(app);
+
+  // Client-side error reporting. Public + write-rate-limited so the browser can
+  // record frontend crashes for platform admins to inspect later. Best-effort:
+  // never surfaces a hard failure to the client.
+  app.post("/api/client-errors", async (req, res) => {
+    try {
+      const parsed = clientErrorReportSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "invalid_report" });
+      }
+      await storage.createErrorLog({
+        level: "error",
+        source: "client",
+        message: parsed.data.message.slice(0, 2000),
+        stack: parsed.data.stack ? parsed.data.stack.slice(0, 10000) : null,
+        method: null,
+        path: parsed.data.path ? parsed.data.path.slice(0, 500) : null,
+        statusCode: null,
+        userId: req.auth?.organizationId ?? null,
+        memberId: req.auth?.memberId ?? null,
+        userAgent: req.headers["user-agent"]?.slice(0, 500) ?? null,
+        context: parsed.data.context ?? null,
+      });
+      res.status(204).end();
+    } catch {
+      res.status(204).end();
+    }
+  });
 
   // Serve static images from client/public - ensures images work in both dev and production
   const clientPublicPath = path.resolve(process.cwd(), "client", "public");

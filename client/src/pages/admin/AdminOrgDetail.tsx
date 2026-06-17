@@ -5,6 +5,7 @@ import { AdminLayout, AdminBreadcrumb } from "./AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -14,7 +15,7 @@ import {
   Building2, Mail, Phone, MapPin, CheckCircle2, Clock,
   Users, UserCheck, ShieldCheck, Trash2, AlertTriangle,
   Euro, ShoppingCart, TrendingUp, FileWarning, Package, PackageX, Handshake,
-  Star, CalendarClock,
+  Star, CalendarClock, StickyNote, Plus, XCircle,
 } from "lucide-react";
 
 interface OrgMember {
@@ -72,6 +73,15 @@ function monthLabel(key: string): string {
   return new Date(y, (m || 1) - 1, 1).toLocaleDateString("de-DE", { month: "short" });
 }
 
+interface OrgNote {
+  id: string;
+  organizationId: string;
+  authorAdminId: string | null;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
 const STATUS_LABELS: Record<string, string> = {
   pending: "Ausstehend",
   confirmed: "Bestätigt",
@@ -87,6 +97,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [noteDraft, setNoteDraft] = useState("");
 
   const { data, isLoading, isError } = useQuery<OrgDetailResponse>({
     queryKey: ["/api/admin/orgs", params.id, "members"],
@@ -150,6 +161,56 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
     },
     onError: () => {
       toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
+    },
+  });
+
+  const memberVerifyMutation = useMutation({
+    mutationFn: ({ memberId, verified }: { memberId: string; verified: boolean }) =>
+      apiRequest("PATCH", `/api/admin/orgs/${params.id}/members/${memberId}/verify`, { verified }),
+    onSuccess: (_r, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orgs", params.id, "members"] });
+      toast({
+        title: vars.verified ? "Mitglied verifiziert" : "Verifizierung entfernt",
+        description: vars.verified
+          ? "Das Mitglied wurde als verifiziert markiert."
+          : "Das Mitglied gilt nun als unverifiziert.",
+      });
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Aktion fehlgeschlagen.", variant: "destructive" });
+    },
+  });
+
+  const { data: notes = [], isLoading: notesLoading } = useQuery<OrgNote[]>({
+    queryKey: ["/api/admin/orgs", params.id, "notes"],
+    queryFn: async () => {
+      const r = await fetch(`/api/admin/orgs/${params.id}/notes`, { credentials: "include" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json() as Promise<OrgNote[]>;
+    },
+    staleTime: 30000,
+  });
+
+  const addNoteMutation = useMutation({
+    mutationFn: (body: string) => apiRequest("POST", `/api/admin/orgs/${params.id}/notes`, { body }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orgs", params.id, "notes"] });
+      setNoteDraft("");
+      toast({ title: "Notiz gespeichert" });
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Notiz konnte nicht gespeichert werden.", variant: "destructive" });
+    },
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: (noteId: string) => apiRequest("DELETE", `/api/admin/orgs/${params.id}/notes/${noteId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orgs", params.id, "notes"] });
+      toast({ title: "Notiz gelöscht" });
+    },
+    onError: () => {
+      toast({ title: "Fehler", description: "Notiz konnte nicht gelöscht werden.", variant: "destructive" });
     },
   });
 
@@ -481,6 +542,31 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                       </span>
                     );
                   })()}
+                  {member.emailVerifiedAt ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => memberVerifyMutation.mutate({ memberId: member.id, verified: false })}
+                      disabled={memberVerifyMutation.isPending}
+                      className="h-7 px-3 text-xs border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 text-amber-300 disabled:opacity-30"
+                      data-testid={`button-unverify-${member.id}`}
+                    >
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Aufheben
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => memberVerifyMutation.mutate({ memberId: member.id, verified: true })}
+                      disabled={memberVerifyMutation.isPending}
+                      className="h-7 px-3 text-xs border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-300 disabled:opacity-30"
+                      data-testid={`button-verify-${member.id}`}
+                    >
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Verifizieren
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -496,6 +582,80 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Notes / special agreements */}
+        <div>
+          <h2 className="text-sm font-semibold text-white/40 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <StickyNote className="h-4 w-4" />
+            Notizen & Vereinbarungen ({notes.length})
+          </h2>
+          <div className="bg-[#161921] border border-white/10 rounded-2xl p-4 space-y-4">
+            <div className="space-y-2">
+              <Textarea
+                value={noteDraft}
+                onChange={e => setNoteDraft(e.target.value)}
+                placeholder="Besondere Vereinbarung oder interne Notiz hinzufügen…"
+                rows={3}
+                maxLength={5000}
+                className="bg-[#0e1117] border-white/10 text-white placeholder:text-white/30 rounded-xl resize-none"
+                data-testid="input-note-body"
+              />
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={() => addNoteMutation.mutate(noteDraft.trim())}
+                  disabled={addNoteMutation.isPending || !noteDraft.trim()}
+                  className="h-8 px-4 text-xs bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-30"
+                  data-testid="button-add-note"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Notiz speichern
+                </Button>
+              </div>
+            </div>
+
+            {notesLoading ? (
+              <div className="space-y-2">
+                {[1, 2].map(i => <div key={i} className="h-16 rounded-xl bg-white/5 animate-pulse" />)}
+              </div>
+            ) : notes.length === 0 ? (
+              <p className="text-white/30 text-sm py-2 text-center" data-testid="text-no-notes">
+                Noch keine Notizen
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {notes.map(note => (
+                  <div
+                    key={note.id}
+                    className="group flex items-start gap-3 px-4 py-3 bg-[#0e1117] border border-white/10 rounded-xl"
+                    data-testid={`row-note-${note.id}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white/90 whitespace-pre-wrap break-words">{note.body}</p>
+                      <p className="text-[11px] text-white/35 mt-1.5">
+                        {note.authorName} ·{" "}
+                        {new Date(note.createdAt).toLocaleString("de-DE", {
+                          day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (confirm("Notiz löschen?")) deleteNoteMutation.mutate(note.id);
+                      }}
+                      disabled={deleteNoteMutation.isPending}
+                      className="text-white/20 hover:text-red-400 transition-colors shrink-0 sm:opacity-0 sm:group-hover:opacity-100"
+                      data-testid={`button-delete-note-${note.id}`}
+                      aria-label="Notiz löschen"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -47,6 +47,7 @@ import AdminOrgDetail from "@/pages/admin/AdminOrgDetail";
 import AdminAdmins from "@/pages/admin/AdminAdmins";
 import AdminComplaints from "@/pages/admin/AdminComplaints";
 import AdminLowStock from "@/pages/admin/AdminLowStock";
+import AdminErrorLogs from "@/pages/admin/AdminErrorLogs";
 import NotFound from "@/pages/not-found";
 import RestaurantHome from "@/pages/restaurant/Home";
 import RestaurantInbox from "@/pages/restaurant/Inbox";
@@ -196,13 +197,14 @@ function ImpersonationBanner() {
   const exitMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/admin/impersonate/exit"),
     onSuccess: () => {
-      // Navigate to /admin FIRST so the admin early-return in App fires and
-      // UserLoader (which would redirect back to the member area) is unmounted
-      // before it can react to the location change.
-      setLocation("/admin");
-      // Then clear stale member-session caches in the background.
+      // Hard-navigate to /admin so all member-session React state and query
+      // cache is fully discarded — a soft setLocation() can race with auth
+      // invalidation effects and end up redirecting to /restaurant or /login.
+      queryClient.clear();
+      window.location.href = "/admin";
+    },
+    onError: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/impersonation-status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
   });
 
@@ -689,6 +691,9 @@ function AppLayout() {
   }
   if (pathOnly === "/admin/low-stock" || pathOnly === "/admin/low-stock/") {
     return <AdminLowStock />;
+  }
+  if (pathOnly === "/admin/error-logs" || pathOnly === "/admin/error-logs/") {
+    return <AdminErrorLogs />;
   }
   if (pathOnly.startsWith("/admin/orgs/")) {
     const orgId = pathOnly.replace("/admin/orgs/", "").split("/")[0];

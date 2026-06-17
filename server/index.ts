@@ -7,6 +7,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { createSessionMiddleware } from "./auth/session";
 import { loadAuth } from "./auth/middleware";
+import { storage } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
@@ -153,11 +154,28 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
     console.error("Internal Server Error:", err);
+
+    // Persist the error for platform admins (best-effort, never throws).
+    storage
+      .createErrorLog({
+        level: "error",
+        source: "server",
+        message: String(message).slice(0, 2000),
+        stack: err?.stack ? String(err.stack).slice(0, 10000) : null,
+        method: req.method,
+        path: req.originalUrl?.slice(0, 500) ?? null,
+        statusCode: status,
+        userId: req.auth?.organizationId ?? null,
+        memberId: req.auth?.memberId ?? null,
+        userAgent: req.headers["user-agent"]?.slice(0, 500) ?? null,
+        context: null,
+      })
+      .catch(() => {});
 
     if (res.headersSent) {
       return next(err);

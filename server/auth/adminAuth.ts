@@ -504,4 +504,96 @@ export function registerAdminAuthRoutes(app: Express) {
       res.status(500).json({ error: "server_error" });
     }
   });
+
+  // ── Verify / unverify a single member of an organisation ──────────────────
+  app.patch("/api/admin/orgs/:id/members/:memberId/verify", requirePlatformAdmin, async (req, res) => {
+    try {
+      const orgId = String(req.params.id);
+      const memberId = String(req.params.memberId);
+      const verified = req.body?.verified !== false; // default true
+      const org = await storage.getUser(orgId);
+      if (!org) return res.status(404).json({ error: "not_found" });
+      const updated = await storage.setMemberVerified(memberId, orgId, verified);
+      if (!updated) return res.status(404).json({ error: "member_not_found" });
+      const adminName = req.platformAdmin?.admin.name ?? "admin";
+      console.log(`[admin] member.${verified ? "verified" : "unverified"} memberId=${memberId} orgId=${orgId} by=${adminName} ip=${req.ip}`);
+      res.json(updated);
+    } catch (err) {
+      console.error("[admin] member verify error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // ── Org notes: list / create / delete ────────────────────────────────────
+  app.get("/api/admin/orgs/:id/notes", requirePlatformAdmin, async (req, res) => {
+    try {
+      const orgId = String(req.params.id);
+      const org = await storage.getUser(orgId);
+      if (!org) return res.status(404).json({ error: "not_found" });
+      res.json(await storage.getOrgNotes(orgId));
+    } catch (err) {
+      console.error("[admin] org notes list error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  app.post("/api/admin/orgs/:id/notes", requirePlatformAdmin, async (req, res) => {
+    try {
+      const orgId = String(req.params.id);
+      const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
+      if (!body) return res.status(400).json({ error: "empty_note" });
+      if (body.length > 5000) return res.status(400).json({ error: "note_too_long" });
+      const org = await storage.getUser(orgId);
+      if (!org) return res.status(404).json({ error: "not_found" });
+      const adminName = req.platformAdmin?.admin.name ?? "Admin";
+      const adminId = req.platformAdmin?.adminId ?? null;
+      const note = await storage.createOrgNote({
+        organizationId: orgId,
+        authorAdminId: adminId,
+        authorName: adminName,
+        body,
+      });
+      res.status(201).json(note);
+    } catch (err) {
+      console.error("[admin] org note create error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  app.delete("/api/admin/orgs/:id/notes/:noteId", requirePlatformAdmin, async (req, res) => {
+    try {
+      const orgId = String(req.params.id);
+      const noteId = String(req.params.noteId);
+      await storage.deleteOrgNote(noteId, orgId);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin] org note delete error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // ── Platform error logs: list / clear ────────────────────────────────────
+  app.get("/api/admin/error-logs", requirePlatformAdmin, async (req, res) => {
+    try {
+      const level = typeof req.query.level === "string" ? req.query.level : undefined;
+      const source = typeof req.query.source === "string" ? req.query.source : undefined;
+      const limit = req.query.limit ? Number(req.query.limit) : undefined;
+      res.json(await storage.getErrorLogs({ level, source, limit }));
+    } catch (err) {
+      console.error("[admin] error-logs list error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  app.delete("/api/admin/error-logs", requirePlatformAdmin, async (req, res) => {
+    try {
+      await storage.clearErrorLogs();
+      const adminName = req.platformAdmin?.admin.name ?? "admin";
+      console.log(`[admin] error-logs.cleared by=${adminName} ip=${req.ip}`);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin] error-logs clear error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
 }

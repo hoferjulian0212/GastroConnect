@@ -1180,6 +1180,65 @@ export const vertreterAssignments = pgTable("vertreter_assignments", {
   uniqueIndex("uniq_vertreter_assignment").on(table.supplierId, table.restaurantId),
 ]);
 
+// ── Platform error logs ─────────────────────────────────────────────────────
+// Persistent capture of server- and client-side errors so platform admins can
+// inspect failures after the fact. `userId`/`memberId` reference the actor when
+// known (best-effort, nullable). `context` holds arbitrary structured detail.
+export const errorLogs = pgTable("error_logs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  // 'error' | 'warn' | 'info'
+  level: varchar("level", { length: 10 }).notNull().default("error"),
+  // 'server' | 'client'
+  source: varchar("source", { length: 10 }).notNull().default("server"),
+  message: text("message").notNull(),
+  stack: text("stack"),
+  method: text("method"),
+  path: text("path"),
+  statusCode: integer("status_code"),
+  userId: varchar("user_id", { length: 36 }),
+  memberId: varchar("member_id", { length: 36 }),
+  userAgent: text("user_agent"),
+  context: jsonb("context").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_error_logs_created_at").on(table.createdAt),
+  index("idx_error_logs_source").on(table.source),
+  index("idx_error_logs_level").on(table.level),
+]);
+
+export const insertErrorLogSchema = createInsertSchema(errorLogs).omit({ id: true, createdAt: true });
+export type ErrorLog = typeof errorLogs.$inferSelect;
+export type InsertErrorLog = z.infer<typeof insertErrorLogSchema>;
+
+// Client error reports posted from the browser. Validated before persisting.
+export const clientErrorReportSchema = z.object({
+  message: z.string().min(1).max(2000),
+  stack: z.string().max(10000).optional(),
+  path: z.string().max(500).optional(),
+  context: z.record(z.unknown()).optional(),
+});
+export type ClientErrorReport = z.infer<typeof clientErrorReportSchema>;
+
+// ── Per-organisation admin notes ────────────────────────────────────────────
+// Free-text notes a platform admin attaches to an organisation (a `users` row)
+// for special agreements or internal info. Each note keeps its author + a
+// creation timestamp so the history is auditable.
+export const orgNotes = pgTable("org_notes", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => users.id),
+  authorAdminId: varchar("author_admin_id", { length: 36 }),
+  authorName: text("author_name").notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_org_notes_organization_id").on(table.organizationId),
+  index("idx_org_notes_created_at").on(table.createdAt),
+]);
+
+export const insertOrgNoteSchema = createInsertSchema(orgNotes).omit({ id: true, createdAt: true });
+export type OrgNote = typeof orgNotes.$inferSelect;
+export type InsertOrgNote = z.infer<typeof insertOrgNoteSchema>;
+
 export const MEMBER_ROLES = ["admin", "manager", "staff", "vertreter"] as const;
 export type MemberRole = typeof MEMBER_ROLES[number];
 
