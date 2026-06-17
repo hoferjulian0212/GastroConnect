@@ -1726,9 +1726,6 @@ export default function Landing() {
             >
               © {new Date().getFullYear()} GastroConnect. {t.footerCopyright}
             </p>
-            <p className="text-sm text-muted-foreground">
-              Made for Gastronomie
-            </p>
           </div>
         </div>
       </footer>
