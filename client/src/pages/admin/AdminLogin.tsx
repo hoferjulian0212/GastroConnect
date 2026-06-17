@@ -57,7 +57,7 @@ export default function AdminLogin() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0e1117]">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f]">
         <div className="flex gap-1.5">
           <div className="h-2 w-2 rounded-full bg-white/40 animate-bounce [animation-delay:0ms]" />
           <div className="h-2 w-2 rounded-full bg-white/40 animate-bounce [animation-delay:150ms]" />
@@ -68,20 +68,20 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0e1117] px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a0f] px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-3">
-          <img src={logoImg} alt="GastroConnect" className="h-14 w-14 object-contain invert" />
+          <img src={logoImg} alt="GastroConnect" className="h-14 w-14 object-contain invert opacity-90" />
           <div className="text-center">
             <h1 className="text-xl font-bold text-white tracking-tight">GastroConnect</h1>
-            <p className="text-sm text-white/50 mt-0.5">Platform Admin Panel</p>
+            <p className="text-sm text-white/45 mt-0.5">Platform Admin Panel</p>
           </div>
         </div>
 
-        <Card className="bg-[#161921] border-white/10 text-white">
+        <Card className="bg-[#111116] border-white/8 text-white">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Shield className="h-4 w-4 text-blue-400" />
+              <Shield className="h-4 w-4 text-indigo-400" />
               Admin-Zugang
             </CardTitle>
             <CardDescription className="text-white/50 text-sm">
@@ -127,7 +127,7 @@ export default function AdminLogin() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-[#F26207] hover:bg-[#e05500] text-white font-semibold rounded-xl h-11"
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl h-11"
                 data-testid="button-admin-login"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Anmelden"}

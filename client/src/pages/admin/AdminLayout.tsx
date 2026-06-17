@@ -48,7 +48,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0e1117]">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f]">
         <div className="flex gap-1.5">
           <div className="h-2 w-2 rounded-full bg-white/40 animate-bounce [animation-delay:0ms]" />
           <div className="h-2 w-2 rounded-full bg-white/40 animate-bounce [animation-delay:150ms]" />
@@ -70,21 +70,21 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0e1117] text-white flex flex-col">
-      <header className="shrink-0 bg-[#161921] border-b border-white/10 px-4 py-3 flex items-center gap-4">
+    <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
+      <header className="shrink-0 bg-[#111116] border-b border-white/8 px-4 py-3 flex items-center gap-4">
         <div className="flex items-center gap-2.5">
-          <img src={logoImg} alt="GastroConnect" className="h-7 w-7 object-contain invert" />
+          <img src={logoImg} alt="GastroConnect" className="h-7 w-7 object-contain invert opacity-90" />
           <div className="flex items-center gap-1.5">
             <span className="font-bold text-white text-sm">GastroConnect</span>
-            <span className="text-white/30">·</span>
-            <span className="flex items-center gap-1 text-xs text-blue-400">
+            <span className="text-white/20">·</span>
+            <span className="flex items-center gap-1 text-xs text-indigo-400">
               <Shield className="h-3 w-3" />
               Admin
             </span>
           </div>
         </div>
 
-        <nav className="flex items-center gap-1 ml-4">
+        <nav className="flex items-center gap-0.5 ml-4">
           {navItems.map(item => {
             const active = item.exact ? location === item.href : location.startsWith(item.href + "/") || location === item.href;
             const isOrgs = item.href === "/admin/orgs";
@@ -92,7 +92,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               <Link key={item.href} href={item.href}>
                 <span
                   className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                    active ? "bg-white/15 text-white" : "text-white/50 hover:text-white hover:bg-white/5"
+                    active ? "bg-indigo-500/15 text-indigo-300" : "text-white/45 hover:text-white/80 hover:bg-white/5"
                   }`}
                   data-testid={`admin-nav-${item.label.toLowerCase()}`}
                 >
@@ -146,7 +146,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
 export function AdminBreadcrumb({ items }: { items: Array<{ label: string; href?: string }> }) {
   return (
-    <nav className="flex items-center gap-1.5 text-sm text-white/40 mb-6">
+    <nav className="flex items-center gap-1.5 text-sm text-white/35 mb-6">
       {items.map((item, i) => (
         <span key={i} className="flex items-center gap-1.5">
           {i > 0 && <ChevronRight className="h-3.5 w-3.5" />}

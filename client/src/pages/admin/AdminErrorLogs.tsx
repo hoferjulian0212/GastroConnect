@@ -122,11 +122,11 @@ export default function AdminErrorLogs() {
               placeholder="Suche nach Nachricht, Pfad, Methode oder Status..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 bg-[#161921] border-white/10 text-white placeholder:text-white/30 rounded-xl h-10"
+              className="pl-9 bg-[#111116] border-white/8 text-white placeholder:text-white/30 rounded-xl h-10"
               data-testid="input-error-search"
             />
           </div>
-          <div className="flex items-center gap-1 bg-[#161921] border border-white/10 rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-[#111116] border border-white/8 rounded-xl p-1">
             <Filter className="h-3.5 w-3.5 text-white/30 ml-1.5" />
             {SOURCE_FILTERS.map(f => (
               <button
@@ -150,7 +150,7 @@ export default function AdminErrorLogs() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="bg-[#161921] border border-white/10 rounded-2xl py-16 text-center">
+          <div className="bg-[#111116] border border-white/8 rounded-2xl py-16 text-center">
             <Bug className="h-8 w-8 text-white/20 mx-auto mb-3" />
             <p className="text-white/40 text-sm" data-testid="text-no-errors">
               {logs.length === 0 ? "Keine Fehler protokolliert" : "Keine Treffer"}
@@ -164,19 +164,19 @@ export default function AdminErrorLogs() {
               return (
                 <div
                   key={l.id}
-                  className="bg-[#161921] border border-white/10 rounded-xl overflow-hidden"
+                  className="bg-[#111116] border border-white/8 rounded-xl overflow-hidden"
                   data-testid={`row-error-${l.id}`}
                 >
                   <button
                     onClick={() => toggle(l.id)}
                     className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-white/[0.03] transition-colors"
                   >
-                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${isServer ? "bg-purple-500/10" : "bg-amber-500/10"}`}>
-                      {isServer ? <Server className="h-4 w-4 text-purple-400" /> : <Monitor className="h-4 w-4 text-amber-400" />}
+                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${isServer ? "bg-indigo-500/10" : "bg-amber-500/10"}`}>
+                      {isServer ? <Server className="h-4 w-4 text-indigo-400" /> : <Monitor className="h-4 w-4 text-amber-400" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className={`text-[10px] px-2 py-0 border ${isServer ? "border-purple-500/40 text-purple-300" : "border-amber-500/40 text-amber-300"}`}>
+                        <Badge variant="outline" className={`text-[10px] px-2 py-0 border ${isServer ? "border-indigo-500/40 text-indigo-300" : "border-amber-500/40 text-amber-300"}`}>
                           {isServer ? "Server" : "Browser"}
                         </Badge>
                         {l.statusCode != null && (
@@ -205,13 +205,13 @@ export default function AdminErrorLogs() {
                       {l.stack && (
                         <div>
                           <p className="text-[10px] uppercase tracking-wide text-white/30 mb-1">Stacktrace</p>
-                          <pre className="text-[11px] text-white/60 bg-black/40 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words max-h-72">{l.stack}</pre>
+                          <pre className="text-[11px] text-white/60 bg-black/30 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words max-h-72">{l.stack}</pre>
                         </div>
                       )}
                       {l.context && Object.keys(l.context).length > 0 && (
                         <div>
                           <p className="text-[10px] uppercase tracking-wide text-white/30 mb-1">Kontext</p>
-                          <pre className="text-[11px] text-white/60 bg-black/40 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words">{JSON.stringify(l.context, null, 2)}</pre>
+                          <pre className="text-[11px] text-white/60 bg-black/30 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words">{JSON.stringify(l.context, null, 2)}</pre>
                         </div>
                       )}
                     </div>

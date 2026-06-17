@@ -211,7 +211,7 @@ function ImpersonationBanner() {
   if (!data?.impersonating) return null;
 
   return (
-    <div className="fixed top-0 inset-x-0 z-[999] flex items-center justify-between gap-3 px-4 py-2.5 bg-[#F26207] text-white text-sm font-medium shadow-lg">
+    <div className="fixed top-0 inset-x-0 z-[999] flex items-center justify-between gap-3 px-4 py-2.5 bg-indigo-700 text-white text-sm font-medium shadow-lg">
       <span className="flex items-center gap-2 truncate">
         <span className="hidden sm:inline">🔍</span>
         <span>

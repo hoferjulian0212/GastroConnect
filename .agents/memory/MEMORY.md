@@ -13,3 +13,4 @@
 - [Mobile full-screen inbox chat](mobile-fullscreen-chat.md) — isInChat gates App.tsx padding/nav + full-bleed Card in both inboxes; hide bottom nav so it doesn't overlap the floating input pill.
 - [Admin panel Replit OIDC login](admin-replit-oidc.md) — /admin logs in via Replit OIDC as a public PKCE client keyed by REPL_ID (no registered OAuth App); blueprint scaffold is unused/uninstallable, delete it.
 - [Admin OAuth (Replit OIDC) gotchas](admin-oauth-callback.md) — Replit OIDC rejects prompt=select_account (use prompt=login); redirect_uri must use REPLIT_DEV_DOMAIN.
+- [Admin panel color scheme](admin-color-scheme.md) — single indigo accent (#818cf8/indigo-400/600); neutral #0a0a0f page / #111116 cards; semantic red/amber/emerald for status only.

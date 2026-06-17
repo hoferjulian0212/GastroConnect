@@ -35,7 +35,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_STYLES: Record<string, string> = {
   open: "border-red-500/40 text-red-400",
   in_progress: "border-amber-500/40 text-amber-400",
-  partially_resolved: "border-orange-500/40 text-orange-400",
+  partially_resolved: "border-amber-500/40 text-amber-400",
 };
 
 const REASON_LABELS: Record<string, string> = {
@@ -93,7 +93,7 @@ export default function AdminComplaints() {
             placeholder="Suche nach Titel, Restaurant, Lieferant oder Nummer..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="pl-9 bg-[#161921] border-white/10 text-white placeholder:text-white/30 rounded-xl h-10"
+            className="pl-9 bg-[#111116] border-white/8 text-white placeholder:text-white/30 rounded-xl h-10"
             data-testid="input-admin-complaint-search"
           />
         </div>
@@ -105,7 +105,7 @@ export default function AdminComplaints() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="bg-[#161921] border border-white/10 rounded-2xl py-16 text-center">
+          <div className="bg-[#111116] border border-white/8 rounded-2xl py-16 text-center">
             <FileWarning className="h-8 w-8 text-white/20 mx-auto mb-3" />
             <p className="text-white/40 text-sm" data-testid="text-no-complaints">
               {complaints.length === 0 ? "Keine offenen Reklamationen" : "Keine Treffer"}
@@ -116,7 +116,7 @@ export default function AdminComplaints() {
             {filtered.map(c => (
               <div
                 key={c.id}
-                className="flex items-start gap-3 px-4 py-3 bg-[#161921] border border-white/10 rounded-xl"
+                className="flex items-start gap-3 px-4 py-3 bg-[#111116] border border-white/8 rounded-xl"
                 data-testid={`row-complaint-${c.id}`}
               >
                 <div className="h-9 w-9 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
@@ -148,7 +148,7 @@ export default function AdminComplaints() {
                   <div className="flex items-center gap-x-4 gap-y-1 mt-2 flex-wrap">
                     <button
                       onClick={() => setLocation(`/admin/orgs/${c.restaurantId}`)}
-                      className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
                       data-testid={`link-restaurant-${c.id}`}
                     >
                       <Building2 className="h-3 w-3" />

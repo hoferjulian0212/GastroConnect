@@ -136,7 +136,7 @@ export default function AdminOrgs() {
             )}
             <Button
               onClick={() => setCreateOpen(true)}
-              className="flex items-center gap-2 bg-[#F26207] hover:bg-[#e05500] text-white font-medium rounded-lg h-9 px-3 text-sm"
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg h-9 px-3 text-sm"
               data-testid="button-create-org"
             >
               <Plus className="h-4 w-4" />
@@ -152,13 +152,13 @@ export default function AdminOrgs() {
               placeholder="Suche nach Name, Firma oder E-Mail..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 bg-[#161921] border-white/10 text-white placeholder:text-white/30 rounded-xl h-10"
+              className="pl-9 bg-[#111116] border-white/8 text-white placeholder:text-white/30 rounded-xl h-10"
               data-testid="input-admin-org-search"
             />
           </div>
           <Select value={sortKey} onValueChange={v => setSortKey(v as SortKey)}>
             <SelectTrigger
-              className="w-[170px] h-10 bg-[#161921] border-white/10 text-white rounded-xl shrink-0"
+              className="w-[170px] h-10 bg-[#111116] border-white/8 text-white rounded-xl shrink-0"
               data-testid="select-org-sort"
             >
               <SelectValue />
@@ -249,7 +249,7 @@ function CreateOrgDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161921] border-white/10 text-white">
+      <DialogContent className="bg-[#111116] border-white/8 text-white">
         <DialogHeader>
           <DialogTitle>Neues Unternehmen</DialogTitle>
           <DialogDescription className="text-white/50">
@@ -262,7 +262,7 @@ function CreateOrgDialog({
             <Label className="text-white/70 text-sm">Typ</Label>
             <Select value={role} onValueChange={(v) => setRole(v as "restaurant" | "supplier")}>
               <SelectTrigger
-                className="bg-white/5 border-white/10 text-white"
+                className="bg-white/5 border-white/8 text-white"
                 data-testid="select-org-role"
               >
                 <SelectValue />
@@ -316,7 +316,7 @@ function CreateOrgDialog({
             <Button
               type="submit"
               disabled={mutation.isPending}
-              className="bg-[#F26207] hover:bg-[#e05500] text-white font-medium"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
               data-testid="button-submit-create-org"
             >
               {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Erstellen & einladen"}
@@ -339,7 +339,7 @@ function OrgSection({ title, orgs, onSelect }: { title: string; orgs: Org[]; onS
           <button
             key={org.id}
             onClick={() => onSelect(org.id)}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-[#161921] hover:bg-[#1e2533] border border-white/10 rounded-xl text-left transition-colors group"
+            className="w-full flex items-center gap-3 px-4 py-3 bg-[#111116] hover:bg-[#1a1a24] border border-white/8 rounded-xl text-left transition-colors group"
             data-testid={`row-org-${org.id}`}
           >
             <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
@@ -375,7 +375,7 @@ function OrgSection({ title, orgs, onSelect }: { title: string; orgs: Org[]; onS
                 variant="outline"
                 className={`text-[10px] px-2 py-0 border ${
                   org.role === "restaurant"
-                    ? "border-blue-500/40 text-blue-400"
+                    ? "border-indigo-500/40 text-indigo-400"
                     : "border-emerald-500/40 text-emerald-400"
                 }`}
               >

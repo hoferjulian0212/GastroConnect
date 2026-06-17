@@ -318,7 +318,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
         )}
 
         {/* Org info card */}
-        <div className="bg-[#161921] border border-white/10 rounded-2xl p-5">
+        <div className="bg-[#111116] border border-white/8 rounded-2xl p-5">
           <div className="flex items-start gap-4">
             <div className="h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
               <Building2 className="h-6 w-6 text-white/50" />
@@ -341,7 +341,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                   variant="outline"
                   className={`text-xs px-2 py-0 border ${
                     org.role === "restaurant"
-                      ? "border-blue-500/40 text-blue-400"
+                      ? "border-indigo-500/40 text-indigo-400"
                       : "border-emerald-500/40 text-emerald-400"
                   }`}
                 >
@@ -377,13 +377,13 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
             </h2>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <StatCard icon={Euro} label="Umsatz gesamt" value={fmtEur(stats.gmv)} accent="text-emerald-400" testId="stat-gmv" />
-              <StatCard icon={ShoppingCart} label="Bestellungen" value={fmtNum(stats.totalOrders)} accent="text-blue-400" testId="stat-orders" />
-              <StatCard icon={TrendingUp} label="Ø Bestellwert" value={fmtEur(stats.avgOrderValue)} accent="text-purple-400" testId="stat-aov" />
+              <StatCard icon={Euro} label="Umsatz gesamt" value={fmtEur(stats.gmv)} accent="text-indigo-400" testId="stat-gmv" />
+              <StatCard icon={ShoppingCart} label="Bestellungen" value={fmtNum(stats.totalOrders)} accent="text-indigo-400" testId="stat-orders" />
+              <StatCard icon={TrendingUp} label="Ø Bestellwert" value={fmtEur(stats.avgOrderValue)} accent="text-indigo-400" testId="stat-aov" />
               {stats.role === "supplier" ? (
-                <StatCard icon={Package} label="Produkte" value={fmtNum(stats.productCount)} accent="text-amber-400" testId="stat-products" />
+                <StatCard icon={Package} label="Produkte" value={fmtNum(stats.productCount)} accent="text-indigo-400" testId="stat-products" />
               ) : (
-                <StatCard icon={Handshake} label="Aktive Lieferanten" value={fmtNum(stats.activePartners)} accent="text-amber-400" testId="stat-partners" />
+                <StatCard icon={Handshake} label="Aktive Lieferanten" value={fmtNum(stats.activePartners)} accent="text-indigo-400" testId="stat-partners" />
               )}
               {stats.role === "supplier" ? (
                 <StatCard
@@ -391,7 +391,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                   label="Bewertung"
                   value={stats.ratingAvg != null ? `${stats.ratingAvg.toFixed(1)} ★` : "—"}
                   sub={stats.ratingCount > 0 ? `${fmtNum(stats.ratingCount)} Bewertungen` : "Keine Bewertungen"}
-                  accent="text-yellow-400"
+                  accent="text-amber-400"
                   testId="stat-rating"
                 />
               ) : (
@@ -407,7 +407,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                 icon={CalendarClock}
                 label="Letzte Bestellung"
                 value={stats.lastOrderAt ? new Date(stats.lastOrderAt).toLocaleDateString("de-DE") : "—"}
-                accent="text-sky-400"
+                accent="text-indigo-400"
                 testId="stat-last-order"
               />
             </div>
@@ -422,8 +422,8 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                   </div>
                 )}
                 {stats.role === "supplier" && stats.lowStockCount > 0 && (
-                  <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4" data-testid="stat-low-stock">
-                    <PackageX className="h-4 w-4 text-orange-400" />
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4" data-testid="stat-low-stock">
+                    <PackageX className="h-4 w-4 text-amber-400" />
                     <p className="text-2xl font-bold text-white mt-2">{stats.lowStockCount}</p>
                     <p className="text-[11px] text-white/40 mt-0.5">Produkte mit niedrigem Bestand</p>
                   </div>
@@ -432,21 +432,21 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
             )}
 
             {stats.monthly.some(m => m.orders > 0 || m.gmv > 0) && (
-              <div className="bg-[#161921] border border-white/10 rounded-2xl p-4">
+              <div className="bg-[#111116] border border-white/8 rounded-2xl p-4">
                 <h3 className="text-sm font-semibold text-white/70 mb-3">Umsatz (6 Monate)</h3>
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={stats.monthly.map(m => ({ ...m, label: monthLabel(m.month) }))} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
                     <defs>
                       <linearGradient id="orgGmvGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#34d399" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
+                        <stop offset="0%" stopColor="#818cf8" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#818cf8" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                     <XAxis dataKey="label" stroke="rgba(255,255,255,0.3)" fontSize={11} tickLine={false} axisLine={false} />
                     <YAxis stroke="rgba(255,255,255,0.3)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
                     <Tooltip content={<OrgTooltip />} />
-                    <Area type="monotone" dataKey="gmv" name="Umsatz" stroke="#34d399" strokeWidth={2} fill="url(#orgGmvGrad)" />
+                    <Area type="monotone" dataKey="gmv" name="Umsatz" stroke="#818cf8" strokeWidth={2} fill="url(#orgGmvGrad)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -454,7 +454,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {stats.ordersByStatus.length > 0 && (
-                <div className="bg-[#161921] border border-white/10 rounded-2xl p-4">
+                <div className="bg-[#111116] border border-white/8 rounded-2xl p-4">
                   <h3 className="text-sm font-semibold text-white/70 mb-3">Bestellungen nach Status</h3>
                   <div className="space-y-2">
                     {stats.ordersByStatus.map(s => (
@@ -468,7 +468,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
               )}
 
               {stats.topPartners.length > 0 && (
-                <div className="bg-[#161921] border border-white/10 rounded-2xl p-4">
+                <div className="bg-[#111116] border border-white/8 rounded-2xl p-4">
                   <h3 className="text-sm font-semibold text-white/70 mb-3">
                     {stats.role === "supplier" ? "Top Kunden" : "Top Lieferanten"}
                   </h3>
@@ -503,7 +503,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
             {members.map(member => (
               <div
                 key={member.id}
-                className="flex items-center gap-3 px-4 py-3 bg-[#161921] border border-white/10 rounded-xl"
+                className="flex items-center gap-3 px-4 py-3 bg-[#111116] border border-white/8 rounded-xl"
                 data-testid={`row-member-${member.id}`}
               >
                 <Avatar className="h-9 w-9 shrink-0">
@@ -591,7 +591,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
             <StickyNote className="h-4 w-4" />
             Notizen & Vereinbarungen ({notes.length})
           </h2>
-          <div className="bg-[#161921] border border-white/10 rounded-2xl p-4 space-y-4">
+          <div className="bg-[#111116] border border-white/8 rounded-2xl p-4 space-y-4">
             <div className="space-y-2">
               <Textarea
                 value={noteDraft}
@@ -599,7 +599,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                 placeholder="Besondere Vereinbarung oder interne Notiz hinzufügen…"
                 rows={3}
                 maxLength={5000}
-                className="bg-[#0e1117] border-white/10 text-white placeholder:text-white/30 rounded-xl resize-none"
+                className="bg-[#0a0a0f] border-white/8 text-white placeholder:text-white/30 rounded-xl resize-none"
                 data-testid="input-note-body"
               />
               <div className="flex justify-end">
@@ -607,7 +607,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                   size="sm"
                   onClick={() => addNoteMutation.mutate(noteDraft.trim())}
                   disabled={addNoteMutation.isPending || !noteDraft.trim()}
-                  className="h-8 px-4 text-xs bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-30"
+                  className="h-8 px-4 text-xs bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30"
                   data-testid="button-add-note"
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />
@@ -629,7 +629,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
                 {notes.map(note => (
                   <div
                     key={note.id}
-                    className="group flex items-start gap-3 px-4 py-3 bg-[#0e1117] border border-white/10 rounded-xl"
+                    className="group flex items-start gap-3 px-4 py-3 bg-[#0a0a0f] border border-white/8 rounded-xl"
                     data-testid={`row-note-${note.id}`}
                   >
                     <div className="flex-1 min-w-0">
@@ -674,7 +674,7 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="bg-[#161921] border border-white/10 rounded-2xl p-4" data-testid={testId}>
+    <div className="bg-[#111116] border border-white/8 rounded-2xl p-4" data-testid={testId}>
       <div className={`h-9 w-9 rounded-xl bg-white/5 flex items-center justify-center ${accent}`}>
         <Icon className="h-4.5 w-4.5" />
       </div>
@@ -688,7 +688,7 @@ function StatCard({
 function OrgTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#0e1117] border border-white/15 rounded-lg px-3 py-2 shadow-xl">
+    <div className="bg-[#0a0a0f] border border-white/12 rounded-lg px-3 py-2 shadow-xl">
       <p className="text-xs text-white/50 mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.dataKey} className="text-xs text-white">
@@ -701,8 +701,8 @@ function OrgTooltip({ active, payload, label }: any) {
 
 function RoleBadge({ role }: { role: string }) {
   const map: Record<string, { label: string; color: string }> = {
-    admin: { label: "Admin", color: "border-purple-500/40 text-purple-400" },
-    manager: { label: "Manager", color: "border-blue-500/40 text-blue-400" },
+    admin: { label: "Admin", color: "border-indigo-500/40 text-indigo-400" },
+    manager: { label: "Manager", color: "border-indigo-500/30 text-indigo-300" },
     staff: { label: "Staff", color: "border-white/20 text-white/50" },
     vertreter: { label: "Vertreter", color: "border-amber-500/40 text-amber-400" },
   };

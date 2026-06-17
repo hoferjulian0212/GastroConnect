@@ -126,7 +126,7 @@ export default function AdminDashboard() {
               value={fmtEur(overview?.gmvTotal ?? 0)}
               sub={`${fmtEur(overview?.gmvThisMonth ?? 0)} diesen Monat`}
               change={gmvChange}
-              accent="text-emerald-400"
+              accent="text-indigo-400"
               testId="kpi-gmv"
             />
             <KpiCard
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
               value={fmtNum(overview?.totalOrders ?? 0)}
               sub={`${fmtNum(overview?.ordersThisMonth ?? 0)} diesen Monat`}
               change={orderChange}
-              accent="text-blue-400"
+              accent="text-indigo-400"
               testId="kpi-orders"
             />
             <KpiCard
@@ -143,7 +143,7 @@ export default function AdminDashboard() {
               label="Organisationen"
               value={fmtNum(overview?.totalOrgs ?? 0)}
               sub={`${fmtNum(overview?.restaurants ?? 0)} Restaurants · ${fmtNum(overview?.suppliers ?? 0)} Lieferanten`}
-              accent="text-purple-400"
+              accent="text-indigo-400"
               testId="kpi-orgs"
             />
             <KpiCard
@@ -151,7 +151,7 @@ export default function AdminDashboard() {
               label="Mitglieder"
               value={fmtNum(overview?.totalMembers ?? 0)}
               sub={`${fmtNum(overview?.activeMembers ?? 0)} aktiv (30 Tage)`}
-              accent="text-amber-400"
+              accent="text-indigo-400"
               testId="kpi-members"
             />
             <KpiCard
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
               value={fmtNum(overview?.ordersThisMonth ?? 0)}
               sub={`${fmtNum(overview?.ordersLastMonth ?? 0)} im Vormonat`}
               change={orderChange}
-              accent="text-cyan-400"
+              accent="text-indigo-400"
               testId="kpi-orders-month"
             />
             <KpiCard
@@ -176,7 +176,7 @@ export default function AdminDashboard() {
               label="Freigaben ausstehend"
               value={fmtNum(overview?.pendingVerifications ?? 0)}
               sub="Neue Organisationen"
-              accent="text-orange-400"
+              accent="text-amber-400"
               testId="kpi-pending-verifications"
             />
           </div>
@@ -210,7 +210,7 @@ export default function AdminDashboard() {
               label="Admin-Anträge"
               value={health?.pendingAdmins ?? 0}
               href="/admin/admins"
-              color="blue"
+              color="indigo"
               testId="health-pending-admins"
             />
             <HealthCard
@@ -218,14 +218,14 @@ export default function AdminDashboard() {
               label="Niedriger Bestand"
               value={health?.lowStockProducts ?? 0}
               href="/admin/low-stock"
-              color="orange"
+              color="amber"
               testId="health-low-stock"
             />
             <HealthCard
               icon={MessageSquare}
               label="Ungelesene Nachrichten"
               value={health?.unreadMessages ?? 0}
-              color="blue"
+              color="indigo"
               testId="health-unread-messages"
             />
           </div>
@@ -238,15 +238,15 @@ export default function AdminDashboard() {
               <AreaChart data={chartData} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gmvGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#34d399" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#818cf8" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#818cf8" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                 <XAxis dataKey="label" stroke="rgba(255,255,255,0.3)" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="rgba(255,255,255,0.3)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
                 <Tooltip content={<DarkTooltip valueFormatter={fmtEur} />} />
-                <Area type="monotone" dataKey="gmv" name="Umsatz" stroke="#34d399" strokeWidth={2} fill="url(#gmvGrad)" />
+                <Area type="monotone" dataKey="gmv" name="Umsatz" stroke="#818cf8" strokeWidth={2} fill="url(#gmvGrad)" />
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -258,8 +258,8 @@ export default function AdminDashboard() {
                 <XAxis dataKey="label" stroke="rgba(255,255,255,0.3)" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="rgba(255,255,255,0.3)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip content={<DarkTooltip valueFormatter={fmtNum} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                <Bar dataKey="orders" name="Bestellungen" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="newOrgs" name="Neue Orgs" fill="#a78bfa" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="orders" name="Bestellungen" fill="#818cf8" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="newOrgs" name="Neue Orgs" fill="#a5b4fc" radius={[4, 4, 0, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -291,7 +291,7 @@ export default function AdminDashboard() {
             <TrendingUp className="h-4 w-4" />
             Letzte Aktivität
           </h2>
-          <div className="bg-[#161921] border border-white/10 rounded-2xl divide-y divide-white/5">
+          <div className="bg-[#111116] border border-white/8 rounded-2xl divide-y divide-white/5">
             {activity.length === 0 && (
               <p className="text-white/30 text-sm py-8 text-center">Keine Aktivität</p>
             )}
@@ -317,7 +317,7 @@ function KpiCard({
   testId: string;
 }) {
   return (
-    <div className="bg-[#161921] border border-white/10 rounded-2xl p-4" data-testid={testId}>
+    <div className="bg-[#111116] border border-white/8 rounded-2xl p-4" data-testid={testId}>
       <div className="flex items-center justify-between">
         <div className={`h-9 w-9 rounded-xl bg-white/5 flex items-center justify-center ${accent}`}>
           <Icon className="h-4.5 w-4.5" />
@@ -339,8 +339,7 @@ function KpiCard({
 const HEALTH_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   amber: { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20" },
   red: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20" },
-  blue: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20" },
-  orange: { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20" },
+  indigo: { bg: "bg-indigo-500/10", text: "text-indigo-400", border: "border-indigo-500/20" },
 };
 
 function HealthCard({
@@ -358,7 +357,7 @@ function HealthCard({
   const inner = (
     <div
       className={`rounded-2xl p-4 border transition-colors ${
-        active ? `${c.bg} ${c.border}` : "bg-[#161921] border-white/10"
+        active ? `${c.bg} ${c.border}` : "bg-[#111116] border-white/8"
       } ${href && active ? "hover:brightness-125 cursor-pointer" : ""}`}
       data-testid={testId}
     >
@@ -378,7 +377,7 @@ function HealthCard({
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#161921] border border-white/10 rounded-2xl p-4">
+    <div className="bg-[#111116] border border-white/8 rounded-2xl p-4">
       <h3 className="text-sm font-semibold text-white/70 mb-3">{title}</h3>
       {children}
     </div>
@@ -388,7 +387,7 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 function DarkTooltip({ active, payload, label, valueFormatter }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#0e1117] border border-white/15 rounded-lg px-3 py-2 shadow-xl">
+    <div className="bg-[#0a0a0f] border border-white/12 rounded-lg px-3 py-2 shadow-xl">
       <p className="text-xs text-white/50 mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.dataKey} className="text-xs text-white flex items-center gap-1.5">
@@ -409,7 +408,7 @@ function TopList({
   empty: string;
 }) {
   return (
-    <div className="bg-[#161921] border border-white/10 rounded-2xl p-4">
+    <div className="bg-[#111116] border border-white/8 rounded-2xl p-4">
       <h3 className="text-sm font-semibold text-white/70 mb-3 flex items-center gap-2">
         <Icon className="h-4 w-4 text-white/40" />
         {title}
@@ -442,8 +441,8 @@ function TopList({
 }
 
 const ACTIVITY_ICON: Record<string, { icon: typeof Building2; color: string }> = {
-  org: { icon: Building2, color: "text-purple-400" },
-  order: { icon: ShoppingCart, color: "text-blue-400" },
+  org: { icon: Building2, color: "text-indigo-400" },
+  order: { icon: ShoppingCart, color: "text-indigo-400" },
   complaint: { icon: FileWarning, color: "text-red-400" },
 };
 

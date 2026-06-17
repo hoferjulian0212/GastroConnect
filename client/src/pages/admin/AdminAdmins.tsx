@@ -210,11 +210,11 @@ function AdminRow({
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 bg-[#161921] border border-white/10 rounded-xl"
+      className="flex items-center gap-3 px-4 py-3 bg-[#111116] border border-white/8 rounded-xl"
       data-testid={`row-admin-${admin.id}`}
     >
-      <div className="h-9 w-9 rounded-full bg-[#F26207]/20 flex items-center justify-center shrink-0">
-        <span className="text-[#F26207] text-sm font-bold">
+      <div className="h-9 w-9 rounded-full bg-indigo-500/15 flex items-center justify-center shrink-0">
+        <span className="text-indigo-400 text-sm font-bold">
           {admin.name.charAt(0).toUpperCase()}
         </span>
       </div>
