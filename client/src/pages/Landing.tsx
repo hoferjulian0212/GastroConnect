@@ -871,7 +871,7 @@ export default function Landing() {
           {/* Right: lang + auth buttons */}
           <div className="flex items-center gap-2 shrink-0 ml-auto lg:ml-0">
             <div
-              className="hidden md:flex items-center rounded-full border border-border bg-card p-0.5 text-xs font-medium"
+              className="hidden md:flex items-center rounded-full border border-black/[0.06] dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.06] backdrop-blur-sm p-0.5 text-xs font-medium"
               data-testid="lang-switcher"
             >
               {(["de", "it", "en"] as const).map((code) => (
@@ -903,7 +903,7 @@ export default function Landing() {
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
               <SheetTrigger asChild>
                 <button
-                  className="lg:hidden flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-foreground"
+                  className="lg:hidden flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.06] backdrop-blur-sm text-foreground"
                   aria-label="Menu"
                   data-testid="button-mobile-menu"
                 >
