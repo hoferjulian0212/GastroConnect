@@ -1,10 +1,10 @@
 import { useRef, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 
-const BORDER_RADIUS = 24; // rounded-3xl = 1.5rem = 24px
+const BORDER_RADIUS = 24; // rounded-3xl
 
 function buildPaths(w: number, h: number) {
   const r = BORDER_RADIUS;
-  const s = 1; // 1px inset so stroke sits inside the card edge
+  const s = 1;
   const right =
     `M ${w / 2},${s} ` +
     `L ${w - r},${s} ` +
@@ -22,27 +22,32 @@ function buildPaths(w: number, h: number) {
   return { right, left };
 }
 
+function computeProgress(el: HTMLElement): number {
+  const rect = el.getBoundingClientRect();
+  const vh = window.innerHeight;
+  // 0 = card just entering from bottom, 1 = card top has reached 30% from top of viewport
+  return 1 - Math.max(0, Math.min(1, (rect.top - vh * 0.3) / (vh * 0.7)));
+}
+
 interface Props {
   children: ReactNode;
   strokeWidth?: number;
-  duration?: number;
   strokeClassName?: string;
 }
 
 export function CardOutlineReveal({
   children,
   strokeWidth = 2,
-  duration = 1.15,
   strokeClassName = "text-black/70 dark:text-white/50",
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<SVGPathElement>(null);
   const leftRef = useRef<SVGPathElement>(null);
+  const lengthsRef = useRef({ right: 0, left: 0 });
 
   const [paths, setPaths] = useState<{ right: string; left: string } | null>(null);
-  const [lengths, setLengths] = useState({ right: 0, left: 0 });
-  const [started, setStarted] = useState(false);
 
+  // Measure card dimensions, rebuild paths on resize
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -56,37 +61,42 @@ export function CardOutlineReveal({
     return () => ro.disconnect();
   }, []);
 
+  // After paths render: get lengths, set dasharray, apply initial scroll position
   useLayoutEffect(() => {
-    if (!paths) return;
-    const rLen = rightRef.current?.getTotalLength() ?? 0;
-    const lLen = leftRef.current?.getTotalLength() ?? 0;
-    if (rLen > 0 && lLen > 0) setLengths({ right: rLen, left: lLen });
+    if (!paths || !rightRef.current || !leftRef.current) return;
+
+    const rLen = rightRef.current.getTotalLength();
+    const lLen = leftRef.current.getTotalLength();
+    lengthsRef.current = { right: rLen, left: lLen };
+
+    // Set dasharray so the stroke can be hidden/shown
+    rightRef.current.style.strokeDasharray = String(rLen);
+    leftRef.current.style.strokeDasharray = String(lLen);
+
+    // Apply current scroll position immediately (no flash)
+    const el = wrapRef.current;
+    if (!el) return;
+    const p = computeProgress(el);
+    rightRef.current.style.strokeDashoffset = String(rLen * (1 - p));
+    leftRef.current.style.strokeDashoffset = String(lLen * (1 - p));
   }, [paths]);
 
+  // Scroll listener — updates DOM directly, no React re-render
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setStarted(true);
-          io.disconnect();
-        }
-      },
-      { threshold: 0.15 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
+
+    const update = () => {
+      const { right: rLen, left: lLen } = lengthsRef.current;
+      if (!rLen || !lLen) return;
+      const p = computeProgress(el);
+      if (rightRef.current) rightRef.current.style.strokeDashoffset = String(rLen * (1 - p));
+      if (leftRef.current) leftRef.current.style.strokeDashoffset = String(lLen * (1 - p));
+    };
+
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
   }, []);
-
-  const rLen = lengths.right;
-  const lLen = lengths.left;
-  const ready = rLen > 0 && lLen > 0;
-
-  const dashFor = (len: number) => ({
-    strokeDasharray: ready ? len : 9999,
-    strokeDashoffset: started && ready ? 0 : ready ? len : 9999,
-  });
 
   return (
     <div ref={wrapRef} className="relative h-full">
@@ -106,13 +116,7 @@ export function CardOutlineReveal({
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeLinejoin="round"
-            {...dashFor(rLen)}
-            style={{
-              transition:
-                started && ready
-                  ? `stroke-dashoffset ${duration}s cubic-bezier(0.4,0,0.2,1)`
-                  : "none",
-            }}
+            strokeDashoffset={9999}
           />
           <path
             ref={leftRef}
@@ -122,13 +126,7 @@ export function CardOutlineReveal({
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeLinejoin="round"
-            {...dashFor(lLen)}
-            style={{
-              transition:
-                started && ready
-                  ? `stroke-dashoffset ${duration}s cubic-bezier(0.4,0,0.2,1)`
-                  : "none",
-            }}
+            strokeDashoffset={9999}
           />
         </svg>
       )}
