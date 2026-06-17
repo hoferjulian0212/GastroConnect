@@ -72,6 +72,12 @@ function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
 }
 
 function callbackUrl(req: Request): string {
+  // REPLIT_DEV_DOMAIN is always injected by the platform and is the canonical
+  // public hostname (e.g. "abc-00-xyz.riker.replit.dev"). Using it avoids the
+  // localhost:5000 callback URL that appears when x-forwarded-host is absent.
+  if (process.env.REPLIT_DEV_DOMAIN) {
+    return `https://${process.env.REPLIT_DEV_DOMAIN}/api/admin/auth/callback`;
+  }
   const proto = (req.headers["x-forwarded-proto"]?.toString().split(",")[0]) || req.protocol || "https";
   const host = req.headers["x-forwarded-host"]?.toString() || req.headers.host || "";
   return `${proto}://${host}/api/admin/auth/callback`;
