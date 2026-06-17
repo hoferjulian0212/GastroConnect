@@ -23,8 +23,10 @@ import {
 } from "@/components/ui/accordion";
 import Logo from "@/components/Logo";
 import shotHome from "@assets/landing-home.jpg";
-import shotMobile from "@assets/landing-mobile.png";
 import shotMobileSupplier from "@assets/landing-mobile-supplier.png";
+import shotMobileHome from "@assets/landing-mobile-home.png";
+import shotMobileProducts from "@assets/landing-mobile-products.png";
+import shotMobileInbox from "@assets/landing-mobile-inbox.png";
 import shotPrice from "@assets/landing-story/price-2-savings.jpg";
 import shotInbox from "@assets/landing-inbox.jpg";
 import shotPriceOverview from "@assets/landing-story/price-1-overview.jpg";
@@ -706,6 +708,7 @@ const featureIcons = [
   BellRing,
 ];
 const mobileBulletIcons = [BellRing, WifiOff, Hand, Bookmark];
+const restaurantMobileShots = [shotMobileHome, shotMobileProducts, shotMobileInbox];
 
 /** Two rows of text that drift in opposite directions as the page is scrolled. */
 function ScrollMarquee({
@@ -746,6 +749,7 @@ export default function Landing() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [lang, setLang] = useState<Lang>("de");
   const [mobileShotRole, setMobileShotRole] = useState<"restaurant" | "supplier">("restaurant");
+  const [mobileShotIndex, setMobileShotIndex] = useState(0);
   const reduceMotion = useReducedMotion();
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined" &&
@@ -759,6 +763,19 @@ export default function Landing() {
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
+
+  // Auto-rotate the restaurant phone preview through its screenshots.
+  useEffect(() => {
+    if (mobileShotRole !== "restaurant" || reduceMotion) return;
+    const id = window.setInterval(() => {
+      setMobileShotIndex((i) => (i + 1) % restaurantMobileShots.length);
+    }, 2800);
+    return () => window.clearInterval(id);
+  }, [mobileShotRole, reduceMotion]);
+
+  useEffect(() => {
+    setMobileShotIndex(0);
+  }, [mobileShotRole]);
 
   // A1 — Lenis smooth scroll (landing only, desktop only, reduced-motion safe)
   useLandingSmoothScroll();
@@ -1388,20 +1405,33 @@ export default function Landing() {
                     : undefined
                 }
               >
-                <div className="rounded-[2.25rem] overflow-hidden border border-border w-[260px] md:w-[300px] aspect-[9/19] bg-card">
-                  <img
-                    src={mobileShotRole === "supplier" ? shotMobileSupplier : shotMobile}
-                    alt={
-                      mobileShotRole === "supplier"
-                        ? t.mobileAltSupplier
-                        : t.mobileAltRestaurant
-                    }
-                    width={375}
-                    height={812}
-                    className="w-full h-full object-cover object-top"
-                    loading="lazy"
-                    data-testid="img-mobile-screenshot"
-                  />
+                <div className="relative rounded-[2.25rem] overflow-hidden border border-border w-[260px] md:w-[300px] aspect-[9/19] bg-card">
+                  {mobileShotRole === "supplier" ? (
+                    <img
+                      src={shotMobileSupplier}
+                      alt={t.mobileAltSupplier}
+                      width={375}
+                      height={812}
+                      className="w-full h-full object-cover object-top"
+                      loading="lazy"
+                      data-testid="img-mobile-screenshot"
+                    />
+                  ) : (
+                    restaurantMobileShots.map((shot, i) => (
+                      <img
+                        key={shot}
+                        src={shot}
+                        alt={t.mobileAltRestaurant}
+                        width={375}
+                        height={812}
+                        className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-700 ${
+                          i === mobileShotIndex ? "opacity-100" : "opacity-0"
+                        }`}
+                        loading="lazy"
+                        data-testid={i === 0 ? "img-mobile-screenshot" : `img-mobile-screenshot-${i}`}
+                      />
+                    ))
+                  )}
                 </div>
               </motion.div>
             </div>
