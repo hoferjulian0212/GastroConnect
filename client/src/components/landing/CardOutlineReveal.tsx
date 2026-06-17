@@ -22,11 +22,16 @@ function buildPaths(w: number, h: number) {
   return { right, left };
 }
 
+// Drive the draw off the card's vertical CENTER so it only starts once the
+// card is near the middle of the screen (after the entry animations settle),
+// then completes slowly as it scrolls up past the middle.
+const DRAW_START = 0.72; // card center at 72% down the viewport -> progress 0
+const DRAW_END = 0.32; // card center at 32% down the viewport -> progress 1
 function computeProgress(el: HTMLElement): number {
   const rect = el.getBoundingClientRect();
   const vh = window.innerHeight;
-  // 0 = card just entering from bottom, 1 = card top has reached 30% from top of viewport
-  return 1 - Math.max(0, Math.min(1, (rect.top - vh * 0.3) / (vh * 0.7)));
+  const center = (rect.top + rect.height / 2) / vh;
+  return Math.max(0, Math.min(1, (DRAW_START - center) / (DRAW_START - DRAW_END)));
 }
 
 interface Props {
