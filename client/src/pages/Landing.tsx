@@ -1017,7 +1017,7 @@ export default function Landing() {
                 <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-black/10 md:to-transparent" />
 
                 {/* Floating phone mockup on the left-middle — same frame as the mobile section */}
-                <div className="absolute left-5 sm:left-10 md:left-16 top-1/2 -translate-y-1/2">
+                <div className="absolute left-3 sm:left-6 md:left-8 top-1/2 -translate-y-1/2">
                   <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
                     <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
                       <img
