@@ -997,52 +997,51 @@ export default function Landing() {
       </section>
 
       {/* LIFESTYLE — chef using the app in the kitchen with floating phone mockup */}
-      <section className="px-4 md:px-8 py-8 md:py-12">
-        <div className="mx-auto max-w-6xl">
-          <MotionReveal>
-            {/* Desktop: image is big (uncut) — text on right — tiny phone overlay on left of image */}
-            <div className="hidden md:flex gap-8 lg:gap-10 items-center">
-              {/* Left — chef image at full uncut size, BIG (fixed width so it dominates) */}
-              <div className="relative rounded-3xl overflow-hidden w-[750px] lg:w-[850px] flex-shrink-0">
-                <img
-                  src={shotChefPhone}
-                  alt={t.lifestyleHeadline}
-                  className="w-full h-auto object-contain"
-                  loading="lazy"
-                  data-testid="img-lifestyle"
-                />
-                {/* Tiny phone mockup on the left side of the image */}
-                <div className="absolute left-4 lg:left-6 top-1/2 -translate-y-1/2">
-                  <div className="rounded-[1.5rem] border border-border bg-card p-1.5 shadow-2xl shadow-black/50">
-                    <div className="relative rounded-[1.25rem] overflow-hidden border border-border w-[70px] lg:w-[80px] aspect-[9/19] bg-card">
-                      <img
-                        src={shotLifestyleProducts}
-                        alt={t.mobileAltRestaurant}
-                        className="absolute inset-0 w-full h-full object-cover object-top"
-                        loading="lazy"
-                        data-testid="img-lifestyle-phone"
-                      />
-                    </div>
+      <section className="py-8 md:py-12">
+        <MotionReveal>
+          {/* Desktop: image fills the full page width (edge to edge) — text on right — phone on left of image */}
+          <div className="hidden md:flex items-center">
+            {/* Left — chef image fills ALL available width, no gaps */}
+            <div className="relative overflow-hidden flex-1 min-w-0">
+              <img
+                src={shotChefPhone}
+                alt={t.lifestyleHeadline}
+                className="w-full h-auto object-cover"
+                loading="lazy"
+                data-testid="img-lifestyle"
+              />
+              {/* Phone mockup on the left side of the image — big and clearly visible */}
+              <div className="absolute left-6 lg:left-10 top-1/2 -translate-y-1/2">
+                <div className="rounded-[2.5rem] lg:rounded-[3rem] border border-border bg-card p-3 lg:p-4 shadow-2xl shadow-black/50">
+                  <div className="relative rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden border border-border w-[260px] lg:w-[320px] aspect-[9/19] bg-card">
+                    <img
+                      src={shotLifestyleProducts}
+                      alt={t.mobileAltRestaurant}
+                      className="absolute inset-0 w-full h-full object-cover object-top"
+                      loading="lazy"
+                      data-testid="img-lifestyle-phone"
+                    />
                   </div>
                 </div>
               </div>
-
-              {/* Right — text */}
-              <div className="flex-shrink-0 w-[200px] lg:w-[220px]">
-                <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-black/60">
-                  {t.lifestyleEyebrow}
-                </span>
-                <h2
-                  className="text-3xl lg:text-4xl font-semibold tracking-tight text-black leading-tight"
-                  data-testid="text-lifestyle-headline"
-                >
-                  {t.lifestyleHeadline}
-                </h2>
-                <p className="mt-4 text-base text-black/80 leading-relaxed">
-                  {t.lifestyleSub}
-                </p>
-              </div>
             </div>
+
+            {/* Right — text (narrow column with padding) */}
+            <div className="flex-shrink-0 w-[240px] lg:w-[300px] px-6 lg:px-10">
+              <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-black/60">
+                {t.lifestyleEyebrow}
+              </span>
+              <h2
+                className="text-3xl lg:text-4xl font-semibold tracking-tight text-black leading-tight"
+                data-testid="text-lifestyle-headline"
+              >
+                {t.lifestyleHeadline}
+              </h2>
+              <p className="mt-4 text-base text-black/80 leading-relaxed">
+                {t.lifestyleSub}
+              </p>
+            </div>
+          </div>
 
             {/* Mobile: image with phone overlayed, text below */}
             <div className="md:hidden">
