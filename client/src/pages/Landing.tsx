@@ -1001,7 +1001,7 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl">
           <MotionReveal>
             <div
-              className="flex flex-col md:flex-row items-center gap-8 md:gap-14"
+              className="flex flex-col md:flex-row items-center gap-8 md:gap-10"
               data-testid="section-lifestyle"
             >
               {/* Left — chef image + floating phone (size, ratio and crop unchanged) */}
@@ -1033,7 +1033,7 @@ export default function Landing() {
               </div>
 
               {/* Right — text outside the image, desktop only */}
-              <div className="hidden md:block md:w-[340px] flex-shrink-0 text-left">
+              <div className="hidden md:block md:w-[300px] flex-shrink-0 text-left">
                 <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-black/60">
                   {t.lifestyleEyebrow}
                 </span>
