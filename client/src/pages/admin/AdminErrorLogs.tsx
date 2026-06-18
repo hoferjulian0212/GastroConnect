@@ -8,12 +8,14 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   Search, Bug, Server, Monitor, Trash2, ChevronDown, ChevronRight, Filter,
+  Inbox, Clock, CheckCircle2, CheckCheck, RotateCcw,
 } from "lucide-react";
 
 interface ErrorLogEntry {
   id: string;
   level: string;
   source: string;
+  status: string;
   message: string;
   stack: string | null;
   method: string | null;
@@ -32,6 +34,12 @@ const SOURCE_FILTERS: Array<{ value: string; label: string }> = [
   { value: "client", label: "Browser" },
 ];
 
+const STATUS_TABS: Array<{ value: string; label: string; icon: typeof Inbox }> = [
+  { value: "new", label: "Offen", icon: Inbox },
+  { value: "in_progress", label: "In Bearbeitung", icon: Clock },
+  { value: "closed", label: "Geschlossen", icon: CheckCircle2 },
+];
+
 function fmtTime(iso: string): string {
   return new Date(iso).toLocaleString("de-DE", {
     day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit",
@@ -43,16 +51,19 @@ export default function AdminErrorLogs() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [source, setSource] = useState("");
+  const [status, setStatus] = useState("new");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const queryKey = source
-    ? ["/api/admin/error-logs", { source }]
-    : ["/api/admin/error-logs"];
+  const queryKey = ["/api/admin/error-logs", { status, source }];
 
   const { data: logs = [], isLoading } = useQuery<ErrorLogEntry[]>({
     queryKey,
     queryFn: async () => {
-      const url = source ? `/api/admin/error-logs?source=${source}` : "/api/admin/error-logs";
+      const params = new URLSearchParams();
+      if (status) params.set("status", status);
+      if (source) params.set("source", source);
+      const qs = params.toString();
+      const url = qs ? `/api/admin/error-logs?${qs}` : "/api/admin/error-logs";
       const r = await fetch(url, { credentials: "include" });
       if (!r.ok) throw new Error("failed");
       return r.json();
@@ -61,10 +72,30 @@ export default function AdminErrorLogs() {
     refetchInterval: 30000,
   });
 
+  const invalidateAll = () =>
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/error-logs"] });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      apiRequest("PATCH", `/api/admin/error-logs/${id}`, { status }),
+    onSuccess: () => invalidateAll(),
+    onError: () => toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" }),
+  });
+
+  const closeAllMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/error-logs/close-all"),
+    onSuccess: async (res) => {
+      const data = await res.json().catch(() => ({ count: 0 }));
+      invalidateAll();
+      toast({ title: "Alle als geschlossen markiert", description: `${data.count ?? 0} Einträge geschlossen.` });
+    },
+    onError: () => toast({ title: "Fehler", description: "Konnte Einträge nicht schließen.", variant: "destructive" }),
+  });
+
   const clearMutation = useMutation({
     mutationFn: () => apiRequest("DELETE", "/api/admin/error-logs"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/error-logs"] });
+      invalidateAll();
       toast({ title: "Fehlerprotokoll geleert", description: "Alle Einträge wurden entfernt." });
     },
     onError: () => toast({ title: "Fehler", description: "Konnte das Protokoll nicht leeren.", variant: "destructive" }),
@@ -100,19 +131,53 @@ export default function AdminErrorLogs() {
               {logs.length} {logs.length === 1 ? "Eintrag" : "Einträge"} · Server- & Browser-Fehler
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (confirm("Alle Fehlerprotokoll-Einträge dauerhaft löschen?")) clearMutation.mutate();
-            }}
-            disabled={clearMutation.isPending || logs.length === 0}
-            className="h-9 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
-            data-testid="button-clear-error-logs"
-          >
-            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-            Protokoll leeren
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (confirm("Alle offenen Einträge als geschlossen markieren?")) closeAllMutation.mutate();
+              }}
+              disabled={closeAllMutation.isPending}
+              className="h-9 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
+              data-testid="button-close-all-error-logs"
+            >
+              <CheckCheck className="h-3.5 w-3.5 mr-1.5" />
+              Alle schließen
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (confirm("Alle Fehlerprotokoll-Einträge dauerhaft löschen?")) clearMutation.mutate();
+              }}
+              disabled={clearMutation.isPending || logs.length === 0}
+              className="h-9 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+              data-testid="button-clear-error-logs"
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              Protokoll leeren
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 bg-[#111116] border border-white/8 rounded-xl p-1 w-fit max-w-full overflow-x-auto">
+          {STATUS_TABS.map(t => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.value}
+                onClick={() => setStatus(t.value)}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                  status === t.value ? "bg-white/15 text-white" : "text-white/50 hover:text-white"
+                }`}
+                data-testid={`tab-status-${t.value}`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -214,6 +279,42 @@ export default function AdminErrorLogs() {
                           <pre className="text-[11px] text-white/60 bg-black/30 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words">{JSON.stringify(l.context, null, 2)}</pre>
                         </div>
                       )}
+                      <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-white/5">
+                        <span className="text-[10px] uppercase tracking-wide text-white/30 mr-1">Status ändern:</span>
+                        {l.status !== "new" && (
+                          <Button
+                            size="sm" variant="outline"
+                            onClick={() => statusMutation.mutate({ id: l.id, status: "new" })}
+                            disabled={statusMutation.isPending}
+                            className="h-7 text-xs border-white/15 text-white/70 hover:bg-white/10 hover:text-white"
+                            data-testid={`button-status-new-${l.id}`}
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" /> Offen
+                          </Button>
+                        )}
+                        {l.status !== "in_progress" && (
+                          <Button
+                            size="sm" variant="outline"
+                            onClick={() => statusMutation.mutate({ id: l.id, status: "in_progress" })}
+                            disabled={statusMutation.isPending}
+                            className="h-7 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+                            data-testid={`button-status-progress-${l.id}`}
+                          >
+                            <Clock className="h-3 w-3 mr-1" /> In Bearbeitung
+                          </Button>
+                        )}
+                        {l.status !== "closed" && (
+                          <Button
+                            size="sm" variant="outline"
+                            onClick={() => statusMutation.mutate({ id: l.id, status: "closed" })}
+                            disabled={statusMutation.isPending}
+                            className="h-7 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
+                            data-testid={`button-status-closed-${l.id}`}
+                          >
+                            <CheckCircle2 className="h-3 w-3 mr-1" /> Schließen
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

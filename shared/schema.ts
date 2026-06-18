@@ -1190,6 +1190,8 @@ export const errorLogs = pgTable("error_logs", {
   level: varchar("level", { length: 10 }).notNull().default("error"),
   // 'server' | 'client'
   source: varchar("source", { length: 10 }).notNull().default("server"),
+  // workflow state: 'new' | 'in_progress' | 'closed'
+  status: varchar("status", { length: 12 }).notNull().default("new"),
   message: text("message").notNull(),
   stack: text("stack"),
   method: text("method"),
@@ -1204,11 +1206,18 @@ export const errorLogs = pgTable("error_logs", {
   index("idx_error_logs_created_at").on(table.createdAt),
   index("idx_error_logs_source").on(table.source),
   index("idx_error_logs_level").on(table.level),
+  index("idx_error_logs_status").on(table.status),
 ]);
 
 export const insertErrorLogSchema = createInsertSchema(errorLogs).omit({ id: true, createdAt: true });
 export type ErrorLog = typeof errorLogs.$inferSelect;
 export type InsertErrorLog = z.infer<typeof insertErrorLogSchema>;
+
+export const ERROR_LOG_STATUSES = ["new", "in_progress", "closed"] as const;
+export type ErrorLogStatus = (typeof ERROR_LOG_STATUSES)[number];
+export const updateErrorLogStatusSchema = z.object({
+  status: z.enum(ERROR_LOG_STATUSES),
+});
 
 // Client error reports posted from the browser. Validated before persisting.
 export const clientErrorReportSchema = z.object({

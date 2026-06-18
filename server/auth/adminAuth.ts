@@ -10,6 +10,7 @@ import { hashPassword, verifyPassword, validatePasswordPolicy } from "./password
 import { generateToken, INVITE_TTL_MS } from "./tokens";
 import { sendEmail, renderNotificationEmail, isEmailConfigured } from "../emailService";
 import type { PlatformAdmin } from "@shared/schema";
+import { updateErrorLogStatusSchema } from "@shared/schema";
 
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -577,10 +578,39 @@ export function registerAdminAuthRoutes(app: Express) {
     try {
       const level = typeof req.query.level === "string" ? req.query.level : undefined;
       const source = typeof req.query.source === "string" ? req.query.source : undefined;
+      const status = typeof req.query.status === "string" ? req.query.status : undefined;
       const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      res.json(await storage.getErrorLogs({ level, source, limit }));
+      res.json(await storage.getErrorLogs({ level, source, status, limit }));
     } catch (err) {
       console.error("[admin] error-logs list error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // Update a single log's workflow status (new | in_progress | closed).
+  app.patch("/api/admin/error-logs/:id", requirePlatformAdmin, async (req, res) => {
+    try {
+      const parsed = updateErrorLogStatusSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "invalid_status" });
+      }
+      await storage.updateErrorLogStatus(String(req.params.id), parsed.data.status);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin] error-logs status update error", err);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // Bulk-close: mark every non-closed log as closed (checked / complete).
+  app.post("/api/admin/error-logs/close-all", requirePlatformAdmin, async (req, res) => {
+    try {
+      const count = await storage.closeAllErrorLogs();
+      const adminName = req.platformAdmin?.admin.name ?? "admin";
+      console.log(`[admin] error-logs.close-all count=${count} by=${adminName} ip=${req.ip}`);
+      res.json({ ok: true, count });
+    } catch (err) {
+      console.error("[admin] error-logs close-all error", err);
       res.status(500).json({ error: "server_error" });
     }
   });

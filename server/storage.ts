@@ -364,7 +364,9 @@ export interface IStorage {
 
   // Error logs
   createErrorLog(entry: InsertErrorLog): Promise<void>;
-  getErrorLogs(filter?: { level?: string; source?: string; limit?: number }): Promise<ErrorLog[]>;
+  getErrorLogs(filter?: { level?: string; source?: string; status?: string; limit?: number }): Promise<ErrorLog[]>;
+  updateErrorLogStatus(id: string, status: string): Promise<void>;
+  closeAllErrorLogs(): Promise<number>;
   clearErrorLogs(): Promise<void>;
 
   // Org notes
@@ -4804,6 +4806,27 @@ export class DatabaseStorage implements IStorage {
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_platform_admins_replit_user_id ON platform_admins (replit_user_id)`);
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_platform_admins_email ON platform_admins (lower(email))`);
     console.log("[admin] platform_admins table ready");
+
+    // Error-log status workflow (new | in_progress | closed). Idempotent DDL so
+    // the column/index exist in every environment without a drizzle push.
+    await db.execute(sql`ALTER TABLE error_logs ADD COLUMN IF NOT EXISTS status varchar(12) NOT NULL DEFAULT 'new'`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_error_logs_status ON error_logs (status)`);
+
+    // ONE-TIME backfill: every log that existed before this feature shipped is
+    // treated as already handled (closed). Tracked in app_migrations so later
+    // boots never mass-close newly arrived logs.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS app_migrations (
+        name text PRIMARY KEY,
+        applied_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    const ERROR_LOG_CLOSE_MIGRATION = "error_logs_close_existing_v1";
+    const closeApplied = await db.execute(sql`SELECT 1 FROM app_migrations WHERE name = ${ERROR_LOG_CLOSE_MIGRATION}`);
+    if ((closeApplied.rows || []).length === 0) {
+      await db.update(errorLogs).set({ status: "closed" }).where(ne(errorLogs.status, "closed"));
+      await db.execute(sql`INSERT INTO app_migrations (name) VALUES (${ERROR_LOG_CLOSE_MIGRATION}) ON CONFLICT DO NOTHING`);
+    }
   }
 
   async getPlatformAdmin(id: string): Promise<PlatformAdmin | undefined> {
@@ -5140,16 +5163,30 @@ export class DatabaseStorage implements IStorage {
     await db.insert(errorLogs).values(entry);
   }
 
-  async getErrorLogs(filter?: { level?: string; source?: string; limit?: number }): Promise<ErrorLog[]> {
+  async getErrorLogs(filter?: { level?: string; source?: string; status?: string; limit?: number }): Promise<ErrorLog[]> {
     const conditions = [];
     if (filter?.level) conditions.push(eq(errorLogs.level, filter.level));
     if (filter?.source) conditions.push(eq(errorLogs.source, filter.source));
+    if (filter?.status) conditions.push(eq(errorLogs.status, filter.status));
     const limit = Math.min(Math.max(filter?.limit ?? 200, 1), 500);
     const query = db.select().from(errorLogs);
     const rows = conditions.length
       ? await query.where(and(...conditions)).orderBy(desc(errorLogs.createdAt)).limit(limit)
       : await query.orderBy(desc(errorLogs.createdAt)).limit(limit);
     return rows;
+  }
+
+  async updateErrorLogStatus(id: string, status: string): Promise<void> {
+    await db.update(errorLogs).set({ status }).where(eq(errorLogs.id, id));
+  }
+
+  async closeAllErrorLogs(): Promise<number> {
+    const rows = await db
+      .update(errorLogs)
+      .set({ status: "closed" })
+      .where(ne(errorLogs.status, "closed"))
+      .returning({ id: errorLogs.id });
+    return rows.length;
   }
 
   async clearErrorLogs(): Promise<void> {
