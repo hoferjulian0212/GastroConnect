@@ -1001,11 +1001,11 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl">
           <MotionReveal>
             <div
-              className="flex flex-col md:flex-row gap-0 rounded-3xl overflow-hidden bg-white border border-border"
+              className="flex flex-col md:flex-row gap-0 items-stretch"
               data-testid="section-lifestyle"
             >
               {/* Left — chef image + floating phone */}
-              <div className="relative md:flex-[1.1] h-[460px] md:h-[600px]">
+              <div className="relative md:w-1/2 h-[460px] md:h-[600px] overflow-hidden rounded-3xl">
                 <img
                   src={shotChefPhone}
                   alt={t.lifestyleHeadline}
@@ -1030,8 +1030,8 @@ export default function Landing() {
                 </div>
               </div>
 
-              {/* Right — text on light background */}
-              <div className="md:flex-[0.9] flex items-center p-6 md:p-12 lg:p-16">
+              {/* Right — text */}
+              <div className="md:w-1/2 flex items-center p-6 md:p-12 lg:p-16">
                 <div className="max-w-sm">
                   <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-black/60">
                     {t.lifestyleEyebrow}
