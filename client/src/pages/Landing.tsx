@@ -249,7 +249,7 @@ const translations = {
     lifestyleSub:
       "Vom Posten in der Küche bis zum Lager — GastroConnect ist immer griffbereit. Bestellungen, Chat und Lieferscheine direkt auf dem Handy.",
     lifestyleSupplierEyebrow: "Mitten im Betrieb",
-    lifestyleSupplierHeadline: "Verkaufen, wo gearbeitet wird",
+    lifestyleSupplierHeadline: "Alles im Griff, im Büro und unterwegs",
     lifestyleSupplierSub:
       "Vom Büro bis zur Lieferung — GastroConnect hält alles zusammen. Eingehende Bestellungen, Kundenchat und Lieferscheine direkt auf dem Handy.",
     mobileRoleRestaurant: "Betrieb",
@@ -422,7 +422,7 @@ const translations = {
     lifestyleSub:
       "Dalla postazione in cucina al magazzino — GastroConnect è sempre a portata di mano. Ordini, chat e bolle di consegna direttamente sul telefono.",
     lifestyleSupplierEyebrow: "Nel cuore dell'azienda",
-    lifestyleSupplierHeadline: "Vendi dove si lavora",
+    lifestyleSupplierHeadline: "Tutto sotto controllo, in ufficio e in movimento",
     lifestyleSupplierSub:
       "Dall'ufficio alla consegna — GastroConnect tiene tutto insieme. Ordini in arrivo, chat con i clienti e bolle di consegna direttamente sul telefono.",
     mobileRoleRestaurant: "Ristorante",
@@ -554,7 +554,7 @@ const translations = {
     lifestyleSub:
       "From the line in the kitchen to the storeroom — GastroConnect is always within reach. Orders, chat and delivery notes right on your phone.",
     lifestyleSupplierEyebrow: "Right in the business",
-    lifestyleSupplierHeadline: "Sell where the work happens",
+    lifestyleSupplierHeadline: "Everything under control, at the office and on the go",
     lifestyleSupplierSub:
       "From the office to the delivery — GastroConnect keeps it all together. Incoming orders, customer chat and delivery notes right on your phone.",
     mobileRoleRestaurant: "Restaurant",
