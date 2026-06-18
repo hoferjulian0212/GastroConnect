@@ -1033,7 +1033,7 @@ export default function Landing() {
               </div>
 
               {/* Right — text outside the image, desktop only */}
-              <div className="hidden md:block md:w-[260px] flex-shrink-0 text-left">
+              <div className="hidden md:block md:w-[200px] flex-shrink-0 text-left">
                 <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-black/60">
                   {t.lifestyleEyebrow}
                 </span>
