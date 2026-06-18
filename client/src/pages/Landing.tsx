@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/accordion";
 import Logo from "@/components/Logo";
 import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
+import shotOfficePhone from "@assets/louisehoffmann83-office-2360063_1781805642704.jpg";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotLifestyleProducts from "@assets/IMG_4917_1781733804883.PNG";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
@@ -247,6 +248,10 @@ const translations = {
     lifestyleHeadline: "Bestellen, wo gekocht wird",
     lifestyleSub:
       "Vom Posten in der Küche bis zum Lager — GastroConnect ist immer griffbereit. Bestellungen, Chat und Lieferscheine direkt auf dem Handy.",
+    lifestyleSupplierEyebrow: "Mitten im Betrieb",
+    lifestyleSupplierHeadline: "Verkaufen, wo gearbeitet wird",
+    lifestyleSupplierSub:
+      "Vom Büro bis zur Lieferung — GastroConnect hält alles zusammen. Eingehende Bestellungen, Kundenchat und Lieferscheine direkt auf dem Handy.",
     mobileRoleRestaurant: "Betrieb",
     mobileRoleSupplier: "Händler",
     mobileAltRestaurant: "GastroConnect mobil — Betrieb",
@@ -416,6 +421,10 @@ const translations = {
     lifestyleHeadline: "Ordina dove si cucina",
     lifestyleSub:
       "Dalla postazione in cucina al magazzino — GastroConnect è sempre a portata di mano. Ordini, chat e bolle di consegna direttamente sul telefono.",
+    lifestyleSupplierEyebrow: "Nel cuore dell'azienda",
+    lifestyleSupplierHeadline: "Vendi dove si lavora",
+    lifestyleSupplierSub:
+      "Dall'ufficio alla consegna — GastroConnect tiene tutto insieme. Ordini in arrivo, chat con i clienti e bolle di consegna direttamente sul telefono.",
     mobileRoleRestaurant: "Ristorante",
     mobileRoleSupplier: "Fornitore",
     mobileAltRestaurant: "GastroConnect mobile — Ristorante",
@@ -544,6 +553,10 @@ const translations = {
     lifestyleHeadline: "Order where the cooking happens",
     lifestyleSub:
       "From the line in the kitchen to the storeroom — GastroConnect is always within reach. Orders, chat and delivery notes right on your phone.",
+    lifestyleSupplierEyebrow: "Right in the business",
+    lifestyleSupplierHeadline: "Sell where the work happens",
+    lifestyleSupplierSub:
+      "From the office to the delivery — GastroConnect keeps it all together. Incoming orders, customer chat and delivery notes right on your phone.",
     mobileRoleRestaurant: "Restaurant",
     mobileRoleSupplier: "Supplier",
     mobileAltRestaurant: "GastroConnect mobile — Restaurant",
@@ -1071,6 +1084,78 @@ export default function Landing() {
               </h2>
               <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
                 {t.lifestyleSub}
+              </p>
+            </div>
+          </MotionReveal>
+        </div>
+      </section>
+
+      {/* LIFESTYLE (supplier) — office team using the app with floating phone mockup, mirrored layout */}
+      <section className="px-4 md:px-8 py-12 md:py-20">
+        <div className="mx-auto max-w-7xl">
+          <MotionReveal>
+            <div
+              className="flex flex-col md:flex-row items-center gap-8 md:gap-8"
+              data-testid="section-lifestyle-supplier"
+            >
+              {/* Left — text outside the image, desktop only */}
+              <div className="hidden md:block md:w-[340px] flex-shrink-0 text-left order-2 md:order-1">
+                <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-black/60">
+                  {t.lifestyleSupplierEyebrow}
+                </span>
+                <h2
+                  className="text-4xl font-semibold tracking-tight text-black leading-tight"
+                  data-testid="text-lifestyle-supplier-headline"
+                >
+                  {t.lifestyleSupplierHeadline}
+                </h2>
+                <p className="mt-4 text-base text-black/80 leading-relaxed">
+                  {t.lifestyleSupplierSub}
+                </p>
+              </div>
+
+              {/* Right — office image + floating phone (mirror: phone on the right) */}
+              <div className="relative overflow-hidden rounded-3xl bg-neutral-900 w-full md:flex-1 order-1 md:order-2">
+                <img
+                  src={shotOfficePhone}
+                  alt={t.lifestyleSupplierHeadline}
+                  className="w-full h-[460px] md:h-[600px] object-cover object-center"
+                  loading="lazy"
+                  data-testid="img-lifestyle-supplier"
+                />
+                {/* legibility gradient — darker on the right under the phone, fading left */}
+                <div className="absolute inset-0 bg-gradient-to-l from-black/70 via-black/30 to-black/10 md:to-transparent" />
+
+                {/* Floating phone mockup on the right-middle — same frame as the mobile section */}
+                <div className="absolute right-3 sm:right-6 md:right-8 top-1/2 -translate-y-1/2">
+                  <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
+                    <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
+                      <img
+                        src={shotMobileSupplierHome}
+                        alt={t.mobileAltSupplier}
+                        className="absolute inset-0 w-full h-full object-cover object-top"
+                        loading="lazy"
+                        data-testid="img-lifestyle-supplier-phone"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Copy below image — mobile only (stacked, no overlap with phone) */}
+            <div className="md:hidden mt-6 px-1">
+              <span className="inline-block mb-2 text-[11px] font-semibold uppercase tracking-widest text-primary">
+                {t.lifestyleSupplierEyebrow}
+              </span>
+              <h2
+                className="text-2xl font-semibold tracking-tight leading-tight"
+                data-testid="text-lifestyle-supplier-headline-mobile"
+              >
+                {t.lifestyleSupplierHeadline}
+              </h2>
+              <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+                {t.lifestyleSupplierSub}
               </p>
             </div>
           </MotionReveal>
