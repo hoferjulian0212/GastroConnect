@@ -7,7 +7,6 @@ import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion
 import { useUser } from "@/context/UserContext";
 import { Button } from "@/components/ui/button";
 import { MotionReveal } from "@/components/landing/MotionReveal";
-import { CardOutlineReveal } from "@/components/landing/CardOutlineReveal";
 import CountUp from "@/components/CountUp";
 import { HeadlineReveal } from "@/components/landing/HeadlineReveal";
 import { PinnedFeatureStory } from "@/components/landing/PinnedFeatureStory";
@@ -1112,7 +1111,6 @@ export default function Landing() {
               },
             ].map((p, pIdx) => (
               <MotionReveal key={p.testid} delay={pIdx * 120}>
-              <CardOutlineReveal strokeClassName="text-border">
               <div
                 className="h-full rounded-3xl p-8 md:p-10 flex flex-col border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800"
                 data-testid={p.testid}
@@ -1145,7 +1143,6 @@ export default function Landing() {
                   </ul>
                 </div>
               </div>
-              </CardOutlineReveal>
               </MotionReveal>
             ))}
           </div>
