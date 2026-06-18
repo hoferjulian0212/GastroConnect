@@ -998,7 +998,7 @@ export default function Landing() {
 
       {/* LIFESTYLE — chef using the app in the kitchen with floating phone mockup */}
       <section className="px-4 md:px-8 py-12 md:py-20">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-7xl">
           <MotionReveal>
             <div
               className="flex flex-col md:flex-row items-center gap-8 md:gap-8"
@@ -1033,7 +1033,7 @@ export default function Landing() {
               </div>
 
               {/* Right — text outside the image, desktop only */}
-              <div className="hidden md:block md:w-[200px] flex-shrink-0 text-left">
+              <div className="hidden md:block md:w-[340px] flex-shrink-0 text-left">
                 <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-black/60">
                   {t.lifestyleEyebrow}
                 </span>
