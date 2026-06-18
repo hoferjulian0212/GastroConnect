@@ -144,7 +144,7 @@ const translations = {
     navStart: "Jetzt starten",
 
     heroH1: "Händler und Betriebe. Alles auf einer Plattform.",
-    heroDiscover: "Vorteile entdecken",
+    heroDiscover: "Über uns",
     heroSub:
       "GastroConnect verbindet Lieferanten und Gastronomie direkt — mit Preisvergleichen, Ausgabenübersicht und allen Bestellungen an einem Ort.",
     heroCtaRestaurant: "Als Betrieb starten",
@@ -347,7 +347,7 @@ const translations = {
     navStart: "Inizia ora",
 
     heroH1: "Commercianti e aziende. Finalmente su un'unica piattaforma.",
-    heroDiscover: "Scopri i vantaggi",
+    heroDiscover: "Chi siamo",
     heroSub:
       "GastroConnect collega direttamente fornitori e gastronomia — con confronto prezzi, panoramica spese e tutti gli ordini in un unico posto.",
     heroCtaRestaurant: "Inizia come azienda",
@@ -490,7 +490,7 @@ const translations = {
     navStart: "Get started",
 
     heroH1: "Suppliers and restaurants. Finally on one platform.",
-    heroDiscover: "Discover the benefits",
+    heroDiscover: "About us",
     heroSub:
       "GastroConnect connects suppliers and hospitality directly — with price comparison, spending overview and all your orders in one place.",
     heroCtaRestaurant: "Start as a restaurant",
