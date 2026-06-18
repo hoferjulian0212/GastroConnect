@@ -1119,15 +1119,15 @@ export default function Landing() {
                 <img
                   src={shotOfficePhone}
                   alt={t.lifestyleSupplierHeadline}
-                  className="w-full h-[460px] md:h-[600px] object-cover object-center"
+                  className="w-full h-[460px] md:h-[600px] object-cover object-[62%_center]"
                   loading="lazy"
                   data-testid="img-lifestyle-supplier"
                 />
-                {/* legibility gradient — darker on the right under the phone, fading left */}
-                <div className="absolute inset-0 bg-gradient-to-l from-black/70 via-black/30 to-black/10 md:to-transparent" />
+                {/* legibility gradient — darker on the left under the phone, fading right toward the people */}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-black/10 md:to-transparent" />
 
-                {/* Floating phone mockup on the right-middle — same frame as the mobile section */}
-                <div className="absolute right-3 sm:right-6 md:right-8 top-1/2 -translate-y-1/2">
+                {/* Floating phone mockup on the left-middle — keeps the workers (center-right) uncovered */}
+                <div className="absolute left-3 sm:left-6 md:left-8 top-1/2 -translate-y-1/2">
                   <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
                     <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
                       <img
