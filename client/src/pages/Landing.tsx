@@ -997,15 +997,16 @@ export default function Landing() {
       </section>
 
       {/* LIFESTYLE — chef using the app in the kitchen with floating phone mockup */}
-      <section className="px-4 md:px-8 py-12 md:py-20">
+      <section className="px-4 md:px-8 py-8 md:py-12">
         <div className="mx-auto max-w-6xl">
           <MotionReveal>
             <div
-              className="flex flex-col md:flex-row gap-0 items-stretch"
+              className="flex flex-col md:flex-row gap-6 md:gap-10 items-center"
               data-testid="section-lifestyle"
             >
-              {/* Left — chef image + floating phone */}
-              <div className="relative md:w-1/2 h-[460px] md:h-[600px] overflow-hidden rounded-3xl">
+              {/* Left — chef image + floating phone (full uncut, natural aspect ratio) */}
+              <div className="relative md:w-[55%] overflow-hidden rounded-3xl flex-shrink-0">
+                <div className="aspect-[3/2]" />
                 <img
                   src={shotChefPhone}
                   alt={t.lifestyleHeadline}
@@ -1031,7 +1032,7 @@ export default function Landing() {
               </div>
 
               {/* Right — text */}
-              <div className="md:w-1/2 flex items-center p-6 md:p-12 lg:p-16">
+              <div className="md:w-[45%] flex items-center">
                 <div className="max-w-sm">
                   <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-black/60">
                     {t.lifestyleEyebrow}
