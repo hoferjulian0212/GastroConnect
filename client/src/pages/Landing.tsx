@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/accordion";
 import Logo from "@/components/Logo";
 import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
-import shotOfficePhone from "@assets/louisehoffmann83-office-2360063_1781805642704.jpg";
+import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.jpg";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotLifestyleProducts from "@assets/IMG_4917_1781733804883.PNG";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
@@ -1119,7 +1119,7 @@ export default function Landing() {
                 <img
                   src={shotOfficePhone}
                   alt={t.lifestyleSupplierHeadline}
-                  className="w-full h-[460px] md:h-[600px] object-cover object-[62%_center]"
+                  className="w-full h-[460px] md:h-[600px] object-cover object-[60%_center]"
                   loading="lazy"
                   data-testid="img-lifestyle-supplier"
                 />
