@@ -999,10 +999,10 @@ export default function Landing() {
       {/* LIFESTYLE — chef using the app in the kitchen with floating phone mockup */}
       <section className="py-8 md:py-12">
         <MotionReveal>
-          {/* Desktop: image fills the full page width (edge to edge) — text on right — phone on left of image */}
-          <div className="hidden md:flex items-center">
-            {/* Left — chef image fills ALL available width, no gaps */}
-            <div className="relative overflow-hidden flex-1 min-w-0">
+          {/* Desktop: image ~42% width — text ~58% width — phone on left of image */}
+          <div className="hidden md:flex items-center gap-6 lg:gap-8">
+            {/* Left — chef image (~42% width, smaller) */}
+            <div className="relative overflow-hidden w-[42%] flex-shrink-0">
               <img
                 src={shotChefPhone}
                 alt={t.lifestyleHeadline}
@@ -1010,10 +1010,10 @@ export default function Landing() {
                 loading="lazy"
                 data-testid="img-lifestyle"
               />
-              {/* Phone mockup on the left side of the image — big and clearly visible */}
-              <div className="absolute left-6 lg:left-10 top-1/2 -translate-y-1/2">
-                <div className="rounded-[2.5rem] lg:rounded-[3rem] border border-border bg-card p-3 lg:p-4 shadow-2xl shadow-black/50">
-                  <div className="relative rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden border border-border w-[260px] lg:w-[320px] aspect-[9/19] bg-card">
+              {/* Phone mockup on the left side of the image — smaller, clearly visible */}
+              <div className="absolute left-4 lg:left-6 top-1/2 -translate-y-1/2">
+                <div className="rounded-[1.5rem] lg:rounded-[1.75rem] border border-border bg-card p-2 lg:p-2 shadow-2xl shadow-black/50">
+                  <div className="relative rounded-[1.25rem] lg:rounded-[1.5rem] overflow-hidden border border-border w-[110px] lg:w-[130px] aspect-[9/19] bg-card">
                     <img
                       src={shotLifestyleProducts}
                       alt={t.mobileAltRestaurant}
@@ -1026,8 +1026,8 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Right — text (narrow column with padding) */}
-            <div className="flex-shrink-0 w-[240px] lg:w-[300px] px-6 lg:px-10">
+            {/* Right — text (~58% width, plenty of room) */}
+            <div className="w-[58%] flex-shrink-0 px-2 lg:px-4">
               <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-black/60">
                 {t.lifestyleEyebrow}
               </span>
@@ -1084,7 +1084,6 @@ export default function Landing() {
               </div>
             </div>
           </MotionReveal>
-        </div>
       </section>
 
       {/* PILLARS — Für wen */}
