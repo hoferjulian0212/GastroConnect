@@ -244,10 +244,8 @@ const translations = {
       "GastroConnect funktioniert auf jedem Gerät. Das mobile Erlebnis ist genauso vollständig wie am Desktop.",
     lifestyleEyebrow: "Mitten im Service",
     lifestyleHeadline: "Bestellen, wo gekocht wird",
-    lifestyleSub: [
-      "Vom Posten in der Küche bis zum Lager — GastroConnect ist immer griffbereit.",
-      "Bestellungen, Chat und Lieferscheine direkt auf dem Handy.",
-    ],
+    lifestyleSub:
+      "Vom Posten in der Küche bis zum Lager — GastroConnect ist immer griffbereit. Bestellungen, Chat und Lieferscheine direkt auf dem Handy.",
     mobileRoleRestaurant: "Betrieb",
     mobileRoleSupplier: "Händler",
     mobileAltRestaurant: "GastroConnect mobil — Betrieb",
@@ -414,10 +412,8 @@ const translations = {
       "GastroConnect funziona su qualsiasi dispositivo. L'esperienza mobile è completa come quella desktop.",
     lifestyleEyebrow: "Nel cuore del servizio",
     lifestyleHeadline: "Ordina dove si cucina",
-    lifestyleSub: [
-      "Dalla postazione in cucina al magazzino — GastroConnect è sempre a portata di mano.",
-      "Ordini, chat e bolle di consegna direttamente sul telefono.",
-    ],
+    lifestyleSub:
+      "Dalla postazione in cucina al magazzino — GastroConnect è sempre a portata di mano. Ordini, chat e bolle di consegna direttamente sul telefono.",
     mobileRoleRestaurant: "Ristorante",
     mobileRoleSupplier: "Fornitore",
     mobileAltRestaurant: "GastroConnect mobile — Ristorante",
@@ -543,10 +539,8 @@ const translations = {
     mobileSub: "GastroConnect runs on every device. The mobile experience is just as complete as the desktop one.",
     lifestyleEyebrow: "Right in the service",
     lifestyleHeadline: "Order where the cooking happens",
-    lifestyleSub: [
-      "From the line in the kitchen to the storeroom — GastroConnect is always within reach.",
-      "Orders, chat and delivery notes right on your phone.",
-    ],
+    lifestyleSub:
+      "From the line in the kitchen to the storeroom — GastroConnect is always within reach. Orders, chat and delivery notes right on your phone.",
     mobileRoleRestaurant: "Restaurant",
     mobileRoleSupplier: "Supplier",
     mobileAltRestaurant: "GastroConnect mobile — Restaurant",
@@ -1004,79 +998,60 @@ export default function Landing() {
 
       {/* LIFESTYLE — chef using the app in the kitchen with floating phone mockup */}
       <section className="px-4 md:px-8 py-8 md:py-12">
-        <MotionReveal>
-          {/* Desktop: image ~42% width — text ~58% width — phone on left of image */}
-          <div className="hidden md:flex items-center gap-6 lg:gap-8">
-            {/* Left — chef image (~42% width) with rounded corners */}
-            <div className="relative rounded-3xl overflow-hidden w-[42%] flex-shrink-0">
-              <img
-                src={shotChefPhone}
-                alt={t.lifestyleHeadline}
-                className="w-full h-auto object-cover"
-                loading="lazy"
-                data-testid="img-lifestyle"
-              />
-              {/* Phone mockup on the left side of the image — clearly visible */}
-              <div className="absolute left-4 lg:left-6 top-1/2 -translate-y-1/2">
-                <div className="rounded-[1.5rem] lg:rounded-[1.75rem] border border-border bg-card p-2 shadow-2xl shadow-black/50">
-                  <div className="relative rounded-[1.25rem] lg:rounded-[1.5rem] overflow-hidden border border-border w-[110px] lg:w-[130px] aspect-[9/19] bg-card">
-                    <img
-                      src={shotLifestyleProducts}
-                      alt={t.mobileAltRestaurant}
-                      className="absolute inset-0 w-full h-full object-cover object-top"
-                      loading="lazy"
-                      data-testid="img-lifestyle-phone"
-                    />
+        <div className="mx-auto max-w-6xl">
+          <MotionReveal>
+            <div
+              className="flex flex-col md:flex-row gap-6 md:gap-10 items-center"
+              data-testid="section-lifestyle"
+            >
+              {/* Left — chef image + floating phone (full uncut, natural aspect ratio) */}
+              <div className="relative md:w-[55%] overflow-hidden rounded-3xl flex-shrink-0">
+                <div className="aspect-[3/2]" />
+                <img
+                  src={shotChefPhone}
+                  alt={t.lifestyleHeadline}
+                  className="absolute inset-0 w-full h-full object-cover object-center"
+                  loading="lazy"
+                  data-testid="img-lifestyle"
+                />
+
+                {/* Floating phone mockup on the left-middle */}
+                <div className="absolute left-3 sm:left-6 md:left-8 top-1/2 -translate-y-1/2">
+                  <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
+                    <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
+                      <img
+                        src={shotLifestyleProducts}
+                        alt={t.mobileAltRestaurant}
+                        className="absolute inset-0 w-full h-full object-cover object-top"
+                        loading="lazy"
+                        data-testid="img-lifestyle-phone"
+                      />
+                    </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Right — text */}
+              <div className="md:w-[45%] flex items-center">
+                <div className="max-w-sm">
+                  <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-black/60">
+                    {t.lifestyleEyebrow}
+                  </span>
+                  <h2
+                    className="text-3xl md:text-4xl font-semibold tracking-tight text-black leading-tight"
+                    data-testid="text-lifestyle-headline"
+                  >
+                    {t.lifestyleHeadline}
+                  </h2>
+                  <p className="mt-4 text-base text-black/80 leading-relaxed">
+                    {t.lifestyleSub}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Right — text (~58% width, split into paragraphs) */}
-            <div className="w-[58%] flex-shrink-0 px-4 lg:px-8">
-              <span className="inline-block mb-4 text-xs font-semibold uppercase tracking-widest text-black/60">
-                {t.lifestyleEyebrow}
-              </span>
-              <h2
-                className="text-3xl lg:text-4xl font-semibold tracking-tight text-black leading-tight"
-                data-testid="text-lifestyle-headline"
-              >
-                {t.lifestyleHeadline}
-              </h2>
-              {t.lifestyleSub.map((line, i) => (
-                <p key={i} className="mt-4 text-base text-black/80 leading-relaxed">
-                  {line}
-                </p>
-              ))}
-            </div>
-          </div>
-
-          {/* Mobile: image with phone overlayed, text below */}
-          <div className="md:hidden">
-            <div className="relative rounded-3xl overflow-hidden">
-              <img
-                src={shotChefPhone}
-                alt={t.lifestyleHeadline}
-                className="w-full h-auto object-cover"
-                loading="lazy"
-                data-testid="img-lifestyle"
-              />
-              {/* Floating phone mockup on the left */}
-              <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                <div className="rounded-[2.25rem] border border-border bg-card p-2.5 shadow-2xl shadow-black/50">
-                  <div className="relative rounded-[1.75rem] overflow-hidden border border-border w-[130px] sm:w-[150px] aspect-[9/19] bg-card">
-                    <img
-                      src={shotLifestyleProducts}
-                      alt={t.mobileAltRestaurant}
-                      className="absolute inset-0 w-full h-full object-cover object-top"
-                      loading="lazy"
-                      data-testid="img-lifestyle-phone"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 px-1">
+            {/* Mobile copy below image */}
+            <div className="md:hidden mt-6 px-1">
               <span className="inline-block mb-2 text-[11px] font-semibold uppercase tracking-widest text-primary">
                 {t.lifestyleEyebrow}
               </span>
@@ -1086,14 +1061,12 @@ export default function Landing() {
               >
                 {t.lifestyleHeadline}
               </h2>
-              {t.lifestyleSub.map((line, i) => (
-                <p key={i} className="mt-3 text-sm text-muted-foreground leading-relaxed">
-                  {line}
-                </p>
-              ))}
+              <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+                {t.lifestyleSub}
+              </p>
             </div>
-          </div>
-        </MotionReveal>
+          </MotionReveal>
+        </div>
       </section>
 
       {/* PILLARS — Für wen */}
