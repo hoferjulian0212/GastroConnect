@@ -1001,52 +1001,55 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl">
           <MotionReveal>
             <div
-              className="relative overflow-hidden rounded-3xl bg-neutral-900"
+              className="flex flex-col md:flex-row gap-0 rounded-3xl overflow-hidden bg-white border border-border"
               data-testid="section-lifestyle"
             >
-              <img
-                src={shotChefPhone}
-                alt={t.lifestyleHeadline}
-                className="w-full h-[460px] md:h-[600px] object-cover object-center"
-                loading="lazy"
-                data-testid="img-lifestyle"
-              />
-              {/* legibility gradient — darker on the left under the phone, fading right */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-black/10 md:to-transparent" />
+              {/* Left — chef image + floating phone */}
+              <div className="relative md:flex-[1.1] h-[460px] md:h-[600px]">
+                <img
+                  src={shotChefPhone}
+                  alt={t.lifestyleHeadline}
+                  className="absolute inset-0 w-full h-full object-cover object-center"
+                  loading="lazy"
+                  data-testid="img-lifestyle"
+                />
 
-              {/* Floating phone mockup on the left-middle — same frame as the mobile section */}
-              <div className="absolute left-5 sm:left-10 md:left-16 top-1/2 -translate-y-1/2">
-                <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
-                  <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
-                    <img
-                      src={shotLifestyleProducts}
-                      alt={t.mobileAltRestaurant}
-                      className="absolute inset-0 w-full h-full object-cover object-top"
-                      loading="lazy"
-                      data-testid="img-lifestyle-phone"
-                    />
+                {/* Floating phone mockup on the left-middle */}
+                <div className="absolute left-3 sm:left-6 md:left-8 top-1/2 -translate-y-1/2">
+                  <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
+                    <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
+                      <img
+                        src={shotLifestyleProducts}
+                        alt={t.mobileAltRestaurant}
+                        className="absolute inset-0 w-full h-full object-cover object-top"
+                        loading="lazy"
+                        data-testid="img-lifestyle-phone"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Copy on the right — overlaid on desktop only (avoids mobile overlap) */}
-              <div className="hidden md:block absolute right-16 top-1/2 -translate-y-1/2 max-w-sm text-left">
-                <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-white/70">
-                  {t.lifestyleEyebrow}
-                </span>
-                <h2
-                  className="text-4xl font-semibold tracking-tight text-white leading-tight"
-                  data-testid="text-lifestyle-headline"
-                >
-                  {t.lifestyleHeadline}
-                </h2>
-                <p className="mt-4 text-base text-white/80 leading-relaxed">
-                  {t.lifestyleSub}
-                </p>
+              {/* Right — text on light background */}
+              <div className="md:flex-[0.9] flex items-center p-6 md:p-12 lg:p-16">
+                <div className="max-w-sm">
+                  <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-black/60">
+                    {t.lifestyleEyebrow}
+                  </span>
+                  <h2
+                    className="text-3xl md:text-4xl font-semibold tracking-tight text-black leading-tight"
+                    data-testid="text-lifestyle-headline"
+                  >
+                    {t.lifestyleHeadline}
+                  </h2>
+                  <p className="mt-4 text-base text-black/80 leading-relaxed">
+                    {t.lifestyleSub}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Copy below image — mobile only (stacked, no overlap with phone) */}
+            {/* Mobile copy below image */}
             <div className="md:hidden mt-6 px-1">
               <span className="inline-block mb-2 text-[11px] font-semibold uppercase tracking-widest text-primary">
                 {t.lifestyleEyebrow}
