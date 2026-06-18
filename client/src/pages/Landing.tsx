@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { MotionReveal } from "@/components/landing/MotionReveal";
 import CountUp from "@/components/CountUp";
 import { HeadlineReveal } from "@/components/landing/HeadlineReveal";
+import { HeadlineCta } from "@/components/landing/HeadlineCta";
 import { PinnedFeatureStory } from "@/components/landing/PinnedFeatureStory";
 import {
   Sheet,
@@ -142,6 +143,7 @@ const translations = {
     navStart: "Jetzt starten",
 
     heroH1: "Händler und Betriebe. Alles auf einer Plattform.",
+    heroDiscover: "Vorteile entdecken",
     heroSub:
       "GastroConnect verbindet Lieferanten und Gastronomie direkt — mit Preisvergleichen, Ausgabenübersicht und allen Bestellungen an einem Ort.",
     heroCtaRestaurant: "Als Betrieb starten",
@@ -340,6 +342,7 @@ const translations = {
     navStart: "Inizia ora",
 
     heroH1: "Commercianti e aziende. Finalmente su un'unica piattaforma.",
+    heroDiscover: "Scopri i vantaggi",
     heroSub:
       "GastroConnect collega direttamente fornitori e gastronomia — con confronto prezzi, panoramica spese e tutti gli ordini in un unico posto.",
     heroCtaRestaurant: "Inizia come azienda",
@@ -478,6 +481,7 @@ const translations = {
     navStart: "Get started",
 
     heroH1: "Suppliers and restaurants. Finally on one platform.",
+    heroDiscover: "Discover the benefits",
     heroSub:
       "GastroConnect connects suppliers and hospitality directly — with price comparison, spending overview and all your orders in one place.",
     heroCtaRestaurant: "Start as a restaurant",
@@ -975,12 +979,18 @@ export default function Landing() {
         <div className="mx-auto max-w-5xl text-center flex flex-col justify-center gap-10 md:gap-14 min-h-[calc(100svh-5rem)]">
           {/* Headline + subtitle */}
           <div>
-            <HeadlineReveal
-              key={`hero-${lang}`}
-              text={t.heroH1}
-              className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] max-w-4xl mx-auto"
-              testId="text-hero-headline"
-            />
+            <HeadlineCta
+              href="/about"
+              pillText={t.heroDiscover}
+              testId="link-hero-headline"
+            >
+              <HeadlineReveal
+                key={`hero-${lang}`}
+                text={t.heroH1}
+                className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] max-w-4xl mx-auto"
+                testId="text-hero-headline"
+              />
+            </HeadlineCta>
             <MotionReveal delay={400} y={16} blur={false}>
               <p className="mt-6 md:mt-8 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
                 {t.heroSub}
