@@ -87,3 +87,33 @@ export const ROLE_LABELS: Record<MemberRole, { de: string; it: string }> = {
 export function roleLabel(role: MemberRole, lang: "de" | "it"): string {
   return ROLE_LABELS[role]?.[lang] ?? role;
 }
+
+/**
+ * Warehouse members belong to a supplier org (URL prefix stays `/supplier`) but
+ * only get a focused, mobile-first subset of pages. This is the single source of
+ * truth for that allow-list: `WarehouseRouter` in `client/src/App.tsx` builds its
+ * routes from this list, and anything NOT listed here falls through to a redirect
+ * back to `/supplier`.
+ */
+export const WAREHOUSE_ALLOWED_PATHS = [
+  "/supplier",
+  "/supplier/inventory-risk",
+  "/supplier/inventory",
+  "/supplier/settings",
+  "/supplier/profile",
+  "/supplier/team",
+  "/supplier/help",
+] as const;
+
+export type WarehouseAllowedPath = (typeof WAREHOUSE_ALLOWED_PATHS)[number];
+
+/** True if a warehouse member is allowed to view the given path (query string ignored). */
+export function isWarehouseAllowedPath(path: string): boolean {
+  const clean = path.split("?")[0].split("#")[0];
+  return (WAREHOUSE_ALLOWED_PATHS as readonly string[]).includes(clean);
+}
+
+/** Derives the `isWarehouse` flag from a member's role. */
+export function isWarehouseRole(role: MemberRole | null | undefined): boolean {
+  return role === "warehouse";
+}

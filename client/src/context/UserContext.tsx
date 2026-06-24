@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { User, Member } from "@shared/schema";
+import { isWarehouseRole } from "@shared/permissions";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 
@@ -58,7 +59,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [me]);
 
   const currentRole = (currentUser?.role as UserRole) ?? "restaurant";
-  const isWarehouse = currentMember?.role === "warehouse";
+  const isWarehouse = isWarehouseRole(currentMember?.role);
   const isAuthenticated = !!me?.authenticated;
   const providers: AuthProviders = me?.providers ?? { google: false };
 

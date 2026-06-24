@@ -79,6 +79,7 @@ import SupplierInventory from "@/pages/supplier/Inventory";
 import SupplierInventoryRisk from "@/pages/supplier/InventoryRisk";
 import WarehouseHome from "@/pages/warehouse/Home";
 import WarehouseStock from "@/pages/warehouse/Stock";
+import { WAREHOUSE_ALLOWED_PATHS, type WarehouseAllowedPath } from "@shared/permissions";
 import About from "@/pages/About";
 import AdminPmsRequests from "@/pages/Admin";
 import Documents from "@/pages/Documents";
@@ -146,18 +147,26 @@ function SupplierRouter() {
 }
 
 // Warehouse members belong to a supplier org (so the URL prefix stays /supplier)
-// but only get a focused, mobile-first subset of pages. Anything outside this
-// allow-list redirects back to the warehouse home.
+// but only get a focused, mobile-first subset of pages. The path allow-list lives
+// in shared/permissions.ts (WAREHOUSE_ALLOWED_PATHS) as the single source of truth;
+// this record maps each allowed path to its page, and anything outside the list
+// falls through to the redirect back to the warehouse home.
+const WAREHOUSE_ROUTE_COMPONENTS: Record<WarehouseAllowedPath, React.ComponentType<any>> = {
+  "/supplier": WarehouseHome,
+  "/supplier/inventory-risk": SupplierInventoryRisk,
+  "/supplier/inventory": WarehouseStock,
+  "/supplier/settings": SupplierSettings,
+  "/supplier/profile": SupplierProfile,
+  "/supplier/team": Team,
+  "/supplier/help": Help,
+};
+
 function WarehouseRouter() {
   return (
     <Switch>
-      <Route path="/supplier" component={WarehouseHome} />
-      <Route path="/supplier/inventory-risk" component={SupplierInventoryRisk} />
-      <Route path="/supplier/inventory" component={WarehouseStock} />
-      <Route path="/supplier/settings" component={SupplierSettings} />
-      <Route path="/supplier/profile" component={SupplierProfile} />
-      <Route path="/supplier/team" component={Team} />
-      <Route path="/supplier/help" component={Help} />
+      {WAREHOUSE_ALLOWED_PATHS.map((p) => (
+        <Route key={p} path={p} component={WAREHOUSE_ROUTE_COMPONENTS[p]} />
+      ))}
       <Route><Redirect to="/supplier" /></Route>
     </Switch>
   );

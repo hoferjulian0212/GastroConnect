@@ -55,7 +55,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node --import tsx --test server/erpProviders.test.ts server/erpSync.test.ts server/permissions.test.ts server/adminAnalytics.test.ts"
+args = "node --import tsx --test server/*.test.ts"
 
 [agent]
 integrations = ["javascript_object_storage:2.0.0", "javascript_openai_ai_integrations:2.0.0", "resend:1.0.0", "javascript_log_in_with_replit:2.0.0"]
