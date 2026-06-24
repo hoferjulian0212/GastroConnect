@@ -2339,6 +2339,19 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/inventory-risks/open-count", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      if (!can(req.auth.role, "inventory_risk.create")) {
+        return res.status(403).json({ error: "forbidden", message: "Keine Berechtigung für diese Aktion." });
+      }
+      const count = await storage.getOpenInventoryRiskCount(req.auth.organizationId);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch open inventory risk count" });
+    }
+  });
+
   app.get("/api/inventory-risks/:id", async (req, res) => {
     try {
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });

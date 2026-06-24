@@ -600,9 +600,18 @@ export function OffeneRisikenWidget({ supplierId, lang }: { supplierId: string; 
     },
     enabled: !!supplierId,
   });
+  const { data: countData } = useQuery<{ count: number }>({
+    queryKey: ["/api/inventory-risks/open-count"],
+    queryFn: async () => {
+      const r = await fetch("/api/inventory-risks/open-count");
+      if (!r.ok) throw new Error("fail");
+      return r.json();
+    },
+    enabled: !!supplierId,
+  });
   const all = data || [];
   const records = all.slice(0, 3);
-  const total = all.length;
+  const total = countData?.count ?? all.length;
   return (
     <div className={CARD_BASE} data-testid="widget-offene-risiken">
       <div className={HEADER}>

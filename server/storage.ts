@@ -388,10 +388,10 @@ export interface IStorage {
   getPromotion(id: string): Promise<Promotion | undefined>;
   getPromotionsByGroup(groupId: string): Promise<Promotion[]>;
   getPromotionsBySupplier(supplierId: string): Promise<PromotionWithProduct[]>;
-  getActivePromotionForProduct(productId: string): Promise<Promotion | undefined>;
+  getActivePromotionForProduct(productId: string, executor?: any): Promise<Promotion | undefined>;
   getActivePromotions(): Promise<Promotion[]>;
-  createPromotion(promotion: InsertPromotion): Promise<Promotion>;
-  updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined>;
+  createPromotion(promotion: InsertPromotion, executor?: any): Promise<Promotion>;
+  updatePromotion(id: string, data: Partial<InsertPromotion>, executor?: any): Promise<Promotion | undefined>;
   deletePromotion(id: string): Promise<void>;
   deletePromotionsByGroup(groupId: string): Promise<void>;
 
@@ -4139,8 +4139,8 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getActivePromotionForProduct(productId: string): Promise<Promotion | undefined> {
-    const [promo] = await db.select().from(promotions)
+  async getActivePromotionForProduct(productId: string, executor: any = db): Promise<Promotion | undefined> {
+    const [promo] = await executor.select().from(promotions)
       .where(and(
         eq(promotions.productId, productId),
         eq(promotions.isActive, true),
@@ -4161,13 +4161,13 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
-  async createPromotion(promotion: InsertPromotion): Promise<Promotion> {
-    const [created] = await db.insert(promotions).values(promotion).returning();
+  async createPromotion(promotion: InsertPromotion, executor: any = db): Promise<Promotion> {
+    const [created] = await executor.insert(promotions).values(promotion).returning();
     return created;
   }
 
-  async updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined> {
-    const [updated] = await db.update(promotions).set(data).where(eq(promotions.id, id)).returning();
+  async updatePromotion(id: string, data: Partial<InsertPromotion>, executor: any = db): Promise<Promotion | undefined> {
+    const [updated] = await executor.update(promotions).set(data).where(eq(promotions.id, id)).returning();
     return updated;
   }
 
@@ -4235,21 +4235,14 @@ export class DatabaseStorage implements IStorage {
     promotion: InsertPromotion,
   ): Promise<{ record: InventoryRiskRecord; promotion: Promotion }> {
     return await db.transaction(async (tx) => {
-      // Deactivate any currently-active promotion for this product so the new
-      // one is the single source of truth.
-      const [existingPromo] = await tx.select().from(promotions)
-        .where(and(
-          eq(promotions.productId, productId),
-          eq(promotions.isActive, true),
-          sql`${promotions.startDate} <= NOW()`,
-          sql`${promotions.endDate} >= NOW()`,
-        ))
-        .orderBy(desc(promotions.discountPercent))
-        .limit(1);
+      // Reuse the shared promotion code path (getActivePromotionForProduct/
+      // updatePromotion/createPromotion) inside the transaction so risk-action
+      // promotions behave identically to ones created via /api/promotions.
+      const existingPromo = await this.getActivePromotionForProduct(productId, tx);
       if (existingPromo) {
-        await tx.update(promotions).set({ isActive: false }).where(eq(promotions.id, existingPromo.id));
+        await this.updatePromotion(existingPromo.id, { isActive: false }, tx);
       }
-      const [createdPromo] = await tx.insert(promotions).values(promotion).returning();
+      const createdPromo = await this.createPromotion(promotion, tx);
       const [updatedRecord] = await tx.update(inventoryRiskRecords)
         .set({ status: "Action Taken", linkedPromotionId: createdPromo.id, updatedAt: new Date() })
         .where(eq(inventoryRiskRecords.id, recordId))
