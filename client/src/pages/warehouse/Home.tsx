@@ -55,7 +55,7 @@ export default function WarehouseHome() {
             <Button
               size="lg"
               onClick={() => setFormOpen(true)}
-              className="w-full md:w-auto h-14 text-base font-semibold bg-white text-black hover:bg-white/90 shadow-sm"
+              className="w-full md:w-auto h-14 text-base font-semibold border-0 bg-white text-black hover:bg-white/90 dark:bg-white dark:text-black dark:hover:bg-white/90 shadow-sm"
               data-testid="button-report-risk"
             >
               <Plus className="h-5 w-5 mr-2" />

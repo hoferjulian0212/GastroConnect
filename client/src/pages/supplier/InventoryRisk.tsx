@@ -134,7 +134,7 @@ export default function SupplierInventoryRisk() {
                 <Button
                   size="lg"
                   onClick={() => openForm()}
-                  className="w-full sm:w-auto shrink-0 h-12 text-base font-semibold bg-white text-black hover:bg-white/90"
+                  className="w-full sm:w-auto shrink-0 h-12 text-base font-semibold border-0 bg-white text-black hover:bg-white/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
                   data-testid="button-report-risk"
                 >
                   <Plus className="h-5 w-5 mr-2" />
