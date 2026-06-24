@@ -75,6 +75,65 @@ export function can(role: MemberRole | null | undefined, capability: Capability)
   return ROLE_CAPABILITIES[role]?.includes(capability) ?? false;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Warehouse API surface — server-side hard limit.
+//
+// The warehouse role is intentionally minimal: members only view stock and flag
+// at-risk inventory (capabilities: team.view, inventory_risk.create). The app UI
+// hides everything else, but the UI is not a security boundary. To guarantee the
+// limit holds at the API layer, a warehouse session is restricted to an explicit
+// allow-list of endpoints that map to its capabilities plus the shared app shell
+// (session/auth, own account + profile upload, team view, notifications, push,
+// heartbeat, error reporting). EVERY other /api route is denied.
+//
+// Failing closed (deny-by-default) means a newly added supplier route — orders,
+// pricing, documents, stats, chat, etc. — cannot accidentally leak to warehouse
+// members just because its author forgot a capability check.
+// ─────────────────────────────────────────────────────────────────────────────
+type WarehouseRouteRule = { methods: "*" | readonly string[]; pattern: RegExp };
+
+const WAREHOUSE_ALLOWED_ROUTES: readonly WarehouseRouteRule[] = [
+  // Session / authentication (login, logout, me, password, oauth).
+  { methods: "*", pattern: /^\/api\/auth(\/|$)/ },
+  // Own account: profile, settings, notification prefs, status, dashboard, etc.
+  // Cross-org reads here return public profiles only; writes are self-/capability
+  // gated inside each route.
+  { methods: "*", pattern: /^\/api\/users(\/|$)/ },
+  // Profile-picture upload (request a presigned URL).
+  { methods: ["POST"], pattern: /^\/api\/uploads(\/|$)/ },
+  // Team view (membership list). Team writes stay capability-gated per route.
+  { methods: "*", pattern: /^\/api\/orgs(\/|$)/ },
+  { methods: "*", pattern: /^\/api\/members(\/|$)/ },
+  // Presence heartbeat.
+  { methods: ["POST"], pattern: /^\/api\/heartbeat$/ },
+  // Notification feed + read state.
+  { methods: "*", pattern: /^\/api\/notifications(\/|$)/ },
+  // Web-push subscription management.
+  { methods: "*", pattern: /^\/api\/push(\/|$)/ },
+  // Stock list: read-only product catalog of the member's own supplier org.
+  { methods: ["GET"], pattern: /^\/api\/supplier\/products$/ },
+  // Inventory-risk flagging (create + edit own + read). Status changes and the
+  // "turn into promotion" action stay gated by inventory_risk.manage in-route.
+  { methods: "*", pattern: /^\/api\/inventory-risks(\/|$)/ },
+  // Best-effort client error reporting.
+  { methods: ["POST"], pattern: /^\/api\/client-errors$/ },
+];
+
+/**
+ * Returns true if a member with the `warehouse` role may reach the given API
+ * endpoint. Deny-by-default: anything not explicitly allow-listed is rejected.
+ * This is the server-side enforcement of the warehouse page limits — the route
+ * middleware must respond 403 when this returns false. `path` should be the
+ * request path without its query string (e.g. Express `req.path`).
+ */
+export function isWarehousePathAllowed(method: string, path: string): boolean {
+  const m = method.toUpperCase();
+  return WAREHOUSE_ALLOWED_ROUTES.some(
+    (rule) =>
+      (rule.methods === "*" || rule.methods.includes(m)) && rule.pattern.test(path),
+  );
+}
+
 /** Bilingual labels for each preset role (DE / IT), matching the app's t(de, it) convention. */
 export const ROLE_LABELS: Record<MemberRole, { de: string; it: string }> = {
   admin: { de: "Administrator", it: "Amministratore" },

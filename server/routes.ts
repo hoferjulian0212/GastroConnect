@@ -8,7 +8,7 @@ import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockEr
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema, insertInventoryRiskRecordSchema, INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY, INVENTORY_RISK_REASONS } from "@shared/schema";
-import { can, type Capability } from "@shared/permissions";
+import { can, isWarehousePathAllowed, type Capability } from "@shared/permissions";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
 import { getPmsProviderAdapter } from "./pmsProviders";
@@ -551,6 +551,22 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // ── Warehouse hard limit (server-side, fail-closed) ──────────────────────
+  // Warehouse members may only reach a tiny allow-list of endpoints (see
+  // isWarehousePathAllowed). This runs after loadAuth (mounted in index.ts) and
+  // before every /api route — including the sub-registered auth/upload/OCR/AI
+  // routes below — so a warehouse session can never read supplier business data
+  // (orders, pricing, documents, stats, chat) even if an individual route forgot
+  // to check capabilities.
+  app.use((req, res, next) => {
+    if (req.auth?.role !== "warehouse") return next();
+    if (!req.path.startsWith("/api/")) return next();
+    if (isWarehousePathAllowed(req.method, req.path)) return next();
+    return res
+      .status(403)
+      .json({ error: "forbidden", message: "Keine Berechtigung für diese Aktion." });
+  });
+
   // Register object storage routes for file uploads
   registerObjectStorageRoutes(app);
   // AI-powered OCR price-list import (supplier)
