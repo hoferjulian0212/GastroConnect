@@ -1,13 +1,19 @@
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
+import { useUser } from "@/context/UserContext";
 
 type Tab = { href: string; label: string };
 
 export function SectionTabs() {
   const [location] = useLocation();
   const { lang } = useLanguage();
+  const { isWarehouse } = useUser();
   const path = location.split("?")[0];
   const de = lang === "de";
+
+  // Warehouse members only have access to a slim subset of pages; the section
+  // tabs would link to routes they cannot open, so hide them entirely.
+  if (isWarehouse) return null;
 
   const groups: Tab[][] = [
     [

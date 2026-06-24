@@ -30,6 +30,7 @@ import Logo from "@/components/Logo";
 import { AiAssistant } from "@/components/AiAssistant";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { SupplierMobileNav } from "@/components/SupplierMobileNav";
+import { WarehouseMobileNav } from "@/components/WarehouseMobileNav";
 import { RestaurantMobileNav } from "@/components/RestaurantMobileNav";
 import { MobileTopActions } from "@/components/mobile/MobileTopActions";
 import { useEffect, useCallback, useState, useRef, useLayoutEffect, lazy, Suspense, type ReactNode } from "react";
@@ -76,6 +77,8 @@ import SupplierRestaurants from "@/pages/supplier/Restaurants";
 import SupplierPromotions from "@/pages/supplier/Promotions";
 import SupplierInventory from "@/pages/supplier/Inventory";
 import SupplierInventoryRisk from "@/pages/supplier/InventoryRisk";
+import WarehouseHome from "@/pages/warehouse/Home";
+import WarehouseStock from "@/pages/warehouse/Stock";
 import About from "@/pages/About";
 import AdminPmsRequests from "@/pages/Admin";
 import Documents from "@/pages/Documents";
@@ -138,6 +141,24 @@ function SupplierRouter() {
       <Route path="/supplier/team" component={Team} />
       <Route path="/supplier/help" component={Help} />
       <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+// Warehouse members belong to a supplier org (so the URL prefix stays /supplier)
+// but only get a focused, mobile-first subset of pages. Anything outside this
+// allow-list redirects back to the warehouse home.
+function WarehouseRouter() {
+  return (
+    <Switch>
+      <Route path="/supplier" component={WarehouseHome} />
+      <Route path="/supplier/inventory-risk" component={SupplierInventoryRisk} />
+      <Route path="/supplier/inventory" component={WarehouseStock} />
+      <Route path="/supplier/settings" component={SupplierSettings} />
+      <Route path="/supplier/profile" component={SupplierProfile} />
+      <Route path="/supplier/team" component={Team} />
+      <Route path="/supplier/help" component={Help} />
+      <Route><Redirect to="/supplier" /></Route>
     </Switch>
   );
 }
@@ -391,7 +412,7 @@ function HeaderNavDropdown({ item, location }: { item: NavItem; location: string
 }
 
 function HeaderNav() {
-  const { currentRole } = useUser();
+  const { currentRole, isWarehouse } = useUser();
   const [location] = useLocation();
   const { lang } = useLanguage();
 
@@ -444,7 +465,14 @@ function HeaderNav() {
     { href: '/supplier/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },
   ];
 
-  const links = currentRole === 'restaurant' ? restaurantLinks : supplierLinks;
+  const warehouseLinks: NavItem[] = [
+    { href: '/supplier', label: 'Home', exact: true },
+    { href: '/supplier/inventory-risk', label: lang === 'de' ? 'Risiko-Bestand' : 'Scorte a rischio' },
+    { href: '/supplier/inventory', label: lang === 'de' ? 'Bestand' : 'Magazzino' },
+    { href: '/supplier/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },
+  ];
+
+  const links = isWarehouse ? warehouseLinks : currentRole === 'restaurant' ? restaurantLinks : supplierLinks;
 
   return (
     <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 xl:gap-2 min-w-0 overflow-x-auto scrollbar-hide" data-testid="header-nav">
@@ -612,7 +640,7 @@ function DesktopProfileButton() {
 }
 
 function AppLayout() {
-  const { currentRole, isLoading, isAuthenticated } = useUser();
+  const { currentRole, isWarehouse, isLoading, isAuthenticated } = useUser();
   const { isInChat } = useChat();
   const [location] = useLocation();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -772,11 +800,11 @@ function AppLayout() {
             <main className={`flex-1 flex flex-col min-h-0 ${isDetailPage ? 'p-0 pb-0' : isInboxPage ? 'pt-0 pb-0 md:pb-4' : 'pt-0 pb-0 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
               <div key={location.split("?")[0]} className="animate-page-enter flex-1 flex flex-col min-h-0">
                 <PageHero />
-                {location.startsWith("/restaurant") ? <RestaurantRouter /> : <SupplierRouter />}
+                {location.startsWith("/restaurant") ? <RestaurantRouter /> : isWarehouse ? <WarehouseRouter /> : <SupplierRouter />}
               </div>
             </main>
           </div>
-          {!isDetailPage && !isInChat && (currentRole === "supplier" ? <SupplierMobileNav /> : <RestaurantMobileNav />)}
+          {!isDetailPage && !isInChat && (currentRole === "supplier" ? (isWarehouse ? <WarehouseMobileNav /> : <SupplierMobileNav />) : <RestaurantMobileNav />)}
           <GlobalSearch />
           <AiAssistant />
           <KeyboardShortcuts />

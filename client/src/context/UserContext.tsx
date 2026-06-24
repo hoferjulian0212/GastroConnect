@@ -22,6 +22,7 @@ interface UserContextType {
   setCurrentUser: (user: User | null) => void;
   currentMember: Member | null;
   setCurrentMember: (member: Member | null) => void;
+  isWarehouse: boolean;
   members: Member[];
   membersLoading: boolean;
   isAuthenticated: boolean;
@@ -57,6 +58,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [me]);
 
   const currentRole = (currentUser?.role as UserRole) ?? "restaurant";
+  const isWarehouse = currentMember?.role === "warehouse";
   const isAuthenticated = !!me?.authenticated;
   const providers: AuthProviders = me?.providers ?? { google: false };
 
@@ -89,6 +91,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setCurrentUser,
         currentMember,
         setCurrentMember,
+        isWarehouse,
         members,
         membersLoading,
         isAuthenticated,
