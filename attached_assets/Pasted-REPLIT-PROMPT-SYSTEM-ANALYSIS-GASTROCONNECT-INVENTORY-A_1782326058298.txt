@@ -1,0 +1,161 @@
+REPLIT PROMPT – SYSTEM ANALYSIS (GASTROCONNECT INVENTORY + ACTIONS SYSTEM)
+Du bist ein Senior Software Architect. Analysiere das bestehende bzw. geplante System von “GastroConnect” und erkläre vollständig, wie es technisch und logisch aufgebaut sein muss, um einen neuen Supplier-Workflow zu unterstützen.
+WICHTIG:
+Keine Code-Implementierung
+Nur Systemverständnis, Architektur, Datenfluss, Rollenlogik, UI-Struktur
+Ziel: vollständiges Verständnis des End-to-End Systems
+1. SYSTEM ZIEL
+GastroConnect ist kein reiner B2B Marketplace mehr.
+Es entwickelt sich zu einem:
+“Inventory + Perishability + Decision Engine System für Lebensmittel-Lieferanten”
+Ziel:
+Verderb minimieren
+Umsatz optimieren durch dynamische Aktionen (Rabatte)
+Lagerdaten + ERP Daten + menschliche Einschätzung kombinieren
+Entscheidungen priorisieren statt nur Produkte anzeigen
+2. KERNPROBLEM DAS GELÖST WIRD
+Lieferanten verlieren Geld durch:
+Verderb von Lebensmitteln
+zu langsame Reaktion auf Ablaufdaten
+fehlende Transparenz über Lagerzustand
+keine priorisierte Entscheidungsübersicht
+manuelle, unstrukturierte Rabattsetzung
+3. WICHTIGES NEUES SYSTEMPROBLEM (CRITICAL GAP)
+Aktuell fehlt im System eine zentrale Datenkomponente:
+Es wird NICHT systematisch getrackt, wie lange ein Produkt noch haltbar ist bzw. wie der echte Shelf-Life Status pro Charge ist.
+Das bedeutet:
+keine präzise Haltbarkeitslogik im Backend
+keine echte Zeit-zu-Verfall Berechnung pro Batch
+keine differenzierte Produktqualität über Zeit
+fehlende Grundlage für dynamische Preislogik
+👉 Das ist ein fundamentaler Missing Layer im Systemdesign.
+Das Backend muss erweitert werden, um:
+Shelf-Life / MHD pro Charge korrekt zu speichern
+Zeitverlauf der Produktqualität zu berechnen
+Qualitätsverfall dynamisch abzubilden
+4. USER ROLLEN SYSTEM
+Analysiere und erkläre folgende Rollen:
+4.1 Admin / Supplier Owner
+volle Kontrolle
+User Management
+Übersicht über alle Daten
+4.2 Product Manager / Vertreter (WICHTIGSTE ROLLE)
+trifft Preis- und Rabattentscheidungen
+sieht priorisierte “Action Feed”
+keine operative Lagerarbeit
+Ziel: wirtschaftliche Entscheidungen treffen
+4.3 Lagerarbeiter (Inventory Operator)
+arbeitet im physischen Lager
+kann:
+Qualität von Charge bewerten (1 Tap)
+optional Foto + Kommentar
+KEINE Preisentscheidungen
+4.4 System (GastroConnect Engine)
+berechnet Risiko
+priorisiert Produkte
+erstellt Action Cards
+nutzt Shelf-Life + Qualitätsdaten
+5. ZENTRALES DATENMODELL (ERKLÄRUNG ERWARTET)
+Beschreibe notwendige Entitäten:
+5.1 Product
+Name
+Kategorie
+Supplier ID
+5.2 Inventory Batch / Charge (KRITISCH ERWEITERT)
+Menge
+MHD (expiry date)
+Shelf-Life Tracking (NEU)
+Produktionsdatum (falls vorhanden)
+Eingangsdaten
+Zeit im Lager
+geschätzte verbleibende Haltbarkeit
+Lagerstatus
+Qualität (Premium / OK / Risk / Bad)
+ERP Herkunft
+Historie
+5.3 Action Card
+Product reference
+Batch reference
+Risiko-Level
+erwarteter Verlust (€)
+empfohlene Aktion
+Priorität Score
+Status
+5.4 User Signal
+Lagerarbeiter Bewertung
+Timestamp
+optional Foto / Note
+5.5 Action Execution
+Rabatt gesetzt
+Kunden selektiert
+Ergebnis tracking
+6. SYSTEM LOGIC / ENGINE
+Erkläre:
+6.1 Wie Action Cards entstehen
+Kombination aus:
+MHD
+Shelf-Life Progression (NEU)
+Lagerbestand
+Nachfragehistorie
+Lagerarbeiter Signal
+Risiko Score
+6.2 Priorisierung
+welche Cards erscheinen oben
+welche werden ignoriert
+welche sind kritisch
+6.3 Decision Flow
+wann automatisch vorgeschlagen wird
+wann manuell bestätigt wird
+wann Produktmanager eingreifen muss
+7. UI / UX STRUCTURE (SEHR WICHTIG)
+7.1 Supplier Admin UI
+Management
+7.2 Inventory Manager UI (Lagerarbeiter)
+simple mobile-first interface
+1 Tap Quality Update
+no pricing visibility
+7.3 Product Manager UI (VERTRETER)
+“Actions Dashboard” (MAIN PAGE)
+Cards = Entscheidungen
+quick actions (apply discount etc.)
+7.4 Products Page (secondary)
+ERP-like data view
+NOT decision-focused
+7.5 Actions Page (CORE)
+decision feed
+sorted by financial impact
+replaces analysis behavior
+8. END-TO-END WORKFLOW
+ERP sync → inventory import
+Shelf-Life tracking begins per batch (NEW CORE REQUIREMENT)
+Lagerarbeiter updates quality signal
+System computes risk + decay progression
+Action Cards generated
+Product Manager executes actions
+Actions pushed to ERP/API
+Outcome tracked (sold / waste / expiry)
+Feedback loop improves scoring
+9. KEY DESIGN PRINCIPLE
+system does NOT replace humans
+system does NOT fully automate pricing
+system provides structured decision intelligence
+speed > perfection
+trust stays with supplier management
+10. INTEGRATION LAYER
+ERP API sync
+bidirectional or controlled push
+action execution back into ERP
+inventory updates flow
+11. CRITICAL SUCCESS FACTORS
+accurate shelf-life tracking (NEW CRITICAL DEPENDENCY)
+low friction UI
+no overload for warehouse workers
+product manager sees only relevant decisions
+fast decision cycle
+trust in recommendations
+OUTPUT REQUIREMENT
+Return:
+full system architecture explanation
+highlight missing backend requirements (especially shelf-life tracking)
+no code
+focus on logical system consistency and dependencies
