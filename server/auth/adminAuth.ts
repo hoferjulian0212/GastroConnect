@@ -64,6 +64,65 @@ export async function bootstrapPlatformAdmin(): Promise<void> {
   }
 }
 
+// Demo warehouse-worker login for the "Frische Produkte" supplier (owner: Hans
+// Müller). Seeded team members have no password and therefore cannot log in, so
+// this provisions one real, working login with the restricted `warehouse` role
+// to let us inspect the warehouse dashboard. Idempotent — runs on every startup
+// AFTER seeding, re-creating the member and resetting its password so it always
+// works even after a reseed.
+//
+// SECURITY: this is a development-only convenience and is a known, fixed
+// credential. It must NEVER exist in a deployed app or it would be a standing
+// backdoor that breaks the invite-only trust model. It is therefore gated to
+// non-production and refuses to touch an account that belongs to another org.
+export const DEMO_WAREHOUSE_EMAIL = "lager@frische-produkte.de";
+export const DEMO_WAREHOUSE_PASSWORD = "Lager2026Demo";
+
+export async function bootstrapDemoWarehouseMember(): Promise<void> {
+  // Hard production guard — never provision known credentials in prod.
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  const HANS_ORG_EMAIL = "hans@frische-produkte.de";
+  const DEMO_NAME = "Lukas Lager";
+  try {
+    const org = await storage.getUserByEmail(HANS_ORG_EMAIL);
+    if (!org || org.role !== "supplier") {
+      console.log("[demo] warehouse member skipped — Frische Produkte org not found.");
+      return;
+    }
+    const passwordHash = await hashPassword(DEMO_WAREHOUSE_PASSWORD);
+    const existing = await storage.getMemberByEmail(DEMO_WAREHOUSE_EMAIL);
+    if (existing) {
+      // Never silently migrate/hijack an account that belongs to a different
+      // org — if the demo email collides with a real member elsewhere, abort.
+      if (existing.organizationId !== org.id) {
+        console.error(
+          `[demo] warehouse member skipped — ${DEMO_WAREHOUSE_EMAIL} already belongs to another org; refusing to reassign.`,
+        );
+        return;
+      }
+      await storage.updateMember(existing.id, {
+        name: DEMO_NAME,
+        role: "warehouse",
+      });
+      await storage.updateMemberAuth(existing.id, { passwordHash, emailVerifiedAt: new Date() });
+      console.log(`[demo] warehouse member updated (${DEMO_WAREHOUSE_EMAIL}).`);
+    } else {
+      const member = await storage.createMember({
+        organizationId: org.id,
+        name: DEMO_NAME,
+        email: DEMO_WAREHOUSE_EMAIL,
+        role: "warehouse",
+      });
+      await storage.updateMemberAuth(member.id, { passwordHash, emailVerifiedAt: new Date() });
+      console.log(`[demo] warehouse member created (${DEMO_WAREHOUSE_EMAIL}).`);
+    }
+  } catch (err) {
+    console.error("[demo] warehouse member bootstrap error:", err);
+  }
+}
+
 // Strip sensitive fields (password hash) before returning a platform-admin row
 // to any client. Never send the bcrypt hash over the wire or into response logs.
 function sanitizePlatformAdmin<T extends { passwordHash?: string | null }>(

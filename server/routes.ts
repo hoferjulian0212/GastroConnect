@@ -18,7 +18,7 @@ import { runSyncForConnection, startErpSyncScheduler, testErpConnection, ErpSync
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
 import { sendEmail, renderNotificationEmail } from "./emailService";
 import { registerAuthRoutes } from "./auth/routes";
-import { registerAdminAuthRoutes, bootstrapPlatformAdmin } from "./auth/adminAuth";
+import { registerAdminAuthRoutes, bootstrapPlatformAdmin, bootstrapDemoWarehouseMember } from "./auth/adminAuth";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
@@ -608,6 +608,8 @@ export async function registerRoutes(
   await storage.seedData();
   // Ensure every organization has at least an Admin member (idempotent)
   await storage.backfillMembers();
+  // Provision a working demo warehouse-worker login on Hans's supplier org (idempotent)
+  await bootstrapDemoWarehouseMember();
   // Ensure the standard PMS providers exist (idempotent)
   await storage.ensurePmsProviders();
   // Ensure the standard ERP providers exist (idempotent)
