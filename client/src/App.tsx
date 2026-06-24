@@ -437,6 +437,7 @@ function HeaderNav() {
       label: lang === 'de' ? 'Produkte' : 'Prodotti',
       children: [
         { href: '/supplier/products', label: lang === 'de' ? 'Katalog' : 'Catalogo' },
+        { href: '/supplier/inventory-risk', label: lang === 'de' ? 'Risiko-Bestand' : 'Scorte a rischio' },
         { href: '/supplier/restaurants', label: lang === 'de' ? 'Kunden' : 'Clienti' },
       ],
     },

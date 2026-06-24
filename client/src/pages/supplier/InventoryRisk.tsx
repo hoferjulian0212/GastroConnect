@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
@@ -28,7 +28,8 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, AlertTriangle, Loader2 } from "lucide-react";
+import { Plus, AlertTriangle, Loader2, Search as SearchIcon } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { InventoryRiskCard } from "@/components/InventoryRiskCard";
 import { InventoryRiskFormDialog } from "@/components/InventoryRiskFormDialog";
 import { INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY } from "@shared/schema";
@@ -45,6 +46,8 @@ export default function SupplierInventoryRisk() {
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [qualityFilter, setQualityFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"expiry" | "quantity" | "recent" | "severity">("expiry");
   const [formOpen, setFormOpen] = useState(false);
   const [editRecord, setEditRecord] = useState<InventoryRiskRecordWithDetails | null>(null);
   const [actionRecord, setActionRecord] = useState<InventoryRiskRecordWithDetails | null>(null);
@@ -69,6 +72,33 @@ export default function SupplierInventoryRisk() {
     enabled: !!currentUser?.id,
   });
 
+  const SEVERITY_ORDER: Record<string, number> = { Bad: 0, Risk: 1, OK: 2, Premium: 3 };
+
+  const visibleRecords = useMemo(() => {
+    let list = [...(records ?? [])];
+    const term = search.trim().toLowerCase();
+    if (term) {
+      list = list.filter((r) => (r.product?.name ?? "").toLowerCase().includes(term));
+    }
+    list.sort((a, b) => {
+      switch (sortBy) {
+        case "quantity":
+          return b.flaggedQuantity - a.flaggedQuantity;
+        case "recent":
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "severity":
+          return (SEVERITY_ORDER[a.qualityStatus] ?? 99) - (SEVERITY_ORDER[b.qualityStatus] ?? 99);
+        case "expiry":
+        default: {
+          const av = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity;
+          const bv = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity;
+          return av - bv;
+        }
+      }
+    });
+    return list;
+  }, [records, search, sortBy]);
+
   const openForm = (record?: InventoryRiskRecordWithDetails) => {
     setEditRecord(record ?? null);
     setFormOpen(true);
@@ -76,6 +106,16 @@ export default function SupplierInventoryRisk() {
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ["/api/inventory-risks"] });
+
+  const statusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) =>
+      apiRequest("PATCH", `/api/inventory-risks/${id}`, { status }),
+    onSuccess: () => {
+      refresh();
+      toast({ title: t("inventoryRisk", "statusUpdated") });
+    },
+    onError: () => toast({ title: t("inventoryRisk", "statusError"), variant: "destructive" }),
+  });
 
   return (
     <PullToRefreshWrapper onRefresh={async () => { await refresh(); }}>
@@ -124,13 +164,34 @@ export default function SupplierInventoryRisk() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-auto min-w-[150px]" data-testid="select-sort">
+                <SelectValue placeholder={t("inventoryRisk", "sortBy")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="expiry">{t("inventoryRisk", "sort_expiry")}</SelectItem>
+                <SelectItem value="quantity">{t("inventoryRisk", "sort_quantity")}</SelectItem>
+                <SelectItem value="recent">{t("inventoryRisk", "sort_recent")}</SelectItem>
+                <SelectItem value="severity">{t("inventoryRisk", "sort_severity")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:flex-1">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("inventoryRisk", "searchProduct")}
+                className="pl-9"
+                data-testid="input-search-risk"
+              />
+            </div>
           </div>
 
           {isLoading ? (
             <div className="grid gap-3 md:grid-cols-2">
               {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
             </div>
-          ) : !records || records.length === 0 ? (
+          ) : visibleRecords.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-10 md:p-14">
               <div className="flex flex-col items-center justify-center text-center">
                 <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
@@ -142,7 +203,7 @@ export default function SupplierInventoryRisk() {
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2" data-testid="list-inventory-risks">
-              {records.map((record) => {
+              {visibleRecords.map((record) => {
                 const canEditThis =
                   canManage ||
                   (currentMember ? record.createdBy === currentMember.id : true);
@@ -154,6 +215,8 @@ export default function SupplierInventoryRisk() {
                     canEdit={canEditThis}
                     onCreatePromotion={setActionRecord}
                     onEdit={openForm}
+                    onStatusChange={(status) => statusMutation.mutate({ id: record.id, status })}
+                    statusChanging={statusMutation.isPending}
                   />
                 );
               })}
@@ -191,6 +254,8 @@ function CreatePromotionDialog({
   const t = useT(lang);
   const { toast } = useToast();
 
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -199,6 +264,8 @@ function CreatePromotionDialog({
     mutationFn: async () => {
       if (!record) throw new Error("no record");
       return apiRequest("POST", `/api/inventory-risks/${record.id}/action`, {
+        name: name.trim() || undefined,
+        description: description.trim() || undefined,
         discountPercent: Number(discountPercent),
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate).toISOString(),
@@ -207,6 +274,8 @@ function CreatePromotionDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/promotions"] });
       toast({ title: t("inventoryRisk", "actionSuccess") });
+      setName("");
+      setDescription("");
       setDiscountPercent("");
       setStartDate("");
       setEndDate("");
@@ -225,6 +294,25 @@ function CreatePromotionDialog({
           <DialogDescription>{record?.product?.name}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>{t("inventoryRisk", "promoName")}</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t("inventoryRisk", "promoNamePlaceholder")}
+              data-testid="input-promo-name"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("inventoryRisk", "promoDescription")}</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t("inventoryRisk", "promoDescriptionPlaceholder")}
+              rows={2}
+              data-testid="input-promo-description"
+            />
+          </div>
           <div className="space-y-1.5">
             <Label>{t("inventoryRisk", "discount")}</Label>
             <Input

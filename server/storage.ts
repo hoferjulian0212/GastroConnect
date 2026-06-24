@@ -408,6 +408,11 @@ export interface IStorage {
     id: string,
     data: Partial<Omit<InventoryRiskRecord, "id" | "createdAt">>,
   ): Promise<InventoryRiskRecord | undefined>;
+  actionInventoryRiskRecord(
+    recordId: string,
+    productId: string,
+    promotion: InsertPromotion,
+  ): Promise<{ record: InventoryRiskRecord; promotion: Promotion }>;
   getOpenInventoryRiskCount(supplierId: string): Promise<number>;
 
   // Custom Min Order Quantities
@@ -4222,6 +4227,35 @@ export class DatabaseStorage implements IStorage {
       .where(eq(inventoryRiskRecords.id, id))
       .returning();
     return updated;
+  }
+
+  async actionInventoryRiskRecord(
+    recordId: string,
+    productId: string,
+    promotion: InsertPromotion,
+  ): Promise<{ record: InventoryRiskRecord; promotion: Promotion }> {
+    return await db.transaction(async (tx) => {
+      // Deactivate any currently-active promotion for this product so the new
+      // one is the single source of truth.
+      const [existingPromo] = await tx.select().from(promotions)
+        .where(and(
+          eq(promotions.productId, productId),
+          eq(promotions.isActive, true),
+          sql`${promotions.startDate} <= NOW()`,
+          sql`${promotions.endDate} >= NOW()`,
+        ))
+        .orderBy(desc(promotions.discountPercent))
+        .limit(1);
+      if (existingPromo) {
+        await tx.update(promotions).set({ isActive: false }).where(eq(promotions.id, existingPromo.id));
+      }
+      const [createdPromo] = await tx.insert(promotions).values(promotion).returning();
+      const [updatedRecord] = await tx.update(inventoryRiskRecords)
+        .set({ status: "Action Taken", linkedPromotionId: createdPromo.id, updatedAt: new Date() })
+        .where(eq(inventoryRiskRecords.id, recordId))
+        .returning();
+      return { record: updatedRecord, promotion: createdPromo };
+    });
   }
 
   async getOpenInventoryRiskCount(supplierId: string): Promise<number> {

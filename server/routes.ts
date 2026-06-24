@@ -2453,27 +2453,24 @@ export async function registerRoutes(
       if (startDate < today) return res.status(400).json({ error: "Start date cannot be in the past" });
       if (endDate <= startDate) return res.status(400).json({ error: "End date must be after start date" });
 
-      // Deactivate any existing active promotion for this product first.
-      const existingPromo = await storage.getActivePromotionForProduct(existing.productId);
-      if (existingPromo) {
-        await storage.updatePromotion(existingPromo.id, { isActive: false });
-      }
-      const promo = await storage.createPromotion({
-        productId: existing.productId,
-        supplierId: existing.supplierId,
-        discountPercent,
-        startDate,
-        endDate,
-        isActive: true,
-        name: name || null,
-        description: description || null,
-        groupId: randomUUID(),
-        targetRestaurantIds: targetRestaurantIds || null,
-      });
-      const updated = await storage.updateInventoryRiskRecord(existing.id, {
-        status: "Action Taken",
-        linkedPromotionId: promo.id,
-      });
+      // Create the promotion and flip the record atomically so a partial
+      // failure can never leave a promotion without a linked record (or vice versa).
+      const { record: updated, promotion: promo } = await storage.actionInventoryRiskRecord(
+        existing.id,
+        existing.productId,
+        {
+          productId: existing.productId,
+          supplierId: existing.supplierId,
+          discountPercent,
+          startDate,
+          endDate,
+          isActive: true,
+          name: name || null,
+          description: description || null,
+          groupId: randomUUID(),
+          targetRestaurantIds: targetRestaurantIds || null,
+        },
+      );
       res.status(201).json({ record: updated, promotion: promo });
     } catch (error) {
       if (error instanceof z.ZodError) {

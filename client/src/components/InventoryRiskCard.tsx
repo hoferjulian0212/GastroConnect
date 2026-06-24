@@ -1,11 +1,18 @@
+import { Link } from "wouter";
 import { ProductImage } from "@/components/ProductImage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { format } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { Tag, Pencil, CalendarClock, User as UserIcon } from "lucide-react";
+import { Tag, Pencil, CalendarClock, User as UserIcon, MoreHorizontal, Percent } from "lucide-react";
 import type { InventoryRiskRecordWithDetails } from "@shared/schema";
 
 const QUALITY_COLORS: Record<string, string> = {
@@ -29,12 +36,15 @@ interface Props {
   canEdit: boolean;
   onCreatePromotion: (record: InventoryRiskRecordWithDetails) => void;
   onEdit: (record: InventoryRiskRecordWithDetails) => void;
+  onStatusChange?: (status: string) => void;
+  statusChanging?: boolean;
 }
 
-export function InventoryRiskCard({ record, canManage, canEdit, onCreatePromotion, onEdit }: Props) {
+export function InventoryRiskCard({ record, canManage, canEdit, onCreatePromotion, onEdit, onStatusChange, statusChanging }: Props) {
   const { lang } = useLanguage();
   const t = useT(lang);
   const locale = lang === "de" ? de : it;
+  const canTransition = canManage && record.status === "Action Taken" && !!onStatusChange;
 
   return (
     <div
@@ -88,7 +98,20 @@ export function InventoryRiskCard({ record, canManage, canEdit, onCreatePromotio
         </p>
       )}
 
-      {(canEdit || (canManage && record.status === "Open")) && (
+      {record.linkedPromotion && (
+        <Link
+          href="/supplier/promotions"
+          className="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 text-sm hover:bg-emerald-100 dark:hover:bg-emerald-500/15 transition-colors"
+          data-testid={`link-promotion-${record.id}`}
+        >
+          <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 font-medium">
+            <Percent className="h-3.5 w-3.5" />
+            {record.linkedPromotion.discountPercent}% · {t("inventoryRisk", "viewPromotion")}
+          </span>
+        </Link>
+      )}
+
+      {(canEdit || (canManage && record.status === "Open") || canTransition) && (
         <div className="flex items-center gap-2 pt-1">
           {canManage && record.status === "Open" && (
             <Button
@@ -100,6 +123,33 @@ export function InventoryRiskCard({ record, canManage, canEdit, onCreatePromotio
               <Tag className="h-4 w-4 mr-1.5" />
               {t("inventoryRisk", "createPromotion")}
             </Button>
+          )}
+          {canTransition && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  disabled={statusChanging}
+                  data-testid={`button-change-status-${record.id}`}
+                >
+                  <MoreHorizontal className="h-4 w-4 mr-1.5" />
+                  {t("inventoryRisk", "changeStatus")}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onStatusChange?.("Sold")} data-testid={`menu-mark-sold-${record.id}`}>
+                  {t("inventoryRisk", "markSold")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onStatusChange?.("Expired")} data-testid={`menu-mark-expired-${record.id}`}>
+                  {t("inventoryRisk", "markExpired")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onStatusChange?.("Dismissed")} data-testid={`menu-mark-dismissed-${record.id}`}>
+                  {t("inventoryRisk", "markDismissed")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           {canEdit && (
             <Button
