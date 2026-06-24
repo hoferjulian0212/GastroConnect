@@ -2454,7 +2454,10 @@ export async function registerRoutes(
       if (!existing || existing.supplierId !== req.auth.organizationId) {
         return res.status(404).json({ error: "Inventory risk record not found" });
       }
-      const denied = checkActingCapability(req, existing.supplierId, "inventory_risk.manage");
+      // Actioning a risk record creates a promotion, so it is gated by the
+      // promotion capability (not inventory_risk.manage) to honour the
+      // capability split between flagging risk and publishing promotions.
+      const denied = checkActingCapability(req, existing.supplierId, "promotions.manage");
       if (denied) return res.status(denied.status).json(denied.body);
       if (existing.status !== "Open") {
         return res.status(400).json({ error: "Only open records can be actioned" });
