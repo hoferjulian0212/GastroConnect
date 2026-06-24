@@ -1179,7 +1179,7 @@ export default function RestaurantInbox() {
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col">
+    <div className="flex-1 min-h-0 flex flex-col w-full max-w-[1500px] mx-auto">
 <Card className={`flex-1 flex flex-col overflow-hidden ${selectedConversation ? 'border-0 rounded-none shadow-none md:border md:rounded-xl md:shadow' : ''}`}>
         <div className="flex flex-1 min-h-0 min-w-0">
           <div className={`w-full md:w-72 lg:w-80 border-r border-border flex flex-col min-h-0 shrink-0 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>

@@ -1,0 +1,208 @@
+We have finalized the Smart Inventory feature concept.
+
+DO NOT redesign the feature.
+DO NOT propose MVP alternatives.
+DO NOT simplify the concept.
+
+Your task is now to analyze the CURRENT GastroConnect codebase and create the exact implementation plan.
+
+FINAL FEATURE SPECIFICATION:
+
+Inventory Risk Management becomes a new core Supplier feature.
+
+Existing ERP stock remains the source of truth.
+
+We are NOT building:
+
+* WMS
+* FEFO
+* Batch allocation
+* Reservation refactoring
+* Inventory splitting
+* Automated pricing
+
+We ARE building:
+
+NEW ENTITY:
+Inventory Risk Record
+
+Fields:
+
+* id
+* supplierId
+* productId
+* flaggedQuantity
+* expiryDate
+* qualityStatus (Premium / OK / Risk / Bad)
+* note
+* photoUrl
+* status (Open / Action Taken / Sold / Expired / Dismissed)
+* createdBy
+* createdAt
+* updatedAt
+* linkedPromotionId (optional)
+
+ROLES:
+
+Warehouse Worker:
+
+* can create risk records
+* can edit own risk records
+* can upload photo
+* can add notes
+* cannot create promotions
+* cannot manage pricing
+
+Product Manager (Vertreter):
+
+* can create risk records
+* can edit risk records
+* can execute actions
+* can create promotions
+* can manage risk records
+
+Admin:
+
+* full access
+
+WORKFLOW:
+
+1.
+
+ERP provides stock.
+
+Example:
+Tomatoes = 100kg
+
+2.
+
+Warehouse Worker notices risk.
+
+Example:
+20kg are becoming soft.
+
+3.
+
+Warehouse Worker creates Inventory Risk Record.
+
+4.
+
+Product Manager sees Inventory Risk Record inside an Actions Dashboard.
+
+5.
+
+Product Manager decides manually:
+
+* discount
+* promotion
+* target restaurants
+* bundles
+* flash sales
+* etc.
+
+6.
+
+System uses existing Promotions functionality.
+
+7.
+
+Risk Record status lifecycle:
+Open
+→ Action Taken
+→ Sold / Expired / Dismissed
+
+IMPORTANT:
+
+The system NEVER decides discounts.
+The system NEVER recommends prices.
+The system NEVER replaces the Product Manager.
+
+The purpose is:
+
+* make risk visible
+* organize risk
+* monetize risk inventory
+
+YOUR TASK:
+
+Analyze the CURRENT codebase and provide:
+
+1.
+
+Database changes
+
+* exact tables to add
+* exact fields
+* exact migrations
+
+2.
+
+Permission changes
+
+* current roles affected
+* new Warehouse Worker role
+* capability changes required
+
+3.
+
+Backend changes
+
+* routes
+* services
+* controllers
+* APIs
+
+4.
+
+Frontend changes
+
+* pages
+* components
+* navigation
+* dashboard widgets
+
+5.
+
+Actions Dashboard design
+
+* exact structure
+* card layout
+* filtering
+* sorting
+
+6.
+
+Products Page changes
+
+* how Risk Records integrate into existing products
+
+7.
+
+Promotion integration
+
+* how existing promotion system should connect to Risk Records
+
+8.
+
+File-by-file implementation plan
+
+Show:
+
+* file names
+* components
+* routes
+* database objects
+
+9.
+
+Dependency order
+
+Explain exactly what should be built first, second, third, etc.
+
+Focus ONLY on implementation inside the current GastroConnect codebase.
+
+No future ideas.
+No alternative architectures.
+No MVP discussion.
+
+Only implementation plan for the finalized feature.
