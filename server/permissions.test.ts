@@ -65,3 +65,33 @@ test("no role grants team.manage / org.edit except admin", () => {
     ["admin"],
   );
 });
+
+test("warehouse can flag at-risk stock but cannot manage risks or products", () => {
+  assert.equal(can("warehouse", "inventory_risk.create"), true);
+  assert.equal(can("warehouse", "team.view"), true);
+  assert.equal(can("warehouse", "inventory_risk.manage"), false);
+  assert.equal(can("warehouse", "promotions.manage"), false);
+  assert.equal(can("warehouse", "products.manage"), false);
+  assert.equal(can("warehouse", "orders.create"), false);
+});
+
+test("inventory_risk.create is granted to admin, manager, vertreter, warehouse", () => {
+  assert.deepEqual(
+    MEMBER_ROLE_VALUES.filter((r) => can(r, "inventory_risk.create")).sort(),
+    ["admin", "manager", "vertreter", "warehouse"],
+  );
+});
+
+test("inventory_risk.manage (turn risk into promotion) excludes warehouse and staff", () => {
+  assert.deepEqual(
+    MEMBER_ROLE_VALUES.filter((r) => can(r, "inventory_risk.manage")).sort(),
+    ["admin", "manager", "vertreter"],
+  );
+});
+
+test("promotions.manage is granted to admin, manager, vertreter", () => {
+  assert.deepEqual(
+    MEMBER_ROLE_VALUES.filter((r) => can(r, "promotions.manage")).sort(),
+    ["admin", "manager", "vertreter"],
+  );
+});

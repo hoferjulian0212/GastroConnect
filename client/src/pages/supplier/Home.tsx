@@ -29,7 +29,7 @@ import SupplierHomeMobile from "./HomeMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductImage } from "@/components/ProductImage";
 import SupplierRatingsList from "@/components/SupplierRatingsList";
-import { OffeneReklamationenWidget, HeuteZuLiefernWidget, TopKunden30dWidget, PromoPerformanceWidget, AntwortzeitWidget, SteigendeNachfrageWidget, InaktiveRestaurantsWidget, UmsatzTrendWidget, SBestellungenStatusWidget } from "@/components/SupplierDashboardWidgets";
+import { OffeneReklamationenWidget, HeuteZuLiefernWidget, TopKunden30dWidget, PromoPerformanceWidget, AntwortzeitWidget, SteigendeNachfrageWidget, InaktiveRestaurantsWidget, UmsatzTrendWidget, SBestellungenStatusWidget, OffeneRisikenWidget } from "@/components/SupplierDashboardWidgets";
 import { getBuiltinViews } from "@/lib/dashboard-builtin-views";
 
 export default function SupplierHome() {
@@ -584,6 +584,10 @@ export default function SupplierHome() {
           refreshAll: t("dashboardViews", "refreshAll"),
         }}
         sections={[
+          { id: "w-offene-risiken", optional: true, defaultEnabled: true, defaultSize: "half" as const, queryKeys: [["/api/inventory-risks", "status=Open"]],
+            title: t("supplierHome", "widgetOpenRisks"), description: t("supplierHome", "widgetOpenRisksDesc"),
+            content: <OffeneRisikenWidget supplierId={currentUser?.id || ""} lang={lang} />,
+          },
           { id: "w-offene-reklamationen", optional: true, defaultEnabled: true, defaultSize: "half" as const, queryKeys: [['/api/supplier/action-required', currentUser?.id]],
             title: t("supplierHome", "widgetOpenComplaints"), description: t("supplierHome", "widgetOpenComplaintsDesc"),
             content: <OffeneReklamationenWidget supplierId={currentUser?.id || ""} lang={lang} />,

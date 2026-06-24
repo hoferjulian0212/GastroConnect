@@ -7,7 +7,7 @@ import { db } from "./db";
 import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
-import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema } from "@shared/schema";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema, insertInventoryRiskRecordSchema, INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY } from "@shared/schema";
 import { can, type Capability } from "@shared/permissions";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
@@ -2158,7 +2158,7 @@ export async function registerRoutes(
         startDate,
         endDate,
       });
-      const denied = checkActingCapability(req, validated.supplierId, "products.manage");
+      const denied = checkActingCapability(req, validated.supplierId, "promotions.manage");
       if (denied) return res.status(denied.status).json(denied.body);
       const promo = await storage.createPromotion(validated);
       res.status(201).json(promo);
@@ -2170,7 +2170,7 @@ export async function registerRoutes(
   app.post("/api/promotions/bulk", async (req, res) => {
     try {
       const { productIds, supplierId, discountPercent, startDate: startStr, endDate: endStr, name, description, targetRestaurantIds } = req.body;
-      const denied = checkActingCapability(req, supplierId, "products.manage");
+      const denied = checkActingCapability(req, supplierId, "promotions.manage");
       if (denied) return res.status(denied.status).json(denied.body);
       if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
         return res.status(400).json({ error: "At least one product is required" });
@@ -2213,7 +2213,7 @@ export async function registerRoutes(
   app.post("/api/promotions/notify", async (req, res) => {
     try {
       const { supplierId, restaurantIds, promotionData } = req.body;
-      const denied = checkActingCapability(req, supplierId, "products.manage");
+      const denied = checkActingCapability(req, supplierId, "promotions.manage");
       if (denied) return res.status(denied.status).json(denied.body);
       if (!supplierId || !restaurantIds || !Array.isArray(restaurantIds) || restaurantIds.length === 0 || !promotionData) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -2257,7 +2257,7 @@ export async function registerRoutes(
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const existing = await storage.getPromotion(req.params.id);
       if (!existing) return res.status(404).json({ error: "Promotion not found" });
-      const denied = checkActingCapability(req, existing.supplierId, "products.manage");
+      const denied = checkActingCapability(req, existing.supplierId, "promotions.manage");
       if (denied) return res.status(denied.status).json(denied.body);
       const validated = updatePromotionSchema.parse(req.body);
       const today = new Date();
@@ -2293,7 +2293,7 @@ export async function registerRoutes(
       if (group.some((p) => p.supplierId !== req.auth!.organizationId)) {
         return res.status(403).json({ error: "forbidden" });
       }
-      const denied = checkActingCapability(req, group[0].supplierId, "products.manage");
+      const denied = checkActingCapability(req, group[0].supplierId, "promotions.manage");
       if (denied) return res.status(denied.status).json(denied.body);
       await storage.deletePromotionsByGroup(req.params.groupId);
       res.status(204).send();
@@ -2307,12 +2307,180 @@ export async function registerRoutes(
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const existing = await storage.getPromotion(req.params.id);
       if (!existing) return res.status(404).json({ error: "Promotion not found" });
-      const denied = checkActingCapability(req, existing.supplierId, "products.manage");
+      const denied = checkActingCapability(req, existing.supplierId, "promotions.manage");
       if (denied) return res.status(denied.status).json(denied.body);
       await storage.deletePromotion(req.params.id);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete promotion" });
+    }
+  });
+
+  // ---- Inventory Risk Records (supplier-only) ----
+  // Warehouse staff flag at-risk stock; Product Managers (admin/manager/
+  // vertreter) act on flagged stock by turning it into a promotion. Identity is
+  // resolved from req.auth — supplierId/createdBy are never trusted from client.
+  app.get("/api/inventory-risks", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      if (!can(req.auth.role, "inventory_risk.create")) {
+        return res.status(403).json({ error: "forbidden", message: "Keine Berechtigung für diese Aktion." });
+      }
+      const { status, qualityStatus, productId } = req.query as Record<string, string | undefined>;
+      const filters: { status?: string; qualityStatus?: string; productId?: string } = {};
+      if (status && (INVENTORY_RISK_STATUSES as readonly string[]).includes(status)) filters.status = status;
+      if (qualityStatus && (INVENTORY_RISK_QUALITY as readonly string[]).includes(qualityStatus)) filters.qualityStatus = qualityStatus;
+      if (productId) filters.productId = productId;
+      const records = await storage.getInventoryRiskRecordsBySupplier(req.auth.organizationId, filters);
+      res.json(records);
+    } catch (error) {
+      console.error("Failed to fetch inventory risks:", error);
+      res.status(500).json({ error: "Failed to fetch inventory risks" });
+    }
+  });
+
+  app.get("/api/inventory-risks/:id", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      if (!can(req.auth.role, "inventory_risk.create")) {
+        return res.status(403).json({ error: "forbidden", message: "Keine Berechtigung für diese Aktion." });
+      }
+      const record = await storage.getInventoryRiskRecord(req.params.id);
+      if (!record || record.supplierId !== req.auth.organizationId) {
+        return res.status(404).json({ error: "Inventory risk record not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch inventory risk record" });
+    }
+  });
+
+  app.post("/api/inventory-risks", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      if (!can(req.auth.role, "inventory_risk.create")) {
+        return res.status(403).json({ error: "forbidden", message: "Keine Berechtigung für diese Aktion." });
+      }
+      const validated = insertInventoryRiskRecordSchema.parse(req.body);
+      // Product must belong to the caller's organization.
+      const product = await storage.getProduct(validated.productId);
+      if (!product || product.supplierId !== req.auth.organizationId) {
+        return res.status(400).json({ error: "Invalid product" });
+      }
+      const created = await storage.createInventoryRiskRecord({
+        ...validated,
+        supplierId: req.auth.organizationId,
+        createdBy: req.auth.memberId,
+      });
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      res.status(400).json({ error: "Invalid inventory risk data" });
+    }
+  });
+
+  const updateInventoryRiskSchema = z.object({
+    flaggedQuantity: z.number().int().positive().optional(),
+    expiryDate: z.coerce.date().nullable().optional(),
+    qualityStatus: z.enum(INVENTORY_RISK_QUALITY).optional(),
+    note: z.string().nullable().optional(),
+    photoUrl: z.string().nullable().optional(),
+    status: z.enum(INVENTORY_RISK_STATUSES).optional(),
+  });
+
+  app.patch("/api/inventory-risks/:id", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      if (!can(req.auth.role, "inventory_risk.create")) {
+        return res.status(403).json({ error: "forbidden", message: "Keine Berechtigung für diese Aktion." });
+      }
+      const existing = await storage.getInventoryRiskRecord(req.params.id);
+      if (!existing || existing.supplierId !== req.auth.organizationId) {
+        return res.status(404).json({ error: "Inventory risk record not found" });
+      }
+      const isManager = can(req.auth.role, "inventory_risk.manage");
+      // Warehouse staff (no manage cap) may only edit their own records.
+      if (!isManager && existing.createdBy !== req.auth.memberId) {
+        return res.status(403).json({ error: "forbidden", message: "Sie können nur Ihre eigenen Meldungen bearbeiten." });
+      }
+      const validated = updateInventoryRiskSchema.parse(req.body);
+      // Changing lifecycle status requires the manage capability; warehouse
+      // staff may only edit their own record's details, not its status.
+      if (!isManager && validated.status !== undefined) {
+        return res.status(403).json({ error: "forbidden", message: "Statusänderungen erfordern die Berechtigung zur Verwaltung." });
+      }
+      const updated = await storage.updateInventoryRiskRecord(req.params.id, validated);
+      if (!updated) return res.status(404).json({ error: "Inventory risk record not found" });
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update inventory risk record" });
+    }
+  });
+
+  // Turn a flagged record into a promotion. Requires inventory_risk.manage
+  // (Product Manager). Creates a promotion, links it, and marks the record as
+  // "Action Taken".
+  const inventoryRiskActionSchema = z.object({
+    discountPercent: z.number().int().min(1).max(100),
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date(),
+    name: z.string().optional(),
+    description: z.string().optional(),
+    targetRestaurantIds: z.array(z.string()).nullable().optional(),
+  });
+
+  app.post("/api/inventory-risks/:id/action", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const existing = await storage.getInventoryRiskRecord(req.params.id);
+      if (!existing || existing.supplierId !== req.auth.organizationId) {
+        return res.status(404).json({ error: "Inventory risk record not found" });
+      }
+      const denied = checkActingCapability(req, existing.supplierId, "inventory_risk.manage");
+      if (denied) return res.status(denied.status).json(denied.body);
+      if (existing.status !== "Open") {
+        return res.status(400).json({ error: "Only open records can be actioned" });
+      }
+      const { discountPercent, startDate, endDate, name, description, targetRestaurantIds } =
+        inventoryRiskActionSchema.parse(req.body);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (startDate < today) return res.status(400).json({ error: "Start date cannot be in the past" });
+      if (endDate <= startDate) return res.status(400).json({ error: "End date must be after start date" });
+
+      // Deactivate any existing active promotion for this product first.
+      const existingPromo = await storage.getActivePromotionForProduct(existing.productId);
+      if (existingPromo) {
+        await storage.updatePromotion(existingPromo.id, { isActive: false });
+      }
+      const promo = await storage.createPromotion({
+        productId: existing.productId,
+        supplierId: existing.supplierId,
+        discountPercent,
+        startDate,
+        endDate,
+        isActive: true,
+        name: name || null,
+        description: description || null,
+        groupId: randomUUID(),
+        targetRestaurantIds: targetRestaurantIds || null,
+      });
+      const updated = await storage.updateInventoryRiskRecord(existing.id, {
+        status: "Action Taken",
+        linkedPromotionId: promo.id,
+      });
+      res.status(201).json({ record: updated, promotion: promo });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Failed to action inventory risk:", error);
+      res.status(500).json({ error: "Failed to action inventory risk record" });
     }
   });
 

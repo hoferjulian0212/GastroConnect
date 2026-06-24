@@ -4,7 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
-export const memberRoleEnum = pgEnum("member_role", ["admin", "manager", "staff", "vertreter"]);
+export const memberRoleEnum = pgEnum("member_role", ["admin", "manager", "staff", "vertreter", "warehouse"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]);
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion", "voice"]);
 export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request", "erp_request", "erp_sync_failed", "whatsapp_request"]);
@@ -407,6 +407,57 @@ export const promotions = pgTable("promotions", {
   index("idx_promotions_product_id").on(table.productId),
   index("idx_promotions_active").on(table.isActive),
 ]);
+
+// Inventory Risk Management ("Smart Inventory"): a manual overlay on top of ERP
+// stock that lets warehouse staff flag at-risk stock (near-expiry, soft, damaged,
+// ...) and lets Product Managers turn it into action via the existing promotions
+// system. ERP stays the source of truth for total stock; these records only make
+// risk visible/organized/monetizable. qualityStatus and status are stored as
+// canonical English tokens and rendered via translation maps on the client.
+export const inventoryRiskRecords = pgTable("inventory_risk_records", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
+  flaggedQuantity: integer("flagged_quantity").notNull(),
+  expiryDate: timestamp("expiry_date"),
+  // one of Premium / OK / Risk / Bad
+  qualityStatus: text("quality_status").notNull(),
+  note: text("note"),
+  photoUrl: text("photo_url"),
+  // one of Open / Action Taken / Sold / Expired / Dismissed
+  status: text("status").notNull().default("Open"),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
+  linkedPromotionId: varchar("linked_promotion_id", { length: 36 }).references(() => promotions.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_irr_supplier_id").on(table.supplierId),
+  index("idx_irr_product_id").on(table.productId),
+  index("idx_irr_status").on(table.status),
+  index("idx_irr_created_by").on(table.createdBy),
+  index("idx_irr_supplier_status").on(table.supplierId, table.status),
+]);
+
+export const INVENTORY_RISK_QUALITY = ["Premium", "OK", "Risk", "Bad"] as const;
+export type InventoryRiskQuality = typeof INVENTORY_RISK_QUALITY[number];
+export const INVENTORY_RISK_STATUSES = ["Open", "Action Taken", "Sold", "Expired", "Dismissed"] as const;
+export type InventoryRiskStatus = typeof INVENTORY_RISK_STATUSES[number];
+
+export const insertInventoryRiskRecordSchema = createInsertSchema(inventoryRiskRecords)
+  .omit({ id: true, supplierId: true, createdBy: true, status: true, linkedPromotionId: true, createdAt: true, updatedAt: true })
+  .extend({
+    qualityStatus: z.enum(INVENTORY_RISK_QUALITY),
+    expiryDate: z.coerce.date().nullable().optional(),
+    note: z.string().nullable().optional(),
+    photoUrl: z.string().nullable().optional(),
+  });
+export type InsertInventoryRiskRecord = z.infer<typeof insertInventoryRiskRecordSchema>;
+export type InventoryRiskRecord = typeof inventoryRiskRecords.$inferSelect;
+export type InventoryRiskRecordWithDetails = InventoryRiskRecord & {
+  product: Product;
+  creator?: Pick<User, "id" | "name"> | null;
+  linkedPromotion?: Promotion | null;
+};
 
 export const stockMovements = pgTable("stock_movements", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -1248,7 +1299,7 @@ export const insertOrgNoteSchema = createInsertSchema(orgNotes).omit({ id: true,
 export type OrgNote = typeof orgNotes.$inferSelect;
 export type InsertOrgNote = z.infer<typeof insertOrgNoteSchema>;
 
-export const MEMBER_ROLES = ["admin", "manager", "staff", "vertreter"] as const;
+export const MEMBER_ROLES = ["admin", "manager", "staff", "vertreter", "warehouse"] as const;
 export type MemberRole = typeof MEMBER_ROLES[number];
 
 export const insertMemberSchema = createInsertSchema(members).omit({

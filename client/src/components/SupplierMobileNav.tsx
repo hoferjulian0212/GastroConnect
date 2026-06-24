@@ -1,4 +1,4 @@
-import { Home, Send, Package, ClipboardList, AlertCircle, FileText, Store, HelpCircle, Settings } from "lucide-react";
+import { Home, Send, Package, ClipboardList, AlertCircle, AlertTriangle, FileText, Store, HelpCircle, Settings } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -12,7 +12,7 @@ export function SupplierMobileNav() {
 
   const mainNavItems = [
     { title: t("common", "home"), url: "/supplier", icon: Home },
-    { title: t("common", "products"), url: "/supplier/products", icon: Package, matchPaths: ["/supplier/inventory", "/supplier/promotions"] },
+    { title: t("common", "products"), url: "/supplier/products", icon: Package, matchPaths: ["/supplier/inventory", "/supplier/inventory-risk", "/supplier/promotions"] },
     { title: t("common", "messages"), url: "/supplier/inbox", icon: Send, hasBadge: true },
     { title: t("common", "orders"), url: "/supplier/orders", icon: ClipboardList, hasBadge: true, matchPaths: ["/supplier/calendar"] },
   ];
@@ -28,6 +28,7 @@ export function SupplierMobileNav() {
     {
       title: lang === "de" ? "Produkte" : "Prodotti",
       items: [
+        { title: t("inventoryRisk", "navLabel"), url: "/supplier/inventory-risk", icon: AlertTriangle },
         { title: t("common", "restaurants"), url: "/supplier/restaurants", icon: Store },
       ],
     },

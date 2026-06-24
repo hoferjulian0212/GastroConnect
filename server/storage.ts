@@ -18,6 +18,8 @@ import {
   type OrderStatusHistory, type OrderStatusHistoryWithUser,
   type ComplaintStatusHistory, type ComplaintStatusHistoryWithUser,
   type Promotion, type InsertPromotion, type PromotionWithProduct,
+  inventoryRiskRecords,
+  type InventoryRiskRecord, type InsertInventoryRiskRecord, type InventoryRiskRecordWithDetails,
   type DeliverySchedule, type InsertDeliverySchedule,
   type CustomMinOrderQuantity, type InsertCustomMinOrderQuantity,
   type CustomPrice, type InsertCustomPrice,
@@ -392,6 +394,21 @@ export interface IStorage {
   updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined>;
   deletePromotion(id: string): Promise<void>;
   deletePromotionsByGroup(groupId: string): Promise<void>;
+
+  // Inventory Risk Records
+  getInventoryRiskRecordsBySupplier(
+    supplierId: string,
+    filters?: { status?: string; qualityStatus?: string; productId?: string },
+  ): Promise<InventoryRiskRecordWithDetails[]>;
+  getInventoryRiskRecord(id: string): Promise<InventoryRiskRecordWithDetails | undefined>;
+  createInventoryRiskRecord(
+    data: InsertInventoryRiskRecord & { supplierId: string; createdBy: string },
+  ): Promise<InventoryRiskRecord>;
+  updateInventoryRiskRecord(
+    id: string,
+    data: Partial<Omit<InventoryRiskRecord, "id" | "createdAt">>,
+  ): Promise<InventoryRiskRecord | undefined>;
+  getOpenInventoryRiskCount(supplierId: string): Promise<number>;
 
   // Custom Min Order Quantities
   getCustomMinOrderQuantities(supplierId: string): Promise<(CustomMinOrderQuantity & { product: Product; restaurant: User })[]>;
@@ -4155,6 +4172,62 @@ export class DatabaseStorage implements IStorage {
 
   async deletePromotionsByGroup(groupId: string): Promise<void> {
     await db.delete(promotions).where(eq(promotions.groupId, groupId));
+  }
+
+  // Inventory Risk Records
+  async getInventoryRiskRecordsBySupplier(
+    supplierId: string,
+    filters?: { status?: string; qualityStatus?: string; productId?: string },
+  ): Promise<InventoryRiskRecordWithDetails[]> {
+    const conditions = [eq(inventoryRiskRecords.supplierId, supplierId)];
+    if (filters?.status) conditions.push(eq(inventoryRiskRecords.status, filters.status));
+    if (filters?.qualityStatus) conditions.push(eq(inventoryRiskRecords.qualityStatus, filters.qualityStatus));
+    if (filters?.productId) conditions.push(eq(inventoryRiskRecords.productId, filters.productId));
+    const records = await db.select().from(inventoryRiskRecords)
+      .where(and(...conditions))
+      .orderBy(desc(inventoryRiskRecords.createdAt));
+    return Promise.all(records.map((r) => this.hydrateInventoryRiskRecord(r)));
+  }
+
+  async getInventoryRiskRecord(id: string): Promise<InventoryRiskRecordWithDetails | undefined> {
+    const [record] = await db.select().from(inventoryRiskRecords).where(eq(inventoryRiskRecords.id, id));
+    if (!record) return undefined;
+    return this.hydrateInventoryRiskRecord(record);
+  }
+
+  private async hydrateInventoryRiskRecord(record: InventoryRiskRecord): Promise<InventoryRiskRecordWithDetails> {
+    const [product] = await db.select().from(products).where(eq(products.id, record.productId));
+    const [creator] = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, record.createdBy));
+    let linkedPromotion: Promotion | null = null;
+    if (record.linkedPromotionId) {
+      const [promo] = await db.select().from(promotions).where(eq(promotions.id, record.linkedPromotionId));
+      linkedPromotion = promo ?? null;
+    }
+    return { ...record, product, creator: creator ?? null, linkedPromotion };
+  }
+
+  async createInventoryRiskRecord(
+    data: InsertInventoryRiskRecord & { supplierId: string; createdBy: string },
+  ): Promise<InventoryRiskRecord> {
+    const [created] = await db.insert(inventoryRiskRecords).values(data).returning();
+    return created;
+  }
+
+  async updateInventoryRiskRecord(
+    id: string,
+    data: Partial<Omit<InventoryRiskRecord, "id" | "createdAt">>,
+  ): Promise<InventoryRiskRecord | undefined> {
+    const [updated] = await db.update(inventoryRiskRecords)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(inventoryRiskRecords.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getOpenInventoryRiskCount(supplierId: string): Promise<number> {
+    const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(inventoryRiskRecords)
+      .where(and(eq(inventoryRiskRecords.supplierId, supplierId), eq(inventoryRiskRecords.status, "Open")));
+    return row?.count ?? 0;
   }
 
   async getDeliverySchedules(supplierId: string): Promise<(DeliverySchedule & { restaurant: User })[]> {

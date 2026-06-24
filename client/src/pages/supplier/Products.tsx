@@ -24,6 +24,8 @@ import { can } from "@shared/permissions";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
+import { InventoryRiskFormDialog } from "@/components/InventoryRiskFormDialog";
+import type { InventoryRiskRecordWithDetails } from "@shared/schema";
 import BulkPriceUpdateDialog from "@/components/BulkPriceUpdateDialog";
 import PriceListImportDialog from "@/components/PriceListImportDialog";
 import { z } from "zod";
@@ -1112,6 +1114,18 @@ export default function SupplierProducts() {
  const [isUploading, setIsUploading] = useState(false);
  const [previewImage, setPreviewImage] = useState<string | null>(null);
  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
+ const [riskProductId, setRiskProductId] = useState<string | null>(null);
+ const canReportRisk = !currentMember || can(currentMember.role, "inventory_risk.create");
+ const { data: openRisks } = useQuery<InventoryRiskRecordWithDetails[]>({
+   queryKey: ["/api/inventory-risks", "status=Open"],
+   queryFn: async () => {
+     const r = await fetch("/api/inventory-risks?status=Open");
+     if (!r.ok) throw new Error("fail");
+     return r.json();
+   },
+   enabled: !!currentUser?.id && canReportRisk,
+ });
+ const riskProductIds = useMemo(() => new Set((openRisks ?? []).map((r) => r.productId)), [openRisks]);
  const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
  const [isImportOpen, setIsImportOpen] = useState(false);
  const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1934,6 +1948,11 @@ export default function SupplierProducts() {
  <div className="flex items-start justify-between gap-1 md:gap-2">
  <h3 className="font-medium text-sm md:text-base line-clamp-1">{product.name}</h3>
  <div className="flex shrink-0">
+ {canReportRisk && (
+ <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setRiskProductId(product.id); }} data-testid={`button-report-risk-${product.id}`} title={t("inventoryRisk", "reportRisk")}>
+ <AlertTriangle className="h-3 w-3 md:h-3.5 md:w-3.5 text-amber-600" />
+ </Button>
+ )}
  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEditDialog(product); }} disabled={!canManageProducts} data-testid={`button-edit-${product.id}`}>
  <Pencil className="h-3 w-3 md:h-3.5 md:w-3.5" />
  </Button>
@@ -1947,6 +1966,11 @@ export default function SupplierProducts() {
  <span className="text-[10px] md:text-xs text-muted-foreground">/{product.unit}</span>
  </div>
  <div className="flex items-center gap-1 md:gap-1.5 mt-1 md:mt-1.5 flex-wrap">
+ {riskProductIds.has(product.id) && (
+ <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-500/30 text-[10px] md:text-xs px-1 md:px-1.5 py-0" data-testid={`badge-risk-${product.id}`}>
+ {t("inventoryRisk", "openRisks")}
+ </Badge>
+ )}
  {product.discontinued && (
  <Badge variant="outline" className="bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 text-[10px] md:text-xs px-1 md:px-1.5 py-0" data-testid={`badge-discontinued-${product.id}`}>
  {t("supplierErp", "discontinuedBadge")}
@@ -2016,6 +2040,12 @@ export default function SupplierProducts() {
  product={detailProduct as any}
  open={!!detailProduct}
  onOpenChange={(open) => !open && setDetailProduct(null)}
+ />
+ <InventoryRiskFormDialog
+ open={!!riskProductId}
+ onOpenChange={(open) => !open && setRiskProductId(null)}
+ products={products ?? []}
+ defaultProductId={riskProductId ?? undefined}
  />
  </>
  </PullToRefreshWrapper>

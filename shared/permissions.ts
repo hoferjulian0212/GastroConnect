@@ -11,16 +11,19 @@ import type { MemberRole } from "./schema";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type Capability =
-  | "team.view"        // see the team / org page
-  | "team.manage"      // add / remove / change role / promote members
-  | "org.edit"         // edit organization (business) details & seat limit
-  | "orders.create"    // place orders (restaurant) / create direct orders
-  | "orders.manage"    // confirm / cancel / change status of orders
-  | "products.manage"  // manage catalog, inventory, promotions, prices
-  | "vertreter.assign" // assign Betriebe (restaurants) to a Vertreter
-  | "chat";            // send chat messages
+  | "team.view"             // see the team / org page
+  | "team.manage"           // add / remove / change role / promote members
+  | "org.edit"              // edit organization (business) details & seat limit
+  | "orders.create"         // place orders (restaurant) / create direct orders
+  | "orders.manage"         // confirm / cancel / change status of orders
+  | "products.manage"       // manage catalog, inventory, prices
+  | "promotions.manage"     // create / edit / delete promotions
+  | "inventory_risk.create" // create a risk record + edit own
+  | "inventory_risk.manage" // edit any record, change status, link promotions
+  | "vertreter.assign"      // assign Betriebe (restaurants) to a Vertreter
+  | "chat";                 // send chat messages
 
-export const MEMBER_ROLE_VALUES: MemberRole[] = ["admin", "manager", "staff", "vertreter"];
+export const MEMBER_ROLE_VALUES: MemberRole[] = ["admin", "manager", "staff", "vertreter", "warehouse"];
 
 // Role → capabilities it is allowed to perform.
 const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
@@ -31,6 +34,9 @@ const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
     "orders.create",
     "orders.manage",
     "products.manage",
+    "promotions.manage",
+    "inventory_risk.create",
+    "inventory_risk.manage",
     "vertreter.assign",
     "chat",
   ],
@@ -39,6 +45,9 @@ const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
     "orders.create",
     "orders.manage",
     "products.manage",
+    "promotions.manage",
+    "inventory_risk.create",
+    "inventory_risk.manage",
     "chat",
   ],
   staff: [
@@ -49,7 +58,14 @@ const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
   vertreter: [
     "team.view",
     "orders.manage",
+    "promotions.manage",
+    "inventory_risk.create",
+    "inventory_risk.manage",
     "chat",
+  ],
+  warehouse: [
+    "team.view",
+    "inventory_risk.create",
   ],
 };
 
@@ -65,6 +81,7 @@ export const ROLE_LABELS: Record<MemberRole, { de: string; it: string }> = {
   manager: { de: "Manager", it: "Manager" },
   staff: { de: "Mitarbeiter", it: "Personale" },
   vertreter: { de: "Vertreter", it: "Rappresentante" },
+  warehouse: { de: "Lagermitarbeiter", it: "Magazziniere" },
 };
 
 export function roleLabel(role: MemberRole, lang: "de" | "it"): string {

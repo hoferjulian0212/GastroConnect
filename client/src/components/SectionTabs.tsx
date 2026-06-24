@@ -26,6 +26,7 @@ export function SectionTabs() {
     [
       { href: "/supplier/products", label: de ? "Katalog" : "Catalogo" },
       { href: "/supplier/inventory", label: de ? "Bestand" : "Magazzino" },
+      { href: "/supplier/inventory-risk", label: de ? "Risiko-Bestand" : "Scorte a rischio" },
       { href: "/supplier/promotions", label: de ? "Aktionen" : "Promozioni" },
     ],
   ];

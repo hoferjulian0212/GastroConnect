@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { AlertCircle, Truck, Users, Tag, Clock, ArrowRight, TrendingUp, ClipboardList, UserX } from "lucide-react";
+import { AlertCircle, Truck, Users, Tag, Clock, ArrowRight, TrendingUp, ClipboardList, UserX, AlertTriangle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { ProductImage } from "@/components/ProductImage";
 import { useT } from "@/lib/translations";
-import type { ComplaintWithDetails, OrderWithDetails } from "@shared/schema";
+import type { ComplaintWithDetails, OrderWithDetails, InventoryRiskRecordWithDetails } from "@shared/schema";
 
 const CARD_BASE = "h-full md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]";
 const HEADER = "flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4";
@@ -579,6 +579,71 @@ export function SBestellungenStatusWidget({ supplierId, lang }: { supplierId: st
                   <span className="text-sm font-medium truncate">{t("supplierHome", `orderStatus_${s}`)}</span>
                 </div>
                 <Badge variant="outline" className={`${SUPPLIER_ORDER_STATUS_COLORS[s]} text-[11px] tabular-nums shrink-0`}>{counts[s]}</Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function OffeneRisikenWidget({ supplierId, lang }: { supplierId: string; lang: "de" | "it" }) {
+  const t = useT(lang);
+  const [, navigate] = useLocation();
+  const { data, isLoading } = useQuery<InventoryRiskRecordWithDetails[]>({
+    queryKey: ["/api/inventory-risks", "status=Open"],
+    queryFn: async () => {
+      const r = await fetch("/api/inventory-risks?status=Open");
+      if (!r.ok) throw new Error("fail");
+      return r.json();
+    },
+    enabled: !!supplierId,
+  });
+  const all = data || [];
+  const records = all.slice(0, 3);
+  const total = all.length;
+  return (
+    <div className={CARD_BASE} data-testid="widget-offene-risiken">
+      <div className={HEADER}>
+        <WidgetTitle
+          icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
+          title={t("supplierHome", "widgetOpenRisks")}
+          desc={t("supplierHome", "widgetOpenRisksDesc")}
+          testId="text-widget-offene-risiken-title"
+        />
+        <div className="flex items-center gap-2 shrink-0">
+          {total > 0 && (
+            <Badge variant="outline" className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[11px] tabular-nums" data-testid="badge-open-risks-count">
+              {total}
+            </Badge>
+          )}
+          <Link href="/supplier/inventory-risk" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1" data-testid="link-widget-risks-all">
+            {t("common", "all")}<ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      </div>
+      <div className={BODY}>
+        {isLoading ? (
+          <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}</div>
+        ) : records.length === 0 ? (
+          <EmptyState icon={<AlertTriangle className="h-6 w-6 text-muted-foreground/40" />} label={t("inventoryRisk", "noRisks")} />
+        ) : (
+          <div className="space-y-2">
+            {records.map((r) => (
+              <div
+                key={r.id}
+                onClick={() => navigate("/supplier/inventory-risk")}
+                className="flex items-center gap-2.5 p-2.5 rounded-xl border border-amber-200 bg-amber-50/60 dark:border-amber-900/40 dark:bg-amber-950/20 cursor-pointer transition-all active:scale-[0.99]"
+                data-testid={`widget-risk-row-${r.id}`}
+              >
+                <ProductImage src={r.photoUrl || r.product?.imageUrl} className="h-9 w-9 rounded-lg shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{r.product?.name ?? "—"}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {r.flaggedQuantity} {r.product?.unit ?? ""} · {t("inventoryRisk", `quality_${r.qualityStatus}` as any)}
+                  </p>
+                </div>
               </div>
             ))}
           </div>

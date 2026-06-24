@@ -75,6 +75,7 @@ import SupplierComplaints from "@/pages/supplier/Complaints";
 import SupplierRestaurants from "@/pages/supplier/Restaurants";
 import SupplierPromotions from "@/pages/supplier/Promotions";
 import SupplierInventory from "@/pages/supplier/Inventory";
+import SupplierInventoryRisk from "@/pages/supplier/InventoryRisk";
 import About from "@/pages/About";
 import AdminPmsRequests from "@/pages/Admin";
 import Documents from "@/pages/Documents";
@@ -127,6 +128,7 @@ function SupplierRouter() {
       <Route path="/supplier/orders" component={SupplierOrders} />
       <Route path="/supplier/promotions" component={SupplierPromotions} />
       <Route path="/supplier/inventory" component={SupplierInventory} />
+      <Route path="/supplier/inventory-risk" component={SupplierInventoryRisk} />
       <Route path="/supplier/complaints/:id" component={ComplaintDetail} />
       <Route path="/supplier/complaints" component={SupplierComplaints} />
       <Route path="/supplier/settings" component={SupplierSettings} />
