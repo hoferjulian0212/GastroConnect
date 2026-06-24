@@ -109,9 +109,8 @@ export default function WarehouseStock() {
                   </div>
                   <Button
                     size="sm"
-                    variant="outline"
                     onClick={() => setFlagProductId(p.id)}
-                    className="shrink-0"
+                    className="shrink-0 bg-white text-black hover:bg-white/90 border border-black/10 shadow-sm"
                     data-testid={`button-flag-${p.id}`}
                   >
                     <AlertTriangle className="h-4 w-4 mr-1.5" />

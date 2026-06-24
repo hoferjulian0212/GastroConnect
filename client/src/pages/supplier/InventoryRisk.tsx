@@ -123,7 +123,7 @@ export default function SupplierInventoryRisk() {
         <HeroPortal>
           <div className="bg-[#161921] px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-5 space-y-4" data-testid="inventory-risk-hero">
             <SectionTabs />
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="min-w-0">
                 <h1 className="text-xl md:text-2xl font-bold text-white truncate" data-testid="text-page-title">
                   {t("inventoryRisk", "title")}
@@ -131,8 +131,13 @@ export default function SupplierInventoryRisk() {
                 <p className="text-sm text-white/60 hidden md:block">{t("inventoryRisk", "subtitle")}</p>
               </div>
               {canCreate && (
-                <Button onClick={() => openForm()} className="shrink-0" data-testid="button-report-risk">
-                  <Plus className="h-4 w-4 mr-1.5" />
+                <Button
+                  size="lg"
+                  onClick={() => openForm()}
+                  className="w-full sm:w-auto shrink-0 h-12 text-base font-semibold bg-white text-black hover:bg-white/90"
+                  data-testid="button-report-risk"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
                   {t("inventoryRisk", "reportRisk")}
                 </Button>
               )}
