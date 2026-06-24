@@ -1786,7 +1786,7 @@ export default function RestaurantOrders() {
  <div className="hidden md:block">
  {/* Sticky desktop column header */}
  <div
- className="sticky top-0 z-10 grid items-center gap-3 px-3 py-2 bg-muted/40 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold"
+ className="sticky top-0 z-10 grid items-center gap-3 px-3 h-[37px] bg-muted/95 backdrop-blur-sm border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold"
  style={{ gridTemplateColumns: gridTemplate }}
  >
  <div className="truncate">{lang === "de" ? "Bestell-Nr" : "N. ordine"}</div>
