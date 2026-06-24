@@ -424,6 +424,10 @@ export const inventoryRiskRecords = pgTable("inventory_risk_records", {
   qualityStatus: text("quality_status").notNull(),
   note: text("note"),
   photoUrl: text("photo_url"),
+  // why the stock is at risk (warehouse wizard): Poorly Stored / Poor Quality /
+  // Stored Too Long / Damaged / Near Expiry / Overstock / Other. Stored as a
+  // canonical English token and rendered via translation maps on the client.
+  riskReason: text("risk_reason"),
   // one of Open / Action Taken / Sold / Expired / Dismissed
   status: text("status").notNull().default("Open"),
   createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
@@ -442,6 +446,8 @@ export const INVENTORY_RISK_QUALITY = ["Premium", "OK", "Risk", "Bad"] as const;
 export type InventoryRiskQuality = typeof INVENTORY_RISK_QUALITY[number];
 export const INVENTORY_RISK_STATUSES = ["Open", "Action Taken", "Sold", "Expired", "Dismissed"] as const;
 export type InventoryRiskStatus = typeof INVENTORY_RISK_STATUSES[number];
+export const INVENTORY_RISK_REASONS = ["Poorly Stored", "Poor Quality", "Stored Too Long", "Damaged", "Near Expiry", "Overstock", "Other"] as const;
+export type InventoryRiskReason = typeof INVENTORY_RISK_REASONS[number];
 
 export const insertInventoryRiskRecordSchema = createInsertSchema(inventoryRiskRecords)
   .omit({ id: true, supplierId: true, createdBy: true, status: true, linkedPromotionId: true, createdAt: true, updatedAt: true })
@@ -450,6 +456,7 @@ export const insertInventoryRiskRecordSchema = createInsertSchema(inventoryRiskR
     expiryDate: z.coerce.date().nullable().optional(),
     note: z.string().nullable().optional(),
     photoUrl: z.string().nullable().optional(),
+    riskReason: z.enum(INVENTORY_RISK_REASONS).nullable().optional(),
   });
 export type InsertInventoryRiskRecord = z.infer<typeof insertInventoryRiskRecordSchema>;
 export type InventoryRiskRecord = typeof inventoryRiskRecords.$inferSelect;

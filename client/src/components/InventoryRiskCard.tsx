@@ -68,6 +68,11 @@ export function InventoryRiskCard({ record, canManage, canEdit, onCreatePromotio
             <Badge variant="outline" className={`text-[11px] ${QUALITY_COLORS[record.qualityStatus] ?? ""}`} data-testid={`badge-risk-quality-${record.id}`}>
               {t("inventoryRisk", `quality_${record.qualityStatus}` as any)}
             </Badge>
+            {record.riskReason && (
+              <Badge variant="outline" className="text-[11px]" data-testid={`badge-risk-reason-${record.id}`}>
+                {t("inventoryRisk", `reason_${record.riskReason}` as any)}
+              </Badge>
+            )}
             <Badge variant="secondary" className={`text-[11px] ${STATUS_COLORS[record.status] ?? ""}`} data-testid={`badge-risk-status-${record.id}`}>
               {t("inventoryRisk", `status_${record.status}` as any)}
             </Badge>

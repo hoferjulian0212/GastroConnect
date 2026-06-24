@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search as SearchIcon, AlertTriangle, Package } from "lucide-react";
 import { ProductImage } from "@/components/ProductImage";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
-import { InventoryRiskFormDialog } from "@/components/InventoryRiskFormDialog";
+import { InventoryRiskWizard } from "@/components/InventoryRiskWizard";
 import { queryClient } from "@/lib/queryClient";
 import type { Product } from "@shared/schema";
 
@@ -123,7 +123,7 @@ export default function WarehouseStock() {
         </div>
       </div>
 
-      <InventoryRiskFormDialog
+      <InventoryRiskWizard
         open={!!flagProductId}
         onOpenChange={(open) => { if (!open) setFlagProductId(null); }}
         products={products ?? []}

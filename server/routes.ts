@@ -7,7 +7,7 @@ import { db } from "./db";
 import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
-import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema, insertInventoryRiskRecordSchema, INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY } from "@shared/schema";
+import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema, insertInventoryRiskRecordSchema, INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY, INVENTORY_RISK_REASONS } from "@shared/schema";
 import { can, type Capability } from "@shared/permissions";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
@@ -2402,6 +2402,7 @@ export async function registerRoutes(
     qualityStatus: z.enum(INVENTORY_RISK_QUALITY).optional(),
     note: z.string().nullable().optional(),
     photoUrl: z.string().nullable().optional(),
+    riskReason: z.enum(INVENTORY_RISK_REASONS).nullable().optional(),
     status: z.enum(INVENTORY_RISK_STATUSES).optional(),
   });
 

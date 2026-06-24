@@ -24,7 +24,7 @@ import { can } from "@shared/permissions";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
-import { InventoryRiskFormDialog } from "@/components/InventoryRiskFormDialog";
+import { InventoryRiskWizard } from "@/components/InventoryRiskWizard";
 import type { InventoryRiskRecordWithDetails } from "@shared/schema";
 import BulkPriceUpdateDialog from "@/components/BulkPriceUpdateDialog";
 import PriceListImportDialog from "@/components/PriceListImportDialog";
@@ -2041,7 +2041,7 @@ export default function SupplierProducts() {
  open={!!detailProduct}
  onOpenChange={(open) => !open && setDetailProduct(null)}
  />
- <InventoryRiskFormDialog
+ <InventoryRiskWizard
  open={!!riskProductId}
  onOpenChange={(open) => !open && setRiskProductId(null)}
  products={products ?? []}

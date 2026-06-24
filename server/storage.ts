@@ -4912,6 +4912,10 @@ export class DatabaseStorage implements IStorage {
     await db.execute(sql`ALTER TABLE error_logs ADD COLUMN IF NOT EXISTS status varchar(12) NOT NULL DEFAULT 'new'`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_error_logs_status ON error_logs (status)`);
 
+    // Inventory risk: capture WHY stock is at risk (warehouse step-by-step wizard).
+    // Nullable text token; idempotent so it exists in every env without a drizzle push.
+    await db.execute(sql`ALTER TABLE inventory_risk_records ADD COLUMN IF NOT EXISTS risk_reason text`);
+
     // ONE-TIME backfill: every log that existed before this feature shipped is
     // treated as already handled (closed). Tracked in app_migrations so later
     // boots never mass-close newly arrived logs.

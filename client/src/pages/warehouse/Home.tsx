@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, AlertTriangle, Package, ArrowRight } from "lucide-react";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { OffeneRisikenWidget } from "@/components/SupplierDashboardWidgets";
-import { InventoryRiskFormDialog } from "@/components/InventoryRiskFormDialog";
+import { InventoryRiskWizard } from "@/components/InventoryRiskWizard";
 import { queryClient } from "@/lib/queryClient";
 import type { Product } from "@shared/schema";
 
@@ -102,7 +102,7 @@ export default function WarehouseHome() {
         </div>
       </div>
 
-      <InventoryRiskFormDialog
+      <InventoryRiskWizard
         open={formOpen}
         onOpenChange={setFormOpen}
         products={products ?? []}

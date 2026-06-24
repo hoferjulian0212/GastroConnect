@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Upload, X } from "lucide-react";
-import { INVENTORY_RISK_QUALITY } from "@shared/schema";
+import { INVENTORY_RISK_QUALITY, INVENTORY_RISK_REASONS } from "@shared/schema";
 import type { Product, InventoryRiskRecordWithDetails } from "@shared/schema";
 
 interface Props {
@@ -50,6 +50,7 @@ export function InventoryRiskFormDialog({ open, onOpenChange, products, record, 
   const [flaggedQuantity, setFlaggedQuantity] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [qualityStatus, setQualityStatus] = useState<string>("Risk");
+  const [riskReason, setRiskReason] = useState<string>("");
   const [note, setNote] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
@@ -60,6 +61,7 @@ export function InventoryRiskFormDialog({ open, onOpenChange, products, record, 
       setFlaggedQuantity(String(record.flaggedQuantity));
       setExpiryDate(record.expiryDate ? new Date(record.expiryDate).toISOString().slice(0, 10) : "");
       setQualityStatus(record.qualityStatus);
+      setRiskReason(record.riskReason ?? "");
       setNote(record.note ?? "");
       setPhotoUrl(record.photoUrl ?? null);
     } else {
@@ -67,6 +69,7 @@ export function InventoryRiskFormDialog({ open, onOpenChange, products, record, 
       setFlaggedQuantity("");
       setExpiryDate("");
       setQualityStatus("Risk");
+      setRiskReason("");
       setNote("");
       setPhotoUrl(null);
     }
@@ -84,6 +87,7 @@ export function InventoryRiskFormDialog({ open, onOpenChange, products, record, 
         flaggedQuantity: Number(flaggedQuantity),
         expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
         qualityStatus,
+        riskReason: riskReason || null,
         note: note.trim() || null,
         photoUrl: photoUrl || null,
       };
@@ -160,6 +164,22 @@ export function InventoryRiskFormDialog({ open, onOpenChange, products, record, 
                 {INVENTORY_RISK_QUALITY.map((q) => (
                   <SelectItem key={q} value={q} data-testid={`option-risk-quality-${q}`}>
                     {t("inventoryRisk", `quality_${q}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t("inventoryRisk", "reason")}</Label>
+            <Select value={riskReason} onValueChange={setRiskReason}>
+              <SelectTrigger data-testid="select-risk-reason">
+                <SelectValue placeholder={t("inventoryRisk", "selectReason")} />
+              </SelectTrigger>
+              <SelectContent>
+                {INVENTORY_RISK_REASONS.map((r) => (
+                  <SelectItem key={r} value={r} data-testid={`option-risk-reason-${r}`}>
+                    {t("inventoryRisk", `reason_${r}` as any)}
                   </SelectItem>
                 ))}
               </SelectContent>

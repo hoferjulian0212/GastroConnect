@@ -32,6 +32,7 @@ import { Plus, AlertTriangle, Loader2, Search as SearchIcon } from "lucide-react
 import { Textarea } from "@/components/ui/textarea";
 import { InventoryRiskCard } from "@/components/InventoryRiskCard";
 import { InventoryRiskFormDialog } from "@/components/InventoryRiskFormDialog";
+import { InventoryRiskWizard } from "@/components/InventoryRiskWizard";
 import { INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY } from "@shared/schema";
 import type { Product, InventoryRiskRecordWithDetails } from "@shared/schema";
 
@@ -49,6 +50,7 @@ export default function SupplierInventoryRisk() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"expiry" | "quantity" | "recent" | "severity">("expiry");
   const [formOpen, setFormOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [editRecord, setEditRecord] = useState<InventoryRiskRecordWithDetails | null>(null);
   const [actionRecord, setActionRecord] = useState<InventoryRiskRecordWithDetails | null>(null);
 
@@ -100,8 +102,12 @@ export default function SupplierInventoryRisk() {
   }, [records, search, sortBy]);
 
   const openForm = (record?: InventoryRiskRecordWithDetails) => {
-    setEditRecord(record ?? null);
-    setFormOpen(true);
+    if (record) {
+      setEditRecord(record);
+      setFormOpen(true);
+    } else {
+      setWizardOpen(true);
+    }
   };
 
   const refresh = () =>
@@ -229,6 +235,12 @@ export default function SupplierInventoryRisk() {
           )}
         </div>
       </div>
+
+      <InventoryRiskWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        products={products ?? []}
+      />
 
       <InventoryRiskFormDialog
         open={formOpen}
