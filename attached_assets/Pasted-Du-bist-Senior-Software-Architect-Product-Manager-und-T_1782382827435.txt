@@ -1,0 +1,346 @@
+Du bist Senior Software Architect, Product Manager und Technical Writer.
+
+Deine erste Aufgabe besteht NICHT darin, neuen Code zu schreiben.
+
+Du darfst zunächst KEINE Features ändern oder implementieren.
+
+Deine einzige Aufgabe besteht darin, die gesamte GastroConnect-Codebasis vollständig zu analysieren und zu verstehen.
+
+Arbeite wie ein neuer CTO, der gerade in ein Unternehmen eingestiegen ist und innerhalb weniger Tage das komplette Produkt verstehen muss.
+
+Ziel
+
+Erstelle aus der bestehenden Codebasis eine vollständige technische und funktionale Dokumentation.
+
+Jede Aussage muss auf dem tatsächlich vorhandenen Code basieren.
+
+Keine Vermutungen.
+
+Keine erfundenen Features.
+
+Wenn etwas nicht implementiert ist, schreibe ausdrücklich:
+
+"Nicht implementiert."
+
+Wenn etwas nur teilweise existiert:
+
+"Teilweise implementiert."
+
+Wenn etwas geplant erscheint:
+
+"Vorbereitet, aber aktuell nicht funktionsfähig."
+
+Phase 1 – Projektstruktur
+
+Analysiere zunächst die komplette Codebasis.
+
+Erstelle anschließend einen Überblick:
+
+komplette Projektstruktur
+Frameworks
+Programmiersprachen
+Datenbank
+Libraries
+APIs
+Authentifizierung
+Storage
+Hosting
+Build-Prozess
+Phase 2 – Produktdefinition
+
+Beschreibe das aktuelle Produkt ausschließlich anhand des vorhandenen Codes.
+
+Beantworte unter anderem:
+
+Was ist GastroConnect aktuell?
+
+Welches Problem löst das Programm?
+
+Welche Benutzer existieren?
+
+Welche Rollen existieren?
+
+Welche Bereiche gibt es?
+
+Welche Module existieren?
+
+Welche Features funktionieren tatsächlich?
+
+Welche Features existieren nur teilweise?
+
+Welche Features fehlen komplett?
+
+Phase 3 – Feature Inventory
+
+Erstelle eine vollständige Liste aller Features.
+
+Für jedes einzelne Feature dokumentiere:
+
+Name
+
+Beschreibung
+
+Zweck
+
+Benutzer
+
+Frontend
+
+Backend
+
+Datenbank
+
+API-Endpunkte
+
+Status
+
+Fertigkeitsgrad
+
+Abhängigkeiten
+
+Bekannte Probleme
+
+Verbesserungspotenzial
+
+Phase 4 – User Journey
+
+Analysiere den kompletten Ablauf.
+
+Beschreibe jeden Schritt.
+
+Zum Beispiel:
+
+Login
+
+↓
+
+Dashboard
+
+↓
+
+Produkte
+
+↓
+
+Bestellung
+
+↓
+
+Lieferung
+
+↓
+
+Historie
+
+↓
+
+Abschluss
+
+Für jede Aktion erklären:
+
+Welche Dateien werden verwendet?
+
+Welche API wird aufgerufen?
+
+Welche Datenbanktabellen werden geändert?
+
+Welche Validierungen finden statt?
+
+Welche Fehler können auftreten?
+
+Phase 5 – Datenmodell
+
+Dokumentiere sämtliche Daten.
+
+Für jede Tabelle:
+
+Zweck
+
+Spalten
+
+Datentypen
+
+Beziehungen
+
+Constraints
+
+Indexes
+
+Verwendung
+
+Phase 6 – API Dokumentation
+
+Liste sämtliche APIs.
+
+Für jede API:
+
+Route
+
+HTTP Methode
+
+Input
+
+Output
+
+Fehlercodes
+
+Verwendet von
+
+Authentifizierung
+
+Phase 7 – Rechteverwaltung
+
+Welche Rollen existieren?
+
+Welche Berechtigungen?
+
+Welche Bereiche dürfen sie sehen?
+
+Welche Aktionen dürfen sie durchführen?
+
+Welche fehlen?
+
+Phase 8 – Frontend
+
+Analysiere sämtliche Seiten.
+
+Für jede Seite:
+
+Zweck
+
+Komponenten
+
+Buttons
+
+Tabellen
+
+Filter
+
+Formulare
+
+Navigation
+
+Verwendete APIs
+
+Fehlende Funktionen
+
+Phase 9 – Backend
+
+Dokumentiere sämtliche Services.
+
+Business Logic
+
+Controller
+
+Middleware
+
+Cronjobs
+
+Background Tasks
+
+Validation
+
+Security
+
+Logging
+
+Phase 10 – Architektur
+
+Beschreibe:
+
+Ordnerstruktur
+
+Design Patterns
+
+Naming
+
+Codequalität
+
+Wiederverwendbarkeit
+
+Technische Schulden
+
+Skalierbarkeit
+
+Phase 11 – Vollständige Funktionsmatrix
+
+Erstelle eine Tabelle:
+
+Feature | Status | Backend | Frontend | Datenbank | API | Fertig %
+
+für jedes einzelne Feature.
+
+Phase 12 – Bugs
+
+Finde:
+
+Logikfehler
+
+Tote Funktionen
+
+Nicht verwendeten Code
+
+Doppelte Komponenten
+
+Inkonsistenzen
+
+Fehlende Validierungen
+
+Performanceprobleme
+
+Sicherheitsprobleme
+
+Phase 13 – Fehlende Features
+
+Vergleiche den aktuellen Stand mit einer modernen SaaS-Plattform für die Gastronomie.
+
+Liste ausschließlich Funktionen auf, die aktuell fehlen.
+
+Kennzeichne jede Funktion als:
+
+Kritisch
+
+Wichtig
+
+Optional
+
+Zukunft
+
+Phase 14 – Technische Roadmap
+
+Erstelle auf Basis der Analyse:
+
+MVP
+
+Version 1.0
+
+Version 2.0
+
+Enterprise
+
+Skalierung
+
+Phase 15 – Wissensdatenbank
+
+Erstelle am Ende eine vollständige Dokumentation mit:
+
+Executive Summary
+Produktbeschreibung
+Technische Dokumentation
+Feature-Katalog
+Architektur
+API-Dokumentation
+Datenbank
+User Flows
+Rollenmodell
+Bekannte Probleme
+Fehlende Features
+Roadmap
+Glossar
+
+Dieses Dokument soll so vollständig sein, dass:
+
+ein neuer Entwickler innerhalb eines Tages produktiv arbeiten kann,
+ein Produktmanager das aktuelle Produkt exakt versteht,
+ein Investor den aktuellen Entwicklungsstand nachvollziehen kann,
+und jede zukünftige Entscheidung auf dieser Dokumentation aufbauen kann.

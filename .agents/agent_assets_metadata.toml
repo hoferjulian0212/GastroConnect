@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "NXRswn8oGUGAcXNXbDgm-"
@@ -732,3 +731,9 @@ id = "EKkHEXPuDvEmXKeiT4Z62"
 uri = "file://client/public/images/products/heilbutt.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "K00pEuyRqaHmWVLpbsTv7"
+uri = "file://GASTROCONNECT_DOKUMENTATION.md"
+type = "text"
+title = "GastroConnect — Vollständige technische & funktionale Dokumentation"
