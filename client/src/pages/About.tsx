@@ -3,34 +3,29 @@ import { ArrowLeft, Utensils, Store, MessageSquare, BarChart3, Shield, FileText,
 
 const features = [
   {
-    icon: Utensils,
-    title: "Für Betriebe",
-    desc: "Alle Lieferanten in einem Katalog — suchen, vergleichen, bestellen. Preisvergleich und Ausgabenübersicht inklusive.",
+    icon: BarChart3,
+    title: "Dashboard",
+    desc: "Persönliche Startseite mit rollenbasierten Informationen: offene Bestellungen, Lieferstatus, aktuelle Angebote, Aktionen und Kennzahlen.",
   },
   {
     icon: Store,
-    title: "Für Händler",
-    desc: "Produkte verwalten, Bestellungen bearbeiten, Kunden pflegen — alles in einer modernen Oberfläche.",
+    title: "Lieferanten & Produktkatalog",
+    desc: "Zentrale Verwaltung aller Lieferanten mit vollständigem digitalem Profil. Der Produktkatalog enthält Name, Kategorie, Herkunft, Region, Saison, Qualitätsmerkmale, Nachhaltigkeit, Bio-Zertifizierung, Verfügbarkeit und Preis.",
   },
   {
     icon: MessageSquare,
-    title: "Chat per Auftrag",
-    desc: "Jede Bestellung hat ihren eigenen Chat-Thread — Dokumente, Rückmeldungen und Nachrichten an einem Ort.",
+    title: "Bestellungen & Kommunikation",
+    desc: "Einfacher Bestellablauf ohne komplizierte Prozesse. Kommunikation findet direkt in der Plattform statt – alle Nachrichten bleiben dem jeweiligen Vorgang zugeordnet.",
+  },
+  {
+    icon: Zap,
+    title: "KI-Assistent & Kostenanalyse",
+    desc: "Unterstützt bei Produktsuche, Lieferantenvergleich und Berichtszusammenfassung. Die KI entscheidet niemals – sie liefert Informationen. Die Kostenanalyse zeigt Wareneinsatz, Kostenentwicklung und Einkaufsentwicklung.",
   },
   {
     icon: FileText,
-    title: "Automatische Dokumente",
-    desc: "Lieferscheine werden als PDF erzeugt, im Chat geteilt und im Dokumentencenter abgelegt.",
-  },
-  {
-    icon: Shield,
-    title: "Reklamationen",
-    desc: "Professionelles Handling von Beschwerden, Nachlieferungen und Qualitätsproblemen — direkt aus dem Chat.",
-  },
-  {
-    icon: BarChart3,
-    title: "Live-Dashboard",
-    desc: "Umsatz, Top-Produkte, offene Bestellungen und Kosten pro Gast — immer aktuell im Blick.",
+    title: "Berichte & Dokumente",
+    desc: "Alle wichtigen Dokumente – Preislisten, Rechnungen, Lieferscheine, Zertifikate – an einem Ort. Berichte erklären Entwicklungen und beantworten: Was ist passiert? Warum? Welche Auswirkungen hat es?",
   },
 ];
 
