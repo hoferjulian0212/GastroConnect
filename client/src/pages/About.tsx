@@ -43,7 +43,7 @@ const stats = [
   {
     value: "0",
     title: "Versteckte Kosten",
-    desc: "Keine Provisionen, keine bezahlten Rankings, keine Werbeeinnahmen – vollständige Transparenz in der Preisgestaltung.",
+    desc: "Keine bezahlten Rankings, keine Werbeeinnahmen – vollständige Transparenz in der Preisgestaltung.",
   },
   {
     value: "1",
