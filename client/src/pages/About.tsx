@@ -192,6 +192,42 @@ export default function About() {
         </div>
       </div>
 
+      {/* ── DIVIDER ──────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-4 md:px-8">
+        <div className="border-t border-border" />
+      </div>
+
+      {/* ── TRUST & PRODUCT ──────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-4 md:px-8 py-20">
+        <div className="grid gap-12 md:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Unser Versprechen</p>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-5">
+              Vertrauen als Geschäftsmodell
+            </h2>
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+              Das wichtigste Kapital von GastroConnect ist Vertrauen. Hotels müssen darauf vertrauen können, dass Produkte objektiv dargestellt werden. Lieferanten müssen darauf vertrauen können, dass keine Wettbewerber bevorzugt werden. Produzenten müssen darauf vertrauen können, dass Qualität sichtbar wird. Dieses Vertrauen ist langfristig wertvoller als kurzfristige Werbeeinnahmen.
+            </p>
+            <p className="mt-4 text-sm md:text-base text-muted-foreground leading-relaxed">
+              GastroConnect verkauft keine Werbung, keine bezahlten Rankings, keine gekauften Suchergebnisse, keine Weitergabe von Kundendaten und keine versteckten Provisionen.
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Unser Ansatz</p>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-5">
+              Das Produkt
+            </h2>
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+              GastroConnect ist keine klassische Bestellsoftware – es ist eine Informations- und Kollaborationsplattform. Bestellungen sind lediglich ein Bestandteil der Infrastruktur. Jede Funktion verfolgt denselben Zweck: mehr Transparenz für bessere Entscheidungen. Neue Funktionen werden nicht entwickelt, weil sie technisch möglich sind, sondern weil sie einen messbaren Mehrwert schaffen.
+            </p>
+            <p className="mt-4 text-sm md:text-base text-muted-foreground leading-relaxed">
+              Jede neue Funktion muss mindestens einen dieser Punkte erfüllen: Zeit sparen, Transparenz erhöhen, Zusammenarbeit verbessern, Regionalität stärken, Lebensmittelverschwendung reduzieren oder Entscheidungen verbessern.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* ── FOOTER CTA ───────────────────────────────────────── */}
       <div className="max-w-5xl mx-auto px-4 md:px-8 pb-20">
         <div className="rounded-3xl border border-border bg-muted/30 px-6 md:px-8 py-16 text-center">
