@@ -27,6 +27,11 @@ const features = [
     title: "Berichte & Dokumente",
     desc: "Alle wichtigen Dokumente – Preislisten, Rechnungen, Lieferscheine, Zertifikate – an einem Ort. Berichte erklären Entwicklungen und beantworten: Was ist passiert? Warum? Welche Auswirkungen hat es?",
   },
+  {
+    icon: Shield,
+    title: "Reklamationen & Nachlieferungen",
+    desc: "Professionelles Handling von Beschwerden und Qualitätsproblemen direkt aus dem Vorgang. Betroffene Produkte werden erfasst und Nachlieferungen mit wenigen Klicks ausgelöst – alles transparent dokumentiert.",
+  },
 ];
 
 const stats = [
