@@ -89,7 +89,7 @@ export default function About() {
           </h1>
 
           <p className="mt-6 text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-            GastroConnect ist eine B2B-Software für die Gastronomiebranche — gebaut, um die tägliche Kommunikation zwischen Betrieben und ihren Lieferanten zu vereinfachen. Kein Papierchaos, keine WhatsApp-Gruppen, kein Nachfragen per Telefon.
+            GastroConnect ist die zentrale Informations- und Kollaborationsplattform für die Lebensmittelversorgung der Südtiroler Gastronomie. Die Plattform verbindet Restaurants, Hotels, Lieferanten, Produzenten und Vertreter auf einer gemeinsamen digitalen Infrastruktur – nicht um bestehende Unternehmen zu ersetzen, sondern um sie sinnvoll miteinander zu verbinden. GastroConnect digitalisiert den Informationsfluss zwischen allen Beteiligten und schafft dadurch weniger Verwaltungsaufwand, mehr Transparenz, bessere Zusammenarbeit, stärkere Regionalität, geringere Lebensmittelverschwendung und höhere Wirtschaftlichkeit.
           </p>
 
           {/* CTA */}
