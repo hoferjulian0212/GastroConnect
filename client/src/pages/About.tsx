@@ -35,10 +35,21 @@ const features = [
 ];
 
 const stats = [
-  { value: "2", unit: "Rollen", label: "Betriebe & Händler" },
-  { value: "1", unit: "Plattform", label: "Alles verbunden" },
-  { value: "100%", unit: "Invite-only", label: "Kontrollierter Zugang" },
-  { value: "∞", unit: "Effizienz", label: "Weniger Aufwand" },
+  {
+    value: "3",
+    title: "Wachstumssäulen",
+    desc: "Gastronomiebetriebe, Lieferanten und Produzenten – erst wenn alle drei Gruppen wachsen, entsteht der maximale Netzwerkeffekt.",
+  },
+  {
+    value: "0",
+    title: "Versteckte Kosten",
+    desc: "Keine Provisionen, keine bezahlten Rankings, keine Werbeeinnahmen – vollständige Transparenz in der Preisgestaltung.",
+  },
+  {
+    value: "1",
+    title: "Gemeinsame Plattform",
+    desc: "Alle Beteiligten arbeiten erstmals auf einer gemeinsamen Infrastruktur – kein System kann diesen Netzwerkeffekt so einfach kopieren.",
+  },
 ];
 
 const values = [
@@ -109,12 +120,12 @@ export default function About() {
 
       {/* ── STATS BAND ───────────────────────────────────────── */}
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
           {stats.map((s) => (
-            <div key={s.label} className="text-center">
-              <p className="text-3xl md:text-4xl font-semibold tracking-tight">{s.value}</p>
-              <p className="text-sm font-medium text-foreground/70 mt-0.5">{s.unit}</p>
-              <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+            <div key={s.title} className="text-center">
+              <p className="text-4xl md:text-5xl font-semibold tracking-tight">{s.value}</p>
+              <h3 className="text-base md:text-lg font-semibold text-foreground mt-2">{s.title}</h3>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-xs mx-auto">{s.desc}</p>
             </div>
           ))}
         </div>
