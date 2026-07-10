@@ -1,0 +1,486 @@
+GastroConnect – Supplier Driver Module & AI Route Planning (South Tyrol Only)
+
+Design and implement a completely new user role called Supplier Driver. This is not a small feature but a complete workflow that connects Supplier Office, Drivers and Restaurant users into one seamless delivery ecosystem.
+
+The entire UX should feel comparable to Apple, Linear, Stripe and modern logistics software: clean, minimal, extremely intuitive, with premium animations, micro-interactions and fast performance.
+
+⸻
+
+New User Roles
+
+Supplier Office (existing supplier company)
+
+Supplier administrators and office employees should be able to:
+
+* View all incoming orders.
+* Accept, reject and process orders.
+* Edit orders before shipment if necessary.
+* Change order statuses.
+* Assign deliveries to drivers.
+* Create delivery routes manually or with AI.
+* Monitor all active drivers live.
+* Chat internally with drivers.
+* View delivery history and analytics.
+
+⸻
+
+New User Role: Supplier Driver
+
+Create a completely separate dashboard optimized for mobile first.
+
+The driver should only see information relevant to deliveries.
+
+Main navigation:
+
+* Today’s Deliveries
+* Route Planner
+* Map
+* Chat
+* Delivery History
+* Profile
+
+No unnecessary office functionality should be visible.
+
+⸻
+
+Driver Dashboard
+
+The home screen should immediately show:
+
+“Today’s Deliveries”
+
+Each order appears as a modern card.
+
+Every card contains:
+
+* Order number
+* Restaurant name
+* Address
+* Contact person
+* Phone number
+* Delivery window
+* Order value (optional)
+* Number of crates/packages
+* Current status
+* Priority indicator
+* Notes from supplier
+
+Cards should be clean with large touch targets.
+
+⸻
+
+Manual Route Planning
+
+Drivers should be able to reorder today’s deliveries using drag & drop.
+
+Example:
+
+1. Hotel A
+2. Restaurant B
+3. Hotel C
+4. Restaurant D
+
+Simply drag cards up and down.
+
+Animations should be smooth and satisfying.
+
+⸻
+
+AI Route Planning
+
+This should become one of GastroConnect’s flagship features.
+
+A button:
+
+“Optimize Route”
+
+When pressed, AI should calculate the fastest delivery order.
+
+The calculation should use:
+
+* Google Maps travel times
+* Live traffic
+* Road closures
+* Construction
+* Accidents
+* Current congestion
+* Estimated arrival times
+
+The AI should continuously update during the day if traffic conditions change.
+
+Example:
+
+An accident occurs near Bolzano.
+
+Instead of continuing the original route, the AI suggests a better order automatically.
+
+Driver receives:
+
+“Faster route found. Saves approximately 14 minutes.”
+
+Accept button.
+
+Decline button.
+
+⸻
+
+South Tyrol Only
+
+For the entire first version of GastroConnect:
+
+Everything is optimized exclusively for South Tyrol.
+
+All demo addresses, suppliers, restaurants and examples should always use South Tyrol locations.
+
+Examples:
+
+* Bolzano
+* Merano
+* Appiano
+* Caldaro
+* Bressanone
+* Brunico
+* Laives
+* Vipiteno
+* Ortisei
+
+No random international addresses should ever appear.
+
+⸻
+
+Delivery Workflow
+
+Restaurant places order.
+
+↓
+
+Supplier receives order.
+
+↓
+
+Supplier accepts order.
+
+↓
+
+Supplier prepares order.
+
+↓
+
+Status:
+Preparing
+
+↓
+
+Status:
+Ready for Delivery
+
+↓
+
+Supplier assigns driver.
+
+↓
+
+Status:
+Out for Delivery
+
+At this moment the order appears automatically inside the driver’s dashboard.
+
+The driver now owns this delivery.
+
+⸻
+
+Driver Delivery Screen
+
+Selecting an order opens a detailed page.
+
+Include:
+
+Large restaurant name
+
+Address
+
+Navigation button
+
+Google Maps integration
+
+Phone number
+
+Delivery notes
+
+Products overview (optional)
+
+Delivery instructions
+
+Buttons:
+
+Navigate
+
+Call Restaurant
+
+Message Restaurant
+
+Mark Delivered
+
+Report Problem
+
+⸻
+
+Live Navigation
+
+Pressing Navigate opens turn-by-turn navigation.
+
+The app should continuously know:
+
+Current GPS position
+
+Remaining distance
+
+Remaining driving time
+
+Updated ETA
+
+⸻
+
+Restaurant Experience
+
+Restaurants should have a premium delivery tracking experience similar to Uber Eats or Deliveroo.
+
+Once the supplier changes the order to “Out for Delivery”:
+
+The restaurant sees:
+
+Driver assigned
+
+Driver name
+
+Optional driver photo
+
+Live vehicle position
+
+Moving vehicle on map
+
+Estimated arrival time (ETA)
+
+Distance remaining
+
+Current delivery status
+
+Examples:
+
+Preparing
+
+Driver Assigned
+
+Leaving Warehouse
+
+On the Way
+
+Arriving Soon
+
+Delivered
+
+The driver’s location should update live.
+
+ETA should automatically update using Google Maps.
+
+⸻
+
+Driver ↔ Restaurant Communication
+
+Allow communication during active deliveries.
+
+The restaurant should be able to:
+
+Send message
+
+Ask questions
+
+Inform about loading zone
+
+Inform about entrance
+
+Special delivery instructions
+
+Driver should also be able to send:
+
+Running 5 minutes late
+
+Traffic delay
+
+Need help finding entrance
+
+Arriving now
+
+Delivered
+
+Everything should remain attached to that delivery.
+
+⸻
+
+Internal Supplier Chat
+
+Create a dedicated internal chat page.
+
+Only users from the same supplier company can communicate.
+
+Participants:
+
+Office
+
+Warehouse
+
+Drivers
+
+Permissions should prevent communication with other suppliers.
+
+Possible features:
+
+Read receipts
+
+Typing indicator
+
+Delivered indicator
+
+Photo sharing
+
+Document sharing
+
+Quick replies
+
+Pinned messages
+
+Search
+
+Notifications
+
+⸻
+
+Delivery Completion
+
+Driver presses:
+
+Mark Delivered
+
+A confirmation page opens.
+
+Possible actions:
+
+Add delivery note
+
+Upload delivery photo (optional)
+
+Capture recipient name
+
+Capture signature (optional)
+
+Report missing products
+
+Report damaged goods
+
+Report issue
+
+Submit
+
+Status automatically becomes:
+
+Delivered
+
+Restaurant receives instant confirmation.
+
+Supplier office receives confirmation.
+
+⸻
+
+Notifications
+
+Drivers should receive push notifications for:
+
+New delivery assigned
+
+Route updated
+
+Traffic alert
+
+New chat message
+
+Delivery reminder
+
+Office should receive notifications for:
+
+Delivery completed
+
+Driver issue reported
+
+Route delayed
+
+Restaurant message
+
+Restaurant receives notifications for:
+
+Driver assigned
+
+Driver started delivery
+
+Driver nearby
+
+Delivered
+
+⸻
+
+Future Features
+
+Design the architecture so future versions can support:
+
+Barcode scanning
+
+QR code delivery confirmation
+
+Multiple drivers
+
+Warehouse loading optimization
+
+Vehicle management
+
+Electric vehicle charging planning
+
+Temperature-controlled deliveries
+
+Proof of delivery
+
+Offline mode
+
+Recurring delivery routes
+
+Delivery analytics
+
+CO₂ savings
+
+⸻
+
+UI & UX Requirements
+
+The interface should feel world-class.
+
+Use:
+
+* Premium animations
+* Smooth transitions
+* Glassmorphism where appropriate
+* Clean cards
+* Rounded corners
+* Beautiful loading states
+* Skeleton loaders
+* Interactive maps
+* Floating action buttons
+* Modern icons
+* Haptic-friendly interactions
+* Responsive layouts
+* Mobile-first design
+* Dark mode
+* Light mode
+
+The experience should be extremely easy to understand even for drivers who are not very experienced with technology.
+
+The goal is to create one of the most intuitive supplier delivery systems for gastronomy.
+
+All code should be modular, scalable and production-ready so future expansion beyond South Tyrol is easy.
