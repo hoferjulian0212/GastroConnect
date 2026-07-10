@@ -26,6 +26,7 @@ import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialog";
 import RatingCard from "@/components/RatingCard";
 import { formatOrderNumber, type OrderWithDetails, type OrderStatusHistoryWithUser } from "@shared/schema";
+import { DeliveryTracking } from "@/components/DeliveryTracking";
 import { HeroPortal } from "@/context/HeroContext";
 
 export default function OrderDetail() {
@@ -1219,6 +1220,18 @@ export default function OrderDetail() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Live delivery tracking (driver assigned) */}
+            {order && ["confirmed", "partially_confirmed", "in_delivery", "delivered"].includes(order.status) && (
+              <div className={`min-w-0 ${tabClsUpdates}`}>
+                <DeliveryTracking
+                  orderId={order.id}
+                  destinationLat={order.restaurant?.latitude}
+                  destinationLng={order.restaurant?.longitude}
+                  active={["confirmed", "partially_confirmed", "in_delivery", "delivered"].includes(order.status)}
+                />
               </div>
             )}
 

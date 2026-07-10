@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, AlertTriangle, RotateCcw, User as UserIcon, Download, RefreshCw, Check, MoreVertical, Search, Columns3, ArrowUpDown, ArrowUp, ArrowDown, Filter as FilterIcon, ChevronRight } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, AlertTriangle, RotateCcw, User as UserIcon, UserRound, Download, RefreshCw, Check, MoreVertical, Search, Columns3, ArrowUpDown, ArrowUp, ArrowDown, Filter as FilterIcon, ChevronRight } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,6 +32,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT, getOrderStatus } from "@/lib/translations";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialog";
+import { AssignDriverDialog } from "@/components/AssignDriverDialog";
 import SwipeableRow from "@/components/SwipeableRow";
 import StaggeredList from "@/components/StaggeredList";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
@@ -136,6 +137,7 @@ export default function SupplierOrders() {
  const [deliveryDatePicker, setDeliveryDatePicker] = useState<{ orderId: string; restaurantId: string } | null>(null);
  const [selectedProduct, setSelectedProduct] = useState<ProductWithSupplierAndPromotion | null>(null);
  const [confirmOrder, setConfirmOrder] = useState<OrderWithDetails | null>(null);
+ const [assignDriverOrder, setAssignDriverOrder] = useState<OrderWithDetails | null>(null);
 
  const { data: orders, isLoading } = useQuery<OrderWithDetails[]>({
  queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`],
@@ -863,6 +865,12 @@ export default function SupplierOrders() {
  <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`action-delivered-${order.id}`}>
  <CheckCircle className="h-4 w-4 mr-2" />
  {lang === "de" ? "Als geliefert markieren" : "Segna come consegnato"}
+ </DropdownMenuItem>
+ )}
+ {(order.status === "confirmed" || order.status === "partially_confirmed" || order.status === "in_delivery") && (
+ <DropdownMenuItem onClick={() => setAssignDriverOrder(order)} data-testid={`action-assign-driver-${order.id}`}>
+ <UserRound className="h-4 w-4 mr-2" />
+ {lang === "de" ? "Fahrer zuweisen" : "Assegna autista"}
  </DropdownMenuItem>
  )}
  {!order.requestedDeliveryDate && order.status !== "pending" && order.status !== "delivered" && order.status !== "cancelled" && (
@@ -1942,6 +1950,12 @@ export default function SupplierOrders() {
  onSuccess={() => setConfirmOrder(null)}
  />
  )}
+
+ <AssignDriverDialog
+ order={assignDriverOrder}
+ open={!!assignDriverOrder}
+ onOpenChange={(open) => { if (!open) setAssignDriverOrder(null); }}
+ />
 
  <Dialog open={!!cancelConfirmId} onOpenChange={(open) => { if (!open) setCancelConfirmId(null); }}>
  <DialogContent className="max-w-sm" data-testid="dialog-cancel-confirm">

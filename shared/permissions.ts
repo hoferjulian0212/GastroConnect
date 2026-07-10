@@ -21,9 +21,11 @@ export type Capability =
   | "inventory_risk.create" // create a risk record + edit own
   | "inventory_risk.manage" // edit any record, change status, link promotions
   | "vertreter.assign"      // assign Betriebe (restaurants) to a Vertreter
-  | "chat";                 // send chat messages
+  | "chat"                  // send chat messages
+  | "deliveries.manage"     // office: assign/unassign drivers, oversee deliveries
+  | "deliveries.drive";     // driver: work own assigned deliveries, post location
 
-export const MEMBER_ROLE_VALUES: MemberRole[] = ["admin", "manager", "staff", "vertreter", "warehouse"];
+export const MEMBER_ROLE_VALUES: MemberRole[] = ["admin", "manager", "staff", "vertreter", "warehouse", "driver"];
 
 // Role → capabilities it is allowed to perform.
 const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
@@ -39,6 +41,7 @@ const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
     "inventory_risk.manage",
     "vertreter.assign",
     "chat",
+    "deliveries.manage",
   ],
   manager: [
     "team.view",
@@ -49,6 +52,7 @@ const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
     "inventory_risk.create",
     "inventory_risk.manage",
     "chat",
+    "deliveries.manage",
   ],
   staff: [
     "team.view",
@@ -66,6 +70,11 @@ const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
   warehouse: [
     "team.view",
     "inventory_risk.create",
+  ],
+  driver: [
+    "team.view",
+    "chat",
+    "deliveries.drive",
   ],
 };
 
@@ -115,6 +124,8 @@ const WAREHOUSE_ALLOWED_ROUTES: readonly WarehouseRouteRule[] = [
   // Inventory-risk flagging (create + edit own + read). Status changes and the
   // "turn into promotion" action stay gated by inventory_risk.manage in-route.
   { methods: "*", pattern: /^\/api\/inventory-risks(\/|$)/ },
+  // Company-internal chat (office + warehouse + drivers of the same org).
+  { methods: "*", pattern: /^\/api\/internal-chat(\/|$)/ },
   // Best-effort client error reporting.
   { methods: ["POST"], pattern: /^\/api\/client-errors$/ },
 ];
@@ -141,6 +152,7 @@ export const ROLE_LABELS: Record<MemberRole, { de: string; it: string }> = {
   staff: { de: "Mitarbeiter", it: "Personale" },
   vertreter: { de: "Vertreter", it: "Rappresentante" },
   warehouse: { de: "Lagermitarbeiter", it: "Magazziniere" },
+  driver: { de: "Fahrer", it: "Autista" },
 };
 
 export function roleLabel(role: MemberRole, lang: "de" | "it"): string {
@@ -158,6 +170,7 @@ export const WAREHOUSE_ALLOWED_PATHS = [
   "/supplier",
   "/supplier/inventory-risk",
   "/supplier/inventory",
+  "/supplier/team-chat",
   "/supplier/settings",
   "/supplier/profile",
   "/supplier/team",
@@ -175,4 +188,94 @@ export function isWarehouseAllowedPath(path: string): boolean {
 /** Derives the `isWarehouse` flag from a member's role. */
 export function isWarehouseRole(role: MemberRole | null | undefined): boolean {
   return role === "warehouse";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Driver API surface — server-side hard limit (mirrors the warehouse pattern).
+//
+// A driver ("Fahrer") only works their own assigned deliveries, posts their GPS
+// position, chats with restaurants about active deliveries, and uses the
+// company-internal chat. Deny-by-default: every /api route NOT allow-listed
+// here is rejected for a driver session, so newly added supplier routes
+// (pricing, stats, documents, ERP, …) can never accidentally leak to drivers.
+// ─────────────────────────────────────────────────────────────────────────────
+type DriverRouteRule = { methods: "*" | readonly string[]; pattern: RegExp };
+
+const DRIVER_ALLOWED_ROUTES: readonly DriverRouteRule[] = [
+  // Session / authentication.
+  { methods: "*", pattern: /^\/api\/auth(\/|$)/ },
+  // Own account: profile, settings, notification prefs, presence.
+  { methods: "*", pattern: /^\/api\/users(\/|$)/ },
+  // Photo / attachment upload (proof of delivery, chat photos).
+  { methods: ["POST"], pattern: /^\/api\/uploads(\/|$)/ },
+  // Team view.
+  { methods: "*", pattern: /^\/api\/orgs(\/|$)/ },
+  { methods: "*", pattern: /^\/api\/members(\/|$)/ },
+  // Presence heartbeat.
+  { methods: ["POST"], pattern: /^\/api\/heartbeat$/ },
+  // Notification feed + read state.
+  { methods: "*", pattern: /^\/api\/notifications(\/|$)/ },
+  // Web-push subscription management.
+  { methods: "*", pattern: /^\/api\/push(\/|$)/ },
+  // Driver module: own deliveries, route planning, live location.
+  { methods: "*", pattern: /^\/api\/driver(\/|$)/ },
+  // Company-internal chat.
+  { methods: "*", pattern: /^\/api\/internal-chat(\/|$)/ },
+  // Chat with restaurants about deliveries (org-level conversation system).
+  { methods: "*", pattern: /^\/api\/conversations(\/|$)/ },
+  { methods: "*", pattern: /^\/api\/messages(\/|$)/ },
+  // Best-effort client error reporting.
+  { methods: ["POST"], pattern: /^\/api\/client-errors$/ },
+];
+
+/**
+ * Returns true if a member with the `driver` role may reach the given API
+ * endpoint. Deny-by-default — the route middleware must respond 403 when this
+ * returns false. `path` is the request path without query string (req.path).
+ */
+export function isDriverPathAllowed(method: string, path: string): boolean {
+  const m = method.toUpperCase();
+  return DRIVER_ALLOWED_ROUTES.some(
+    (rule) =>
+      (rule.methods === "*" || rule.methods.includes(m)) && rule.pattern.test(path),
+  );
+}
+
+/**
+ * Driver client pages (URL prefix stays `/supplier` like warehouse members).
+ * `DriverRouter` in `client/src/App.tsx` builds its routes from this list;
+ * anything else redirects back to the driver home. `:id` segments are matched
+ * as wildcards by isDriverAllowedPath.
+ */
+export const DRIVER_ALLOWED_PATHS = [
+  "/supplier",
+  "/supplier/delivery/:id",
+  "/supplier/route",
+  "/supplier/map",
+  "/supplier/history",
+  "/supplier/team-chat",
+  "/supplier/inbox",
+  "/supplier/settings",
+  "/supplier/profile",
+  "/supplier/team",
+  "/supplier/help",
+] as const;
+
+export type DriverAllowedPath = (typeof DRIVER_ALLOWED_PATHS)[number];
+
+/** True if a driver member is allowed to view the given path (query ignored). */
+export function isDriverAllowedPath(path: string): boolean {
+  const clean = path.split("?")[0].split("#")[0];
+  return (DRIVER_ALLOWED_PATHS as readonly string[]).some((p) => {
+    if (!p.includes(":")) return p === clean;
+    const regex = new RegExp(
+      "^" + p.replace(/:[^/]+/g, "[^/]+") + "$",
+    );
+    return regex.test(clean);
+  });
+}
+
+/** Derives the `isDriver` flag from a member's role. */
+export function isDriverRole(role: MemberRole | null | undefined): boolean {
+  return role === "driver";
 }

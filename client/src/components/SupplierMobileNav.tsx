@@ -1,4 +1,4 @@
-import { Home, Send, Package, ClipboardList, AlertCircle, AlertTriangle, FileText, Store, HelpCircle, Settings } from "lucide-react";
+import { Home, Send, Package, ClipboardList, AlertCircle, AlertTriangle, FileText, Store, HelpCircle, Settings, Truck } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -21,6 +21,7 @@ export function SupplierMobileNav() {
     {
       title: lang === "de" ? "Bestellungen" : "Ordini",
       items: [
+        { title: lang === "de" ? "Fahrer" : "Autisti", url: "/supplier/drivers", icon: Truck },
         { title: t("common", "complaints"), url: "/supplier/complaints", icon: AlertCircle },
         { title: t("common", "documents"), url: "/supplier/documents", icon: FileText },
       ],
@@ -35,6 +36,7 @@ export function SupplierMobileNav() {
     {
       title: lang === "de" ? "Mehr" : "Altro",
       items: [
+        { title: "Team-Chat", url: "/supplier/team-chat", icon: Send },
         { title: t("common", "settings"), url: "/supplier/settings", icon: Settings },
         { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/supplier/help", icon: HelpCircle },
       ],

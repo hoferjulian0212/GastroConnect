@@ -4,10 +4,10 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
-export const memberRoleEnum = pgEnum("member_role", ["admin", "manager", "staff", "vertreter", "warehouse"]);
+export const memberRoleEnum = pgEnum("member_role", ["admin", "manager", "staff", "vertreter", "warehouse", "driver"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]);
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion", "voice"]);
-export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request", "erp_request", "erp_sync_failed", "whatsapp_request"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request", "erp_request", "erp_sync_failed", "whatsapp_request", "delivery_assigned", "delivery_update", "delivery_problem", "internal_message"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);
 export const complaintStatusEnum = pgEnum("complaint_status", ["open", "in_progress", "resolved", "closed", "rejected", "partially_resolved"]);
 export const complaintReasonEnum = pgEnum("complaint_reason", ["damaged", "short", "wrong", "quality", "late", "other"]);
@@ -1306,7 +1306,7 @@ export const insertOrgNoteSchema = createInsertSchema(orgNotes).omit({ id: true,
 export type OrgNote = typeof orgNotes.$inferSelect;
 export type InsertOrgNote = z.infer<typeof insertOrgNoteSchema>;
 
-export const MEMBER_ROLES = ["admin", "manager", "staff", "vertreter", "warehouse"] as const;
+export const MEMBER_ROLES = ["admin", "manager", "staff", "vertreter", "warehouse", "driver"] as const;
 export type MemberRole = typeof MEMBER_ROLES[number];
 
 export const insertMemberSchema = createInsertSchema(members).omit({
@@ -1337,6 +1337,135 @@ export type OauthAccount = typeof oauthAccounts.$inferSelect;
 export type InsertOauthAccount = z.infer<typeof insertOauthAccountSchema>;
 export const OAUTH_PROVIDERS = ["google", "apple", "microsoft"] as const;
 export type OauthProvider = typeof OAUTH_PROVIDERS[number];
+
+// ─── Driver module (Task #173) ───────────────────────────────────────────
+// A driver ("Fahrer") is a member of a supplier org. The office assigns orders
+// to drivers as delivery assignments; the driver works through them stop by
+// stop. Delivery sub-states live HERE (not on orders.status) so the existing
+// 6-status order flow stays backward compatible. Tables are created by the
+// idempotent runDriverMigration() at startup — never blind drizzle push.
+export const deliveryStatusEnum = pgEnum("delivery_status", ["assigned", "picked_up", "en_route", "arriving", "delivered", "problem"]);
+export const DELIVERY_STATUSES = ["assigned", "picked_up", "en_route", "arriving", "delivered", "problem"] as const;
+export type DeliveryStatus = typeof DELIVERY_STATUSES[number];
+
+export const deliveryAssignments = pgTable("delivery_assignments", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id", { length: 36 }).notNull().references(() => orders.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  driverMemberId: varchar("driver_member_id", { length: 36 }).notNull().references(() => members.id),
+  assignedByMemberId: varchar("assigned_by_member_id", { length: 36 }).references(() => members.id),
+  deliveryDate: varchar("delivery_date", { length: 10 }).notNull(), // YYYY-MM-DD
+  stopSequence: integer("stop_sequence").default(0).notNull(),
+  status: deliveryStatusEnum("status").default("assigned").notNull(),
+  timeWindow: text("time_window"),
+  // 'normal' | 'high'
+  priority: varchar("priority", { length: 10 }).default("normal").notNull(),
+  packages: integer("packages"),
+  notes: text("notes"),
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+  enRouteAt: timestamp("en_route_at"),
+  arrivingAt: timestamp("arriving_at"),
+  deliveredAt: timestamp("delivered_at"),
+  // Proof of delivery (all optional): note, photo, recipient name.
+  podNote: text("pod_note"),
+  podPhotoUrl: text("pod_photo_url"),
+  podRecipient: text("pod_recipient"),
+  problemType: text("problem_type"),
+  problemNote: text("problem_note"),
+  problemReportedAt: timestamp("problem_reported_at"),
+  // Last computed routing estimates (refreshed by route optimization).
+  etaMinutes: integer("eta_minutes"),
+  distanceKm: decimal("distance_km", { precision: 8, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_delivery_assignments_order").on(table.orderId),
+  index("idx_delivery_assignments_driver_date").on(table.driverMemberId, table.deliveryDate),
+  index("idx_delivery_assignments_supplier_date").on(table.supplierId, table.deliveryDate),
+  index("idx_delivery_assignments_restaurant").on(table.restaurantId),
+]);
+
+// Latest live GPS position per driver (upserted, one row per driver).
+export const driverLocations = pgTable("driver_locations", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  driverMemberId: varchar("driver_member_id", { length: 36 }).notNull().references(() => members.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }).notNull(),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }).notNull(),
+  heading: integer("heading"),
+  speedKmh: integer("speed_kmh"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_driver_locations_member").on(table.driverMemberId),
+  index("idx_driver_locations_supplier").on(table.supplierId),
+]);
+
+// Company-internal chat: one channel per supplier org (office + warehouse +
+// drivers). Strictly isolated per company — supplierId is ALWAYS taken from the
+// session org, never from the client.
+export const internalMessages = pgTable("internal_messages", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  senderMemberId: varchar("sender_member_id", { length: 36 }).notNull().references(() => members.id),
+  content: text("content").default("").notNull(),
+  // 'text' | 'image' | 'document'
+  messageType: varchar("message_type", { length: 20 }).default("text").notNull(),
+  attachmentUrl: text("attachment_url"),
+  attachmentName: text("attachment_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_internal_messages_supplier_created").on(table.supplierId, table.createdAt),
+]);
+
+// Per-member read cursor for the company chat (read receipts + unread counts).
+export const internalChatReads = pgTable("internal_chat_reads", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  memberId: varchar("member_id", { length: 36 }).notNull().references(() => members.id),
+  lastReadAt: timestamp("last_read_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_internal_chat_reads_member").on(table.supplierId, table.memberId),
+]);
+
+export const insertDeliveryAssignmentSchema = createInsertSchema(deliveryAssignments).omit({
+  id: true, createdAt: true, updatedAt: true, assignedAt: true, enRouteAt: true,
+  arrivingAt: true, deliveredAt: true, podNote: true, podPhotoUrl: true,
+  podRecipient: true, problemType: true, problemNote: true, problemReportedAt: true,
+  etaMinutes: true, distanceKm: true, status: true,
+});
+export const insertDriverLocationSchema = createInsertSchema(driverLocations).omit({ id: true, updatedAt: true });
+export const insertInternalMessageSchema = createInsertSchema(internalMessages).omit({ id: true, createdAt: true });
+
+export type DeliveryAssignment = typeof deliveryAssignments.$inferSelect;
+export type InsertDeliveryAssignment = z.infer<typeof insertDeliveryAssignmentSchema>;
+export type DriverLocation = typeof driverLocations.$inferSelect;
+export type InsertDriverLocation = z.infer<typeof insertDriverLocationSchema>;
+export type InternalMessage = typeof internalMessages.$inferSelect;
+export type InsertInternalMessage = z.infer<typeof insertInternalMessageSchema>;
+export type InternalChatRead = typeof internalChatReads.$inferSelect;
+
+// Joined views for the client.
+// Driver is a sanitized member projection — credential/auth columns
+// (passwordHash, emailVerifiedAt, lastLoginAt) must never cross the API.
+export type SafeMember = Omit<Member, "passwordHash" | "emailVerifiedAt" | "lastLoginAt">;
+export type DeliveryAssignmentWithDetails = DeliveryAssignment & {
+  order: Order & { items: OrderItemWithProduct[] };
+  restaurant: User;
+  driver: SafeMember;
+};
+export type InternalMessageWithSender = InternalMessage & {
+  sender: Member | null;
+  readByAll: boolean;
+};
+export type DriverLocationWithDriver = DriverLocation & { driver: SafeMember };
+
+// Restaurant-facing live tracking payload for an order in delivery.
+export type OrderTrackingInfo = {
+  assignment: Pick<DeliveryAssignment, "id" | "status" | "assignedAt" | "enRouteAt" | "arrivingAt" | "deliveredAt" | "etaMinutes" | "distanceKm"> | null;
+  driver: { name: string; phone: string | null; profileImageUrl: string | null } | null;
+  location: { latitude: string; longitude: string; updatedAt: Date } | null;
+};
 
 // ─── Display helpers for business numbers ────────────────────────────────
 // Each order/complaint has ONE unique business-facing number that appears

@@ -123,6 +123,54 @@ export async function bootstrapDemoWarehouseMember(): Promise<void> {
   }
 }
 
+// Demo driver ("Fahrer") logins for Hans's supplier org — same pattern and the
+// same hard production guard as the demo warehouse member above. Two drivers so
+// the office assignment picker and the live-map overview have real choices.
+export const DEMO_DRIVER_EMAIL = "fahrer@frische-produkte.de";
+export const DEMO_DRIVER_PASSWORD = "Fahrer2026Demo";
+
+export async function bootstrapDemoDriverMembers(): Promise<void> {
+  // Hard production guard — never provision known credentials in prod.
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  const HANS_ORG_EMAIL = "hans@frische-produkte.de";
+  const drivers = [
+    { email: DEMO_DRIVER_EMAIL, name: "Markus Brunner" },
+    { email: "fahrer2@frische-produkte.de", name: "Stefan Oberhofer" },
+  ];
+  try {
+    const org = await storage.getUserByEmail(HANS_ORG_EMAIL);
+    if (!org || org.role !== "supplier") {
+      console.log("[demo] driver members skipped — Frische Produkte org not found.");
+      return;
+    }
+    const passwordHash = await hashPassword(DEMO_DRIVER_PASSWORD);
+    for (const d of drivers) {
+      const existing = await storage.getMemberByEmail(d.email);
+      if (existing) {
+        if (existing.organizationId !== org.id) {
+          console.error(`[demo] driver member skipped — ${d.email} already belongs to another org; refusing to reassign.`);
+          continue;
+        }
+        await storage.updateMember(existing.id, { name: d.name, role: "driver" });
+        await storage.updateMemberAuth(existing.id, { passwordHash, emailVerifiedAt: new Date() });
+      } else {
+        const member = await storage.createMember({
+          organizationId: org.id,
+          name: d.name,
+          email: d.email,
+          role: "driver",
+        });
+        await storage.updateMemberAuth(member.id, { passwordHash, emailVerifiedAt: new Date() });
+      }
+    }
+    console.log(`[demo] driver members ready (${drivers.map((d) => d.email).join(", ")}).`);
+  } catch (err) {
+    console.error("[demo] driver member bootstrap error:", err);
+  }
+}
+
 // Strip sensitive fields (password hash) before returning a platform-admin row
 // to any client. Never send the bcrypt hash over the wire or into response logs.
 function sanitizePlatformAdmin<T extends { passwordHash?: string | null }>(

@@ -8,7 +8,7 @@ import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockEr
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema, insertInventoryRiskRecordSchema, INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY, INVENTORY_RISK_REASONS } from "@shared/schema";
-import { can, isWarehousePathAllowed, type Capability } from "@shared/permissions";
+import { can, isWarehousePathAllowed, isDriverPathAllowed, type Capability } from "@shared/permissions";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
 import { generateAndStoreMonthlyReport, computeMonthlyReport } from "./monthlyReportService";
 import { getPmsProviderAdapter } from "./pmsProviders";
@@ -18,7 +18,7 @@ import { runSyncForConnection, startErpSyncScheduler, testErpConnection, ErpSync
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
 import { sendEmail, renderNotificationEmail } from "./emailService";
 import { registerAuthRoutes } from "./auth/routes";
-import { registerAdminAuthRoutes, bootstrapPlatformAdmin, bootstrapDemoWarehouseMember } from "./auth/adminAuth";
+import { registerAdminAuthRoutes, bootstrapPlatformAdmin, bootstrapDemoWarehouseMember, bootstrapDemoDriverMembers } from "./auth/adminAuth";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
@@ -159,6 +159,21 @@ async function createNotificationWithPush(notification: InsertNotification, role
       break;
     case "whatsapp_request":
       url = `/${urlRole}/inbox`;
+      break;
+    case "delivery_assigned":
+      // Sent to the supplier org when the office assigns a tour stop; the
+      // driver client home ("/supplier" for driver members) shows today's tour.
+      url = `/supplier`;
+      break;
+    case "delivery_update":
+      // Restaurant-facing live-tracking updates deep-link to the order detail.
+      url = `/${urlRole}/orders/${notification.referenceId}`;
+      break;
+    case "delivery_problem":
+      url = `/supplier/orders?orderId=${notification.referenceId}`;
+      break;
+    case "internal_message":
+      url = `/supplier/team-chat`;
       break;
   }
   // Load the recipient once and reuse for both channel gating + email address.
@@ -567,6 +582,21 @@ export async function registerRoutes(
       .json({ error: "forbidden", message: "Keine Berechtigung für diese Aktion." });
   });
 
+  // ── Driver hard limit (server-side, fail-closed) ─────────────────────────
+  // Same deny-by-default pattern as the warehouse gate: a driver session can
+  // only reach its own delivery/route/location endpoints, the internal company
+  // chat and a small set of shared account endpoints (see isDriverPathAllowed).
+  // Everything else — orders, pricing, documents, stats, partner chat — is 403
+  // even if an individual route forgot to check capabilities.
+  app.use((req, res, next) => {
+    if (req.auth?.role !== "driver") return next();
+    if (!req.path.startsWith("/api/")) return next();
+    if (isDriverPathAllowed(req.method, req.path)) return next();
+    return res
+      .status(403)
+      .json({ error: "forbidden", message: "Keine Berechtigung für diese Aktion." });
+  });
+
   // Register object storage routes for file uploads
   registerObjectStorageRoutes(app);
   // AI-powered OCR price-list import (supplier)
@@ -618,6 +648,8 @@ export async function registerRoutes(
   // not locked out by the login email-gate).
   await storage.runEmailVerificationMigration();
   await storage.runAdminMigration();
+  // Driver module tables/enums (delivery assignments, live locations, internal chat)
+  await storage.runDriverMigration();
   // Provision the owner platform-admin from PLATFORM_ADMIN_EMAIL/PASSWORD (idempotent)
   await bootstrapPlatformAdmin();
   // Seed data on startup
@@ -626,6 +658,8 @@ export async function registerRoutes(
   await storage.backfillMembers();
   // Provision a working demo warehouse-worker login on Hans's supplier org (idempotent)
   await bootstrapDemoWarehouseMember();
+  // Provision demo driver logins on Hans's supplier org (idempotent, dev-only)
+  await bootstrapDemoDriverMembers();
   // Ensure the standard PMS providers exist (idempotent)
   await storage.ensurePmsProviders();
   // Ensure the standard ERP providers exist (idempotent)
@@ -7712,6 +7746,756 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Failed to update notification prefs:", error);
       res.status(500).json({ error: "Failed to update notification prefs" });
+    }
+  });
+
+  // ===== DRIVER MODULE (Task #173) =====
+  // Office assigns ready orders to drivers, drivers work their daily tour on a
+  // mobile UI, restaurants see live tracking. Delivery sub-states live on the
+  // assignment (assigned → picked_up → en_route → arriving → delivered/problem),
+  // NOT on the order; the order itself only moves to in_delivery (when the
+  // driver departs) and delivered (with stock outbound) via the existing
+  // atomic transition helper.
+
+  const assignDriverSchema = z.object({
+    driverMemberId: uuidField,
+    deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    timeWindow: safeShortString.optional().nullable(),
+    priority: z.enum(["normal", "high"]).optional(),
+    packages: z.number().int().min(0).max(9999).optional().nullable(),
+    notes: safeString.optional().nullable(),
+  }).strict();
+
+  const driverStatusSchema = z.object({
+    status: z.enum(["picked_up", "en_route", "arriving"]),
+  }).strict();
+
+  const completeDeliverySchema = z.object({
+    podNote: safeString.optional().nullable(),
+    podPhotoUrl: z.string().max(2048).optional().nullable(),
+    podRecipient: safeShortString.optional().nullable(),
+  }).strict();
+
+  const deliveryProblemSchema = z.object({
+    problemType: z.enum(["not_reachable", "refused", "damaged", "wrong_address", "traffic", "other"]),
+    note: safeString.optional().nullable(),
+  }).strict();
+
+  const reorderRouteSchema = z.object({
+    deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    orderedIds: z.array(uuidField).min(1).max(200),
+  }).strict();
+
+  const driverLocationSchema = z.object({
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    heading: z.number().int().min(0).max(359).optional().nullable(),
+    speedKmh: z.number().int().min(0).max(300).optional().nullable(),
+  }).strict();
+
+  const internalMessageSchema = z.object({
+    content: z.string().max(50000).default(""),
+    messageType: z.enum(["text", "image", "attachment"]).optional(),
+    attachmentUrl: z.string().max(2048).optional().nullable(),
+    attachmentName: safeShortString.optional().nullable(),
+  }).strict().refine(
+    (d) => d.content.trim().length > 0 || !!d.attachmentUrl,
+    { message: "content or attachment required", path: ["content"] },
+  );
+
+  // Business "today" in the South Tyrol timezone (drivers plan per local day).
+  function romeToday(): string {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date());
+  }
+
+  function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+    const R = 6371;
+    const dLat = ((bLat - aLat) * Math.PI) / 180;
+    const dLng = ((bLng - aLng) * Math.PI) / 180;
+    const s =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((aLat * Math.PI) / 180) * Math.cos((bLat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+
+  type OptimizableStop = { id: string; lat: number; lng: number };
+
+  // Greedy nearest-neighbor fallback when no Google key is configured.
+  function nearestNeighborOrder(stops: OptimizableStop[], origin: { lat: number; lng: number }): string[] {
+    const remaining = [...stops];
+    const ordered: string[] = [];
+    let cur = origin;
+    while (remaining.length > 0) {
+      let bestIdx = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < remaining.length; i++) {
+        const d = haversineKm(cur.lat, cur.lng, remaining[i].lat, remaining[i].lng);
+        if (d < bestDist) { bestDist = d; bestIdx = i; }
+      }
+      const next = remaining.splice(bestIdx, 1)[0];
+      ordered.push(next.id);
+      cur = { lat: next.lat, lng: next.lng };
+    }
+    return ordered;
+  }
+
+  // Traffic-aware waypoint optimization via the Google Routes API when a key
+  // is configured; falls back to haversine nearest-neighbor otherwise or on
+  // any API error (route planning must never hard-fail on a 3rd-party outage).
+  async function optimizeStopOrder(stops: OptimizableStop[], origin: { lat: number; lng: number }): Promise<{ orderedIds: string[]; trafficAware: boolean }> {
+    if (stops.length <= 1) return { orderedIds: stops.map((s) => s.id), trafficAware: false };
+    const key = process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (key && stops.length >= 2) {
+      try {
+        const resp = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": key,
+            "X-Goog-FieldMask": "routes.optimizedIntermediateWaypointIndex",
+          },
+          body: JSON.stringify({
+            origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
+            destination: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
+            intermediates: stops.map((s) => ({ location: { latLng: { latitude: s.lat, longitude: s.lng } } })),
+            travelMode: "DRIVE",
+            routingPreference: "TRAFFIC_AWARE",
+            optimizeWaypointOrder: true,
+          }),
+        });
+        if (resp.ok) {
+          const data: any = await resp.json();
+          const idx: number[] | undefined = data?.routes?.[0]?.optimizedIntermediateWaypointIndex;
+          if (Array.isArray(idx) && idx.length === stops.length) {
+            return { orderedIds: idx.map((i) => stops[i].id), trafficAware: true };
+          }
+        } else {
+          console.error("[driver] Google Routes optimize failed:", resp.status, (await resp.text()).slice(0, 300));
+        }
+      } catch (err: any) {
+        console.error("[driver] Google Routes optimize error:", err?.message);
+      }
+    }
+    return { orderedIds: nearestNeighborOrder(stops, origin), trafficAware: false };
+  }
+
+  // Guard: caller must be a member of a supplier org (any role) — used for the
+  // company-internal chat which spans office, warehouse and drivers.
+  function requireSupplierMember(req: Request): { status: number; body: any } | null {
+    if (!req.auth) return { status: 401, body: { error: "unauthenticated", message: "Bitte melden Sie sich an." } };
+    if (req.auth.org.role !== "supplier") return { status: 403, body: { error: "forbidden", message: "Nur für Lieferanten-Teams verfügbar." } };
+    return null;
+  }
+
+  // Guard: caller must be a driver member; returns null + guarantees req.auth.
+  function requireDriver(req: Request): { status: number; body: any } | null {
+    if (!req.auth) return { status: 401, body: { error: "unauthenticated", message: "Bitte melden Sie sich an." } };
+    if (!can(req.auth.role, "deliveries.drive")) return { status: 403, body: { error: "forbidden", message: "Keine Berechtigung für diese Aktion." } };
+    return null;
+  }
+
+  // ── Office: assign / unassign a driver ────────────────────────────────────
+  app.post("/api/orders/:id/assign-driver", async (req, res) => {
+    try {
+      const parsed = assignDriverSchema.parse(req.body);
+      const order = await storage.getOrder(req.params.id);
+      if (!order) return res.status(404).json({ error: "Order not found" });
+      const denied = checkActingCapability(req, order.supplierId, "deliveries.manage");
+      if (denied) return res.status(denied.status).json(denied.body);
+      if (!["confirmed", "partially_confirmed", "in_delivery"].includes(order.status)) {
+        return res.status(400).json({ error: "invalid_status", message: "Nur bestätigte Bestellungen können einem Fahrer zugewiesen werden." });
+      }
+      const driver = await storage.getMember(parsed.driverMemberId);
+      if (!driver || driver.organizationId !== order.supplierId || driver.role !== "driver") {
+        return res.status(400).json({ error: "invalid_driver", message: "Ungültiger Fahrer." });
+      }
+      const deliveryDate = parsed.deliveryDate
+        || (order.requestedDeliveryDate && /^\d{4}-\d{2}-\d{2}/.test(order.requestedDeliveryDate)
+          ? order.requestedDeliveryDate.slice(0, 10)
+          : romeToday());
+
+      const existing = await storage.getDeliveryAssignmentByOrder(order.id);
+      let assignment;
+      if (existing) {
+        if (existing.status === "delivered") {
+          return res.status(400).json({ error: "already_delivered", message: "Diese Lieferung wurde bereits zugestellt." });
+        }
+        const dayStops = await storage.getDeliveriesForDriver(parsed.driverMemberId, deliveryDate);
+        assignment = await storage.updateDeliveryAssignment(existing.id, {
+          driverMemberId: parsed.driverMemberId,
+          assignedByMemberId: req.auth!.memberId,
+          deliveryDate,
+          stopSequence: existing.driverMemberId === parsed.driverMemberId && existing.deliveryDate === deliveryDate
+            ? existing.stopSequence
+            : dayStops.filter((s) => s.id !== existing.id).length,
+          status: "assigned",
+          timeWindow: parsed.timeWindow ?? existing.timeWindow,
+          priority: parsed.priority ?? existing.priority,
+          packages: parsed.packages !== undefined ? parsed.packages : existing.packages,
+          notes: parsed.notes !== undefined ? parsed.notes : existing.notes,
+          enRouteAt: null,
+          arrivingAt: null,
+          problemType: null,
+          problemNote: null,
+          problemReportedAt: null,
+        });
+      } else {
+        const dayStops = await storage.getDeliveriesForDriver(parsed.driverMemberId, deliveryDate);
+        assignment = await storage.createDeliveryAssignment({
+          orderId: order.id,
+          supplierId: order.supplierId,
+          restaurantId: order.restaurantId,
+          driverMemberId: parsed.driverMemberId,
+          assignedByMemberId: req.auth!.memberId,
+          deliveryDate,
+          stopSequence: dayStops.length,
+          timeWindow: parsed.timeWindow ?? null,
+          priority: parsed.priority ?? "normal",
+          packages: parsed.packages ?? null,
+          notes: parsed.notes ?? null,
+        });
+      }
+
+      const restaurant = await storage.getUser(order.restaurantId);
+      await createNotificationWithPush({
+        userId: order.supplierId,
+        type: "delivery_assigned",
+        title: `Lieferung zugewiesen #${formatOrderNumber(order)}`,
+        message: `${driver.name}: Lieferung an ${restaurant?.companyName || restaurant?.name || "Betrieb"} am ${deliveryDate}`,
+        referenceId: order.id,
+      }, "supplier");
+      await createNotificationWithPush({
+        userId: order.restaurantId,
+        type: "delivery_update",
+        title: `Fahrer zugewiesen #${formatOrderNumber(order)}`,
+        message: `Ihrer Bestellung #${formatOrderNumber(order)} wurde ein Fahrer zugewiesen.`,
+        referenceId: order.id,
+      }, "restaurant");
+
+      res.json(assignment);
+    } catch (error: any) {
+      if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      console.error("Assign driver error:", error);
+      res.status(500).json({ error: "Failed to assign driver" });
+    }
+  });
+
+  app.delete("/api/orders/:id/assign-driver", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) return res.status(404).json({ error: "Order not found" });
+      const denied = checkActingCapability(req, order.supplierId, "deliveries.manage");
+      if (denied) return res.status(denied.status).json(denied.body);
+      const existing = await storage.getDeliveryAssignmentByOrder(order.id);
+      if (!existing) return res.status(404).json({ error: "No assignment" });
+      if (existing.status === "delivered") {
+        return res.status(400).json({ error: "already_delivered", message: "Zugestellte Lieferungen können nicht entfernt werden." });
+      }
+      await storage.deleteDeliveryAssignment(existing.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Unassign driver error:", error);
+      res.status(500).json({ error: "Failed to unassign driver" });
+    }
+  });
+
+  // ── Office: overview of deliveries, drivers and live positions ───────────
+  app.get("/api/supplier/deliveries", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const denied = checkActingCapability(req, req.auth.organizationId, "deliveries.manage");
+      if (denied) return res.status(denied.status).json(denied.body);
+      if (req.auth.org.role !== "supplier") return res.status(403).json({ error: "forbidden" });
+      const date = typeof req.query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
+        ? req.query.date
+        : undefined;
+      const rows = await storage.getDeliveriesForSupplier(req.auth.organizationId, date);
+      res.json(rows);
+    } catch (error) {
+      console.error("Supplier deliveries error:", error);
+      res.status(500).json({ error: "Failed to load deliveries" });
+    }
+  });
+
+  app.get("/api/supplier/drivers", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const denied = checkActingCapability(req, req.auth.organizationId, "deliveries.manage");
+      if (denied) return res.status(denied.status).json(denied.body);
+      if (req.auth.org.role !== "supplier") return res.status(403).json({ error: "forbidden" });
+      const members = await storage.getMembers(req.auth.organizationId);
+      const drivers = members
+        .filter((m) => m.role === "driver")
+        .map(({ passwordHash: _ph, ...safe }) => safe);
+      res.json(drivers);
+    } catch (error) {
+      console.error("Supplier drivers error:", error);
+      res.status(500).json({ error: "Failed to load drivers" });
+    }
+  });
+
+  app.get("/api/supplier/driver-locations", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const denied = checkActingCapability(req, req.auth.organizationId, "deliveries.manage");
+      if (denied) return res.status(denied.status).json(denied.body);
+      if (req.auth.org.role !== "supplier") return res.status(403).json({ error: "forbidden" });
+      const rows = await storage.getDriverLocationsForSupplier(req.auth.organizationId);
+      res.json(rows.map((r) => ({ ...r, driver: { id: r.driver.id, name: r.driver.name, profileImageUrl: r.driver.profileImageUrl } })));
+    } catch (error) {
+      console.error("Driver locations error:", error);
+      res.status(500).json({ error: "Failed to load driver locations" });
+    }
+  });
+
+  // ── Driver: daily tour, detail, history ──────────────────────────────────
+  app.get("/api/driver/deliveries", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const date = typeof req.query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
+        ? req.query.date
+        : romeToday();
+      const rows = await storage.getDeliveriesForDriver(req.auth!.memberId, date);
+      res.json(rows);
+    } catch (error) {
+      console.error("Driver deliveries error:", error);
+      res.status(500).json({ error: "Failed to load deliveries" });
+    }
+  });
+
+  app.get("/api/driver/deliveries/history", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const rows = await storage.getDriverDeliveryHistory(req.auth!.memberId, 100);
+      res.json(rows);
+    } catch (error) {
+      console.error("Driver history error:", error);
+      res.status(500).json({ error: "Failed to load history" });
+    }
+  });
+
+  app.get("/api/driver/deliveries/:id", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const assignment = await storage.getDeliveryAssignment(req.params.id);
+      if (!assignment || assignment.driverMemberId !== req.auth!.memberId) {
+        return res.status(404).json({ error: "Delivery not found" });
+      }
+      const [hydrated] = await storage.getDeliveriesForDriver(req.auth!.memberId, assignment.deliveryDate)
+        .then((rows) => rows.filter((r) => r.id === assignment.id));
+      if (!hydrated) return res.status(404).json({ error: "Delivery not found" });
+      res.json(hydrated);
+    } catch (error) {
+      console.error("Driver delivery detail error:", error);
+      res.status(500).json({ error: "Failed to load delivery" });
+    }
+  });
+
+  // ── Driver: status progression (picked_up → en_route → arriving) ─────────
+  app.patch("/api/driver/deliveries/:id/status", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const { status } = driverStatusSchema.parse(req.body);
+      const assignment = await storage.getDeliveryAssignment(req.params.id);
+      if (!assignment || assignment.driverMemberId !== req.auth!.memberId) {
+        return res.status(404).json({ error: "Delivery not found" });
+      }
+      if (assignment.status === "delivered") {
+        return res.status(400).json({ error: "already_delivered", message: "Diese Lieferung wurde bereits zugestellt." });
+      }
+      // Forward-only status flow: assigned → picked_up → en_route → arriving.
+      // From "problem" the driver may resume at any active step.
+      const STATUS_RANK: Record<string, number> = { assigned: 0, picked_up: 1, en_route: 2, arriving: 3 };
+      if (assignment.status !== "problem") {
+        const currentRank = STATUS_RANK[assignment.status] ?? 0;
+        if (STATUS_RANK[status] <= currentRank) {
+          return res.status(400).json({
+            error: "invalid_transition",
+            message: `Statuswechsel von "${assignment.status}" zu "${status}" ist nicht erlaubt.`,
+          });
+        }
+      }
+      const patch: Record<string, unknown> = { status };
+      if (status === "en_route" && !assignment.enRouteAt) patch.enRouteAt = new Date();
+      if (status === "arriving" && !assignment.arrivingAt) patch.arrivingAt = new Date();
+      const updated = await storage.updateDeliveryAssignment(assignment.id, patch);
+
+      const order = await storage.getOrder(assignment.orderId);
+      // Departing moves the ORDER to in_delivery (no stock movement — stock is
+      // outbounded only on delivered). Conflicts are non-fatal: the sub-state
+      // update already succeeded.
+      if (status === "en_route" && order && ["confirmed", "partially_confirmed"].includes(order.status)) {
+        try {
+          await transitionOrderWithStock({
+            order,
+            newStatus: "in_delivery",
+            previousStatus: order.status,
+            changedByMemberId: req.auth!.memberId,
+            actorName: req.auth!.member.name,
+            movementType: null,
+          });
+        } catch (err) {
+          if (!(err instanceof OrderTransitionConflictError)) throw err;
+        }
+      }
+
+      if (order) {
+        const titles: Record<string, string> = {
+          picked_up: `Lieferung wird vorbereitet #${formatOrderNumber(order)}`,
+          en_route: `Lieferung unterwegs #${formatOrderNumber(order)}`,
+          arriving: `Lieferung kommt gleich an #${formatOrderNumber(order)}`,
+        };
+        const bodies: Record<string, string> = {
+          picked_up: `Ihre Bestellung #${formatOrderNumber(order)} wurde vom Fahrer übernommen.`,
+          en_route: `Ihre Bestellung #${formatOrderNumber(order)} ist jetzt unterwegs.`,
+          arriving: `Ihr Fahrer trifft in Kürze mit Bestellung #${formatOrderNumber(order)} ein.`,
+        };
+        await createNotificationWithPush({
+          userId: order.restaurantId,
+          type: "delivery_update",
+          title: titles[status],
+          message: bodies[status],
+          referenceId: order.id,
+        }, "restaurant");
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      console.error("Driver status error:", error);
+      res.status(500).json({ error: "Failed to update status" });
+    }
+  });
+
+  // ── Driver: mark delivered (with optional proof of delivery) ─────────────
+  app.post("/api/driver/deliveries/:id/complete", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const parsed = completeDeliverySchema.parse(req.body);
+      const assignment = await storage.getDeliveryAssignment(req.params.id);
+      if (!assignment || assignment.driverMemberId !== req.auth!.memberId) {
+        return res.status(404).json({ error: "Delivery not found" });
+      }
+      if (assignment.status === "delivered") {
+        return res.status(400).json({ error: "already_delivered", message: "Diese Lieferung wurde bereits zugestellt." });
+      }
+      // Completion requires the delivery to be underway (picked up at minimum);
+      // a freshly assigned stop cannot jump straight to delivered.
+      if (assignment.status === "assigned") {
+        return res.status(400).json({
+          error: "invalid_transition",
+          message: "Die Lieferung muss zuerst übernommen werden, bevor sie zugestellt werden kann.",
+        });
+      }
+
+      const order = await storage.getOrder(assignment.orderId);
+      // Order transition happens FIRST (it can fail on insufficient state) so
+      // the assignment never says delivered while the order does not.
+      if (order && !["delivered", "cancelled"].includes(order.status)) {
+        try {
+          await transitionOrderWithStock({
+            order,
+            newStatus: "delivered",
+            previousStatus: order.status,
+            changedByMemberId: req.auth!.memberId,
+            actorName: req.auth!.member.name,
+            movementType: "order_outbounded",
+            noteFn: (item, qty) => `Bestellung #${formatOrderNumber(order)} zugestellt – ${qty}x ${item.productName} ausgelagert`,
+          });
+        } catch (err) {
+          if (!(err instanceof OrderTransitionConflictError)) throw err;
+        }
+      }
+
+      const updated = await storage.updateDeliveryAssignment(assignment.id, {
+        status: "delivered",
+        deliveredAt: new Date(),
+        podNote: parsed.podNote ?? null,
+        podPhotoUrl: parsed.podPhotoUrl ?? null,
+        podRecipient: parsed.podRecipient ?? null,
+        problemType: null,
+        problemNote: null,
+      });
+
+      if (order) {
+        await createNotificationWithPush({
+          userId: order.restaurantId,
+          type: "delivery_update",
+          title: `Bestellung geliefert #${formatOrderNumber(order)}`,
+          message: `Ihre Bestellung #${formatOrderNumber(order)} wurde soeben zugestellt.`,
+          referenceId: order.id,
+        }, "restaurant");
+        await createNotificationWithPush({
+          userId: order.supplierId,
+          type: "delivery_update",
+          title: `Zugestellt #${formatOrderNumber(order)}`,
+          message: `${req.auth!.member.name} hat Bestellung #${formatOrderNumber(order)} zugestellt.`,
+          referenceId: order.id,
+        }, "supplier");
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      console.error("Driver complete error:", error);
+      res.status(500).json({ error: "Failed to complete delivery" });
+    }
+  });
+
+  // ── Driver: report a problem at a stop ────────────────────────────────────
+  app.post("/api/driver/deliveries/:id/problem", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const parsed = deliveryProblemSchema.parse(req.body);
+      const assignment = await storage.getDeliveryAssignment(req.params.id);
+      if (!assignment || assignment.driverMemberId !== req.auth!.memberId) {
+        return res.status(404).json({ error: "Delivery not found" });
+      }
+      if (assignment.status === "delivered") {
+        return res.status(400).json({ error: "already_delivered", message: "Diese Lieferung wurde bereits zugestellt." });
+      }
+      const updated = await storage.updateDeliveryAssignment(assignment.id, {
+        status: "problem",
+        problemType: parsed.problemType,
+        problemNote: parsed.note ?? null,
+        problemReportedAt: new Date(),
+      });
+
+      const order = await storage.getOrder(assignment.orderId);
+      if (order) {
+        const problemLabels: Record<string, string> = {
+          not_reachable: "Kunde nicht erreichbar",
+          refused: "Annahme verweigert",
+          damaged: "Ware beschädigt",
+          wrong_address: "Falsche Adresse",
+          traffic: "Verkehrsproblem",
+          other: "Sonstiges Problem",
+        };
+        await createNotificationWithPush({
+          userId: order.supplierId,
+          type: "delivery_problem",
+          title: `Lieferproblem #${formatOrderNumber(order)}`,
+          message: `${req.auth!.member.name}: ${problemLabels[parsed.problemType]}${parsed.note ? ` – ${parsed.note}` : ""}`,
+          referenceId: order.id,
+        }, "supplier");
+        await createNotificationWithPush({
+          userId: order.restaurantId,
+          type: "delivery_update",
+          title: `Lieferverzögerung #${formatOrderNumber(order)}`,
+          message: `Bei der Zustellung von Bestellung #${formatOrderNumber(order)} gibt es eine Verzögerung. Der Lieferant wurde informiert.`,
+          referenceId: order.id,
+        }, "restaurant");
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      console.error("Driver problem error:", error);
+      res.status(500).json({ error: "Failed to report problem" });
+    }
+  });
+
+  // ── Driver: route planning (manual reorder + traffic-aware optimize) ─────
+  app.patch("/api/driver/route/reorder", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const parsed = reorderRouteSchema.parse(req.body);
+      await storage.reorderDeliveryStops(req.auth!.memberId, parsed.deliveryDate, parsed.orderedIds);
+      const rows = await storage.getDeliveriesForDriver(req.auth!.memberId, parsed.deliveryDate);
+      res.json(rows);
+    } catch (error: any) {
+      if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      console.error("Route reorder error:", error);
+      res.status(500).json({ error: "Failed to reorder route" });
+    }
+  });
+
+  app.post("/api/driver/route/optimize", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const date = typeof req.body?.deliveryDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.body.deliveryDate)
+        ? req.body.deliveryDate
+        : romeToday();
+      const deliveries = await storage.getDeliveriesForDriver(req.auth!.memberId, date);
+      const open = deliveries.filter((d) => !["delivered", "problem"].includes(d.status));
+      const done = deliveries.filter((d) => ["delivered", "problem"].includes(d.status));
+      const stops: OptimizableStop[] = [];
+      for (const d of open) {
+        const lat = d.restaurant.latitude ? parseFloat(d.restaurant.latitude) : NaN;
+        const lng = d.restaurant.longitude ? parseFloat(d.restaurant.longitude) : NaN;
+        if (Number.isFinite(lat) && Number.isFinite(lng)) stops.push({ id: d.id, lat, lng });
+      }
+      if (stops.length < 2) {
+        return res.json({ deliveries, optimized: false, trafficAware: false, message: "Zu wenige Stopps mit Adresskoordinaten für eine Optimierung." });
+      }
+      // Start from the driver's live position if fresh, else the depot (org address).
+      let origin: { lat: number; lng: number } | null = null;
+      const loc = await storage.getDriverLocation(req.auth!.memberId);
+      if (loc && Date.now() - new Date(loc.updatedAt).getTime() < 30 * 60 * 1000) {
+        origin = { lat: parseFloat(loc.latitude), lng: parseFloat(loc.longitude) };
+      }
+      if (!origin) {
+        const org = req.auth!.org;
+        if (org.latitude && org.longitude) origin = { lat: parseFloat(org.latitude), lng: parseFloat(org.longitude) };
+      }
+      if (!origin) origin = { lat: stops[0].lat, lng: stops[0].lng };
+
+      const { orderedIds, trafficAware } = await optimizeStopOrder(stops, origin);
+      // Stops without coordinates keep their relative order at the end; the
+      // completed stops keep their sequence positions first (history stays put).
+      const noCoord = open.filter((d) => !orderedIds.includes(d.id)).map((d) => d.id);
+      const finalOrder = [...done.map((d) => d.id), ...orderedIds, ...noCoord];
+      await storage.reorderDeliveryStops(req.auth!.memberId, date, finalOrder);
+      const rows = await storage.getDeliveriesForDriver(req.auth!.memberId, date);
+      res.json({ deliveries: rows, optimized: true, trafficAware });
+    } catch (error) {
+      console.error("Route optimize error:", error);
+      res.status(500).json({ error: "Failed to optimize route" });
+    }
+  });
+
+  // ── Driver: live location ping (powers restaurant tracking + office map) ─
+  app.post("/api/driver/location", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const parsed = driverLocationSchema.parse(req.body);
+      const row = await storage.upsertDriverLocation({
+        driverMemberId: req.auth!.memberId,
+        supplierId: req.auth!.organizationId,
+        latitude: String(parsed.latitude),
+        longitude: String(parsed.longitude),
+        heading: parsed.heading ?? null,
+        speedKmh: parsed.speedKmh ?? null,
+      });
+      res.json(row);
+    } catch (error: any) {
+      if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      console.error("Driver location error:", error);
+      res.status(500).json({ error: "Failed to save location" });
+    }
+  });
+
+  // ── Restaurant: live tracking for an order (Uber-Eats-style) ─────────────
+  app.get("/api/orders/:id/tracking", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const order = await storage.getOrder(req.params.id);
+      if (!order) return res.status(404).json({ error: "Order not found" });
+      if (req.auth.organizationId !== order.restaurantId && req.auth.organizationId !== order.supplierId) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      const assignment = await storage.getDeliveryAssignmentByOrder(order.id);
+      if (!assignment) {
+        return res.json({ assignment: null, driver: null, location: null });
+      }
+      const driver = await storage.getMember(assignment.driverMemberId);
+      // Live position is only exposed while the driver is actually on the way
+      // to this stop — never a standing GPS feed of an employee.
+      let location: { latitude: string; longitude: string; updatedAt: Date } | null = null;
+      if (["en_route", "arriving"].includes(assignment.status)) {
+        const loc = await storage.getDriverLocation(assignment.driverMemberId);
+        if (loc && Date.now() - new Date(loc.updatedAt).getTime() < 15 * 60 * 1000) {
+          location = { latitude: loc.latitude, longitude: loc.longitude, updatedAt: loc.updatedAt };
+        }
+      }
+      res.json({
+        assignment: {
+          id: assignment.id,
+          status: assignment.status,
+          assignedAt: assignment.assignedAt,
+          enRouteAt: assignment.enRouteAt,
+          arrivingAt: assignment.arrivingAt,
+          deliveredAt: assignment.deliveredAt,
+          etaMinutes: assignment.etaMinutes,
+          distanceKm: assignment.distanceKm,
+        },
+        driver: driver ? { name: driver.name, phone: driver.phone ?? null, profileImageUrl: driver.profileImageUrl ?? null } : null,
+        location,
+      });
+    } catch (error) {
+      console.error("Order tracking error:", error);
+      res.status(500).json({ error: "Failed to load tracking" });
+    }
+  });
+
+  // ── Company-internal chat (office ↔ warehouse ↔ drivers) ─────────────────
+  app.get("/api/internal-chat/messages", async (req, res) => {
+    try {
+      const denied = requireSupplierMember(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const rows = await storage.getInternalMessages(req.auth!.organizationId);
+      // Never leak credential/auth columns of the sender over the API.
+      res.json(rows.map((r) => {
+        if (!r.sender) return r;
+        const { passwordHash: _ph, emailVerifiedAt: _ev, lastLoginAt: _ll, ...safeSender } = r.sender;
+        return { ...r, sender: safeSender };
+      }));
+    } catch (error) {
+      console.error("Internal chat load error:", error);
+      res.status(500).json({ error: "Failed to load messages" });
+    }
+  });
+
+  app.post("/api/internal-chat/messages", async (req, res) => {
+    try {
+      const denied = requireSupplierMember(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const parsed = internalMessageSchema.parse(req.body);
+      const message = await storage.createInternalMessage({
+        supplierId: req.auth!.organizationId,
+        senderMemberId: req.auth!.memberId,
+        content: parsed.content,
+        messageType: parsed.messageType ?? "text",
+        attachmentUrl: parsed.attachmentUrl ?? null,
+        attachmentName: parsed.attachmentName ?? null,
+      });
+      // Sender has obviously read up to their own message.
+      await storage.markInternalChatRead(req.auth!.organizationId, req.auth!.memberId);
+      await createNotificationWithPush({
+        userId: req.auth!.organizationId,
+        type: "internal_message",
+        title: `Team-Chat: ${req.auth!.member.name}`,
+        message: parsed.content.trim().length > 0 ? parsed.content.slice(0, 140) : "📎 Anhang",
+        referenceId: message.id,
+      }, "supplier");
+      res.json(message);
+    } catch (error: any) {
+      if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      console.error("Internal chat send error:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  app.post("/api/internal-chat/read", async (req, res) => {
+    try {
+      const denied = requireSupplierMember(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      await storage.markInternalChatRead(req.auth!.organizationId, req.auth!.memberId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Internal chat read error:", error);
+      res.status(500).json({ error: "Failed to mark read" });
+    }
+  });
+
+  app.get("/api/internal-chat/unread-count", async (req, res) => {
+    try {
+      const denied = requireSupplierMember(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const count = await storage.getInternalUnreadCount(req.auth!.organizationId, req.auth!.memberId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Internal chat unread error:", error);
+      res.status(500).json({ error: "Failed to load unread count" });
     }
   });
 

@@ -19,6 +19,7 @@ const FOCUSED_PAGES = [
   "/supplier/settings",
   "/supplier/profile",
   "/supplier/team",
+  "/supplier/team-chat",
   "/supplier/help",
 ];
 

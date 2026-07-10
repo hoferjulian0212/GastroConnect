@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { User, Member } from "@shared/schema";
-import { isWarehouseRole } from "@shared/permissions";
+import { isWarehouseRole, isDriverRole } from "@shared/permissions";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 
@@ -24,6 +24,7 @@ interface UserContextType {
   currentMember: Member | null;
   setCurrentMember: (member: Member | null) => void;
   isWarehouse: boolean;
+  isDriver: boolean;
   members: Member[];
   membersLoading: boolean;
   isAuthenticated: boolean;
@@ -60,6 +61,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const currentRole = (currentUser?.role as UserRole) ?? "restaurant";
   const isWarehouse = isWarehouseRole(currentMember?.role);
+  const isDriver = isDriverRole(currentMember?.role);
   const isAuthenticated = !!me?.authenticated;
   const providers: AuthProviders = me?.providers ?? { google: false };
 
@@ -93,6 +95,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         currentMember,
         setCurrentMember,
         isWarehouse,
+        isDriver,
         members,
         membersLoading,
         isAuthenticated,

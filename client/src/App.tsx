@@ -76,10 +76,19 @@ import SupplierComplaints from "@/pages/supplier/Complaints";
 import SupplierRestaurants from "@/pages/supplier/Restaurants";
 import SupplierPromotions from "@/pages/supplier/Promotions";
 import SupplierInventory from "@/pages/supplier/Inventory";
+import SupplierDrivers from "@/pages/supplier/Drivers";
 import SupplierInventoryRisk from "@/pages/supplier/InventoryRisk";
 import WarehouseHome from "@/pages/warehouse/Home";
 import WarehouseStock from "@/pages/warehouse/Stock";
-import { WAREHOUSE_ALLOWED_PATHS, type WarehouseAllowedPath } from "@shared/permissions";
+import TeamChat from "@/pages/supplier/TeamChat";
+import DriverHome from "@/pages/driver/Home";
+import DriverDeliveryDetail from "@/pages/driver/DeliveryDetail";
+import DriverRoutePlanner from "@/pages/driver/RoutePlanner";
+import DriverMap from "@/pages/driver/DriverMap";
+import DriverHistory from "@/pages/driver/History";
+import { DriverMobileNav } from "@/components/DriverMobileNav";
+import { useDriverLocation } from "@/hooks/use-driver-location";
+import { WAREHOUSE_ALLOWED_PATHS, type WarehouseAllowedPath, DRIVER_ALLOWED_PATHS, type DriverAllowedPath } from "@shared/permissions";
 import About from "@/pages/About";
 import AdminPmsRequests from "@/pages/Admin";
 import Documents from "@/pages/Documents";
@@ -133,6 +142,8 @@ function SupplierRouter() {
       <Route path="/supplier/promotions" component={SupplierPromotions} />
       <Route path="/supplier/inventory" component={SupplierInventory} />
       <Route path="/supplier/inventory-risk" component={SupplierInventoryRisk} />
+      <Route path="/supplier/drivers" component={SupplierDrivers} />
+      <Route path="/supplier/team-chat" component={TeamChat} />
       <Route path="/supplier/complaints/:id" component={ComplaintDetail} />
       <Route path="/supplier/complaints" component={SupplierComplaints} />
       <Route path="/supplier/settings" component={SupplierSettings} />
@@ -155,6 +166,7 @@ const WAREHOUSE_ROUTE_COMPONENTS: Record<WarehouseAllowedPath, React.ComponentTy
   "/supplier": WarehouseHome,
   "/supplier/inventory-risk": SupplierInventoryRisk,
   "/supplier/inventory": WarehouseStock,
+  "/supplier/team-chat": TeamChat,
   "/supplier/settings": SupplierSettings,
   "/supplier/profile": SupplierProfile,
   "/supplier/team": Team,
@@ -170,6 +182,41 @@ function WarehouseRouter() {
       <Route><Redirect to="/supplier" /></Route>
     </Switch>
   );
+}
+
+// Driver members get a focused, mobile-first delivery app (tour, route planner,
+// map, history, team chat) plus the shared org pages. The allow-list lives in
+// shared/permissions.ts (DRIVER_ALLOWED_PATHS) as the single source of truth.
+const DRIVER_ROUTE_COMPONENTS: Record<DriverAllowedPath, React.ComponentType<any>> = {
+  "/supplier": DriverHome,
+  "/supplier/delivery/:id": DriverDeliveryDetail,
+  "/supplier/route": DriverRoutePlanner,
+  "/supplier/map": DriverMap,
+  "/supplier/history": DriverHistory,
+  "/supplier/team-chat": TeamChat,
+  "/supplier/inbox": SupplierInbox,
+  "/supplier/settings": SupplierSettings,
+  "/supplier/profile": SupplierProfile,
+  "/supplier/team": Team,
+  "/supplier/help": Help,
+};
+
+function DriverRouter() {
+  return (
+    <Switch>
+      {DRIVER_ALLOWED_PATHS.map((p) => (
+        <Route key={p} path={p} component={DRIVER_ROUTE_COMPONENTS[p]} />
+      ))}
+      <Route><Redirect to="/supplier" /></Route>
+    </Switch>
+  );
+}
+
+// Streams the driver's GPS position to the server while a stop is active.
+// Rendered as a component (not a bare hook call) so it only runs for drivers.
+function DriverLocationStreamer() {
+  useDriverLocation();
+  return null;
 }
 
 // Keeps the user within their organization's role area. Identity itself comes
@@ -421,7 +468,7 @@ function HeaderNavDropdown({ item, location }: { item: NavItem; location: string
 }
 
 function HeaderNav() {
-  const { currentRole, isWarehouse } = useUser();
+  const { currentRole, isWarehouse, isDriver } = useUser();
   const [location] = useLocation();
   const { lang } = useLanguage();
 
@@ -458,6 +505,7 @@ function HeaderNav() {
       label: lang === 'de' ? 'Bestellungen' : 'Ordini',
       children: [
         { href: '/supplier/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
+        { href: '/supplier/drivers', label: lang === 'de' ? 'Fahrer' : 'Autisti' },
         { href: '/supplier/complaints', label: lang === 'de' ? 'Reklamationen' : 'Reclami' },
         { href: '/supplier/documents', label: lang === 'de' ? 'Dokumente' : 'Documenti' },
       ],
@@ -471,6 +519,7 @@ function HeaderNav() {
         { href: '/supplier/restaurants', label: lang === 'de' ? 'Kunden' : 'Clienti' },
       ],
     },
+    { href: '/supplier/team-chat', label: 'Team-Chat' },
     { href: '/supplier/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },
   ];
 
@@ -481,7 +530,16 @@ function HeaderNav() {
     { href: '/supplier/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },
   ];
 
-  const links = isWarehouse ? warehouseLinks : currentRole === 'restaurant' ? restaurantLinks : supplierLinks;
+  const driverLinks: NavItem[] = [
+    { href: '/supplier', label: lang === 'de' ? 'Lieferungen' : 'Consegne', exact: true },
+    { href: '/supplier/route', label: lang === 'de' ? 'Route' : 'Percorso' },
+    { href: '/supplier/map', label: lang === 'de' ? 'Karte' : 'Mappa' },
+    { href: '/supplier/history', label: lang === 'de' ? 'Verlauf' : 'Cronologia' },
+    { href: '/supplier/team-chat', label: 'Team-Chat' },
+    { href: '/supplier/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },
+  ];
+
+  const links = isDriver ? driverLinks : isWarehouse ? warehouseLinks : currentRole === 'restaurant' ? restaurantLinks : supplierLinks;
 
   return (
     <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 xl:gap-2 min-w-0 overflow-x-auto scrollbar-hide" data-testid="header-nav">
@@ -649,7 +707,7 @@ function DesktopProfileButton() {
 }
 
 function AppLayout() {
-  const { currentRole, isWarehouse, isLoading, isAuthenticated } = useUser();
+  const { currentRole, isWarehouse, isDriver, isLoading, isAuthenticated } = useUser();
   const { isInChat } = useChat();
   const [location] = useLocation();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -809,11 +867,12 @@ function AppLayout() {
             <main className={`flex-1 flex flex-col min-h-0 ${isDetailPage ? 'p-0 pb-0' : isInboxPage ? 'pt-0 pb-0 md:pb-4' : 'pt-0 pb-0 md:pb-6'} ${isDetailPage ? '!p-0 !pb-0 md:!p-0 md:!pb-0' : ''}`}>
               <div key={location.split("?")[0]} className="animate-page-enter flex-1 flex flex-col min-h-0">
                 <PageHero />
-                {location.startsWith("/restaurant") ? <RestaurantRouter /> : isWarehouse ? <WarehouseRouter /> : <SupplierRouter />}
+                {location.startsWith("/restaurant") ? <RestaurantRouter /> : isDriver ? <DriverRouter /> : isWarehouse ? <WarehouseRouter /> : <SupplierRouter />}
               </div>
             </main>
           </div>
-          {!isDetailPage && !isInChat && (currentRole === "supplier" ? (isWarehouse ? <WarehouseMobileNav /> : <SupplierMobileNav />) : <RestaurantMobileNav />)}
+          {!isDetailPage && !isInChat && (currentRole === "supplier" ? (isDriver ? <DriverMobileNav /> : isWarehouse ? <WarehouseMobileNav /> : <SupplierMobileNav />) : <RestaurantMobileNav />)}
+          {isDriver && <DriverLocationStreamer />}
           <GlobalSearch />
           <AiAssistant />
           <KeyboardShortcuts />

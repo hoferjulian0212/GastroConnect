@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { applyBucketMovement } from "./stockBuckets";
-import { eq, and, desc, or, sql, ne, inArray, gte, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, desc, or, sql, ne, inArray, gt, gte, isNull, isNotNull } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
@@ -50,6 +50,11 @@ import {
   type Invitation, type InsertInvitation, type PasswordReset, type InsertPasswordReset,
   type EmailVerification, type InsertEmailVerification,
   type OauthAccount, type InsertOauthAccount, type OauthProvider,
+  deliveryAssignments, driverLocations, internalMessages, internalChatReads,
+  type DeliveryAssignment, type InsertDeliveryAssignment, type DeliveryAssignmentWithDetails,
+  type DriverLocation, type InsertDriverLocation, type DriverLocationWithDriver,
+  type InternalMessage, type InsertInternalMessage, type InternalMessageWithSender,
+  type InternalChatRead, type OrderItemWithProduct,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { encryptJson, decryptJson } from "./erpCrypto";
@@ -275,6 +280,26 @@ export interface IStorage {
   getOauthAccount(provider: OauthProvider, providerUserId: string): Promise<OauthAccount | undefined>;
   getOauthAccountsForMember(memberId: string): Promise<OauthAccount[]>;
   createOauthAccount(data: InsertOauthAccount): Promise<OauthAccount>;
+
+  // Driver module: delivery assignments, live locations, internal company chat
+  runDriverMigration(): Promise<void>;
+  createDeliveryAssignment(data: InsertDeliveryAssignment): Promise<DeliveryAssignment>;
+  getDeliveryAssignment(id: string): Promise<DeliveryAssignment | undefined>;
+  getDeliveryAssignmentByOrder(orderId: string): Promise<DeliveryAssignment | undefined>;
+  getDeliveriesForDriver(driverMemberId: string, deliveryDate?: string): Promise<DeliveryAssignmentWithDetails[]>;
+  getDriverDeliveryHistory(driverMemberId: string, limit?: number): Promise<DeliveryAssignmentWithDetails[]>;
+  getDeliveriesForSupplier(supplierId: string, deliveryDate?: string): Promise<DeliveryAssignmentWithDetails[]>;
+  updateDeliveryAssignment(id: string, data: Partial<DeliveryAssignment>): Promise<DeliveryAssignment | undefined>;
+  deleteDeliveryAssignment(id: string): Promise<void>;
+  reorderDeliveryStops(driverMemberId: string, deliveryDate: string, orderedIds: string[]): Promise<void>;
+  upsertDriverLocation(data: InsertDriverLocation): Promise<DriverLocation>;
+  getDriverLocation(driverMemberId: string): Promise<DriverLocation | undefined>;
+  getDriverLocationsForSupplier(supplierId: string): Promise<DriverLocationWithDriver[]>;
+  getInternalMessages(supplierId: string, limit?: number): Promise<InternalMessageWithSender[]>;
+  createInternalMessage(data: InsertInternalMessage): Promise<InternalMessage>;
+  markInternalChatRead(supplierId: string, memberId: string): Promise<void>;
+  getInternalChatReads(supplierId: string): Promise<InternalChatRead[]>;
+  getInternalUnreadCount(supplierId: string, memberId: string): Promise<number>;
 
   // Platform admins (GastroConnect system owners — separate from org-level roles)
   runAdminMigration(): Promise<void>;
@@ -4882,6 +4907,286 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ===== Platform Admins =====
+
+  // ─── Driver module (Task #173) ──────────────────────────────────────────
+  // Idempotent startup DDL — NEVER a blind drizzle push (it can drop
+  // user_sessions). Every statement is safe to re-run on every boot.
+  async runDriverMigration(): Promise<void> {
+    await db.execute(sql`ALTER TYPE member_role ADD VALUE IF NOT EXISTS 'driver'`);
+    await db.execute(sql`ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'delivery_assigned'`);
+    await db.execute(sql`ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'delivery_update'`);
+    await db.execute(sql`ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'delivery_problem'`);
+    await db.execute(sql`ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'internal_message'`);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE delivery_status AS ENUM ('assigned', 'picked_up', 'en_route', 'arriving', 'delivered', 'problem');
+      EXCEPTION WHEN duplicate_object THEN null; END $$
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS delivery_assignments (
+        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        order_id varchar(36) NOT NULL REFERENCES orders(id),
+        supplier_id varchar(36) NOT NULL REFERENCES users(id),
+        restaurant_id varchar(36) NOT NULL REFERENCES users(id),
+        driver_member_id varchar(36) NOT NULL REFERENCES members(id),
+        assigned_by_member_id varchar(36) REFERENCES members(id),
+        delivery_date varchar(10) NOT NULL,
+        stop_sequence integer NOT NULL DEFAULT 0,
+        status delivery_status NOT NULL DEFAULT 'assigned',
+        time_window text,
+        priority varchar(10) NOT NULL DEFAULT 'normal',
+        packages integer,
+        notes text,
+        assigned_at timestamp NOT NULL DEFAULT now(),
+        en_route_at timestamp,
+        arriving_at timestamp,
+        delivered_at timestamp,
+        pod_note text,
+        pod_photo_url text,
+        pod_recipient text,
+        problem_type text,
+        problem_note text,
+        problem_reported_at timestamp,
+        eta_minutes integer,
+        distance_km numeric(8,2),
+        created_at timestamp NOT NULL DEFAULT now(),
+        updated_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_delivery_assignments_order ON delivery_assignments (order_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_delivery_assignments_driver_date ON delivery_assignments (driver_member_id, delivery_date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_delivery_assignments_supplier_date ON delivery_assignments (supplier_id, delivery_date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_delivery_assignments_restaurant ON delivery_assignments (restaurant_id)`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS driver_locations (
+        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        driver_member_id varchar(36) NOT NULL REFERENCES members(id),
+        supplier_id varchar(36) NOT NULL REFERENCES users(id),
+        latitude numeric(10,7) NOT NULL,
+        longitude numeric(10,7) NOT NULL,
+        heading integer,
+        speed_kmh integer,
+        updated_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_driver_locations_member ON driver_locations (driver_member_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_driver_locations_supplier ON driver_locations (supplier_id)`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS internal_messages (
+        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        supplier_id varchar(36) NOT NULL REFERENCES users(id),
+        sender_member_id varchar(36) NOT NULL REFERENCES members(id),
+        content text NOT NULL DEFAULT '',
+        message_type varchar(20) NOT NULL DEFAULT 'text',
+        attachment_url text,
+        attachment_name text,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_internal_messages_supplier_created ON internal_messages (supplier_id, created_at)`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS internal_chat_reads (
+        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        supplier_id varchar(36) NOT NULL REFERENCES users(id),
+        member_id varchar(36) NOT NULL REFERENCES members(id),
+        last_read_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_internal_chat_reads_member ON internal_chat_reads (supplier_id, member_id)`);
+    console.log("[driver] delivery tables ready");
+  }
+
+  // Batch-hydrates assignments with order (incl. items+products), restaurant
+  // org and driver member — avoids N+1 queries on list endpoints.
+  private async hydrateDeliveryAssignments(rows: DeliveryAssignment[]): Promise<DeliveryAssignmentWithDetails[]> {
+    if (rows.length === 0) return [];
+    const orderIds = Array.from(new Set(rows.map((r) => r.orderId)));
+    const restaurantIds = Array.from(new Set(rows.map((r) => r.restaurantId)));
+    const driverIds = Array.from(new Set(rows.map((r) => r.driverMemberId)));
+    const [orderRows, itemRows, restaurantRows, driverRows] = await Promise.all([
+      db.select().from(orders).where(inArray(orders.id, orderIds)),
+      db.select({ item: orderItems, product: products })
+        .from(orderItems)
+        .leftJoin(products, eq(orderItems.productId, products.id))
+        .where(inArray(orderItems.orderId, orderIds)),
+      db.select().from(users).where(inArray(users.id, restaurantIds)),
+      db.select().from(members).where(inArray(members.id, driverIds)),
+    ]);
+    const orderMap = new Map(orderRows.map((o) => [o.id, o]));
+    const itemsByOrder = new Map<string, OrderItemWithProduct[]>();
+    for (const { item, product } of itemRows) {
+      const list = itemsByOrder.get(item.orderId) ?? [];
+      list.push({ ...item, productImageUrl: product?.imageUrl ?? null, productUnit: product?.unit ?? null });
+      itemsByOrder.set(item.orderId, list);
+    }
+    const restaurantMap = new Map(restaurantRows.map((u) => [u.id, u]));
+    // Strip credential/auth columns so delivery payloads never leak them.
+    const driverMap = new Map(driverRows.map((m) => {
+      const { passwordHash: _ph, emailVerifiedAt: _ev, lastLoginAt: _ll, ...safe } = m;
+      return [m.id, safe] as const;
+    }));
+    return rows
+      .filter((r) => orderMap.has(r.orderId) && restaurantMap.has(r.restaurantId) && driverMap.has(r.driverMemberId))
+      .map((r) => ({
+        ...r,
+        order: { ...orderMap.get(r.orderId)!, items: itemsByOrder.get(r.orderId) ?? [] },
+        restaurant: restaurantMap.get(r.restaurantId)!,
+        driver: driverMap.get(r.driverMemberId)!,
+      }));
+  }
+
+  async createDeliveryAssignment(data: InsertDeliveryAssignment): Promise<DeliveryAssignment> {
+    const [row] = await db.insert(deliveryAssignments).values(data).returning();
+    return row;
+  }
+
+  async getDeliveryAssignment(id: string): Promise<DeliveryAssignment | undefined> {
+    const [row] = await db.select().from(deliveryAssignments).where(eq(deliveryAssignments.id, id)).limit(1);
+    return row;
+  }
+
+  async getDeliveryAssignmentByOrder(orderId: string): Promise<DeliveryAssignment | undefined> {
+    const [row] = await db.select().from(deliveryAssignments).where(eq(deliveryAssignments.orderId, orderId)).limit(1);
+    return row;
+  }
+
+  async getDeliveriesForDriver(driverMemberId: string, deliveryDate?: string): Promise<DeliveryAssignmentWithDetails[]> {
+    const conditions = [eq(deliveryAssignments.driverMemberId, driverMemberId)];
+    if (deliveryDate) conditions.push(eq(deliveryAssignments.deliveryDate, deliveryDate));
+    const rows = await db.select().from(deliveryAssignments)
+      .where(and(...conditions))
+      .orderBy(deliveryAssignments.stopSequence, deliveryAssignments.assignedAt);
+    return this.hydrateDeliveryAssignments(rows);
+  }
+
+  async getDriverDeliveryHistory(driverMemberId: string, limit = 100): Promise<DeliveryAssignmentWithDetails[]> {
+    const rows = await db.select().from(deliveryAssignments)
+      .where(and(
+        eq(deliveryAssignments.driverMemberId, driverMemberId),
+        inArray(deliveryAssignments.status, ["delivered", "problem"]),
+      ))
+      .orderBy(desc(deliveryAssignments.updatedAt))
+      .limit(limit);
+    return this.hydrateDeliveryAssignments(rows);
+  }
+
+  async getDeliveriesForSupplier(supplierId: string, deliveryDate?: string): Promise<DeliveryAssignmentWithDetails[]> {
+    const conditions = [eq(deliveryAssignments.supplierId, supplierId)];
+    if (deliveryDate) conditions.push(eq(deliveryAssignments.deliveryDate, deliveryDate));
+    const rows = await db.select().from(deliveryAssignments)
+      .where(and(...conditions))
+      .orderBy(deliveryAssignments.stopSequence, desc(deliveryAssignments.assignedAt));
+    return this.hydrateDeliveryAssignments(rows);
+  }
+
+  async updateDeliveryAssignment(id: string, data: Partial<DeliveryAssignment>): Promise<DeliveryAssignment | undefined> {
+    const [row] = await db.update(deliveryAssignments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(deliveryAssignments.id, id))
+      .returning();
+    return row;
+  }
+
+  async deleteDeliveryAssignment(id: string): Promise<void> {
+    await db.delete(deliveryAssignments).where(eq(deliveryAssignments.id, id));
+  }
+
+  async reorderDeliveryStops(driverMemberId: string, deliveryDate: string, orderedIds: string[]): Promise<void> {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db.update(deliveryAssignments)
+        .set({ stopSequence: i, updatedAt: new Date() })
+        .where(and(
+          eq(deliveryAssignments.id, orderedIds[i]),
+          eq(deliveryAssignments.driverMemberId, driverMemberId),
+          eq(deliveryAssignments.deliveryDate, deliveryDate),
+        ));
+    }
+  }
+
+  async upsertDriverLocation(data: InsertDriverLocation): Promise<DriverLocation> {
+    const [row] = await db.insert(driverLocations)
+      .values(data)
+      .onConflictDoUpdate({
+        target: driverLocations.driverMemberId,
+        set: {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          heading: data.heading ?? null,
+          speedKmh: data.speedKmh ?? null,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return row;
+  }
+
+  async getDriverLocation(driverMemberId: string): Promise<DriverLocation | undefined> {
+    const [row] = await db.select().from(driverLocations).where(eq(driverLocations.driverMemberId, driverMemberId)).limit(1);
+    return row;
+  }
+
+  async getDriverLocationsForSupplier(supplierId: string): Promise<DriverLocationWithDriver[]> {
+    const rows = await db.select({ location: driverLocations, driver: members })
+      .from(driverLocations)
+      .innerJoin(members, eq(driverLocations.driverMemberId, members.id))
+      .where(eq(driverLocations.supplierId, supplierId));
+    // Strip credential/auth columns so location payloads never leak them.
+    return rows.map((r) => {
+      const { passwordHash: _ph, emailVerifiedAt: _ev, lastLoginAt: _ll, ...safeDriver } = r.driver;
+      return { ...r.location, driver: safeDriver };
+    });
+  }
+
+  async getInternalMessages(supplierId: string, limit = 200): Promise<InternalMessageWithSender[]> {
+    const rows = await db.select({ message: internalMessages, sender: members })
+      .from(internalMessages)
+      .leftJoin(members, eq(internalMessages.senderMemberId, members.id))
+      .where(eq(internalMessages.supplierId, supplierId))
+      .orderBy(desc(internalMessages.createdAt))
+      .limit(limit);
+    rows.reverse();
+    // Read receipts: a message counts as "read by all" when every OTHER member
+    // with a read cursor has read past it and at least one such cursor exists.
+    const reads = await this.getInternalChatReads(supplierId);
+    return rows.map((r) => {
+      const others = reads.filter((x) => x.memberId !== r.message.senderMemberId);
+      const readByAll = others.length > 0 && others.every((x) => x.lastReadAt >= r.message.createdAt);
+      return { ...r.message, sender: r.sender, readByAll };
+    });
+  }
+
+  async createInternalMessage(data: InsertInternalMessage): Promise<InternalMessage> {
+    const [row] = await db.insert(internalMessages).values(data).returning();
+    return row;
+  }
+
+  async markInternalChatRead(supplierId: string, memberId: string): Promise<void> {
+    await db.insert(internalChatReads)
+      .values({ supplierId, memberId, lastReadAt: new Date() })
+      .onConflictDoUpdate({
+        target: [internalChatReads.supplierId, internalChatReads.memberId],
+        set: { lastReadAt: new Date() },
+      });
+  }
+
+  async getInternalChatReads(supplierId: string): Promise<InternalChatRead[]> {
+    return db.select().from(internalChatReads).where(eq(internalChatReads.supplierId, supplierId));
+  }
+
+  async getInternalUnreadCount(supplierId: string, memberId: string): Promise<number> {
+    const [readRow] = await db.select().from(internalChatReads)
+      .where(and(eq(internalChatReads.supplierId, supplierId), eq(internalChatReads.memberId, memberId)))
+      .limit(1);
+    const conditions = [
+      eq(internalMessages.supplierId, supplierId),
+      ne(internalMessages.senderMemberId, memberId),
+    ];
+    if (readRow) conditions.push(gt(internalMessages.createdAt, readRow.lastReadAt));
+    const res = await db.select({ count: sql<number>`count(*)::int` })
+      .from(internalMessages)
+      .where(and(...conditions));
+    return res[0]?.count ?? 0;
+  }
 
   async runAdminMigration(): Promise<void> {
     await db.execute(sql`
