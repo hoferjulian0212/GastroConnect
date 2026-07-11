@@ -54,7 +54,7 @@ import {
   type DeliveryAssignment, type InsertDeliveryAssignment, type DeliveryAssignmentWithDetails,
   type DriverLocation, type InsertDriverLocation, type DriverLocationWithDriver,
   type InternalMessage, type InsertInternalMessage, type InternalMessageWithSender,
-  type InternalChatRead, type OrderItemWithProduct,
+  type InternalThread, type SafeMember, type OrderItemWithProduct,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { encryptJson, decryptJson } from "./erpCrypto";
@@ -295,11 +295,11 @@ export interface IStorage {
   upsertDriverLocation(data: InsertDriverLocation): Promise<DriverLocation>;
   getDriverLocation(driverMemberId: string): Promise<DriverLocation | undefined>;
   getDriverLocationsForSupplier(supplierId: string): Promise<DriverLocationWithDriver[]>;
-  getInternalMessages(supplierId: string, limit?: number): Promise<InternalMessageWithSender[]>;
+  getInternalMessages(orgId: string, memberId: string, otherMemberId: string, limit?: number): Promise<InternalMessageWithSender[]>;
+  getInternalThreads(orgId: string, memberId: string): Promise<InternalThread[]>;
   createInternalMessage(data: InsertInternalMessage): Promise<InternalMessage>;
-  markInternalChatRead(supplierId: string, memberId: string): Promise<void>;
-  getInternalChatReads(supplierId: string): Promise<InternalChatRead[]>;
-  getInternalUnreadCount(supplierId: string, memberId: string): Promise<number>;
+  markInternalChatRead(orgId: string, memberId: string, otherMemberId: string): Promise<void>;
+  getInternalUnreadCount(orgId: string, memberId: string): Promise<number>;
 
   // Platform admins (GastroConnect system owners — separate from org-level roles)
   runAdminMigration(): Promise<void>;
@@ -4993,7 +4993,16 @@ export class DatabaseStorage implements IStorage {
         last_read_at timestamp NOT NULL DEFAULT now()
       )
     `);
-    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_internal_chat_reads_member ON internal_chat_reads (supplier_id, member_id)`);
+    // ── Internal chat: group channel → 1:1 direct messages ─────────────────
+    // recipient_member_id NULL marks legacy group-channel rows (hidden in UI).
+    await db.execute(sql`ALTER TABLE internal_messages ADD COLUMN IF NOT EXISTS recipient_member_id varchar(36) REFERENCES members(id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_internal_messages_recipient ON internal_messages (supplier_id, recipient_member_id, created_at)`);
+    // Read cursors become per member-pair; legacy per-member cursors are dropped.
+    await db.execute(sql`ALTER TABLE internal_chat_reads ADD COLUMN IF NOT EXISTS other_member_id varchar(36) REFERENCES members(id)`);
+    await db.execute(sql`DELETE FROM internal_chat_reads WHERE other_member_id IS NULL`);
+    await db.execute(sql`ALTER TABLE internal_chat_reads ALTER COLUMN other_member_id SET NOT NULL`);
+    await db.execute(sql`DROP INDEX IF EXISTS uniq_internal_chat_reads_member`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_internal_chat_reads_pair ON internal_chat_reads (supplier_id, member_id, other_member_id)`);
     console.log("[driver] delivery tables ready");
   }
 
@@ -5138,22 +5147,108 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getInternalMessages(supplierId: string, limit = 200): Promise<InternalMessageWithSender[]> {
+  private sanitizeMember(m: Member): SafeMember {
+    const { passwordHash: _ph, emailVerifiedAt: _ev, lastLoginAt: _ll, ...safe } = m;
+    return safe;
+  }
+
+  // Messages of ONE direct thread (me ↔ other), oldest first. Read receipt per
+  // message: the partner's read cursor for this pair has passed the message.
+  async getInternalMessages(orgId: string, memberId: string, otherMemberId: string, limit = 300): Promise<InternalMessageWithSender[]> {
     const rows = await db.select({ message: internalMessages, sender: members })
       .from(internalMessages)
       .leftJoin(members, eq(internalMessages.senderMemberId, members.id))
-      .where(eq(internalMessages.supplierId, supplierId))
+      .where(and(
+        eq(internalMessages.supplierId, orgId),
+        or(
+          and(eq(internalMessages.senderMemberId, memberId), eq(internalMessages.recipientMemberId, otherMemberId)),
+          and(eq(internalMessages.senderMemberId, otherMemberId), eq(internalMessages.recipientMemberId, memberId)),
+        ),
+      ))
       .orderBy(desc(internalMessages.createdAt))
       .limit(limit);
     rows.reverse();
-    // Read receipts: a message counts as "read by all" when every OTHER member
-    // with a read cursor has read past it and at least one such cursor exists.
-    const reads = await this.getInternalChatReads(supplierId);
-    return rows.map((r) => {
-      const others = reads.filter((x) => x.memberId !== r.message.senderMemberId);
-      const readByAll = others.length > 0 && others.every((x) => x.lastReadAt >= r.message.createdAt);
-      return { ...r.message, sender: r.sender, readByAll };
-    });
+    const [partnerCursor] = await db.select().from(internalChatReads)
+      .where(and(
+        eq(internalChatReads.supplierId, orgId),
+        eq(internalChatReads.memberId, otherMemberId),
+        eq(internalChatReads.otherMemberId, memberId),
+      ))
+      .limit(1);
+    return rows.map((r) => ({
+      ...r.message,
+      sender: r.sender ? this.sanitizeMember(r.sender) : null,
+      readByPartner:
+        r.message.senderMemberId === memberId &&
+        !!partnerCursor && partnerCursor.lastReadAt >= r.message.createdAt,
+    }));
+  }
+
+  // Thread list for the internal inbox: one entry per member the caller has a
+  // DM history with — last message plus per-thread unread count. Fully
+  // SQL-aggregated so counts stay exact regardless of message volume.
+  async getInternalThreads(orgId: string, memberId: string): Promise<InternalThread[]> {
+    // Latest message per partner (DISTINCT ON keeps the newest row per pair).
+    const lastRes = await db.execute(sql`
+      SELECT DISTINCT ON (partner_id)
+        t.partner_id, t.id, t.supplier_id, t.sender_member_id, t.recipient_member_id,
+        t.content, t.message_type, t.attachment_url, t.attachment_name, t.created_at
+      FROM (
+        SELECT m.*,
+          CASE WHEN m.sender_member_id = ${memberId}
+               THEN m.recipient_member_id ELSE m.sender_member_id END AS partner_id
+        FROM internal_messages m
+        WHERE m.supplier_id = ${orgId}
+          AND m.recipient_member_id IS NOT NULL
+          AND (m.sender_member_id = ${memberId} OR m.recipient_member_id = ${memberId})
+      ) t
+      ORDER BY partner_id, created_at DESC
+    `);
+    if (lastRes.rows.length === 0) return [];
+
+    // Unread messages addressed to me, grouped by sender (= partner).
+    const unreadRes = await db.execute(sql`
+      SELECT m.sender_member_id AS partner_id, count(*)::int AS unread
+      FROM internal_messages m
+      LEFT JOIN internal_chat_reads r
+        ON r.supplier_id = m.supplier_id
+       AND r.member_id = ${memberId}
+       AND r.other_member_id = m.sender_member_id
+      WHERE m.supplier_id = ${orgId}
+        AND m.recipient_member_id = ${memberId}
+        AND (r.last_read_at IS NULL OR m.created_at > r.last_read_at)
+      GROUP BY m.sender_member_id
+    `);
+    const unreadByPartner = new Map(
+      unreadRes.rows.map((r: any) => [String(r.partner_id), Number(r.unread)]));
+
+    const partnerIds = lastRes.rows.map((r: any) => String(r.partner_id));
+    const partnerRows = await db.select().from(members).where(inArray(members.id, partnerIds));
+    const memberById = new Map(partnerRows.map((m) => [m.id, m]));
+
+    const threads: InternalThread[] = [];
+    for (const r of lastRes.rows as any[]) {
+      const partner = memberById.get(String(r.partner_id));
+      if (!partner) continue;
+      threads.push({
+        partner: this.sanitizeMember(partner),
+        lastMessage: {
+          id: r.id,
+          supplierId: r.supplier_id,
+          senderMemberId: r.sender_member_id,
+          recipientMemberId: r.recipient_member_id,
+          content: r.content,
+          messageType: r.message_type,
+          attachmentUrl: r.attachment_url,
+          attachmentName: r.attachment_name,
+          createdAt: new Date(r.created_at),
+        },
+        unreadCount: unreadByPartner.get(String(r.partner_id)) ?? 0,
+      });
+    }
+    threads.sort((a, b) =>
+      (b.lastMessage?.createdAt.getTime() ?? 0) - (a.lastMessage?.createdAt.getTime() ?? 0));
+    return threads;
   }
 
   async createInternalMessage(data: InsertInternalMessage): Promise<InternalMessage> {
@@ -5161,32 +5256,29 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
-  async markInternalChatRead(supplierId: string, memberId: string): Promise<void> {
+  async markInternalChatRead(orgId: string, memberId: string, otherMemberId: string): Promise<void> {
     await db.insert(internalChatReads)
-      .values({ supplierId, memberId, lastReadAt: new Date() })
+      .values({ supplierId: orgId, memberId, otherMemberId, lastReadAt: new Date() })
       .onConflictDoUpdate({
-        target: [internalChatReads.supplierId, internalChatReads.memberId],
+        target: [internalChatReads.supplierId, internalChatReads.memberId, internalChatReads.otherMemberId],
         set: { lastReadAt: new Date() },
       });
   }
 
-  async getInternalChatReads(supplierId: string): Promise<InternalChatRead[]> {
-    return db.select().from(internalChatReads).where(eq(internalChatReads.supplierId, supplierId));
-  }
-
-  async getInternalUnreadCount(supplierId: string, memberId: string): Promise<number> {
-    const [readRow] = await db.select().from(internalChatReads)
-      .where(and(eq(internalChatReads.supplierId, supplierId), eq(internalChatReads.memberId, memberId)))
-      .limit(1);
-    const conditions = [
-      eq(internalMessages.supplierId, supplierId),
-      ne(internalMessages.senderMemberId, memberId),
-    ];
-    if (readRow) conditions.push(gt(internalMessages.createdAt, readRow.lastReadAt));
-    const res = await db.select({ count: sql<number>`count(*)::int` })
-      .from(internalMessages)
-      .where(and(...conditions));
-    return res[0]?.count ?? 0;
+  // Total unread DMs addressed to the member (nav badge).
+  async getInternalUnreadCount(orgId: string, memberId: string): Promise<number> {
+    const res = await db.execute(sql`
+      SELECT count(*)::int AS count
+      FROM internal_messages m
+      LEFT JOIN internal_chat_reads r
+        ON r.supplier_id = m.supplier_id
+       AND r.member_id = ${memberId}
+       AND r.other_member_id = m.sender_member_id
+      WHERE m.supplier_id = ${orgId}
+        AND m.recipient_member_id = ${memberId}
+        AND (r.last_read_at IS NULL OR m.created_at > r.last_read_at)
+    `);
+    return (res.rows[0] as any)?.count ?? 0;
   }
 
   async runAdminMigration(): Promise<void> {

@@ -36,6 +36,7 @@ export function RestaurantMobileNav() {
     {
       title: lang === "de" ? "Mehr" : "Altro",
       items: [
+        { title: lang === "de" ? "Interner Chat" : "Chat interno", url: "/restaurant/team-chat", icon: Send },
         { title: t("common", "settings"), url: "/restaurant/settings", icon: Settings },
         { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/restaurant/help", icon: HelpCircle },
       ],

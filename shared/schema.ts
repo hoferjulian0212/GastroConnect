@@ -1436,13 +1436,16 @@ export const driverLocations = pgTable("driver_locations", {
   index("idx_driver_locations_supplier").on(table.supplierId),
 ]);
 
-// Company-internal chat: one channel per supplier org (office + warehouse +
-// drivers). Strictly isolated per company — supplierId is ALWAYS taken from the
-// session org, never from the client.
+// Company-internal 1:1 chat: any member can message any other member of the
+// SAME organization (office, warehouse, drivers — restaurants and suppliers
+// alike). Strictly isolated per company — supplierId carries the organization
+// id and is ALWAYS taken from the session org, never from the client.
+// recipientMemberId is NULL only on legacy group-channel rows (hidden in UI).
 export const internalMessages = pgTable("internal_messages", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   senderMemberId: varchar("sender_member_id", { length: 36 }).notNull().references(() => members.id),
+  recipientMemberId: varchar("recipient_member_id", { length: 36 }).references(() => members.id),
   content: text("content").default("").notNull(),
   // 'text' | 'image' | 'document'
   messageType: varchar("message_type", { length: 20 }).default("text").notNull(),
@@ -1451,16 +1454,19 @@ export const internalMessages = pgTable("internal_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_internal_messages_supplier_created").on(table.supplierId, table.createdAt),
+  index("idx_internal_messages_recipient").on(table.supplierId, table.recipientMemberId, table.createdAt),
 ]);
 
-// Per-member read cursor for the company chat (read receipts + unread counts).
+// Per-pair read cursor: member X has read the thread with member Y up to
+// lastReadAt (read receipts + unread counts per direct-message thread).
 export const internalChatReads = pgTable("internal_chat_reads", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   memberId: varchar("member_id", { length: 36 }).notNull().references(() => members.id),
+  otherMemberId: varchar("other_member_id", { length: 36 }).notNull().references(() => members.id),
   lastReadAt: timestamp("last_read_at").defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("uniq_internal_chat_reads_member").on(table.supplierId, table.memberId),
+  uniqueIndex("uniq_internal_chat_reads_pair").on(table.supplierId, table.memberId, table.otherMemberId),
 ]);
 
 export const insertDeliveryAssignmentSchema = createInsertSchema(deliveryAssignments).omit({
@@ -1490,8 +1496,17 @@ export type DeliveryAssignmentWithDetails = DeliveryAssignment & {
   driver: SafeMember;
 };
 export type InternalMessageWithSender = InternalMessage & {
-  sender: Member | null;
-  readByAll: boolean;
+  sender: SafeMember | null;
+  // 1:1 read receipt: the OTHER member's read cursor has passed this message.
+  readByPartner: boolean;
+};
+
+// One direct-message thread in the internal inbox: the partner member plus
+// last-message preview and unread count for the current member.
+export type InternalThread = {
+  partner: SafeMember;
+  lastMessage: InternalMessage | null;
+  unreadCount: number;
 };
 export type DriverLocationWithDriver = DriverLocation & { driver: SafeMember };
 

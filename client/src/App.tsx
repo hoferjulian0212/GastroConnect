@@ -80,7 +80,7 @@ import SupplierDrivers from "@/pages/supplier/Drivers";
 import SupplierInventoryRisk from "@/pages/supplier/InventoryRisk";
 import WarehouseHome from "@/pages/warehouse/Home";
 import WarehouseStock from "@/pages/warehouse/Stock";
-import TeamChat from "@/pages/supplier/TeamChat";
+import InternalChat from "@/pages/InternalChat";
 import DriverHome from "@/pages/driver/Home";
 import DriverDeliveryDetail from "@/pages/driver/DeliveryDetail";
 import DriverRoutePlanner from "@/pages/driver/RoutePlanner";
@@ -123,6 +123,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/cost-analysis" component={RestaurantCostAnalysis} />
       <Route path="/restaurant/price-comparison" component={RestaurantPriceComparison} />
       <Route path="/restaurant/calendar">{() => <CalendarPage role="restaurant" />}</Route>
+      <Route path="/restaurant/team-chat" component={InternalChat} />
       <Route path="/restaurant/team" component={Team} />
       <Route path="/restaurant/help" component={Help} />
       <Route component={NotFound} />
@@ -143,7 +144,7 @@ function SupplierRouter() {
       <Route path="/supplier/inventory" component={SupplierInventory} />
       <Route path="/supplier/inventory-risk" component={SupplierInventoryRisk} />
       <Route path="/supplier/drivers" component={SupplierDrivers} />
-      <Route path="/supplier/team-chat" component={TeamChat} />
+      <Route path="/supplier/team-chat" component={InternalChat} />
       <Route path="/supplier/complaints/:id" component={ComplaintDetail} />
       <Route path="/supplier/complaints" component={SupplierComplaints} />
       <Route path="/supplier/settings" component={SupplierSettings} />
@@ -166,7 +167,7 @@ const WAREHOUSE_ROUTE_COMPONENTS: Record<WarehouseAllowedPath, React.ComponentTy
   "/supplier": WarehouseHome,
   "/supplier/inventory-risk": SupplierInventoryRisk,
   "/supplier/inventory": WarehouseStock,
-  "/supplier/team-chat": TeamChat,
+  "/supplier/team-chat": InternalChat,
   "/supplier/settings": SupplierSettings,
   "/supplier/profile": SupplierProfile,
   "/supplier/team": Team,
@@ -193,7 +194,7 @@ const DRIVER_ROUTE_COMPONENTS: Record<DriverAllowedPath, React.ComponentType<any
   "/supplier/route": DriverRoutePlanner,
   "/supplier/map": DriverMap,
   "/supplier/history": DriverHistory,
-  "/supplier/team-chat": TeamChat,
+  "/supplier/team-chat": InternalChat,
   "/supplier/inbox": SupplierInbox,
   "/supplier/settings": SupplierSettings,
   "/supplier/profile": SupplierProfile,
@@ -499,6 +500,7 @@ function HeaderNav() {
         { href: '/restaurant/cost-analysis', label: lang === 'de' ? 'Kostenanalyse' : 'Analisi costi' },
       ],
     },
+    { href: '/restaurant/team-chat', label: lang === 'de' ? 'Interner Chat' : 'Chat interno' },
     { href: '/restaurant/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },
   ];
 
@@ -524,7 +526,7 @@ function HeaderNav() {
         { href: '/supplier/restaurants', label: lang === 'de' ? 'Kunden' : 'Clienti' },
       ],
     },
-    { href: '/supplier/team-chat', label: 'Team-Chat' },
+    { href: '/supplier/team-chat', label: lang === 'de' ? 'Interner Chat' : 'Chat interno' },
     { href: '/supplier/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },
   ];
 
@@ -532,6 +534,7 @@ function HeaderNav() {
     { href: '/supplier', label: 'Home', exact: true },
     { href: '/supplier/inventory-risk', label: lang === 'de' ? 'Risiko-Bestand' : 'Scorte a rischio' },
     { href: '/supplier/inventory', label: lang === 'de' ? 'Bestand' : 'Magazzino' },
+    { href: '/supplier/team-chat', label: lang === 'de' ? 'Interner Chat' : 'Chat interno' },
     { href: '/supplier/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },
   ];
 
@@ -540,7 +543,7 @@ function HeaderNav() {
     { href: '/supplier/route', label: lang === 'de' ? 'Route' : 'Percorso' },
     { href: '/supplier/map', label: lang === 'de' ? 'Karte' : 'Mappa' },
     { href: '/supplier/history', label: lang === 'de' ? 'Verlauf' : 'Cronologia' },
-    { href: '/supplier/team-chat', label: 'Team-Chat' },
+    { href: '/supplier/team-chat', label: lang === 'de' ? 'Interner Chat' : 'Chat interno' },
     { href: '/supplier/settings', label: lang === 'de' ? 'Einstellungen' : 'Impostazioni' },
   ];
 

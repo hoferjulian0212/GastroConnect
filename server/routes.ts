@@ -7798,6 +7798,7 @@ export async function registerRoutes(
   }).strict();
 
   const internalMessageSchema = z.object({
+    recipientMemberId: z.string().min(1).max(36),
     content: z.string().max(50000).default(""),
     messageType: z.enum(["text", "image", "attachment"]).optional(),
     attachmentUrl: z.string().max(2048).optional().nullable(),
@@ -8456,18 +8457,66 @@ export async function registerRoutes(
     }
   });
 
-  // ── Company-internal chat (office ↔ warehouse ↔ drivers) ─────────────────
+  // ── Company-internal 1:1 chat (any member ↔ any member of the SAME org) ──
+  // Open to restaurant AND supplier orgs; org id always from the session.
+  function requireOrgMember(req: Request): { status: number; body: any } | null {
+    if (!req.auth) return { status: 401, body: { error: "unauthenticated", message: "Bitte melden Sie sich an." } };
+    return null;
+  }
+
+  // Resolves + validates a chat partner: must exist, be active and belong to
+  // the caller's own organization (never leak members of other orgs).
+  async function resolveChatPartner(req: Request, otherMemberId: string) {
+    if (!otherMemberId || otherMemberId.length > 36) return null;
+    const other = await storage.getMember(otherMemberId);
+    if (!other || other.organizationId !== req.auth!.organizationId) return null;
+    if (other.id === req.auth!.memberId) return null;
+    return other;
+  }
+
+  const sanitizeMemberForApi = (m: import("@shared/schema").Member) => {
+    const { passwordHash: _ph, emailVerifiedAt: _ev, lastLoginAt: _ll, ...safe } = m;
+    return safe;
+  };
+
+  // Member directory for starting a new chat (everyone in my org except me).
+  app.get("/api/internal-chat/members", async (req, res) => {
+    try {
+      const denied = requireOrgMember(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const all = await storage.getMembers(req.auth!.organizationId);
+      res.json(
+        all
+          .filter((m) => m.id !== req.auth!.memberId)
+          .map(sanitizeMemberForApi),
+      );
+    } catch (error) {
+      console.error("Internal chat members error:", error);
+      res.status(500).json({ error: "Failed to load members" });
+    }
+  });
+
+  // Thread list: one entry per member I have a DM history with.
+  app.get("/api/internal-chat/threads", async (req, res) => {
+    try {
+      const denied = requireOrgMember(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const threads = await storage.getInternalThreads(req.auth!.organizationId, req.auth!.memberId);
+      res.json(threads);
+    } catch (error) {
+      console.error("Internal chat threads error:", error);
+      res.status(500).json({ error: "Failed to load threads" });
+    }
+  });
+
   app.get("/api/internal-chat/messages", async (req, res) => {
     try {
-      const denied = requireSupplierMember(req);
+      const denied = requireOrgMember(req);
       if (denied) return res.status(denied.status).json(denied.body);
-      const rows = await storage.getInternalMessages(req.auth!.organizationId);
-      // Never leak credential/auth columns of the sender over the API.
-      res.json(rows.map((r) => {
-        if (!r.sender) return r;
-        const { passwordHash: _ph, emailVerifiedAt: _ev, lastLoginAt: _ll, ...safeSender } = r.sender;
-        return { ...r, sender: safeSender };
-      }));
+      const other = await resolveChatPartner(req, String(req.query.with ?? ""));
+      if (!other) return res.status(404).json({ error: "member_not_found" });
+      const rows = await storage.getInternalMessages(req.auth!.organizationId, req.auth!.memberId, other.id);
+      res.json(rows);
     } catch (error) {
       console.error("Internal chat load error:", error);
       res.status(500).json({ error: "Failed to load messages" });
@@ -8476,26 +8525,29 @@ export async function registerRoutes(
 
   app.post("/api/internal-chat/messages", async (req, res) => {
     try {
-      const denied = requireSupplierMember(req);
+      const denied = requireOrgMember(req);
       if (denied) return res.status(denied.status).json(denied.body);
       const parsed = internalMessageSchema.parse(req.body);
+      const other = await resolveChatPartner(req, parsed.recipientMemberId);
+      if (!other) return res.status(404).json({ error: "member_not_found" });
       const message = await storage.createInternalMessage({
         supplierId: req.auth!.organizationId,
         senderMemberId: req.auth!.memberId,
+        recipientMemberId: other.id,
         content: parsed.content,
         messageType: parsed.messageType ?? "text",
         attachmentUrl: parsed.attachmentUrl ?? null,
         attachmentName: parsed.attachmentName ?? null,
       });
       // Sender has obviously read up to their own message.
-      await storage.markInternalChatRead(req.auth!.organizationId, req.auth!.memberId);
+      await storage.markInternalChatRead(req.auth!.organizationId, req.auth!.memberId, other.id);
       await createNotificationWithPush({
         userId: req.auth!.organizationId,
         type: "internal_message",
-        title: `Team-Chat: ${req.auth!.member.name}`,
+        title: `Chat: ${req.auth!.member.name} → ${other.name}`,
         message: parsed.content.trim().length > 0 ? parsed.content.slice(0, 140) : "📎 Anhang",
         referenceId: message.id,
-      }, "supplier");
+      }, req.auth!.org.role === "restaurant" ? "restaurant" : "supplier");
       res.json(message);
     } catch (error: any) {
       if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
@@ -8506,9 +8558,11 @@ export async function registerRoutes(
 
   app.post("/api/internal-chat/read", async (req, res) => {
     try {
-      const denied = requireSupplierMember(req);
+      const denied = requireOrgMember(req);
       if (denied) return res.status(denied.status).json(denied.body);
-      await storage.markInternalChatRead(req.auth!.organizationId, req.auth!.memberId);
+      const other = await resolveChatPartner(req, String(req.body?.with ?? ""));
+      if (!other) return res.status(404).json({ error: "member_not_found" });
+      await storage.markInternalChatRead(req.auth!.organizationId, req.auth!.memberId, other.id);
       res.json({ success: true });
     } catch (error) {
       console.error("Internal chat read error:", error);
@@ -8518,7 +8572,7 @@ export async function registerRoutes(
 
   app.get("/api/internal-chat/unread-count", async (req, res) => {
     try {
-      const denied = requireSupplierMember(req);
+      const denied = requireOrgMember(req);
       if (denied) return res.status(denied.status).json(denied.body);
       const count = await storage.getInternalUnreadCount(req.auth!.organizationId, req.auth!.memberId);
       res.json({ count });

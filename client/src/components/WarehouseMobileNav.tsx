@@ -17,7 +17,7 @@ export function WarehouseMobileNav() {
     {
       title: lang === "de" ? "Mehr" : "Altro",
       items: [
-        { title: "Team-Chat", url: "/supplier/team-chat", icon: Send },
+        { title: lang === "de" ? "Interner Chat" : "Chat interno", url: "/supplier/team-chat", icon: Send },
         { title: t("common", "profile"), url: "/supplier/profile", icon: User },
         { title: t("common", "settings"), url: "/supplier/settings", icon: Settings },
         { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/supplier/help", icon: HelpCircle },
