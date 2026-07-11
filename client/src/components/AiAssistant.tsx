@@ -607,7 +607,7 @@ export function AiAssistant() {
                     }}
                     rows={1}
                     placeholder={t("Frage stellen…", "Fai una domanda…")}
-                    maxLength={500}
+                    maxLength={1000}
                     className="flex-1 resize-none max-h-32 rounded-2xl border border-border bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
                     data-testid="input-ai-message"
                   />

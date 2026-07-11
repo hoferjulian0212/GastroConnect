@@ -6,6 +6,7 @@ import {
   orders, orderItems, users, formatOrderNumber,
   aiChats, aiChatMessages,
   complaints, conversations, messages, promotions, products,
+  deliverySchedules,
 } from "@shared/schema";
 import { and, eq, desc, ilike, or, inArray, ne, gte, lte, sql } from "drizzle-orm";
 import { storage } from "./storage";
@@ -13,14 +14,15 @@ import { storage } from "./storage";
 type Role = "restaurant" | "supplier";
 
 interface AiActionRaw {
-  kind: "open_inbox" | "open_order";
+  kind: "open_inbox" | "open_order" | "open_page";
   orderId?: string;
+  path?: string;
   suggestedMessage?: string;
   label?: string;
 }
 
 interface AiAction {
-  kind: "open_inbox" | "open_order";
+  kind: "open_inbox" | "open_order" | "open_page";
   label: string;
   href: string;
   orderId?: string;
@@ -28,6 +30,273 @@ interface AiAction {
   partnerId?: string;
   suggestedMessage?: string;
 }
+
+// ── In-app help knowledge base ────────────────────────────────────────────────
+// Lets the assistant answer "how do I ...?" questions about the app itself with
+// concrete steps and a deep link. Content is German; the model translates when
+// the user writes Italian. Every pagePath here is also the open_page allowlist.
+interface HelpTopic {
+  key: string;
+  keywords: string[];
+  title: string;
+  steps: string[];
+  pagePath: string;
+}
+
+const RESTAURANT_HELP: HelpTopic[] = [
+  {
+    key: "order_place",
+    keywords: ["bestellen", "bestellung aufgeben", "order", "warenkorb", "kaufen", "ordinare", "carrello", "einkauf"],
+    title: "Eine Bestellung aufgeben",
+    steps: [
+      "Öffne den Katalog und lege Produkte mit dem Plus-Button in den Warenkorb.",
+      "Öffne den Warenkorb — dort wählst du pro Lieferant ein verfügbares Lieferdatum (abhängig von dessen Liefertagen) und kannst je Lieferant eine Notiz hinterlegen.",
+      "Achte auf Mindestbestellwert-Hinweise; dann 'Bestellen' tippen. Jeder Lieferant erhält eine eigene Bestellung.",
+    ],
+    pagePath: "/restaurant/catalog",
+  },
+  {
+    key: "order_edit_cancel",
+    keywords: ["bestellung ändern", "bestellung bearbeiten", "stornieren", "ändern", "cancel", "modificare", "annullare", "menge ändern"],
+    title: "Bestellung ändern oder stornieren",
+    steps: [
+      "Öffne 'Bestellungen'. Ausstehende (noch nicht bestätigte) Bestellungen kannst du direkt bearbeiten oder stornieren — auch die Mengen direkt auf der Karte antippen.",
+      "Bei bereits bestätigten Bestellungen sendest du einen Änderungsantrag, den der Lieferant annehmen oder ablehnen kann.",
+      "Alle Änderungen werden automatisch im Chat mit dem Lieferanten protokolliert.",
+    ],
+    pagePath: "/restaurant/orders",
+  },
+  {
+    key: "complaint_create",
+    keywords: ["reklamation", "reklamieren", "beschwerde", "complaint", "reclamo", "falsche lieferung", "kaputt", "mangel"],
+    title: "Eine Reklamation erstellen",
+    steps: [
+      "Öffne 'Reklamationen' und tippe auf 'Neue Reklamation'.",
+      "Wähle die betroffene Bestellung und markiere die betroffenen Produkte.",
+      "Bei ausgewählten Produkten wird automatisch eine Nachlieferungs-Anfrage mit hoher Priorität an den Lieferanten gesendet; den Status verfolgst du in der Reklamations-Detailansicht.",
+    ],
+    pagePath: "/restaurant/complaints",
+  },
+  {
+    key: "templates",
+    keywords: ["vorlage", "template", "wiederkehrend", "schnellbestellung", "modello", "immer gleiche bestellung"],
+    title: "Bestellvorlagen nutzen",
+    steps: [
+      "Unter 'Vorlagen' erstellst du wiederverwendbare Bestelllisten — neu oder aus einer bestehenden Bestellung.",
+      "Mit einem Tipp legst du die ganze Vorlage in den Warenkorb.",
+      "Bis zu 3 Vorlagen erscheinen als Schnellaktion auf der Startseite.",
+    ],
+    pagePath: "/restaurant/templates",
+  },
+  {
+    key: "cost_analysis",
+    keywords: ["kostenanalyse", "wareneinsatz", "food cost", "kosten pro gast", "nächtigungen", "costi", "budget"],
+    title: "Kostenanalyse (Wareneinsatz pro Gast)",
+    steps: [
+      "Unter 'Kostenanalyse' siehst du deinen monatlichen Wareneinsatz pro Gast mit Zielwerten und Trend.",
+      "Trage täglich die Nächtigungen ein (auch manuell nachtragbar), damit die Kennzahl stimmt.",
+      "Zielwerte kannst du in den Einstellungen der Seite anpassen.",
+    ],
+    pagePath: "/restaurant/cost-analysis",
+  },
+  {
+    key: "price_comparison",
+    keywords: ["preisvergleich", "preise vergleichen", "günstiger", "billiger", "confronto prezzi", "sparen"],
+    title: "Preise zwischen Lieferanten vergleichen",
+    steps: [
+      "Der 'Preisvergleich' gruppiert gleiche Produkte über alle Lieferanten hinweg.",
+      "Du siehst Preisunterschiede in Prozent, Aktions-Badges und kannst nach Ersparnis sortieren.",
+    ],
+    pagePath: "/restaurant/price-comparison",
+  },
+  {
+    key: "documents",
+    keywords: ["lieferschein", "rechnung", "dokument", "pdf", "bolla", "fattura", "beleg", "export"],
+    title: "Lieferscheine & Rechnungen finden",
+    steps: [
+      "Unter 'Dokumente' sind alle Lieferscheine und Rechnungen nach Lieferant gruppiert.",
+      "Pro Lieferant siehst du eine Statistik-Karte; Monatsrechnungen lassen sich als PDF erzeugen.",
+      "Bestelllisten kannst du auf der Bestellungen-Seite als CSV oder PDF exportieren.",
+    ],
+    pagePath: "/restaurant/documents",
+  },
+  {
+    key: "messages",
+    keywords: ["nachricht", "chat", "schreiben", "kontaktieren", "messaggio", "inbox", "posteingang"],
+    title: "Mit Lieferanten chatten",
+    steps: [
+      "Im 'Posteingang' chattest du direkt mit jedem Lieferanten (wie WhatsApp).",
+      "Wichtige Nachrichten kannst du als 'Wichtig' markieren — sie werden rot hervorgehoben.",
+      "Bestellungen lassen sich direkt aus dem Chat heraus bearbeiten (Inline-Aktionen).",
+    ],
+    pagePath: "/restaurant/inbox",
+  },
+  {
+    key: "team",
+    keywords: ["team", "mitarbeiter", "benutzer", "einladen", "rolle", "invitare", "kollege"],
+    title: "Teammitglieder verwalten",
+    steps: [
+      "Unter 'Team' lädst du Mitarbeiter per E-Mail ein (Rollen: Admin, Manager, Mitarbeiter).",
+      "Eingeladene erhalten einen Link, um ihr Passwort zu setzen.",
+    ],
+    pagePath: "/restaurant/team",
+  },
+  {
+    key: "settings",
+    keywords: ["einstellungen", "benachrichtigung", "push", "profil", "passwort", "impostazioni", "notifiche", "sprache"],
+    title: "Einstellungen & Benachrichtigungen",
+    steps: [
+      "Unter 'Einstellungen' aktivierst du Push-Benachrichtigungen, änderst Profil und Passwort.",
+      "Auf dem Handy: App zum Startbildschirm hinzufügen, damit Push-Nachrichten ankommen.",
+    ],
+    pagePath: "/restaurant/settings",
+  },
+  {
+    key: "calendar",
+    keywords: ["kalender", "lieferkalender", "calendario", "übersicht lieferungen"],
+    title: "Lieferkalender",
+    steps: ["Der 'Kalender' zeigt alle geplanten Lieferungen im Monatsüberblick."],
+    pagePath: "/restaurant/calendar",
+  },
+];
+
+const SUPPLIER_HELP: HelpTopic[] = [
+  {
+    key: "orders_manage",
+    keywords: ["bestellung bestätigen", "bestellung", "liefern", "stornieren", "teilbestätigung", "confermare", "ordine", "auftrag"],
+    title: "Bestellungen bearbeiten",
+    steps: [
+      "Unter 'Bestellungen' bestätigst du eingehende Bestellungen — auch teilweise mit angepassten Mengen (Teilbestätigung); der Kunde sieht die Änderungen automatisch im Chat.",
+      "Setze den Status auf 'In Lieferung' und 'Geliefert'; beim Liefern wird automatisch ein Lieferschein-PDF erzeugt.",
+      "Stornieren ist nur möglich, solange die Bestellung noch nicht in Lieferung ist.",
+    ],
+    pagePath: "/supplier/orders",
+  },
+  {
+    key: "products",
+    keywords: ["produkt", "katalog", "preis", "artikel", "mindestbestellmenge", "moq", "prodotti", "sortiment"],
+    title: "Produkte & Preise verwalten",
+    steps: [
+      "Unter 'Katalog' legst du Produkte an, pflegst Preise, Einheiten und Mindestbestellmengen.",
+      "Kundenspezifische Preise und Mindestbestellmengen sind pro Restaurant möglich.",
+      "Mindestbestellwerte (gesamt oder je Zone) definierst du in den Einstellungen.",
+    ],
+    pagePath: "/supplier/products",
+  },
+  {
+    key: "inventory",
+    keywords: ["lager", "bestand", "inventur", "stock", "magazzino", "nachbestellen", "bestandsbewegung"],
+    title: "Lagerbestand verwalten",
+    steps: [
+      "Unter 'Bestand' siehst du Lagerbestände und Warnschwellen; niedrige Bestände werden hervorgehoben.",
+      "Bestände passen sich bei Bestätigung/Stornierung von Bestellungen automatisch an; manuelle Korrekturen werden protokolliert.",
+    ],
+    pagePath: "/supplier/inventory",
+  },
+  {
+    key: "inventory_risk",
+    keywords: ["risiko", "risiko melden", "ablaufdatum", "mhd", "abschreiben", "risikomeldung", "ware schlecht"],
+    title: "Risiko-Ware melden & verwerten",
+    steps: [
+      "Unter 'Risiko-Bestand' melden Lagermitarbeiter gefährdete Ware per Schritt-für-Schritt-Assistent (Foto, Produkt, Grund, Menge).",
+      "Manager können eine Meldung direkt in eine Aktion (Rabatt) umwandeln, um die Ware noch zu verkaufen.",
+    ],
+    pagePath: "/supplier/inventory-risk",
+  },
+  {
+    key: "promotions",
+    keywords: ["aktion", "rabatt", "promotion", "angebot", "sconto", "promozione"],
+    title: "Aktionen (Rabatte) erstellen",
+    steps: [
+      "Unter 'Aktionen' erstellst du zeitlich begrenzte Rabatte auf Produkte.",
+      "Kunden sehen die Aktion hervorgehoben im Katalog mit durchgestrichenem Originalpreis.",
+    ],
+    pagePath: "/supplier/promotions",
+  },
+  {
+    key: "delivery_days",
+    keywords: ["liefertage", "lieferzeiten", "lieferplan", "zeitfenster", "giorni di consegna", "wann liefern"],
+    title: "Liefertage pro Kunde festlegen",
+    steps: [
+      "Unter 'Kunden' legst du pro Restaurant die Liefertage und optionale Zeitfenster fest.",
+      "Kunden können beim Bestellen nur diese Tage als Lieferdatum wählen.",
+    ],
+    pagePath: "/supplier/restaurants",
+  },
+  {
+    key: "drivers",
+    keywords: ["fahrer", "tour", "auslieferung", "tracking", "route", "autista", "lieferung zuweisen"],
+    title: "Fahrer & Touren verwalten",
+    steps: [
+      "Unter 'Fahrer' weist du Bestellungen einem Fahrer zu und legst die Stopp-Reihenfolge fest.",
+      "Fahrer nutzen die Fahrer-Ansicht am Handy; ihre Position und ETA siehst du live auf der Karte.",
+      "Im Team-Chat erreichst du deine Fahrer direkt.",
+    ],
+    pagePath: "/supplier/drivers",
+  },
+  {
+    key: "complaints",
+    keywords: ["reklamation", "beschwerde", "nachlieferung", "reclamo", "kunde unzufrieden"],
+    title: "Reklamationen & Nachlieferungen",
+    steps: [
+      "Unter 'Reklamationen' siehst du alle Kundenbeschwerden mit betroffenen Produkten.",
+      "Aus der Detailansicht erstellst du direkt eine Nachlieferung — Mengen anpassbar (z.B. Kulanz-Zugabe), Lieferdatum wählbar.",
+      "Die Nachlieferung wird automatisch bestätigt und im Chat dokumentiert.",
+    ],
+    pagePath: "/supplier/complaints",
+  },
+  {
+    key: "documents",
+    keywords: ["lieferschein", "rechnung", "dokument", "pdf", "bolla", "fattura", "export"],
+    title: "Lieferscheine & Dokumente",
+    steps: [
+      "Lieferscheine werden beim Liefern automatisch erzeugt und unter 'Dokumente' abgelegt.",
+      "Bestelllisten kannst du auf der Bestellungen-Seite als CSV oder PDF exportieren.",
+    ],
+    pagePath: "/supplier/documents",
+  },
+  {
+    key: "messages",
+    keywords: ["nachricht", "chat", "schreiben", "kontaktieren", "messaggio", "inbox", "posteingang"],
+    title: "Mit Kunden chatten",
+    steps: [
+      "Im 'Posteingang' chattest du direkt mit jedem Kunden.",
+      "Bestellungen lassen sich direkt aus dem Chat bestätigen, liefern oder stornieren (Inline-Aktionen).",
+    ],
+    pagePath: "/supplier/inbox",
+  },
+  {
+    key: "team",
+    keywords: ["team", "mitarbeiter", "benutzer", "einladen", "rolle", "vertreter", "lagermitarbeiter", "fahrer anlegen"],
+    title: "Teammitglieder verwalten",
+    steps: [
+      "Unter 'Team' lädst du Mitarbeiter ein (Rollen: Admin, Manager, Mitarbeiter, Vertreter, Lager, Fahrer).",
+      "Lager-Mitarbeiter sehen nur Bestand & Risiko-Meldungen, Fahrer nur ihre Touren.",
+    ],
+    pagePath: "/supplier/team",
+  },
+  {
+    key: "settings",
+    keywords: ["einstellungen", "benachrichtigung", "push", "profil", "passwort", "mindestbestellwert", "impostazioni"],
+    title: "Einstellungen & Benachrichtigungen",
+    steps: [
+      "Unter 'Einstellungen' aktivierst du Push-Benachrichtigungen, änderst Profil, Passwort und Mindestbestellwerte.",
+    ],
+    pagePath: "/supplier/settings",
+  },
+];
+
+// open_page allowlist: every help pagePath plus a few safe extras.
+const ALLOWED_PAGES: Record<Role, Set<string>> = {
+  restaurant: new Set([
+    ...RESTAURANT_HELP.map((t) => t.pagePath),
+    "/restaurant", "/restaurant/cart", "/restaurant/suppliers", "/restaurant/monthly-reports",
+  ]),
+  supplier: new Set([
+    ...SUPPLIER_HELP.map((t) => t.pagePath),
+    "/supplier", "/supplier/restaurants", "/supplier/calendar", "/supplier/team-chat",
+  ]),
+};
 
 function fmtDate(d: Date | null | undefined): string | null {
   if (!d) return null;
@@ -481,6 +750,223 @@ function buildTools(userId: string, role: Role) {
     };
   }
 
+  // List recent orders WITHOUT requiring a partner name — fills the gap for
+  // "which orders are still open?", "what did I order recently?", "show my
+  // pending orders" etc.
+  async function list_orders(args: { status?: string; limit?: number }) {
+    const validStatuses = ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"];
+    const status = String(args?.status || "").trim();
+    const limit = Math.min(Math.max(Number(args?.limit) || 10, 1), 15);
+    const conds = [eq(ownOrderCol, userId)];
+    if (status && validStatuses.includes(status)) conds.push(eq(orders.status, status as any));
+    const rows = await db
+      .select({
+        orderId: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        createdAt: orders.createdAt,
+        requestedDeliveryDate: orders.requestedDeliveryDate,
+        totalAmount: orders.totalAmount,
+        partnerId: users.id,
+        partnerName: users.companyName,
+      })
+      .from(orders)
+      .innerJoin(users, eq(users.id, partnerCol))
+      .where(and(...conds))
+      .orderBy(desc(orders.createdAt))
+      .limit(limit);
+    return {
+      count: rows.length,
+      orders: rows.map((r) => ({
+        orderId: r.orderId,
+        orderNumber: formatOrderNumber({ orderNumber: r.orderNumber, id: r.orderId }),
+        status: r.status,
+        orderDate: fmtDate(r.createdAt),
+        deliveryDate: r.requestedDeliveryDate || null,
+        orderTotal: r.totalAmount,
+        [`${partnerRoleLabel}Id`]: r.partnerId,
+        [`${partnerRoleLabel}Name`]: r.partnerName,
+      })),
+    };
+  }
+
+  // Full line items of one order — "what was in my last order from X?",
+  // "how much did the tomatoes cost in order #123?".
+  async function get_order_details(args: { orderId?: string; orderNumber?: string }) {
+    const idArg = String(args?.orderId || "").trim();
+    const numArg = String(args?.orderNumber || "").trim();
+    if (!idArg && !numArg) return { error: "orderId_or_orderNumber_required" };
+    const conds = [eq(ownOrderCol, userId)];
+    const orFilters: any[] = [];
+    if (idArg) orFilters.push(eq(orders.id, idArg));
+    if (numArg) {
+      const digits = numArg.replace(/[^0-9a-zA-Z]/g, "");
+      orFilters.push(ilike(orders.orderNumber, likePattern(numArg)));
+      if (digits) orFilters.push(ilike(orders.orderNumber, likePattern(digits)));
+    }
+    const [order] = await db
+      .select({
+        orderId: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        createdAt: orders.createdAt,
+        requestedDeliveryDate: orders.requestedDeliveryDate,
+        totalAmount: orders.totalAmount,
+        notes: orders.notes,
+        partnerId: users.id,
+        partnerName: users.companyName,
+      })
+      .from(orders)
+      .innerJoin(users, eq(users.id, partnerCol))
+      .where(and(conds[0], or(...orFilters)))
+      .orderBy(desc(orders.createdAt))
+      .limit(1);
+    if (!order) return { error: "order_not_found" };
+    const items = await db
+      .select({
+        productName: orderItems.productName,
+        quantity: orderItems.quantity,
+        confirmedQuantity: orderItems.confirmedQuantity,
+        unitPrice: orderItems.unitPrice,
+        totalPrice: orderItems.totalPrice,
+      })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, order.orderId));
+    return {
+      orderId: order.orderId,
+      orderNumber: formatOrderNumber({ orderNumber: order.orderNumber, id: order.orderId }),
+      status: order.status,
+      orderDate: fmtDate(order.createdAt),
+      deliveryDate: order.requestedDeliveryDate || null,
+      orderTotal: order.totalAmount,
+      notes: order.notes || null,
+      [`${partnerRoleLabel}Id`]: order.partnerId,
+      [`${partnerRoleLabel}Name`]: order.partnerName,
+      items: items.map((i) => ({
+        productName: i.productName,
+        quantity: i.quantity,
+        confirmedQuantity: i.confirmedQuantity,
+        unitPrice: i.unitPrice,
+        lineTotal: i.totalPrice,
+      })),
+    };
+  }
+
+  // Delivery weekdays (and time windows) configured between the user and their
+  // partners — "when does X deliver?", "which days can I get deliveries?".
+  async function get_delivery_schedule(args: { partnerName?: string }) {
+    const ownCol = role === "restaurant" ? deliverySchedules.restaurantId : deliverySchedules.supplierId;
+    const partnerSchedCol = role === "restaurant" ? deliverySchedules.supplierId : deliverySchedules.restaurantId;
+    const conds: any[] = [eq(ownCol, userId)];
+    const name = String(args?.partnerName || "").trim();
+    if (name) conds.push(or(ilike(users.companyName, likePattern(name)), ilike(users.name, likePattern(name))));
+    const rows = await db
+      .select({
+        partnerId: users.id,
+        partnerName: users.companyName,
+        dayOfWeek: deliverySchedules.dayOfWeek,
+        from: deliverySchedules.deliveryTimeFrom,
+        to: deliverySchedules.deliveryTimeTo,
+      })
+      .from(deliverySchedules)
+      .innerJoin(users, eq(users.id, partnerSchedCol))
+      .where(and(...conds))
+      .orderBy(users.companyName, deliverySchedules.dayOfWeek)
+      .limit(60);
+    const dayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+    const byPartner: Record<string, { name: string; days: { day: string; timeWindow: string | null }[] }> = {};
+    for (const r of rows) {
+      if (!byPartner[r.partnerId]) byPartner[r.partnerId] = { name: r.partnerName || "", days: [] };
+      byPartner[r.partnerId].days.push({
+        day: dayNames[r.dayOfWeek] ?? String(r.dayOfWeek),
+        timeWindow: r.from && r.to ? `${r.from}–${r.to}` : null,
+      });
+    }
+    return {
+      count: Object.keys(byPartner).length,
+      schedules: Object.entries(byPartner).map(([id, v]) => ({
+        [`${partnerRoleLabel}Id`]: id,
+        [`${partnerRoleLabel}Name`]: v.name,
+        deliveryDays: v.days,
+      })),
+      note: Object.keys(byPartner).length === 0
+        ? "No delivery days configured — deliveries can be requested for any date."
+        : undefined,
+    };
+  }
+
+  // Top products: restaurants = most ordered items; suppliers = best sellers by
+  // revenue. Answers "what do I order most?", "what are my best-selling products?".
+  async function get_top_products(args: { period?: string }) {
+    const period = String(args?.period || "90d").trim();
+    const days = period === "30d" ? 30 : period === "180d" ? 180 : 90;
+    const since = new Date(Date.now() - days * 86400000);
+    const rows = await db
+      .select({
+        productName: orderItems.productName,
+        totalQty: sql<number>`SUM(${orderItems.quantity})`,
+        totalRevenue: sql<string>`SUM(${orderItems.totalPrice})`,
+        orderCount: sql<number>`COUNT(DISTINCT ${orders.id})`,
+      })
+      .from(orderItems)
+      .innerJoin(orders, eq(orders.id, orderItems.orderId))
+      .where(and(
+        eq(ownOrderCol, userId),
+        inArray(orders.status, ["confirmed", "partially_confirmed", "in_delivery", "delivered"] as any),
+        gte(orders.createdAt, since),
+      ))
+      .groupBy(orderItems.productName)
+      .orderBy(desc(sql`SUM(${orderItems.totalPrice})`))
+      .limit(10);
+    return {
+      periodDays: days,
+      since: since.toISOString().slice(0, 10),
+      topProducts: rows.map((r) => ({
+        productName: r.productName,
+        totalQuantity: Number(r.totalQty),
+        totalAmount: Math.round(parseFloat(r.totalRevenue || "0") * 100) / 100,
+        orderCount: Number(r.orderCount),
+      })),
+    };
+  }
+
+  // How-to / app-usage help. Returns matching help topics with steps and the
+  // page path (usable as an open_page action).
+  async function get_app_help(args: { topic?: string }) {
+    const topics = role === "restaurant" ? RESTAURANT_HELP : SUPPLIER_HELP;
+    const q = String(args?.topic || "").trim().toLowerCase();
+    if (!q) {
+      return { availableTopics: topics.map((t) => ({ key: t.key, title: t.title })) };
+    }
+    const scored = topics
+      .map((t) => {
+        let score = 0;
+        if (t.key.includes(q)) score += 3;
+        if (t.title.toLowerCase().includes(q)) score += 3;
+        for (const kw of t.keywords) {
+          if (q.includes(kw) || kw.includes(q)) score += 2;
+          else {
+            for (const word of q.split(/\s+/)) {
+              if (word.length >= 4 && (kw.includes(word) || word.includes(kw))) score += 1;
+            }
+          }
+        }
+        return { t, score };
+      })
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+    if (scored.length === 0) {
+      return {
+        noMatch: true,
+        availableTopics: topics.map((t) => ({ key: t.key, title: t.title })),
+      };
+    }
+    return {
+      topics: scored.map(({ t }) => ({ key: t.key, title: t.title, steps: t.steps, pagePath: t.pagePath })),
+    };
+  }
+
   // ── Handlers & definitions ────────────────────────────────────────────────
 
   const handlers: Record<string, (args: any) => Promise<any>> = {
@@ -494,6 +980,11 @@ function buildTools(userId: string, role: Role) {
     get_promotions,
     get_low_stock,
     search_products,
+    list_orders,
+    get_order_details,
+    get_delivery_schedule,
+    get_top_products,
+    get_app_help,
   };
 
   const definitions = [
@@ -660,6 +1151,88 @@ function buildTools(userId: string, role: Role) {
         },
       },
     },
+    {
+      type: "function" as const,
+      function: {
+        name: "list_orders",
+        description:
+          role === "restaurant"
+            ? "List the restaurant's most recent orders across ALL suppliers, optionally filtered by status. Use when the user asks about their orders WITHOUT naming a supplier — e.g. 'what are my open orders?', 'show my recent orders', 'which orders are still pending?'."
+            : "List the supplier's most recent incoming orders across ALL customers, optionally filtered by status. Use when the user asks about orders WITHOUT naming a customer — e.g. 'which orders are still open?', 'do I have new orders?', 'show pending orders'.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: {
+              type: "string",
+              description: "Optional status filter. 'pending' = not yet confirmed.",
+              enum: ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"],
+            },
+            limit: { type: "number", description: "Max number of orders to return (default 10, max 15)." },
+          },
+        },
+      },
+    },
+    {
+      type: "function" as const,
+      function: {
+        name: "get_order_details",
+        description:
+          "Get the FULL contents (all line items with quantities and prices) of one specific order, by orderId (from a previous tool result) or order number. Use for questions like 'what was in that order?', 'which products did order #123 contain?', 'how much did the tomatoes cost in my last order?'.",
+        parameters: {
+          type: "object",
+          properties: {
+            orderId: { type: "string", description: "An orderId returned by another tool." },
+            orderNumber: { type: "string", description: "The order number the user referenced, e.g. '#000123'." },
+          },
+        },
+      },
+    },
+    {
+      type: "function" as const,
+      function: {
+        name: "get_delivery_schedule",
+        description:
+          role === "restaurant"
+            ? "Show which weekdays (and time windows) each supplier delivers to this restaurant. Use for questions like 'when does supplier X deliver?', 'which days can I get deliveries?', 'why can't I pick Tuesday as delivery date?'."
+            : "Show the delivery weekdays (and time windows) configured for each customer. Use for questions like 'which days do I deliver to restaurant X?', 'what delivery schedules have I set up?'.",
+        parameters: {
+          type: "object",
+          properties: {
+            partnerName: { type: "string", description: "Optional: filter by supplier/customer name." },
+          },
+        },
+      },
+    },
+    {
+      type: "function" as const,
+      function: {
+        name: "get_top_products",
+        description:
+          role === "restaurant"
+            ? "Rank the products this restaurant has ordered the most (by total amount) in a period. Use for 'what do I order most often?', 'my most-bought products', 'where does most of my money go?'."
+            : "Rank the supplier's best-selling products (by revenue) in a period. Use for 'what are my best sellers?', 'which products bring the most revenue?', 'top products this quarter'.",
+        parameters: {
+          type: "object",
+          properties: {
+            period: { type: "string", description: "Time window. Default '90d'.", enum: ["30d", "90d", "180d"] },
+          },
+        },
+      },
+    },
+    {
+      type: "function" as const,
+      function: {
+        name: "get_app_help",
+        description:
+          "Look up step-by-step instructions for using GastroConnect itself. ALWAYS call this for 'how do I ...?' / 'where can I ...?' / 'wie kann ich ...?' / 'wo finde ich ...?' questions about app features (ordering, complaints, templates, documents, settings, team, promotions, inventory, delivery days, drivers, cost analysis, price comparison...). Returns matching topics with steps and a pagePath you can offer as an 'open_page' action. Call without a topic to list all available topics.",
+        parameters: {
+          type: "object",
+          properties: {
+            topic: { type: "string", description: "The user's question or a keyword, e.g. 'Reklamation erstellen', 'Liefertage', 'Passwort ändern'." },
+          },
+        },
+      },
+    },
   ];
 
   return { handlers, definitions };
@@ -682,12 +1255,13 @@ const RESPOND_TOOL = {
         actions: {
           type: "array",
           description:
-            "Optional deep-link actions. Use 'open_inbox' to start a chat about an order (e.g. when there is NO delivery date and the user should ask the partner for an update) and always provide a helpful 'suggestedMessage' to pre-fill. Use 'open_order' to open an order's detail page. Only reference orderId values returned by the data tools.",
+            "Optional deep-link actions. Use 'open_inbox' to start a chat about an order (e.g. when there is NO delivery date and the user should ask the partner for an update) and always provide a helpful 'suggestedMessage' to pre-fill. Use 'open_order' to open an order's detail page. Use 'open_page' with a 'path' from get_app_help to take the user directly to the relevant app page after a how-to answer. Only reference orderId values returned by the data tools and path values returned by get_app_help.",
           items: {
             type: "object",
             properties: {
-              kind: { type: "string", enum: ["open_inbox", "open_order"] },
+              kind: { type: "string", enum: ["open_inbox", "open_order", "open_page"] },
               orderId: { type: "string", description: "An orderId returned by a data tool." },
+              path: { type: "string", description: "For open_page: a pagePath returned by get_app_help, e.g. '/restaurant/complaints'." },
               suggestedMessage: {
                 type: "string",
                 description: "For open_inbox: a polite pre-filled message in the user's language, e.g. asking for a delivery date.",
@@ -709,21 +1283,25 @@ function systemPrompt(role: Role, lang: string): string {
   const roleSpecific =
     role === "restaurant"
       ? [
-          `You can also help with: complaints (list_complaints), spending analysis (get_spending_summary — summarises spend per supplier for a given period), unread messages (get_unread_messages), available promotions from their suppliers (get_promotions), and product/price lookups (search_products).`,
+          `You can also help with: complaints (list_complaints), spending analysis (get_spending_summary), most-ordered products (get_top_products), unread messages (get_unread_messages), promotions from their suppliers (get_promotions), product/price lookups (search_products), delivery weekdays per supplier (get_delivery_schedule), and the full contents of a specific order (get_order_details).`,
           `For spending questions, default to the last 30 days unless the user specifies otherwise.`,
         ]
       : [
-          `You can also help with: complaints received from restaurants (list_complaints), unread messages (get_unread_messages), own active promotions (get_promotions), low-stock products (get_low_stock), and product catalog lookups (search_products).`,
+          `You can also help with: complaints from restaurants (list_complaints), unread messages (get_unread_messages), own promotions (get_promotions), low-stock products (get_low_stock), best-selling products (get_top_products), catalog lookups (search_products), configured delivery days per customer (get_delivery_schedule), and the full contents of a specific order (get_order_details).`,
           `When the user asks about stock or inventory, always call get_low_stock proactively.`,
         ];
   return [
-    `You are the in-app data assistant for GastroConnect, a B2B ordering platform for restaurants and suppliers.`,
+    `You are the in-app assistant for GastroConnect, a B2B ordering platform for restaurants and suppliers in South Tyrol.`,
     `The current user is a ${role}. Today's date is ${today}.`,
-    `Answer ONLY using the provided data tools — never invent orders, dates, quantities or prices.`,
-    `All tools are already scoped to this user's own data and their ${partner}; you cannot access anyone else's data.`,
-    `Reply in the same language as the user's question (German or Italian are most common; default to German if unclear).`,
-    `Be proactive: when a question can be answered by looking at the user's own data, call the relevant tool yourself without first asking the user for extra details. For deliveries: call list_deliveries; for complaints: call list_complaints; for messages: call get_unread_messages; for promotions: call get_promotions.`,
+    `You can help in TWO ways: (1) answering questions about the user's own data via the data tools, and (2) explaining how to use the app via get_app_help.`,
+    `For data questions: answer ONLY using tool results — never invent orders, dates, quantities or prices. All tools are already scoped to this user's own data and their ${partner}; you cannot access anyone else's data.`,
+    `For how-to / where-do-I-find questions ('wie kann ich...', 'wo finde ich...', 'come posso...'): ALWAYS call get_app_help first and base your answer on the returned steps. Offer an 'open_page' action with the returned pagePath so the user can jump straight to the right page. If get_app_help has no match, say honestly that you don't know that feature — do not guess.`,
+    `Reply in the same language as the user's question (German or Italian are most common; default to German if unclear). get_app_help content is German — translate it when the user writes Italian.`,
+    `Be proactive: when a question can be answered by looking at the user's own data, call the relevant tool yourself without first asking the user for extra details. For orders without a named partner: list_orders; for deliveries/overdue: list_deliveries; for complaints: list_complaints; for messages: get_unread_messages; for promotions: get_promotions.`,
+    `Combine tools when useful (e.g. list_orders then get_order_details for the newest order; get_order_status then get_order_details when the user asks what an order contained).`,
     ...roleSpecific,
+    `If a question is ambiguous, make the most reasonable assumption, answer, and briefly state the assumption — only ask a clarifying question when you truly cannot proceed.`,
+    `If the user asks for something you cannot do (e.g. placing or changing an order for them, contacting a partner directly), say so briefly, then explain how they can do it themselves (use get_app_help) and offer the matching action button.`,
     `When reporting overdue deliveries, mention the order number, the partner and how many days overdue each one is, and offer an 'open_order' or 'open_inbox' action for the most relevant order.`,
     `Keep answers short and concrete. Use bullet points when listing more than two items. When an order has no delivery date, offer an 'open_inbox' action with a polite suggestedMessage.`,
     `Always finish by calling the "respond" tool with your final answer.`,
@@ -731,9 +1309,16 @@ function systemPrompt(role: Role, lang: string): string {
 }
 
 async function resolveAction(raw: AiActionRaw, userId: string, role: Role): Promise<AiAction | null> {
-  if (!raw || (raw.kind !== "open_inbox" && raw.kind !== "open_order")) return null;
+  if (!raw || (raw.kind !== "open_inbox" && raw.kind !== "open_order" && raw.kind !== "open_page")) return null;
   const label = String(raw.label || "").trim();
   if (!label) return null;
+
+  // open_page links are only allowed to known in-app pages for the user's role.
+  if (raw.kind === "open_page") {
+    const path = String(raw.path || "").trim();
+    if (!path || !ALLOWED_PAGES[role].has(path)) return null;
+    return { kind: "open_page", label, href: path };
+  }
 
   // Deep links that reference an order must be validated server-side so the model
   // can never produce a link to an order the user does not own.
@@ -812,7 +1397,7 @@ async function runAssistant(opts: {
 
   let answer = "";
   let rawActions: AiActionRaw[] = [];
-  const MAX_TURNS = 6;
+  const MAX_TURNS = 8;
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     const completion = await openai.chat.completions.create({
@@ -881,6 +1466,17 @@ async function runAssistant(opts: {
   return { answer, actions };
 }
 
+// Resolves the AI-assistant identity from the authenticated session (loadAuth is
+// mounted on /api in index.ts). Client-supplied userId/role are IGNORED — identity
+// always comes from req.auth so a caller can never read another tenant's data.
+function aiIdentity(req: Request): { userId: string; role: Role } | null {
+  const auth = req.auth;
+  if (!auth) return null;
+  const orgRole = auth.org?.role;
+  if (orgRole !== "restaurant" && orgRole !== "supplier") return null;
+  return { userId: auth.organizationId, role: orgRole };
+}
+
 export function registerAiSearchRoutes(app: Express) {
   const jsonBody = express.json({ limit: "32kb" });
 
@@ -900,15 +1496,13 @@ export function registerAiSearchRoutes(app: Express) {
   app.post("/api/search/ai", aiLimiter, jsonBody, async (req: Request, res: Response) => {
     try {
       const question = String(req.body?.question || "").trim();
-      const userId = String(req.body?.userId || "").trim();
-      const role = String(req.body?.role || "").trim() as Role;
       const lang = String(req.body?.lang || "de").trim();
 
       if (!question) return res.status(400).json({ error: "question_required" });
-      if (question.length > 500) return res.status(400).json({ error: "question_too_long" });
-      if (!userId || (role !== "restaurant" && role !== "supplier")) {
-        return res.status(400).json({ error: "invalid_user" });
-      }
+      if (question.length > 1000) return res.status(400).json({ error: "question_too_long" });
+      const ident = aiIdentity(req);
+      if (!ident) return res.status(401).json({ error: "unauthenticated" });
+      const { userId, role } = ident;
       if (!aiConfigured()) {
         return res.status(503).json({ error: "ai_not_configured", message: "KI-Integration ist noch nicht eingerichtet." });
       }
@@ -924,11 +1518,9 @@ export function registerAiSearchRoutes(app: Express) {
   // List the current user's AI conversations (newest first).
   app.get("/api/ai/chats", async (req: Request, res: Response) => {
     try {
-      const userId = String(req.query.userId || "").trim();
-      const role = String(req.query.role || "").trim() as Role;
-      if (!userId || (role !== "restaurant" && role !== "supplier")) {
-        return res.status(400).json({ error: "invalid_user" });
-      }
+      const ident = aiIdentity(req);
+      if (!ident) return res.status(401).json({ error: "unauthenticated" });
+      const { userId, role } = ident;
       const chats = await storage.getAiChats(userId, role);
       return res.json(
         chats.map((c) => ({ id: c.id, title: c.title, createdAt: c.createdAt, updatedAt: c.updatedAt })),
@@ -942,12 +1534,12 @@ export function registerAiSearchRoutes(app: Express) {
   // Fetch a single conversation with all of its messages.
   app.get("/api/ai/chats/:id", async (req: Request, res: Response) => {
     try {
-      const userId = String(req.query.userId || "").trim();
-      const role = String(req.query.role || "").trim();
+      const ident = aiIdentity(req);
+      if (!ident) return res.status(401).json({ error: "unauthenticated" });
+      const { userId, role } = ident;
       const id = String(req.params.id || "").trim();
-      if (!userId) return res.status(400).json({ error: "invalid_user" });
       const chat = await storage.getAiChat(id);
-      if (!chat || chat.userId !== userId || (role && chat.role !== role)) {
+      if (!chat || chat.userId !== userId || chat.role !== role) {
         return res.status(404).json({ error: "chat_not_found" });
       }
       const messages = await storage.getAiChatMessages(id);
@@ -973,17 +1565,13 @@ export function registerAiSearchRoutes(app: Express) {
   // Delete a conversation (and its messages via cascade).
   app.delete("/api/ai/chats/:id", async (req: Request, res: Response) => {
     try {
-      const userId = String(req.query.userId || "").trim();
-      const role = String(req.query.role || "").trim();
+      const ident = aiIdentity(req);
+      if (!ident) return res.status(401).json({ error: "unauthenticated" });
+      const { userId, role } = ident;
       const id = String(req.params.id || "").trim();
-      if (!userId) return res.status(400).json({ error: "invalid_user" });
-      // When a role is supplied, only delete if it matches (prevents cross-role
-      // deletion for a shared userId); falls back to owner-only scoping otherwise.
-      if (role) {
-        const chat = await storage.getAiChat(id);
-        if (chat && (chat.userId !== userId || chat.role !== role)) {
-          return res.status(404).json({ error: "chat_not_found" });
-        }
+      const chat = await storage.getAiChat(id);
+      if (chat && (chat.userId !== userId || chat.role !== role)) {
+        return res.status(404).json({ error: "chat_not_found" });
       }
       await storage.deleteAiChat(id, userId);
       return res.json({ ok: true });
@@ -998,12 +1586,10 @@ export function registerAiSearchRoutes(app: Express) {
   // remaining slots with role/language-aware defaults.
   app.get("/api/ai/suggestions", async (req: Request, res: Response) => {
     try {
-      const userId = String(req.query.userId || "").trim();
-      const role = String(req.query.role || "").trim() as Role;
       const lang = String(req.query.lang || "de").trim();
-      if (!userId || (role !== "restaurant" && role !== "supplier")) {
-        return res.status(400).json({ error: "invalid_user" });
-      }
+      const ident = aiIdentity(req);
+      if (!ident) return res.status(401).json({ error: "unauthenticated" });
+      const { userId, role } = ident;
 
       const rows = await db
         .select({ content: aiChatMessages.content })
@@ -1091,16 +1677,14 @@ export function registerAiSearchRoutes(app: Express) {
   app.post("/api/ai/chat", aiLimiter, jsonBody, async (req: Request, res: Response) => {
     try {
       const question = String(req.body?.question || "").trim();
-      const userId = String(req.body?.userId || "").trim();
-      const role = String(req.body?.role || "").trim() as Role;
       const lang = String(req.body?.lang || "de").trim();
       const chatIdRaw = req.body?.chatId ? String(req.body.chatId).trim() : "";
 
       if (!question) return res.status(400).json({ error: "question_required" });
-      if (question.length > 500) return res.status(400).json({ error: "question_too_long" });
-      if (!userId || (role !== "restaurant" && role !== "supplier")) {
-        return res.status(400).json({ error: "invalid_user" });
-      }
+      if (question.length > 1000) return res.status(400).json({ error: "question_too_long" });
+      const ident = aiIdentity(req);
+      if (!ident) return res.status(401).json({ error: "unauthenticated" });
+      const { userId, role } = ident;
       if (!aiConfigured()) {
         return res.status(503).json({ error: "ai_not_configured", message: "KI-Integration ist noch nicht eingerichtet." });
       }
@@ -1118,7 +1702,7 @@ export function registerAiSearchRoutes(app: Express) {
 
       // Use recent stored turns as context (cap to keep token cost bounded).
       const stored = await storage.getAiChatMessages(chat.id);
-      const priorTurns = stored.slice(-10).map((m) => ({
+      const priorTurns = stored.slice(-12).map((m) => ({
         role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
         content: m.content,
       }));

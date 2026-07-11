@@ -1071,7 +1071,7 @@ export type InsertMonthlyReport = z.infer<typeof insertMonthlyReportSchema>;
 // assistant. Conversations and their messages persist across sessions so the
 // floating chat can show history and continue multi-turn context.
 export interface AiChatAction {
-  kind: "open_inbox" | "open_order";
+  kind: "open_inbox" | "open_order" | "open_page";
   label: string;
   href: string;
   orderId?: string;
