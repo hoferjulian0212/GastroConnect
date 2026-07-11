@@ -44,6 +44,7 @@ const insertCustomPriceSchema = _insertCustomPriceSchema.strict();
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { registerOcrImportRoutes } from "./ocrImport";
 import { registerAiSearchRoutes } from "./aiSearch";
+import { runAiKnowledgeMigration } from "./aiKnowledge";
 import { objectStorageClient, ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
 import PDFDocument from "pdfkit";
 import { randomUUID, timingSafeEqual } from "crypto";
@@ -651,6 +652,8 @@ export async function registerRoutes(
   await storage.runAdminMigration();
   // Driver module tables/enums (delivery assignments, live locations, internal chat)
   await storage.runDriverMigration();
+  // Central AI knowledge base (learns from user feedback on assistant answers)
+  await runAiKnowledgeMigration();
   // Provision the owner platform-admin from PLATFORM_ADMIN_EMAIL/PASSWORD (idempotent)
   await bootstrapPlatformAdmin();
   // Seed data on startup

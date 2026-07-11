@@ -14,6 +14,8 @@ import {
   ArrowRight,
   MessageSquare,
   HelpCircle,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -56,6 +58,7 @@ interface ChatMessage {
   content: string;
   actions?: AiChatAction[];
   isError?: boolean;
+  feedback?: "helpful" | "not_helpful" | null;
 }
 
 interface ChatSummary {
@@ -231,7 +234,7 @@ export function AiAssistant() {
       const res = await fetch(`/api/ai/chats/${id}?${sp.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error("failed");
       const data = (await res.json()) as {
-        messages: Array<{ id: string; role: string; content: string; actions?: AiChatAction[] }>;
+        messages: Array<{ id: string; role: string; content: string; actions?: AiChatAction[]; feedback?: "helpful" | "not_helpful" | null }>;
       };
       setMessages(
         (data.messages || []).map((m) => ({
@@ -239,6 +242,7 @@ export function AiAssistant() {
           role: m.role === "assistant" ? "assistant" : "user",
           content: m.content,
           actions: Array.isArray(m.actions) ? m.actions : [],
+          feedback: m.feedback ?? null,
         })),
       );
     } catch {
@@ -252,6 +256,21 @@ export function AiAssistant() {
       ]);
     } finally {
       setSending(false);
+    }
+  };
+
+  // Thumbs up/down on an assistant answer. Helpful answers feed the central
+  // learning knowledge base on the server; not-helpful down-ranks it.
+  const sendFeedback = async (messageId: string, helpful: boolean) => {
+    setMessages((m) =>
+      m.map((msg) =>
+        msg.id === messageId ? { ...msg, feedback: helpful ? "helpful" : "not_helpful" } : msg,
+      ),
+    );
+    try {
+      await apiRequest("POST", "/api/ai/feedback", { messageId, helpful, lang });
+    } catch {
+      // Non-critical — keep the optimistic UI state.
     }
   };
 
@@ -567,6 +586,49 @@ export function AiAssistant() {
                                 ))}
                               </div>
                             )}
+                            {!m.isError &&
+                              !m.id.startsWith("err-") &&
+                              !m.id.startsWith("a-") &&
+                              !m.id.startsWith("local-") && (
+                                <div className="flex items-center gap-1 mt-1.5" data-testid={`ai-feedback-${m.id}`}>
+                                  {m.feedback ? (
+                                    <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                                      {m.feedback === "helpful" ? (
+                                        <>
+                                          <ThumbsUp className="h-3 w-3 text-emerald-500" />
+                                          {t("Danke für Ihr Feedback!", "Grazie per il feedback!")}
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ThumbsDown className="h-3 w-3 text-muted-foreground" />
+                                          {t("Danke für Ihr Feedback!", "Grazie per il feedback!")}
+                                        </>
+                                      )}
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => sendFeedback(m.id, true)}
+                                        className="inline-flex items-center justify-center h-6 w-6 rounded-full text-muted-foreground/60 hover:text-emerald-600 hover:bg-emerald-500/10 transition-colors"
+                                        title={t("Hilfreich", "Utile")}
+                                        data-testid={`button-ai-feedback-up-${m.id}`}
+                                      >
+                                        <ThumbsUp className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => sendFeedback(m.id, false)}
+                                        className="inline-flex items-center justify-center h-6 w-6 rounded-full text-muted-foreground/60 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                                        title={t("Nicht hilfreich", "Non utile")}
+                                        data-testid={`button-ai-feedback-down-${m.id}`}
+                                      >
+                                        <ThumbsDown className="h-3.5 w-3.5" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
                           </div>
                         </div>
                       ),

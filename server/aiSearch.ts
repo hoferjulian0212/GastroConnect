@@ -12,6 +12,7 @@ import { and, eq, desc, ilike, or, inArray, ne, gte, lte, sql } from "drizzle-or
 import { foldedIlike } from "./searchSql";
 import { foldSearchText } from "@shared/searchText";
 import { storage } from "./storage";
+import { retrieveKnowledge, knowledgePromptBlock, learnFromExchange, penalizeKnowledge } from "./aiKnowledge";
 
 type Role = "restaurant" | "supplier";
 
@@ -1380,8 +1381,9 @@ async function runAssistant(opts: {
   lang: string;
   priorTurns: { role: "user" | "assistant"; content: string }[];
   question: string;
+  knowledgeBlock?: string;
 }): Promise<{ answer: string; actions: AiAction[] }> {
-  const { userId, role, lang, priorTurns, question } = opts;
+  const { userId, role, lang, priorTurns, question, knowledgeBlock } = opts;
   const { handlers, definitions } = buildTools(userId, role);
   const tools = [...definitions, RESPOND_TOOL];
 
@@ -1395,7 +1397,12 @@ async function runAssistant(opts: {
   for (const turn of priorTurns) {
     if (turn.content) messages.push({ role: turn.role, content: turn.content });
   }
-  messages.push({ role: "user", content: question });
+  // Learned knowledge is prepended to the USER message as clearly-marked,
+  // untrusted context — never as a system instruction (poisoning guard).
+  messages.push({
+    role: "user",
+    content: knowledgeBlock ? `${knowledgeBlock}\n\nFrage des Nutzers:\n${question}` : question,
+  });
 
   let answer = "";
   let rawActions: AiActionRaw[] = [];
@@ -1555,6 +1562,7 @@ export function registerAiSearchRoutes(app: Express) {
           role: m.role,
           content: m.content,
           actions: m.actions || [],
+          feedback: m.feedback || null,
           createdAt: m.createdAt,
         })),
       });
@@ -1711,13 +1719,19 @@ export function registerAiSearchRoutes(app: Express) {
 
       await storage.appendAiChatMessage({ chatId: chat.id, role: "user", content: question });
 
-      const { answer, actions } = await runAssistant({ userId, role, lang, priorTurns, question });
+      // Central learned knowledge: retrieve entries similar to this question and
+      // inject them into the prompt (grows over time via user feedback).
+      const learned = await retrieveKnowledge(role, question);
+      const knowledgeBlock = knowledgePromptBlock(learned, lang);
+
+      const { answer, actions } = await runAssistant({ userId, role, lang, priorTurns, question, knowledgeBlock });
 
       const assistantMsg = await storage.appendAiChatMessage({
         chatId: chat.id,
         role: "assistant",
         content: answer,
         actions: actions.length ? actions : null,
+        knowledgeIds: learned.length ? learned.map((k) => k.id) : null,
       });
 
       return res.json({
@@ -1730,6 +1744,52 @@ export function registerAiSearchRoutes(app: Express) {
     } catch (error: any) {
       console.error("[ai/chat] failed:", error?.message || error);
       return res.status(500).json({ error: "ai_failed", message: "Die Anfrage konnte nicht verarbeitet werden." });
+    }
+  });
+
+  // Feedback on an assistant answer (thumbs up/down). Thumbs-up feeds the
+  // central learning pipeline; thumbs-down down-ranks the injected knowledge.
+  app.post("/api/ai/feedback", jsonBody, async (req: Request, res: Response) => {
+    try {
+      const ident = aiIdentity(req);
+      if (!ident) return res.status(401).json({ error: "unauthenticated" });
+      const messageId = String(req.body?.messageId || "").trim();
+      const helpful = req.body?.helpful === true;
+      if (!messageId) return res.status(400).json({ error: "message_id_required" });
+
+      const [msg] = await db.select().from(aiChatMessages).where(eq(aiChatMessages.id, messageId)).limit(1);
+      if (!msg || msg.role !== "assistant") return res.status(404).json({ error: "message_not_found" });
+      const chat = await storage.getAiChat(msg.chatId);
+      // Ownership: the chat must belong to the authenticated org + role.
+      if (!chat || chat.userId !== ident.userId || chat.role !== ident.role) {
+        return res.status(404).json({ error: "message_not_found" });
+      }
+      if (msg.feedback) return res.json({ ok: true, feedback: msg.feedback });
+
+      const feedback = helpful ? "helpful" : "not_helpful";
+      await db.update(aiChatMessages).set({ feedback }).where(eq(aiChatMessages.id, messageId));
+
+      if (helpful) {
+        // Find the user question that this answer responded to.
+        const all = await storage.getAiChatMessages(msg.chatId);
+        const idx = all.findIndex((m) => m.id === messageId);
+        let question = "";
+        for (let i = idx - 1; i >= 0; i--) {
+          if (all[i].role === "user") { question = all[i].content; break; }
+        }
+        if (question) {
+          // Fire-and-forget: learning must never block the feedback response.
+          learnFromExchange({ role: ident.role, lang: String(req.body?.lang || "de"), question, answer: msg.content })
+            .catch((e) => console.warn("[ai/feedback] learn failed:", e?.message || e));
+        }
+      } else if (Array.isArray(msg.knowledgeIds) && msg.knowledgeIds.length > 0) {
+        penalizeKnowledge(msg.knowledgeIds).catch(() => {});
+      }
+
+      return res.json({ ok: true, feedback });
+    } catch (error: any) {
+      console.error("[ai/feedback] failed:", error?.message || error);
+      return res.status(500).json({ error: "feedback_failed" });
     }
   });
 }

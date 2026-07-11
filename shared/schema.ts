@@ -1100,11 +1100,45 @@ export const aiChatMessages = pgTable("ai_chat_messages", {
   content: text("content").notNull(),
   // Resolved deep-link actions attached to an assistant message (server-verified).
   actions: jsonb("actions").$type<AiChatAction[]>(),
+  // User feedback on assistant answers: "helpful" | "not_helpful" (null = none yet).
+  feedback: text("feedback"),
+  // Which central knowledge entries were injected when producing this answer
+  // (used to up-/down-rank them based on feedback).
+  knowledgeIds: jsonb("knowledge_ids").$type<string[]>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_ai_chat_messages_chat").on(table.chatId),
   index("idx_ai_chat_messages_chat_created").on(table.chatId, table.createdAt),
 ]);
+
+// ─── Central AI knowledge base (learns from user feedback) ───────────────────
+// When a user marks an assistant answer as helpful, the exchange is distilled by
+// the model into a GENERAL, data-free Q&A entry stored here. Entries are shared
+// across all organizations of the same role ("central brain") and injected into
+// future prompts when a similar question is asked. Negative feedback down-ranks
+// entries until they are disabled.
+export const aiKnowledge = pgTable("ai_knowledge", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  role: userRoleEnum("role").notNull(),
+  lang: text("lang").notNull().default("de"),
+  question: text("question").notNull(),
+  // Umlaut-folded, lowercased question for keyword matching / dedupe.
+  questionFolded: text("question_folded").notNull(),
+  answer: text("answer").notNull(),
+  // OpenAI embedding of the question (semantic retrieval); null if unavailable.
+  embedding: jsonb("embedding").$type<number[]>(),
+  helpfulCount: integer("helpful_count").notNull().default(1),
+  notHelpfulCount: integer("not_helpful_count").notNull().default(0),
+  useCount: integer("use_count").notNull().default(0),
+  // "active" | "disabled"
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_knowledge_role_status").on(table.role, table.status),
+]);
+
+export type AiKnowledge = typeof aiKnowledge.$inferSelect;
 
 export const insertAiChatSchema = createInsertSchema(aiChats).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAiChatMessageSchema = createInsertSchema(aiChatMessages).omit({ id: true, createdAt: true });
