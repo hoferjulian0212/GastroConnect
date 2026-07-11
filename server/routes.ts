@@ -8376,6 +8376,31 @@ export async function registerRoutes(
         heading: parsed.heading ?? null,
         speedKmh: parsed.speedKmh ?? null,
       });
+      // Refresh ETA/distance for the driver's active stops (en_route/arriving)
+      // from this live ping. Straight-line distance is corrected by a road
+      // factor; ETA uses the reported speed when plausible, else a rural
+      // delivery average. Best-effort: a failure here must never fail the ping.
+      try {
+        const deliveries = await storage.getDeliveriesForDriver(req.auth!.memberId, romeToday());
+        const active = deliveries.filter((d) => ["en_route", "arriving"].includes(d.status));
+        const ROAD_FACTOR = 1.3;
+        const speed = parsed.speedKmh != null && parsed.speedKmh >= 10 && parsed.speedKmh <= 130
+          ? parsed.speedKmh
+          : 35;
+        await Promise.all(active.map(async (d) => {
+          const destLat = d.restaurant.latitude ? parseFloat(d.restaurant.latitude) : NaN;
+          const destLng = d.restaurant.longitude ? parseFloat(d.restaurant.longitude) : NaN;
+          if (!Number.isFinite(destLat) || !Number.isFinite(destLng)) return;
+          const roadKm = haversineKm(parsed.latitude, parsed.longitude, destLat, destLng) * ROAD_FACTOR;
+          const etaMinutes = Math.max(1, Math.round((roadKm / speed) * 60));
+          await storage.updateDeliveryAssignment(d.id, {
+            etaMinutes,
+            distanceKm: roadKm.toFixed(2),
+          });
+        }));
+      } catch (etaErr) {
+        console.error("[driver] ETA refresh error:", etaErr);
+      }
       res.json(row);
     } catch (error: any) {
       if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });

@@ -93,6 +93,8 @@ export function DeliveryTracking({
       : null;
   const showMap = !!driverPos && ["en_route", "arriving"].includes(assignment.status);
   const center: [number, number] = driverPos ?? destPos ?? SOUTH_TYROL_CENTER;
+  const isMoving = ["en_route", "arriving"].includes(assignment.status);
+  const showEtaBanner = isMoving && assignment.etaMinutes != null;
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0" data-testid="section-delivery-tracking">
@@ -101,21 +103,23 @@ export function DeliveryTracking({
           <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           {lang === "de" ? "Lieferverfolgung" : "Tracciamento consegna"}
         </p>
-        {assignment.status !== "delivered" && (assignment.etaMinutes != null || assignment.distanceKm != null) && (
-          <div className="flex items-center gap-1.5">
-            {assignment.etaMinutes != null && (
-              <span className="text-[11px] font-semibold rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 px-2 py-0.5" data-testid="text-tracking-eta">
-                {lang === "de" ? `ca. ${assignment.etaMinutes} Min.` : `ca. ${assignment.etaMinutes} min`}
-              </span>
-            )}
-            {assignment.distanceKm != null && (
-              <span className="text-[11px] font-medium rounded-full bg-muted text-muted-foreground px-2 py-0.5" data-testid="text-tracking-distance">
-                {parseFloat(String(assignment.distanceKm)).toFixed(1)} km
-              </span>
-            )}
-          </div>
+        {isMoving && assignment.distanceKm != null && (
+          <span className="text-[11px] font-medium rounded-full bg-muted text-muted-foreground px-2 py-0.5" data-testid="text-tracking-distance">
+            {parseFloat(String(assignment.distanceKm)).toFixed(1)} km
+          </span>
         )}
       </div>
+
+      {showEtaBanner && (
+        <div className="px-4 py-3 border-b border-border/20 bg-blue-50 dark:bg-blue-950/30 flex items-baseline justify-between gap-2" data-testid="banner-tracking-eta">
+          <p className="text-xs font-medium text-blue-700/80 dark:text-blue-300/80">
+            {lang === "de" ? "Voraussichtliche Ankunft" : "Arrivo previsto"}
+          </p>
+          <p className="text-lg font-bold text-blue-700 dark:text-blue-300 leading-none" data-testid="text-tracking-eta">
+            {lang === "de" ? `in ~${assignment.etaMinutes} Min.` : `tra ~${assignment.etaMinutes} min`}
+          </p>
+        </div>
+      )}
 
       {driver && (
         <div className="px-4 py-3 flex items-center gap-3 border-b border-border/20" data-testid="tracking-driver-card">
