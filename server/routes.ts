@@ -7884,6 +7884,69 @@ export async function registerRoutes(
     return { orderedIds: nearestNeighborOrder(stops, origin), trafficAware: false };
   }
 
+  // Google route recomputation is throttled per assignment: location pings can
+  // arrive every few seconds, but a 45s-old traffic-aware ETA is still far
+  // better than a fresh haversine guess — and it keeps API cost bounded.
+  const ROUTE_RECALC_INTERVAL_MS = 45_000;
+  const lastRouteCalcAt = new Map<string, number>();
+  function shouldRecalcRoute(assignmentId: string): boolean {
+    const now = Date.now();
+    const last = lastRouteCalcAt.get(assignmentId);
+    if (last != null && now - last < ROUTE_RECALC_INTERVAL_MS) return false;
+    // Bounded memory: prune stale entries once the map grows past ~500 stops.
+    if (lastRouteCalcAt.size > 500) {
+      for (const [id, t] of lastRouteCalcAt) {
+        if (now - t > 10 * 60 * 1000) lastRouteCalcAt.delete(id);
+      }
+    }
+    lastRouteCalcAt.set(assignmentId, now);
+    return true;
+  }
+
+  // Real driving ETA/distance + encoded route polyline for a single leg via
+  // the Google Routes API. Returns null when no key is configured or on any
+  // API error so callers can fall back to the haversine estimate.
+  async function computeDrivingRoute(
+    origin: { lat: number; lng: number },
+    dest: { lat: number; lng: number },
+  ): Promise<{ etaMinutes: number; distanceKm: number; polyline: string | null } | null> {
+    const key = process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!key) return null;
+    try {
+      const resp = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": key,
+          "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
+        },
+        body: JSON.stringify({
+          origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
+          destination: { location: { latLng: { latitude: dest.lat, longitude: dest.lng } } },
+          travelMode: "DRIVE",
+          routingPreference: "TRAFFIC_AWARE",
+        }),
+      });
+      if (!resp.ok) {
+        console.error("[driver] Google Routes ETA failed:", resp.status, (await resp.text()).slice(0, 300));
+        return null;
+      }
+      const data: any = await resp.json();
+      const route = data?.routes?.[0];
+      const seconds = typeof route?.duration === "string" ? parseInt(route.duration, 10) : NaN;
+      const meters = typeof route?.distanceMeters === "number" ? route.distanceMeters : NaN;
+      if (!Number.isFinite(seconds) || !Number.isFinite(meters)) return null;
+      return {
+        etaMinutes: Math.max(1, Math.round(seconds / 60)),
+        distanceKm: meters / 1000,
+        polyline: typeof route?.polyline?.encodedPolyline === "string" ? route.polyline.encodedPolyline : null,
+      };
+    } catch (err: any) {
+      console.error("[driver] Google Routes ETA error:", err?.message);
+      return null;
+    }
+  }
+
   // Guard: caller must be a member of a supplier org (any role) — used for the
   // company-internal chat which spans office, warehouse and drivers.
   function requireSupplierMember(req: Request): { status: number; body: any } | null {
@@ -8396,11 +8459,30 @@ export async function registerRoutes(
           const destLat = d.restaurant.latitude ? parseFloat(d.restaurant.latitude) : NaN;
           const destLng = d.restaurant.longitude ? parseFloat(d.restaurant.longitude) : NaN;
           if (!Number.isFinite(destLat) || !Number.isFinite(destLng)) return;
+          // Prefer real driving time/distance + route line from the Google
+          // Routes API; haversine estimate when no key or the API fails.
+          // The Google path is throttled per stop — a <45s-old traffic-aware
+          // ETA stays in place instead of paying for a recompute every ping.
+          const hasGoogleKey = !!(process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY);
+          if (hasGoogleKey && !shouldRecalcRoute(d.id)) return;
+          const driven = await computeDrivingRoute(
+            { lat: parsed.latitude, lng: parsed.longitude },
+            { lat: destLat, lng: destLng },
+          );
+          if (driven) {
+            await storage.updateDeliveryAssignment(d.id, {
+              etaMinutes: driven.etaMinutes,
+              distanceKm: driven.distanceKm.toFixed(2),
+              routePolyline: driven.polyline,
+            });
+            return;
+          }
           const roadKm = haversineKm(parsed.latitude, parsed.longitude, destLat, destLng) * ROAD_FACTOR;
           const etaMinutes = Math.max(1, Math.round((roadKm / speed) * 60));
           await storage.updateDeliveryAssignment(d.id, {
             etaMinutes,
             distanceKm: roadKm.toFixed(2),
+            routePolyline: null,
           });
         }));
       } catch (etaErr) {
@@ -8447,6 +8529,9 @@ export async function registerRoutes(
           deliveredAt: assignment.deliveredAt,
           etaMinutes: assignment.etaMinutes,
           distanceKm: assignment.distanceKm,
+          // Route line only while the driver is actually moving toward this
+          // stop — matches the same privacy window as the live position.
+          routePolyline: location ? assignment.routePolyline : null,
         },
         driver: driver ? { name: driver.name, phone: driver.phone ?? null, profileImageUrl: driver.profileImageUrl ?? null } : null,
         location,

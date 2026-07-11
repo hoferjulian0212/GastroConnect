@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useLanguage } from "@/context/LanguageContext";
@@ -10,6 +10,40 @@ import { format } from "date-fns";
 import type { OrderTrackingInfo } from "@shared/schema";
 
 const SOUTH_TYROL_CENTER: [number, number] = [46.6, 11.45];
+
+/**
+ * Decodes a Google encoded polyline (precision 5) into [lat, lng] pairs.
+ * Returns an empty array on any malformed input — the map simply shows no
+ * route line then.
+ */
+function decodePolyline(encoded: string): [number, number][] {
+  const points: [number, number][] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  try {
+    while (index < encoded.length) {
+      for (const which of [0, 1] as const) {
+        let result = 0;
+        let shift = 0;
+        let byte: number;
+        do {
+          if (index >= encoded.length) return points;
+          byte = encoded.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20);
+        const delta = result & 1 ? ~(result >> 1) : result >> 1;
+        if (which === 0) lat += delta;
+        else lng += delta;
+      }
+      points.push([lat / 1e5, lng / 1e5]);
+    }
+  } catch {
+    return [];
+  }
+  return points;
+}
 
 const driverIcon = L.divIcon({
   html: `
@@ -80,6 +114,11 @@ export function DeliveryTracking({
     ];
     return defs.map((d, i) => ({ ...d, done: i <= idx, current: i === idx }));
   }, [assignment]);
+
+  const routePoints = useMemo(
+    () => (assignment?.routePolyline ? decodePolyline(assignment.routePolyline) : []),
+    [assignment?.routePolyline],
+  );
 
   if (!assignment || assignment.status === "problem") return null;
 
@@ -153,6 +192,12 @@ export function DeliveryTracking({
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            {routePoints.length >= 2 && (
+              <Polyline
+                positions={routePoints}
+                pathOptions={{ color: "#2563eb", weight: 4, opacity: 0.75, lineCap: "round", lineJoin: "round" }}
+              />
+            )}
             {driverPos && <Marker position={driverPos} icon={driverIcon} />}
             {destPos && <Marker position={destPos} icon={destinationIcon} />}
           </MapContainer>

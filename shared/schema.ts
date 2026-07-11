@@ -1412,6 +1412,9 @@ export const deliveryAssignments = pgTable("delivery_assignments", {
   // Last computed routing estimates (refreshed by route optimization).
   etaMinutes: integer("eta_minutes"),
   distanceKm: decimal("distance_km", { precision: 8, scale: 2 }),
+  // Encoded driving polyline from the Google Routes API (null when the
+  // estimate came from the haversine fallback — no route line to draw then).
+  routePolyline: text("route_polyline"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -1473,7 +1476,7 @@ export const insertDeliveryAssignmentSchema = createInsertSchema(deliveryAssignm
   id: true, createdAt: true, updatedAt: true, assignedAt: true, enRouteAt: true,
   arrivingAt: true, deliveredAt: true, podNote: true, podPhotoUrl: true,
   podRecipient: true, problemType: true, problemNote: true, problemReportedAt: true,
-  etaMinutes: true, distanceKm: true, status: true,
+  etaMinutes: true, distanceKm: true, routePolyline: true, status: true,
 });
 export const insertDriverLocationSchema = createInsertSchema(driverLocations).omit({ id: true, updatedAt: true });
 export const insertInternalMessageSchema = createInsertSchema(internalMessages).omit({ id: true, createdAt: true });
@@ -1512,7 +1515,7 @@ export type DriverLocationWithDriver = DriverLocation & { driver: SafeMember };
 
 // Restaurant-facing live tracking payload for an order in delivery.
 export type OrderTrackingInfo = {
-  assignment: Pick<DeliveryAssignment, "id" | "status" | "assignedAt" | "enRouteAt" | "arrivingAt" | "deliveredAt" | "etaMinutes" | "distanceKm"> | null;
+  assignment: Pick<DeliveryAssignment, "id" | "status" | "assignedAt" | "enRouteAt" | "arrivingAt" | "deliveredAt" | "etaMinutes" | "distanceKm" | "routePolyline"> | null;
   driver: { name: string; phone: string | null; profileImageUrl: string | null } | null;
   location: { latitude: string; longitude: string; updatedAt: Date } | null;
 };

@@ -165,9 +165,12 @@ before(async () => {
     longitude: "12.4963655",
   });
 
+  // Internal chat is 1:1 (DMs): the message must carry a recipient, and the
+  // HTTP test below fetches the thread via ?with=<partner>.
   await db.insert(internalMessages).values({
     supplierId,
     senderMemberId: driverMemberId,
+    recipientMemberId: adminMemberId,
     content: `sanitization test message ${RUN}`,
   });
 });
@@ -338,10 +341,14 @@ describe("HTTP: live endpoints never expose member credentials", async () => {
     assert.ok(locations.text.includes(driverMemberId), "seeded driver location missing in HTTP payload");
     assertRawJsonClean(locations.text, "GET /api/supplier/driver-locations");
 
-    const chat = await fetchJsonText("/api/internal-chat/messages", cookie);
+    const chat = await fetchJsonText(`/api/internal-chat/messages?with=${driverMemberId}`, cookie);
     assert.equal(chat.status, 200, `internal-chat/messages -> ${chat.status}`);
     assert.ok(chat.text.includes(`sanitization test message ${RUN}`), "seeded internal message missing in HTTP payload");
-    assertRawJsonClean(chat.text, "GET /api/internal-chat/messages");
+    assertRawJsonClean(chat.text, "GET /api/internal-chat/messages?with=");
+
+    const threads = await fetchJsonText("/api/internal-chat/threads", cookie);
+    assert.equal(threads.status, 200, `internal-chat/threads -> ${threads.status}`);
+    assertRawJsonClean(threads.text, "GET /api/internal-chat/threads");
   });
 
   test("driver endpoints (tour + history)", { skip: !up && "dev server not running on port 5000" }, async () => {

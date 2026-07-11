@@ -4950,10 +4950,12 @@ export class DatabaseStorage implements IStorage {
         problem_reported_at timestamp,
         eta_minutes integer,
         distance_km numeric(8,2),
+        route_polyline text,
         created_at timestamp NOT NULL DEFAULT now(),
         updated_at timestamp NOT NULL DEFAULT now()
       )
     `);
+    await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS route_polyline text`);
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_delivery_assignments_order ON delivery_assignments (order_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_delivery_assignments_driver_date ON delivery_assignments (driver_member_id, delivery_date)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_delivery_assignments_supplier_date ON delivery_assignments (supplier_id, delivery_date)`);
