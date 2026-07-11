@@ -1,3 +1,4 @@
+import { foldSearchText } from "@shared/searchText";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { Search, Package, Calendar, ChevronRight } from "lucide-react";
@@ -52,9 +53,9 @@ export default function SupplierOrdersMobile({
     return orders.filter((o) => {
       if (filterStatus !== "all" && o.status !== filterStatus) return false;
       if (search) {
-        const q = search.toLowerCase();
-        const num = formatOrderNumber(o).toLowerCase();
-        const r = (o.restaurant?.companyName || "").toLowerCase();
+        const q = foldSearchText(search);
+        const num = foldSearchText(formatOrderNumber(o));
+        const r = foldSearchText(o.restaurant?.companyName || "");
         if (!num.includes(q) && !r.includes(q)) return false;
       }
       return true;

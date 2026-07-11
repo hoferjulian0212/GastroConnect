@@ -1,3 +1,4 @@
+import { searchIncludes, foldSearchText } from "@shared/searchText";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useConfetti } from "@/hooks/use-confetti";
 import { HeroPortal } from "@/context/HeroContext";
@@ -437,7 +438,7 @@ export default function SupplierOrders() {
 
  const filterOrders = (status: string | null) => {
  if (!orders) return [];
- const q = searchQuery.trim().toLowerCase();
+ const q = foldSearchText(searchQuery.trim());
  return orders.filter(order => {
  if (status && order.status !== status) return false;
  if (filterRestaurant !== "all" && order.restaurant?.id !== filterRestaurant) return false;
@@ -452,10 +453,10 @@ export default function SupplierOrders() {
  if (new Date(order.createdAt) > to) return false;
  }
  if (q) {
- const restName = (order.restaurant?.companyName || order.restaurant?.name || "").toLowerCase();
- const idMatch = order.id.toLowerCase().includes(q);
+ const restName = foldSearchText(order.restaurant?.companyName || order.restaurant?.name || "");
+ const idMatch = searchIncludes(order.id, q);
  const restMatch = restName.includes(q);
- const itemMatch = order.items?.some((it: any) => it.productName?.toLowerCase().includes(q));
+ const itemMatch = order.items?.some((it: any) => searchIncludes(it.productName, q));
  if (!idMatch && !restMatch && !itemMatch) return false;
  }
  return true;

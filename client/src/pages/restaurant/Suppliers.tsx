@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { MobilePageHeader, MobileSearchBar } from "@/components/mobile";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -47,9 +48,9 @@ export default function RestaurantSuppliers() {
   });
 
   const filteredSuppliers = suppliers?.filter(supplier =>
-    supplier.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    supplier.email.toLowerCase().includes(searchQuery.toLowerCase())
+    searchIncludes(supplier.companyName, searchQuery) ||
+    searchIncludes(supplier.name, searchQuery) ||
+    searchIncludes(supplier.email, searchQuery)
   );
 
   const handleMessage = (supplierId: string) => {

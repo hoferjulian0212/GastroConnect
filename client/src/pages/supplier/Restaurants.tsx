@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -52,9 +53,9 @@ export default function SupplierRestaurants() {
     : restaurants;
 
   const filteredRestaurants = scopedRestaurants?.filter(r =>
-    r.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.email.toLowerCase().includes(searchQuery.toLowerCase())
+    searchIncludes(r.companyName, searchQuery) ||
+    searchIncludes(r.name, searchQuery) ||
+    searchIncludes(r.email, searchQuery)
   );
 
   if (selectedRestaurant && currentUser?.id) {

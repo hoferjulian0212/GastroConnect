@@ -1,3 +1,4 @@
+import { foldSearchText } from "@shared/searchText";
 import { useState, useEffect, useMemo } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -441,7 +442,7 @@ export default function Complaints() {
 
  const filteredComplaints = useMemo(() => {
  if (!existingComplaints) return [];
- const search = searchQuery.trim().toLowerCase();
+ const search = foldSearchText(searchQuery.trim());
  const filtered = existingComplaints.filter(c => {
  if (filterComplaintSupplier !== "all" && c.supplier?.id !== filterComplaintSupplier) return false;
  if (filterComplaintStatus !== "all") {
@@ -472,8 +473,8 @@ export default function Complaints() {
  c.supplier?.name,
  c.id,
  (c as any).orderId,
- ].filter(Boolean).join(" ").toLowerCase();
- if (!haystack.includes(search)) return false;
+ ].filter(Boolean).join(" ");
+ if (!foldSearchText(haystack).includes(search)) return false;
  }
  return true;
  });

@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
@@ -344,7 +345,7 @@ export default function RestaurantInbox() {
   const filteredAddableProductsInbox = useMemo(() => {
     if (!editProductSearchInbox.trim()) return addableProductsInbox;
     const search = editProductSearchInbox.toLowerCase();
-    return addableProductsInbox.filter(p => p.name.toLowerCase().includes(search));
+    return addableProductsInbox.filter(p => searchIncludes(p.name, search));
   }, [addableProductsInbox, editProductSearchInbox]);
 
   const addProductToEditInbox = (product: Product) => {
@@ -1015,8 +1016,8 @@ export default function RestaurantInbox() {
   };
 
   const filteredConversations = conversations?.filter(conv => 
-    conv.otherUser.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.otherUser.name.toLowerCase().includes(searchQuery.toLowerCase())
+    searchIncludes(conv.otherUser.companyName, searchQuery) ||
+    searchIncludes(conv.otherUser.name, searchQuery)
   );
 
   const handleSendMessage = () => {
@@ -1157,7 +1158,7 @@ export default function RestaurantInbox() {
         const cat = (p.category && p.category.trim()) || (lang === "de" ? "Sonstiges" : "Altro");
         if (cat !== orderCategoryFilter) return false;
       }
-      if (q && !p.name.toLowerCase().includes(q) && !(p.description || "").toLowerCase().includes(q)) {
+      if (q && !searchIncludes(p.name, q) && !searchIncludes((p.description || ""), q)) {
         return false;
       }
       return true;

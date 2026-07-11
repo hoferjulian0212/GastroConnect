@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useRef, useEffect, useMemo, Fragment } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
@@ -186,8 +187,8 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  const lowStockCount = products.filter(p => p.lowStockThreshold && p.lowStockThreshold > 0 && (p.stockQuantity ?? 0) <= p.lowStockThreshold && (p.stockQuantity ?? 0) > 0).length;
 
  const filtered = products.filter(p => {
- const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
- p.category?.toLowerCase().includes(searchQuery.toLowerCase());
+ const matchesSearch = !searchQuery || searchIncludes(p.name, searchQuery) ||
+ searchIncludes(p.category, searchQuery);
  if (!matchesSearch) return false;
  if (statusFilter === "low") return p.lowStockThreshold && p.lowStockThreshold > 0 && (p.stockQuantity ?? 0) <= p.lowStockThreshold && (p.stockQuantity ?? 0) > 0;
  if (statusFilter === "out") return (p.stockQuantity ?? 0) === 0;
@@ -1231,9 +1232,9 @@ export default function SupplierProducts() {
  });
 
  const filteredProducts = products?.filter(product =>
- product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
- product.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
- product.category?.toLowerCase().includes(searchQuery.toLowerCase())
+ searchIncludes(product.name, searchQuery) ||
+ searchIncludes(product.description, searchQuery) ||
+ searchIncludes(product.category, searchQuery)
  );
 
  const openEditDialog = (product: Product) => {
@@ -1388,8 +1389,8 @@ export default function SupplierProducts() {
 
  const categoryFilteredProducts = selectedCategory
  ? productsByCategory(selectedCategory).filter(p =>
- p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
- p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+ searchIncludes(p.name, searchQuery) ||
+ searchIncludes(p.description, searchQuery)
  )
  : [];
 

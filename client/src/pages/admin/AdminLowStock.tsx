@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -40,9 +41,9 @@ export default function AdminLowStock() {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
-      p.name.toLowerCase().includes(q) ||
-      p.supplierName.toLowerCase().includes(q) ||
-      (p.category ?? "").toLowerCase().includes(q)
+      searchIncludes(p.name, q) ||
+      searchIncludes(p.supplierName, q) ||
+      searchIncludes((p.category ?? ""), q)
     );
   });
 

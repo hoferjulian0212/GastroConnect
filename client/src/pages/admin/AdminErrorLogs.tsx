@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout, AdminBreadcrumb } from "./AdminLayout";
@@ -113,9 +114,9 @@ export default function AdminErrorLogs() {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
-      l.message.toLowerCase().includes(q) ||
-      (l.path ?? "").toLowerCase().includes(q) ||
-      (l.method ?? "").toLowerCase().includes(q) ||
+      searchIncludes(l.message, q) ||
+      searchIncludes((l.path ?? ""), q) ||
+      searchIncludes((l.method ?? ""), q) ||
       String(l.statusCode ?? "").includes(q)
     );
   });

@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -220,7 +221,7 @@ export default function RestaurantHome() {
     return products.filter(p =>
       p.supplierId === wizardBrowseSupplierId &&
       p.inStock !== false &&
-      (wizardBrowseSearch === "" || p.name.toLowerCase().includes(wizardBrowseSearch.toLowerCase()))
+      (wizardBrowseSearch === "" || searchIncludes(p.name, wizardBrowseSearch))
     );
   }, [products, wizardBrowseSupplierId, wizardBrowseSearch]);
 

@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useMemo } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
@@ -782,7 +783,7 @@ function CreateEditDialog({
     return allProducts
       .filter(p => !selectedIds.has(p.id) && p.inStock)
       .filter(p => !supplierFilter || p.supplierId === supplierFilter)
-      .filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.supplier?.companyName?.toLowerCase().includes(search.toLowerCase()));
+      .filter(p => !search || searchIncludes(p.name, search) || searchIncludes(p.supplier?.companyName, search));
   }, [allProducts, selectedItems, search, supplierFilter]);
 
   const createMutation = useMutation({

@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { HeroPortal } from "@/context/HeroContext";
@@ -32,7 +33,7 @@ export default function WarehouseStock() {
     const list = [...(products ?? [])];
     list.sort((a, b) => a.name.localeCompare(b.name));
     if (!term) return list;
-    return list.filter((p) => p.name.toLowerCase().includes(term));
+    return list.filter((p) => searchIncludes(p.name, term));
   }, [products, search]);
 
   const refresh = async () => {

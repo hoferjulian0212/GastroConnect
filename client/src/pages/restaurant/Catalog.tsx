@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
@@ -770,8 +771,8 @@ export default function RestaurantCatalog() {
 
  const categoryFilteredProducts = selectedCategory
  ? productsByCategory(selectedCategory).filter(p => {
- const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
- p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+ const matchesSearch = searchIncludes(p.name, searchQuery) ||
+ searchIncludes(p.description, searchQuery);
  const matchesAvailability = !onlyAvailable || p.inStock;
  const matchesPromotion = !onlyPromotions || !!p.activePromotion;
  return matchesSearch && matchesAvailability && matchesPromotion;
@@ -794,10 +795,10 @@ export default function RestaurantCatalog() {
  const supplierFiltered = selectedSupplier === "all" ? products : products.filter(p => p.supplierId === selectedSupplier);
  return supplierFiltered
  .filter(p =>
- p.name.toLowerCase().includes(q) ||
- p.description?.toLowerCase().includes(q) ||
- p.supplier?.companyName?.toLowerCase().includes(q) ||
- p.supplier?.name?.toLowerCase().includes(q)
+ searchIncludes(p.name, q) ||
+ searchIncludes(p.description, q) ||
+ searchIncludes(p.supplier?.companyName, q) ||
+ searchIncludes(p.supplier?.name, q)
  )
  .slice(0, 8);
  }, [products, globalSearch, selectedSupplier]);

@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useMemo } from "react";
 import { useConfetti } from "@/hooks/use-confetti";
 import { HeroPortal } from "@/context/HeroContext";
@@ -281,13 +282,13 @@ export default function SupplierPromotions() {
   const dateFnsLocale = lang === "de" ? de : it;
 
   const filteredProducts = products?.filter(p =>
-    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    p.category?.toLowerCase().includes(productSearch.toLowerCase())
+    searchIncludes(p.name, productSearch) ||
+    searchIncludes(p.category, productSearch)
   );
 
   const filteredRestaurants = restaurants?.filter(r =>
-    r.companyName?.toLowerCase().includes(restaurantSearch.toLowerCase()) ||
-    r.name.toLowerCase().includes(restaurantSearch.toLowerCase())
+    searchIncludes(r.companyName, restaurantSearch) ||
+    searchIncludes(r.name, restaurantSearch)
   );
 
   const canGoToStep2 = promoName.trim().length > 0 && discountPercent && parseInt(discountPercent) >= 1 && parseInt(discountPercent) <= 99 && startDate && endDate && new Date(endDate) > new Date(startDate);

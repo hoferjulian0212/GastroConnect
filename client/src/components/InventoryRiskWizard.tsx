@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
@@ -104,7 +105,7 @@ export function InventoryRiskWizard({ open, onOpenChange, products, defaultProdu
   const filteredProducts = useMemo(() => {
     const q = productSearch.trim().toLowerCase();
     if (!q) return products;
-    return products.filter((p) => p.name.toLowerCase().includes(q));
+    return products.filter((p) => searchIncludes(p.name, q));
   }, [products, productSearch]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

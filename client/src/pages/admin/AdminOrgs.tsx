@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -84,9 +85,9 @@ export default function AdminOrgs() {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
-      o.name.toLowerCase().includes(q) ||
-      (o.companyName ?? "").toLowerCase().includes(q) ||
-      o.email.toLowerCase().includes(q)
+      searchIncludes(o.name, q) ||
+      searchIncludes((o.companyName ?? ""), q) ||
+      searchIncludes(o.email, q)
     );
   });
 

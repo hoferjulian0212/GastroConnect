@@ -1,3 +1,4 @@
+import { foldSearchText } from "@shared/searchText";
 import { useState, useEffect, useMemo } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -350,7 +351,7 @@ export default function SupplierComplaints() {
 
   const filteredComplaints = useMemo(() => {
     if (!complaints) return [];
-    const search = searchQuery.trim().toLowerCase();
+    const search = foldSearchText(searchQuery.trim());
     const filtered = complaints.filter(c => {
       if (filterRestaurant !== "all" && c.restaurant?.id !== filterRestaurant) return false;
       if (filterStatus === "active") {
@@ -373,10 +374,10 @@ export default function SupplierComplaints() {
         if (new Date(c.createdAt) > to) return false;
       }
       if (search) {
-        const restaurantName = (c.restaurant?.companyName || c.restaurant?.name || "").toLowerCase();
-        const orderId = (c.order?.id || "").toLowerCase();
-        const haystack = `${(c.title || "").toLowerCase()} ${restaurantName} ${orderId}`;
-        if (!haystack.includes(search)) return false;
+        const restaurantName = (c.restaurant?.companyName || c.restaurant?.name || "");
+        const orderId = (c.order?.id || "");
+        const haystack = `${c.title || ""} ${restaurantName} ${orderId}`;
+        if (!foldSearchText(haystack).includes(search)) return false;
       }
       return true;
     });

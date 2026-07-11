@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useMemo } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
@@ -80,7 +81,7 @@ export default function SupplierInventoryRisk() {
     let list = [...(records ?? [])];
     const term = search.trim().toLowerCase();
     if (term) {
-      list = list.filter((r) => (r.product?.name ?? "").toLowerCase().includes(term));
+      list = list.filter((r) => searchIncludes((r.product?.name ?? ""), term));
     }
     list.sort((a, b) => {
       switch (sortBy) {

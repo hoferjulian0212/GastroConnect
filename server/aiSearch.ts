@@ -9,6 +9,8 @@ import {
   deliverySchedules,
 } from "@shared/schema";
 import { and, eq, desc, ilike, or, inArray, ne, gte, lte, sql } from "drizzle-orm";
+import { foldedIlike } from "./searchSql";
+import { foldSearchText } from "@shared/searchText";
 import { storage } from "./storage";
 
 type Role = "restaurant" | "supplier";
@@ -340,7 +342,7 @@ function buildTools(userId: string, role: Role) {
       .from(orders)
       .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
       .innerJoin(users, eq(users.id, partnerCol))
-      .where(and(eq(ownOrderCol, userId), ilike(orderItems.productName, likePattern(name))))
+      .where(and(eq(ownOrderCol, userId), foldedIlike(orderItems.productName, name)))
       .orderBy(desc(orders.createdAt))
       .limit(5);
     return {
@@ -361,10 +363,9 @@ function buildTools(userId: string, role: Role) {
   async function find_orders_by_partner(args: { partnerName?: string; status?: string }) {
     const name = String(args?.partnerName || "").trim();
     if (!name) return { error: "partnerName is required" };
-    const pat = likePattern(name);
     const conds = [
       eq(ownOrderCol, userId),
-      or(ilike(users.companyName, pat), ilike(users.name, pat)),
+      or(foldedIlike(users.companyName, name), foldedIlike(users.name, name)),
     ];
     const status = String(args?.status || "").trim();
     const validStatuses = ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"];
@@ -727,8 +728,8 @@ function buildTools(userId: string, role: Role) {
     if (role === "supplier") {
       conds.push(eq(products.supplierId, userId));
     }
-    if (query) conds.push(ilike(products.name, likePattern(query)));
-    if (category) conds.push(ilike(products.category, likePattern(category)));
+    if (query) conds.push(foldedIlike(products.name, query));
+    if (category) conds.push(foldedIlike(products.category, category));
     const rows = await db
       .select({ productId: products.id, name: products.name, unit: products.unit, price: products.price, category: products.category, inStock: products.inStock, stockQuantity: products.stockQuantity, supplierId: products.supplierId, supplierName: users.companyName })
       .from(products)
@@ -859,7 +860,7 @@ function buildTools(userId: string, role: Role) {
     const partnerSchedCol = role === "restaurant" ? deliverySchedules.supplierId : deliverySchedules.restaurantId;
     const conds: any[] = [eq(ownCol, userId)];
     const name = String(args?.partnerName || "").trim();
-    if (name) conds.push(or(ilike(users.companyName, likePattern(name)), ilike(users.name, likePattern(name))));
+    if (name) conds.push(or(foldedIlike(users.companyName, name), foldedIlike(users.name, name)));
     const rows = await db
       .select({
         partnerId: users.id,
@@ -934,16 +935,17 @@ function buildTools(userId: string, role: Role) {
   // page path (usable as an open_page action).
   async function get_app_help(args: { topic?: string }) {
     const topics = role === "restaurant" ? RESTAURANT_HELP : SUPPLIER_HELP;
-    const q = String(args?.topic || "").trim().toLowerCase();
+    const q = foldSearchText(String(args?.topic || "").trim());
     if (!q) {
       return { availableTopics: topics.map((t) => ({ key: t.key, title: t.title })) };
     }
     const scored = topics
       .map((t) => {
         let score = 0;
-        if (t.key.includes(q)) score += 3;
-        if (t.title.toLowerCase().includes(q)) score += 3;
-        for (const kw of t.keywords) {
+        if (foldSearchText(t.key).includes(q)) score += 3;
+        if (foldSearchText(t.title).includes(q)) score += 3;
+        for (const rawKw of t.keywords) {
+          const kw = foldSearchText(rawKw);
           if (q.includes(kw) || kw.includes(q)) score += 2;
           else {
             for (const word of q.split(/\s+/)) {

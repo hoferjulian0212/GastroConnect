@@ -7,6 +7,7 @@ import { db } from "./db";
 import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
 import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
+import { foldedIlike } from "./searchSql";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema, insertInventoryRiskRecordSchema, INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY, INVENTORY_RISK_REASONS } from "@shared/schema";
 import { can, isWarehousePathAllowed, isDriverPathAllowed, type Capability } from "@shared/permissions";
 import { sendPushNotification, VAPID_PUBLIC_KEY } from "./pushService";
@@ -699,8 +700,8 @@ export async function registerRoutes(
       if (role !== "restaurant" && role !== "supplier") return res.json(empty);
       if (q.length < 2) return res.json(empty);
 
-      const safe = q.replace(/[\\%_]/g, (m) => "\\" + m);
-      const pattern = `%${safe}%`;
+      // Umlaut-insensitive matcher: "oe" finds "ö", "ae" finds "ä", etc.
+      const flike = (col: Parameters<typeof foldedIlike>[0]) => foldedIlike(col, q);
       const PER = 5;
 
       const ownOrderCol = role === "restaurant" ? orders.restaurantId : orders.supplierId;
@@ -722,24 +723,24 @@ export async function registerRoutes(
       const [ordersByMeta, ordersByItem, productsList, partnersList, messagesList, complaintsList, documentsList] = await Promise.all([
         db.select(ordersSelect)
           .from(orders)
-          .where(and(eq(ownOrderCol, userId), or(ilike(orders.orderNumber, pattern), ilike(orders.notes, pattern))))
+          .where(and(eq(ownOrderCol, userId), or(flike(orders.orderNumber), flike(orders.notes))))
           .orderBy(desc(orders.createdAt))
           .limit(PER),
         db.selectDistinct(ordersSelect)
           .from(orders)
           .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
-          .where(and(eq(ownOrderCol, userId), ilike(orderItems.productName, pattern)))
+          .where(and(eq(ownOrderCol, userId), flike(orderItems.productName)))
           .orderBy(desc(orders.createdAt))
           .limit(PER),
         role === "restaurant"
           ? db.select({ id: products.id, name: products.name, articleNumber: products.articleNumber, supplierId: products.supplierId, category: products.category, price: products.price })
               .from(products)
-              .where(or(ilike(products.name, pattern), ilike(products.articleNumber, pattern), ilike(products.category, pattern)))
+              .where(or(flike(products.name), flike(products.articleNumber), flike(products.category)))
               .orderBy(desc(products.createdAt))
               .limit(PER)
           : db.select({ id: products.id, name: products.name, articleNumber: products.articleNumber, supplierId: products.supplierId, category: products.category, price: products.price })
               .from(products)
-              .where(and(eq(products.supplierId, userId), or(ilike(products.name, pattern), ilike(products.articleNumber, pattern), ilike(products.category, pattern))))
+              .where(and(eq(products.supplierId, userId), or(flike(products.name), flike(products.articleNumber), flike(products.category))))
               .orderBy(desc(products.createdAt))
               .limit(PER),
         db.selectDistinct({ id: users.id, name: users.name, companyName: users.companyName, profileImageUrl: users.profileImageUrl })
@@ -748,7 +749,7 @@ export async function registerRoutes(
           .where(and(
             eq(users.role, partnerRole as any),
             eq(ownConvCol, userId),
-            or(ilike(users.name, pattern), ilike(users.companyName, pattern)),
+            or(flike(users.name), flike(users.companyName)),
           ))
           .limit(PER),
         db.select({
@@ -766,7 +767,7 @@ export async function registerRoutes(
           .where(and(
             eq(ownConvCol, userId),
             eq(messages.messageType, "text"),
-            ilike(messages.content, pattern),
+            flike(messages.content),
           ))
           .orderBy(desc(messages.createdAt))
           .limit(PER),
@@ -781,7 +782,7 @@ export async function registerRoutes(
           .from(complaints)
           .where(and(
             eq(ownComplaintCol, userId),
-            or(ilike(complaints.title, pattern), ilike(complaints.description, pattern), ilike(complaints.complaintNumber, pattern)),
+            or(flike(complaints.title), flike(complaints.description), flike(complaints.complaintNumber)),
           ))
           .orderBy(desc(complaints.createdAt))
           .limit(PER),
@@ -794,7 +795,7 @@ export async function registerRoutes(
           createdAt: documents.createdAt,
         })
           .from(documents)
-          .where(and(eq(ownDocCol, userId), ilike(documents.title, pattern)))
+          .where(and(eq(ownDocCol, userId), flike(documents.title)))
           .orderBy(desc(documents.createdAt))
           .limit(PER),
       ]);

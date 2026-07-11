@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useMemo } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
@@ -326,9 +327,9 @@ export default function PriceComparison() {
  if (searchQuery.trim()) {
  const q = searchQuery.trim().toLowerCase();
  items = items.filter(g =>
- g.name.toLowerCase().includes(q) ||
- g.category.toLowerCase().includes(q) ||
- g.offers.some(o => (o.product.supplier?.companyName || o.product.supplier?.name || "").toLowerCase().includes(q))
+ searchIncludes(g.name, q) ||
+ searchIncludes(g.category, q) ||
+ g.offers.some(o => searchIncludes((o.product.supplier?.companyName || o.product.supplier?.name || ""), q))
  );
  }
  const dir = sortDir === "asc" ? 1 : -1;

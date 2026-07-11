@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -69,10 +70,10 @@ export default function AdminComplaints() {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
-      c.title.toLowerCase().includes(q) ||
-      c.restaurantName.toLowerCase().includes(q) ||
-      c.supplierName.toLowerCase().includes(q) ||
-      formatComplaintNumber(c).toLowerCase().includes(q)
+      searchIncludes(c.title, q) ||
+      searchIncludes(c.restaurantName, q) ||
+      searchIncludes(c.supplierName, q) ||
+      searchIncludes(formatComplaintNumber(c), q)
     );
   });
 

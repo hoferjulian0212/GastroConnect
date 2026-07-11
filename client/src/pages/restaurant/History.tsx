@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,9 +52,9 @@ export default function RestaurantHistory() {
   const filteredOrders = deliveredOrders?.filter(order => {
     const searchLower = searchQuery.toLowerCase();
     return (
-      order.id.toLowerCase().includes(searchLower) ||
-      order.supplier?.companyName?.toLowerCase().includes(searchLower) ||
-      order.supplier?.name.toLowerCase().includes(searchLower)
+      searchIncludes(order.id, searchLower) ||
+      searchIncludes(order.supplier?.companyName, searchLower) ||
+      searchIncludes(order.supplier?.name, searchLower)
     );
   });
 

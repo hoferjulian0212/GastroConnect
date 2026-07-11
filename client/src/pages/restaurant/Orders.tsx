@@ -1,3 +1,4 @@
+import { searchIncludes, foldSearchText } from "@shared/searchText";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
@@ -209,7 +210,7 @@ export default function RestaurantOrders() {
  const filteredAddableProducts = useMemo(() => {
  if (!editProductSearch.trim()) return addableProducts;
  const search = editProductSearch.toLowerCase();
- return addableProducts.filter(p => p.name.toLowerCase().includes(search));
+ return addableProducts.filter(p => searchIncludes(p.name, search));
  }, [addableProducts, editProductSearch]);
 
  const addProductToEdit = (product: Product) => {
@@ -486,7 +487,7 @@ export default function RestaurantOrders() {
 
  const filterOrders = (status: string | null) => {
  if (!orders) return [];
- const q = searchQuery.trim().toLowerCase();
+ const q = foldSearchText(searchQuery.trim());
  return orders.filter(order => {
  if (status) {
  if (status === "upcoming") {
@@ -509,10 +510,10 @@ export default function RestaurantOrders() {
  if (new Date(order.createdAt) > to) return false;
  }
  if (q) {
- const supplierName = (order.supplier?.companyName || order.supplier?.name || "").toLowerCase();
- const idMatch = order.id.toLowerCase().includes(q);
+ const supplierName = foldSearchText(order.supplier?.companyName || order.supplier?.name || "");
+ const idMatch = searchIncludes(order.id, q);
  const supMatch = supplierName.includes(q);
- const itemMatch = order.items?.some((it: any) => it.productName?.toLowerCase().includes(q));
+ const itemMatch = order.items?.some((it: any) => searchIncludes(it.productName, q));
  if (!idMatch && !supMatch && !itemMatch) return false;
  }
  return true;

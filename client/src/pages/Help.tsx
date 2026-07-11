@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ChevronLeft, Search, Play, HelpCircle, RotateCcw } from "lucide-react";
@@ -28,10 +29,10 @@ export default function Help() {
     if (!q) return topics;
     return topics.filter(
       (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.summary.toLowerCase().includes(q) ||
-        t.category.toLowerCase().includes(q) ||
-        t.steps.some((s) => s.toLowerCase().includes(q)),
+        searchIncludes(t.title, q) ||
+        searchIncludes(t.summary, q) ||
+        searchIncludes(t.category, q) ||
+        t.steps.some((s) => searchIncludes(s, q)),
     );
   }, [topics, query]);
 

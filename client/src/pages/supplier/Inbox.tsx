@@ -1,3 +1,4 @@
+import { searchIncludes } from "@shared/searchText";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -746,8 +747,8 @@ export default function SupplierInbox() {
   }, [messages, selectedConversation]);
 
   const filteredConversations = conversations?.filter(conv => 
-    conv.otherUser.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.otherUser.name.toLowerCase().includes(searchQuery.toLowerCase())
+    searchIncludes(conv.otherUser.companyName, searchQuery) ||
+    searchIncludes(conv.otherUser.name, searchQuery)
   );
 
   // Complaint helper functions

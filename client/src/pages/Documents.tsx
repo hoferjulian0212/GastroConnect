@@ -1,3 +1,4 @@
+import { foldSearchText } from "@shared/searchText";
 import { MobilePageHeader } from "@/components/mobile";
 import { navigate } from "wouter/use-browser-location";
 import { useState, useMemo, useEffect } from "react";
@@ -153,7 +154,7 @@ export default function Documents() {
 
   const filteredDocuments = useMemo(() => {
     if (!documents) return [];
-    const q = search.trim().toLowerCase();
+    const q = foldSearchText(search.trim());
     const fromTs = dateFrom ? new Date(dateFrom).getTime() : null;
     const toTs = dateTo ? new Date(dateTo).getTime() + 86_400_000 - 1 : null;
     return documents.filter((doc) => {
@@ -163,9 +164,9 @@ export default function Documents() {
       if (toTs !== null && created > toTs) return false;
       if (q) {
         const other = currentRole === "restaurant" ? doc.supplier : doc.restaurant;
-        const partnerName = (other.companyName || other.name || "").toLowerCase();
-        const orderNum = formatOrderNumber(doc.order ?? { id: doc.orderId }).toLowerCase();
-        const title = (doc.title || "").toLowerCase();
+        const partnerName = foldSearchText(other.companyName || other.name || "");
+        const orderNum = foldSearchText(formatOrderNumber(doc.order ?? { id: doc.orderId }));
+        const title = foldSearchText(doc.title || "");
         if (!partnerName.includes(q) && !orderNum.includes(q) && !title.includes(q)) return false;
       }
       return true;
