@@ -4227,7 +4227,8 @@ export class DatabaseStorage implements IStorage {
 
   private async hydrateInventoryRiskRecord(record: InventoryRiskRecord): Promise<InventoryRiskRecordWithDetails> {
     const [product] = await db.select().from(products).where(eq(products.id, record.productId));
-    const [creator] = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, record.createdBy));
+    // createdBy is a members.id (the reporting team member), not a users.id.
+    const [creator] = await db.select({ id: members.id, name: members.name }).from(members).where(eq(members.id, record.createdBy));
     let linkedPromotion: Promotion | null = null;
     if (record.linkedPromotionId) {
       const [promo] = await db.select().from(promotions).where(eq(promotions.id, record.linkedPromotionId));
@@ -5220,6 +5221,22 @@ export class DatabaseStorage implements IStorage {
     // Inventory risk: capture WHY stock is at risk (warehouse step-by-step wizard).
     // Nullable text token; idempotent so it exists in every env without a drizzle push.
     await db.execute(sql`ALTER TABLE inventory_risk_records ADD COLUMN IF NOT EXISTS risk_reason text`);
+
+    // Fix wrong FK: created_by stores the reporting MEMBER id (members.id), but the
+    // table was created with a FK to users(id), so every insert failed. Idempotent:
+    // drop the wrong constraint if present and add the correct one once.
+    await db.execute(sql`ALTER TABLE inventory_risk_records DROP CONSTRAINT IF EXISTS inventory_risk_records_created_by_fkey`);
+    await db.execute(sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'inventory_risk_records_created_by_members_fkey'
+        ) THEN
+          ALTER TABLE inventory_risk_records
+            ADD CONSTRAINT inventory_risk_records_created_by_members_fkey
+            FOREIGN KEY (created_by) REFERENCES members(id);
+        END IF;
+      END $$;
+    `);
 
     // ONE-TIME backfill: every log that existed before this feature shipped is
     // treated as already handled (closed). Tracked in app_migrations so later

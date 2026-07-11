@@ -430,7 +430,8 @@ export const inventoryRiskRecords = pgTable("inventory_risk_records", {
   riskReason: text("risk_reason"),
   // one of Open / Action Taken / Sold / Expired / Dismissed
   status: text("status").notNull().default("Open"),
-  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
+  // The reporting team member (members.id, e.g. a warehouse worker) — NOT users.id.
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => members.id),
   linkedPromotionId: varchar("linked_promotion_id", { length: 36 }).references(() => promotions.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
