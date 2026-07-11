@@ -222,14 +222,19 @@ function DriverLocationStreamer() {
 // Keeps the user within their organization's role area. Identity itself comes
 // from the session (/api/auth/me) via UserContext — there is no impersonation.
 function UserLoader() {
-  const { currentRole } = useUser();
+  const { currentRole, currentUser } = useUser();
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
+    // Wait until the session's org has actually loaded — currentRole defaults
+    // to "restaurant" while currentUser is still null, and redirecting on that
+    // placeholder value would bounce supplier deep links (e.g. /supplier/orders
+    // on a hard refresh) to /restaurant and then /supplier, losing the target.
+    if (!currentUser) return;
     if (location !== "/" && location !== "/about" && !location.startsWith(`/${currentRole}`)) {
       setLocation(`/${currentRole}`);
     }
-  }, [currentRole, location, setLocation]);
+  }, [currentUser, currentRole, location, setLocation]);
 
   return null;
 }

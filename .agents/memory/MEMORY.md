@@ -16,5 +16,6 @@
 - [Admin panel color scheme](admin-color-scheme.md) — single indigo accent (#818cf8/indigo-400/600); neutral #0a0a0f page / #111116 cards; semantic red/amber/emerald for status only.
 - [Inventory Risk Management feature](inventory-risk-feature.md) — supplier-only; warehouse flags risk (create=edit-own), managers/vertreter manage (status+turn-into-promotion); status PATCH gated in route not schema.
 - [Inventory risk reporting wizard](inventory-risk-wizard.md) — create flow is the step-by-step InventoryRiskWizard (vaul Drawer); the old FormDialog is edit-only; reasons are schema enum tokens in risk_reason col.
+- [Frontend app-mount tests](frontend-app-mount-tests.md) — jsdom needs DOMMatrix/Path2D stubs for pdfjs; role-redirect guards must wait for session hydration or deep links get lost.
 - [Member credential sanitization](member-credential-sanitization.md) — any join on members must strip passwordHash/auth columns; type joined views as SafeMember so tsc enforces it.
 - [Driver delivery status flow](driver-delivery-status-flow.md) — forward-only transitions enforced server-side; complete blocked from "assigned"; problem branch can resume.
