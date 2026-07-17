@@ -62,7 +62,8 @@ export default function RestaurantHistory() {
     switch (status) {
       case "pending": return "Ausstehend";
       case "confirmed": return "Bestätigt";
-      case "in_delivery": return "In Lieferung";
+      case "scheduled": return "Geplant";
+      case "in_delivery": return "Unterwegs";
       case "delivered": return "Geliefert";
       case "cancelled": return "Storniert";
       default: return status;

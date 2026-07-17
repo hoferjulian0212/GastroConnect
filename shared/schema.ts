@@ -5,7 +5,16 @@ import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
 export const memberRoleEnum = pgEnum("member_role", ["admin", "manager", "staff", "vertreter", "warehouse", "driver"]);
-export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]);
+export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled"]);
+
+export const DATE_CHANGE_REASONS = [
+  { code: "out_of_stock", de: "Ware nicht auf Lager", it: "Merce non disponibile" },
+  { code: "driver_unavailable", de: "Fahrer ausgefallen", it: "Autista non disponibile" },
+  { code: "no_tour", de: "Keine Tour in der Region an diesem Tag", it: "Nessun giro in zona quel giorno" },
+  { code: "capacity", de: "Kapazität ausgelastet", it: "Capacità esaurita" },
+  { code: "holiday", de: "Feiertag / Betriebsruhe", it: "Festività / chiusura aziendale" },
+  { code: "other", de: "Sonstiges", it: "Altro" },
+] as const;
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion", "voice"]);
 export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request", "erp_request", "erp_sync_failed", "whatsapp_request", "delivery_assigned", "delivery_update", "delivery_problem", "internal_message"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { ChevronLeft, ChevronRight, Download, Calendar as CalendarIcon, Clock, Package, Truck, CheckCircle, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Calendar as CalendarIcon, CalendarClock, Clock, Package, Truck, CheckCircle, AlertTriangle } from "lucide-react";
 import { format, addMonths, addWeeks, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, isToday } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { useUser } from "@/context/UserContext";
@@ -47,10 +47,18 @@ function statusMeta(o: OrderWithDetails, lang: "de" | "it") {
         chip: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-900/60",
         icon: CheckCircle,
       };
+    case "scheduled":
+      return {
+        key: "scheduled",
+        label: lang === "de" ? "Geplant" : "Pianificato",
+        dot: "bg-indigo-500",
+        chip: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/60",
+        icon: CalendarClock,
+      };
     case "in_delivery":
       return {
         key: "in_delivery",
-        label: lang === "de" ? "In Lieferung" : "In consegna",
+        label: lang === "de" ? "Unterwegs" : "In viaggio",
         dot: "bg-purple-500",
         chip: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-900/60",
         icon: Truck,

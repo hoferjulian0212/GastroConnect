@@ -11,7 +11,8 @@ import { de, it } from "date-fns/locale";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import QuantityInput from "@/components/QuantityInput";
-import { formatOrderNumber, type OrderWithDetails, type Product } from "@shared/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatOrderNumber, DATE_CHANGE_REASONS, type OrderWithDetails, type Product } from "@shared/schema";
 
 interface PartialConfirmationDialogProps {
   order: OrderWithDetails;
@@ -47,9 +48,17 @@ export function PartialConfirmationDialog({
   const requestedDate = order.requestedDeliveryDate || null;
   const [editingDate, setEditingDate] = useState(false);
   const [newDate, setNewDate] = useState<string>(requestedDate || "");
-  const [dateReason, setDateReason] = useState("");
+  const [dateReasonCode, setDateReasonCode] = useState("");
+  const [dateReasonText, setDateReasonText] = useState("");
   const dateChanged = editingDate && !!newDate && newDate !== requestedDate;
-  const reasonMissing = dateChanged && dateReason.trim().length === 0;
+  const reasonMissing = dateChanged && (dateReasonCode === "" || (dateReasonCode === "other" && dateReasonText.trim().length === 0));
+  const composedDateReason = (() => {
+    if (!dateChanged) return undefined;
+    const entry = DATE_CHANGE_REASONS.find(r => r.code === dateReasonCode);
+    if (!entry) return undefined;
+    if (entry.code === "other") return dateReasonText.trim() || undefined;
+    return lang === "it" ? entry.it : entry.de;
+  })();
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
   const formatDayDate = (d: string) =>
@@ -60,7 +69,7 @@ export function PartialConfirmationDialog({
       return apiRequest("POST", `/api/orders/${order.id}/confirm`, {
         items,
         changedBy: currentUserId,
-        ...(dateChanged ? { deliveryDate: newDate, dateChangeReason: dateReason.trim() } : {}),
+        ...(dateChanged ? { deliveryDate: newDate, dateChangeReason: composedDateReason } : {}),
       });
     },
     onSuccess: () => {
@@ -279,7 +288,8 @@ export function PartialConfirmationDialog({
                   if (editingDate) {
                     setEditingDate(false);
                     setNewDate(requestedDate || "");
-                    setDateReason("");
+                    setDateReasonCode("");
+                    setDateReasonText("");
                   } else {
                     setEditingDate(true);
                   }
@@ -304,17 +314,31 @@ export function PartialConfirmationDialog({
                 {dateChanged && (
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-foreground">
-                      {lang === "it" ? "Motivo del cambio data (obbligatorio)" : "Begründung für die Datumsänderung (Pflicht)"}
+                      {lang === "it" ? "Motivo del cambio data (obbligatorio)" : "Grund für die Datumsänderung (Pflicht)"}
                     </label>
-                    <Textarea
-                      value={dateReason}
-                      onChange={(e) => setDateReason(e.target.value)}
-                      placeholder={lang === "it" ? "es. Nessun giro di consegna in quel giorno" : "z. B. An diesem Tag keine Tour in Ihrer Region"}
-                      rows={2}
-                      maxLength={500}
-                      className="resize-none text-sm"
-                      data-testid="textarea-date-change-reason"
-                    />
+                    <Select value={dateReasonCode} onValueChange={setDateReasonCode}>
+                      <SelectTrigger className="h-9 text-sm" data-testid="select-date-change-reason">
+                        <SelectValue placeholder={lang === "it" ? "Seleziona un motivo…" : "Grund auswählen…"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DATE_CHANGE_REASONS.map(r => (
+                          <SelectItem key={r.code} value={r.code} data-testid={`reason-option-${r.code}`}>
+                            {lang === "it" ? r.it : r.de}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {dateReasonCode === "other" && (
+                      <Textarea
+                        value={dateReasonText}
+                        onChange={(e) => setDateReasonText(e.target.value)}
+                        placeholder={lang === "it" ? "Descrivi il motivo…" : "Grund beschreiben…"}
+                        rows={2}
+                        maxLength={500}
+                        className="resize-none text-sm"
+                        data-testid="textarea-date-change-reason"
+                      />
+                    )}
                     {reasonMissing && (
                       <p className="text-xs text-destructive" data-testid="text-reason-required">
                         {lang === "it"

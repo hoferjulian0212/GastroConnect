@@ -319,7 +319,8 @@ export default function ProductDetail() {
       pending: { de: "Ausstehend", it: "In attesa" },
       confirmed: { de: "Bestätigt", it: "Confermato" },
       partially_confirmed: { de: "Teilbestätigt", it: "Parz. confermato" },
-      in_delivery: { de: "In Lieferung", it: "In consegna" },
+      scheduled: { de: "Geplant", it: "Pianificato" },
+      in_delivery: { de: "Unterwegs", it: "In viaggio" },
       delivered: { de: "Geliefert", it: "Consegnato" },
       cancelled: { de: "Storniert", it: "Annullato" },
     };

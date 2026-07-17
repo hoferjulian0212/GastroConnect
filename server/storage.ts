@@ -909,7 +909,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(orders, eq(orderItems.orderId, orders.id))
       .where(and(
         eq(orders.restaurantId, restaurantId),
-        inArray(orders.status, ["pending", "confirmed", "partially_confirmed", "in_delivery"] as any),
+        inArray(orders.status, ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery"] as any),
       ))
       .groupBy(orderItems.productId);
 
@@ -1508,7 +1508,7 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(and(
         eq(orders.restaurantId, restaurantId),
-        or(eq(orders.status, "pending"), eq(orders.status, "confirmed"), eq(orders.status, "in_delivery"))
+        or(eq(orders.status, "pending"), eq(orders.status, "confirmed"), eq(orders.status, "scheduled"), eq(orders.status, "in_delivery"))
       ));
 
     const supplierResult = await db
@@ -1615,7 +1615,7 @@ export class DatabaseStorage implements IStorage {
         COUNT(*) as orders
       FROM orders
       WHERE supplier_id = ${supplierId}
-        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
         AND created_at >= ${currentFrom}
       GROUP BY 1
       ORDER BY 1 ASC
@@ -1665,7 +1665,7 @@ export class DatabaseStorage implements IStorage {
         COUNT(DISTINCT restaurant_id) as active_customers
       FROM orders
       WHERE supplier_id = ${supplierId}
-        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
         AND created_at >= ${currentFrom}
     `);
     const totalRevenue = Number(totalsCur.rows?.[0]?.total_revenue) || 0;
@@ -1680,7 +1680,7 @@ export class DatabaseStorage implements IStorage {
         COUNT(DISTINCT restaurant_id) as active_customers
       FROM orders
       WHERE supplier_id = ${supplierId}
-        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
         AND created_at >= ${prevFrom}
         AND created_at <= ${prevTo}
     `);
@@ -1693,7 +1693,7 @@ export class DatabaseStorage implements IStorage {
       SELECT COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as revenue
       FROM orders
       WHERE supplier_id = ${supplierId}
-        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
         AND created_at >= ${startOfThisMonth}
     `);
     const currentMonthRevenue = Number(currentMonthRes.rows?.[0]?.revenue) || 0;
@@ -1708,7 +1708,7 @@ export class DatabaseStorage implements IStorage {
       FROM order_items oi
       JOIN orders o ON o.id = oi.order_id
       WHERE o.supplier_id = ${supplierId}
-        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
         AND o.created_at >= ${currentFrom}
       GROUP BY oi.product_id
       ORDER BY quantity DESC
@@ -1726,7 +1726,7 @@ export class DatabaseStorage implements IStorage {
         FROM order_items oi
         JOIN orders o ON o.id = oi.order_id
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
           AND o.created_at >= ${prevFrom}
           AND o.created_at <= ${prevTo}
           AND oi.product_id IN (${sql.join(productIds.map((id: string) => sql`${id}`), sql`, `)})
@@ -1747,7 +1747,7 @@ export class DatabaseStorage implements IStorage {
       FROM orders o
       LEFT JOIN users u ON u.id = o.restaurant_id
       WHERE o.supplier_id = ${supplierId}
-        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
         AND o.created_at >= ${currentFrom}
       GROUP BY o.restaurant_id
       ORDER BY revenue DESC
@@ -1808,7 +1808,7 @@ export class DatabaseStorage implements IStorage {
           COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) AS prior_count
         FROM orders o
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
         GROUP BY o.restaurant_id
         HAVING MAX(o.created_at) < (NOW() - INTERVAL '30 days')
           AND COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) >= 2
@@ -1831,7 +1831,7 @@ export class DatabaseStorage implements IStorage {
         FROM order_items oi
         JOIN orders o ON o.id = oi.order_id
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
           AND o.created_at >= (NOW() - INTERVAL '90 days')
         GROUP BY oi.product_id
         ORDER BY SUM(oi.quantity) DESC
@@ -1861,7 +1861,7 @@ export class DatabaseStorage implements IStorage {
         FROM order_items oi
         JOIN orders o ON o.id = oi.order_id
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
           AND o.created_at >= (NOW() - INTERVAL '30 days')
         GROUP BY oi.product_id
       ),
@@ -1870,7 +1870,7 @@ export class DatabaseStorage implements IStorage {
         FROM order_items oi
         JOIN orders o ON o.id = oi.order_id
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
           AND o.created_at < (NOW() - INTERVAL '30 days')
           AND o.created_at >= (NOW() - INTERVAL '60 days')
         GROUP BY oi.product_id
@@ -1903,7 +1903,7 @@ export class DatabaseStorage implements IStorage {
   }> {
     const now = new Date();
     const currentFrom = new Date(now.getFullYear(), now.getMonth() - 5, 1, 0, 0, 0, 0);
-    const VALID = sql`('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')`;
+    const VALID = sql`('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')`;
 
     // Monthly spending (6 months, zero-filled)
     const seriesResult = await db.execute(sql`
@@ -2019,7 +2019,7 @@ export class DatabaseStorage implements IStorage {
           COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) AS prior_count
         FROM orders o
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed')
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
         GROUP BY o.restaurant_id
         HAVING MAX(o.created_at) < (NOW() - INTERVAL '30 days')
           AND COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) >= 2
@@ -5318,6 +5318,8 @@ export class DatabaseStorage implements IStorage {
 
     // Supplier changed the delivery date (confirm/reschedule) — mandatory reason.
     await db.execute(sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_date_change_reason text`);
+    // New order status "scheduled" (Geplant): driver assigned but not yet en route.
+    await db.execute(sql`ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'scheduled' BEFORE 'in_delivery'`);
 
     // Fix wrong FK: created_by stores the reporting MEMBER id (members.id), but the
     // table was created with a FK to users(id), so every insert failed. Idempotent:
@@ -5408,7 +5410,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllOrgsWithStats(): Promise<Array<User & { memberCount: number; orderCount: number; gmv: number; lastActivityAt: string | null }>> {
-    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed','scheduled')`;
     const [allUsers, allMembers, orderStats] = await Promise.all([
       db.select().from(users).orderBy(users.name),
       db.select({ organizationId: members.organizationId }).from(members),
@@ -5469,7 +5471,7 @@ export class DatabaseStorage implements IStorage {
     const startThisMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
     const startLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
     const activeSince = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed','scheduled')`;
 
     const [orgRes, memberRes, orderRes, complaintRes] = await Promise.all([
       db.execute(sql`
@@ -5529,7 +5531,7 @@ export class DatabaseStorage implements IStorage {
   async getPlatformTimeSeries(): Promise<{ month: string; orders: number; gmv: number; newOrgs: number }[]> {
     const now = new Date();
     const from = new Date(now.getFullYear(), now.getMonth() - 5, 1, 0, 0, 0, 0);
-    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed','scheduled')`;
 
     const [orderRes, orgRes] = await Promise.all([
       db.execute(sql`
@@ -5832,7 +5834,7 @@ export class DatabaseStorage implements IStorage {
     topSuppliers: { id: string; name: string; orders: number; revenue: number }[];
     topRestaurants: { id: string; name: string; orders: number; spend: number }[];
   }> {
-    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed','scheduled')`;
     const [supRes, restRes] = await Promise.all([
       db.execute(sql`
         SELECT o.supplier_id as id,
@@ -5888,7 +5890,7 @@ export class DatabaseStorage implements IStorage {
     const isSupplier = org.role === "supplier";
     const selfCol = isSupplier ? sql`supplier_id` : sql`restaurant_id`;
     const partnerCol = isSupplier ? sql`restaurant_id` : sql`supplier_id`;
-    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed','scheduled')`;
     const now = new Date();
     const from = new Date(now.getFullYear(), now.getMonth() - 5, 1, 0, 0, 0, 0);
 
@@ -5952,7 +5954,7 @@ export class DatabaseStorage implements IStorage {
     const totalOrders = Number(agg.total_orders) || 0;
     const gmv = Number(agg.gmv) || 0;
     const validOrderCount = (statusRes.rows || []).reduce((sum, r: any) => {
-      const valid = ["delivered", "confirmed", "in_delivery", "partially_confirmed"];
+      const valid = ["delivered", "confirmed", "in_delivery", "partially_confirmed", "scheduled"];
       return valid.includes(String(r.status)) ? sum + (Number(r.count) || 0) : sum;
     }, 0);
 

@@ -421,7 +421,7 @@ export default function RestaurantOrders() {
  const hasSecondaryFilters = filterDateFrom || filterDateTo;
 
  const statusCounts = useMemo(() => {
- if (!orders) return { all: 0, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
+ if (!orders) return { all: 0, pending: 0, confirmed: 0, scheduled: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
  const filtered = orders.filter(o => {
  if (filterSupplier !== "all" && o.supplier?.id !== filterSupplier) return false;
  if (filterDateFrom) {
@@ -436,7 +436,7 @@ export default function RestaurantOrders() {
  }
  return true;
  });
- const counts = { all: filtered.length, pending: 0, confirmed: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
+ const counts = { all: filtered.length, pending: 0, confirmed: 0, scheduled: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
  filtered.forEach(o => {
  const s = o.status === "partially_confirmed" ? "confirmed" : o.status;
  if (s in counts) (counts as any)[s]++;
@@ -463,6 +463,7 @@ export default function RestaurantOrders() {
  case "pending": return <Clock className="h-4 w-4" />;
  case "confirmed": return <Package className="h-4 w-4" />;
  case "partially_confirmed": return <AlertTriangle className="h-4 w-4" />;
+ case "scheduled": return <CalendarDays className="h-4 w-4" />;
  case "in_delivery": return <Truck className="h-4 w-4" />;
  case "delivered": return <CheckCircle className="h-4 w-4" />;
  case "cancelled": return <XCircle className="h-4 w-4" />;
@@ -587,7 +588,7 @@ export default function RestaurantOrders() {
  const canEditOrder = (order: OrderWithDetails) => order.status === "pending";
  const canRequestChange = (order: OrderWithDetails) => order.status === "confirmed" || order.status === "partially_confirmed";
 
- const statusSteps = ["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered"];
+ const statusSteps = ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"];
 
  const getStepIndex = (status: string) => {
  if (status === "cancelled") return -1;
@@ -1435,6 +1436,7 @@ export default function RestaurantOrders() {
  { key: "upcoming", label: lang === "de" ? "Anstehend" : "In arrivo", dot: "bg-primary" },
  { key: "pending", label: getOrderStatus("pending", lang), dot: "bg-yellow-500" },
  { key: "confirmed", label: getOrderStatus("confirmed", lang), dot: "bg-blue-500" },
+ { key: "scheduled", label: getOrderStatus("scheduled", lang), dot: "bg-indigo-500" },
  { key: "in_delivery", label: getOrderStatus("in_delivery", lang), dot: "bg-purple-500" },
  { key: "delivered", label: getOrderStatus("delivered", lang), dot: "bg-green-500" },
  { key: "cancelled", label: getOrderStatus("cancelled", lang), dot: "bg-red-500" },
@@ -1673,6 +1675,7 @@ export default function RestaurantOrders() {
  { key: "upcoming", label: lang === "de" ? "Anstehend" : "In arrivo", dot: "bg-primary" },
  { key: "pending", label: getOrderStatus("pending", lang), dot: "bg-yellow-500" },
  { key: "confirmed", label: getOrderStatus("confirmed", lang), dot: "bg-blue-500" },
+ { key: "scheduled", label: getOrderStatus("scheduled", lang), dot: "bg-indigo-500" },
  { key: "in_delivery", label: getOrderStatus("in_delivery", lang), dot: "bg-purple-500" },
  { key: "delivered", label: getOrderStatus("delivered", lang), dot: "bg-green-500" },
  { key: "cancelled", label: getOrderStatus("cancelled", lang), dot: "bg-red-500" },

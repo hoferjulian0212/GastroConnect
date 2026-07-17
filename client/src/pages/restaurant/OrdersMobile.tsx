@@ -31,7 +31,8 @@ const STATUS_FILTERS: { key: string; labelDe: string; labelIt: string }[] = [
   { key: "all", labelDe: "Alle", labelIt: "Tutti" },
   { key: "pending", labelDe: "Offen", labelIt: "In sospeso" },
   { key: "confirmed", labelDe: "Bestätigt", labelIt: "Confermati" },
-  { key: "in_delivery", labelDe: "Unterwegs", labelIt: "In consegna" },
+  { key: "scheduled", labelDe: "Geplant", labelIt: "Pianificato" },
+  { key: "in_delivery", labelDe: "Unterwegs", labelIt: "In viaggio" },
   { key: "delivered", labelDe: "Geliefert", labelIt: "Consegnati" },
   { key: "cancelled", labelDe: "Storniert", labelIt: "Annullati" },
 ];

@@ -264,6 +264,7 @@ export default function OrderDetail() {
       case "pending": return <Clock className={size} />;
       case "confirmed": return <Package className={size} />;
       case "partially_confirmed": return <AlertTriangle className={size} />;
+      case "scheduled": return <CalendarDays className={size} />;
       case "in_delivery": return <Truck className={size} />;
       case "delivered": return <CheckCircle className={size} />;
       case "cancelled": return <XCircle className={size} />;
@@ -281,6 +282,7 @@ export default function OrderDetail() {
       case "pending": return "border-yellow-500 bg-yellow-500";
       case "confirmed": return "border-blue-500 bg-blue-500";
       case "partially_confirmed": return "border-orange-500 bg-orange-500";
+      case "scheduled": return "border-sky-500 bg-sky-500";
       case "in_delivery": return "border-purple-500 bg-purple-500";
       case "delivered": return "border-green-500 bg-green-500";
       case "cancelled": return "border-red-500 bg-red-500";
@@ -294,6 +296,7 @@ export default function OrderDetail() {
         case "pending": return "Bestellung wurde aufgegeben";
         case "confirmed": return "Bestellung wurde bestätigt";
         case "partially_confirmed": return "Bestellung wurde teilweise bestätigt";
+        case "scheduled": return "Lieferung wurde geplant (Fahrer zugewiesen)";
         case "in_delivery": return "Bestellung ist unterwegs";
         case "delivered": return "Bestellung wurde geliefert";
         case "cancelled": return "Bestellung wurde storniert";
@@ -304,6 +307,7 @@ export default function OrderDetail() {
       case "pending": return "Ordine effettuato";
       case "confirmed": return "Ordine confermato";
       case "partially_confirmed": return "Ordine parzialmente confermato";
+      case "scheduled": return "Consegna pianificata (autista assegnato)";
       case "in_delivery": return "Ordine in consegna";
       case "delivered": return "Ordine consegnato";
       case "cancelled": return "Ordine annullato";
@@ -353,7 +357,7 @@ export default function OrderDetail() {
     ? statusHistory
     : [{ id: "created", orderId: order.id, fromStatus: null, toStatus: "pending", changedBy: null, createdAt: order.createdAt }];
 
-  const statusSteps = ["pending", "confirmed", "in_delivery", "delivered"];
+  const statusSteps = ["pending", "confirmed", "scheduled", "in_delivery", "delivered"];
   const currentStepIndex = statusSteps.indexOf(order.status === "partially_confirmed" ? "confirmed" : order.status);
 
   const st = order.status;
@@ -415,18 +419,16 @@ export default function OrderDetail() {
       disabled: st !== "pending",
       disabledReason: lang === "de" ? "Bereits bestätigt" : "Già confermato",
     });
-    // Start delivery
+    // Set delivery date — the order keeps its status; delivery starts via driver app
     actions.push({
-      label: lang === "de" ? "Lieferung starten" : "Avvia consegna",
-      icon: Truck,
+      label: lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna",
+      icon: CalendarDays,
       style: (st === "confirmed" || st === "partially_confirmed") ? "primary" : "secondary",
       category: "primary",
       action: () => setShowDatePicker(true),
-      testId: "action-start-delivery",
-      disabled: !(st === "confirmed" || st === "partially_confirmed"),
-      disabledReason: st === "pending"
-        ? (lang === "de" ? "Erst bestätigen" : "Conferma prima")
-        : (lang === "de" ? "Nicht verfügbar" : "Non disponibile"),
+      testId: "action-set-delivery-date",
+      disabled: isTerminal,
+      disabledReason: lang === "de" ? "Bestellung abgeschlossen" : "Ordine completato",
     });
     // Mark delivered
     actions.push({
@@ -436,19 +438,8 @@ export default function OrderDetail() {
       category: "primary",
       action: () => setConfirmAction("delivered"),
       testId: "action-mark-delivered",
-      disabled: st !== "in_delivery",
-      disabledReason: lang === "de" ? "Lieferung noch nicht gestartet" : "Consegna non avviata",
-    });
-    // Set delivery date — always shown when not terminal
-    actions.push({
-      label: lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna",
-      icon: CalendarDays,
-      style: "secondary",
-      category: "fulfillment",
-      action: () => setShowDatePicker(true),
-      testId: "action-set-delivery-date",
-      disabled: isTerminal,
-      disabledReason: lang === "de" ? "Bestellung abgeschlossen" : "Ordine completato",
+      disabled: !(st === "in_delivery" || st === "scheduled" || st === "confirmed" || st === "partially_confirmed"),
+      disabledReason: lang === "de" ? "Erst bestätigen" : "Conferma prima",
     });
     // Delivery note — once a note exists (auto-generated when shipping starts),
     // offer to view/download it; otherwise allow manual generation.
@@ -469,7 +460,7 @@ export default function OrderDetail() {
         category: "fulfillment",
         action: () => deliveryNoteMutation.mutate(),
         testId: "action-create-delivery-note",
-        disabled: !(st === "in_delivery" || st === "delivered") || deliveryNoteMutation.isPending,
+        disabled: !(st === "scheduled" || st === "in_delivery" || st === "delivered") || deliveryNoteMutation.isPending,
         disabledReason: lang === "de" ? "Erst nach Lieferstart" : "Solo dopo l'avvio",
       });
     }
@@ -914,8 +905,8 @@ export default function OrderDetail() {
                     const completed = i <= currentStepIndex;
                     const isCurrent = i === currentStepIndex;
                     const stepLabels: Record<string, string> = lang === "de"
-                      ? { pending: "Bestellt", confirmed: "Bestätigt", in_delivery: "Unterwegs", delivered: "Geliefert" }
-                      : { pending: "Effettuato", confirmed: "Confermato", in_delivery: "In consegna", delivered: "Consegnato" };
+                      ? { pending: "Bestellt", confirmed: "Bestätigt", scheduled: "Geplant", in_delivery: "Unterwegs", delivered: "Geliefert" }
+                      : { pending: "Effettuato", confirmed: "Confermato", scheduled: "Pianificato", in_delivery: "In consegna", delivered: "Consegnato" };
                     const stepEntry = timeline.find((e: any) => e.toStatus === step || (step === "confirmed" && e.toStatus === "partially_confirmed"));
                     const isLast = i === statusSteps.length - 1;
                     return (
@@ -975,8 +966,8 @@ export default function OrderDetail() {
                     const completed = i <= currentStepIndex;
                     const isCurrent = i === currentStepIndex;
                     const stepLabels: Record<string, string> = lang === "de"
-                      ? { pending: "Bestellt", confirmed: "Bestätigt", in_delivery: "Unterwegs", delivered: "Geliefert" }
-                      : { pending: "Effettuato", confirmed: "Confermato", in_delivery: "In consegna", delivered: "Consegnato" };
+                      ? { pending: "Bestellt", confirmed: "Bestätigt", scheduled: "Geplant", in_delivery: "Unterwegs", delivered: "Geliefert" }
+                      : { pending: "Effettuato", confirmed: "Confermato", scheduled: "Pianificato", in_delivery: "In consegna", delivered: "Consegnato" };
                     const stepEntry = timeline.find((e: any) => e.toStatus === step || (step === "confirmed" && e.toStatus === "partially_confirmed"));
                     const nodes = [
                       <div key={`step-${step}`} className="flex flex-col items-center gap-2 shrink-0 w-20" data-testid={`stepper-${step}`}>
@@ -1238,13 +1229,13 @@ export default function OrderDetail() {
             )}
 
             {/* Live delivery tracking (driver assigned) */}
-            {order && ["confirmed", "partially_confirmed", "in_delivery", "delivered"].includes(order.status) && (
+            {order && ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"].includes(order.status) && (
               <div className={`min-w-0 ${tabClsUpdates}`}>
                 <DeliveryTracking
                   orderId={order.id}
                   destinationLat={order.restaurant?.latitude}
                   destinationLng={order.restaurant?.longitude}
-                  active={["confirmed", "partially_confirmed", "in_delivery", "delivered"].includes(order.status)}
+                  active={["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"].includes(order.status)}
                 />
               </div>
             )}
@@ -1307,12 +1298,9 @@ export default function OrderDetail() {
           restaurantId={isSupplier ? order.restaurantId : (currentUser?.id || "")}
           currentDate={order.requestedDeliveryDate || null}
           onConfirm={(date, deliveryNotes, reason) => {
-            if (isSupplier && (st === "confirmed" || st === "partially_confirmed")) {
-              updateStatusMutation.mutate({ status: "in_delivery", requestedDeliveryDate: date, deliveryNotes });
-              setShowDatePicker(false);
-            } else {
-              reschedMutation.mutate({ date, reason });
-            }
+            // Setting a delivery date never changes the order status — the
+            // order stays confirmed. It only goes "Unterwegs" via the driver app.
+            reschedMutation.mutate({ date, reason });
           }}
           isPending={updateStatusMutation.isPending || reschedMutation.isPending}
         />

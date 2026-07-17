@@ -4,7 +4,7 @@ import { HeroPortal } from "@/context/HeroContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUser } from "@/context/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingBag, Package, Clock, Truck, Calendar, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Trash2, Search, Save, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame, Star, Building2, PencilLine, AlertCircle } from "lucide-react";
+import { ShoppingBag, Package, Clock, Truck, Calendar, CalendarDays, MessageSquare, Tag, ShoppingCart, Check, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, Send, ClipboardList, Loader2, ArrowRight, ArrowLeft, Plus, Trash2, Search, Save, Calculator, Target, TrendingUp, TrendingDown, Users, Euro, Flame, Star, Building2, PencilLine, AlertCircle } from "lucide-react";
 import DraggableCardGrid from "@/components/DraggableCardGrid";
 import { getBuiltinViews } from "@/lib/dashboard-builtin-views";
 import {
@@ -458,6 +458,7 @@ export default function RestaurantHome() {
       case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
       case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
       case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
+      case "scheduled": return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400";
       case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
       case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
       case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
@@ -470,6 +471,7 @@ export default function RestaurantHome() {
       case "pending": return <Clock className="h-3.5 w-3.5" />;
       case "confirmed": return <Package className="h-3.5 w-3.5" />;
       case "partially_confirmed": return <AlertTriangle className="h-3.5 w-3.5" />;
+      case "scheduled": return <CalendarDays className="h-3.5 w-3.5" />;
       case "in_delivery": return <Truck className="h-3.5 w-3.5" />;
       case "delivered": return <Package className="h-3.5 w-3.5" />;
       default: return <ShoppingBag className="h-3.5 w-3.5" />;
@@ -481,6 +483,7 @@ export default function RestaurantHome() {
       case "pending": return "bg-yellow-100 dark:bg-yellow-900/40";
       case "confirmed": return "bg-blue-100 dark:bg-blue-900/40";
       case "partially_confirmed": return "bg-orange-100 dark:bg-orange-900/40";
+      case "scheduled": return "bg-indigo-100 dark:bg-indigo-900/40";
       case "in_delivery": return "bg-purple-100 dark:bg-purple-900/40";
       case "delivered": return "bg-green-100 dark:bg-green-900/40";
       case "cancelled": return "bg-red-100 dark:bg-red-900/40";
@@ -493,6 +496,7 @@ export default function RestaurantHome() {
       case "pending": return "text-yellow-700 dark:text-yellow-400";
       case "confirmed": return "text-blue-700 dark:text-blue-400";
       case "partially_confirmed": return "text-orange-700 dark:text-orange-400";
+      case "scheduled": return "text-indigo-700 dark:text-indigo-400";
       case "in_delivery": return "text-purple-700 dark:text-purple-400";
       case "delivered": return "text-green-700 dark:text-green-400";
       case "cancelled": return "text-red-700 dark:text-red-400";
@@ -629,7 +633,7 @@ export default function RestaurantHome() {
 
   const pendingOrdersCount = useMemo(() => {
     if (!allOrders) return 0;
-    const activeStatuses = ["pending", "confirmed", "partially_confirmed", "in_delivery"];
+    const activeStatuses = ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery"];
     return allOrders.filter(o => activeStatuses.includes(o.status)).length;
   }, [allOrders]);
 

@@ -493,7 +493,7 @@ const reorderSchema = z.object({
 }).strict();
 
 const updateOrderStatusSchema = z.object({
-  status: z.enum(["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]),
+  status: z.enum(["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled"]),
   changedBy: uuidField.optional(),
   actingMemberId: uuidField.optional().nullable(),
   requestedDeliveryDate: safeShortString.optional().nullable(),
@@ -3449,6 +3449,14 @@ export async function registerRoutes(
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
+      // "in_delivery" (Unterwegs) can only be set by the driver flow (driver
+      // marks en_route in the driver app), never via this generic route.
+      if (status === "in_delivery") {
+        return res.status(400).json({
+          error: "in_delivery_via_driver_only",
+          message: "Der Status 'Unterwegs' wird automatisch gesetzt, wenn der Fahrer die Tour startet.",
+        });
+      }
       const statusDenied = checkActingCapabilityIfProvided(
         req,
         [order.restaurantId, order.supplierId],
@@ -3487,7 +3495,7 @@ export async function registerRoutes(
         noteFn = () => `Bestellung #${formatOrderNumber(order)} storniert – zurück ins Hauptlager`;
       } else if (
         status === "delivered" &&
-        (previousStatus === "in_delivery" || previousStatus === "confirmed" || previousStatus === "partially_confirmed")
+        (previousStatus === "in_delivery" || previousStatus === "scheduled" || previousStatus === "confirmed" || previousStatus === "partially_confirmed")
       ) {
         movementType = "order_outbounded";
         noteFn = () => `Bestellung #${formatOrderNumber(order)} geliefert – aus Zwischenlager ausgebucht`;
@@ -3513,40 +3521,17 @@ export async function registerRoutes(
       // MAIN is debited at placement (reserve), so low-stock is checked there.
       // No low-stock notification is needed for confirm/cancel/deliver transitions.
 
-      // Post a "delivery_status" chat message when supplier marks order as in_delivery,
-      // so the restaurant sees the delivery date + optional supplier note in the chat thread.
-      if (status === "in_delivery" && previousStatus !== "in_delivery") {
-        try {
-          const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
-          await storage.sendMessage({
-            conversationId: conversation.id,
-            senderId: order.supplierId,
-            messageType: "delivery_status",
-            content: JSON.stringify({
-              type: "in_delivery",
-              orderId: order.id,
-              orderNumber: formatOrderNumber(order),
-              requestedDeliveryDate: requestedDeliveryDate ?? updated.requestedDeliveryDate ?? null,
-              deliveryNotes: deliveryNotes ?? null,
-            }),
-            orderId: order.id,
-          });
-        } catch (err) {
-          console.error("Failed to post delivery_status message:", err);
-        }
-      }
-
-      // Auto-generate the delivery note as soon as shipping starts (in_delivery)
-      // or, as a fallback, when the order is delivered without having passed
-      // through in_delivery (e.g. confirmed -> delivered). The note is created
-      // once; the document chat card is only posted when it's newly generated to
-      // avoid duplicate messages across the in_delivery -> delivered transition.
+      // Auto-generate the delivery note when the order is delivered without
+      // having passed through in_delivery (e.g. confirmed -> delivered). When
+      // shipping starts via the driver flow the note is created there. The note
+      // is created once; the document chat card is only posted when it's newly
+      // generated to avoid duplicate messages.
       const shouldEnsureDeliveryNote =
-        (status === "in_delivery" && previousStatus !== "in_delivery") ||
-        (status === "delivered" &&
-          (previousStatus === "in_delivery" ||
-            previousStatus === "confirmed" ||
-            previousStatus === "partially_confirmed"));
+        status === "delivered" &&
+        (previousStatus === "in_delivery" ||
+          previousStatus === "scheduled" ||
+          previousStatus === "confirmed" ||
+          previousStatus === "partially_confirmed");
       if (shouldEnsureDeliveryNote) {
         try {
           const { document, created } = await ensureDeliveryNoteForOrder(order);
@@ -3833,14 +3818,9 @@ export async function registerRoutes(
       if (order.status === "delivered" || order.status === "cancelled") {
         return res.status(400).json({ error: "Can only set delivery date for active orders" });
       }
-      if (order.requestedDeliveryDate) {
-        const dd = new Date(order.requestedDeliveryDate + "T00:00:00");
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (dd >= today) {
-          return res.status(400).json({ error: "Can only reschedule overdue orders" });
-        }
-      }
+      // Rescheduling is allowed for any active order (pending/confirmed/
+      // partially_confirmed/scheduled/in_delivery). A date change always
+      // requires a reason (enforced below); setting the same/first date does not.
       const isDateChange = !!order.requestedDeliveryDate && order.requestedDeliveryDate !== requestedDeliveryDate;
       const reason = (dateChangeReason ?? "").trim();
       if (isDateChange && !reason) {
@@ -4741,7 +4721,7 @@ export async function registerRoutes(
           if (!updatedAt) return false;
           return updatedAt >= today && updatedAt < tomorrow;
         }
-        if (o.status === "confirmed" || o.status === "in_delivery") {
+        if (o.status === "confirmed" || o.status === "scheduled" || o.status === "in_delivery") {
           return !!o.requestedDeliveryDate;
         }
         return false;
@@ -4775,8 +4755,8 @@ export async function registerRoutes(
       if (!dateRe.test(from) || !dateRe.test(to)) return res.json([]);
 
       const all = role === "restaurant"
-        ? await storage.getOrdersByRestaurant(userId, { status: ["confirmed", "partially_confirmed", "in_delivery", "delivered"] })
-        : await storage.getOrdersBySupplier(userId, { status: ["confirmed", "partially_confirmed", "in_delivery", "delivered"] });
+        ? await storage.getOrdersByRestaurant(userId, { status: ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"] })
+        : await storage.getOrdersBySupplier(userId, { status: ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"] });
 
       const result = all.filter(o => {
         if (!o.requestedDeliveryDate) return false;
@@ -4806,8 +4786,8 @@ export async function registerRoutes(
       const toStr = fmtDate(end);
 
       const all = role === "restaurant"
-        ? await storage.getOrdersByRestaurant(userId, { status: ["confirmed", "partially_confirmed", "in_delivery", "delivered"] })
-        : await storage.getOrdersBySupplier(userId, { status: ["confirmed", "partially_confirmed", "in_delivery", "delivered"] });
+        ? await storage.getOrdersByRestaurant(userId, { status: ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"] })
+        : await storage.getOrdersBySupplier(userId, { status: ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"] });
 
       const relevant = all.filter(o => o.requestedDeliveryDate && o.requestedDeliveryDate >= fromStr && o.requestedDeliveryDate <= toStr);
 
@@ -5718,7 +5698,7 @@ export async function registerRoutes(
       const restaurantId = req.auth.organizationId;
       const allOrders = await db.select().from(orders)
         .where(eq(orders.restaurantId, restaurantId));
-      const delivered = allOrders.filter(o => o.status === "delivered" || o.status === "confirmed" || o.status === "in_delivery" || o.status === "partially_confirmed");
+      const delivered = allOrders.filter(o => o.status === "delivered" || o.status === "confirmed" || o.status === "scheduled" || o.status === "in_delivery" || o.status === "partially_confirmed");
 
       const now = new Date();
       const monthKeys: { key: string; label: string }[] = [];
@@ -5800,7 +5780,7 @@ export async function registerRoutes(
       const allOrders = await db.select().from(orders)
         .where(and(eq(orders.restaurantId, restaurantId), eq(orders.supplierId, supplierId)));
 
-      const deliveredOrders = allOrders.filter(o => o.status === "delivered" || o.status === "confirmed" || o.status === "in_delivery" || o.status === "partially_confirmed");
+      const deliveredOrders = allOrders.filter(o => o.status === "delivered" || o.status === "confirmed" || o.status === "scheduled" || o.status === "in_delivery" || o.status === "partially_confirmed");
       const totalOrders = deliveredOrders.length;
       const totalSpent = deliveredOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
       const avgOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0;
@@ -5852,7 +5832,7 @@ export async function registerRoutes(
         .where(and(eq(orders.restaurantId, restaurantId), eq(orders.supplierId, supplierId)));
       const filteredOrders = monthOrders.filter(o => {
         const d = new Date(o.createdAt);
-        return d >= startDate && d < endDate && (o.status === "delivered" || o.status === "confirmed" || o.status === "in_delivery" || o.status === "partially_confirmed");
+        return d >= startDate && d < endDate && (o.status === "delivered" || o.status === "confirmed" || o.status === "scheduled" || o.status === "in_delivery" || o.status === "partially_confirmed");
       });
 
       if (filteredOrders.length === 0) {
@@ -8068,7 +8048,7 @@ export async function registerRoutes(
       if (!order) return res.status(404).json({ error: "Order not found" });
       const denied = checkActingCapability(req, order.supplierId, "deliveries.manage");
       if (denied) return res.status(denied.status).json(denied.body);
-      if (!["confirmed", "partially_confirmed", "in_delivery"].includes(order.status)) {
+      if (!["confirmed", "partially_confirmed", "scheduled", "in_delivery"].includes(order.status)) {
         return res.status(400).json({ error: "invalid_status", message: "Nur bestätigte Bestellungen können einem Fahrer zugewiesen werden." });
       }
       const driver = await storage.getMember(parsed.driverMemberId);
@@ -8122,6 +8102,24 @@ export async function registerRoutes(
         });
       }
 
+      // Assigning a driver plans the tour: the order becomes "scheduled"
+      // (Geplant). It only moves to in_delivery when the driver actually
+      // departs (en_route in the driver app). Conflicts are non-fatal.
+      if (["confirmed", "partially_confirmed"].includes(order.status)) {
+        try {
+          await transitionOrderWithStock({
+            order,
+            newStatus: "scheduled",
+            previousStatus: order.status,
+            changedByMemberId: req.auth!.memberId,
+            actorName: req.auth!.member.name,
+            movementType: null,
+          });
+        } catch (err) {
+          if (!(err instanceof OrderTransitionConflictError)) throw err;
+        }
+      }
+
       const restaurant = await storage.getUser(order.restaurantId);
       await createNotificationWithPush({
         userId: order.supplierId,
@@ -8158,6 +8156,22 @@ export async function registerRoutes(
         return res.status(400).json({ error: "already_delivered", message: "Zugestellte Lieferungen können nicht entfernt werden." });
       }
       await storage.deleteDeliveryAssignment(existing.id);
+      // Removing the driver un-plans the tour: a "scheduled" order falls back
+      // to "confirmed" so it can be re-planned. Conflicts are non-fatal.
+      if (order.status === "scheduled") {
+        try {
+          await transitionOrderWithStock({
+            order,
+            newStatus: "confirmed",
+            previousStatus: order.status,
+            changedByMemberId: req.auth!.memberId,
+            actorName: req.auth!.member.name,
+            movementType: null,
+          });
+        } catch (err) {
+          if (!(err instanceof OrderTransitionConflictError)) throw err;
+        }
+      }
       res.json({ success: true });
     } catch (error) {
       console.error("Unassign driver error:", error);
@@ -8294,7 +8308,7 @@ export async function registerRoutes(
       // Departing moves the ORDER to in_delivery (no stock movement — stock is
       // outbounded only on delivered). Conflicts are non-fatal: the sub-state
       // update already succeeded.
-      if (status === "en_route" && order && ["confirmed", "partially_confirmed"].includes(order.status)) {
+      if (status === "en_route" && order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
         try {
           await transitionOrderWithStock({
             order,
@@ -8306,6 +8320,36 @@ export async function registerRoutes(
           });
         } catch (err) {
           if (!(err instanceof OrderTransitionConflictError)) throw err;
+        }
+        // Post the "delivery_status" chat card so the restaurant sees the
+        // departure in the chat thread (previously done via the generic
+        // status route, which no longer accepts in_delivery).
+        try {
+          const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+          await storage.sendMessage({
+            conversationId: conversation.id,
+            senderId: order.supplierId,
+            messageType: "delivery_status",
+            content: JSON.stringify({
+              type: "in_delivery",
+              orderId: order.id,
+              orderNumber: formatOrderNumber(order),
+              requestedDeliveryDate: order.requestedDeliveryDate ?? null,
+              deliveryNotes: order.deliveryNotes ?? null,
+            }),
+            orderId: order.id,
+          });
+        } catch (err) {
+          console.error("Failed to post delivery_status message:", err);
+        }
+        // Auto-generate the delivery note when shipping starts.
+        try {
+          const { document, created } = await ensureDeliveryNoteForOrder(order);
+          if (created) {
+            await postDeliveryNoteChatMessage(order, document);
+          }
+        } catch (err) {
+          console.error("Failed to auto-generate delivery note:", err);
         }
       }
 

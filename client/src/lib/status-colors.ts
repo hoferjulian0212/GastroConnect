@@ -56,6 +56,7 @@ export function orderStatusTone(status: string): StatusTone {
   switch (status) {
     case "delivered": return "emerald";
     case "confirmed": return "indigo";
+    case "scheduled": return "indigo";
     case "in_delivery": return "indigo";
     case "pending": return "amber";
     case "partially_confirmed": return "amber";

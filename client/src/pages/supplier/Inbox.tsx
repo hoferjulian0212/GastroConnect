@@ -95,6 +95,7 @@ const getStatusColor = (status: string) => {
     case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
     case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
     case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
+    case "scheduled": return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400";
     case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
     case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
     case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
@@ -111,7 +112,8 @@ const getStatusLabel = (status: string) => {
     case "pending": return "Neu";
     case "confirmed": return "Bestätigt";
     case "partially_confirmed": return "Teilbestätigt";
-    case "in_delivery": return "In Lieferung";
+    case "scheduled": return "Geplant";
+    case "in_delivery": return "Unterwegs";
     case "delivered": return "Geliefert";
     case "cancelled": return "Storniert";
     default: return status;
@@ -851,7 +853,7 @@ export default function SupplierInbox() {
   });
 
   const openActionsOrders = allOrdersForActions?.filter(
-    (o: any) => o.restaurantId === restaurantIdForActions && ["pending", "confirmed", "partially_confirmed", "in_delivery"].includes(o.status)
+    (o: any) => o.restaurantId === restaurantIdForActions && ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery"].includes(o.status)
   );
   const openActionsComplaints = allComplaintsForActions?.filter(
     (c: any) => c.restaurantId === restaurantIdForActions && ["open", "in_progress"].includes(c.status)
@@ -1173,9 +1175,9 @@ export default function SupplierInbox() {
                               <div className="space-y-2">
                                 {openActionsOrders.map((order: any) => {
                                   const StatusIcon = order.status === "pending" ? Clock : order.status === "partially_confirmed" ? AlertTriangle : order.status === "confirmed" ? CheckCircle : Package;
-                                  const nextStatus = order.status === "pending" ? "confirmed" : (order.status === "confirmed" || order.status === "partially_confirmed") ? "in_delivery" : "delivered";
-                                  const nextLabel = order.status === "pending" ? "Bestätigen" : (order.status === "confirmed" || order.status === "partially_confirmed") ? "In Lieferung" : "Geliefert";
-                                  const NextIcon = order.status === "pending" ? CheckCircle : (order.status === "confirmed" || order.status === "partially_confirmed") ? Truck : Check;
+                                  const nextStatus = order.status === "pending" ? "confirmed" : (order.status === "confirmed" || order.status === "partially_confirmed") ? "set_date" : "delivered";
+                                  const nextLabel = order.status === "pending" ? "Bestätigen" : (order.status === "confirmed" || order.status === "partially_confirmed") ? "Lieferdatum setzen" : "Geliefert";
+                                  const NextIcon = order.status === "pending" ? CheckCircle : (order.status === "confirmed" || order.status === "partially_confirmed") ? CalendarDays : Check;
                                   return (
                                     <div
                                       key={order.id}
@@ -1245,7 +1247,7 @@ export default function SupplierInbox() {
                                           className="text-xs flex-1 border-border/40 rounded-lg"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            if (nextStatus === "in_delivery") {
+                                            if (nextStatus === "set_date") {
                                               setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId });
                                               setOpenActionsPopover(false);
                                               return;
@@ -1624,14 +1626,14 @@ export default function SupplierInbox() {
                                                 {cardWizard.action === "cancelled" && <XCircle className="h-4 w-4 text-red-600" />}
                                                 <span className="text-sm font-medium">
                                                   {cardWizard.action === "confirmed" && (lang === "it" ? "Confermare l'ordine?" : "Bestellung bestätigen?")}
-                                                  {cardWizard.action === "in_delivery" && (lang === "it" ? "Contrassegnare come in consegna?" : "Als in Lieferung markieren?")}
+                                                  {cardWizard.action === "in_delivery" && (lang === "it" ? "Impostare la data di consegna?" : "Lieferdatum setzen?")}
                                                   {cardWizard.action === "delivered" && (lang === "it" ? "Contrassegnare come consegnato?" : "Als geliefert markieren?")}
                                                   {cardWizard.action === "cancelled" && (lang === "it" ? "Annullare l'ordine?" : "Bestellung stornieren?")}
                                                 </span>
                                               </div>
                                               <p className="text-xs text-muted-foreground">
                                                 {cardWizard.action === "confirmed" && (lang === "it" ? "Il magazzino verrà aggiornato automaticamente." : "Der Lagerbestand wird automatisch aktualisiert.")}
-                                                {cardWizard.action === "in_delivery" && (lang === "it" ? "Lo stato cambierà a 'in consegna'." : "Der Status wird auf 'In Lieferung' geändert.")}
+                                                {cardWizard.action === "in_delivery" && (lang === "it" ? "La consegna parte solo quando l'autista è in viaggio." : "Die Lieferung startet erst, wenn der Fahrer unterwegs ist.")}
                                                 {cardWizard.action === "delivered" && (lang === "it" ? "L'ordine verrà contrassegnato come completato." : "Die Bestellung wird als abgeschlossen markiert.")}
                                                 {cardWizard.action === "cancelled" && (lang === "it" ? "Questa azione non può essere annullata." : "Diese Aktion kann nicht rückgängig gemacht werden.")}
                                               </p>
@@ -1680,13 +1682,7 @@ export default function SupplierInbox() {
                                                   <span className="truncate">{lang === "it" ? "Conferma" : "Bestätigen"}</span>
                                                 </Button>
                                               )}
-                                              {(orderStatus === "confirmed" || orderStatus === "partially_confirmed") && (
-                                                <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setCardWizard({ orderId: message.orderId!, action: "in_delivery" })} data-testid={`button-card-in_delivery-${message.id}`}>
-                                                  <Truck className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                  <span className="truncate">{lang === "it" ? "Consegna" : "Lieferung"}</span>
-                                                </Button>
-                                              )}
-                                              {orderStatus === "in_delivery" && (
+                                              {(orderStatus === "in_delivery" || orderStatus === "scheduled") && (
                                                 <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setCardWizard({ orderId: message.orderId!, action: "delivered" })} data-testid={`button-card-delivered-${message.id}`}>
                                                   <Package className="h-3.5 w-3.5 mr-1 shrink-0" />
                                                   <span className="truncate">{lang === "it" ? "Consegnato" : "Geliefert"}</span>
@@ -2508,13 +2504,13 @@ export default function SupplierInbox() {
                       {lang === "it" ? "Conferma" : "Bestätigen"}
                     </Button>
                   )}
-                  {(orderDetail.status === "confirmed" || orderDetail.status === "partially_confirmed") && (
-                    <Button size="sm" className="rounded-lg" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "in_delivery" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-in_delivery">
-                      <Truck className="h-3.5 w-3.5 mr-1" />
-                      {lang === "it" ? "In consegna" : "In Lieferung"}
+                  {(orderDetail.status === "confirmed" || orderDetail.status === "partially_confirmed" || orderDetail.status === "scheduled") && (
+                    <Button size="sm" className="rounded-lg" onClick={() => setDeliveryDatePicker({ orderId: orderDetail.id, restaurantId: orderDetail.restaurantId })} disabled={updateOrderStatusMutation.isPending} data-testid="button-set-delivery-date">
+                      <CalendarDays className="h-3.5 w-3.5 mr-1" />
+                      {lang === "it" ? "Imposta data consegna" : "Lieferdatum setzen"}
                     </Button>
                   )}
-                  {orderDetail.status === "in_delivery" && (
+                  {(orderDetail.status === "in_delivery" || orderDetail.status === "scheduled") && (
                     <Button size="sm" className="rounded-lg" onClick={() => updateOrderStatusMutation.mutate({ orderId: orderDetail.id, status: "delivered" })} disabled={updateOrderStatusMutation.isPending} data-testid="button-status-delivered">
                       <Package className="h-3.5 w-3.5 mr-1" />
                       {lang === "de" ? "Geliefert" : "Consegnato"}
@@ -2568,7 +2564,7 @@ export default function SupplierInbox() {
                       <SelectValue placeholder={lang === "it" ? "Seleziona stato..." : "Status wählen..."} />
                     </SelectTrigger>
                     <SelectContent>
-                      {["pending", "confirmed", "partially_confirmed", "in_delivery", "delivered", "cancelled"]
+                      {["pending", "confirmed", "partially_confirmed", "scheduled", "delivered", "cancelled"]
                         .filter(s => s !== orderDetail.status)
                         .map(s => (
                           <SelectItem key={s} value={s} data-testid={`select-correction-${s}`}>
@@ -3108,15 +3104,10 @@ export default function SupplierInbox() {
         supplierId={currentUser?.id || ""}
         restaurantId={deliveryDatePicker?.restaurantId || ""}
         isPending={updateOrderStatusMutation.isPending}
-        onConfirm={(date, deliveryNotes) => {
+        currentDate={allOrdersForActions?.find((o: any) => o.id === deliveryDatePicker?.orderId)?.requestedDeliveryDate || null}
+        onConfirm={(date, deliveryNotes, reason) => {
           if (deliveryDatePicker) {
-            if (cardWizard?.action === "in_delivery") {
-              updateOrderStatusMutation.mutate(
-                { orderId: deliveryDatePicker.orderId, status: "in_delivery", requestedDeliveryDate: date, deliveryNotes },
-                { onSuccess: () => { setDeliveryDatePicker(null); setCardWizard(null); } }
-              );
-            } else {
-              apiRequest("PATCH", `/api/orders/${deliveryDatePicker.orderId}/reschedule`, { requestedDeliveryDate: date })
+            apiRequest("PATCH", `/api/orders/${deliveryDatePicker.orderId}/reschedule`, { requestedDeliveryDate: date, ...(reason ? { dateChangeReason: reason } : {}) })
                 .then(() => {
                   queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
                   queryClient.invalidateQueries({ queryKey: ['/api/supplier/upcoming-deliveries'] });
@@ -3129,7 +3120,6 @@ export default function SupplierInbox() {
                   setDeliveryDatePicker(null);
                   toast({ title: lang === "de" ? "Fehler" : "Errore", variant: "destructive" });
                 });
-            }
           }
         }}
       />

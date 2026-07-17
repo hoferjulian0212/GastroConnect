@@ -12,7 +12,7 @@ import { objectStorageClient, ObjectStorageService } from "./replit_integrations
 import { randomUUID } from "crypto";
 import PDFDocument from "pdfkit";
 
-const COUNTABLE_STATUSES = ["confirmed", "partially_confirmed", "in_delivery", "delivered"] as const;
+const COUNTABLE_STATUSES = ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"] as const;
 
 export function monthRange(month: string): { start: Date; end: Date } {
   const [y, m] = month.split("-").map(Number);

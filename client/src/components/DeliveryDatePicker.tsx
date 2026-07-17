@@ -4,7 +4,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Truck, CalendarIcon, Info, StickyNote } from "lucide-react";
+import { Truck, CalendarIcon, Info, StickyNote, CalendarHeart } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DATE_CHANGE_REASONS } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { addDays, isBefore, startOfDay, format } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -30,13 +32,21 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
   const dateLocale = lang === "it" ? it : de;
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [notes, setNotes] = useState("");
-  const [reason, setReason] = useState("");
+  const [reasonCode, setReasonCode] = useState("");
+  const [reasonText, setReasonText] = useState("");
   const [prevOpen, setPrevOpen] = useState(false);
 
   if (open && !prevOpen) {
-    setSelectedDate(undefined);
+    // Preselect the restaurant's requested date if it is still in the future.
+    let initial: Date | undefined = undefined;
+    if (currentDate) {
+      const d = new Date(currentDate + "T00:00:00");
+      if (!isBefore(d, startOfDay(new Date()))) initial = d;
+    }
+    setSelectedDate(initial);
     setNotes("");
-    setReason("");
+    setReasonCode("");
+    setReasonText("");
   }
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -67,13 +77,21 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
 
   const selectedDateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : null;
   const isDateChange = !!currentDate && !!selectedDateStr && selectedDateStr !== currentDate;
-  const reasonMissing = isDateChange && reason.trim().length === 0;
+  const reasonMissing = isDateChange && (reasonCode === "" || (reasonCode === "other" && reasonText.trim().length === 0));
+
+  const composedReason = useMemo(() => {
+    if (!isDateChange) return undefined;
+    const entry = DATE_CHANGE_REASONS.find(r => r.code === reasonCode);
+    if (!entry) return undefined;
+    if (entry.code === "other") return reasonText.trim() || undefined;
+    return lang === "it" ? entry.it : entry.de;
+  }, [isDateChange, reasonCode, reasonText, lang]);
 
   const handleConfirm = () => {
     if (selectedDate && !reasonMissing) {
       const dateStr = format(selectedDate, "yyyy-MM-dd");
       const trimmedNotes = notes.trim();
-      onConfirm(dateStr, trimmedNotes ? trimmedNotes : undefined, isDateChange ? reason.trim() : undefined);
+      onConfirm(dateStr, trimmedNotes ? trimmedNotes : undefined, composedReason);
     }
   };
 
@@ -97,6 +115,19 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
         </div>
 
         <div className="space-y-3 px-6 pb-6">
+          {currentDate && (
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40" data-testid="banner-requested-date">
+              <CalendarHeart className="h-4 w-4 text-blue-600 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+                  {lang === "it" ? "Data richiesta dal cliente" : "Wunschtermin des Betriebs"}
+                </p>
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  {format(new Date(currentDate + "T00:00:00"), "EEEE, dd. MMMM yyyy", { locale: dateLocale })}
+                </p>
+              </div>
+            </div>
+          )}
           {allowedDaysOfWeek !== null && (
             <div className="flex flex-wrap gap-1">
               {Array.from(allowedDaysOfWeek).sort().map(day => (
@@ -148,20 +179,33 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
 
           {isDateChange && (
             <div className="space-y-1.5">
-              <label htmlFor="date-change-reason-input" className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-foreground">
                 <Info className="h-3.5 w-3.5 text-amber-500" />
-                {lang === "it" ? "Motivo del cambio data (obbligatorio)" : "Begründung für die Datumsänderung (Pflicht)"}
+                {lang === "it" ? "Motivo del cambio data (obbligatorio)" : "Grund für die Datumsänderung (Pflicht)"}
               </label>
-              <Textarea
-                id="date-change-reason-input"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={lang === "it" ? "es. Nessun giro di consegna in quel giorno" : "z. B. An diesem Tag keine Tour in Ihrer Region"}
-                rows={2}
-                maxLength={500}
-                className="resize-none text-sm"
-                data-testid="textarea-date-change-reason"
-              />
+              <Select value={reasonCode} onValueChange={setReasonCode}>
+                <SelectTrigger className="text-sm" data-testid="select-date-change-reason">
+                  <SelectValue placeholder={lang === "it" ? "Seleziona un motivo…" : "Grund auswählen…"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {DATE_CHANGE_REASONS.map(r => (
+                    <SelectItem key={r.code} value={r.code} data-testid={`reason-option-${r.code}`}>
+                      {lang === "it" ? r.it : r.de}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {reasonCode === "other" && (
+                <Textarea
+                  value={reasonText}
+                  onChange={(e) => setReasonText(e.target.value)}
+                  placeholder={lang === "it" ? "Descrivi il motivo…" : "Grund beschreiben…"}
+                  rows={2}
+                  maxLength={500}
+                  className="resize-none text-sm"
+                  data-testid="textarea-date-change-reason"
+                />
+              )}
               <p className="text-[10px] text-muted-foreground">
                 {lang === "it"
                   ? "L'azienda verrà informata automaticamente del nuovo appuntamento e del motivo."

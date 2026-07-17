@@ -94,6 +94,7 @@ const getStatusColor = (status: string) => {
     case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
     case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
     case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
+    case "scheduled": return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400";
     case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
     case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
     case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
@@ -110,7 +111,8 @@ const getStatusLabel = (status: string) => {
     case "pending": return "Neu";
     case "confirmed": return "Bestätigt";
     case "partially_confirmed": return "Teilbestätigt";
-    case "in_delivery": return "In Lieferung";
+    case "scheduled": return "Geplant";
+    case "in_delivery": return "Unterwegs";
     case "delivered": return "Geliefert";
     case "cancelled": return "Storniert";
     default: return status;
@@ -694,7 +696,7 @@ export default function RestaurantInbox() {
   });
 
   const openActionsOrders = allOrdersForActions?.filter(
-    (o: any) => o.supplierId === supplierId && ["pending", "confirmed", "partially_confirmed", "in_delivery"].includes(o.status)
+    (o: any) => o.supplierId === supplierId && ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery"].includes(o.status)
   );
   const openActionsComplaints = allComplaintsForActions?.filter(
     (c: any) => c.supplierId === supplierId && ["open", "in_progress"].includes(c.status)
@@ -3106,7 +3108,7 @@ export default function RestaurantInbox() {
                 </div>
               )}
 
-              {orderDetail.status === "in_delivery" && (
+              {(orderDetail.status === "in_delivery" || orderDetail.status === "scheduled") && (
                 <Button
                   variant="outline"
                   className="w-full rounded-xl"
