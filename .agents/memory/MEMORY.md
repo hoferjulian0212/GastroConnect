@@ -16,6 +16,7 @@
 - [Admin panel color scheme](admin-color-scheme.md) — single indigo accent (#818cf8/indigo-400/600); neutral #0a0a0f page / #111116 cards; semantic red/amber/emerald for status only.
 - [Inventory Risk Management feature](inventory-risk-feature.md) — supplier-only; warehouse flags risk (create=edit-own), managers/vertreter manage (status+turn-into-promotion); status PATCH gated in route not schema.
 - [Order status driver flow](order-status-driver-flow.md) — in_delivery only via driver en_route; date changes via /reschedule with reason, never the status route.
+- [PWA cold-start speed](pwa-cold-start.md) — iOS kills the PWA on app switch; SW shell caching + localStorage /api/auth/me snapshot as placeholderData make restart instant.
 - [Inventory risk reporting wizard](inventory-risk-wizard.md) — create flow is the step-by-step InventoryRiskWizard (vaul Drawer); the old FormDialog is edit-only; reasons are schema enum tokens in risk_reason col.
 - [AI knowledge learning pipeline](ai-knowledge-learning.md) — AI gateway has no /embeddings (keyword retrieval only); learned entries need the deterministic privacy gate + untrusted-context injection, never system-prompt.
 - [Frontend app-mount tests](frontend-app-mount-tests.md) — jsdom needs DOMMatrix/Path2D stubs for pdfjs; role-redirect guards must wait for session hydration or deep links get lost.

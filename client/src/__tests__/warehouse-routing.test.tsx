@@ -72,6 +72,9 @@ function mockSession(memberRole: string) {
 
 beforeEach(() => {
   queryClient.clear();
+  // The app persists a last-known session snapshot for instant PWA cold
+  // starts — clear it so tests don't leak identity into each other.
+  localStorage.clear();
 });
 
 afterEach(() => {

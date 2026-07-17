@@ -36,15 +36,55 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
+// Last-known session snapshot. When the installed PWA is killed by the OS
+// (e.g. iOS reclaiming memory while the user switches apps), the app restarts
+// cold — instead of blocking on the splash screen until /api/auth/me answers,
+// we render immediately from this snapshot and refresh the session in the
+// background. If the session turns out to be expired, the background refetch
+// redirects to the login page as usual.
+const ME_SNAPSHOT_KEY = "gc.me.snapshot";
+
+function readMeSnapshot(): MeResponse | undefined {
+  try {
+    const raw = localStorage.getItem(ME_SNAPSHOT_KEY);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as MeResponse;
+    return parsed && parsed.authenticated && parsed.org ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeMeSnapshot(me: MeResponse | undefined) {
+  try {
+    if (me?.authenticated && me.org) {
+      localStorage.setItem(ME_SNAPSHOT_KEY, JSON.stringify(me));
+    } else {
+      localStorage.removeItem(ME_SNAPSHOT_KEY);
+    }
+  } catch {
+    // Storage full/unavailable — snapshot is a pure optimization, ignore.
+  }
+}
+
 export function UserProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentMember, setCurrentMember] = useState<Member | null>(null);
 
-  const { data: me, isLoading: meLoading, refetch } = useQuery<MeResponse>({
+  const { data: me, isLoading: meLoading, isFetchedAfterMount, refetch } = useQuery<MeResponse>({
     queryKey: ["/api/auth/me"],
     retry: false,
     staleTime: 30000,
+    // Render instantly from the last-known session on a cold start; the real
+    // /api/auth/me fetch still runs and replaces it.
+    placeholderData: readMeSnapshot,
   });
+
+  // Keep the snapshot up to date with the real session state (only after the
+  // server actually answered — never persist the placeholder itself).
+  useEffect(() => {
+    if (isFetchedAfterMount) writeMeSnapshot(me);
+  }, [me, isFetchedAfterMount]);
 
   // The session is the single source of truth for identity. Seed local state
   // from /api/auth/me; local setters still allow optimistic profile updates.
@@ -83,6 +123,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
     setCurrentUser(null);
     setCurrentMember(null);
+    writeMeSnapshot(undefined);
     queryClient.clear();
   }, []);
 
@@ -99,7 +140,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
         members,
         membersLoading,
         isAuthenticated,
-        isLoading: meLoading,
+        // With a snapshot placeholder the query technically still "loads", but
+        // we already have renderable session data — don't show the splash.
+        isLoading: meLoading && !me,
         providers,
         refetchMe,
         logout,
