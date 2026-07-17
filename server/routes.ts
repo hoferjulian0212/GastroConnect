@@ -19,7 +19,7 @@ import { runSyncForConnection, startErpSyncScheduler, testErpConnection, ErpSync
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
 import { sendEmail, renderNotificationEmail } from "./emailService";
 import { registerAuthRoutes } from "./auth/routes";
-import { registerAdminAuthRoutes, bootstrapPlatformAdmin, bootstrapDemoWarehouseMember, bootstrapDemoDriverMembers } from "./auth/adminAuth";
+import { registerAdminAuthRoutes, bootstrapPlatformAdmin, bootstrapDemoWarehouseMember, bootstrapDemoDriverMembers, bootstrapDemoRoleMembers } from "./auth/adminAuth";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
@@ -664,6 +664,8 @@ export async function registerRoutes(
   await bootstrapDemoWarehouseMember();
   // Provision demo driver logins on Hans's supplier org (idempotent, dev-only)
   await bootstrapDemoDriverMembers();
+  // Give one seeded member per role a working demo password (idempotent, dev-only)
+  await bootstrapDemoRoleMembers();
   // Ensure the standard PMS providers exist (idempotent)
   await storage.ensurePmsProviders();
   // Ensure the standard ERP providers exist (idempotent)

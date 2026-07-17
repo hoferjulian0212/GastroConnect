@@ -171,6 +171,68 @@ export async function bootstrapDemoDriverMembers(): Promise<void> {
   }
 }
 
+// Demo logins for every team role — gives one seeded member per role a fixed,
+// known password so each role's view can be tested without the invite/claim
+// flow. Same pattern and the same hard production guard as the demo warehouse
+// member above. Unlike that bootstrap, these members already exist from the
+// seed — we only set their password and never change name/role/org here.
+export const DEMO_ROLE_LOGINS: ReadonlyArray<{
+  email: string;
+  password: string;
+  role: string;
+  orgEmail: string;
+}> = [
+  // Restaurant "Gasthof Alpenblick"
+  { email: "klaus@gasthof-alpenblick.de", password: "Admin2026Demo", role: "admin", orgEmail: "klaus@gasthof-alpenblick.de" },
+  { email: "sepp@gasthof-alpenblick.de", password: "Manager2026Demo", role: "manager", orgEmail: "klaus@gasthof-alpenblick.de" },
+  { email: "anita@gasthof-alpenblick.de", password: "Staff2026Demo", role: "staff", orgEmail: "klaus@gasthof-alpenblick.de" },
+  // Supplier "Frische Produkte" (has no seeded staff member; warehouse/driver
+  // demo logins for this org are provisioned by the bootstraps above)
+  { email: "hans@frische-produkte.de", password: "Admin2026Demo", role: "admin", orgEmail: "hans@frische-produkte.de" },
+  { email: "sabine@frische-produkte.de", password: "Manager2026Demo", role: "manager", orgEmail: "hans@frische-produkte.de" },
+  { email: "markus@frische-produkte.de", password: "Vertreter2026Demo", role: "vertreter", orgEmail: "hans@frische-produkte.de" },
+];
+
+export async function bootstrapDemoRoleMembers(): Promise<void> {
+  // Hard production guard — never provision known credentials in prod.
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  try {
+    const ready: string[] = [];
+    for (const login of DEMO_ROLE_LOGINS) {
+      const member = await storage.getMemberByEmail(login.email);
+      if (!member) {
+        console.log(`[demo] role login skipped — ${login.email} not found (seed missing?).`);
+        continue;
+      }
+      if (member.role !== login.role) {
+        console.error(
+          `[demo] role login skipped — ${login.email} has role "${member.role}", expected "${login.role}"; refusing to touch.`,
+        );
+        continue;
+      }
+      // Never reset the password of a member that belongs to a different org
+      // than the expected seeded one (mirrors the warehouse/driver guards).
+      const org = await storage.getUserByEmail(login.orgEmail);
+      if (!org || member.organizationId !== org.id) {
+        console.error(
+          `[demo] role login skipped — ${login.email} does not belong to the expected demo org; refusing to touch.`,
+        );
+        continue;
+      }
+      const passwordHash = await hashPassword(login.password);
+      await storage.updateMemberAuth(member.id, { passwordHash, emailVerifiedAt: new Date() });
+      ready.push(login.email);
+    }
+    if (ready.length) {
+      console.log(`[demo] role logins ready (${ready.join(", ")}).`);
+    }
+  } catch (err) {
+    console.error("[demo] role login bootstrap error:", err);
+  }
+}
+
 // Strip sensitive fields (password hash) before returning a platform-admin row
 // to any client. Never send the bcrypt hash over the wire or into response logs.
 function sanitizePlatformAdmin<T extends { passwordHash?: string | null }>(

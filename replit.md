@@ -23,6 +23,20 @@ The admin panel at `/admin` authenticates platform owners with **email + passwor
 ### Business users (restaurants & suppliers)
 Business members log in with **email + password**, with **optional Google OAuth** as an alternate sign-in for already-invited members. New businesses are created **invite-only**: a platform admin creates the organization plus its first admin via `POST /api/admin/orgs` (UI: "Neues Unternehmen" dialog on the admin Organizations page). The new admin receives an email with a claim link to set their password. Public member self-signup (`Signup`/`AuthVerify` pages and the member register/verify routes) was removed.
 
+### Demo logins (dev only, never in production)
+Provisioned idempotently at startup (`bootstrapDemoRoleMembers`, `bootstrapDemoWarehouseMember`, `bootstrapDemoDriverMembers` in `server/auth/adminAuth.ts`), hard-gated to `NODE_ENV !== "production"`:
+
+| Rolle | Organisation | E-Mail | Passwort |
+|---|---|---|---|
+| Admin (Restaurant) | Gasthof Alpenblick | klaus@gasthof-alpenblick.de | Admin2026Demo |
+| Manager (Restaurant) | Gasthof Alpenblick | sepp@gasthof-alpenblick.de | Manager2026Demo |
+| Staff (Restaurant) | Gasthof Alpenblick | anita@gasthof-alpenblick.de | Staff2026Demo |
+| Admin (Lieferant) | Frische Produkte | hans@frische-produkte.de | Admin2026Demo |
+| Manager (Lieferant) | Frische Produkte | sabine@frische-produkte.de | Manager2026Demo |
+| Vertreter (Lieferant) | Frische Produkte | markus@frische-produkte.de | Vertreter2026Demo |
+| Lager (Lieferant) | Frische Produkte | lager@frische-produkte.de | Lager2026Demo |
+| Fahrer (Lieferant) | Frische Produkte | fahrer@frische-produkte.de / fahrer2@… | Fahrer2026Demo |
+
 ## System Architecture
 
 ### UI/UX Decisions
