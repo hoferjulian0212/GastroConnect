@@ -14,6 +14,12 @@ export function usePullToRefresh({
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollElRef = useRef<HTMLElement | null>(null);
   const startYRef = useRef(0);
+  const startXRef = useRef(0);
+  // Direction lock: once a gesture is recognized as horizontal (e.g. swiping
+  // through the supplier filter chips), pull-to-refresh must stay out of the
+  // way for the rest of that gesture — otherwise preventDefault() would freeze
+  // the horizontal scroll mid-swipe.
+  const horizontalGestureRef = useRef(false);
   const pullingRef = useRef(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -49,6 +55,8 @@ export function usePullToRefresh({
       const scrollEl = getScrollEl();
       if (!scrollEl || scrollEl.scrollTop > 0) return;
       startYRef.current = e.touches[0].clientY;
+      startXRef.current = e.touches[0].clientX;
+      horizontalGestureRef.current = false;
       pullingRef.current = false;
     },
     [isRefreshing, getScrollEl]
@@ -56,14 +64,23 @@ export function usePullToRefresh({
 
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
-      if (isRefreshing) return;
+      if (isRefreshing || horizontalGestureRef.current) return;
       const scrollEl = getScrollEl();
       if (!scrollEl || scrollEl.scrollTop > 0) return;
 
       const deltaY = e.touches[0].clientY - startYRef.current;
+      const deltaX = e.touches[0].clientX - startXRef.current;
+
+      // Lock out as soon as the gesture is clearly horizontal, so nested
+      // horizontal scrollers (filter chips, tab rows) scroll natively.
+      if (!pullingRef.current && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 6) {
+        horizontalGestureRef.current = true;
+        return;
+      }
+
       if (deltaY < 0) return;
 
-      if (!pullingRef.current && deltaY > 10) {
+      if (!pullingRef.current && deltaY > 10 && deltaY > Math.abs(deltaX)) {
         pullingRef.current = true;
         setIsPulling(true);
       }
