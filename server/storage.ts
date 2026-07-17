@@ -5316,6 +5316,9 @@ export class DatabaseStorage implements IStorage {
     // Nullable text token; idempotent so it exists in every env without a drizzle push.
     await db.execute(sql`ALTER TABLE inventory_risk_records ADD COLUMN IF NOT EXISTS risk_reason text`);
 
+    // Supplier changed the delivery date (confirm/reschedule) — mandatory reason.
+    await db.execute(sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_date_change_reason text`);
+
     // Fix wrong FK: created_by stores the reporting MEMBER id (members.id), but the
     // table was created with a FK to users(id), so every insert failed. Idempotent:
     // drop the wrong constraint if present and add the correct one once.

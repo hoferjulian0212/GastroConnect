@@ -3594,6 +3594,17 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Only pending orders can be confirmed" });
       }
 
+      // Delivery-date change during confirmation: allowed, but a reason is mandatory.
+      const newDeliveryDate = validated.deliveryDate;
+      const deliveryDateChanged = !!newDeliveryDate && !!order.requestedDeliveryDate && newDeliveryDate !== order.requestedDeliveryDate;
+      const dateChangeReason = (validated.dateChangeReason ?? "").trim();
+      if (deliveryDateChanged && !dateChangeReason) {
+        return res.status(400).json({
+          error: "date_change_reason_required",
+          message: "Bei einem geänderten Lieferdatum ist eine Begründung erforderlich.",
+        });
+      }
+
       const orderItemIds = new Set(order.items.map(i => i.id));
       const submittedIds = new Set(validated.items.map(i => i.orderItemId));
       if (submittedIds.size !== validated.items.length) {
@@ -3702,6 +3713,19 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Failed to update order status" });
       }
 
+      // Persist the delivery-date change (not when the whole order was rejected).
+      if (deliveryDateChanged && newStatus !== "cancelled") {
+        const dateSet: any = {
+          requestedDeliveryDate: newDeliveryDate,
+          deliveryDateChangeReason: dateChangeReason,
+          updatedAt: new Date(),
+        };
+        if (order.requestedDeliveryDate && !order.originalDeliveryDate) {
+          dateSet.originalDeliveryDate = order.requestedDeliveryDate;
+        }
+        await db.update(orders).set(dateSet).where(eq(orders.id, order.id));
+      }
+
       // Send notification to restaurant
       const supplier = await storage.getUser(order.supplierId);
       const isPartial = newStatus === "partially_confirmed";
@@ -3747,6 +3771,33 @@ export async function registerRoutes(
         dismissed: false,
       });
 
+      // Auto chat message + notification about the delivery-date change
+      if (deliveryDateChanged && newStatus !== "cancelled") {
+        await storage.sendMessage({
+          conversationId: conversation.id,
+          senderId: order.supplierId,
+          messageType: "order_change_request",
+          content: JSON.stringify({
+            type: "delivery_date_change",
+            orderId: order.id,
+            orderNumber: formatOrderNumber(order),
+            oldDate: order.requestedDeliveryDate || null,
+            newDate: newDeliveryDate,
+            reason: dateChangeReason,
+          }),
+          orderId: order.id,
+          dismissed: false,
+        });
+        const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+        await createNotificationWithPush({
+          userId: order.restaurantId,
+          type: "order_status",
+          title: `Lieferdatum geändert #${formatOrderNumber(order)}`,
+          message: `${supplier?.companyName || supplier?.name || "Händler"} liefert am ${fmtDate(newDeliveryDate!)}${order.requestedDeliveryDate ? ` statt am ${fmtDate(order.requestedDeliveryDate)}` : ""}. Grund: ${dateChangeReason}`,
+          referenceId: order.id,
+        }, "restaurant");
+      }
+
       const updatedOrder = await storage.getOrder(req.params.id);
       res.json(updatedOrder);
     } catch (error: any) {
@@ -3771,7 +3822,10 @@ export async function registerRoutes(
 
   app.patch("/api/orders/:id/reschedule", async (req, res) => {
     try {
-      const { requestedDeliveryDate } = z.object({ requestedDeliveryDate: z.string() }).parse(req.body);
+      const { requestedDeliveryDate, dateChangeReason } = z.object({
+        requestedDeliveryDate: z.string(),
+        dateChangeReason: z.string().trim().max(500).optional(),
+      }).parse(req.body);
       const order = await storage.getOrder(req.params.id);
       if (!order) return res.status(404).json({ error: "Order not found" });
       const denied = checkActingCapabilityIfProvided(req, [order.restaurantId, order.supplierId], "orders.manage");
@@ -3787,6 +3841,14 @@ export async function registerRoutes(
           return res.status(400).json({ error: "Can only reschedule overdue orders" });
         }
       }
+      const isDateChange = !!order.requestedDeliveryDate && order.requestedDeliveryDate !== requestedDeliveryDate;
+      const reason = (dateChangeReason ?? "").trim();
+      if (isDateChange && !reason) {
+        return res.status(400).json({
+          error: "date_change_reason_required",
+          message: "Bei einem geänderten Lieferdatum ist eine Begründung erforderlich.",
+        });
+      }
       const setData: any = {
         requestedDeliveryDate,
         updatedAt: new Date(),
@@ -3794,7 +3856,43 @@ export async function registerRoutes(
       if (!order.originalDeliveryDate && order.requestedDeliveryDate) {
         setData.originalDeliveryDate = order.requestedDeliveryDate;
       }
+      if (isDateChange) {
+        setData.deliveryDateChangeReason = reason;
+      }
       const [updated] = await db.update(orders).set(setData).where(eq(orders.id, req.params.id)).returning();
+
+      // Inform the counterparty about the changed date (chat card + notification).
+      // Sender attribution comes from the session, never assumed to be the supplier.
+      if (isDateChange) {
+        const actorOrgId = req.auth?.organizationId ?? order.supplierId;
+        const actorIsSupplier = actorOrgId !== order.restaurantId;
+        const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+        await storage.sendMessage({
+          conversationId: conversation.id,
+          senderId: actorIsSupplier ? order.supplierId : order.restaurantId,
+          messageType: "order_change_request",
+          content: JSON.stringify({
+            type: "delivery_date_change",
+            orderId: order.id,
+            orderNumber: formatOrderNumber(order),
+            oldDate: order.requestedDeliveryDate,
+            newDate: requestedDeliveryDate,
+            reason,
+          }),
+          orderId: order.id,
+          dismissed: false,
+        });
+        const actorUser = await storage.getUser(actorIsSupplier ? order.supplierId : order.restaurantId);
+        const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+        await createNotificationWithPush({
+          userId: actorIsSupplier ? order.restaurantId : order.supplierId,
+          type: "order_status",
+          title: `Lieferdatum geändert #${formatOrderNumber(order)}`,
+          message: `${actorUser?.companyName || actorUser?.name || (actorIsSupplier ? "Händler" : "Betrieb")} hat das Lieferdatum auf ${fmtDate(requestedDeliveryDate)} statt ${fmtDate(order.requestedDeliveryDate!)} geändert. Grund: ${reason}`,
+          referenceId: order.id,
+        }, actorIsSupplier ? "restaurant" : "supplier");
+      }
+
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to reschedule order" });

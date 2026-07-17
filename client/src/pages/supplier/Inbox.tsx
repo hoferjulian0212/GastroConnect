@@ -1958,6 +1958,47 @@ export default function SupplierInbox() {
                                 (() => {
                                   let changeData: { type?: string; orderId?: string; message?: string; reason?: string; approved?: boolean; items?: any[]; total?: string; status?: string; originalTotal?: string } = {};
                                   try { changeData = JSON.parse(message.content); } catch {}
+                                  if (changeData.type === "delivery_date_change") {
+                                    const ddData = changeData as { orderId?: string; orderNumber?: string; oldDate?: string | null; newDate?: string; reason?: string };
+                                    const fmtD = (d: string) => new Date(d + "T00:00:00").toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "long", year: "numeric" });
+                                    return (
+                                      <div className="max-w-[88%] md:w-[75%] md:max-w-sm rounded-2xl border border-blue-200 dark:border-blue-800/50 bg-white dark:bg-card shadow-sm overflow-hidden" data-testid={`delivery-date-change-${message.id}`}>
+                                        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
+                                          <div className="flex items-center gap-2">
+                                            <Truck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                              {lang === "it" ? "Data di consegna modificata" : "Lieferdatum geändert"}{ddData.orderNumber ? ` #${ddData.orderNumber}` : ""}
+                                            </span>
+                                          </div>
+                                          <span className="text-[10px] text-muted-foreground">{format(messageDate, "HH:mm")}</span>
+                                        </div>
+                                        <div className="px-4 py-2 space-y-1">
+                                          {ddData.oldDate && (
+                                            <p className="text-xs text-muted-foreground line-through" data-testid={`text-dd-old-${message.id}`}>{fmtD(ddData.oldDate)}</p>
+                                          )}
+                                          {ddData.newDate && (
+                                            <p className="text-sm font-medium" data-testid={`text-dd-new-${message.id}`}>→ {fmtD(ddData.newDate)}</p>
+                                          )}
+                                          {ddData.reason && (
+                                            <div className="mt-1.5 rounded-lg border border-blue-200/60 dark:border-blue-800/40 bg-blue-50/70 dark:bg-blue-950/20 px-2.5 py-1.5">
+                                              <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                                                {lang === "it" ? "Motivo" : "Begründung"}
+                                              </p>
+                                              <p className="text-xs text-foreground whitespace-pre-wrap mt-0.5" data-testid={`text-dd-reason-${message.id}`}>{ddData.reason}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                        {ddData.orderId && (
+                                          <div className="px-4 pb-3 pt-1">
+                                            <Button variant="outline" size="sm" className="w-full text-xs h-8" onClick={() => setLocation(`/supplier/orders/${ddData.orderId}`)} data-testid={`button-dd-details-${message.id}`}>
+                                              <Eye className="h-3.5 w-3.5 mr-1" />
+                                              {lang === "it" ? "Dettagli" : "Details"}
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
                                   if (changeData.type === "partial_confirmation") {
                                     const pcData = changeData as { type?: string; orderId?: string; status?: string; message?: string; items?: { name: string; ordered: number; confirmed: number; rejected: number; price: string }[]; total?: string; originalTotal?: string };
                                     return (

@@ -187,8 +187,8 @@ export default function OrderDetail() {
   });
 
   const reschedMutation = useMutation({
-    mutationFn: async (date: string) => {
-      await apiRequest("PATCH", `/api/orders/${orderId}/reschedule`, { requestedDeliveryDate: date });
+    mutationFn: async ({ date, reason }: { date: string; reason?: string }) => {
+      await apiRequest("PATCH", `/api/orders/${orderId}/reschedule`, { requestedDeliveryDate: date, ...(reason ? { dateChangeReason: reason } : {}) });
     },
     onSuccess: () => {
       setShowDatePicker(false);
@@ -1124,6 +1124,20 @@ export default function OrderDetail() {
                     </p>
                   </div>
                 )}
+                {order.originalDeliveryDate && order.originalDeliveryDate !== order.requestedDeliveryDate && (
+                  <div className="flex justify-between items-center gap-2 px-4 py-3">
+                    <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Urspr. Lieferdatum" : "Data consegna originale"}</p>
+                    <p className="text-sm font-medium shrink-0 text-amber-600 dark:text-amber-400 line-through" data-testid="text-original-delivery-date">
+                      {format(new Date(order.originalDeliveryDate + "T00:00:00"), "dd.MM.yyyy", { locale: dateLocale })}
+                    </p>
+                  </div>
+                )}
+                {order.deliveryDateChangeReason && (
+                  <div className="px-4 py-3">
+                    <p className="text-sm text-muted-foreground mb-1">{lang === "de" ? "Grund für Datumsänderung" : "Motivo del cambio data"}</p>
+                    <p className="text-sm whitespace-pre-wrap" data-testid="text-date-change-reason">{order.deliveryDateChangeReason}</p>
+                  </div>
+                )}
                 {(order.createdByMember || order.createdByUser) && (
                   <div className="flex justify-between items-center gap-2 px-4 py-3">
                     <p className="text-sm text-muted-foreground shrink-0">{lang === "de" ? "Erstellt von" : "Creato da"}</p>
@@ -1291,12 +1305,13 @@ export default function OrderDetail() {
           onOpenChange={(open) => { if (!open) setShowDatePicker(false); }}
           supplierId={isSupplier ? (currentUser?.id || "") : order.supplierId}
           restaurantId={isSupplier ? order.restaurantId : (currentUser?.id || "")}
-          onConfirm={(date, deliveryNotes) => {
+          currentDate={order.requestedDeliveryDate || null}
+          onConfirm={(date, deliveryNotes, reason) => {
             if (isSupplier && (st === "confirmed" || st === "partially_confirmed")) {
               updateStatusMutation.mutate({ status: "in_delivery", requestedDeliveryDate: date, deliveryNotes });
               setShowDatePicker(false);
             } else {
-              reschedMutation.mutate(date);
+              reschedMutation.mutate({ date, reason });
             }
           }}
           isPending={updateStatusMutation.isPending || reschedMutation.isPending}

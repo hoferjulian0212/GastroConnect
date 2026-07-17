@@ -3,7 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertTriangle, Package, Info } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { CheckCircle, AlertTriangle, Package, Info, CalendarDays, Pencil, X } from "lucide-react";
+import { format } from "date-fns";
+import { de, it } from "date-fns/locale";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import QuantityInput from "@/components/QuantityInput";
@@ -39,11 +43,24 @@ export function PartialConfirmationDialog({
     return initial;
   });
 
+  const dateLocale = lang === "it" ? it : de;
+  const requestedDate = order.requestedDeliveryDate || null;
+  const [editingDate, setEditingDate] = useState(false);
+  const [newDate, setNewDate] = useState<string>(requestedDate || "");
+  const [dateReason, setDateReason] = useState("");
+  const dateChanged = editingDate && !!newDate && newDate !== requestedDate;
+  const reasonMissing = dateChanged && dateReason.trim().length === 0;
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+
+  const formatDayDate = (d: string) =>
+    format(new Date(d + "T00:00:00"), "EEEE, dd. MMMM yyyy", { locale: dateLocale });
+
   const confirmMutation = useMutation({
     mutationFn: async (items: { orderItemId: string; confirmedQuantity: number }[]) => {
       return apiRequest("POST", `/api/orders/${order.id}/confirm`, {
         items,
         changedBy: currentUserId,
+        ...(dateChanged ? { deliveryDate: newDate, dateChangeReason: dateReason.trim() } : {}),
       });
     },
     onSuccess: () => {
@@ -234,6 +251,93 @@ export function PartialConfirmationDialog({
         </div>
 
         <div className="px-6 pb-6 space-y-2">
+          <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2" data-testid="confirm-delivery-date-section">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <CalendarDays className="h-4 w-4 text-primary shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {lang === "it" ? "Data di consegna richiesta" : "Gewünschtes Lieferdatum"}
+                  </p>
+                  <p className={`text-sm font-medium truncate ${dateChanged ? "line-through text-muted-foreground" : ""}`} data-testid="text-requested-delivery-date">
+                    {requestedDate
+                      ? formatDayDate(requestedDate)
+                      : (lang === "it" ? "Nessuna data richiesta" : "Kein Wunschtermin angegeben")}
+                  </p>
+                  {dateChanged && (
+                    <p className="text-sm font-medium text-primary" data-testid="text-new-delivery-date">
+                      → {formatDayDate(newDate)}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs shrink-0"
+                onClick={() => {
+                  if (editingDate) {
+                    setEditingDate(false);
+                    setNewDate(requestedDate || "");
+                    setDateReason("");
+                  } else {
+                    setEditingDate(true);
+                  }
+                }}
+                data-testid="button-toggle-change-date"
+              >
+                {editingDate
+                  ? <><X className="h-3.5 w-3.5 mr-1" />{lang === "it" ? "Annulla" : "Verwerfen"}</>
+                  : <><Pencil className="h-3.5 w-3.5 mr-1" />{lang === "it" ? "Cambia data" : "Datum ändern"}</>}
+              </Button>
+            </div>
+            {editingDate && (
+              <div className="space-y-2">
+                <Input
+                  type="date"
+                  value={newDate}
+                  min={todayStr}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="h-9 text-sm"
+                  data-testid="input-confirm-delivery-date"
+                />
+                {dateChanged && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">
+                      {lang === "it" ? "Motivo del cambio data (obbligatorio)" : "Begründung für die Datumsänderung (Pflicht)"}
+                    </label>
+                    <Textarea
+                      value={dateReason}
+                      onChange={(e) => setDateReason(e.target.value)}
+                      placeholder={lang === "it" ? "es. Nessun giro di consegna in quel giorno" : "z. B. An diesem Tag keine Tour in Ihrer Region"}
+                      rows={2}
+                      maxLength={500}
+                      className="resize-none text-sm"
+                      data-testid="textarea-date-change-reason"
+                    />
+                    {reasonMissing && (
+                      <p className="text-xs text-destructive" data-testid="text-reason-required">
+                        {lang === "it"
+                          ? "Inserisci un motivo per la nuova data."
+                          : "Bitte gib eine Begründung für das neue Datum an."}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {dateChanged && !reasonMissing && (
+              <div className="flex items-start gap-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40">
+                <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  {lang === "it"
+                    ? "Il ristorante verrà informato automaticamente del nuovo appuntamento e del motivo."
+                    : "Der Betrieb wird automatisch über den neuen Termin und den Grund informiert."}
+                </p>
+              </div>
+            )}
+          </div>
+
           {hasChanges && (
             <div className="flex items-start gap-2 p-2 rounded-xl bg-amber-50 border border-amber-200">
               <Info className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
@@ -278,7 +382,7 @@ export function PartialConfirmationDialog({
             <Button
               className="flex-1 rounded-lg"
               onClick={handleConfirm}
-              disabled={confirmMutation.isPending}
+              disabled={confirmMutation.isPending || reasonMissing || (editingDate && !newDate)}
               data-testid="button-submit-confirm"
             >
               {confirmMutation.isPending

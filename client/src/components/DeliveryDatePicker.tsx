@@ -17,22 +17,26 @@ interface DeliveryDatePickerProps {
   onOpenChange: (open: boolean) => void;
   supplierId: string;
   restaurantId: string;
-  onConfirm: (date: string, notes?: string) => void;
+  onConfirm: (date: string, notes?: string, reason?: string) => void;
   isPending?: boolean;
   showNotesField?: boolean;
+  /** Current (requested) delivery date. If set and a different date is picked, a reason is mandatory. */
+  currentDate?: string | null;
 }
 
-export default function DeliveryDatePicker({ open, onOpenChange, supplierId, restaurantId, onConfirm, isPending, showNotesField = true }: DeliveryDatePickerProps) {
+export default function DeliveryDatePicker({ open, onOpenChange, supplierId, restaurantId, onConfirm, isPending, showNotesField = true, currentDate }: DeliveryDatePickerProps) {
   const { lang } = useLanguage();
   const t = useT(lang);
   const dateLocale = lang === "it" ? it : de;
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [notes, setNotes] = useState("");
+  const [reason, setReason] = useState("");
   const [prevOpen, setPrevOpen] = useState(false);
 
   if (open && !prevOpen) {
     setSelectedDate(undefined);
     setNotes("");
+    setReason("");
   }
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -61,11 +65,15 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
     return !allowedDaysOfWeek.has(date.getDay());
   };
 
+  const selectedDateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : null;
+  const isDateChange = !!currentDate && !!selectedDateStr && selectedDateStr !== currentDate;
+  const reasonMissing = isDateChange && reason.trim().length === 0;
+
   const handleConfirm = () => {
-    if (selectedDate) {
+    if (selectedDate && !reasonMissing) {
       const dateStr = format(selectedDate, "yyyy-MM-dd");
       const trimmedNotes = notes.trim();
-      onConfirm(dateStr, trimmedNotes ? trimmedNotes : undefined);
+      onConfirm(dateStr, trimmedNotes ? trimmedNotes : undefined, isDateChange ? reason.trim() : undefined);
     }
   };
 
@@ -138,6 +146,30 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
             </div>
           )}
 
+          {isDateChange && (
+            <div className="space-y-1.5">
+              <label htmlFor="date-change-reason-input" className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                <Info className="h-3.5 w-3.5 text-amber-500" />
+                {lang === "it" ? "Motivo del cambio data (obbligatorio)" : "Begründung für die Datumsänderung (Pflicht)"}
+              </label>
+              <Textarea
+                id="date-change-reason-input"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={lang === "it" ? "es. Nessun giro di consegna in quel giorno" : "z. B. An diesem Tag keine Tour in Ihrer Region"}
+                rows={2}
+                maxLength={500}
+                className="resize-none text-sm"
+                data-testid="textarea-date-change-reason"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                {lang === "it"
+                  ? "L'azienda verrà informata automaticamente del nuovo appuntamento e del motivo."
+                  : "Der Betrieb wird automatisch über den neuen Termin und den Grund informiert."}
+              </p>
+            </div>
+          )}
+
           {showNotesField && (
             <div className="space-y-1.5">
               <label htmlFor="delivery-notes-input" className="flex items-center gap-1.5 text-xs font-medium text-foreground">
@@ -163,7 +195,7 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
             </Button>
             <Button
               className="flex-1 rounded-lg"
-              disabled={!selectedDate || isPending}
+              disabled={!selectedDate || isPending || reasonMissing}
               onClick={handleConfirm}
               data-testid="button-confirm-delivery-date"
             >

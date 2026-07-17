@@ -210,6 +210,7 @@ export const orders = pgTable("orders", {
   deliveryNotes: text("delivery_notes"),
   requestedDeliveryDate: text("requested_delivery_date"),
   originalDeliveryDate: text("original_delivery_date"),
+  deliveryDateChangeReason: text("delivery_date_change_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -880,6 +881,11 @@ export const confirmOrderItemSchema = z.object({
 export const confirmOrderSchema = z.object({
   items: z.array(confirmOrderItemSchema).min(1),
   changedBy: z.string().optional(),
+  // Supplier may confirm for a different delivery date than requested; in that
+  // case a reason is mandatory (enforced in the route, since "different" depends
+  // on the order's requestedDeliveryDate).
+  deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateChangeReason: z.string().trim().max(500).optional(),
 });
 
 // Types

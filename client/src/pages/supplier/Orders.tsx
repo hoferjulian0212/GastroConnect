@@ -268,16 +268,18 @@ export default function SupplierOrders() {
 
  const [rescheduleOrderId, setRescheduleOrderId] = useState<string | null>(null);
  const [rescheduleDate, setRescheduleDate] = useState<string>("");
+ const [rescheduleReason, setRescheduleReason] = useState<string>("");
 
  const rescheduleMutation = useMutation({
- mutationFn: async ({ orderId, requestedDeliveryDate }: { orderId: string; requestedDeliveryDate: string }) => {
- return apiRequest("PATCH", `/api/orders/${orderId}/reschedule`, { requestedDeliveryDate });
+ mutationFn: async ({ orderId, requestedDeliveryDate, dateChangeReason }: { orderId: string; requestedDeliveryDate: string; dateChangeReason?: string }) => {
+ return apiRequest("PATCH", `/api/orders/${orderId}/reschedule`, { requestedDeliveryDate, ...(dateChangeReason ? { dateChangeReason } : {}) });
  },
  onSuccess: () => {
  queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
  toast({ title: lang === "de" ? "Liefertermin verschoben" : "Data di consegna rinviata" });
  setRescheduleOrderId(null);
  setRescheduleDate("");
+ setRescheduleReason("");
  setDetailOrder(null);
  },
  onError: () => {
@@ -1674,6 +1676,7 @@ export default function SupplierOrders() {
  {(detailOrder.status === "in_delivery" || detailOrder.status === "confirmed") && new Date(detailOrder.requestedDeliveryDate + "T00:00:00") < new Date(new Date().toDateString()) && (
  <div className="mt-2">
  {rescheduleOrderId === detailOrder.id ? (
+ <div className="space-y-2">
  <div className="flex items-center gap-2">
  <Input
  type="date"
@@ -1686,15 +1689,28 @@ export default function SupplierOrders() {
  <Button
  size="sm"
  className="h-8 text-xs"
- disabled={!rescheduleDate || rescheduleMutation.isPending}
- onClick={() => rescheduleMutation.mutate({ orderId: detailOrder.id, requestedDeliveryDate: rescheduleDate })}
+ disabled={!rescheduleDate || (rescheduleDate !== detailOrder.requestedDeliveryDate && !rescheduleReason.trim()) || rescheduleMutation.isPending}
+ onClick={() => rescheduleMutation.mutate({ orderId: detailOrder.id, requestedDeliveryDate: rescheduleDate, dateChangeReason: rescheduleReason.trim() || undefined })}
  data-testid="button-confirm-reschedule"
  >
  {rescheduleMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (lang === "de" ? "OK" : "OK")}
  </Button>
- <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setRescheduleOrderId(null); setRescheduleDate(""); }}>
+ <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setRescheduleOrderId(null); setRescheduleDate(""); setRescheduleReason(""); }}>
  <X className="h-3.5 w-3.5" />
  </Button>
+ </div>
+ <Textarea
+ value={rescheduleReason}
+ onChange={(e) => setRescheduleReason(e.target.value)}
+ placeholder={lang === "de" ? "Begründung für den neuen Termin (Pflicht)" : "Motivo del nuovo appuntamento (obbligatorio)"}
+ rows={2}
+ maxLength={500}
+ className="resize-none text-xs"
+ data-testid="textarea-reschedule-reason"
+ />
+ <p className="text-[10px] text-muted-foreground">
+ {lang === "de" ? "Der Betrieb wird automatisch über den neuen Termin und den Grund informiert." : "L'azienda verrà informata automaticamente del nuovo appuntamento e del motivo."}
+ </p>
  </div>
  ) : (
  <Button
@@ -1909,7 +1925,8 @@ export default function SupplierOrders() {
  supplierId={currentUser?.id || ""}
  restaurantId={deliveryDatePicker?.restaurantId || ""}
  isPending={updateStatusMutation.isPending}
- onConfirm={(date, deliveryNotes) => {
+ currentDate={orders?.find(o => o.id === deliveryDatePicker?.orderId)?.requestedDeliveryDate || null}
+ onConfirm={(date, deliveryNotes, reason) => {
  if (deliveryDatePicker) {
  const order = orders?.find(o => o.id === deliveryDatePicker.orderId);
  if (order && (order.status === "confirmed" || order.status === "partially_confirmed")) {
@@ -1918,7 +1935,7 @@ export default function SupplierOrders() {
  { onSuccess: () => { setDeliveryDatePicker(null); } }
  );
  } else {
- apiRequest("PATCH", `/api/orders/${deliveryDatePicker.orderId}/reschedule`, { requestedDeliveryDate: date })
+ apiRequest("PATCH", `/api/orders/${deliveryDatePicker.orderId}/reschedule`, { requestedDeliveryDate: date, ...(reason ? { dateChangeReason: reason } : {}) })
  .then(() => {
  queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
  queryClient.invalidateQueries({ queryKey: ['/api/supplier/upcoming-deliveries'] });
