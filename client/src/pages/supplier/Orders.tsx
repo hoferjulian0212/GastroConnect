@@ -14,14 +14,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, AlertTriangle, RotateCcw, User as UserIcon, UserRound, Download, RefreshCw, Check, MoreVertical, Search, Columns3, ArrowUpDown, ArrowUp, ArrowDown, Filter as FilterIcon, ChevronRight } from "lucide-react";
+import { ClipboardList, Clock, Package, Truck, CheckCircle, XCircle, Building2, FileText, Loader2, X, ShoppingBag, CalendarDays, Timer, Send, MessageSquare, AlertTriangle, RotateCcw, User as UserIcon, Download, RefreshCw, Check, MoreVertical, Search, Columns3, ArrowUpDown, ArrowUp, ArrowDown, Filter as FilterIcon, ChevronRight } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { formatOrderNumber, type OrderWithDetails, type ProductWithSupplierAndPromotion } from "@shared/schema";
+import { formatOrderNumber, type DeliveryAssignmentWithDetails, type OrderWithDetails, type ProductWithSupplierAndPromotion } from "@shared/schema";
 import ProductDetailDialog from "@/components/ProductDetailDialog";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { de, it } from "date-fns/locale";
@@ -149,6 +149,20 @@ export default function SupplierOrders() {
  queryKey: [`/api/products?supplierId=${currentUser?.id}`],
  enabled: !!currentUser?.id,
  });
+
+ // Driver assignments per order (fails silently for members without the
+ // deliveries capability — driver info is simply hidden then).
+ const { data: supplierDeliveries } = useQuery<DeliveryAssignmentWithDetails[]>({
+ queryKey: ["/api/supplier/deliveries"],
+ enabled: !!currentUser?.id,
+ retry: false,
+ });
+ const assignmentByOrder = useMemo(() => {
+ const m = new Map<string, DeliveryAssignmentWithDetails>();
+ supplierDeliveries?.forEach((a) => m.set(a.orderId, a));
+ return m;
+ }, [supplierDeliveries]);
+ const canManageDrivers = supplierDeliveries !== undefined;
 
  const productsMap = useMemo(() => {
  const map = new Map<string, ProductWithSupplierAndPromotion>();
@@ -652,6 +666,35 @@ export default function SupplierOrders() {
  </div>
  )}
 
+ {canManageDrivers && ["confirmed", "partially_confirmed", "in_delivery"].includes(order.status) && (() => {
+ const assignment = assignmentByOrder.get(order.id);
+ return (
+ <div
+ className="mt-2 flex items-center justify-between gap-2 rounded-md bg-muted/40 border border-border/60 px-2.5 py-1.5"
+ onClick={(e) => e.stopPropagation()}
+ data-testid={`driver-status-${order.id}`}
+ >
+ <span className="flex items-center gap-1.5 min-w-0 text-xs md:text-sm">
+ <Truck className={`h-3.5 w-3.5 shrink-0 ${assignment ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`} />
+ {assignment ? (
+ <span className="font-medium truncate" data-testid={`text-driver-name-${order.id}`}>{assignment.driver?.name}</span>
+ ) : (
+ <span className="text-muted-foreground truncate">{lang === "de" ? "Kein Fahrer zugewiesen" : "Nessun autista assegnato"}</span>
+ )}
+ </span>
+ {order.status !== "in_delivery" && (
+ <button
+ className="text-xs font-semibold text-primary hover:underline shrink-0"
+ onClick={() => setAssignDriverOrder(order)}
+ data-testid={`button-assign-driver-${order.id}`}
+ >
+ {assignment ? (lang === "de" ? "Ändern" : "Modifica") : (lang === "de" ? "Zuweisen" : "Assegna")}
+ </button>
+ )}
+ </div>
+ );
+ })()}
+
  {order.items && order.items.length > 0 && (
  <div className="mt-2 pt-2 border-t border-border/30">
  <div className="space-y-1">
@@ -831,6 +874,25 @@ export default function SupplierOrders() {
  {lang === "de" ? "Verspätet" : "Ritardo"}
  </Badge>
  )}
+ {canManageDrivers && ["confirmed", "partially_confirmed", "in_delivery"].includes(order.status) && (() => {
+ const assignment = assignmentByOrder.get(order.id);
+ return assignment ? (
+ <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 rounded-full px-1.5 py-0.5 shrink-0 max-w-[110px]" title={assignment.driver?.name} data-testid={`row-driver-${order.id}`}>
+ <Truck className="h-3 w-3 shrink-0" />
+ <span className="truncate">{assignment.driver?.name}</span>
+ </span>
+ ) : (
+ <button
+ className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary rounded-full border border-dashed border-border px-1.5 py-0.5 shrink-0 transition-colors"
+ onClick={(e) => { e.stopPropagation(); setAssignDriverOrder(order); }}
+ title={lang === "de" ? "Kein Fahrer zugewiesen — jetzt zuweisen" : "Nessun autista assegnato — assegna ora"}
+ data-testid={`row-assign-driver-${order.id}`}
+ >
+ <Truck className="h-3 w-3 shrink-0" />
+ <span>{lang === "de" ? "Fahrer" : "Autista"}</span>
+ </button>
+ );
+ })()}
  </div>
  )}
  {visibleColumns.has("createdAt") && (
@@ -872,16 +934,18 @@ export default function SupplierOrders() {
  {lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna"}
  </DropdownMenuItem>
  )}
+ {canManageDrivers && (order.status === "confirmed" || order.status === "partially_confirmed" || order.status === "scheduled" || order.status === "in_delivery") && (
+ <DropdownMenuItem onClick={() => setAssignDriverOrder(order)} data-testid={`action-assign-driver-${order.id}`}>
+ <UserIcon className="h-4 w-4 mr-2" />
+ {assignmentByOrder.get(order.id)
+ ? (lang === "de" ? "Fahrer ändern" : "Cambia autista")
+ : (lang === "de" ? "Fahrer zuweisen" : "Assegna autista")}
+ </DropdownMenuItem>
+ )}
  {(order.status === "in_delivery" || order.status === "scheduled") && (
  <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" })} disabled={updateStatusMutation.isPending} data-testid={`action-delivered-${order.id}`}>
  <CheckCircle className="h-4 w-4 mr-2" />
  {lang === "de" ? "Als geliefert markieren" : "Segna come consegnato"}
- </DropdownMenuItem>
- )}
- {(order.status === "confirmed" || order.status === "partially_confirmed" || order.status === "scheduled" || order.status === "in_delivery") && (
- <DropdownMenuItem onClick={() => setAssignDriverOrder(order)} data-testid={`action-assign-driver-${order.id}`}>
- <UserRound className="h-4 w-4 mr-2" />
- {lang === "de" ? "Fahrer zuweisen" : "Assegna autista"}
  </DropdownMenuItem>
  )}
  {!order.requestedDeliveryDate && order.status !== "pending" && order.status !== "delivered" && order.status !== "cancelled" && (

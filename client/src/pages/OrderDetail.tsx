@@ -25,7 +25,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialog";
 import RatingCard from "@/components/RatingCard";
-import { formatOrderNumber, dateChangeReasonLabel, type OrderWithDetails, type OrderStatusHistoryWithUser } from "@shared/schema";
+import { formatOrderNumber, dateChangeReasonLabel, type OrderWithDetails, type OrderStatusHistoryWithUser, type OrderTrackingInfo } from "@shared/schema";
 import { DeliveryTracking } from "@/components/DeliveryTracking";
 import { AssignDriverDialog } from "@/components/AssignDriverDialog";
 import { HeroPortal } from "@/context/HeroContext";
@@ -76,6 +76,13 @@ export default function OrderDetail() {
   const { data: conversations } = useQuery<any[]>({
     queryKey: [`/api/conversations?userId=${currentUser?.id}`],
     enabled: !!currentUser?.id && !!order,
+  });
+
+  // Supplier-side: current driver assignment for this order.
+  const { data: trackingInfo } = useQuery<OrderTrackingInfo>({
+    queryKey: ["/api/orders", orderId, "tracking"],
+    enabled: isSupplier && !!orderId && !!order && ["confirmed", "partially_confirmed", "in_delivery", "delivered"].includes(order.status),
+    retry: false,
   });
 
   // Find the conversation between the two parties of this order
@@ -1244,6 +1251,51 @@ export default function OrderDetail() {
               </div>
             )}
 
+            {/* Supplier: driver assignment status */}
+            {isSupplier && order && ["confirmed", "partially_confirmed", "in_delivery"].includes(order.status) && (
+              <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0 ${tabClsUpdates}`} data-testid="section-driver">
+                <div className="px-4 py-3 border-b border-border/30">
+                  <p className="text-sm font-semibold">{lang === "de" ? "Fahrer" : "Autista"}</p>
+                </div>
+                <div className="px-4 py-3 flex items-center justify-between gap-3">
+                  {trackingInfo?.driver ? (
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarImage src={trackingInfo.driver.profileImageUrl ?? undefined} />
+                        <AvatarFallback className="text-[10px] font-semibold">
+                          {trackingInfo.driver.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate" data-testid="text-assigned-driver">{trackingInfo.driver.name}</p>
+                        {trackingInfo.driver.phone && (
+                          <p className="text-xs text-muted-foreground truncate">{trackingInfo.driver.phone}</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+                      <Truck className="h-4 w-4 shrink-0" />
+                      <span className="truncate" data-testid="text-no-driver">
+                        {lang === "de" ? "Kein Fahrer zugewiesen" : "Nessun autista assegnato"}
+                      </span>
+                    </div>
+                  )}
+                  {order.status !== "in_delivery" && (
+                    <button
+                      className="text-sm font-semibold text-primary hover:underline shrink-0"
+                      onClick={() => setShowAssignDriver(true)}
+                      data-testid="button-detail-assign-driver"
+                    >
+                      {trackingInfo?.driver
+                        ? (lang === "de" ? "Ändern" : "Modifica")
+                        : (lang === "de" ? "Zuweisen" : "Assegna")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Live delivery tracking (driver assigned) */}
             {order && ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"].includes(order.status) && (
               <div className={`min-w-0 ${tabClsUpdates}`}>
@@ -1340,7 +1392,7 @@ export default function OrderDetail() {
         <AssignDriverDialog
           order={order}
           open={showAssignDriver}
-          onOpenChange={(open) => { if (!open) { setShowAssignDriver(false); invalidateAll(); } }}
+          onOpenChange={(open) => { setShowAssignDriver(open); if (!open) invalidateAll(); }}
         />
       )}
 

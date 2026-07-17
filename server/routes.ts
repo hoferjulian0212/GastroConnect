@@ -3472,6 +3472,38 @@ export async function registerRoutes(
     }
   });
 
+  // ── Driver-assignment lifecycle consistency ─────────────────────────────
+  // Cancelling an order or correcting its status back to pending removes any
+  // (undelivered) driver assignment so no orphaned stop stays in the driver's
+  // tour. Changing the delivery date of an assigned order moves the stop to
+  // the end of that driver's tour on the new date (simplest consistent rule).
+  async function removeDriverAssignmentForOrder(orderId: string): Promise<void> {
+    try {
+      const existing = await storage.getDeliveryAssignmentByOrder(orderId);
+      if (existing && existing.status !== "delivered") {
+        await storage.deleteDeliveryAssignment(existing.id);
+      }
+    } catch (err) {
+      console.error("Failed to remove driver assignment for order", orderId, err);
+    }
+  }
+
+  async function moveDriverAssignmentToDate(orderId: string, newDate: string | null | undefined): Promise<void> {
+    if (!newDate || !/^\d{4}-\d{2}-\d{2}/.test(newDate)) return;
+    const date = newDate.slice(0, 10);
+    try {
+      const existing = await storage.getDeliveryAssignmentByOrder(orderId);
+      if (!existing || existing.status === "delivered" || existing.deliveryDate === date) return;
+      const dayStops = await storage.getDeliveriesForDriver(existing.driverMemberId, date);
+      await storage.updateDeliveryAssignment(existing.id, {
+        deliveryDate: date,
+        stopSequence: dayStops.filter((s) => s.id !== existing.id).length,
+      });
+    } catch (err) {
+      console.error("Failed to move driver assignment for order", orderId, err);
+    }
+  }
+
   app.patch("/api/orders/:id/status", async (req, res) => {
     try {
       const { status, requestedDeliveryDate, deliveryNotes } = updateOrderStatusSchema.parse(req.body);
@@ -3547,6 +3579,14 @@ export async function registerRoutes(
         requestedDeliveryDate: requestedDeliveryDate ?? undefined,
         deliveryNotes: deliveryNotes ?? undefined,
       });
+
+      // Keep the driver tour consistent with the order lifecycle: cancelling or
+      // correcting back to pending drops the stop; a new delivery date moves it.
+      if (status === "cancelled" || status === "pending") {
+        await removeDriverAssignmentForOrder(order.id);
+      } else if (requestedDeliveryDate && requestedDeliveryDate !== order.requestedDeliveryDate) {
+        await moveDriverAssignmentToDate(order.id, requestedDeliveryDate);
+      }
 
       // MAIN is debited at placement (reserve), so low-stock is checked there.
       // No low-stock notification is needed for confirm/cancel/deliver transitions.
@@ -3741,6 +3781,14 @@ export async function registerRoutes(
         await db.update(orders).set(dateSet).where(eq(orders.id, order.id));
       }
 
+      // Driver-assignment lifecycle: full rejection cancels the order → drop
+      // any stop; a changed delivery date moves an existing stop to the new day.
+      if (newStatus === "cancelled") {
+        await removeDriverAssignmentForOrder(order.id);
+      } else if (deliveryDateChanged) {
+        await moveDriverAssignmentToDate(order.id, newDeliveryDate);
+      }
+
       // Send notification to restaurant
       const supplier = await storage.getUser(order.supplierId);
       const isPartial = newStatus === "partially_confirmed";
@@ -3880,6 +3928,11 @@ export async function registerRoutes(
         setData.deliveryDateChangeReason = reason;
       }
       const [updated] = await db.update(orders).set(setData).where(eq(orders.id, req.params.id)).returning();
+
+      // Move an existing driver stop along with the rescheduled delivery date.
+      if (isDateChange || !order.requestedDeliveryDate) {
+        await moveDriverAssignmentToDate(order.id, requestedDeliveryDate);
+      }
 
       // Inform the counterparty about the changed date (chat card + notification).
       // Sender attribution comes from the session, never assumed to be the supplier.
@@ -4267,6 +4320,10 @@ export async function registerRoutes(
               .where(eq(conversations.id, conversation.id));
           },
         });
+
+        // Order goes back to pending for editing — remove any driver stop so the
+        // tour never contains an unconfirmed order.
+        await removeDriverAssignmentForOrder(order.id);
 
         await createNotificationWithPush({
           userId: order.restaurantId,

@@ -1,7 +1,8 @@
 import { foldSearchText } from "@shared/searchText";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { Search, Package, Calendar, ChevronRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Search, Package, Calendar, ChevronRight, Truck } from "lucide-react";
 import { format } from "date-fns";
 import {
   MobilePageHeader,
@@ -14,7 +15,7 @@ import {
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatOrderNumber, type OrderWithDetails } from "@shared/schema";
+import { formatOrderNumber, type DeliveryAssignmentWithDetails, type OrderWithDetails } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import { getOrderStatus } from "@/lib/translations";
 
@@ -48,6 +49,18 @@ export default function SupplierOrdersMobile({
   const [, setLocation] = useLocation();
   const [filterStatus, setFilterStatus] = useState<string>(initialStatus || "all");
   const [search, setSearch] = useState("");
+
+  // Driver assignments per order (silently absent for members without the
+  // deliveries capability).
+  const { data: supplierDeliveries } = useQuery<DeliveryAssignmentWithDetails[]>({
+    queryKey: ["/api/supplier/deliveries"],
+    retry: false,
+  });
+  const assignmentByOrder = useMemo(() => {
+    const m = new Map<string, DeliveryAssignmentWithDetails>();
+    supplierDeliveries?.forEach((a) => m.set(a.orderId, a));
+    return m;
+  }, [supplierDeliveries]);
 
   const filtered = useMemo(() => {
     if (!orders) return [];
@@ -237,6 +250,20 @@ export default function SupplierOrdersMobile({
                               </span>
                             )}
                           </div>
+                          {supplierDeliveries !== undefined &&
+                            ["confirmed", "partially_confirmed", "in_delivery"].includes(o.status) && (() => {
+                              const assignment = assignmentByOrder.get(o.id);
+                              return (
+                                <div className="flex items-center gap-1 mt-1" data-testid={`driver-pill-${o.id}`}>
+                                  <Truck className={`h-3 w-3 shrink-0 ${assignment ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/60"}`} />
+                                  <span className={`text-[11px] truncate ${assignment ? "text-emerald-700 dark:text-emerald-400 font-medium" : "text-muted-foreground/70"}`}>
+                                    {assignment
+                                      ? assignment.driver?.name
+                                      : lang === "it" ? "Nessun autista assegnato" : "Kein Fahrer zugewiesen"}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
                       </button>
