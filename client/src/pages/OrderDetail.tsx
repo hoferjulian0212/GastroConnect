@@ -6,7 +6,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { getOrderStatus } from "@/lib/translations";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it } from "date-fns/locale";
-import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, AlertCircle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown, Download, MoreHorizontal, X, Upload } from "lucide-react";
+import { ArrowLeft, Clock, Package, Truck, CheckCircle, XCircle, AlertTriangle, AlertCircle, ShoppingBag, Check, MessageSquare, Pencil, Send, Ban, FileText, CalendarDays, RefreshCw, ThumbsUp, ThumbsDown, Download, MoreHorizontal, X, Upload, UserRound } from "lucide-react";
 import { DocumentUploadDialog } from "@/components/DocumentUploadDialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,6 +27,7 @@ import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialo
 import RatingCard from "@/components/RatingCard";
 import { formatOrderNumber, dateChangeReasonLabel, type OrderWithDetails, type OrderStatusHistoryWithUser } from "@shared/schema";
 import { DeliveryTracking } from "@/components/DeliveryTracking";
+import { AssignDriverDialog } from "@/components/AssignDriverDialog";
 import { HeroPortal } from "@/context/HeroContext";
 
 export default function OrderDetail() {
@@ -50,6 +51,7 @@ export default function OrderDetail() {
   const isMobile = useIsMobile();
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [showUploadDoc, setShowUploadDoc] = useState(false);
+  const [showAssignDriver, setShowAssignDriver] = useState(false);
 
   const { data: order, isLoading } = useQuery<OrderWithDetails>({
     queryKey: ["/api/orders", orderId],
@@ -429,6 +431,20 @@ export default function OrderDetail() {
       testId: "action-set-delivery-date",
       disabled: isTerminal,
       disabledReason: lang === "de" ? "Bestellung abgeschlossen" : "Ordine completato",
+    });
+    // Assign driver — required next step once the order is confirmed;
+    // "scheduled" already has a driver, so it becomes a secondary reassign.
+    actions.push({
+      label: lang === "de" ? "Fahrer zuweisen" : "Assegna autista",
+      icon: UserRound,
+      style: (st === "confirmed" || st === "partially_confirmed") ? "primary" : "secondary",
+      category: "primary",
+      action: () => setShowAssignDriver(true),
+      testId: "action-assign-driver",
+      disabled: !(st === "confirmed" || st === "partially_confirmed" || st === "scheduled" || st === "in_delivery"),
+      disabledReason: st === "pending"
+        ? (lang === "de" ? "Erst bestätigen" : "Conferma prima")
+        : (lang === "de" ? "Nicht verfügbar" : "Non disponibile"),
     });
     // Mark delivered
     actions.push({
@@ -1317,6 +1333,14 @@ export default function OrderDetail() {
             setShowPartialConfirm(false);
             invalidateAll();
           }}
+        />
+      )}
+
+      {isSupplier && order && (
+        <AssignDriverDialog
+          order={order}
+          open={showAssignDriver}
+          onOpenChange={(open) => { if (!open) { setShowAssignDriver(false); invalidateAll(); } }}
         />
       )}
 
