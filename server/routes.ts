@@ -1066,6 +1066,34 @@ export async function registerRoutes(
     }
   });
 
+  // Self-service profile update: every logged-in member (any role, incl.
+  // driver/warehouse) may edit their OWN name, phone and photo. Saving marks
+  // the profile as completed (first-login registration step). Email and role
+  // stay locked here — those remain team.manage operations.
+  app.patch("/api/members/me", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const schema = z.object({
+        name: z.string().min(1).max(120).optional(),
+        phone: z.string().max(60).optional().nullable(),
+        profileImageUrl: z.string().max(1000).optional().nullable(),
+      }).strict();
+      const data = schema.parse(req.body);
+      const updated = await storage.updateMember(req.auth.member.id, {
+        ...data,
+        profileCompletedAt: req.auth.member.profileCompletedAt ?? new Date(),
+      });
+      if (!updated) return res.status(404).json({ error: "Member not found" });
+      const { passwordHash: _ph, ...safe } = updated;
+      res.json(safe);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.issues });
+      }
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
   app.patch("/api/members/:id", async (req, res) => {
     try {
       const schema = z.object({

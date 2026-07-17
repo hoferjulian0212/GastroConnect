@@ -5316,6 +5316,9 @@ export class DatabaseStorage implements IStorage {
     // Nullable text token; idempotent so it exists in every env without a drizzle push.
     await db.execute(sql`ALTER TABLE inventory_risk_records ADD COLUMN IF NOT EXISTS risk_reason text`);
 
+    // Member self-profile completion (first-login step). Idempotent.
+    await db.execute(sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS profile_completed_at timestamp`);
+
     // Supplier changed the delivery date (confirm/reschedule) — mandatory reason.
     await db.execute(sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_date_change_reason text`);
     // New order status "scheduled" (Geplant): driver assigned but not yet en route.

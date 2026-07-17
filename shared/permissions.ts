@@ -72,7 +72,6 @@ const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
     "inventory_risk.create",
   ],
   driver: [
-    "team.view",
     "chat",
     "deliveries.drive",
   ],
@@ -257,7 +256,6 @@ export const DRIVER_ALLOWED_PATHS = [
   "/supplier/inbox",
   "/supplier/settings",
   "/supplier/profile",
-  "/supplier/team",
   "/supplier/help",
 ] as const;
 

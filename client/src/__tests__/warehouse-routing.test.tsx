@@ -38,6 +38,9 @@ function makeMember(role: string) {
     email: `${role}@test-lieferant.de`,
     role,
     profileImageUrl: null,
+    // Already completed the first-login profile step — these tests cover
+    // routing, not the profile-completion gate.
+    profileCompletedAt: "2026-01-01T00:00:00.000Z",
   };
 }
 

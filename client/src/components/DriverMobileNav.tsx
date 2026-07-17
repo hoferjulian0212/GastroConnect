@@ -1,4 +1,4 @@
-import { Truck, Route, Map, MessageCircle, History, Settings, HelpCircle, User, Users, Inbox } from "lucide-react";
+import { Truck, Route, Map, MessageCircle, History, Settings, HelpCircle, User, Inbox } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -26,7 +26,6 @@ export function DriverMobileNav() {
       items: [
         { title: lang === "de" ? "Verlauf" : "Cronologia", url: "/supplier/history", icon: History },
         { title: "Inbox", url: "/supplier/inbox", icon: Inbox },
-        { title: lang === "de" ? "Team" : "Team", url: "/supplier/team", icon: Users },
         { title: t("common", "profile"), url: "/supplier/profile", icon: User },
         { title: t("common", "settings"), url: "/supplier/settings", icon: Settings },
         { title: lang === "de" ? "Hilfe" : "Aiuto", url: "/supplier/help", icon: HelpCircle },

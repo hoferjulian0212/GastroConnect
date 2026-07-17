@@ -20,6 +20,7 @@ import {
   Sun,
   LogOut,
   Users,
+  UserRound,
 } from "lucide-react";
 import { openGlobalSearch } from "@/components/GlobalSearch";
 import { openAiAssistant } from "@/components/AiAssistant";
@@ -75,7 +76,7 @@ export function MobileTopActions({
   hideCart = false,
   className,
 }: MobileTopActionsProps) {
-  const { currentUser, currentRole, currentMember, logout } = useUser();
+  const { currentUser, currentRole, currentMember, isDriver, isWarehouse, logout } = useUser();
   const { lang } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
   const [location, setLocation] = useLocation();
@@ -85,6 +86,7 @@ export function MobileTopActions({
   const btnCls = variant === "dark" ? ACTION_BTN_DARK : ACTION_BTN_LIGHT;
 
   const canViewTeam = !currentMember || can(currentMember.role, "team.view");
+  const myProfilePath = isDriver || isWarehouse ? "/supplier/profile" : `/${currentRole}/my-profile`;
   const displayName = currentMember?.name || currentUser?.name;
   const displayImage = currentMember?.profileImageUrl || currentUser?.profileImageUrl;
   const initials = displayName
@@ -217,6 +219,13 @@ export function MobileTopActions({
             >
               <SettingsIcon className="mr-2 h-4 w-4" />
               {lang === "it" ? "Impostazioni" : "Einstellungen"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => setLocation(myProfilePath)}
+              data-testid="menu-item-mobile-my-profile"
+            >
+              <UserRound className="mr-2 h-4 w-4" />
+              {lang === "it" ? "Il mio profilo" : "Mein Profil"}
             </DropdownMenuItem>
             {canViewTeam && (
               <DropdownMenuItem

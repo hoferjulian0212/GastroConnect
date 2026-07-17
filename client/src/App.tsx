@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/hooks/use-theme";
 import { useT } from "@/lib/translations";
-import { ShoppingCart, ChevronDown, Moon, Sun, LogOut, Users } from "lucide-react";
+import { ShoppingCart, ChevronDown, Moon, Sun, LogOut, Users, UserRound } from "lucide-react";
 import logoImgThick from "@assets/logo_no_bg_thick.png";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +97,8 @@ import ComplaintDetail from "@/pages/ComplaintDetail";
 import CalendarPage from "@/pages/Calendar";
 import Help from "@/pages/Help";
 import Team from "@/pages/Team";
+import MemberProfile from "@/pages/MemberProfile";
+import { can } from "@shared/permissions";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { HelpButton } from "@/components/HelpButton";
 
@@ -117,6 +119,7 @@ function RestaurantRouter() {
       <Route path="/restaurant/suppliers" component={RestaurantSuppliers} />
       <Route path="/restaurant/settings" component={RestaurantSettings} />
       <Route path="/restaurant/profile" component={RestaurantProfile} />
+      <Route path="/restaurant/my-profile" component={MemberProfile} />
       <Route path="/restaurant/documents" component={Documents} />
       <Route path="/restaurant/monthly-reports" component={RestaurantMonthlyReports} />
       <Route path="/restaurant/cost-analysis/manual" component={RestaurantCostAnalysisManual} />
@@ -149,6 +152,7 @@ function SupplierRouter() {
       <Route path="/supplier/complaints" component={SupplierComplaints} />
       <Route path="/supplier/settings" component={SupplierSettings} />
       <Route path="/supplier/profile" component={SupplierProfile} />
+      <Route path="/supplier/my-profile" component={MemberProfile} />
       <Route path="/supplier/documents" component={Documents} />
       <Route path="/supplier/calendar">{() => <CalendarPage role="supplier" />}</Route>
       <Route path="/supplier/team" component={Team} />
@@ -169,7 +173,7 @@ const WAREHOUSE_ROUTE_COMPONENTS: Record<WarehouseAllowedPath, React.ComponentTy
   "/supplier/inventory": WarehouseStock,
   "/supplier/team-chat": InternalChat,
   "/supplier/settings": SupplierSettings,
-  "/supplier/profile": SupplierProfile,
+  "/supplier/profile": MemberProfile,
   "/supplier/team": Team,
   "/supplier/help": Help,
 };
@@ -197,8 +201,7 @@ const DRIVER_ROUTE_COMPONENTS: Record<DriverAllowedPath, React.ComponentType<any
   "/supplier/team-chat": InternalChat,
   "/supplier/inbox": SupplierInbox,
   "/supplier/settings": SupplierSettings,
-  "/supplier/profile": SupplierProfile,
-  "/supplier/team": Team,
+  "/supplier/profile": MemberProfile,
   "/supplier/help": Help,
 };
 
@@ -217,6 +220,27 @@ function DriverRouter() {
 // Rendered as a component (not a bare hook call) so it only runs for drivers.
 function DriverLocationStreamer() {
   useDriverLocation();
+  return null;
+}
+
+// First-login profile completion: every member must confirm/enter their own
+// profile data (name, phone, optional photo) once. Until then, they are
+// redirected to their personal profile page.
+function ProfileCompletionGate() {
+  const { currentMember, currentRole, isDriver, isWarehouse, isAuthenticated } = useUser();
+  const [location, setLocation] = useLocation();
+
+  const profilePath = isDriver || isWarehouse ? "/supplier/profile" : `/${currentRole}/my-profile`;
+  const needsCompletion = isAuthenticated && !!currentMember && !currentMember.profileCompletedAt;
+
+  useEffect(() => {
+    if (!needsCompletion) return;
+    const clean = location.split("?")[0];
+    if (clean !== profilePath) {
+      setLocation(profilePath);
+    }
+  }, [needsCompletion, location, profilePath, setLocation]);
+
   return null;
 }
 
@@ -632,7 +656,7 @@ function PageHero() {
 }
 
 function useProfileMenu() {
-  const { currentUser, currentRole, logout } = useUser();
+  const { currentUser, currentRole, currentMember, isDriver, isWarehouse, logout } = useUser();
   const { isDark, toggleTheme } = useTheme();
   const { lang } = useLanguage();
   const t = useT(lang);
@@ -643,11 +667,15 @@ function useProfileMenu() {
     setLocation("/");
   };
 
-  return { currentUser, currentRole, isDark, toggleTheme, t, lang, handleLogout, setLocation };
+  return { currentUser, currentRole, currentMember, isDriver, isWarehouse, isDark, toggleTheme, t, lang, handleLogout, setLocation };
 }
 
 function ProfileMenuContent() {
-  const { isDark, toggleTheme, t, lang, currentRole, handleLogout, setLocation } = useProfileMenu();
+  const { isDark, toggleTheme, t, lang, currentRole, currentMember, isDriver, isWarehouse, handleLogout, setLocation } = useProfileMenu();
+  // Drivers/warehouse members get their own member profile at /supplier/profile;
+  // regular members use the dedicated my-profile page.
+  const myProfilePath = isDriver || isWarehouse ? "/supplier/profile" : `/${currentRole}/my-profile`;
+  const showTeam = !currentMember || can(currentMember.role, "team.view");
   const itemClass =
     "flex items-center w-full px-4 py-2 text-sm transition-colors cursor-pointer rounded-none text-gray-400 focus:text-white focus:bg-white/5 hover:text-white hover:bg-white/5";
   return (
@@ -658,13 +686,23 @@ function ProfileMenuContent() {
       data-testid="menu-profile"
     >
       <DropdownMenuItem
-        onSelect={(e) => { e.preventDefault(); setLocation(`/${currentRole}/team`); }}
+        onSelect={(e) => { e.preventDefault(); setLocation(myProfilePath); }}
         className={itemClass}
-        data-testid="menu-item-team"
+        data-testid="menu-item-my-profile"
       >
-        <Users className="mr-2 h-4 w-4" />
-        {lang === "it" ? "Organizzazione e team" : "Organisation & Team"}
+        <UserRound className="mr-2 h-4 w-4" />
+        {lang === "it" ? "Il mio profilo" : "Mein Profil"}
       </DropdownMenuItem>
+      {showTeam && (
+        <DropdownMenuItem
+          onSelect={(e) => { e.preventDefault(); setLocation(`/${currentRole}/team`); }}
+          className={itemClass}
+          data-testid="menu-item-team"
+        >
+          <Users className="mr-2 h-4 w-4" />
+          {lang === "it" ? "Organizzazione e team" : "Organisation & Team"}
+        </DropdownMenuItem>
+      )}
       <DropdownMenuItem
         onSelect={(e) => { e.preventDefault(); toggleTheme(); }}
         className={itemClass}
@@ -835,6 +873,7 @@ function AppLayout() {
   return (
     <>
       <UserLoader />
+      <ProfileCompletionGate />
       <LanguageSync />
       <ImpersonationBanner />
         <div className="flex h-dvh w-full">

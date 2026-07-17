@@ -1192,6 +1192,9 @@ export const members = pgTable("members", {
   passwordHash: text("password_hash"),
   emailVerifiedAt: timestamp("email_verified_at"),
   lastLoginAt: timestamp("last_login_at"),
+  // Set the first time the member saves their own profile (first-login
+  // "complete your profile" step). Null = profile not yet completed.
+  profileCompletedAt: timestamp("profile_completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_members_organization_id").on(table.organizationId),
