@@ -467,6 +467,7 @@ export default function RestaurantOrders() {
  case "in_delivery": return <Truck className="h-4 w-4" />;
  case "delivered": return <CheckCircle className="h-4 w-4" />;
  case "cancelled": return <XCircle className="h-4 w-4" />;
+ case "to_review": return <AlertTriangle className="h-4 w-4" />;
  default: return <ShoppingBag className="h-4 w-4" />;
  }
  };
@@ -1440,6 +1441,7 @@ export default function RestaurantOrders() {
  { key: "in_delivery", label: getOrderStatus("in_delivery", lang), dot: "bg-purple-500" },
  { key: "delivered", label: getOrderStatus("delivered", lang), dot: "bg-green-500" },
  { key: "cancelled", label: getOrderStatus("cancelled", lang), dot: "bg-red-500" },
+ { key: "to_review", label: getOrderStatus("to_review", lang), dot: "bg-red-500" },
  ] as const).map(({ key, label, dot }) => (
  <button
  key={key}
@@ -1679,6 +1681,7 @@ export default function RestaurantOrders() {
  { key: "in_delivery", label: getOrderStatus("in_delivery", lang), dot: "bg-purple-500" },
  { key: "delivered", label: getOrderStatus("delivered", lang), dot: "bg-green-500" },
  { key: "cancelled", label: getOrderStatus("cancelled", lang), dot: "bg-red-500" },
+ { key: "to_review", label: getOrderStatus("to_review", lang), dot: "bg-red-500" },
  ] as const).map(({ key, label, dot }) => (
  <button
  key={key}

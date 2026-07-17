@@ -48,6 +48,13 @@ export const DELIVERY_STATUS_META: Record<
     pillClass: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
     dotClass: "bg-red-500",
   },
+  rejected: {
+    labelDe: "Abgelehnt – beim Büro",
+    labelIt: "Rifiutata – in ufficio",
+    icon: AlertTriangle,
+    pillClass: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+    dotClass: "bg-red-500",
+  },
 };
 
 export const PROBLEM_TYPE_LABELS: Record<string, { de: string; it: string }> = {
@@ -56,6 +63,7 @@ export const PROBLEM_TYPE_LABELS: Record<string, { de: string; it: string }> = {
   damaged: { de: "Ware beschädigt", it: "Merce danneggiata" },
   wrong_address: { de: "Falsche Adresse", it: "Indirizzo errato" },
   traffic: { de: "Verkehrsproblem", it: "Problema di traffico" },
+  no_time: { de: "Zeitlich nicht machbar", it: "Non fattibile per tempo" },
   other: { de: "Sonstiges Problem", it: "Altro problema" },
 };
 

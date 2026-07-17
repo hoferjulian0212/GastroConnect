@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { applyBucketMovement } from "./stockBuckets";
-import { eq, and, desc, or, sql, ne, inArray, gt, gte, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, desc, or, sql, ne, inArray, notInArray, gt, gte, isNull, isNotNull } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
@@ -292,6 +292,7 @@ export interface IStorage {
   updateDeliveryAssignment(id: string, data: Partial<DeliveryAssignment>): Promise<DeliveryAssignment | undefined>;
   deleteDeliveryAssignment(id: string): Promise<void>;
   reorderDeliveryStops(driverMemberId: string, deliveryDate: string, orderedIds: string[]): Promise<void>;
+  applyRouteDelay(driverMemberId: string, deliveryDate: string, fromStopSequence: number, delayMinutes: number): Promise<DeliveryAssignment[]>;
   upsertDriverLocation(data: InsertDriverLocation): Promise<DriverLocation>;
   getDriverLocation(driverMemberId: string): Promise<DriverLocation | undefined>;
   getDriverLocationsForSupplier(supplierId: string): Promise<DriverLocationWithDriver[]>;
@@ -5075,7 +5076,7 @@ export class DatabaseStorage implements IStorage {
     const rows = await db.select().from(deliveryAssignments)
       .where(and(
         eq(deliveryAssignments.driverMemberId, driverMemberId),
-        inArray(deliveryAssignments.status, ["delivered", "problem"]),
+        inArray(deliveryAssignments.status, ["delivered", "problem", "rejected"]),
       ))
       .orderBy(desc(deliveryAssignments.updatedAt))
       .limit(limit);
@@ -5113,6 +5114,24 @@ export class DatabaseStorage implements IStorage {
           eq(deliveryAssignments.deliveryDate, deliveryDate),
         ));
     }
+  }
+
+  // Shift the ETA of every still-open stop at or after the given stop of the
+  // driver's day route by delayMinutes. Returns the affected rows (post-update).
+  async applyRouteDelay(driverMemberId: string, deliveryDate: string, fromStopSequence: number, delayMinutes: number): Promise<DeliveryAssignment[]> {
+    const rows = await db.update(deliveryAssignments)
+      .set({
+        etaMinutes: sql`COALESCE(${deliveryAssignments.etaMinutes}, 0) + ${delayMinutes}`,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(deliveryAssignments.driverMemberId, driverMemberId),
+        eq(deliveryAssignments.deliveryDate, deliveryDate),
+        gte(deliveryAssignments.stopSequence, fromStopSequence),
+        notInArray(deliveryAssignments.status, ["delivered", "rejected"]),
+      ))
+      .returning();
+    return rows;
   }
 
   async upsertDriverLocation(data: InsertDriverLocation): Promise<DriverLocation> {
@@ -5323,6 +5342,13 @@ export class DatabaseStorage implements IStorage {
     await db.execute(sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_date_change_reason text`);
     // New order status "scheduled" (Geplant): driver assigned but not yet en route.
     await db.execute(sql`ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'scheduled' BEFORE 'in_delivery'`);
+
+    // Driver reject flow: order status "to_review" (Zu prüfen — back at the office),
+    // delivery status "rejected", plus rejection timestamp and info-only delay minutes.
+    await db.execute(sql`ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'to_review'`);
+    await db.execute(sql`ALTER TYPE delivery_status ADD VALUE IF NOT EXISTS 'rejected'`);
+    await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS rejected_at timestamp`);
+    await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS delay_minutes integer`);
 
     // Fix wrong FK: created_by stores the reporting MEMBER id (members.id), but the
     // table was created with a FK to users(id), so every insert failed. Idempotent:

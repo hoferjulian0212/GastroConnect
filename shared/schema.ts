@@ -5,7 +5,7 @@ import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
 export const memberRoleEnum = pgEnum("member_role", ["admin", "manager", "staff", "vertreter", "warehouse", "driver"]);
-export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled"]);
+export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "to_review"]);
 
 export const DATE_CHANGE_REASONS = [
   { code: "out_of_stock", de: "Ware nicht auf Lager", it: "Merce non disponibile" },
@@ -1406,8 +1406,8 @@ export type OauthProvider = typeof OAUTH_PROVIDERS[number];
 // stop. Delivery sub-states live HERE (not on orders.status) so the existing
 // 6-status order flow stays backward compatible. Tables are created by the
 // idempotent runDriverMigration() at startup — never blind drizzle push.
-export const deliveryStatusEnum = pgEnum("delivery_status", ["assigned", "picked_up", "en_route", "arriving", "delivered", "problem"]);
-export const DELIVERY_STATUSES = ["assigned", "picked_up", "en_route", "arriving", "delivered", "problem"] as const;
+export const deliveryStatusEnum = pgEnum("delivery_status", ["assigned", "picked_up", "en_route", "arriving", "delivered", "problem", "rejected"]);
+export const DELIVERY_STATUSES = ["assigned", "picked_up", "en_route", "arriving", "delivered", "problem", "rejected"] as const;
 export type DeliveryStatus = typeof DELIVERY_STATUSES[number];
 
 export const deliveryAssignments = pgTable("delivery_assignments", {
@@ -1436,6 +1436,10 @@ export const deliveryAssignments = pgTable("delivery_assignments", {
   problemType: text("problem_type"),
   problemNote: text("problem_note"),
   problemReportedAt: timestamp("problem_reported_at"),
+  // Driver rejected the stop → order goes back to the office ("to_review").
+  rejectedAt: timestamp("rejected_at"),
+  // Info-only delay reported by the driver (minutes, cumulative for this stop).
+  delayMinutes: integer("delay_minutes"),
   // Last computed routing estimates (refreshed by route optimization).
   etaMinutes: integer("eta_minutes"),
   distanceKm: decimal("distance_km", { precision: 8, scale: 2 }),

@@ -50,6 +50,8 @@ export function statusToTone(status: string): Tone {
       return "emerald";
     case "cancelled":
       return "red";
+    case "to_review":
+      return "red";
     case "open":
       return "amber";
     case "in_progress":

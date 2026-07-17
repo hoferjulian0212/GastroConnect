@@ -61,6 +61,7 @@ export function orderStatusTone(status: string): StatusTone {
     case "pending": return "amber";
     case "partially_confirmed": return "amber";
     case "cancelled": return "red";
+    case "to_review": return "red";
     default: return "slate";
   }
 }

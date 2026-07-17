@@ -37,6 +37,7 @@ import { formatOrderNumber, type DeliveryAssignmentWithDetails } from "@shared/s
 import { DELIVERY_STATUS_META, PROBLEM_TYPE_LABELS, StatusPill, mapsDirectionsUrl } from "./DeliveryStatus";
 
 const PROBLEM_OPTIONS = ["not_reachable", "refused", "damaged", "wrong_address", "traffic", "other"] as const;
+const REJECT_OPTIONS = ["no_time", "not_reachable", "refused", "damaged", "wrong_address", "traffic", "other"] as const;
 
 export default function DriverDeliveryDetail() {
   const [, params] = useRoute("/supplier/delivery/:id");
@@ -53,6 +54,8 @@ export default function DriverDeliveryDetail() {
   const [uploading, setUploading] = useState(false);
   const [problemType, setProblemType] = useState<string>("not_reachable");
   const [problemNote, setProblemNote] = useState("");
+  const [problemMode, setProblemMode] = useState<"problem" | "delay" | "reject">("problem");
+  const [delayMinutes, setDelayMinutes] = useState<number>(15);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: delivery, isLoading } = useQuery<DeliveryAssignmentWithDetails>({
@@ -106,6 +109,50 @@ export default function DriverDeliveryDetail() {
       setProblemOpen(false);
       invalidate();
       toast({ title: lang === "de" ? "Problem gemeldet" : "Problema segnalato" });
+    },
+    onError: () =>
+      toast({ title: lang === "de" ? "Aktion fehlgeschlagen" : "Azione non riuscita", variant: "destructive" }),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async () => {
+      const r = await apiRequest("POST", `/api/driver/deliveries/${id}/reject`, {
+        reason: problemType,
+        note: problemNote.trim() || null,
+      });
+      return r.json();
+    },
+    onSuccess: () => {
+      setProblemOpen(false);
+      invalidate();
+      toast({
+        title: lang === "de" ? "Lieferung abgelehnt" : "Consegna rifiutata",
+        description: lang === "de"
+          ? "Die Bestellung liegt jetzt beim Büro zur Prüfung."
+          : "L'ordine è ora in ufficio per la verifica.",
+      });
+    },
+    onError: () =>
+      toast({ title: lang === "de" ? "Aktion fehlgeschlagen" : "Azione non riuscita", variant: "destructive" }),
+  });
+
+  const delayMutation = useMutation({
+    mutationFn: async () => {
+      const r = await apiRequest("POST", `/api/driver/deliveries/${id}/delay`, {
+        delayMinutes,
+        note: problemNote.trim() || null,
+      });
+      return r.json();
+    },
+    onSuccess: (data: { affectedCount?: number }) => {
+      setProblemOpen(false);
+      invalidate();
+      toast({
+        title: lang === "de" ? "Verspätung gemeldet" : "Ritardo segnalato",
+        description: lang === "de"
+          ? `Ankunftszeiten von ${data.affectedCount ?? 0} Stopp(s) wurden angepasst.`
+          : `Gli orari di arrivo di ${data.affectedCount ?? 0} fermata/e sono stati aggiornati.`,
+      });
     },
     onError: () =>
       toast({ title: lang === "de" ? "Aktion fehlgeschlagen" : "Azione non riuscita", variant: "destructive" }),
@@ -480,34 +527,91 @@ export default function DriverDeliveryDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Problem dialog */}
+      {/* Problem / delay / reject dialog */}
       <Dialog open={problemOpen} onOpenChange={setProblemOpen}>
         <DialogContent className="rounded-2xl max-w-md">
           <DialogHeader>
-            <DialogTitle>{lang === "de" ? "Problem melden" : "Segnala un problema"}</DialogTitle>
+            <DialogTitle>
+              {problemMode === "delay"
+                ? (lang === "de" ? "Verspätung melden" : "Segnala ritardo")
+                : problemMode === "reject"
+                  ? (lang === "de" ? "Lieferung ablehnen" : "Rifiuta la consegna")
+                  : (lang === "de" ? "Problem melden" : "Segnala un problema")}
+            </DialogTitle>
             <DialogDescription>
-              {lang === "de"
-                ? "Das Büro wird sofort benachrichtigt."
-                : "L'ufficio verrà avvisato immediatamente."}
+              {problemMode === "delay"
+                ? (lang === "de"
+                    ? "Nur zur Info – die Ankunftszeiten der weiteren Stopps werden automatisch angepasst."
+                    : "Solo a titolo informativo: gli orari di arrivo delle fermate successive verranno aggiornati automaticamente.")
+                : problemMode === "reject"
+                  ? (lang === "de"
+                      ? "Die Bestellung geht zurück ans Büro und wird dort neu geplant."
+                      : "L'ordine torna in ufficio per essere ripianificato.")
+                  : (lang === "de"
+                      ? "Das Büro wird sofort benachrichtigt."
+                      : "L'ufficio verrà avvisato immediatamente.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              {PROBLEM_OPTIONS.map((p) => (
+            {/* Mode switcher */}
+            <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-muted/50 p-1">
+              {([
+                ["problem", lang === "de" ? "Problem" : "Problema"],
+                ["delay", lang === "de" ? "Verspätung" : "Ritardo"],
+                ["reject", lang === "de" ? "Ablehnen" : "Rifiuta"],
+              ] as const).map(([m, label]) => (
                 <button
-                  key={p}
-                  onClick={() => setProblemType(p)}
-                  className={`rounded-xl border p-2.5 text-xs font-medium text-left transition-colors ${
-                    problemType === p
-                      ? "border-red-500 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300"
-                      : "hover:bg-muted/40"
+                  key={m}
+                  onClick={() => setProblemMode(m)}
+                  className={`rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors ${
+                    problemMode === m
+                      ? m === "delay"
+                        ? "bg-amber-500 text-white"
+                        : "bg-red-600 text-white"
+                      : "text-muted-foreground hover:bg-muted"
                   }`}
-                  data-testid={`option-problem-${p}`}
+                  data-testid={`mode-${m}`}
                 >
-                  {PROBLEM_TYPE_LABELS[p][lang]}
+                  {label}
                 </button>
               ))}
             </div>
+
+            {problemMode === "delay" ? (
+              <div className="grid grid-cols-4 gap-2">
+                {[15, 30, 45, 60].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setDelayMinutes(m)}
+                    className={`rounded-xl border p-2.5 text-sm font-semibold transition-colors ${
+                      delayMinutes === m
+                        ? "border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
+                        : "hover:bg-muted/40"
+                    }`}
+                    data-testid={`option-delay-${m}`}
+                  >
+                    +{m}′
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {(problemMode === "reject" ? REJECT_OPTIONS : PROBLEM_OPTIONS).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setProblemType(p)}
+                    className={`rounded-xl border p-2.5 text-xs font-medium text-left transition-colors ${
+                      problemType === p
+                        ? "border-red-500 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300"
+                        : "hover:bg-muted/40"
+                    }`}
+                    data-testid={`option-problem-${p}`}
+                  >
+                    {PROBLEM_TYPE_LABELS[p][lang]}
+                  </button>
+                ))}
+              </div>
+            )}
             <Textarea
               value={problemNote}
               onChange={(e) => setProblemNote(e.target.value)}
@@ -520,18 +624,46 @@ export default function DriverDeliveryDetail() {
             <Button variant="outline" onClick={() => setProblemOpen(false)} data-testid="button-cancel-problem">
               {lang === "de" ? "Abbrechen" : "Annulla"}
             </Button>
-            <Button
-              variant="destructive"
-              disabled={problemMutation.isPending}
-              onClick={() => problemMutation.mutate()}
-              data-testid="button-confirm-problem"
-            >
-              {problemMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                lang === "de" ? "Melden" : "Segnala"
-              )}
-            </Button>
+            {problemMode === "delay" ? (
+              <Button
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+                disabled={delayMutation.isPending}
+                onClick={() => delayMutation.mutate()}
+                data-testid="button-confirm-delay"
+              >
+                {delayMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  lang === "de" ? `+${delayMinutes} Min. melden` : `Segnala +${delayMinutes} min`
+                )}
+              </Button>
+            ) : problemMode === "reject" ? (
+              <Button
+                variant="destructive"
+                disabled={rejectMutation.isPending}
+                onClick={() => rejectMutation.mutate()}
+                data-testid="button-confirm-reject"
+              >
+                {rejectMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  lang === "de" ? "Ablehnen" : "Rifiuta"
+                )}
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                disabled={problemMutation.isPending}
+                onClick={() => problemMutation.mutate()}
+                data-testid="button-confirm-problem"
+              >
+                {problemMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  lang === "de" ? "Melden" : "Segnala"
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

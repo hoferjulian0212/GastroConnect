@@ -7916,6 +7916,16 @@ export async function registerRoutes(
     note: safeString.optional().nullable(),
   }).strict();
 
+  const deliveryRejectSchema = z.object({
+    reason: z.enum(["not_reachable", "refused", "damaged", "wrong_address", "traffic", "no_time", "other"]),
+    note: safeString.optional().nullable(),
+  }).strict();
+
+  const deliveryDelaySchema = z.object({
+    delayMinutes: z.number().int().min(5).max(240),
+    note: safeString.optional().nullable(),
+  }).strict();
+
   const reorderRouteSchema = z.object({
     deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     orderedIds: z.array(uuidField).min(1).max(200),
@@ -8101,7 +8111,7 @@ export async function registerRoutes(
       if (!order) return res.status(404).json({ error: "Order not found" });
       const denied = checkActingCapability(req, order.supplierId, "deliveries.manage");
       if (denied) return res.status(denied.status).json(denied.body);
-      if (!["confirmed", "partially_confirmed", "scheduled", "in_delivery"].includes(order.status)) {
+      if (!["confirmed", "partially_confirmed", "scheduled", "in_delivery", "to_review"].includes(order.status)) {
         return res.status(400).json({ error: "invalid_status", message: "Nur bestätigte Bestellungen können einem Fahrer zugewiesen werden." });
       }
       const driver = await storage.getMember(parsed.driverMemberId);
@@ -8137,6 +8147,7 @@ export async function registerRoutes(
           problemType: null,
           problemNote: null,
           problemReportedAt: null,
+          rejectedAt: null,
         });
       } else {
         const dayStops = await storage.getDeliveriesForDriver(parsed.driverMemberId, deliveryDate);
@@ -8158,7 +8169,7 @@ export async function registerRoutes(
       // Assigning a driver plans the tour: the order becomes "scheduled"
       // (Geplant). It only moves to in_delivery when the driver actually
       // departs (en_route in the driver app). Conflicts are non-fatal.
-      if (["confirmed", "partially_confirmed"].includes(order.status)) {
+      if (["confirmed", "partially_confirmed", "to_review"].includes(order.status)) {
         try {
           await transitionOrderWithStock({
             order,
@@ -8209,9 +8220,10 @@ export async function registerRoutes(
         return res.status(400).json({ error: "already_delivered", message: "Zugestellte Lieferungen können nicht entfernt werden." });
       }
       await storage.deleteDeliveryAssignment(existing.id);
-      // Removing the driver un-plans the tour: a "scheduled" order falls back
-      // to "confirmed" so it can be re-planned. Conflicts are non-fatal.
-      if (order.status === "scheduled") {
+      // Removing the driver un-plans the tour: a "scheduled" (or rejected /
+      // "to_review") order falls back to "confirmed" so it can be re-planned.
+      // Conflicts are non-fatal.
+      if (order.status === "scheduled" || order.status === "to_review") {
         try {
           await transitionOrderWithStock({
             order,
@@ -8340,6 +8352,9 @@ export async function registerRoutes(
       if (assignment.status === "delivered") {
         return res.status(400).json({ error: "already_delivered", message: "Diese Lieferung wurde bereits zugestellt." });
       }
+      if (assignment.status === "rejected") {
+        return res.status(400).json({ error: "rejected", message: "Diese Lieferung wurde abgelehnt und liegt beim Büro zur Prüfung." });
+      }
       // Forward-only status flow: assigned → picked_up → en_route → arriving.
       // From "problem" the driver may resume at any active step.
       const STATUS_RANK: Record<string, number> = { assigned: 0, picked_up: 1, en_route: 2, arriving: 3 };
@@ -8447,6 +8462,9 @@ export async function registerRoutes(
       if (assignment.status === "delivered") {
         return res.status(400).json({ error: "already_delivered", message: "Diese Lieferung wurde bereits zugestellt." });
       }
+      if (assignment.status === "rejected") {
+        return res.status(400).json({ error: "rejected", message: "Diese Lieferung wurde abgelehnt und liegt beim Büro zur Prüfung." });
+      }
       // Completion requires the delivery to be underway (picked up at minimum);
       // a freshly assigned stop cannot jump straight to delivered.
       if (assignment.status === "assigned") {
@@ -8523,6 +8541,9 @@ export async function registerRoutes(
       if (assignment.status === "delivered") {
         return res.status(400).json({ error: "already_delivered", message: "Diese Lieferung wurde bereits zugestellt." });
       }
+      if (assignment.status === "rejected") {
+        return res.status(400).json({ error: "rejected", message: "Diese Lieferung wurde abgelehnt und liegt beim Büro zur Prüfung." });
+      }
       const updated = await storage.updateDeliveryAssignment(assignment.id, {
         status: "problem",
         problemType: parsed.problemType,
@@ -8564,6 +8585,155 @@ export async function registerRoutes(
     }
   });
 
+  // ── Driver: reject a stop — the order goes back to the office ("to_review").
+  // Allowed on any not-yet-delivered stop, including untouched end-of-day
+  // stops the driver can no longer make.
+  app.post("/api/driver/deliveries/:id/reject", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const parsed = deliveryRejectSchema.parse(req.body);
+      const assignment = await storage.getDeliveryAssignment(req.params.id);
+      if (!assignment || assignment.driverMemberId !== req.auth!.memberId) {
+        return res.status(404).json({ error: "Delivery not found" });
+      }
+      if (assignment.status === "delivered") {
+        return res.status(400).json({ error: "already_delivered", message: "Diese Lieferung wurde bereits zugestellt." });
+      }
+      if (assignment.status === "rejected") {
+        return res.status(400).json({ error: "already_rejected", message: "Diese Lieferung wurde bereits abgelehnt." });
+      }
+      // Order transition happens FIRST (atomic, guarded by previousStatus) so
+      // the assignment never says rejected while the order kept moving on
+      // (e.g. the office changed it concurrently). On a conflict we re-read
+      // the order and only continue if it already ended up in "to_review".
+      const order = await storage.getOrder(assignment.orderId);
+      if (order && !["delivered", "cancelled"].includes(order.status)) {
+        try {
+          await transitionOrderWithStock({
+            order,
+            newStatus: "to_review",
+            previousStatus: order.status,
+            changedByMemberId: req.auth!.memberId,
+            actorName: req.auth!.member.name,
+          });
+        } catch (e) {
+          if (!(e instanceof OrderTransitionConflictError)) throw e;
+          const fresh = await storage.getOrder(assignment.orderId);
+          if (!fresh || fresh.status !== "to_review") {
+            return res.status(409).json({
+              error: "order_changed",
+              message: "Die Bestellung wurde gerade im Büro geändert. Bitte Route aktualisieren.",
+            });
+          }
+        }
+      }
+
+      const updated = await storage.updateDeliveryAssignment(assignment.id, {
+        status: "rejected",
+        problemType: parsed.reason,
+        problemNote: parsed.note ?? null,
+        rejectedAt: new Date(),
+      });
+
+      if (order && !["delivered", "cancelled"].includes(order.status)) {
+        const rejectLabels: Record<string, string> = {
+          not_reachable: "Kunde nicht erreichbar",
+          refused: "Annahme verweigert",
+          damaged: "Ware beschädigt",
+          wrong_address: "Falsche Adresse",
+          traffic: "Verkehrsproblem",
+          no_time: "Zeitlich nicht machbar",
+          other: "Sonstiger Grund",
+        };
+        await createNotificationWithPush({
+          userId: order.supplierId,
+          type: "delivery_problem",
+          title: `Lieferung abgelehnt – zu prüfen #${formatOrderNumber(order)}`,
+          message: `${req.auth!.member.name} hat die Lieferung zurückgegeben: ${rejectLabels[parsed.reason]}${parsed.note ? ` – ${parsed.note}` : ""}. Bitte im Büro neu planen.`,
+          referenceId: order.id,
+        }, "supplier");
+        await createNotificationWithPush({
+          userId: order.restaurantId,
+          type: "delivery_update",
+          title: `Lieferung verschoben #${formatOrderNumber(order)}`,
+          message: `Ihre Bestellung #${formatOrderNumber(order)} konnte heute nicht zugestellt werden. Der Lieferant plant die Zustellung neu.`,
+          referenceId: order.id,
+        }, "restaurant");
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      console.error("Driver reject error:", error);
+      res.status(500).json({ error: "Failed to reject delivery" });
+    }
+  });
+
+  // ── Driver: report a delay (info only) — shifts the ETA of this and all
+  // later still-open stops of today's route so customers see realistic times.
+  app.post("/api/driver/deliveries/:id/delay", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const parsed = deliveryDelaySchema.parse(req.body);
+      const assignment = await storage.getDeliveryAssignment(req.params.id);
+      if (!assignment || assignment.driverMemberId !== req.auth!.memberId) {
+        return res.status(404).json({ error: "Delivery not found" });
+      }
+      if (["delivered", "rejected"].includes(assignment.status)) {
+        return res.status(400).json({ error: "not_active", message: "Für diese Lieferung kann keine Verspätung mehr gemeldet werden." });
+      }
+
+      // Shift ETAs of this stop and every later open stop of the same day route.
+      const affected = await storage.applyRouteDelay(
+        assignment.driverMemberId,
+        assignment.deliveryDate,
+        assignment.stopSequence,
+        parsed.delayMinutes,
+      );
+      // Remember the cumulative reported delay on the triggering stop.
+      const updated = await storage.updateDeliveryAssignment(assignment.id, {
+        delayMinutes: (assignment.delayMinutes ?? 0) + parsed.delayMinutes,
+      });
+
+      // Notify the office once …
+      const order = await storage.getOrder(assignment.orderId);
+      if (order) {
+        await createNotificationWithPush({
+          userId: order.supplierId,
+          type: "delivery_update",
+          title: `Verspätung gemeldet (+${parsed.delayMinutes} Min.)`,
+          message: `${req.auth!.member.name}: Verspätung ab Stopp #${formatOrderNumber(order)}${parsed.note ? ` – ${parsed.note}` : ""}. Die Ankunftszeiten der weiteren Stopps wurden angepasst.`,
+          referenceId: order.id,
+        }, "supplier");
+      }
+      // … and each affected restaurant with its new ETA (best-effort).
+      await Promise.all(affected.map(async (a) => {
+        try {
+          const o = await storage.getOrder(a.orderId);
+          if (!o) return;
+          const eta = a.etaMinutes != null ? ` Neue geschätzte Ankunft: in ca. ${a.etaMinutes} Min.` : "";
+          await createNotificationWithPush({
+            userId: o.restaurantId,
+            type: "delivery_update",
+            title: `Lieferverzögerung #${formatOrderNumber(o)}`,
+            message: `Ihre Lieferung verzögert sich um ca. ${parsed.delayMinutes} Minuten.${eta}`,
+            referenceId: o.id,
+          }, "restaurant");
+        } catch (e) {
+          console.error("[driver] delay notify error:", e);
+        }
+      }));
+
+      res.json({ assignment: updated, affectedCount: affected.length });
+    } catch (error: any) {
+      if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      console.error("Driver delay error:", error);
+      res.status(500).json({ error: "Failed to report delay" });
+    }
+  });
+
   // ── Driver: route planning (manual reorder + traffic-aware optimize) ─────
   app.patch("/api/driver/route/reorder", async (req, res) => {
     try {
@@ -8588,8 +8758,8 @@ export async function registerRoutes(
         ? req.body.deliveryDate
         : romeToday();
       const deliveries = await storage.getDeliveriesForDriver(req.auth!.memberId, date);
-      const open = deliveries.filter((d) => !["delivered", "problem"].includes(d.status));
-      const done = deliveries.filter((d) => ["delivered", "problem"].includes(d.status));
+      const open = deliveries.filter((d) => !["delivered", "problem", "rejected"].includes(d.status));
+      const done = deliveries.filter((d) => ["delivered", "problem", "rejected"].includes(d.status));
       const stops: OptimizableStop[] = [];
       for (const d of open) {
         const lat = d.restaurant.latitude ? parseFloat(d.restaurant.latitude) : NaN;

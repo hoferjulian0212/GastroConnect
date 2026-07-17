@@ -118,6 +118,7 @@ const t = {
     in_delivery: { de: "Unterwegs", it: "In consegna" },
     delivered: { de: "Geliefert", it: "Consegnato" },
     cancelled: { de: "Storniert", it: "Annullato" },
+    to_review: { de: "Zu prüfen", it: "Da verificare" },
   },
   orderStatusSupplier: {
     pending: { de: "Neu", it: "Nuovo" },
@@ -127,6 +128,7 @@ const t = {
     in_delivery: { de: "Unterwegs", it: "In consegna" },
     delivered: { de: "Geliefert", it: "Consegnato" },
     cancelled: { de: "Storniert", it: "Annullato" },
+    to_review: { de: "Zu prüfen", it: "Da verificare" },
   },
   complaintStatus: {
     open: { de: "Offen", it: "Aperto" },
@@ -193,6 +195,7 @@ const t = {
     orderStatus_in_delivery: { de: "Unterwegs", it: "In consegna" },
     orderStatus_delivered: { de: "Geliefert", it: "Consegnato" },
     orderStatus_cancelled: { de: "Storniert", it: "Annullato" },
+    orderStatus_to_review: { de: "Zu prüfen", it: "Da verificare" },
   },
   supplierHome: {
     newOrders: { de: "Neue Bestellungen", it: "Nuovi ordini" },
@@ -296,6 +299,7 @@ const t = {
     orderStatus_in_delivery: { de: "Unterwegs", it: "In consegna" },
     orderStatus_delivered: { de: "Geliefert", it: "Consegnato" },
     orderStatus_cancelled: { de: "Storniert", it: "Annullato" },
+    orderStatus_to_review: { de: "Zu prüfen", it: "Da verificare" },
   },
   cart: {
     reviewProducts: { de: "Überprüfen Sie Ihre ausgewählten Produkte", it: "Controlla i prodotti selezionati" },

@@ -14,6 +14,7 @@ const orderStatusConfig: Record<string, { label: string; icon: typeof Clock; col
   in_delivery: { label: "Unterwegs", icon: Truck, color: "text-indigo-500" },
   delivered: { label: "Geliefert", icon: Package, color: "text-green-500" },
   cancelled: { label: "Storniert", icon: XCircle, color: "text-red-500" },
+  to_review: { label: "Zu prüfen", icon: AlertTriangle, color: "text-red-500" },
 };
 
 const complaintStatusConfig: Record<string, { label: string; icon: typeof Clock; color: string }> = {

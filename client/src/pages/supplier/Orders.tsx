@@ -385,6 +385,7 @@ export default function SupplierOrders() {
  case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
  case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
  case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+ case "to_review": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
  default: return "bg-muted text-muted-foreground";
  }
  };
@@ -398,6 +399,7 @@ export default function SupplierOrders() {
  case "in_delivery": return "bg-purple-400 dark:bg-purple-500";
  case "delivered": return "bg-green-400 dark:bg-green-500";
  case "cancelled": return "bg-red-400 dark:bg-red-500";
+ case "to_review": return "bg-red-400 dark:bg-red-500";
  default: return "bg-muted-foreground";
  }
  };
@@ -410,6 +412,7 @@ export default function SupplierOrders() {
  case "in_delivery": return "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40";
  case "delivered": return "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40";
  case "cancelled": return "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40";
+ case "to_review": return "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40";
  default: return "";
  }
  };
@@ -423,6 +426,7 @@ export default function SupplierOrders() {
  case "in_delivery": return <Truck className="h-4 w-4" />;
  case "delivered": return <CheckCircle className="h-4 w-4" />;
  case "cancelled": return <XCircle className="h-4 w-4" />;
+ case "to_review": return <AlertTriangle className="h-4 w-4" />;
  default: return <ClipboardList className="h-4 w-4" />;
  }
  };
@@ -1178,6 +1182,7 @@ export default function SupplierOrders() {
  { key: "in_delivery", label: lang === "de" ? "Unterwegs" : "In viaggio", dot: "bg-purple-500" },
  { key: "delivered", label: getOrderStatus("delivered", lang, true), dot: "bg-green-500" },
  { key: "cancelled", label: getOrderStatus("cancelled", lang, true), dot: "bg-red-500" },
+ { key: "to_review", label: getOrderStatus("to_review", lang, true), dot: "bg-red-500" },
  ] as const).map(({ key, label, dot }) => (
  <button
  key={key}
@@ -1477,7 +1482,7 @@ export default function SupplierOrders() {
  <Tabs value={activeStatusTab} className="w-full">
  <div className="hidden"></div>
 
- {["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "all"].map((tab) => (
+ {["pending", "to_review", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "all"].map((tab) => (
  <TabsContent key={tab} value={tab} className="mt-4 md:mt-6">
  {isLoading ? (
  <div className="rounded-2xl border border-border bg-card overflow-hidden">
