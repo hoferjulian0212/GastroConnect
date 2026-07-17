@@ -5,7 +5,7 @@ import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
 import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber } from "@shared/schema";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber, dateChangeReasonLabel } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
 import { foldedIlike } from "./searchSql";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema, insertInventoryRiskRecordSchema, INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY, INVENTORY_RISK_REASONS } from "@shared/schema";
@@ -3756,7 +3756,9 @@ export async function registerRoutes(
         dismissed: false,
       });
 
-      // Auto chat message + notification about the delivery-date change
+      // Auto chat message + notification about the delivery-date change.
+      // The reason is stored as a language-neutral code (free text only for
+      // "other"); notification text is localized to the recipient's language.
       if (deliveryDateChanged && newStatus !== "cancelled") {
         await storage.sendMessage({
           conversationId: conversation.id,
@@ -3773,12 +3775,20 @@ export async function registerRoutes(
           orderId: order.id,
           dismissed: false,
         });
-        const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const restaurantUser = await storage.getUser(order.restaurantId);
+        const rLang: "de" | "it" = restaurantUser?.language === "it" ? "it" : "de";
+        const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString(rLang === "it" ? "it-IT" : "de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const supplierName = supplier?.companyName || supplier?.name || (rLang === "it" ? "Fornitore" : "Händler");
+        const reasonLabel = dateChangeReasonLabel(dateChangeReason, rLang);
         await createNotificationWithPush({
           userId: order.restaurantId,
           type: "order_status",
-          title: `Lieferdatum geändert #${formatOrderNumber(order)}`,
-          message: `${supplier?.companyName || supplier?.name || "Händler"} liefert am ${fmtDate(newDeliveryDate!)}${order.requestedDeliveryDate ? ` statt am ${fmtDate(order.requestedDeliveryDate)}` : ""}. Grund: ${dateChangeReason}`,
+          title: rLang === "it"
+            ? `Data di consegna modificata #${formatOrderNumber(order)}`
+            : `Lieferdatum geändert #${formatOrderNumber(order)}`,
+          message: rLang === "it"
+            ? `${supplierName} consegna il ${fmtDate(newDeliveryDate!)}${order.requestedDeliveryDate ? ` invece del ${fmtDate(order.requestedDeliveryDate)}` : ""}. Motivo: ${reasonLabel}`
+            : `${supplierName} liefert am ${fmtDate(newDeliveryDate!)}${order.requestedDeliveryDate ? ` statt am ${fmtDate(order.requestedDeliveryDate)}` : ""}. Grund: ${reasonLabel}`,
           referenceId: order.id,
         }, "restaurant");
       }
@@ -3862,13 +3872,28 @@ export async function registerRoutes(
           orderId: order.id,
           dismissed: false,
         });
-        const actorUser = await storage.getUser(actorIsSupplier ? order.supplierId : order.restaurantId);
-        const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const recipientId = actorIsSupplier ? order.restaurantId : order.supplierId;
+        const [actorUser, recipientUser] = await Promise.all([
+          storage.getUser(actorIsSupplier ? order.supplierId : order.restaurantId),
+          storage.getUser(recipientId),
+        ]);
+        // Notification text is localized to the RECIPIENT's language; the
+        // reason travels as a language-neutral code (free text for "other").
+        const nLang: "de" | "it" = recipientUser?.language === "it" ? "it" : "de";
+        const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString(nLang === "it" ? "it-IT" : "de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const actorName = actorUser?.companyName || actorUser?.name || (actorIsSupplier
+          ? (nLang === "it" ? "Fornitore" : "Händler")
+          : (nLang === "it" ? "Azienda" : "Betrieb"));
+        const reasonLabel = dateChangeReasonLabel(reason, nLang);
         await createNotificationWithPush({
-          userId: actorIsSupplier ? order.restaurantId : order.supplierId,
+          userId: recipientId,
           type: "order_status",
-          title: `Lieferdatum geändert #${formatOrderNumber(order)}`,
-          message: `${actorUser?.companyName || actorUser?.name || (actorIsSupplier ? "Händler" : "Betrieb")} hat das Lieferdatum auf ${fmtDate(requestedDeliveryDate)} statt ${fmtDate(order.requestedDeliveryDate!)} geändert. Grund: ${reason}`,
+          title: nLang === "it"
+            ? `Data di consegna modificata #${formatOrderNumber(order)}`
+            : `Lieferdatum geändert #${formatOrderNumber(order)}`,
+          message: nLang === "it"
+            ? `${actorName} ha cambiato la data di consegna al ${fmtDate(requestedDeliveryDate)} invece del ${fmtDate(order.requestedDeliveryDate!)}. Motivo: ${reasonLabel}`
+            : `${actorName} hat das Lieferdatum auf ${fmtDate(requestedDeliveryDate)} statt ${fmtDate(order.requestedDeliveryDate!)} geändert. Grund: ${reasonLabel}`,
           referenceId: order.id,
         }, actorIsSupplier ? "restaurant" : "supplier");
       }

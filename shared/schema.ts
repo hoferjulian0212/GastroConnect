@@ -15,6 +15,15 @@ export const DATE_CHANGE_REASONS = [
   { code: "holiday", de: "Feiertag / Betriebsruhe", it: "Festività / chiusura aziendale" },
   { code: "other", de: "Sonstiges", it: "Altro" },
 ] as const;
+export type DateChangeReasonCode = typeof DATE_CHANGE_REASONS[number]["code"];
+// Resolves a stored date-change reason to a localized label. Reasons are
+// persisted as language-neutral codes (free text only for "other"); older
+// records may contain prelocalized text, which is returned as-is.
+export function dateChangeReasonLabel(raw: string | null | undefined, lang: "de" | "it"): string {
+  if (!raw) return "";
+  const entry = DATE_CHANGE_REASONS.find(r => r.code === raw);
+  return entry ? (lang === "it" ? entry.it : entry.de) : raw;
+}
 export const messageTypeEnum = pgEnum("message_type", ["text", "order", "complaint", "confirmation", "delivery_status", "document", "attachment", "order_change_request", "promotion", "voice"]);
 export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "new_order", "order_status", "new_complaint", "complaint_comment", "low_stock", "monthly_report", "pms_request", "erp_request", "erp_sync_failed", "whatsapp_request", "delivery_assigned", "delivery_update", "delivery_problem", "internal_message"]);
 export const documentTypeEnum = pgEnum("document_type", ["delivery_note", "invoice", "other"]);

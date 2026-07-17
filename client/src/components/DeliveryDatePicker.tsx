@@ -83,9 +83,10 @@ export default function DeliveryDatePicker({ open, onOpenChange, supplierId, res
     if (!isDateChange) return undefined;
     const entry = DATE_CHANGE_REASONS.find(r => r.code === reasonCode);
     if (!entry) return undefined;
+    // Send the language-neutral code; only "other" carries free text.
     if (entry.code === "other") return reasonText.trim() || undefined;
-    return lang === "it" ? entry.it : entry.de;
-  }, [isDateChange, reasonCode, reasonText, lang]);
+    return entry.code;
+  }, [isDateChange, reasonCode, reasonText]);
 
   const handleConfirm = () => {
     if (selectedDate && !reasonMissing) {

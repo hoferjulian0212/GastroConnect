@@ -33,7 +33,7 @@ import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialo
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { formatOrderNumber, formatComplaintNumber, type ConversationWithUser, type Message, type MessageWithOrderNumber, type Order, type ComplaintWithDetails, type ComplaintCommentWithUser, type OrderStatusHistoryWithUser, type ComplaintStatusHistoryWithUser } from "@shared/schema";
+import { formatOrderNumber, formatComplaintNumber, dateChangeReasonLabel, type ConversationWithUser, type Message, type MessageWithOrderNumber, type Order, type ComplaintWithDetails, type ComplaintCommentWithUser, type OrderStatusHistoryWithUser, type ComplaintStatusHistoryWithUser } from "@shared/schema";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -1980,7 +1980,7 @@ export default function SupplierInbox() {
                                               <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
                                                 {lang === "it" ? "Motivo" : "Begründung"}
                                               </p>
-                                              <p className="text-xs text-foreground whitespace-pre-wrap mt-0.5" data-testid={`text-dd-reason-${message.id}`}>{ddData.reason}</p>
+                                              <p className="text-xs text-foreground whitespace-pre-wrap mt-0.5" data-testid={`text-dd-reason-${message.id}`}>{dateChangeReasonLabel(ddData.reason, lang)}</p>
                                             </div>
                                           )}
                                         </div>

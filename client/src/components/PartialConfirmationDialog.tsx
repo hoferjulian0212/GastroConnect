@@ -56,8 +56,9 @@ export function PartialConfirmationDialog({
     if (!dateChanged) return undefined;
     const entry = DATE_CHANGE_REASONS.find(r => r.code === dateReasonCode);
     if (!entry) return undefined;
+    // Send the language-neutral code; only "other" carries free text.
     if (entry.code === "other") return dateReasonText.trim() || undefined;
-    return lang === "it" ? entry.it : entry.de;
+    return entry.code;
   })();
   const todayStr = format(new Date(), "yyyy-MM-dd");
 

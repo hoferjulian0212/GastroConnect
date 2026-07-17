@@ -120,7 +120,7 @@ const getStatusLabel = (status: string) => {
 };
 
 import { getComplaintReasonLabel } from "@/lib/complaintReasons";
-import { COMPLAINT_REASONS, type ComplaintReason } from "@shared/schema";
+import { COMPLAINT_REASONS, dateChangeReasonLabel, type ComplaintReason } from "@shared/schema";
 const isOrderInactive = (status: string) => status === "delivered" || status === "cancelled";
 const isComplaintInactive = (status: string) => status === "resolved" || status === "closed";
 
@@ -2127,7 +2127,7 @@ export default function RestaurantInbox() {
                                                 <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
                                                   {lang === "it" ? "Motivo" : "Begründung"}
                                                 </p>
-                                                <p className="text-xs text-foreground whitespace-pre-wrap mt-0.5" data-testid={`text-dd-reason-${message.id}`}>{ddData.reason}</p>
+                                                <p className="text-xs text-foreground whitespace-pre-wrap mt-0.5" data-testid={`text-dd-reason-${message.id}`}>{dateChangeReasonLabel(ddData.reason, lang)}</p>
                                               </div>
                                             )}
                                           </div>

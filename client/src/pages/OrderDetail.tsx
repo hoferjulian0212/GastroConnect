@@ -25,7 +25,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import DeliveryDatePicker from "@/components/DeliveryDatePicker";
 import { PartialConfirmationDialog } from "@/components/PartialConfirmationDialog";
 import RatingCard from "@/components/RatingCard";
-import { formatOrderNumber, type OrderWithDetails, type OrderStatusHistoryWithUser } from "@shared/schema";
+import { formatOrderNumber, dateChangeReasonLabel, type OrderWithDetails, type OrderStatusHistoryWithUser } from "@shared/schema";
 import { DeliveryTracking } from "@/components/DeliveryTracking";
 import { HeroPortal } from "@/context/HeroContext";
 
@@ -1126,7 +1126,7 @@ export default function OrderDetail() {
                 {order.deliveryDateChangeReason && (
                   <div className="px-4 py-3">
                     <p className="text-sm text-muted-foreground mb-1">{lang === "de" ? "Grund für Datumsänderung" : "Motivo del cambio data"}</p>
-                    <p className="text-sm whitespace-pre-wrap" data-testid="text-date-change-reason">{order.deliveryDateChangeReason}</p>
+                    <p className="text-sm whitespace-pre-wrap" data-testid="text-date-change-reason">{dateChangeReasonLabel(order.deliveryDateChangeReason, lang)}</p>
                   </div>
                 )}
                 {(order.createdByMember || order.createdByUser) && (
