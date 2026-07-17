@@ -1539,7 +1539,7 @@ export type DriverLocationWithDriver = DriverLocation & { driver: SafeMember };
 
 // Restaurant-facing live tracking payload for an order in delivery.
 export type OrderTrackingInfo = {
-  assignment: Pick<DeliveryAssignment, "id" | "status" | "assignedAt" | "enRouteAt" | "arrivingAt" | "deliveredAt" | "etaMinutes" | "distanceKm" | "routePolyline"> | null;
+  assignment: Pick<DeliveryAssignment, "id" | "status" | "assignedAt" | "enRouteAt" | "arrivingAt" | "deliveredAt" | "etaMinutes" | "distanceKm" | "routePolyline" | "problemType" | "problemNote" | "problemReportedAt"> | null;
   driver: { name: string; phone: string | null; profileImageUrl: string | null } | null;
   location: { latitude: string; longitude: string; updatedAt: Date } | null;
 };

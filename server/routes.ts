@@ -8699,6 +8699,10 @@ export async function registerRoutes(
           // Route line only while the driver is actually moving toward this
           // stop — matches the same privacy window as the live position.
           routePolyline: location ? assignment.routePolyline : null,
+          // Problem details so the order detail page can show what went wrong.
+          problemType: assignment.problemType ?? null,
+          problemNote: assignment.problemNote ?? null,
+          problemReportedAt: assignment.problemReportedAt ?? null,
         },
         driver: driver ? { name: driver.name, phone: driver.phone ?? null, profileImageUrl: driver.profileImageUrl ?? null } : null,
         location,

@@ -5,9 +5,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useLanguage } from "@/context/LanguageContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Phone, Truck, Check } from "lucide-react";
+import { Phone, Truck, Check, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import type { OrderTrackingInfo } from "@shared/schema";
+import { PROBLEM_TYPE_LABELS } from "@/pages/driver/DeliveryStatus";
 
 const SOUTH_TYROL_CENTER: [number, number] = [46.6, 11.45];
 
@@ -92,7 +93,8 @@ export function DeliveryTracking({
     enabled: active,
     refetchInterval: (q) => {
       const s = q.state.data?.assignment?.status;
-      if (s === "delivered" || s === "problem") return false;
+      if (s === "delivered") return false;
+      // Keep polling slowly on "problem" — the driver may resume the delivery.
       return s === "en_route" || s === "arriving" ? 10_000 : 30_000;
     },
   });
@@ -103,8 +105,16 @@ export function DeliveryTracking({
   const steps = useMemo(() => {
     if (!assignment) return [];
     const s = assignment.status;
+    // On "problem" the flow is halted: freeze at the last reached step.
     const idx =
-      s === "assigned" ? 1 : s === "picked_up" ? 1 : s === "en_route" ? 2 : s === "arriving" ? 3 : s === "delivered" ? 4 : 1;
+      s === "assigned" ? 1
+      : s === "picked_up" ? 1
+      : s === "en_route" ? 2
+      : s === "arriving" ? 3
+      : s === "delivered" ? 4
+      : s === "problem"
+        ? (assignment.arrivingAt ? 3 : assignment.enRouteAt ? 2 : 1)
+        : 1;
     const defs = [
       { de: "Vorbereitung", it: "Preparazione", at: assignment.assignedAt },
       { de: "Fahrer zugewiesen", it: "Autista assegnato", at: assignment.assignedAt },
@@ -120,7 +130,8 @@ export function DeliveryTracking({
     [assignment?.routePolyline],
   );
 
-  if (!assignment || assignment.status === "problem") return null;
+  if (!assignment) return null;
+  const isProblem = assignment.status === "problem";
 
   const driverPos: [number, number] | null =
     data?.location && Number.isFinite(parseFloat(data.location.latitude))
@@ -142,12 +153,39 @@ export function DeliveryTracking({
           <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           {lang === "de" ? "Lieferverfolgung" : "Tracciamento consegna"}
         </p>
+        {isProblem && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 px-2.5 py-1 text-[11px] font-semibold" data-testid="pill-tracking-problem">
+            <AlertTriangle className="h-3 w-3" />
+            {lang === "de" ? "Problem" : "Problema"}
+          </span>
+        )}
         {isMoving && assignment.distanceKm != null && (
           <span className="text-[11px] font-medium rounded-full bg-muted text-muted-foreground px-2 py-0.5" data-testid="text-tracking-distance">
             {parseFloat(String(assignment.distanceKm)).toFixed(1)} km
           </span>
         )}
       </div>
+
+      {isProblem && (
+        <div className="px-4 py-3 border-b border-border/20 bg-red-50 dark:bg-red-950/30 flex items-start gap-3" data-testid="banner-tracking-problem">
+          <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-red-800 dark:text-red-300" data-testid="text-tracking-problem-type">
+              {assignment.problemType
+                ? (PROBLEM_TYPE_LABELS[assignment.problemType]?.[lang] ?? assignment.problemType)
+                : (lang === "de" ? "Problem bei der Lieferung" : "Problema con la consegna")}
+            </p>
+            {assignment.problemNote && (
+              <p className="text-sm text-red-700/80 dark:text-red-300/80 mt-0.5 whitespace-pre-wrap" data-testid="text-tracking-problem-note">{assignment.problemNote}</p>
+            )}
+            {assignment.problemReportedAt && (
+              <p className="text-[11px] text-red-600/70 dark:text-red-400/70 mt-1" data-testid="text-tracking-problem-time">
+                {lang === "de" ? "Gemeldet um" : "Segnalato alle"} {format(new Date(assignment.problemReportedAt), "HH:mm")}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {showEtaBanner && (
         <div className="px-4 py-3 border-b border-border/20 bg-blue-50 dark:bg-blue-950/30 flex items-baseline justify-between gap-2" data-testid="banner-tracking-eta">
@@ -213,7 +251,9 @@ export function DeliveryTracking({
                   className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${
                     step.done
                       ? step.current && assignment.status !== "delivered"
-                        ? "bg-blue-600 text-white animate-pulse"
+                        ? isProblem
+                          ? "bg-red-500 text-white"
+                          : "bg-blue-600 text-white animate-pulse"
                         : "bg-emerald-500 text-white"
                       : "bg-muted text-muted-foreground/40"
                   }`}
