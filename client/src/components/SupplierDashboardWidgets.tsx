@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { ProductImage } from "@/components/ProductImage";
 import { useT } from "@/lib/translations";
+import { pluralizeUnit } from "@/lib/units";
 import type { ComplaintWithDetails, OrderWithDetails, InventoryRiskRecordWithDetails } from "@shared/schema";
 
 const CARD_BASE = "h-full md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]";
@@ -280,7 +281,7 @@ export function PromoPerformanceWidget({ supplierId, lang }: { supplierId: strin
                     <p className="text-sm font-medium truncate">{p.productName}</p>
                     <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[9px] px-1 shrink-0">-{p.discountPercent}%</Badge>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">{p.unitsSold} {p.unit} · {p.orderCount} {t("supplierHome", "orderCount")}</p>
+                  <p className="text-[11px] text-muted-foreground">{p.unitsSold} {pluralizeUnit(p.unit, p.unitsSold)} · {p.orderCount} {t("supplierHome", "orderCount")}</p>
                 </div>
                 <span className="text-sm font-semibold tabular-nums shrink-0">{Math.round(p.revenue).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}€</span>
               </div>
@@ -651,7 +652,7 @@ export function OffeneRisikenWidget({ supplierId, lang }: { supplierId: string; 
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{r.product?.name ?? "—"}</p>
                   <p className="text-[11px] text-muted-foreground truncate">
-                    {r.flaggedQuantity} {r.product?.unit ?? ""} · {t("inventoryRisk", `quality_${r.qualityStatus}` as any)}
+                    {r.flaggedQuantity} {pluralizeUnit(r.product?.unit, r.flaggedQuantity)} · {t("inventoryRisk", `quality_${r.qualityStatus}` as any)}
                   </p>
                 </div>
               </div>

@@ -1087,6 +1087,12 @@ const t = {
     summaryPhoto: { de: "Foto", it: "Foto" },
     summaryWithPhoto: { de: "1 Foto", it: "1 foto" },
     summaryNoPhoto: { de: "Kein Foto", it: "Nessuna foto" },
+    priorityLabel: { de: "Dringlichkeit", it: "Urgenza" },
+    priorityNormal: { de: "Normal", it: "Normale" },
+    priorityUrgent: { de: "Dringend", it: "Urgente" },
+    priorityUrgentHint: { de: "Als dringend melden — Verwalter werden sofort benachrichtigt.", it: "Segnala come urgente — i responsabili verranno avvisati immediatamente." },
+    chatNotificationTitle: { de: "Lagerrisiko gemeldet", it: "Rischio magazzino segnalato" },
+    chatNotificationUrgent: { de: "⚠️ DRINGEND", it: "⚠️ URGENTE" },
   },
   documents: {
     title: { de: "Dokumente", it: "Documenti" },

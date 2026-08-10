@@ -31,6 +31,8 @@ import { ProductImage } from "@/components/ProductImage";
 import SupplierRatingsList from "@/components/SupplierRatingsList";
 import { OffeneReklamationenWidget, HeuteZuLiefernWidget, TopKunden30dWidget, PromoPerformanceWidget, AntwortzeitWidget, SteigendeNachfrageWidget, InaktiveRestaurantsWidget, UmsatzTrendWidget, SBestellungenStatusWidget, OffeneRisikenWidget } from "@/components/SupplierDashboardWidgets";
 import { getBuiltinViews } from "@/lib/dashboard-builtin-views";
+import { getMessageReplyPreview } from "@/lib/messageReplyPreview";
+import { pluralizeUnit } from "@/lib/units";
 
 export default function SupplierHome() {
   const { currentUser } = useUser();
@@ -257,7 +259,7 @@ export default function SupplierHome() {
     } catch {}
     if (msg.messageType === "attachment") return lang === "de" ? "Anhang" : "Allegato";
     if (msg.messageType === "promotion") return lang === "de" ? "Neue Aktion" : "Nuova promozione";
-    return msg.content?.slice(0, 80) || "";
+    return getMessageReplyPreview(msg, lang as "de" | "it");
   };
 
   const invalidateOrderQueries = () => {
@@ -1416,11 +1418,11 @@ export default function SupplierHome() {
                       </div>
                       <p className="text-sm font-semibold truncate">{product.name}</p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {t("supplierHome", "threshold")}: {product.lowStockThreshold} {product.unit}
+                        {t("supplierHome", "threshold")}: {product.lowStockThreshold} {pluralizeUnit(product.unit, product.lowStockThreshold ?? 0)}
                       </p>
                       <div className="mt-3 pt-2.5 border-t border-orange-200/50 dark:border-orange-800/30">
                         <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-[10px]">
-                          <span className="tabular-nums">{product.stockQuantity ?? 0}</span> {product.unit}
+                          <span className="tabular-nums">{product.stockQuantity ?? 0}</span> {pluralizeUnit(product.unit, product.stockQuantity ?? 0)}
                         </Badge>
                       </div>
                     </div>
@@ -1440,12 +1442,12 @@ export default function SupplierHome() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{product.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {t("supplierHome", "threshold")}: {product.lowStockThreshold} {product.unit}
+                            {t("supplierHome", "threshold")}: {product.lowStockThreshold} {pluralizeUnit(product.unit, product.lowStockThreshold ?? 0)}
                           </p>
                         </div>
                       </div>
                       <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-xs shrink-0 ml-2 whitespace-nowrap">
-                        <span className="tabular-nums">{product.stockQuantity ?? 0}</span> {product.unit}
+                        <span className="tabular-nums">{product.stockQuantity ?? 0}</span> {pluralizeUnit(product.unit, product.stockQuantity ?? 0)}
                       </Badge>
                     </div>
                   ))}
@@ -1513,7 +1515,7 @@ export default function SupplierHome() {
             </div>
             <Skeleton className="h-48 w-full rounded-xl" />
           </div>
-        ) : detailedStats && (detailedStats.totalOrders > 0 || (detailedStats.topProducts?.length ?? 0) > 0) ? (
+        ) : detailedStats ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
               {([

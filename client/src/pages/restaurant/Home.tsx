@@ -40,6 +40,7 @@ import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import RestaurantHomeMobile from "./HomeMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductImage } from "@/components/ProductImage";
+import { getMessageReplyPreview } from "@/lib/messageReplyPreview";
 
 export default function RestaurantHome() {
   const { currentUser } = useUser();
@@ -443,7 +444,7 @@ export default function RestaurantHome() {
     } catch {}
     if (msg.messageType === "attachment") return lang === "de" ? "Anhang" : "Allegato";
     if (msg.messageType === "promotion") return lang === "de" ? "Neue Aktion" : "Nuova promozione";
-    return msg.content?.slice(0, 80) || "";
+    return getMessageReplyPreview(msg, lang as "de" | "it");
   };
 
   const scrollPromos = (dir: "left" | "right") => {

@@ -449,6 +449,8 @@ export const inventoryRiskRecords = pgTable("inventory_risk_records", {
   riskReason: text("risk_reason"),
   // one of Open / Action Taken / Sold / Expired / Dismissed
   status: text("status").notNull().default("Open"),
+  // 'normal' | 'urgent' — set by the warehouse worker when filing the risk
+  priority: varchar("priority", { length: 10 }).notNull().default("normal"),
   // The reporting team member (members.id, e.g. a warehouse worker) — NOT users.id.
   createdBy: varchar("created_by", { length: 36 }).notNull().references(() => members.id),
   linkedPromotionId: varchar("linked_promotion_id", { length: 36 }).references(() => promotions.id),
@@ -469,6 +471,9 @@ export type InventoryRiskStatus = typeof INVENTORY_RISK_STATUSES[number];
 export const INVENTORY_RISK_REASONS = ["Poorly Stored", "Poor Quality", "Stored Too Long", "Damaged", "Near Expiry", "Overstock", "Other"] as const;
 export type InventoryRiskReason = typeof INVENTORY_RISK_REASONS[number];
 
+export const INVENTORY_RISK_PRIORITIES = ["normal", "urgent"] as const;
+export type InventoryRiskPriority = typeof INVENTORY_RISK_PRIORITIES[number];
+
 export const insertInventoryRiskRecordSchema = createInsertSchema(inventoryRiskRecords)
   .omit({ id: true, supplierId: true, createdBy: true, status: true, linkedPromotionId: true, createdAt: true, updatedAt: true })
   .extend({
@@ -477,6 +482,7 @@ export const insertInventoryRiskRecordSchema = createInsertSchema(inventoryRiskR
     note: z.string().nullable().optional(),
     photoUrl: z.string().nullable().optional(),
     riskReason: z.enum(INVENTORY_RISK_REASONS).nullable().optional(),
+    priority: z.enum(INVENTORY_RISK_PRIORITIES).optional().default("normal"),
   });
 export type InsertInventoryRiskRecord = z.infer<typeof insertInventoryRiskRecordSchema>;
 export type InventoryRiskRecord = typeof inventoryRiskRecords.$inferSelect;

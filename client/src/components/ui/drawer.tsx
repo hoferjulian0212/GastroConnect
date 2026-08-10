@@ -5,15 +5,68 @@ import { Drawer as DrawerPrimitive } from "vaul"
 
 import { cn } from "@/lib/utils"
 
+// shouldScaleBackground defaults to false: the app has no
+// [data-vaul-drawer-wrapper], so scaling has no visual effect but leaves vaul
+// managing body styles. On iOS this could strand `pointer-events: none` on
+// <body> after the drawer closed, making the whole app (incl. the bottom nav)
+// unresponsive to taps.
+//
+// Safety net: every Drawer root reports open/close through a composed
+// onOpenChange (works for controlled AND uncontrolled use). When the last
+// drawer closes we wait out the close animation and — only if no drawer and
+// no other modal (e.g. a Radix dialog) is open — restore body interactivity.
+let openDrawerCount = 0
+
+function releaseBodyPointerLock() {
+  setTimeout(() => {
+    if (openDrawerCount > 0) return
+    // Another modal layer may legitimately own the body lock — leave it alone.
+    if (document.querySelector('[role="dialog"][data-state="open"], [data-vaul-drawer][data-state="open"]')) return
+    if (document.body.style.pointerEvents === "none") {
+      document.body.style.pointerEvents = ""
+    }
+  }, 600)
+}
+
 const Drawer = ({
-  shouldScaleBackground = true,
+  shouldScaleBackground = false,
+  onOpenChange,
   ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
-  <DrawerPrimitive.Root
-    shouldScaleBackground={shouldScaleBackground}
-    {...props}
-  />
-)
+}: React.ComponentProps<typeof DrawerPrimitive.Root>) => {
+  const isOpenRef = React.useRef(false)
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen !== isOpenRef.current) {
+        isOpenRef.current = nextOpen
+        openDrawerCount += nextOpen ? 1 : -1
+        if (openDrawerCount < 0) openDrawerCount = 0
+        if (!nextOpen) releaseBodyPointerLock()
+      }
+      onOpenChange?.(nextOpen)
+    },
+    [onOpenChange],
+  )
+
+  // If a drawer unmounts while still open, release its slot.
+  React.useEffect(() => {
+    return () => {
+      if (isOpenRef.current) {
+        isOpenRef.current = false
+        openDrawerCount = Math.max(0, openDrawerCount - 1)
+        releaseBodyPointerLock()
+      }
+    }
+  }, [])
+
+  return (
+    <DrawerPrimitive.Root
+      shouldScaleBackground={shouldScaleBackground}
+      onOpenChange={handleOpenChange}
+      {...props}
+    />
+  )
+}
 Drawer.displayName = "Drawer"
 
 const DrawerTrigger = DrawerPrimitive.Trigger

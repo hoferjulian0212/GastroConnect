@@ -37,6 +37,12 @@ export function registerObjectStorageRoutes(app: Express): void {
    */
   app.post("/api/uploads/request-url", async (req, res) => {
     try {
+      // Presigned upload URLs are only issued to logged-in users (business
+      // member session or platform-admin session) — never anonymously.
+      const anyReq = req as any;
+      if (!anyReq.auth && !anyReq.session?.adminId) {
+        return res.status(401).json({ error: "unauthenticated" });
+      }
       const { name, size, contentType, prefix } = req.body;
 
       if (!name) {

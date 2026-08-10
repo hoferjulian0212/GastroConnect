@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { useFlyToCart } from "@/hooks/use-fly-to-cart";
+import { pluralizeUnit } from "@/lib/units";
 import { ProductImage } from "@/components/ProductImage";
 import { HeroPortal } from "@/context/HeroContext";
 
@@ -719,7 +720,7 @@ export default function ProductDetail() {
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold">{entry.quantity} {entry.unit}</p>
+                        <p className="text-sm font-semibold">{entry.quantity} {pluralizeUnit(entry.unit, entry.quantity)}</p>
                         <p className="text-xs text-muted-foreground">{entry.unitPrice.toFixed(2)}€/{entry.unit}</p>
                       </div>
                     </button>
@@ -768,7 +769,7 @@ export default function ProductDetail() {
                     <span className="h-2 w-2 rounded-full bg-green-500" />
                     <span className="text-green-600 dark:text-green-400 font-medium">{lang === "de" ? "Auf Lager" : "Disponibile"}</span>
                     {typeof product.stockQuantity === "number" && product.stockQuantity > 0 && (
-                      <span className="text-muted-foreground">· {product.stockQuantity} {product.unit}</span>
+                      <span className="text-muted-foreground">· {product.stockQuantity} {pluralizeUnit(product.unit, product.stockQuantity ?? 0)}</span>
                     )}
                   </>
                 ) : (

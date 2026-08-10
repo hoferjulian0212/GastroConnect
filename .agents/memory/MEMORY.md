@@ -22,3 +22,4 @@
 - [Frontend app-mount tests](frontend-app-mount-tests.md) — jsdom needs DOMMatrix/Path2D stubs for pdfjs; role-redirect guards must wait for session hydration or deep links get lost.
 - [Member credential sanitization](member-credential-sanitization.md) — any join on members must strip passwordHash/auth columns; type joined views as SafeMember so tsc enforces it.
 - [Driver delivery status flow](driver-delivery-status-flow.md) — forward-only transitions enforced server-side; complete blocked from "assigned"; problem branch can resume.
+- [Vaul drawer body lock](vaul-drawer-body-lock.md) — vaul can strand pointer-events:none on body on iOS (app-wide dead taps); guarded registry cleanup lives in the shared drawer component.

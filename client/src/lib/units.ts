@@ -40,15 +40,18 @@ const UNIT_PLURALS: Record<string, string> = {
   g: "g",
   l: "l",
   ml: "ml",
+  Liter: "Liter",
+  Litri: "Litri",
 };
 
 /**
  * Returns the plural form of a unit when `quantity` is greater than 1.
- * Falls back to the original unit for quantities <= 1 or unknown units.
+ * Falls back to the original unit for quantity === 1 or unknown units.
+ * Uses plural for 0 (German convention: "0 Kisten", not "0 Kiste").
  */
 export function pluralizeUnit(unit: string | null | undefined, quantity: number): string {
   const u = (unit ?? "").trim();
   if (!u) return u;
-  if (quantity <= 1) return u;
+  if (quantity === 1) return u;
   return UNIT_PLURALS[u] ?? u;
 }

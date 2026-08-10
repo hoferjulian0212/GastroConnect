@@ -36,6 +36,7 @@ import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { format, formatDistanceToNow } from "date-fns";
 import { de, it as itLocale } from "date-fns/locale";
 import { useResizableColumns } from "@/hooks/use-resizable-columns";
+import { pluralizeUnit } from "@/lib/units";
 import { ColumnResizeHandle } from "@/components/ColumnResizeHandle";
 import {
  INVENTORY_COL_DEFAULTS,
@@ -512,7 +513,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  {product.category && <span>{product.category}</span>}
  {product.category && product.lowStockThreshold != null && product.lowStockThreshold > 0 && <span> · </span>}
  {product.lowStockThreshold != null && product.lowStockThreshold > 0 && (
- <span>{lang === "de" ? "Min" : "Min"}: {product.lowStockThreshold} {product.unit}</span>
+ <span>{lang === "de" ? "Min" : "Min"}: {product.lowStockThreshold} {pluralizeUnit(product.unit, product.lowStockThreshold ?? 0)}</span>
  )}
  </p>
  </div>
@@ -583,7 +584,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  <div className="px-6 pb-6 space-y-4">
  <div className="rounded-xl bg-muted/30 p-4 text-center">
  <p className="text-xs text-muted-foreground mb-1">{lang === "de" ? "Aktueller Bestand" : "Scorta attuale"}</p>
- <p className="text-3xl font-bold tabular-nums">{adjustProduct?.stockQuantity ?? 0} <span className="text-sm font-normal text-muted-foreground">{adjustProduct?.unit}</span></p>
+ <p className="text-3xl font-bold tabular-nums">{adjustProduct?.stockQuantity ?? 0} <span className="text-sm font-normal text-muted-foreground">{pluralizeUnit(adjustProduct?.unit, adjustProduct?.stockQuantity ?? 0)}</span></p>
  </div>
 
  <div className="flex gap-1 p-0.5 rounded-lg bg-muted/40">
@@ -662,7 +663,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  adjustMode === "manual_out" ? "text-red-600 dark:text-red-400" :
  "text-foreground"
  }`}>{getPreviewStock()}</span>
- <span className="text-muted-foreground text-xs">{adjustProduct?.unit}</span>
+ <span className="text-muted-foreground text-xs">{pluralizeUnit(adjustProduct?.unit, getPreviewStock())}</span>
  </div>
 
  <Input
@@ -710,7 +711,7 @@ export function InventoryView({ products, lang, t }: { products: Product[]; lang
  <History className="h-4 w-4" />
  <h3 className="text-sm font-semibold">{t("supplierProducts", "stockMovements")}</h3>
  </div>
- <p className="text-xs text-muted-foreground mt-0.5 pl-6">{historyProduct?.name} — {historyProduct?.stockQuantity ?? 0} {historyProduct?.unit}</p>
+ <p className="text-xs text-muted-foreground mt-0.5 pl-6">{historyProduct?.name} — {historyProduct?.stockQuantity ?? 0} {pluralizeUnit(historyProduct?.unit, historyProduct?.stockQuantity ?? 0)}</p>
  </div>
 
  <div className="px-6 pb-6">

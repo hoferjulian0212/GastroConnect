@@ -98,6 +98,7 @@ import CalendarPage from "@/pages/Calendar";
 import Help from "@/pages/Help";
 import Team from "@/pages/Team";
 import MemberProfile from "@/pages/MemberProfile";
+import { FirstTimeProfileDialog } from "@/components/FirstTimeProfileDialog";
 import { can } from "@shared/permissions";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { HelpButton } from "@/components/HelpButton";
@@ -224,24 +225,11 @@ function DriverLocationStreamer() {
 }
 
 // First-login profile completion: every member must confirm/enter their own
-// profile data (name, phone, optional photo) once. Until then, they are
-// redirected to their personal profile page.
+// profile data (name, phone, optional photo) once. Instead of silently
+// redirecting to the profile page (which looked like being "stuck" there),
+// a blocking welcome popup explains the step and collects the data in place.
 function ProfileCompletionGate() {
-  const { currentMember, currentRole, isDriver, isWarehouse, isAuthenticated } = useUser();
-  const [location, setLocation] = useLocation();
-
-  const profilePath = isDriver || isWarehouse ? "/supplier/profile" : `/${currentRole}/my-profile`;
-  const needsCompletion = isAuthenticated && !!currentMember && !currentMember.profileCompletedAt;
-
-  useEffect(() => {
-    if (!needsCompletion) return;
-    const clean = location.split("?")[0];
-    if (clean !== profilePath) {
-      setLocation(profilePath);
-    }
-  }, [needsCompletion, location, profilePath, setLocation]);
-
-  return null;
+  return <FirstTimeProfileDialog />;
 }
 
 // Keeps the user within their organization's role area. Identity itself comes

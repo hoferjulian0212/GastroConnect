@@ -228,10 +228,11 @@ export default function RestaurantInbox() {
     };
   }, []);
 
+  // Hide the mobile tab bar on the entire chat page (list + conversation view).
   useEffect(() => {
-    setIsInChat(selectedConversation !== null);
+    setIsInChat(true);
     return () => setIsInChat(false);
-  }, [selectedConversation, setIsInChat]);
+  }, [setIsInChat]);
 
   useEffect(() => {
     if (selectedConversation) {

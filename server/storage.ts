@@ -5334,6 +5334,8 @@ export class DatabaseStorage implements IStorage {
     // Inventory risk: capture WHY stock is at risk (warehouse step-by-step wizard).
     // Nullable text token; idempotent so it exists in every env without a drizzle push.
     await db.execute(sql`ALTER TABLE inventory_risk_records ADD COLUMN IF NOT EXISTS risk_reason text`);
+    // Urgency level set by warehouse worker: 'normal' (default) or 'urgent' (red/important).
+    await db.execute(sql`ALTER TABLE inventory_risk_records ADD COLUMN IF NOT EXISTS priority varchar(10) NOT NULL DEFAULT 'normal'`);
 
     // Member self-profile completion (first-login step). Idempotent.
     await db.execute(sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS profile_completed_at timestamp`);

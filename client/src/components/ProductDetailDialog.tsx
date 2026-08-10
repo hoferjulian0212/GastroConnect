@@ -6,6 +6,7 @@ import { de, it } from "date-fns/locale";
 import type { ProductWithSupplierAndPromotion } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { ProductImage } from "@/components/ProductImage";
+import { pluralizeUnit } from "@/lib/units";
 
 interface ProductDetailDialogProps {
   product: ProductWithSupplierAndPromotion | null;
@@ -133,7 +134,7 @@ export default function ProductDetailDialog({ product, open, onOpenChange, suppl
           {product.stockQuantity != null && product.stockQuantity > 0 && (
             <div className="p-3 rounded-xl bg-muted/30">
               <div className="text-xs text-muted-foreground mb-1">{lang === "de" ? "Lagerbestand" : "Scorte"}</div>
-              <p className="font-medium" data-testid="text-product-stock">{product.stockQuantity} {product.unit}</p>
+              <p className="font-medium" data-testid="text-product-stock">{product.stockQuantity} {pluralizeUnit(product.unit, product.stockQuantity ?? 0)}</p>
             </div>
           )}
         </div>

@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { HeroPortal } from "@/context/HeroContext";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useChat } from "@/context/ChatContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -10,9 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Send, Paperclip, CheckCheck, Loader2, X, MessageCircle, Search,
-  ArrowLeft, Plus, Users,
+  ArrowLeft, Plus, Users, AlertTriangle, Siren,
 } from "lucide-react";
 import { roleLabel } from "@shared/permissions";
+import { pluralizeUnit } from "@/lib/units";
 import type { SafeMember, InternalThread, InternalMessageWithSender } from "@shared/schema";
 
 // Company-internal 1:1 chat inbox: every member can message every other
@@ -21,9 +23,16 @@ import type { SafeMember, InternalThread, InternalMessageWithSender } from "@sha
 export default function InternalChat() {
   const { currentMember } = useUser();
   const { lang } = useLanguage();
+  const { setIsInChat } = useChat();
   const [partner, setPartner] = useState<SafeMember | null>(null);
   const [picking, setPicking] = useState(false);
   const [search, setSearch] = useState("");
+
+  // Hide the mobile tab bar on the entire internal chat page.
+  useEffect(() => {
+    setIsInChat(true);
+    return () => setIsInChat(false);
+  }, [setIsInChat]);
 
   const { data: threads = [], isLoading: threadsLoading } = useQuery<InternalThread[]>({
     queryKey: ["/api/internal-chat/threads"],
@@ -214,9 +223,18 @@ export default function InternalChat() {
                     <div className="flex items-center justify-between gap-2">
                       <p className={`text-xs truncate ${t.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
                         {t.lastMessage
-                          ? (t.lastMessage.content.trim().length > 0
-                              ? t.lastMessage.content
-                              : (lang === "de" ? "📎 Anhang" : "📎 Allegato"))
+                          ? (() => {
+                              if (t.lastMessage.messageType === "inventory_risk") {
+                                try {
+                                  const d = JSON.parse(t.lastMessage.content);
+                                  const urgentLabel = d.priority === "urgent" ? "⚠️ " : "📦 ";
+                                  return `${urgentLabel}${lang === "de" ? "Lagerrisiko" : "Rischio magazzino"}: ${d.productName ?? ""}`;
+                                } catch {}
+                              }
+                              return t.lastMessage.content.trim().length > 0
+                                ? t.lastMessage.content
+                                : (lang === "de" ? "📎 Anhang" : "📎 Allegato");
+                            })()
                           : ""}
                       </p>
                       {t.unreadCount > 0 && (
@@ -259,6 +277,109 @@ function MemberAvatar({ member }: { member: SafeMember }) {
         {member.name.slice(0, 2).toUpperCase()}
       </AvatarFallback>
     </Avatar>
+  );
+}
+
+interface RiskPayload {
+  type: string;
+  riskId: string;
+  productName: string;
+  flaggedQuantity: number;
+  unit: string;
+  riskReason: string | null;
+  qualityStatus: string;
+  note: string | null;
+  photoUrl: string | null;
+  priority: string;
+  reportedByName: string;
+}
+
+const QUALITY_COLORS: Record<string, string> = {
+  Premium: "text-emerald-600 dark:text-emerald-400",
+  OK: "text-sky-600 dark:text-sky-400",
+  Risk: "text-amber-600 dark:text-amber-400",
+  Bad: "text-red-600 dark:text-red-400",
+};
+
+function InventoryRiskCard({
+  m, lang, formatTime,
+}: {
+  m: InternalMessageWithSender;
+  own: boolean;
+  lang: string;
+  formatTime: (d: string | Date) => string;
+}) {
+  let d: RiskPayload | null = null;
+  try { d = JSON.parse(m.content); } catch {}
+  if (!d) return <p className="text-sm text-muted-foreground">{m.content}</p>;
+
+  const isUrgent = d.priority === "urgent";
+  const de = lang === "de";
+
+  const REASON_MAP: Record<string, string> = {
+    "Poorly Stored": de ? "Schlecht gelagert" : "Conservato male",
+    "Poor Quality": de ? "Schlechte Qualität" : "Scarsa qualità",
+    "Stored Too Long": de ? "Zu lange gelagert" : "Stoccato troppo a lungo",
+    "Damaged": de ? "Beschädigt" : "Danneggiato",
+    "Near Expiry": de ? "Bald ablaufend" : "In scadenza",
+    "Overstock": de ? "Überbestand" : "Sovrastoccaggio",
+    "Other": de ? "Sonstiges" : "Altro",
+  };
+  const QUALITY_LABEL: Record<string, string> = {
+    Premium: "Premium", OK: "OK",
+    Risk: de ? "Risiko" : "Rischio",
+    Bad: de ? "Schlecht" : "Scadente",
+  };
+
+  return (
+    <div
+      className={`max-w-[82%] md:max-w-[65%] rounded-2xl border overflow-hidden ${
+        isUrgent
+          ? "border-red-400 dark:border-red-500/70"
+          : "border-amber-300 dark:border-amber-500/50"
+      } bg-card`}
+      data-testid={`risk-card-${m.id}`}
+    >
+      {/* Header */}
+      <div className={`flex items-center gap-2 px-3 py-2 ${isUrgent ? "bg-red-500" : "bg-amber-500"}`}>
+        {isUrgent
+          ? <Siren className="h-4 w-4 text-white shrink-0" />
+          : <AlertTriangle className="h-4 w-4 text-white shrink-0" />}
+        <span className="text-white text-xs font-semibold truncate flex-1">
+          {isUrgent
+            ? (de ? "⚠️ DRINGENDES Lagerrisiko" : "⚠️ RISCHIO URGENTE magazzino")
+            : (de ? "Lagerrisiko gemeldet" : "Rischio magazzino segnalato")}
+        </span>
+        <span className="text-white/80 text-[10px] shrink-0">{formatTime(m.createdAt)}</span>
+      </div>
+
+      {/* Body */}
+      <div className="px-3 py-2.5 space-y-1.5">
+        <p className="text-sm font-semibold truncate">{d.productName}</p>
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+          <span>
+            <span className="font-medium text-foreground">{d.flaggedQuantity}</span>{d.unit ? ` ${pluralizeUnit(d.unit, d.flaggedQuantity)}` : ""}
+          </span>
+          {d.riskReason && (
+            <span>{REASON_MAP[d.riskReason] ?? d.riskReason}</span>
+          )}
+          <span className={QUALITY_COLORS[d.qualityStatus] ?? ""}>
+            {QUALITY_LABEL[d.qualityStatus] ?? d.qualityStatus}
+          </span>
+        </div>
+        {d.note && (
+          <p className="text-xs text-muted-foreground italic line-clamp-2">{d.note}</p>
+        )}
+        {d.photoUrl && (
+          <a href={d.photoUrl} target="_blank" rel="noreferrer">
+            <img src={d.photoUrl} alt="Foto" className="rounded-xl max-h-36 object-cover w-full mt-1" />
+          </a>
+        )}
+        <p className="text-[10px] text-muted-foreground pt-0.5">
+          {de ? "Gemeldet von" : "Segnalato da"}: <span className="font-medium">{d.reportedByName}</span>
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -431,6 +552,9 @@ function ChatView({
                     </AvatarFallback>
                   </Avatar>
                 )}
+                {m.messageType === "inventory_risk" ? (
+                  <InventoryRiskCard m={m} own={own} lang={lang} formatTime={formatTime} />
+                ) : (
                 <div
                   className={`max-w-[78%] md:max-w-[60%] rounded-2xl px-3.5 py-2 ${
                     own
@@ -463,6 +587,7 @@ function ChatView({
                     )}
                   </div>
                 </div>
+                )}
               </div>
             );
           })

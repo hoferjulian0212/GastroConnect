@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { formatOrderNumber, type DeliveryAssignmentWithDetails } from "@shared/schema";
 import { DELIVERY_STATUS_META, PROBLEM_TYPE_LABELS, StatusPill, mapsDirectionsUrl } from "./DeliveryStatus";
+import { pluralizeUnit } from "@/lib/units";
 
 const PROBLEM_OPTIONS = ["not_reachable", "refused", "damaged", "wrong_address", "traffic", "other"] as const;
 const REJECT_OPTIONS = ["no_time", "not_reachable", "refused", "damaged", "wrong_address", "traffic", "other"] as const;
@@ -378,7 +379,7 @@ export default function DriverDeliveryDetail() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{item.productName}</p>
                 <p className="text-xs text-muted-foreground">
-                  {item.quantity}x {item.productUnit ?? ""}
+                  {item.quantity}{item.productUnit ? ` ${pluralizeUnit(item.productUnit, item.quantity)}` : "x"}
                 </p>
               </div>
             </div>

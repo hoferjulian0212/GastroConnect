@@ -14,6 +14,7 @@ import { ProductImage } from "@/components/ProductImage";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import { InventoryRiskWizard } from "@/components/InventoryRiskWizard";
 import { queryClient } from "@/lib/queryClient";
+import { pluralizeUnit } from "@/lib/units";
 import type { Product } from "@shared/schema";
 
 export default function WarehouseStock() {
@@ -87,11 +88,11 @@ export default function WarehouseStock() {
               </div>
             </div>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2" data-testid="list-warehouse-stock">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-w-0" data-testid="list-warehouse-stock">
               {visible.map((p) => (
                 <div
                   key={p.id}
-                  className="flex items-center gap-3 p-3 rounded-2xl border border-border bg-card"
+                  className="flex items-center gap-2.5 md:gap-3 p-3 rounded-2xl border border-border bg-card min-w-0 max-w-full overflow-hidden"
                   data-testid={`card-stock-${p.id}`}
                 >
                   <ProductImage src={p.imageUrl} className="h-12 w-12 rounded-xl shrink-0" />
@@ -99,7 +100,7 @@ export default function WarehouseStock() {
                     <p className="font-medium truncate" data-testid={`text-product-name-${p.id}`}>{p.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-sm text-muted-foreground tabular-nums" data-testid={`text-stock-${p.id}`}>
-                        {p.stockQuantity ?? 0} {p.unit}
+                        {p.stockQuantity ?? 0} {pluralizeUnit(p.unit, p.stockQuantity ?? 0)}
                       </span>
                       {isLow(p) && (
                         <Badge variant="outline" className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[11px]">
@@ -111,11 +112,13 @@ export default function WarehouseStock() {
                   <Button
                     size="sm"
                     onClick={() => setFlagProductId(p.id)}
-                    className="shrink-0 bg-white text-black hover:bg-white/90 dark:bg-white dark:text-black dark:hover:bg-white/90 border border-black/10 dark:border-black/10 shadow-sm"
+                    className="shrink-0 px-2.5 sm:px-3 bg-white text-black hover:bg-white/90 dark:bg-white dark:text-black dark:hover:bg-white/90 border border-black/10 dark:border-black/10 shadow-sm"
+                    aria-label={t("inventoryRisk", "reportRisk")}
                     data-testid={`button-flag-${p.id}`}
                   >
-                    <AlertTriangle className="h-4 w-4 mr-1.5" />
-                    {t("inventoryRisk", "reportRisk")}
+                    <AlertTriangle className="h-4 w-4 sm:mr-1.5" />
+                    <span className="hidden sm:inline">{t("inventoryRisk", "reportRisk")}</span>
+                    <span className="sm:hidden ml-1">{lang === "de" ? "Melden" : "Segnala"}</span>
                   </Button>
                 </div>
               ))}

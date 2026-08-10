@@ -421,7 +421,7 @@ export default function SupplierHomeMobile({
               <div className="grid grid-cols-2 gap-2">{[1,2,3,4].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
               <Skeleton className="h-40 rounded-xl" />
             </div>
-          ) : detailedStats && (detailedStats.totalOrders > 0 || detailedStats.topProducts?.length > 0) ? (
+          ) : detailedStats ? (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 {([

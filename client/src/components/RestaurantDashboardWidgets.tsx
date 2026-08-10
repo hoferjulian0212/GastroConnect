@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useT } from "@/lib/translations";
+import { getMessageReplyPreview } from "@/lib/messageReplyPreview";
 import type { OrderWithDetails, ConversationWithUser, ComplaintWithDetails } from "@shared/schema";
 
 const CARD_BASE = "h-full md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]";
@@ -304,7 +305,7 @@ export function OffeneUnterhaltungenWidget({ restaurantId, lang }: { restaurantI
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{name}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{c.lastMessage?.content || ""}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{c.lastMessage ? getMessageReplyPreview(c.lastMessage, lang) : ""}</p>
                   </div>
                   <Badge variant="outline" className="bg-primary/10 text-primary text-[11px] tabular-nums shrink-0" data-testid={`badge-unread-${c.id}`}>
                     {c.unreadCount}

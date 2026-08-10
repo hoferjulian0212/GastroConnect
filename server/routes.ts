@@ -1078,7 +1078,11 @@ export async function registerRoutes(
       const schema = z.object({
         name: z.string().min(1).max(120).optional(),
         phone: z.string().max(60).optional().nullable(),
-        profileImageUrl: z.string().max(1000).optional().nullable(),
+        // Only freshly-uploaded object paths are accepted — never arbitrary
+        // URLs or guessed storage paths outside the uploads area.
+        profileImageUrl: z.string().max(1000)
+          .regex(/^\/objects\/uploads\//, "invalid image path")
+          .optional().nullable(),
       }).strict();
       const data = schema.parse(req.body);
       const updated = await storage.updateMember(req.auth.member.id, {
@@ -2466,11 +2470,67 @@ export async function registerRoutes(
       if (!product || product.supplierId !== req.auth.organizationId) {
         return res.status(400).json({ error: "Invalid product" });
       }
+      const currentStock = product.stockQuantity ?? 0;
+      if (currentStock <= 0) {
+        return res.status(400).json({ error: "Kein Bestand vorhanden – Risikomeldung nicht möglich." });
+      }
+      if (validated.flaggedQuantity != null && validated.flaggedQuantity > currentStock) {
+        return res.status(400).json({ error: `Gemeldete Menge (${validated.flaggedQuantity}) überschreitet den aktuellen Bestand (${currentStock} ${product.unit ?? ""}).` });
+      }
       const created = await storage.createInventoryRiskRecord({
         ...validated,
         supplierId: req.auth.organizationId,
         createdBy: req.auth.memberId,
       });
+
+      // Notify all managers / vertreter / admins via internal chat card.
+      try {
+        const orgMembers = await storage.getMembers(req.auth.organizationId);
+        const recipients = orgMembers.filter(
+          (m) => m.id !== req.auth!.memberId &&
+            ["admin", "manager", "vertreter"].includes(m.role)
+        );
+        const isUrgent = (validated.priority ?? "normal") === "urgent";
+        const msgContent = JSON.stringify({
+          type: "inventory_risk",
+          riskId: created.id,
+          productId: validated.productId,
+          productName: product.name,
+          flaggedQuantity: validated.flaggedQuantity,
+          unit: product.unit ?? "",
+          riskReason: validated.riskReason ?? null,
+          qualityStatus: validated.qualityStatus,
+          note: validated.note ?? null,
+          photoUrl: validated.photoUrl ?? null,
+          priority: validated.priority ?? "normal",
+          reportedByName: req.auth!.member.name,
+        });
+        for (const recipient of recipients) {
+          await storage.createInternalMessage({
+            supplierId: req.auth!.organizationId,
+            senderMemberId: req.auth!.memberId,
+            recipientMemberId: recipient.id,
+            content: msgContent,
+            messageType: "inventory_risk",
+            attachmentUrl: null,
+            attachmentName: null,
+          });
+          const notifTitle = isUrgent
+            ? `⚠️ Dringendes Lagerrisiko: ${product.name}`
+            : `Lagerrisiko: ${product.name}`;
+          const notifMsg = `${validated.flaggedQuantity} ${product.unit ?? ""} · ${req.auth!.member.name}`;
+          await createNotificationWithPush({
+            userId: req.auth!.organizationId,
+            type: "internal_message",
+            title: notifTitle,
+            message: notifMsg,
+            referenceId: created.id,
+          }, req.auth!.org.role === "restaurant" ? "restaurant" : "supplier");
+        }
+      } catch (err) {
+        console.error("[inventory-risk] notification dispatch failed:", err);
+      }
+
       res.status(201).json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -3019,6 +3079,112 @@ export async function registerRoutes(
       res.json(orders);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch order history" });
+    }
+  });
+
+  // NOTE: /export must be registered BEFORE /api/orders/:id so Express does not
+  // swallow "export" as an order id and return {"error":"Order not found"}.
+  app.get("/api/orders/export", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const { format, dateFrom, dateTo, supplierId, restaurantId } = req.query as Record<string, string>;
+      const userId = req.auth.organizationId;
+      const role = req.auth.org.role;
+      if (!format) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      const allOrders = role === "restaurant"
+        ? await storage.getOrdersByRestaurant(userId, { status: ["delivered", "confirmed", "in_delivery", "partially_confirmed", "cancelled"] })
+        : await storage.getOrdersBySupplier(userId, { status: ["delivered", "confirmed", "in_delivery", "partially_confirmed", "cancelled"] });
+
+      let filtered = allOrders;
+
+      if (dateFrom) {
+        const from = new Date(dateFrom);
+        filtered = filtered.filter(o => new Date(o.createdAt) >= from);
+      }
+      if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        filtered = filtered.filter(o => new Date(o.createdAt) <= to);
+      }
+      if (supplierId && role === "restaurant") {
+        filtered = filtered.filter(o => o.supplierId === supplierId);
+      }
+      if (restaurantId && role === "supplier") {
+        filtered = filtered.filter(o => o.restaurantId === restaurantId);
+      }
+
+      const escapeCsv = (val: string) => {
+        if (/[;\n\r"]/.test(val)) return `"${val.replace(/"/g, '""')}"`;
+        if (/^[=+\-@]/.test(val)) return `'${val}`;
+        return val;
+      };
+
+      const ordersWithItems = filtered.map(order => {
+        const partner = role === "restaurant"
+          ? (order.supplier?.companyName || order.supplier?.name || "Unbekannt")
+          : (order.restaurant?.companyName || order.restaurant?.name || "Unbekannt");
+        return { ...order, partnerName: partner };
+      });
+
+      const statusLabels: Record<string, string> = {
+        pending: "Ausstehend",
+        confirmed: "Bestätigt",
+        partially_confirmed: "Teilbestätigt",
+        in_delivery: "In Lieferung",
+        delivered: "Geliefert",
+        cancelled: "Storniert",
+      };
+
+      if (format === "csv") {
+        const partnerLabel = role === "restaurant" ? "Lieferant" : "Restaurant";
+        const header = `Bestell-Nr;${partnerLabel};Status;Datum;Lieferdatum;Artikel;Menge;Einzelpreis;Gesamt;Bestellsumme;Notizen`;
+        const rows: string[] = [];
+
+        for (const order of ordersWithItems) {
+          const dateStr = new Date(order.createdAt).toLocaleDateString("de-DE");
+          const deliveryDate = order.requestedDeliveryDate || "-";
+          const orderItems = order.items || [];
+          if (orderItems.length === 0) {
+            rows.push([formatOrderNumber(order), escapeCsv(order.partnerName), statusLabels[order.status] || order.status, dateStr, deliveryDate, "-", "-", "-", "-", `${order.totalAmount}€`, escapeCsv(order.notes || "")].join(";"));
+          } else {
+            orderItems.forEach((item: any, idx: number) => {
+              rows.push([
+                idx === 0 ? formatOrderNumber(order) : "",
+                idx === 0 ? escapeCsv(order.partnerName) : "",
+                idx === 0 ? (statusLabels[order.status] || order.status) : "",
+                idx === 0 ? dateStr : "",
+                idx === 0 ? deliveryDate : "",
+                escapeCsv(item.productName || item.product?.name || ""),
+                String(item.quantity),
+                `${item.unitPrice}€`,
+                `${item.totalPrice}€`,
+                idx === 0 ? `${order.totalAmount}€` : "",
+                idx === 0 ? escapeCsv(order.notes || "") : ""
+              ].join(";"));
+            });
+          }
+        }
+
+        const csvContent = "\uFEFF" + header + "\n" + rows.join("\n");
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="Bestellungen_Export_${new Date().toISOString().slice(0, 10)}.csv"`);
+        return res.send(csvContent);
+      }
+
+      if (format === "pdf") {
+        const pdfBuffer = await generateOrdersExportPDF(ordersWithItems, role, statusLabels);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="Bestellungen_Export_${new Date().toISOString().slice(0, 10)}.pdf"`);
+        return res.send(pdfBuffer);
+      }
+
+      res.status(400).json({ error: "Unsupported format" });
+    } catch (error) {
+      console.error("Export error:", error);
+      res.status(500).json({ error: "Export failed" });
     }
   });
 
@@ -7707,110 +7873,6 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Update WhatsApp request error:", error);
       res.status(500).json({ error: "Failed to update WhatsApp request" });
-    }
-  });
-
-  app.get("/api/orders/export", async (req, res) => {
-    try {
-      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
-      const { format, dateFrom, dateTo, supplierId, restaurantId } = req.query as Record<string, string>;
-      const userId = req.auth.organizationId;
-      const role = req.auth.org.role;
-      if (!format) {
-        return res.status(400).json({ error: "Missing required parameters" });
-      }
-
-      const allOrders = role === "restaurant"
-        ? await storage.getOrdersByRestaurant(userId, { status: ["delivered", "confirmed", "in_delivery", "partially_confirmed", "cancelled"] })
-        : await storage.getOrdersBySupplier(userId, { status: ["delivered", "confirmed", "in_delivery", "partially_confirmed", "cancelled"] });
-
-      let filtered = allOrders;
-
-      if (dateFrom) {
-        const from = new Date(dateFrom);
-        filtered = filtered.filter(o => new Date(o.createdAt) >= from);
-      }
-      if (dateTo) {
-        const to = new Date(dateTo);
-        to.setHours(23, 59, 59, 999);
-        filtered = filtered.filter(o => new Date(o.createdAt) <= to);
-      }
-      if (supplierId && role === "restaurant") {
-        filtered = filtered.filter(o => o.supplierId === supplierId);
-      }
-      if (restaurantId && role === "supplier") {
-        filtered = filtered.filter(o => o.restaurantId === restaurantId);
-      }
-
-      const escapeCsv = (val: string) => {
-        if (/[;\n\r"]/.test(val)) return `"${val.replace(/"/g, '""')}"`;
-        if (/^[=+\-@]/.test(val)) return `'${val}`;
-        return val;
-      };
-
-      const ordersWithItems = filtered.map(order => {
-        const partner = role === "restaurant"
-          ? (order.supplier?.companyName || order.supplier?.name || "Unbekannt")
-          : (order.restaurant?.companyName || order.restaurant?.name || "Unbekannt");
-        return { ...order, partnerName: partner };
-      });
-
-      const statusLabels: Record<string, string> = {
-        pending: "Ausstehend",
-        confirmed: "Bestätigt",
-        partially_confirmed: "Teilbestätigt",
-        in_delivery: "In Lieferung",
-        delivered: "Geliefert",
-        cancelled: "Storniert",
-      };
-
-      if (format === "csv") {
-        const partnerLabel = role === "restaurant" ? "Lieferant" : "Restaurant";
-        const header = `Bestell-Nr;${partnerLabel};Status;Datum;Lieferdatum;Artikel;Menge;Einzelpreis;Gesamt;Bestellsumme;Notizen`;
-        const rows: string[] = [];
-
-        for (const order of ordersWithItems) {
-          const dateStr = new Date(order.createdAt).toLocaleDateString("de-DE");
-          const deliveryDate = order.requestedDeliveryDate || "-";
-          const orderItems = order.items || [];
-          if (orderItems.length === 0) {
-            rows.push([formatOrderNumber(order), escapeCsv(order.partnerName), statusLabels[order.status] || order.status, dateStr, deliveryDate, "-", "-", "-", "-", `${order.totalAmount}€`, escapeCsv(order.notes || "")].join(";"));
-          } else {
-            orderItems.forEach((item: any, idx: number) => {
-              rows.push([
-                idx === 0 ? formatOrderNumber(order) : "",
-                idx === 0 ? escapeCsv(order.partnerName) : "",
-                idx === 0 ? (statusLabels[order.status] || order.status) : "",
-                idx === 0 ? dateStr : "",
-                idx === 0 ? deliveryDate : "",
-                escapeCsv(item.productName || item.product?.name || ""),
-                String(item.quantity),
-                `${item.unitPrice}€`,
-                `${item.totalPrice}€`,
-                idx === 0 ? `${order.totalAmount}€` : "",
-                idx === 0 ? escapeCsv(order.notes || "") : ""
-              ].join(";"));
-            });
-          }
-        }
-
-        const csvContent = "\uFEFF" + header + "\n" + rows.join("\n");
-        res.setHeader("Content-Type", "text/csv; charset=utf-8");
-        res.setHeader("Content-Disposition", `attachment; filename="Bestellungen_Export_${new Date().toISOString().slice(0, 10)}.csv"`);
-        return res.send(csvContent);
-      }
-
-      if (format === "pdf") {
-        const pdfBuffer = await generateOrdersExportPDF(ordersWithItems, role, statusLabels);
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `attachment; filename="Bestellungen_Export_${new Date().toISOString().slice(0, 10)}.pdf"`);
-        return res.send(pdfBuffer);
-      }
-
-      res.status(400).json({ error: "Unsupported format" });
-    } catch (error) {
-      console.error("Export error:", error);
-      res.status(500).json({ error: "Export failed" });
     }
   });
 

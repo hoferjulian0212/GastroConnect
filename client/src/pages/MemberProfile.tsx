@@ -101,11 +101,12 @@ export default function MemberProfile() {
         contentType: file.type,
       });
       const { uploadURL, objectPath } = await uploadRes.json();
-      await fetch(uploadURL, {
+      const putRes = await fetch(uploadURL, {
         method: "PUT",
         body: file,
         headers: { "Content-Type": file.type },
       });
+      if (!putRes.ok) throw new Error(`upload failed: ${putRes.status}`);
       const res = await apiRequest("PATCH", "/api/members/me", { profileImageUrl: objectPath });
       const updated = (await res.json()) as Member;
       applyUpdated(updated);

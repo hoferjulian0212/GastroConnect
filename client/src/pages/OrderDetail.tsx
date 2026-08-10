@@ -29,6 +29,7 @@ import { formatOrderNumber, dateChangeReasonLabel, type OrderWithDetails, type O
 import { DeliveryTracking } from "@/components/DeliveryTracking";
 import { AssignDriverDialog } from "@/components/AssignDriverDialog";
 import { HeroPortal } from "@/context/HeroContext";
+import { pluralizeUnit } from "@/lib/units";
 
 export default function OrderDetail() {
   const [, setLocation] = useLocation();
@@ -1091,7 +1092,7 @@ export default function OrderDetail() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.productName}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {item.quantity}{item.productUnit ? ` ${item.productUnit}` : "x"} · {Number(item.unitPrice).toFixed(2)}€ {lang === "de" ? "pro Einheit" : "per unità"}
+                          {item.quantity}{item.productUnit ? ` ${pluralizeUnit(item.productUnit, item.quantity)}` : "x"} · {Number(item.unitPrice).toFixed(2)}€ {lang === "de" ? "pro Einheit" : "per unità"}
                         </p>
                         {hasPartial && (
                           <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">

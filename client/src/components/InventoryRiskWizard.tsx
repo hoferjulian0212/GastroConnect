@@ -13,9 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { ProductImage } from "@/components/ProductImage";
 import {
   Camera, X, ChevronLeft, Check, Loader2, Package, Search,
-  AlertTriangle, Clock, ThermometerSnowflake, PackageX, CalendarClock, Boxes, HelpCircle,
+  AlertTriangle, Clock, ThermometerSnowflake, PackageX, CalendarClock, Boxes, HelpCircle, Siren,
 } from "lucide-react";
 import { INVENTORY_RISK_QUALITY, INVENTORY_RISK_REASONS } from "@shared/schema";
+import { pluralizeUnit } from "@/lib/units";
 import type { Product, InventoryRiskReason } from "@shared/schema";
 
 type Step = "photo" | "product" | "reason" | "details" | "review";
@@ -65,6 +66,7 @@ export function InventoryRiskWizard({ open, onOpenChange, products, defaultProdu
   const [flaggedQuantity, setFlaggedQuantity] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [note, setNote] = useState("");
+  const [priority, setPriority] = useState<"normal" | "urgent">("normal");
 
   const reset = () => {
     if (photoPreview) URL.revokeObjectURL(photoPreview);
@@ -79,6 +81,7 @@ export function InventoryRiskWizard({ open, onOpenChange, products, defaultProdu
     setFlaggedQuantity("");
     setExpiryDate("");
     setNote("");
+    setPriority("normal");
   };
 
   useEffect(() => {
@@ -150,6 +153,7 @@ export function InventoryRiskWizard({ open, onOpenChange, products, defaultProdu
         riskReason: reason || null,
         note: note.trim() || null,
         photoUrl: photoUrl || null,
+        priority,
       };
       return apiRequest("POST", "/api/inventory-risks", payload);
     },
@@ -166,11 +170,16 @@ export function InventoryRiskWizard({ open, onOpenChange, products, defaultProdu
   const isFirst = stepIndex === 0;
   const isLast = step === "review";
 
+  const currentStock = selectedProduct?.stockQuantity ?? 0;
+  const fqNum = Number(flaggedQuantity);
+  const quantityExceedsStock = fqNum > currentStock;
+  const stockIsEmpty = !!selectedProduct && currentStock <= 0;
+
   const canNext =
     (step === "photo" && !uploading) ||
     (step === "product" && !!productId) ||
     (step === "reason" && !!reason) ||
-    (step === "details" && Number(flaggedQuantity) > 0) ||
+    (step === "details" && fqNum > 0 && !quantityExceedsStock && !stockIsEmpty) ||
     step === "review";
 
   const goNext = () => {
@@ -371,18 +380,38 @@ export function InventoryRiskWizard({ open, onOpenChange, products, defaultProdu
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">{t("inventoryRisk", "flaggedQuantity")}</label>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  value={flaggedQuantity}
-                  onChange={(e) => setFlaggedQuantity(e.target.value)}
-                  placeholder="0"
-                  className="h-12 text-base"
-                  data-testid="input-risk-quantity"
-                />
-                {selectedProduct?.unit && (
-                  <p className="text-xs text-muted-foreground">{selectedProduct.unit}</p>
+                {stockIsEmpty ? (
+                  <div className="rounded-xl border border-red-200 bg-red-50 dark:border-red-800/40 dark:bg-red-950/20 px-3 py-3 text-sm text-red-700 dark:text-red-400" data-testid="risk-quantity-stock-empty">
+                    {lang === "de"
+                      ? `Aktueller Bestand: 0 ${selectedProduct?.unit ?? ""} – Risikomeldung nicht möglich.`
+                      : `Scorta attuale: 0 ${selectedProduct?.unit ?? ""} – segnalazione non possibile.`}
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={currentStock}
+                      value={flaggedQuantity}
+                      onChange={(e) => setFlaggedQuantity(e.target.value)}
+                      placeholder="0"
+                      className={`h-12 text-base ${quantityExceedsStock ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                      data-testid="input-risk-quantity"
+                    />
+                    {selectedProduct?.unit && !quantityExceedsStock && (
+                      <p className="text-xs text-muted-foreground">
+                        {lang === "de" ? "Aktueller Bestand" : "Scorta attuale"}: {currentStock} {pluralizeUnit(selectedProduct.unit, currentStock)}
+                      </p>
+                    )}
+                    {quantityExceedsStock && (
+                      <p className="text-xs text-red-600 dark:text-red-400" data-testid="risk-quantity-error">
+                        {lang === "de"
+                          ? `Menge darf den aktuellen Bestand (${currentStock} ${pluralizeUnit(selectedProduct?.unit, currentStock)}) nicht überschreiten.`
+                          : `La quantità non può superare la scorta attuale (${currentStock} ${pluralizeUnit(selectedProduct?.unit, currentStock)}).`}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
               <div className="space-y-1.5">
@@ -409,11 +438,39 @@ export function InventoryRiskWizard({ open, onOpenChange, products, defaultProdu
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold truncate">{selectedProduct?.name ?? "—"}</div>
                   <div className="text-xs text-muted-foreground">
-                    {flaggedQuantity || 0} {selectedProduct?.unit ?? ""}
+                    {flaggedQuantity || 0} {pluralizeUnit(selectedProduct?.unit, Number(flaggedQuantity) || 0)}
                     {reason ? ` · ${reasonLabel(reason)}` : ""}
                   </div>
                 </div>
               </div>
+
+              {/* Urgency / Dringlichkeit */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t("inventoryRisk", "priorityLabel")}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPriority("normal")}
+                    className={`py-2.5 rounded-xl border text-sm font-medium transition-colors ${priority === "normal" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover-elevate"}`}
+                    data-testid="risk-priority-normal"
+                  >
+                    {t("inventoryRisk", "priorityNormal")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPriority("urgent")}
+                    className={`py-2.5 rounded-xl border text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${priority === "urgent" ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400" : "border-border text-muted-foreground hover-elevate"}`}
+                    data-testid="risk-priority-urgent"
+                  >
+                    <Siren className="h-3.5 w-3.5" />
+                    {t("inventoryRisk", "priorityUrgent")}
+                  </button>
+                </div>
+                {priority === "urgent" && (
+                  <p className="text-xs text-red-600 dark:text-red-400">{t("inventoryRisk", "priorityUrgentHint")}</p>
+                )}
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">{t("inventoryRisk", "note")}</label>
                 <Textarea
