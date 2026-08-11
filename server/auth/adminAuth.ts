@@ -4,6 +4,7 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
+import { createClerkClient } from "@clerk/express";
 import { storage } from "../storage";
 import { requirePlatformAdmin, loadAdminAuth } from "./middleware";
 import { hashPassword, verifyPassword, validatePasswordPolicy } from "./passwords";
@@ -11,6 +12,27 @@ import { generateToken, INVITE_TTL_MS } from "./tokens";
 import { sendEmail, renderNotificationEmail, isEmailConfigured } from "../emailService";
 import type { PlatformAdmin } from "@shared/schema";
 import { updateErrorLogStatusSchema } from "@shared/schema";
+
+/**
+ * Ensures a Clerk user account exists for the given email + password.
+ * Idempotent: creates if missing, updates the password if already present.
+ * Only called from dev-only bootstrap functions (all guarded by NODE_ENV !== 'production').
+ */
+async function ensureClerkUser(email: string, password: string): Promise<void> {
+  try {
+    const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+    const { data: existing } = await clerk.users.getUserList({ emailAddress: [email] });
+    if (existing.length > 0) {
+      await clerk.users.updateUser(existing[0].id, { password, skipPasswordChecks: true });
+    } else {
+      await clerk.users.createUser({ emailAddress: [email], password, skipPasswordChecks: true });
+    }
+  } catch (err: any) {
+    // Non-fatal: DB member is the source of truth; Clerk is the identity provider.
+    // Log and continue so a Clerk outage doesn't prevent server startup.
+    console.warn(`[demo] Clerk user sync failed for ${email}:`, err?.errors?.[0]?.message ?? err?.message ?? err);
+  }
+}
 
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -127,6 +149,7 @@ export async function bootstrapDemoWarehouseMember(): Promise<void> {
       });
       await storage.updateMemberAuth(existing.id, { passwordHash, emailVerifiedAt: new Date() });
       await ensureDemoInvitationAccepted(existing.id);
+      await ensureClerkUser(DEMO_WAREHOUSE_EMAIL, DEMO_WAREHOUSE_PASSWORD);
       console.log(`[demo] warehouse member updated (${DEMO_WAREHOUSE_EMAIL}).`);
     } else {
       const member = await storage.createMember({
@@ -137,6 +160,7 @@ export async function bootstrapDemoWarehouseMember(): Promise<void> {
       });
       await storage.updateMemberAuth(member.id, { passwordHash, emailVerifiedAt: new Date() });
       await ensureDemoInvitationAccepted(member.id);
+      await ensureClerkUser(DEMO_WAREHOUSE_EMAIL, DEMO_WAREHOUSE_PASSWORD);
       console.log(`[demo] warehouse member created (${DEMO_WAREHOUSE_EMAIL}).`);
     }
   } catch (err) {
@@ -177,6 +201,7 @@ export async function bootstrapDemoDriverMembers(): Promise<void> {
         await storage.updateMember(existing.id, { name: d.name, role: "driver" });
         await storage.updateMemberAuth(existing.id, { passwordHash, emailVerifiedAt: new Date() });
         await ensureDemoInvitationAccepted(existing.id);
+        await ensureClerkUser(d.email, DEMO_DRIVER_PASSWORD);
       } else {
         const member = await storage.createMember({
           organizationId: org.id,
@@ -186,6 +211,7 @@ export async function bootstrapDemoDriverMembers(): Promise<void> {
         });
         await storage.updateMemberAuth(member.id, { passwordHash, emailVerifiedAt: new Date() });
         await ensureDemoInvitationAccepted(member.id);
+        await ensureClerkUser(d.email, DEMO_DRIVER_PASSWORD);
       }
     }
     console.log(`[demo] driver members ready (${drivers.map((d) => d.email).join(", ")}).`);
@@ -247,6 +273,7 @@ export async function bootstrapDemoRoleMembers(): Promise<void> {
       const passwordHash = await hashPassword(login.password);
       await storage.updateMemberAuth(member.id, { passwordHash, emailVerifiedAt: new Date() });
       await ensureDemoInvitationAccepted(member.id);
+      await ensureClerkUser(login.email, login.password);
       ready.push(login.email);
     }
     if (ready.length) {
