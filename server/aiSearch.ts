@@ -1217,18 +1217,31 @@ function buildTools(userId: string, role: Role) {
       .where(eq(costSettings.restaurantId, userId))
       .limit(1);
     const target = setting ? parseFloat(setting.target) : null;
+    // Build the per-month rows first so we can compute vsLastMonth comparisons.
+    const monthRows = months.map((m) => {
+      const spend = Math.round((spendByMonth[m.label] || 0) * 100) / 100;
+      const guests = guestsByMonth[m.label] || 0;
+      const costPerGuest = guests > 0 ? Math.round((spend / guests) * 100) / 100 : null;
+      return { month: m.label, spend, guests, costPerGuest };
+    });
     return {
       targetCostPerGuest: target,
-      months: months.map((m) => {
-        const spend = Math.round((spendByMonth[m.label] || 0) * 100) / 100;
-        const guests = guestsByMonth[m.label] || 0;
-        const costPerGuest = guests > 0 ? Math.round((spend / guests) * 100) / 100 : null;
+      months: monthRows.map((row, i) => {
+        const prev = i > 0 ? monthRows[i - 1] : null;
+        // Percent change in cost-per-guest vs the preceding month in this window.
+        // null when either month has no guest count (can't compute a meaningful ratio).
+        const vsLastMonth =
+          prev && prev.costPerGuest !== null && prev.costPerGuest > 0 && row.costPerGuest !== null
+            ? Math.round(((row.costPerGuest - prev.costPerGuest) / prev.costPerGuest) * 1000) / 10
+            : null;
         return {
-          month: m.label,
-          spend,
-          guests,
-          costPerGuest,
-          overTarget: target !== null && costPerGuest !== null ? costPerGuest > target : null,
+          month: row.month,
+          spend: row.spend,
+          guests: row.guests,
+          costPerGuest: row.costPerGuest,
+          overTarget: target !== null && row.costPerGuest !== null ? row.costPerGuest > target : null,
+          // Positive = cost rose vs prior month; negative = cost fell. null = no prior data.
+          vsLastMonth,
         };
       }),
       note: !setting ? "No target cost configured — set it in cost analysis settings." : undefined,
@@ -1551,7 +1564,7 @@ function buildTools(userId: string, role: Role) {
             function: {
               name: "get_cost_analysis",
               description:
-                "Show monthly food cost per guest (Wareneinsatz pro Gast) for the last 3 months, including spend, overnight-stay counts, computed cost-per-guest, and whether the restaurant is over its target. Use for questions like 'what is my food cost per guest this month?', 'am I within my cost target?', 'how has my food cost trended?', 'wie hoch ist mein Wareneinsatz pro Gast?'. No parameters required.",
+                "Show monthly food cost per guest (Wareneinsatz pro Gast) for the last 3 months, including spend, overnight-stay counts, computed cost-per-guest, whether the restaurant is over its target, and a vsLastMonth field (percent change in cost-per-guest vs the preceding month — positive means costs rose, negative means costs fell, null means no prior data). Use for questions like 'what is my food cost per guest this month?', 'am I within my cost target?', 'how does my food cost compare to last month?', 'did my food cost go up or down?', 'how has my food cost trended?', 'wie hoch ist mein Wareneinsatz pro Gast?', 'hat sich mein Wareneinsatz verbessert?'. No parameters required.",
               parameters: { type: "object", properties: {} },
             },
           },
@@ -1609,7 +1622,7 @@ function systemPrompt(role: Role, lang: string): string {
       ? [
           `You can also help with: complaints (list_complaints), spending analysis (get_spending_summary), food-cost-per-guest analysis (get_cost_analysis), most-ordered products (get_top_products), unread messages (get_unread_messages), promotions from their suppliers (get_promotions), product/price lookups (search_products), delivery weekdays per supplier (get_delivery_schedule), and the full contents of a specific order (get_order_details).`,
           `For spending questions, default to the last 30 days unless the user specifies otherwise.`,
-          `For food cost / Wareneinsatz questions, call get_cost_analysis — it returns monthly spend, guest counts, cost-per-guest and target comparison for the last 3 months.`,
+          `For food cost / Wareneinsatz questions, call get_cost_analysis — it returns monthly spend, guest counts, cost-per-guest, target comparison, and a vsLastMonth percent-change field for each month. When vsLastMonth is available, always narrate the trend (e.g. "your food cost per guest fell 8% vs last month").`,
         ]
       : [
           `You can also help with: complaints from restaurants (list_complaints), unread messages (get_unread_messages), own promotions (get_promotions), low-stock products (get_low_stock), active inventory risk records (get_inventory_risk), revenue by customer (get_revenue_by_customer), best-selling products (get_top_products), catalog lookups (search_products), configured delivery days per customer (get_delivery_schedule), and the full contents of a specific order (get_order_details).`,
