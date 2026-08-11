@@ -19,7 +19,8 @@ import { runSyncForConnection, startErpSyncScheduler, testErpConnection, ErpSync
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
 import { sendEmail, renderNotificationEmail } from "./emailService";
 import { registerAuthRoutes } from "./auth/routes";
-import { registerAdminAuthRoutes, bootstrapPlatformAdmin, bootstrapDemoWarehouseMember, bootstrapDemoDriverMembers, bootstrapDemoRoleMembers } from "./auth/adminAuth";
+import { createClerkClient } from "@clerk/express";
+import { registerAdminAuthRoutes, bootstrapPlatformAdmin, bootstrapDemoWarehouseMember, bootstrapDemoDriverMembers, bootstrapDemoRoleMembers, DEMO_ROLE_LOGINS, DEMO_WAREHOUSE_EMAIL, DEMO_DRIVER_EMAIL, DEMO_DRIVER_PASSWORD, DEMO_WAREHOUSE_PASSWORD } from "./auth/adminAuth";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
@@ -608,6 +609,45 @@ export async function registerRoutes(
   registerAuthRoutes(app);
   // Platform admin panel (email + password auth + admin CRUD)
   registerAdminAuthRoutes(app);
+
+  // ── Demo sign-in token (development only) ────────────────────────────────
+  // Creates a one-time Clerk sign-in token for a known demo email so the
+  // frontend can sign in instantly without email/device verification.
+  // Hard-blocked in production; the demo email list is the whitelist.
+  app.post("/api/demo-login", async (req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(404).json({ error: "not_found" });
+    }
+    const { email } = req.body ?? {};
+    if (typeof email !== "string") {
+      return res.status(400).json({ error: "email_required" });
+    }
+    // Build the full demo whitelist (role logins + warehouse + drivers).
+    const allowed = new Set<string>([
+      ...DEMO_ROLE_LOGINS.map((l) => l.email),
+      DEMO_WAREHOUSE_EMAIL,
+      DEMO_DRIVER_EMAIL,
+      "fahrer2@frische-produkte.de",
+    ]);
+    if (!allowed.has(email)) {
+      return res.status(403).json({ error: "not_a_demo_account" });
+    }
+    try {
+      const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+      const { data: users } = await clerk.users.getUserList({ emailAddress: [email] });
+      if (!users.length) {
+        return res.status(404).json({ error: "clerk_user_not_found" });
+      }
+      const token = await clerk.signInTokens.createSignInToken({
+        userId: users[0].id,
+        expiresInSeconds: 60,
+      });
+      return res.json({ token: token.token });
+    } catch (err: any) {
+      console.error("[demo-login] failed:", err?.errors ?? err?.message ?? err);
+      return res.status(500).json({ error: "token_creation_failed" });
+    }
+  });
 
   // Client-side error reporting. Public + write-rate-limited so the browser can
   // record frontend crashes for platform admins to inspect later. Best-effort:

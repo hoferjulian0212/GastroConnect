@@ -105,6 +105,7 @@ import Help from "@/pages/Help";
 import Team from "@/pages/Team";
 import MemberProfile from "@/pages/MemberProfile";
 import { FirstTimeProfileDialog } from "@/components/FirstTimeProfileDialog";
+import { DemoLoginButtons } from "@/components/DemoLoginButtons";
 import { can } from "@shared/permissions";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { HelpButton } from "@/components/HelpButton";
@@ -1079,9 +1080,11 @@ function stripBase(path: string): string {
 }
 
 function SignInPage() {
+  const isDev = import.meta.env.DEV || import.meta.env.MODE !== "production";
   return (
-    <div className="min-h-dvh bg-[#161921] flex items-center justify-center px-4">
+    <div className="min-h-dvh bg-[#161921] flex flex-col items-center justify-center px-4 py-8 gap-0">
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      {isDev && <DemoLoginButtons />}
     </div>
   );
 }
