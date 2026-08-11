@@ -7,7 +7,11 @@
  * verification code required.
  */
 import { useState } from "react";
-import { useSignIn } from "@clerk/react";
+// Use the legacy hook — it returns { isLoaded, signIn, setActive } and supports
+// signIn.create({ strategy: "ticket", ticket }) which is what sign-in tokens
+// require. The v6 default useSignIn returns the signal-based future API whose
+// create() validates the ticket value against a stricter pattern and rejects it.
+import { useSignIn } from "@clerk/react/legacy";
 import { Loader2 } from "lucide-react";
 
 interface DemoAccount {
@@ -31,12 +35,12 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
 ];
 
 export function DemoLoginButtons() {
-  const { signIn } = useSignIn();
+  const { signIn, setActive } = useSignIn();
   const [loadingEmail, setLoadingEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (email: string) => {
-    if (!signIn) return;
+    if (!signIn || !setActive) return;
     setError(null);
     setLoadingEmail(email);
     try {
@@ -53,16 +57,16 @@ export function DemoLoginButtons() {
       const { token } = await res.json();
 
       // 2. Use the ticket strategy — bypasses all MFA / device verification.
-      const { error: clerkErr } = await signIn.create({
+      const result = await signIn.create({
         strategy: "ticket",
         ticket: token,
-      } as any);
+      });
 
-      if (clerkErr) throw new Error(clerkErr.message ?? "Clerk-Fehler");
-
-      // 3. status is 'complete' → activate the session.
-      if ((signIn as any).status === "complete") {
-        await (signIn as any).finalize();
+      // 3. status is 'complete' → activate the new session.
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+      } else {
+        throw new Error(`Unexpected sign-in status: ${result.status}`);
       }
     } catch (err: any) {
       setError(err?.message ?? "Anmeldung fehlgeschlagen");

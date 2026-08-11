@@ -6,7 +6,7 @@ import {
   orders, orderItems, users, formatOrderNumber,
   aiChats, aiChatMessages,
   complaints, conversations, messages, promotions, products,
-  deliverySchedules,
+  deliverySchedules, inventoryRiskRecords, overnightStays, costSettings,
 } from "@shared/schema";
 import { and, eq, desc, ilike, or, inArray, ne, gte, lte, sql } from "drizzle-orm";
 import { foldedIlike } from "./searchSql";
@@ -15,6 +15,28 @@ import { storage } from "./storage";
 import { retrieveKnowledge, knowledgePromptBlock, learnFromExchange, penalizeKnowledge } from "./aiKnowledge";
 
 type Role = "restaurant" | "supplier";
+
+/**
+ * Returns an inclusive [fromDate, toDate|null] pair for a named period.
+ * toDate is null for rolling windows (30d, 90d, this_month) — the query
+ * uses "up to now" as its natural upper bound.
+ * For last_month it is the final millisecond of that calendar month so
+ * the query does NOT accidentally include current-month orders.
+ * Exported for unit testing.
+ */
+export function periodBounds(period: string, now: Date): { fromDate: Date; toDate: Date | null } {
+  if (period === "this_month") {
+    return { fromDate: new Date(now.getFullYear(), now.getMonth(), 1), toDate: null };
+  }
+  if (period === "last_month") {
+    const fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    // new Date(y, m, 0) = last day of month m-1; set time to end-of-day.
+    const toDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    return { fromDate, toDate };
+  }
+  if (period === "90d") return { fromDate: new Date(Date.now() - 90 * 86400000), toDate: null };
+  return { fromDate: new Date(Date.now() - 30 * 86400000), toDate: null };
+}
 
 interface AiActionRaw {
   kind: "open_inbox" | "open_order" | "open_page";
@@ -322,6 +344,8 @@ function buildTools(userId: string, role: Role) {
   const partnerCol = role === "restaurant" ? orders.supplierId : orders.restaurantId;
   const partnerRoleLabel = role === "restaurant" ? "supplier" : "customer";
 
+
+
   async function find_recent_order_with_product(args: { productName?: string }) {
     const name = String(args?.productName || "").trim();
     if (!name) return { error: "productName is required" };
@@ -554,17 +578,9 @@ function buildTools(userId: string, role: Role) {
     if (role !== "restaurant") return { error: "only_for_restaurants" };
     const period = String(args?.period || "30d").trim();
     const now = new Date();
-    let fromDate: Date;
-    if (period === "this_month") {
-      fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else if (period === "last_month") {
-      fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      now.setDate(0); // last day of previous month
-    } else if (period === "90d") {
-      fromDate = new Date(Date.now() - 90 * 86400000);
-    } else {
-      fromDate = new Date(Date.now() - 30 * 86400000);
-    }
+    const { fromDate, toDate } = periodBounds(period, now);
+    const dateConds: any[] = [gte(orders.createdAt, fromDate)];
+    if (toDate) dateConds.push(lte(orders.createdAt, toDate));
     const rows = await db
       .select({
         totalAmount: orders.totalAmount,
@@ -577,7 +593,7 @@ function buildTools(userId: string, role: Role) {
         and(
           eq(orders.restaurantId, userId),
           eq(orders.status, "delivered" as any),
-          gte(orders.createdAt, fromDate),
+          ...dateConds,
         ),
       );
     const total = rows.reduce((s, r) => s + parseFloat(r.totalAmount || "0"), 0);
@@ -590,7 +606,7 @@ function buildTools(userId: string, role: Role) {
     return {
       period,
       from: fromDate.toISOString().slice(0, 10),
-      to: now.toISOString().slice(0, 10),
+      to: (toDate ?? now).toISOString().slice(0, 10),
       totalAmount: Math.round(total * 100) / 100,
       orderCount: rows.length,
       bySupplier: Object.entries(bySupplier)
@@ -970,6 +986,167 @@ function buildTools(userId: string, role: Role) {
     };
   }
 
+  // Inventory risk records (supplier-only) — "what items are at risk?",
+  // "any urgent risk reports?", "what stock is near expiry?".
+  async function get_inventory_risk(args: { status?: string }) {
+    if (role !== "supplier") return { error: "only_for_suppliers" };
+    const validStatuses = ["Open", "Action Taken", "Sold", "Expired", "Dismissed"];
+    const status = String(args?.status || "").trim();
+    const conds: any[] = [eq(inventoryRiskRecords.supplierId, userId)];
+    if (status && validStatuses.includes(status)) {
+      conds.push(eq(inventoryRiskRecords.status, status as any));
+    } else {
+      // Default to actionable (not yet resolved) records
+      conds.push(inArray(inventoryRiskRecords.status, ["Open", "Action Taken"] as any));
+    }
+    const rows = await db
+      .select({
+        id: inventoryRiskRecords.id,
+        status: inventoryRiskRecords.status,
+        priority: inventoryRiskRecords.priority,
+        qualityStatus: inventoryRiskRecords.qualityStatus,
+        riskReason: inventoryRiskRecords.riskReason,
+        flaggedQuantity: inventoryRiskRecords.flaggedQuantity,
+        expiryDate: inventoryRiskRecords.expiryDate,
+        note: inventoryRiskRecords.note,
+        createdAt: inventoryRiskRecords.createdAt,
+        productName: products.name,
+        unit: products.unit,
+      })
+      .from(inventoryRiskRecords)
+      .innerJoin(products, eq(products.id, inventoryRiskRecords.productId))
+      .where(and(...conds))
+      .orderBy(desc(inventoryRiskRecords.priority), desc(inventoryRiskRecords.createdAt))
+      .limit(15);
+    return {
+      count: rows.length,
+      riskRecords: rows.map((r) => ({
+        id: r.id,
+        productName: r.productName,
+        unit: r.unit,
+        flaggedQuantity: r.flaggedQuantity,
+        qualityStatus: r.qualityStatus,
+        riskReason: r.riskReason || null,
+        priority: r.priority,
+        status: r.status,
+        expiryDate: r.expiryDate ? fmtDate(r.expiryDate) : null,
+        note: r.note || null,
+        reportedAt: fmtDate(r.createdAt),
+      })),
+    };
+  }
+
+  // Revenue breakdown by restaurant customer (supplier-only) — mirrors
+  // get_spending_summary for the supplier side. "Which restaurant orders most?",
+  // "what is my revenue this month?", "top customers by spend?".
+  async function get_revenue_by_customer(args: { period?: string }) {
+    if (role !== "supplier") return { error: "only_for_suppliers" };
+    const period = String(args?.period || "30d").trim();
+    const now = new Date();
+    const { fromDate, toDate } = periodBounds(period, now);
+    const dateConds: any[] = [gte(orders.createdAt, fromDate)];
+    if (toDate) dateConds.push(lte(orders.createdAt, toDate));
+    const rows = await db
+      .select({
+        totalAmount: orders.totalAmount,
+        restaurantId: orders.restaurantId,
+        restaurantName: users.companyName,
+      })
+      .from(orders)
+      .innerJoin(users, eq(users.id, orders.restaurantId))
+      .where(
+        and(
+          eq(orders.supplierId, userId),
+          eq(orders.status, "delivered" as any),
+          ...dateConds,
+        ),
+      );
+    const total = rows.reduce((s, r) => s + parseFloat(r.totalAmount || "0"), 0);
+    const byCustomer: Record<string, { name: string; amount: number; count: number }> = {};
+    for (const r of rows) {
+      if (!byCustomer[r.restaurantId]) byCustomer[r.restaurantId] = { name: r.restaurantName || "", amount: 0, count: 0 };
+      byCustomer[r.restaurantId].amount += parseFloat(r.totalAmount || "0");
+      byCustomer[r.restaurantId].count++;
+    }
+    return {
+      period,
+      from: fromDate.toISOString().slice(0, 10),
+      to: (toDate ?? now).toISOString().slice(0, 10),
+      totalRevenue: Math.round(total * 100) / 100,
+      orderCount: rows.length,
+      byCustomer: Object.entries(byCustomer)
+        .sort((a, b) => b[1].amount - a[1].amount)
+        .slice(0, 8)
+        .map(([id, v]) => ({ restaurantId: id, restaurantName: v.name, amount: Math.round(v.amount * 100) / 100, orderCount: v.count })),
+    };
+  }
+
+  // Monthly food-cost-per-guest analysis (restaurant-only) — uses delivered order
+  // totals + overnight-stay counts + the restaurant's target cost setting.
+  // Answers "what is my food cost per guest this month?", "am I over budget?",
+  // "how has my food cost trended?".
+  async function get_cost_analysis(_args: any) {
+    if (role !== "restaurant") return { error: "only_for_restaurants" };
+    const now = new Date();
+    // Look at the last 3 calendar months (inclusive of current partial month).
+    const months: { year: number; month: number; label: string; from: string; to: string }[] = [];
+    for (let i = 2; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const from = `${y}-${String(m + 1).padStart(2, "0")}-01`;
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      const to = `${y}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      months.push({ year: y, month: m, label: `${y}-${String(m + 1).padStart(2, "0")}`, from, to });
+    }
+    // Spend per month (delivered orders only)
+    const earliest = new Date(months[0].from);
+    const orderRows = await db
+      .select({ totalAmount: orders.totalAmount, createdAt: orders.createdAt })
+      .from(orders)
+      .where(and(eq(orders.restaurantId, userId), eq(orders.status, "delivered" as any), gte(orders.createdAt, earliest)));
+    const spendByMonth: Record<string, number> = {};
+    for (const r of orderRows) {
+      if (!r.createdAt) continue;
+      const d = new Date(r.createdAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      spendByMonth[key] = (spendByMonth[key] || 0) + parseFloat(r.totalAmount || "0");
+    }
+    // Guest counts: PMS/API-imported counts override manual entries per date —
+    // exactly the same logic as /api/restaurant/cost-analysis uses.
+    const effectiveCounts = await storage.getEffectiveGuestCountsByDate(userId);
+    const guestsByMonth: Record<string, number> = {};
+    for (const [date, count] of effectiveCounts) {
+      if (date >= months[0].from) {
+        const key = date.slice(0, 7);
+        guestsByMonth[key] = (guestsByMonth[key] || 0) + count;
+      }
+    }
+    // Target cost per guest
+    const [setting] = await db
+      .select({ target: costSettings.targetCostPerGuest })
+      .from(costSettings)
+      .where(eq(costSettings.restaurantId, userId))
+      .limit(1);
+    const target = setting ? parseFloat(setting.target) : null;
+    return {
+      targetCostPerGuest: target,
+      months: months.map((m) => {
+        const spend = Math.round((spendByMonth[m.label] || 0) * 100) / 100;
+        const guests = guestsByMonth[m.label] || 0;
+        const costPerGuest = guests > 0 ? Math.round((spend / guests) * 100) / 100 : null;
+        return {
+          month: m.label,
+          spend,
+          guests,
+          costPerGuest,
+          overTarget: target !== null && costPerGuest !== null ? costPerGuest > target : null,
+        };
+      }),
+      note: !setting ? "No target cost configured — set it in cost analysis settings." : undefined,
+    };
+  }
+
   // ── Handlers & definitions ────────────────────────────────────────────────
 
   const handlers: Record<string, (args: any) => Promise<any>> = {
@@ -988,6 +1165,9 @@ function buildTools(userId: string, role: Role) {
     get_delivery_schedule,
     get_top_products,
     get_app_help,
+    get_inventory_risk,
+    get_revenue_by_customer,
+    get_cost_analysis,
   };
 
   const definitions = [
@@ -1236,6 +1416,59 @@ function buildTools(userId: string, role: Role) {
         },
       },
     },
+    ...(role === "supplier"
+      ? [
+          {
+            type: "function" as const,
+            function: {
+              name: "get_inventory_risk",
+              description:
+                "List active inventory risk records (flagged stock). Use for questions like 'what items are at risk?', 'are there any urgent risk reports?', 'do we have stock near expiry?', 'show me open risk reports'. Returns product name, flagged quantity, quality status, risk reason, priority (urgent/normal), expiry date, and current status. By default returns only Open and Action Taken records.",
+              parameters: {
+                type: "object",
+                properties: {
+                  status: {
+                    type: "string",
+                    description: "Optional status filter. Omit to get all actionable (Open + Action Taken) records.",
+                    enum: ["Open", "Action Taken", "Sold", "Expired", "Dismissed"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            type: "function" as const,
+            function: {
+              name: "get_revenue_by_customer",
+              description:
+                "Summarise the supplier's revenue from delivered orders broken down by restaurant customer. Use for questions like 'which restaurant orders most from me?', 'what is my total revenue this month?', 'who are my top customers by spend?', 'how much revenue did I generate this quarter?'.",
+              parameters: {
+                type: "object",
+                properties: {
+                  period: {
+                    type: "string",
+                    description: "Time window. Default '30d'.",
+                    enum: ["30d", "90d", "this_month", "last_month"],
+                  },
+                },
+              },
+            },
+          },
+        ]
+      : []),
+    ...(role === "restaurant"
+      ? [
+          {
+            type: "function" as const,
+            function: {
+              name: "get_cost_analysis",
+              description:
+                "Show monthly food cost per guest (Wareneinsatz pro Gast) for the last 3 months, including spend, overnight-stay counts, computed cost-per-guest, and whether the restaurant is over its target. Use for questions like 'what is my food cost per guest this month?', 'am I within my cost target?', 'how has my food cost trended?', 'wie hoch ist mein Wareneinsatz pro Gast?'. No parameters required.",
+              parameters: { type: "object", properties: {} },
+            },
+          },
+        ]
+      : []),
   ];
 
   return { handlers, definitions };
@@ -1286,12 +1519,14 @@ function systemPrompt(role: Role, lang: string): string {
   const roleSpecific =
     role === "restaurant"
       ? [
-          `You can also help with: complaints (list_complaints), spending analysis (get_spending_summary), most-ordered products (get_top_products), unread messages (get_unread_messages), promotions from their suppliers (get_promotions), product/price lookups (search_products), delivery weekdays per supplier (get_delivery_schedule), and the full contents of a specific order (get_order_details).`,
+          `You can also help with: complaints (list_complaints), spending analysis (get_spending_summary), food-cost-per-guest analysis (get_cost_analysis), most-ordered products (get_top_products), unread messages (get_unread_messages), promotions from their suppliers (get_promotions), product/price lookups (search_products), delivery weekdays per supplier (get_delivery_schedule), and the full contents of a specific order (get_order_details).`,
           `For spending questions, default to the last 30 days unless the user specifies otherwise.`,
+          `For food cost / Wareneinsatz questions, call get_cost_analysis — it returns monthly spend, guest counts, cost-per-guest and target comparison for the last 3 months.`,
         ]
       : [
-          `You can also help with: complaints from restaurants (list_complaints), unread messages (get_unread_messages), own promotions (get_promotions), low-stock products (get_low_stock), best-selling products (get_top_products), catalog lookups (search_products), configured delivery days per customer (get_delivery_schedule), and the full contents of a specific order (get_order_details).`,
-          `When the user asks about stock or inventory, always call get_low_stock proactively.`,
+          `You can also help with: complaints from restaurants (list_complaints), unread messages (get_unread_messages), own promotions (get_promotions), low-stock products (get_low_stock), active inventory risk records (get_inventory_risk), revenue by customer (get_revenue_by_customer), best-selling products (get_top_products), catalog lookups (search_products), configured delivery days per customer (get_delivery_schedule), and the full contents of a specific order (get_order_details).`,
+          `When the user asks about stock or inventory, always call get_low_stock proactively. For risk reports or spoilage questions, call get_inventory_risk.`,
+          `For revenue or customer spend questions on the supplier side, call get_revenue_by_customer.`,
         ];
   return [
     `You are the in-app assistant for GastroConnect, a B2B ordering platform for restaurants and suppliers in South Tyrol.`,
