@@ -131,8 +131,28 @@ async function postDeliveryNoteChatMessage(
   });
 }
 
-async function createNotificationWithPush(notification: InsertNotification, role?: string) {
-  const created = await storage.createNotification(notification);
+async function createNotificationWithPush(
+  notification: InsertNotification,
+  role?: string,
+  i18n?: { title_it: string; message_it: string },
+) {
+  // Load recipient FIRST so we can localise the stored text to their language.
+  let recipient: Awaited<ReturnType<typeof storage.getUser>> | undefined;
+  try {
+    recipient = await storage.getUser(notification.userId);
+  } catch (err: any) {
+    console.error("[notify] failed to load recipient", { userId: notification.userId, error: err?.message });
+  }
+
+  // Apply Italian localisation when the recipient prefers Italian.
+  const lang: "de" | "it" = recipient?.language === "it" ? "it" : "de";
+  const localTitle = (i18n && lang === "it") ? i18n.title_it : notification.title;
+  const localMsg   = (i18n && lang === "it") ? i18n.message_it : notification.message;
+  const localizedNotification = (i18n && lang === "it")
+    ? { ...notification, title: localTitle, message: localMsg }
+    : notification;
+
+  const created = await storage.createNotification(localizedNotification);
   const urlRole = role || "restaurant";
   let url = "/";
   switch (notification.type) {
@@ -179,21 +199,15 @@ async function createNotificationWithPush(notification: InsertNotification, role
       url = `/supplier/team-chat`;
       break;
   }
-  // Load the recipient once and reuse for both channel gating + email address.
-  let recipient: Awaited<ReturnType<typeof storage.getUser>> | undefined;
-  try {
-    recipient = await storage.getUser(notification.userId);
-  } catch (err: any) {
-    console.error("[notify] failed to load recipient", { userId: notification.userId, error: err?.message });
-  }
+
   const prefs = (recipient?.notificationPrefs as NotificationPrefs | null | undefined) ?? DEFAULT_NOTIFICATION_PREFS;
   const prefKey = notificationPrefKey(notification.type);
 
   const pushAllowed = prefKey ? (prefs.push?.[prefKey] ?? DEFAULT_NOTIFICATION_PREFS.push[prefKey]) : true;
   if (pushAllowed) {
     sendPushNotification(notification.userId, {
-      title: notification.title,
-      message: notification.message,
+      title: localTitle,
+      message: localMsg,
       url,
       type: notification.type,
     }).catch((err) => {
@@ -210,10 +224,10 @@ async function createNotificationWithPush(notification: InsertNotification, role
   if (emailAllowed && recipient?.email) {
     sendEmail({
       to: recipient.email,
-      subject: notification.title,
+      subject: localTitle,
       html: renderNotificationEmail({
-        title: notification.title,
-        message: notification.message,
+        title: localTitle,
+        message: localMsg,
         linkPath: url,
       }),
     }).catch((err) => {
@@ -1762,7 +1776,10 @@ export async function registerRoutes(
           title: "Neue Bewertung",
           message: `${rating.stars}/5 Sterne erhalten`,
           referenceId: rating.id,
-        }, "supplier");
+        }, "supplier", {
+          title_it: "Nuova valutazione",
+          message_it: `${rating.stars}/5 stelle ricevute`,
+        });
       } catch {}
       res.status(201).json(rating);
     } catch (error: any) {
@@ -2559,13 +2576,19 @@ export async function registerRoutes(
             ? `⚠️ Dringendes Lagerrisiko: ${product.name}`
             : `Lagerrisiko: ${product.name}`;
           const notifMsg = `${validated.flaggedQuantity} ${product.unit ?? ""} · ${req.auth!.member.name}`;
+          const notifTitleIT = isUrgent
+            ? `⚠️ Rischio magazzino urgente: ${product.name}`
+            : `Rischio magazzino: ${product.name}`;
           await createNotificationWithPush({
             userId: req.auth!.organizationId,
             type: "internal_message",
             title: notifTitle,
             message: notifMsg,
             referenceId: created.id,
-          }, req.auth!.org.role === "restaurant" ? "restaurant" : "supplier");
+          }, req.auth!.org.role === "restaurant" ? "restaurant" : "supplier", {
+            title_it: notifTitleIT,
+            message_it: notifMsg,
+          });
         }
       } catch (err) {
         console.error("[inventory-risk] notification dispatch failed:", err);
@@ -2870,7 +2893,10 @@ export async function registerRoutes(
         title: "Niedriger Lagerbestand",
         message: `${product.name}: Nur noch ${product.stockQuantity ?? 0} ${product.unit} auf Lager (Schwellenwert: ${product.lowStockThreshold})`,
         referenceId: product.id,
-      }, "supplier");
+      }, "supplier", {
+        title_it: "Scorte basse",
+        message_it: `${product.name}: Solo ${product.stockQuantity ?? 0} ${product.unit} in magazzino (soglia: ${product.lowStockThreshold})`,
+      });
     }
   }
 
@@ -3413,7 +3439,10 @@ export async function registerRoutes(
           title: `Neue Bestellung #${formatOrderNumber(order)}`,
           message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat eine neue Bestellung aufgegeben #${formatOrderNumber(order)} (€${totalAmount})`,
           referenceId: order.id
-        }, "supplier");
+        }, "supplier", {
+          title_it: `Nuovo ordine #${formatOrderNumber(order)}`,
+          message_it: `${restaurant?.companyName || restaurant?.name || "Un'azienda"} ha effettuato un nuovo ordine #${formatOrderNumber(order)} (€${totalAmount})`,
+        });
       }
 
       // Clear cart - only for targeted supplier or all
@@ -4012,7 +4041,18 @@ export async function registerRoutes(
             ? `${supplier?.companyName || supplier?.name || "Händler"} hat die Bestellung storniert.`
             : `${supplier?.companyName || supplier?.name || "Händler"} hat deine Bestellung bestätigt.`,
         referenceId: order.id,
-      }, "restaurant");
+      }, "restaurant", {
+        title_it: isPartial
+          ? `Ordine parzialmente confermato #${formatOrderNumber(order)}`
+          : allRejected
+            ? `Ordine annullato #${formatOrderNumber(order)}`
+            : `Ordine confermato #${formatOrderNumber(order)}`,
+        message_it: isPartial
+          ? `${supplier?.companyName || supplier?.name || "Fornitore"} ha elaborato il tuo ordine. Alcune quantità sono state modificate.`
+          : allRejected
+            ? `${supplier?.companyName || supplier?.name || "Fornitore"} ha annullato l'ordine.`
+            : `${supplier?.companyName || supplier?.name || "Fornitore"} ha confermato il tuo ordine.`,
+      });
 
       // Send auto chat message
       const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
@@ -4394,7 +4434,10 @@ export async function registerRoutes(
         title: `Bestellung angepasst #${formatOrderNumber(order)}`,
         message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat Bestellung #${formatOrderNumber(order)} angepasst`,
         referenceId: order.id
-      }, "supplier");
+      }, "supplier", {
+        title_it: `Ordine modificato #${formatOrderNumber(order)}`,
+        message_it: `${restaurant?.companyName || restaurant?.name || "Un'azienda"} ha modificato l'ordine #${formatOrderNumber(order)}`,
+      });
 
       res.json(updated);
     } catch (error) {
@@ -4449,7 +4492,10 @@ export async function registerRoutes(
         title: `Änderungsanfrage #${formatOrderNumber(order)}`,
         message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} möchte Bestellung #${formatOrderNumber(order)} ändern`,
         referenceId: order.id
-      }, "supplier");
+      }, "supplier", {
+        title_it: `Richiesta di modifica #${formatOrderNumber(order)}`,
+        message_it: `${restaurant?.companyName || restaurant?.name || "Un'azienda"} vuole modificare l'ordine #${formatOrderNumber(order)}`,
+      });
 
       res.json({ success: true });
     } catch (error) {
@@ -4537,7 +4583,10 @@ export async function registerRoutes(
           title: `Änderung genehmigt #${formatOrderNumber(order)}`,
           message: `${supplier?.companyName || supplier?.name || "Händler"} hat die Änderungsanfrage für Bestellung #${formatOrderNumber(order)} genehmigt`,
           referenceId: order.id
-        }, "restaurant");
+        }, "restaurant", {
+          title_it: `Modifica approvata #${formatOrderNumber(order)}`,
+          message_it: `${supplier?.companyName || supplier?.name || "Fornitore"} ha approvato la richiesta di modifica per l'ordine #${formatOrderNumber(order)}`,
+        });
       } else {
         await storage.sendMessage({
           conversationId: conversation.id,
@@ -4559,7 +4608,10 @@ export async function registerRoutes(
           title: `Änderung abgelehnt #${formatOrderNumber(order)}`,
           message: `${supplier?.companyName || supplier?.name || "Händler"} hat die Änderungsanfrage für Bestellung #${formatOrderNumber(order)} abgelehnt`,
           referenceId: order.id
-        }, "restaurant");
+        }, "restaurant", {
+          title_it: `Modifica rifiutata #${formatOrderNumber(order)}`,
+          message_it: `${supplier?.companyName || supplier?.name || "Fornitore"} ha rifiutato la richiesta di modifica per l'ordine #${formatOrderNumber(order)}`,
+        });
       }
 
       res.json({ success: true, approved });
@@ -4794,7 +4846,10 @@ export async function registerRoutes(
           title: "Neue Nachricht",
           message: `${sender?.companyName || sender?.name || "Jemand"} hat Ihnen eine Nachricht gesendet`,
           referenceId: req.params.id
-        }, recipientRole);
+        }, recipientRole, {
+          title_it: "Nuovo messaggio",
+          message_it: `${sender?.companyName || sender?.name || "Qualcuno"} ti ha inviato un messaggio`,
+        });
       }
       
       res.status(201).json(message);
@@ -4903,7 +4958,10 @@ export async function registerRoutes(
         title: "Neue Nachricht",
         message: `${sender?.companyName || sender?.name || "Jemand"} hat Ihnen eine Nachricht gesendet`,
         referenceId: conversation.id
-      }, recipientRole2);
+      }, recipientRole2, {
+        title_it: "Nuovo messaggio",
+        message_it: `${sender?.companyName || sender?.name || "Qualcuno"} ti ha inviato un messaggio`,
+      });
       res.status(201).json(message);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -5339,15 +5397,30 @@ export async function registerRoutes(
       rejected: "Abgelehnt",
       partially_resolved: "Teilweise gelöst",
     };
+    const statusLabelsIT: Record<string, string> = {
+      open: "Aperto",
+      in_progress: "In lavorazione",
+      resolved: "Risolto",
+      closed: "Chiuso",
+      rejected: "Rifiutato",
+      partially_resolved: "Parzialmente risolto",
+    };
+    const labelDE = statusLabels[toStatus] || toStatus;
+    const labelIT = statusLabelsIT[toStatus] || toStatus;
     await createNotificationWithPush({
       userId: notifyUserId,
       type: "complaint_comment",
-      title: `Reklamation #${formatComplaintNumber(complaint)} – ${statusLabels[toStatus] || toStatus}`,
+      title: `Reklamation #${formatComplaintNumber(complaint)} – ${labelDE}`,
       message: extra?.rejectionReason
-        ? `Status: ${statusLabels[toStatus] || toStatus}. Grund: ${extra.rejectionReason.slice(0, 80)}`
-        : `Status geändert: ${statusLabels[toStatus] || toStatus}`,
+        ? `Status: ${labelDE}. Grund: ${extra.rejectionReason.slice(0, 80)}`
+        : `Status geändert: ${labelDE}`,
       referenceId: complaintId,
-    }, recipientRole);
+    }, recipientRole, {
+      title_it: `Reclamo #${formatComplaintNumber(complaint)} – ${labelIT}`,
+      message_it: extra?.rejectionReason
+        ? `Stato: ${labelIT}. Motivo: ${extra.rejectionReason.slice(0, 80)}`
+        : `Stato cambiato: ${labelIT}`,
+    });
   }
 
   async function supplierHasReacted(complaint: any): Promise<boolean> {
@@ -5380,7 +5453,10 @@ export async function registerRoutes(
           title: `Erinnerung: Reklamation #${formatComplaintNumber(c)} ist >24h ohne Reaktion`,
           message: c.title,
           referenceId: c.id,
-        }, "supplier");
+        }, "supplier", {
+          title_it: `Promemoria: Reclamo #${formatComplaintNumber(c)} senza risposta da >24h`,
+          message_it: c.title,
+        });
       } catch (err) {
         console.error("Reminder send failed:", err);
       }
@@ -5472,7 +5548,10 @@ export async function registerRoutes(
         title: `Neue Reklamation #${formatComplaintNumber(complaint)}`,
         message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat eine Reklamation eingereicht #${formatComplaintNumber(complaint)}: ${validated.title}`,
         referenceId: complaint.id
-      }, "supplier");
+      }, "supplier", {
+        title_it: `Nuovo reclamo #${formatComplaintNumber(complaint)}`,
+        message_it: `${restaurant?.companyName || restaurant?.name || "Un'azienda"} ha presentato un reclamo #${formatComplaintNumber(complaint)}: ${validated.title}`,
+      });
       
       res.status(201).json(complaint);
     } catch (error) {
@@ -5771,7 +5850,10 @@ export async function registerRoutes(
         title: `Nachlieferung #${formatOrderNumber(order)}`,
         message: `${supplier?.companyName || supplier?.name || "Ihr Händler"} hat eine Nachlieferung zu Ihrer Reklamation #${formatComplaintNumber(complaint)} erstellt (€${totalAmount})`,
         referenceId: order.id
-      }, "restaurant");
+      }, "restaurant", {
+        title_it: `Consegna supplementare #${formatOrderNumber(order)}`,
+        message_it: `${supplier?.companyName || supplier?.name || "Il tuo fornitore"} ha creato una consegna supplementare per il tuo reclamo #${formatComplaintNumber(complaint)} (€${totalAmount})`,
+      });
 
       res.status(201).json(order);
     } catch (error) {
@@ -5814,7 +5896,10 @@ export async function registerRoutes(
         title: `Neuer Kommentar #${formatComplaintNumber(complaint)}`,
         message: `${commenter?.companyName || commenter?.name || "Jemand"} hat einen Kommentar zur Reklamation #${formatComplaintNumber(complaint)} hinzugefügt: "${validated.content.substring(0, 50)}${validated.content.length > 50 ? '...' : ''}"`,
         referenceId: complaint.id
-      }, commentRecipientRole);
+      }, commentRecipientRole, {
+        title_it: `Nuovo commento #${formatComplaintNumber(complaint)}`,
+        message_it: `${commenter?.companyName || commenter?.name || "Qualcuno"} ha aggiunto un commento al reclamo #${formatComplaintNumber(complaint)}: "${validated.content.substring(0, 50)}${validated.content.length > 50 ? '...' : ''}"`,
+      });
       
       res.status(201).json(comment);
     } catch (error) {
@@ -7114,7 +7199,10 @@ export async function registerRoutes(
         title: "PMS-Anfrage gesendet",
         message: `Ihre Anfrage zur Verbindung von ${providerName} wurde übermittelt. Unser Team meldet sich in Kürze.`,
         referenceId: request.id,
-      }, "restaurant");
+      }, "restaurant", {
+        title_it: "Richiesta PMS inviata",
+        message_it: `La tua richiesta di connessione di ${providerName} è stata trasmessa. Il nostro team si farà vivo a breve.`,
+      });
 
       // Notify the admin/operator: email if configured, otherwise an in-app
       // notification to the configured operator account (ADMIN_USER_ID). This
@@ -7148,7 +7236,10 @@ export async function registerRoutes(
             title: "Neue PMS-Anfrage",
             message: `${providerName} – ${data.hotelName} (${data.contactName})`,
             referenceId: request.id,
-          }, "restaurant");
+          }, "restaurant", {
+            title_it: "Nuova richiesta PMS",
+            message_it: `${providerName} – ${data.hotelName} (${data.contactName})`,
+          });
           adminInApp = true;
         } else {
           console.warn(
@@ -7653,7 +7744,10 @@ export async function registerRoutes(
         title: "ERP-Anfrage gesendet",
         message: `Ihre Anfrage zur Verbindung von ${providerName} wurde übermittelt. Unser Team meldet sich in Kürze.`,
         referenceId: request.id,
-      }, "supplier");
+      }, "supplier", {
+        title_it: "Richiesta ERP inviata",
+        message_it: `La tua richiesta di connessione di ${providerName} è stata trasmessa. Il nostro team si farà vivo a breve.`,
+      });
 
       // Notify the admin/operator: email if configured, otherwise an in-app
       // notification to the configured operator account (ADMIN_USER_ID).
@@ -7685,7 +7779,10 @@ export async function registerRoutes(
             title: "Neue ERP-Anfrage",
             message: `${providerName} – ${data.companyName} (${data.contactName})`,
             referenceId: request.id,
-          }, "supplier");
+          }, "supplier", {
+            title_it: "Nuova richiesta ERP",
+            message_it: `${providerName} – ${data.companyName} (${data.contactName})`,
+          });
           adminInApp = true;
         } else {
           console.warn(
@@ -7823,7 +7920,10 @@ export async function registerRoutes(
         title: "WhatsApp-Anfrage gesendet",
         message: `Ihre Anfrage zur Verbindung von WhatsApp wurde übermittelt. Unser Team meldet sich in Kürze.`,
         referenceId: request.id,
-      }, role);
+      }, role, {
+        title_it: "Richiesta WhatsApp inviata",
+        message_it: `La tua richiesta di connessione di WhatsApp è stata trasmessa. Il nostro team si farà vivo a breve.`,
+      });
 
       // Notify the admin/operator: email if configured, otherwise in-app.
       let emailSent = false;
@@ -7852,7 +7952,10 @@ export async function registerRoutes(
             title: "Neue WhatsApp-Anfrage",
             message: `${data.companyName} (${data.contactName})`,
             referenceId: request.id,
-          }, role);
+          }, role, {
+            title_it: "Nuova richiesta WhatsApp",
+            message_it: `${data.companyName} (${data.contactName})`,
+          });
           adminInApp = true;
         } else {
           console.warn(
@@ -8352,14 +8455,20 @@ export async function registerRoutes(
         title: `Lieferung zugewiesen #${formatOrderNumber(order)}`,
         message: `${driver.name}: Lieferung an ${restaurant?.companyName || restaurant?.name || "Betrieb"} am ${deliveryDate}`,
         referenceId: order.id,
-      }, "supplier");
+      }, "supplier", {
+        title_it: `Consegna assegnata #${formatOrderNumber(order)}`,
+        message_it: `${driver.name}: Consegna a ${restaurant?.companyName || restaurant?.name || "Azienda"} il ${deliveryDate}`,
+      });
       await createNotificationWithPush({
         userId: order.restaurantId,
         type: "delivery_update",
         title: `Fahrer zugewiesen #${formatOrderNumber(order)}`,
         message: `Ihrer Bestellung #${formatOrderNumber(order)} wurde ein Fahrer zugewiesen.`,
         referenceId: order.id,
-      }, "restaurant");
+      }, "restaurant", {
+        title_it: `Autista assegnato #${formatOrderNumber(order)}`,
+        message_it: `Al tuo ordine #${formatOrderNumber(order)} è stato assegnato un autista.`,
+      });
 
       res.json(assignment);
     } catch (error: any) {
@@ -8593,13 +8702,26 @@ export async function registerRoutes(
           en_route: `Ihre Bestellung #${formatOrderNumber(order)} ist jetzt unterwegs.`,
           arriving: `Ihr Fahrer trifft in Kürze mit Bestellung #${formatOrderNumber(order)} ein.`,
         };
+        const titlesIT: Record<string, string> = {
+          picked_up: `Consegna in preparazione #${formatOrderNumber(order)}`,
+          en_route: `Consegna in corso #${formatOrderNumber(order)}`,
+          arriving: `Consegna in arrivo #${formatOrderNumber(order)}`,
+        };
+        const bodiesIT: Record<string, string> = {
+          picked_up: `Il tuo ordine #${formatOrderNumber(order)} è stato preso in carico dal conducente.`,
+          en_route: `Il tuo ordine #${formatOrderNumber(order)} è in viaggio.`,
+          arriving: `Il tuo conducente arriverà a breve con l'ordine #${formatOrderNumber(order)}.`,
+        };
         await createNotificationWithPush({
           userId: order.restaurantId,
           type: "delivery_update",
           title: titles[status],
           message: bodies[status],
           referenceId: order.id,
-        }, "restaurant");
+        }, "restaurant", {
+          title_it: titlesIT[status],
+          message_it: bodiesIT[status],
+        });
       }
 
       res.json(updated);
@@ -8671,14 +8793,20 @@ export async function registerRoutes(
           title: `Bestellung geliefert #${formatOrderNumber(order)}`,
           message: `Ihre Bestellung #${formatOrderNumber(order)} wurde soeben zugestellt.`,
           referenceId: order.id,
-        }, "restaurant");
+        }, "restaurant", {
+          title_it: `Ordine consegnato #${formatOrderNumber(order)}`,
+          message_it: `Il tuo ordine #${formatOrderNumber(order)} è stato appena consegnato.`,
+        });
         await createNotificationWithPush({
           userId: order.supplierId,
           type: "delivery_update",
           title: `Zugestellt #${formatOrderNumber(order)}`,
           message: `${req.auth!.member.name} hat Bestellung #${formatOrderNumber(order)} zugestellt.`,
           referenceId: order.id,
-        }, "supplier");
+        }, "supplier", {
+          title_it: `Consegnato #${formatOrderNumber(order)}`,
+          message_it: `${req.auth!.member.name} ha consegnato l'ordine #${formatOrderNumber(order)}.`,
+        });
       }
 
       res.json(updated);
@@ -8722,20 +8850,34 @@ export async function registerRoutes(
           traffic: "Verkehrsproblem",
           other: "Sonstiges Problem",
         };
+        const problemLabelsIT: Record<string, string> = {
+          not_reachable: "Cliente non raggiungibile",
+          refused: "Consegna rifiutata",
+          damaged: "Merce danneggiata",
+          wrong_address: "Indirizzo errato",
+          traffic: "Traffico",
+          other: "Altro problema",
+        };
         await createNotificationWithPush({
           userId: order.supplierId,
           type: "delivery_problem",
           title: `Lieferproblem #${formatOrderNumber(order)}`,
           message: `${req.auth!.member.name}: ${problemLabels[parsed.problemType]}${parsed.note ? ` – ${parsed.note}` : ""}`,
           referenceId: order.id,
-        }, "supplier");
+        }, "supplier", {
+          title_it: `Problema di consegna #${formatOrderNumber(order)}`,
+          message_it: `${req.auth!.member.name}: ${problemLabelsIT[parsed.problemType]}${parsed.note ? ` – ${parsed.note}` : ""}`,
+        });
         await createNotificationWithPush({
           userId: order.restaurantId,
           type: "delivery_update",
           title: `Lieferverzögerung #${formatOrderNumber(order)}`,
           message: `Bei der Zustellung von Bestellung #${formatOrderNumber(order)} gibt es eine Verzögerung. Der Lieferant wurde informiert.`,
           referenceId: order.id,
-        }, "restaurant");
+        }, "restaurant", {
+          title_it: `Ritardo di consegna #${formatOrderNumber(order)}`,
+          message_it: `Ci sono problemi con la consegna del tuo ordine #${formatOrderNumber(order)}. Il fornitore è stato informato.`,
+        });
       }
 
       res.json(updated);
@@ -8807,20 +8949,35 @@ export async function registerRoutes(
           no_time: "Zeitlich nicht machbar",
           other: "Sonstiger Grund",
         };
+        const rejectLabelsIT: Record<string, string> = {
+          not_reachable: "Cliente non raggiungibile",
+          refused: "Consegna rifiutata",
+          damaged: "Merce danneggiata",
+          wrong_address: "Indirizzo errato",
+          traffic: "Traffico",
+          no_time: "Non fattibile nei tempi",
+          other: "Altro motivo",
+        };
         await createNotificationWithPush({
           userId: order.supplierId,
           type: "delivery_problem",
           title: `Lieferung abgelehnt – zu prüfen #${formatOrderNumber(order)}`,
           message: `${req.auth!.member.name} hat die Lieferung zurückgegeben: ${rejectLabels[parsed.reason]}${parsed.note ? ` – ${parsed.note}` : ""}. Bitte im Büro neu planen.`,
           referenceId: order.id,
-        }, "supplier");
+        }, "supplier", {
+          title_it: `Consegna rifiutata – da verificare #${formatOrderNumber(order)}`,
+          message_it: `${req.auth!.member.name} ha restituito la consegna: ${rejectLabelsIT[parsed.reason]}${parsed.note ? ` – ${parsed.note}` : ""}. Pianificare di nuovo in ufficio.`,
+        });
         await createNotificationWithPush({
           userId: order.restaurantId,
           type: "delivery_update",
           title: `Lieferung verschoben #${formatOrderNumber(order)}`,
           message: `Ihre Bestellung #${formatOrderNumber(order)} konnte heute nicht zugestellt werden. Der Lieferant plant die Zustellung neu.`,
           referenceId: order.id,
-        }, "restaurant");
+        }, "restaurant", {
+          title_it: `Consegna posticipata #${formatOrderNumber(order)}`,
+          message_it: `Il tuo ordine #${formatOrderNumber(order)} non ha potuto essere consegnato oggi. Il fornitore pianificherà una nuova consegna.`,
+        });
       }
 
       res.json(updated);
@@ -8867,7 +9024,10 @@ export async function registerRoutes(
           title: `Verspätung gemeldet (+${parsed.delayMinutes} Min.)`,
           message: `${req.auth!.member.name}: Verspätung ab Stopp #${formatOrderNumber(order)}${parsed.note ? ` – ${parsed.note}` : ""}. Die Ankunftszeiten der weiteren Stopps wurden angepasst.`,
           referenceId: order.id,
-        }, "supplier");
+        }, "supplier", {
+          title_it: `Ritardo segnalato (+${parsed.delayMinutes} min.)`,
+          message_it: `${req.auth!.member.name}: Ritardo a partire dalla fermata #${formatOrderNumber(order)}${parsed.note ? ` – ${parsed.note}` : ""}. Gli orari di arrivo delle altre fermate sono stati aggiornati.`,
+        });
       }
       // … and each affected restaurant with its new ETA (best-effort).
       await Promise.all(affected.map(async (a) => {
@@ -8875,13 +9035,17 @@ export async function registerRoutes(
           const o = await storage.getOrder(a.orderId);
           if (!o) return;
           const eta = a.etaMinutes != null ? ` Neue geschätzte Ankunft: in ca. ${a.etaMinutes} Min.` : "";
+          const etaIT = a.etaMinutes != null ? ` Nuovo orario stimato: tra circa ${a.etaMinutes} min.` : "";
           await createNotificationWithPush({
             userId: o.restaurantId,
             type: "delivery_update",
             title: `Lieferverzögerung #${formatOrderNumber(o)}`,
             message: `Ihre Lieferung verzögert sich um ca. ${parsed.delayMinutes} Minuten.${eta}`,
             referenceId: o.id,
-          }, "restaurant");
+          }, "restaurant", {
+            title_it: `Ritardo di consegna #${formatOrderNumber(o)}`,
+            message_it: `La tua consegna è in ritardo di circa ${parsed.delayMinutes} minuti.${etaIT}`,
+          });
         } catch (e) {
           console.error("[driver] delay notify error:", e);
         }
@@ -9156,13 +9320,17 @@ export async function registerRoutes(
       });
       // Sender has obviously read up to their own message.
       await storage.markInternalChatRead(req.auth!.organizationId, req.auth!.memberId, other.id);
+      const chatContent = parsed.content.trim();
       await createNotificationWithPush({
         userId: req.auth!.organizationId,
         type: "internal_message",
         title: `Chat: ${req.auth!.member.name} → ${other.name}`,
-        message: parsed.content.trim().length > 0 ? parsed.content.slice(0, 140) : "📎 Anhang",
+        message: chatContent.length > 0 ? chatContent.slice(0, 140) : "📎 Anhang",
         referenceId: message.id,
-      }, req.auth!.org.role === "restaurant" ? "restaurant" : "supplier");
+      }, req.auth!.org.role === "restaurant" ? "restaurant" : "supplier", {
+        title_it: `Chat: ${req.auth!.member.name} → ${other.name}`,
+        message_it: chatContent.length > 0 ? chatContent.slice(0, 140) : "📎 Allegato",
+      });
       res.json(message);
     } catch (error: any) {
       if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });

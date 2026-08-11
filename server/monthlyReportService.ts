@@ -583,11 +583,18 @@ export async function runMonthlyReportsForAll(month?: string): Promise<{ generat
       const existing = await storage.getMonthlyReportByMonth(r.id, targetMonth);
       if (existing) { skipped++; continue; }
       const { report, payload } = await generateAndStoreMonthlyReport(r.id, targetMonth);
+      const rLang: "de" | "it" = r.language === "it" ? "it" : "de";
+      const monthLabel = rLang === "it"
+        ? new Date(parseInt(targetMonth.split("-")[0]), parseInt(targetMonth.split("-")[1]) - 1, 1)
+            .toLocaleDateString("it-IT", { month: "long", year: "numeric" })
+        : formatMonthLabelDE(targetMonth);
       await storage.createNotification({
         userId: r.id,
         type: "monthly_report",
-        title: "Dein Monatsbericht ist da",
-        message: `Vergleichsbericht für ${formatMonthLabelDE(targetMonth)} – Einsparpotenzial: ${fmtEuro(payload.totalSavingPotential)}`,
+        title: rLang === "it" ? "Il tuo rapporto mensile è pronto" : "Dein Monatsbericht ist da",
+        message: rLang === "it"
+          ? `Rapporto comparativo per ${monthLabel} – Potenziale di risparmio: ${fmtEuro(payload.totalSavingPotential)}`
+          : `Vergleichsbericht für ${monthLabel} – Einsparpotenzial: ${fmtEuro(payload.totalSavingPotential)}`,
         referenceId: report.id,
       });
       generated++;
