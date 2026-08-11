@@ -193,9 +193,17 @@ after(async () => {
       await db.delete(orders).where(eq(orders.id, orderId));
     }
     if (productId) await db.delete(products).where(eq(products.id, productId));
-    if (supplierId) await db.delete(members).where(eq(members.organizationId, supplierId));
+    // Delete members for ALL seeded orgs (defensive: though this test only
+    // creates members under supplierId, other concurrent test processes that
+    // share the DB may have created members under restaurantId as a side-effect,
+    // causing a FK violation when we try to delete the restaurant user row).
     const orgIds = [supplierId, restaurantId].filter(Boolean);
-    if (orgIds.length > 0) await db.delete(users).where(inArray(users.id, orgIds));
+    if (orgIds.length > 0) {
+      await db.execute(
+        sql`DELETE FROM members WHERE organization_id IN (${sql.join(orgIds.map((id) => sql`${id}`), sql`, `)})`,
+      );
+      await db.delete(users).where(inArray(users.id, orgIds));
+    }
   } finally {
     await pool.end();
   }
@@ -378,5 +386,36 @@ describe("HTTP: live endpoints never expose member credentials", async () => {
     assert.equal(history.status, 200, `driver/deliveries/history -> ${history.status}`);
     assert.ok(history.text.includes(assignmentId), "seeded delivered assignment missing in history payload");
     assertRawJsonClean(history.text, "GET /api/driver/deliveries/history");
+  });
+
+  test("team member list (GET /api/orgs/:id/members) strips all auth columns", { skip: !up && "dev server not running on port 5000" }, async () => {
+    // Uses the toSafeMember allowlist in routes.ts. The seeded admin and driver
+    // both carry LEAKCANARY credential values — any leak would surface here.
+    const cookie = await seedSessionCookie(adminMemberId);
+
+    const res = await fetchJsonText(`/api/orgs/${supplierId}/members`, cookie);
+    assert.equal(res.status, 200, `GET /api/orgs/:id/members -> ${res.status}: ${res.text.slice(0, 200)}`);
+
+    // Non-vacuous: both seeded members must appear in the response.
+    assert.ok(res.text.includes(adminMemberId), "seeded admin member missing from team list");
+    assert.ok(res.text.includes(driverMemberId), "seeded driver member missing from team list");
+
+    // The auth columns and the sentinel value must never appear.
+    assertRawJsonClean(res.text, "GET /api/orgs/:id/members");
+  });
+
+  test("driver roster (GET /api/supplier/drivers) strips all auth columns", { skip: !up && "dev server not running on port 5000" }, async () => {
+    // /api/supplier/drivers previously only stripped passwordHash; emailVerifiedAt
+    // and lastLoginAt were leaked. The fix adds them to the destructuring.
+    const cookie = await seedSessionCookie(adminMemberId);
+
+    const res = await fetchJsonText("/api/supplier/drivers", cookie);
+    assert.equal(res.status, 200, `GET /api/supplier/drivers -> ${res.status}: ${res.text.slice(0, 200)}`);
+
+    // Non-vacuous: the seeded driver must be in the list.
+    assert.ok(res.text.includes(driverMemberId), "seeded driver missing from /api/supplier/drivers");
+
+    // All three auth columns and the sentinel value must be absent.
+    assertRawJsonClean(res.text, "GET /api/supplier/drivers");
   });
 });

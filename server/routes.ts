@@ -8541,7 +8541,7 @@ export async function registerRoutes(
       const members = await storage.getMembers(req.auth.organizationId);
       const drivers = members
         .filter((m) => m.role === "driver")
-        .map(({ passwordHash: _ph, ...safe }) => safe);
+        .map(({ passwordHash: _ph, emailVerifiedAt: _ev, lastLoginAt: _ll, ...safe }) => safe);
       res.json(drivers);
     } catch (error) {
       console.error("Supplier drivers error:", error);
