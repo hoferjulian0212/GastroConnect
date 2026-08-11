@@ -36,6 +36,7 @@ import {
   driverLocations,
   internalMessages,
   internalChatReads,
+  platformAdmins,
 } from "../shared/schema";
 
 // Keys that must never appear anywhere in a serialized member join.
@@ -275,12 +276,24 @@ async function serverIsUp(): Promise<boolean> {
 }
 
 /**
- * Seeds a real express-session row for the member and returns a signed
- * `gc.sid` cookie header value — exactly what the browser would send.
+ * Seeds a real express-session row that impersonates the given member via an
+ * approved platform admin. Returns a signed `gc.sid` cookie header value.
+ *
+ * Uses the admin-impersonation path in loadAuth (adminId + impersonatedMemberId)
+ * rather than the retired member-session memberId field.
  */
 async function seedSessionCookie(memberId: string): Promise<string> {
   const secret = process.env.SESSION_SECRET;
   assert.ok(secret, "SESSION_SECRET must be set to seed a session");
+
+  // Find an approved platform admin bootstrapped at startup.
+  const [admin] = await db
+    .select()
+    .from(platformAdmins)
+    .where(eq(platformAdmins.status, "approved"))
+    .limit(1);
+  assert.ok(admin, "No approved platform admin found — ensure bootstrapPlatformAdmin ran");
+
   const sid = crypto.randomBytes(24).toString("hex");
   const expires = new Date(Date.now() + 60 * 60 * 1000);
   const sess = {
@@ -291,7 +304,10 @@ async function seedSessionCookie(memberId: string): Promise<string> {
       path: "/",
       sameSite: "lax",
     },
-    memberId,
+    // Admin-impersonation path: loadAuth resolves adminId → approved admin,
+    // then loads impersonatedMemberId as the effective AuthContext.
+    adminId: admin.id,
+    impersonatedMemberId: memberId,
   };
   await db.execute(sql`
     INSERT INTO user_sessions (sid, sess, expire)

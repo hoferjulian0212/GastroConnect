@@ -261,6 +261,8 @@ export interface IStorage {
   updateMemberAuth(id: string, data: { passwordHash?: string | null; emailVerifiedAt?: Date | null; lastLoginAt?: Date | null }): Promise<Member | undefined>;
   createInvitation(data: InsertInvitation): Promise<Invitation>;
   getInvitationByTokenHash(tokenHash: string): Promise<Invitation | undefined>;
+  getPendingInvitationByMemberId(memberId: string): Promise<Invitation | undefined>;
+  getAcceptedInvitationByMemberId(memberId: string): Promise<Invitation | undefined>;
   markInvitationAccepted(id: string): Promise<void>;
   deleteInvitationsForMember(memberId: string): Promise<void>;
   createPasswordReset(data: InsertPasswordReset): Promise<PasswordReset>;
@@ -2316,6 +2318,33 @@ export class DatabaseStorage implements IStorage {
 
   async getInvitationByTokenHash(tokenHash: string): Promise<Invitation | undefined> {
     const [row] = await db.select().from(invitations).where(eq(invitations.tokenHash, tokenHash)).limit(1);
+    return row;
+  }
+
+  async getPendingInvitationByMemberId(memberId: string): Promise<Invitation | undefined> {
+    const now = new Date();
+    const [row] = await db
+      .select()
+      .from(invitations)
+      .where(
+        and(
+          eq(invitations.memberId, memberId),
+          isNull(invitations.acceptedAt),
+          gt(invitations.expiresAt, now),
+        ),
+      )
+      .orderBy(desc(invitations.createdAt))
+      .limit(1);
+    return row;
+  }
+
+  async getAcceptedInvitationByMemberId(memberId: string): Promise<Invitation | undefined> {
+    const [row] = await db
+      .select()
+      .from(invitations)
+      .where(and(eq(invitations.memberId, memberId), isNotNull(invitations.acceptedAt)))
+      .orderBy(desc(invitations.acceptedAt))
+      .limit(1);
     return row;
   }
 

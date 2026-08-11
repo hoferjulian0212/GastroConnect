@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { useAuth as useClerkAuth, useClerk } from "@clerk/react";
 import type { User, Member } from "@shared/schema";
 import { isWarehouseRole, isDriverRole } from "@shared/permissions";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -6,15 +7,10 @@ import { useQuery } from "@tanstack/react-query";
 
 type UserRole = "restaurant" | "supplier";
 
-interface AuthProviders {
-  google: boolean;
-}
-
 interface MeResponse {
   authenticated: boolean;
   member?: Member;
   org?: User;
-  providers?: AuthProviders;
 }
 
 interface UserContextType {
@@ -28,20 +24,19 @@ interface UserContextType {
   members: Member[];
   membersLoading: boolean;
   isAuthenticated: boolean;
+  /** True while Clerk or /api/auth/me is still loading. */
   isLoading: boolean;
-  providers: AuthProviders;
+  /** True when Clerk says the user is signed in but /api/auth/me says not authorized. */
+  isClerkSignedInButUnauthorized: boolean;
   refetchMe: () => void;
   logout: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// Last-known session snapshot. When the installed PWA is killed by the OS
-// (e.g. iOS reclaiming memory while the user switches apps), the app restarts
-// cold — instead of blocking on the splash screen until /api/auth/me answers,
-// we render immediately from this snapshot and refresh the session in the
-// background. If the session turns out to be expired, the background refetch
-// redirects to the login page as usual.
+// Last-known session snapshot for cold-start (PWA re-launch). Restored as
+// placeholderData so the app is immediately renderable on a cold start; the
+// real /api/auth/me fetch replaces it in the background.
 const ME_SNAPSHOT_KEY = "gc.me.snapshot";
 
 function readMeSnapshot(): MeResponse | undefined {
@@ -63,31 +58,34 @@ function writeMeSnapshot(me: MeResponse | undefined) {
       localStorage.removeItem(ME_SNAPSHOT_KEY);
     }
   } catch {
-    // Storage full/unavailable — snapshot is a pure optimization, ignore.
+    // Storage full/unavailable — ignore.
   }
 }
 
 export function UserProvider({ children }: { children: ReactNode }) {
+  const { isLoaded: clerkLoaded, isSignedIn } = useClerkAuth();
+  const { signOut } = useClerk();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentMember, setCurrentMember] = useState<Member | null>(null);
 
+  // Gate the /api/auth/me query on Clerk being loaded and the user being
+  // signed in. This prevents transient 401s that would arise from the fetch
+  // firing before Clerk attaches its session cookie.
   const { data: me, isLoading: meLoading, isFetchedAfterMount, refetch } = useQuery<MeResponse>({
     queryKey: ["/api/auth/me"],
     retry: false,
     staleTime: 30000,
-    // Render instantly from the last-known session on a cold start; the real
-    // /api/auth/me fetch still runs and replaces it.
+    enabled: clerkLoaded && !!isSignedIn,
+    // Render instantly from the last-known session on a cold start.
     placeholderData: readMeSnapshot,
   });
 
-  // Keep the snapshot up to date with the real session state (only after the
-  // server actually answered — never persist the placeholder itself).
+  // Keep the snapshot up to date (only after a real server response).
   useEffect(() => {
     if (isFetchedAfterMount) writeMeSnapshot(me);
   }, [me, isFetchedAfterMount]);
 
-  // The session is the single source of truth for identity. Seed local state
-  // from /api/auth/me; local setters still allow optimistic profile updates.
+  // Seed local state from /api/auth/me.
   useEffect(() => {
     if (!me) return;
     if (me.authenticated && me.org) {
@@ -99,11 +97,21 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }, [me]);
 
+  // When Clerk says signed-out, also clear local state and snapshot.
+  useEffect(() => {
+    if (clerkLoaded && !isSignedIn) {
+      setCurrentUser(null);
+      setCurrentMember(null);
+      writeMeSnapshot(undefined);
+    }
+  }, [clerkLoaded, isSignedIn]);
+
   const currentRole = (currentUser?.role as UserRole) ?? "restaurant";
   const isWarehouse = isWarehouseRole(currentMember?.role);
   const isDriver = isDriverRole(currentMember?.role);
   const isAuthenticated = !!me?.authenticated;
-  const providers: AuthProviders = me?.providers ?? { google: false };
+  // Clerk is signed in but the server has no member row for this email.
+  const isClerkSignedInButUnauthorized = clerkLoaded && !!isSignedIn && !isAuthenticated && !meLoading;
 
   const { data: membersData, isLoading: membersLoading } = useQuery<{ members: Member[]; seatLimit: number; seatsUsed: number }>({
     queryKey: ["/api/orgs", currentUser?.id, "members"],
@@ -116,16 +124,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [refetch]);
 
   const logout = useCallback(async () => {
-    try {
-      await apiRequest("POST", "/api/auth/logout");
-    } catch {
-      // Ignore — clearing local state below logs the user out regardless.
-    }
     setCurrentUser(null);
     setCurrentMember(null);
     writeMeSnapshot(undefined);
     queryClient.clear();
-  }, []);
+    await signOut({ redirectUrl: "/" });
+  }, [signOut]);
 
   return (
     <UserContext.Provider
@@ -140,10 +144,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         members,
         membersLoading,
         isAuthenticated,
-        // With a snapshot placeholder the query technically still "loads", but
-        // we already have renderable session data — don't show the splash.
-        isLoading: meLoading && !me,
-        providers,
+        // Show splash while Clerk is loading or while the first /api/auth/me
+        // fetch is in flight and there is no cached/snapshot data to show yet.
+        isLoading: !clerkLoaded || (meLoading && !me),
+        isClerkSignedInButUnauthorized,
         refetchMe,
         logout,
       }}

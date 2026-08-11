@@ -1,4 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { clerkMiddleware } from "@clerk/express";
+import { publishableKeyFromHost } from "@clerk/shared/keys";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { runMonthlyReportsForAll } from "./monthlyReportService";
@@ -8,6 +10,11 @@ import rateLimit from "express-rate-limit";
 import { createSessionMiddleware } from "./auth/session";
 import { loadAuth } from "./auth/middleware";
 import { storage } from "./storage";
+import {
+  CLERK_PROXY_PATH,
+  clerkProxyMiddleware,
+  getClerkProxyHost,
+} from "./middlewares/clerkProxyMiddleware";
 
 const app = express();
 const httpServer = createServer(app);
@@ -17,6 +24,9 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+// Clerk proxy must be mounted BEFORE body parsers (streams raw bytes).
+app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(
   helmet({
@@ -29,12 +39,7 @@ app.use(
 
 app.set("trust proxy", 1);
 
-// CORS lockdown. The frontend is served same-origin (Vite + Express on one
-// port), so by default NO cross-origin credentialed requests are allowed —
-// the browser's same-origin policy already blocks them and we add no
-// Access-Control-Allow-Origin header. To permit a specific external origin
-// (e.g. a separate prod frontend host), set ALLOWED_ORIGINS to a
-// comma-separated allowlist; only those origins get credentialed CORS.
+// CORS lockdown for explicit allowlist (keeps existing cross-origin policy).
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .split(",")
   .map((o) => o.trim())
@@ -58,7 +63,6 @@ app.use((req, res, next) => {
       return res.sendStatus(204);
     }
   } else if (origin && req.method === "OPTIONS") {
-    // Disallowed cross-origin preflight: reject without CORS headers.
     return res.sendStatus(403);
   }
   next();
@@ -109,9 +113,24 @@ app.use(
 
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 
-// Server-side sessions + per-request auth context (member + org + role). Mounted
-// on /api only since all authentication and protected routes live under /api.
+// Clerk middleware: validates the Clerk session cookie and populates auth on
+// every request. Resolves the publishable key from the incoming host so the
+// same server can serve multiple Clerk custom domains.
+app.use(
+  clerkMiddleware((req) => ({
+    publishableKey: publishableKeyFromHost(
+      getClerkProxyHost(req) ?? "",
+      process.env.CLERK_PUBLISHABLE_KEY,
+    ),
+  })),
+);
+
+// Express-session (Postgres-backed) for the platform-admin layer and admin
+// impersonation. Member auth is Clerk-based (no local session cookie).
 app.use("/api", createSessionMiddleware());
+
+// Per-request member auth context (member + org + role from Clerk session).
+// Also resolves admin impersonation from the express-session when active.
 app.use("/api", loadAuth);
 
 export function log(message: string, source = "express") {
@@ -160,7 +179,6 @@ app.use((req, res, next) => {
 
     console.error("Internal Server Error:", err);
 
-    // Persist the error for platform admins (best-effort, never throws).
     storage
       .createErrorLog({
         level: "error",
@@ -184,9 +202,6 @@ app.use((req, res, next) => {
     return res.status(status).json({ message });
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -194,10 +209,6 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {
@@ -210,23 +221,16 @@ app.use((req, res, next) => {
     },
   );
 
-  // ── Monthly comparison report scheduler (Task #45) ──────────────────────
-  // Run daily; if today is the 1st (server-local time), generate previous-
-  // month reports for every opted-in restaurant. The service itself skips
-  // months that already have a report, so duplicate runs are safe.
+  // ── Monthly comparison report scheduler ──────────────────────────────────
   let lastRunYearMonth = "";
   const runIfFirstOfMonth = async () => {
     const now = new Date();
-    // Standardize on UTC so scheduler and report month math (which uses UTC)
-    // agree at day boundaries.
     if (now.getUTCDate() !== 1) return;
     const tag = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
     if (tag === lastRunYearMonth) return;
     try {
       log("[monthly-report] running scheduled batch", "scheduler");
       const result = await runMonthlyReportsForAll();
-      // Only mark this month as "done" after a successful batch — failures
-      // (DB hiccup, GCS auth flake) will be retried on the next 6h tick.
       lastRunYearMonth = tag;
       log(`[monthly-report] generated=${result.generated} skipped=${result.skipped} failed=${result.failed}`, "scheduler");
     } catch (err) {

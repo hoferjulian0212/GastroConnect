@@ -14,6 +14,27 @@
 // server session endpoint would.
 
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
+
+// Mock Clerk before any imports that depend on it. vi.mock() is hoisted
+// to the top of the file regardless of where it appears.
+vi.mock("@clerk/react", async () => {
+  const React = await import("react");
+  return {
+    ClerkProvider: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+    SignIn: () => null,
+    SignUp: () => null,
+    useAuth: () => ({ isLoaded: true, isSignedIn: true }),
+    useClerk: () => ({
+      signOut: async (_opts?: unknown) => {},
+      addListener: (_fn: unknown) => () => {},
+    }),
+  };
+});
+vi.mock("@clerk/shared/keys", () => ({
+  publishableKeyFromHost: () => "pk_test_mock",
+}));
+
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import App from "@/App";
 import { UserProvider, useUser } from "@/context/UserContext";

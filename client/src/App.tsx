@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation, Redirect } from "wouter";
+import { Switch, Route, useLocation, Redirect, Router as WouterRouter } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -36,7 +36,13 @@ import { MobileTopActions } from "@/components/mobile/MobileTopActions";
 import { useEffect, useCallback, useState, useRef, useLayoutEffect, lazy, Suspense, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { navigate } from "wouter/use-browser-location";
+import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
+import { publishableKeyFromHost } from "@clerk/react/internal";
+import { shadcn } from "@clerk/themes";
 
+// ── Clerk configuration ────────────────────────────────────────────────────
+// REQUIRED — copy verbatim. Resolves the publishable key from the host so the
+// same build serves multiple Clerk custom domains.
 const Landing = lazy(() => import("@/pages/Landing"));
 import Login from "@/pages/Login";
 import AuthClaim from "@/pages/AuthClaim";
@@ -741,7 +747,7 @@ function DesktopProfileButton() {
 }
 
 function AppLayout() {
-  const { currentRole, isWarehouse, isDriver, isLoading, isAuthenticated } = useUser();
+  const { currentRole, isWarehouse, isDriver, isLoading, isAuthenticated, isClerkSignedInButUnauthorized } = useUser();
   const { isInChat } = useChat();
   const [location] = useLocation();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -781,6 +787,14 @@ function AppLayout() {
   const isHomePage = pathOnly === '/restaurant' || pathOnly === '/supplier';
   const isInboxPage = pathOnly === '/restaurant/inbox' || pathOnly === '/supplier/inbox';
 
+  // Clerk sign-in / sign-up (sub-paths like /sign-in/sso-callback included).
+  if (pathOnly.startsWith("/sign-in")) {
+    return <SignInPage />;
+  }
+  if (pathOnly.startsWith("/sign-up")) {
+    return <SignUpPage />;
+  }
+
   if (pathOnly === "/") {
     return (
       <Suspense fallback={<div className="min-h-screen" />}>
@@ -789,16 +803,18 @@ function AppLayout() {
     );
   }
 
+  // Legacy login route → redirect to Clerk sign-in.
   if (pathOnly === "/login") {
-    return <Login />;
+    return <Redirect to="/sign-in" />;
   }
 
+  // Legacy claim/reset routes → redirect to Clerk sign-up / sign-in.
   if (pathOnly === "/auth/claim") {
-    return <AuthClaim />;
+    return <Redirect to="/sign-up" />;
   }
 
   if (pathOnly === "/auth/reset") {
-    return <AuthReset />;
+    return <Redirect to="/sign-in" />;
   }
 
   if (pathOnly === "/about") {
@@ -836,8 +852,8 @@ function AppLayout() {
     return <AdminPmsRequests />;
   }
 
-  // Protected area — gate on the session. While /api/auth/me is in flight show
-  // the splash; once resolved, send unauthenticated visitors to the login page.
+  // Protected area — gate on the session. While Clerk or /api/auth/me is in
+  // flight show the splash; once resolved, route based on auth state.
   if (isLoading) {
     return (
       <div className="flex h-dvh items-center justify-center">
@@ -854,8 +870,15 @@ function AppLayout() {
     );
   }
 
+  // Clerk signed-in but no member row for this email: the account exists in
+  // Clerk but hasn't been invited yet. Show a terminal access-denied screen
+  // instead of redirecting to /sign-in (which would create an infinite loop).
+  if (isClerkSignedInButUnauthorized) {
+    return <AccessDeniedScreen />;
+  }
+
   if (!isAuthenticated) {
-    return <Redirect to="/login" />;
+    return <Redirect to="/sign-in" />;
   }
 
   return (
@@ -916,27 +939,171 @@ function AppLayout() {
   );
 }
 
+function ClerkProviderWithRouter({ children }: { children: ReactNode }) {
+  const [, setLocation] = useLocation();
+  return (
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      proxyUrl={clerkProxyUrl}
+      appearance={clerkAppearance}
+      signInUrl={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      routerPush={(to) => setLocation(stripBase(to))}
+      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
+    >
+      {children}
+    </ClerkProvider>
+  );
+}
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <ThemeProvider>
-          <LanguageProvider>
-            <UserProvider>
-              <HeroProvider>
-              <ChatProvider>
-                <TourProvider>
-                  <AppLayout />
-                  <Toaster />
-                </TourProvider>
-              </ChatProvider>
-              </HeroProvider>
-            </UserProvider>
-          </LanguageProvider>
-        </ThemeProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <WouterRouter base={basePath}>
+      <ClerkProviderWithRouter>
+        <QueryClientProvider client={queryClient}>
+          <ClerkQueryClientCacheInvalidator />
+          <TooltipProvider>
+            <ThemeProvider>
+              <LanguageProvider>
+                <UserProvider>
+                  <HeroProvider>
+                    <ChatProvider>
+                      <TourProvider>
+                        <AppLayout />
+                        <Toaster />
+                      </TourProvider>
+                    </ChatProvider>
+                  </HeroProvider>
+                </UserProvider>
+              </LanguageProvider>
+            </ThemeProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ClerkProviderWithRouter>
+    </WouterRouter>
   );
 }
 
 export default App;
+
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+
+function SignUpPage() {
+  return (
+    <div className="min-h-dvh bg-[#161921] flex items-center justify-center px-4">
+      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+    </div>
+  );
+}
+
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+
+function AccessDeniedScreen() {
+  const { signOut } = useClerk();
+  return (
+    <div className="flex h-dvh items-center justify-center bg-[#161921]">
+      <div className="flex flex-col items-center gap-4 text-center max-w-md px-6">
+        <img src={logoImgThick} alt="GastroConnect Logo" className="h-20 w-20 object-contain invert" />
+        <span className="text-2xl font-bold text-white tracking-tight">Kein Zugang</span>
+        <p className="text-white/60 text-sm leading-relaxed">
+          Ihr Konto ist noch nicht mit einer Organisation verknüpft. Bitten Sie Ihre Organisation, Sie zum Team einzuladen.
+        </p>
+        <button
+          onClick={() => signOut({ redirectUrl: "/sign-in" })}
+          className="mt-2 text-sm text-white/50 hover:text-white underline underline-offset-4"
+        >
+          Mit einem anderen Konto anmelden
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+const clerkAppearance = {
+  theme: shadcn,
+  // No cssLayerName — this project uses Tailwind v3 / PostCSS.
+  options: {
+    logoPlacement: "inside" as const,
+    logoLinkUrl: basePath || "/",
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+  },
+  variables: {
+    colorPrimary: "#ffffff",
+    colorForeground: "#ffffff",
+    colorMutedForeground: "rgba(255,255,255,0.55)",
+    colorDanger: "#f87171",
+    colorBackground: "#161921",
+    colorInput: "rgba(255,255,255,0.06)",
+    colorInputForeground: "#ffffff",
+    colorNeutral: "rgba(255,255,255,0.15)",
+    fontFamily: "inherit",
+    borderRadius: "0.75rem",
+  },
+  elements: {
+    rootBox: "w-full flex justify-center",
+    cardBox: "rounded-2xl w-[440px] max-w-full overflow-hidden border border-white/10",
+    card: "!shadow-none !border-0 !rounded-none",
+    footer: "!shadow-none !border-0 !rounded-none",
+    headerTitle: "text-white font-bold",
+    headerSubtitle: "text-white/55",
+    socialButtonsBlockButtonText: "text-white",
+    formFieldLabel: "text-white/80",
+    footerActionLink: "text-white hover:text-white/80",
+    footerActionText: "text-white/55",
+    dividerText: "text-white/40",
+    identityPreviewEditButton: "text-white/70",
+    formFieldSuccessText: "text-emerald-400",
+    alertText: "text-white",
+    logoBox: "mb-1",
+    logoImage: "h-10 w-10",
+    socialButtonsBlockButton: "border-white/15 bg-white/[0.06] hover:bg-white/[0.10]",
+    formButtonPrimary: "bg-white text-[#161921] hover:bg-white/90 font-semibold",
+    formFieldInput: "bg-white/[0.06] border-white/15 text-white placeholder:text-white/40",
+    footerAction: "bg-transparent",
+    dividerLine: "bg-white/10",
+    alert: "border-red-500/30 bg-red-500/10",
+    otpCodeFieldInput: "bg-white/[0.06] border-white/15 text-white",
+    formFieldRow: "",
+    main: "",
+  },
+};
+
+function stripBase(path: string): string {
+  return basePath && path.startsWith(basePath)
+    ? path.slice(basePath.length) || "/"
+    : path;
+}
+
+function SignInPage() {
+  return (
+    <div className="min-h-dvh bg-[#161921] flex items-center justify-center px-4">
+      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+    </div>
+  );
+}
+
+function ClerkQueryClientCacheInvalidator() {
+  const { addListener } = useClerk();
+  const qc = useQueryClient();
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    const unsubscribe = addListener(({ user }) => {
+      const userId = user?.id ?? null;
+      if (
+        prevUserIdRef.current !== undefined &&
+        prevUserIdRef.current !== userId
+      ) {
+        qc.clear();
+      }
+      prevUserIdRef.current = userId;
+    });
+    return unsubscribe;
+  }, [addListener, qc]);
+
+  return null;
+}

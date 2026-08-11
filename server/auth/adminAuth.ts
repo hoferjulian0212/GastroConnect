@@ -78,6 +78,25 @@ export async function bootstrapPlatformAdmin(): Promise<void> {
 export const DEMO_WAREHOUSE_EMAIL = "lager@frische-produkte.de";
 export const DEMO_WAREHOUSE_PASSWORD = "Lager2026Demo";
 
+/**
+ * Ensures a demo/bootstrap member has an accepted invitation so they pass the
+ * `resolveClerkAuth` invitation gate. Idempotent — no-ops when one already
+ * exists. Only called from dev-only bootstrap functions (all guarded by the
+ * `NODE_ENV !== 'production'` check in their respective callers).
+ */
+async function ensureDemoInvitationAccepted(memberId: string): Promise<void> {
+  const existing = await storage.getAcceptedInvitationByMemberId(memberId);
+  if (existing) return; // already on-boarded, nothing to do
+  const { hash } = generateToken();
+  const inv = await storage.createInvitation({
+    memberId,
+    tokenHash: hash,
+    invitedByMemberId: null,
+    expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+  });
+  await storage.markInvitationAccepted(inv.id);
+}
+
 export async function bootstrapDemoWarehouseMember(): Promise<void> {
   // Hard production guard — never provision known credentials in prod.
   if (process.env.NODE_ENV === "production") {
@@ -107,6 +126,7 @@ export async function bootstrapDemoWarehouseMember(): Promise<void> {
         role: "warehouse",
       });
       await storage.updateMemberAuth(existing.id, { passwordHash, emailVerifiedAt: new Date() });
+      await ensureDemoInvitationAccepted(existing.id);
       console.log(`[demo] warehouse member updated (${DEMO_WAREHOUSE_EMAIL}).`);
     } else {
       const member = await storage.createMember({
@@ -116,6 +136,7 @@ export async function bootstrapDemoWarehouseMember(): Promise<void> {
         role: "warehouse",
       });
       await storage.updateMemberAuth(member.id, { passwordHash, emailVerifiedAt: new Date() });
+      await ensureDemoInvitationAccepted(member.id);
       console.log(`[demo] warehouse member created (${DEMO_WAREHOUSE_EMAIL}).`);
     }
   } catch (err) {
@@ -155,6 +176,7 @@ export async function bootstrapDemoDriverMembers(): Promise<void> {
         }
         await storage.updateMember(existing.id, { name: d.name, role: "driver" });
         await storage.updateMemberAuth(existing.id, { passwordHash, emailVerifiedAt: new Date() });
+        await ensureDemoInvitationAccepted(existing.id);
       } else {
         const member = await storage.createMember({
           organizationId: org.id,
@@ -163,6 +185,7 @@ export async function bootstrapDemoDriverMembers(): Promise<void> {
           role: "driver",
         });
         await storage.updateMemberAuth(member.id, { passwordHash, emailVerifiedAt: new Date() });
+        await ensureDemoInvitationAccepted(member.id);
       }
     }
     console.log(`[demo] driver members ready (${drivers.map((d) => d.email).join(", ")}).`);
@@ -223,6 +246,7 @@ export async function bootstrapDemoRoleMembers(): Promise<void> {
       }
       const passwordHash = await hashPassword(login.password);
       await storage.updateMemberAuth(member.id, { passwordHash, emailVerifiedAt: new Date() });
+      await ensureDemoInvitationAccepted(member.id);
       ready.push(login.email);
     }
     if (ready.length) {
@@ -348,8 +372,8 @@ export function registerAdminAuthRoutes(app: Express) {
           subject: "GastroConnect: Konto aktivieren",
           html: renderNotificationEmail({
             title: "Willkommen bei GastroConnect",
-            message: `Hallo ${adminName},\n\nfür ${companyName} wurde ein Konto bei GastroConnect erstellt. Aktivieren Sie es, indem Sie ein Passwort festlegen. Der Link ist 7 Tage gültig.`,
-            linkPath: `/auth/claim?token=${raw}`,
+            message: `Hallo ${adminName},\n\nfür ${companyName} wurde ein Konto bei GastroConnect erstellt. Erstellen Sie jetzt Ihr Konto, um loszulegen.`,
+            linkPath: `/sign-up`,
           }),
         });
       }

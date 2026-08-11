@@ -7,12 +7,25 @@ GastroConnect is a web application designed to streamline interactions between r
 Preferred communication style: Simple, everyday language.
 Mirrored role pages: The restaurant and supplier roles have parallel versions of the same pages (e.g. `client/src/pages/restaurant/*` and `client/src/pages/supplier/*` for Complaints, Orders, Home, Inbox, etc.). Whenever a change is made to one role's page, always apply the equivalent change to the other role's matching page so both stay in sync.
 
-## Authentication — One Scheme
+## Authentication
 
-GastroConnect uses a single, consistent **email + password** login scheme. There is no public self-signup — onboarding is **invite-only**.
+GastroConnect uses **Clerk** (Replit-managed) for business user authentication. There is no public self-signup — onboarding is **invite-only**.
+
+### Business users (restaurants & suppliers)
+Members sign in via the Clerk-hosted UI at `/sign-in` (email/password + social providers configured in Clerk). New members are **invite-only**: a platform admin creates the organization via `POST /api/admin/orgs`; the invited admin receives an email linking to `/sign-up`. There is no token-based claim flow — Clerk handles account creation.
+
+**Identity bridge**: Clerk's `sessionClaims.email` is matched against `members.email` (case-insensitive) to find the local member row. If no matching member exists, the server returns `{ authenticated: false }` and the app shows a "Kein Zugang" access-denied screen. JIT auto-creation is disabled (invite-only).
+
+**`@clerk/express` collision note**: `@clerk/express` sets `req.auth` to its own `ClerkAuthObject` on every request. `loadAuth` in `server/auth/middleware.ts` calls `getAuth(req)`, then immediately resets `(req as any).auth = undefined` and replaces it with our `AuthContext` (or leaves it undefined). Route handlers then safely check `if (!req.auth)`.
+
+| Secret | Purpose |
+|---|---|
+| `CLERK_SECRET_KEY` | Server-side Clerk API |
+| `CLERK_PUBLISHABLE_KEY` | Used by Clerk Express middleware |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Frontend Clerk provider |
 
 ### Platform admins (`/admin`)
-The admin panel at `/admin` authenticates platform owners with **email + password only** (the previous Replit OIDC / "Log In with Replit" flow was removed). The owner admin is provisioned at startup from configuration (`bootstrapPlatformAdmin`, idempotent on every boot). The `platform_admins` table is created idempotently at startup (`runAdminMigration`); no `drizzle push` needed.
+The admin panel at `/admin` authenticates platform owners with **email + password only** (express-session, separate from Clerk). The owner admin is provisioned at startup from configuration (`bootstrapPlatformAdmin`, idempotent on every boot). The `platform_admins` table is created idempotently at startup (`runAdminMigration`); no `drizzle push` needed.
 
 | Secret | Required | Description |
 |---|---|---|
@@ -20,11 +33,8 @@ The admin panel at `/admin` authenticates platform owners with **email + passwor
 | `PLATFORM_ADMIN_PASSWORD` | yes | Password for the owner admin. **Must satisfy the password policy (min 12 characters).** Changing it resets the owner's password on next boot. A too-weak value is rejected and the admin is NOT created (`[admin] bootstrap failed ...`). |
 | `PLATFORM_ADMIN_NAME` | optional | Display name for the owner admin (defaults to "Owner"). |
 
-### Business users (restaurants & suppliers)
-Business members log in with **email + password**, with **optional Google OAuth** as an alternate sign-in for already-invited members. New businesses are created **invite-only**: a platform admin creates the organization plus its first admin via `POST /api/admin/orgs` (UI: "Neues Unternehmen" dialog on the admin Organizations page). The new admin receives an email with a claim link to set their password. Public member self-signup (`Signup`/`AuthVerify` pages and the member register/verify routes) was removed.
-
 ### Demo logins (dev only, never in production)
-Provisioned idempotently at startup (`bootstrapDemoRoleMembers`, `bootstrapDemoWarehouseMember`, `bootstrapDemoDriverMembers` in `server/auth/adminAuth.ts`), hard-gated to `NODE_ENV !== "production"`:
+Provisioned idempotently at startup (`bootstrapDemoRoleMembers`, `bootstrapDemoWarehouseMember`, `bootstrapDemoDriverMembers` in `server/auth/adminAuth.ts`), hard-gated to `NODE_ENV !== "production"`. These members exist in the DB; signing in requires a Clerk account with a matching email.
 
 | Rolle | Organisation | E-Mail | Passwort |
 |---|---|---|---|
